@@ -183,7 +183,7 @@ class String(Concatenable, TypeEngine):
                             util.warn_limited(
                                 "Unicode type received non-unicode "
                                 "bind param value %r.",
-                                util.ellipses_string(value))
+                                (util.ellipses_string(value),))
                         return value
                     return process
                 else:
@@ -199,7 +199,7 @@ class String(Concatenable, TypeEngine):
                         util.warn_limited(
                             "Unicode type received non-unicode bind "
                             "param value %r.",
-                            util.ellipses_string(value))
+                            (util.ellipses_string(value),))
                     return value
             return process
         else:

@@ -387,7 +387,7 @@ class MemUsageTest(EnsureZeroed):
         def go():
             util.warn_limited(
                 "memusage warning, param1: %s, param2: %s",
-                next(counter), next(counter))
+                (next(counter), next(counter)))
         go()
 
     def test_mapper_reset(self):

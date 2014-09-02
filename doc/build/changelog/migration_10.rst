@@ -104,6 +104,155 @@ symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
 
+.. _migration_2992:
+
+Warnings emitted when coercing full SQL fragments into text()
+-------------------------------------------------------------
+
+Since SQLAlchemy's inception, there has always been an emphasis on not getting
+in the way of the usage of plain text.   The Core and ORM expression systems
+were intended to allow any number of points at which the user can just
+use plain text SQL expressions, not just in the sense that you can send a
+full SQL string to :meth:`.Connection.execute`, but that you can send strings
+with SQL expressions into many functions, such as :meth:`.Select.where`,
+:meth:`.Query.filter`, and :meth:`.Select.order_by`.
+
+Note that by "SQL expressions" we mean a **full fragment of a SQL string**,
+such as::
+
+	# the argument sent to where() is a full SQL expression
+	stmt = select([sometable]).where("somecolumn = 'value'")
+
+and we are **not talking about string arguments**, that is, the normal
+behavior of passing string values that become parameterized::
+
+	# This is a normal Core expression with a string argument -
+	# we aren't talking about this!!
+	stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
+
+The Core tutorial has long featured an example of the use of this technique,
+using a :func:`.select` construct where virtually all components of it
+are specified as straight strings.  However, despite this long-standing
+behavior and example, users are apparently surprised that this behavior
+exists, and when asking around the community, I was unable to find any user
+that was in fact *not* surprised that you can send a full string into a method
+like :meth:`.Query.filter`.
+
+So the change here is to encourage the user to qualify textual strings when
+composing SQL that is partially or fully composed from textual fragments.
+When composing a select as below::
+
+	stmt = select(["a", "b"]).where("a = b").select_from("sometable")
+
+The statement is built up normally, with all the same coercions as before.
+However, one will see the following warnings emitted::
+
+	SAWarning: Textual column expression 'a' should be explicitly declared
+	with text('a'), or use column('a') for more specificity
+	(this warning may be suppressed after 10 occurrences)
+
+	SAWarning: Textual column expression 'b' should be explicitly declared
+	with text('b'), or use column('b') for more specificity
+	(this warning may be suppressed after 10 occurrences)
+
+	SAWarning: Textual SQL expression 'a = b' should be explicitly declared
+	as text('a = b') (this warning may be suppressed after 10 occurrences)
+
+	SAWarning: Textual SQL FROM expression 'sometable' should be explicitly
+	declared as text('sometable'), or use table('sometable') for more
+	specificity (this warning may be suppressed after 10 occurrences)
+
+These warnings attempt to show exactly where the issue is by displaying
+the parameters as well as where the string was received.
+The warnings make use of the :ref:`feature_3178` so that parameterized warnings
+can be emitted safely without running out of memory, and as always, if
+one wishes the warnings to be exceptions, the
+`Python Warnings Filter <https://docs.python.org/2/library/warnings.html>`_
+should be used::
+
+	import warnings
+	warnings.simplefilter("error")   # all warnings raise an exception
+
+Given the above warnings, our statement works just fine, but
+to get rid of the warnings we would rewrite our statement as follows::
+
+	from sqlalchemy import select, text
+	stmt = select([
+            text("a"),
+            text("b")
+        ]).where(text("a = b")).select_from(text("sometable"))
+
+and as the warnings suggest, we can give our statement more specificity
+about the text if we use :func:`.column` and :func:`.table`::
+
+	from sqlalchemy import select, text, column, table
+
+	stmt = select([column("a"), column("b")]).\\
+		where(text("a = b")).select_from(table("sometable"))
+
+Where note also that :func:`.table` and :func:`.column` can now
+be imported from "sqlalchemy" without the "sql" part.
+
+The behavior here applies to :func:`.select` as well as to key methods
+on :class:`.Query`, including :meth:`.Query.filter`,
+:meth:`.Query.from_statement` and :meth:`.Query.having`.
+
+ORDER BY and GROUP BY are special cases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There is one case where usage of a string has special meaning, and as part
+of this change we have enhanced its functionality.  When we have a
+:func:`.select` or :class:`.Query` that refers to some column name or named
+label, we might want to GROUP BY and/or ORDER BY known columns or labels::
+
+	stmt = select([
+		user.c.name,
+		func.count(user.c.id).label("id_count")
+	]).group_by("name").order_by("id_count")
+
+In the above statement we expect to see "ORDER BY id_count", as opposed to a
+re-statement of the function.   The string argument given is actively
+matched to an entry in the columns clause during compilation, so the above
+statement would produce as we expect, without warnings::
+
+	SELECT users.name, count(users.id) AS id_count
+	FROM users GROUP BY users.name ORDER BY id_count
+
+However, if we refer to a name that cannot be located, then we get
+the warning again, as below::
+
+	stmt = select([
+            user.c.name,
+            func.count(user.c.id).label("id_count")
+        ]).order_by("some_label")
+
+The output does what we say, but again it warns us::
+
+	SAWarning: Can't resolve label reference 'some_label'; converting to
+	text() (this warning may be suppressed after 10 occurrences)
+
+	SELECT users.name, count(users.id) AS id_count
+	FROM users ORDER BY some_label
+
+The above behavior applies to all those places where we might want to refer
+to a so-called "label reference"; ORDER BY and GROUP BY, but also within an
+OVER clause as well as a DISTINCT ON clause that refers to columns (e.g. the
+Postgresql syntax).
+
+We can still specify any arbitrary expression for ORDER BY or others using
+:func:`.text`::
+
+	stmt = select([users]).order_by(text("some special expression"))
+
+The upshot of the whole change is that SQLAlchemy now would like us
+to tell it when a string is sent that this string is explicitly
+a :func:`.text` construct, or a column, table, etc., and if we use it as a
+label name in an order by, group by, or other expression, SQLAlchemy expects
+that the string resolves to something known, else it should again
+be qualified with :func:`.text` or similar.
+
+:ticket:`2992`
+
 .. _migration_yield_per_eager_loading:
 
 Joined/Subquery eager loading explicitly disallowed with yield_per
@@ -482,7 +631,7 @@ of times; beyond that, the Python warnings registry will begin recording
 them as duplicates.
 
 To illustrate, the following test script will show only ten warnings being
-emitted for ten of the parameter sets, out of a total of 1000:
+emitted for ten of the parameter sets, out of a total of 1000::
 
 	from sqlalchemy import create_engine, Unicode, select, cast
 	import random

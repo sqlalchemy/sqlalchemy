@@ -218,7 +218,7 @@ class Query(object):
     def _adapt_col_list(self, cols):
         return [
             self._adapt_clause(
-                expression._literal_as_text(o),
+                expression._literal_as_label_reference(o),
                 True, True)
             for o in cols
         ]
@@ -1282,7 +1282,7 @@ class Query(object):
 
         """
         for criterion in list(criterion):
-            criterion = expression._literal_as_text(criterion)
+            criterion = expression._expression_literal_as_text(criterion)
 
             criterion = self._adapt_clause(criterion, True, True)
 
@@ -1381,8 +1381,7 @@ class Query(object):
 
         """
 
-        if isinstance(criterion, util.string_types):
-            criterion = sql.text(criterion)
+        criterion = expression._expression_literal_as_text(criterion)
 
         if criterion is not None and \
                 not isinstance(criterion, sql.ClauseElement):
@@ -2359,8 +2358,7 @@ class Query(object):
             ORM tutorial
 
         """
-        if isinstance(statement, util.string_types):
-            statement = sql.text(statement)
+        statement = expression._expression_literal_as_text(statement)
 
         if not isinstance(statement,
                           (expression.TextClause,
@@ -2606,7 +2604,7 @@ class Query(object):
         # .with_only_columns() after we have a core select() so that
         # we get just "SELECT 1" without any entities.
         return sql.exists(self.add_columns('1').with_labels().
-                          statement.with_only_columns(['1']))
+                          statement.with_only_columns([1]))
 
     def count(self):
         """Return a count of rows this Query would return.

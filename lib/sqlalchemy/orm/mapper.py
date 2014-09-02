@@ -1456,8 +1456,7 @@ class Mapper(InspectionAttr):
                         "Flushing object %s with "
                         "incompatible polymorphic identity %r; the "
                         "object may not refresh and/or load correctly",
-                        state_str(state),
-                        dict_[polymorphic_key]
+                        (state_str(state), dict_[polymorphic_key])
                     )
 
             self._set_polymorphic_identity = _set_polymorphic_identity

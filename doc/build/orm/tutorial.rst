@@ -982,6 +982,11 @@ completely "raw", using string names to identify desired columns:
     ('ed',)
     {stop}[(1, u'ed', 12)]
 
+.. versionchanged:: 1.0.0
+   The :class:`.Query` construct emits warnings when string SQL
+   fragments are coerced to :func:`.text`, and :func:`.text` should
+   be used explicitly.  See :ref:`migration_2992` for background.
+
 .. seealso::
 
     :ref:`sqlexpression_text` - Core description of textual segments.  The

@@ -22,6 +22,38 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: changed, sql
+
+        The :func:`~.expression.column` and :func:`~.expression.table`
+        constructs are now importable from the "from sqlalchemy" namespace,
+        just like every other Core construct.
+
+    .. change::
+        :tags: changed, sql
+        :tickets: 2992
+
+        The implicit conversion of strings to :func:`.text` constructs
+        when passed to most builder methods of :func:`.select` as
+        well as :class:`.Query` now emits a warning with just the
+        plain string sent.   The textual conversion still proceeds normally,
+        however.  The only method that accepts a string without a warning
+        are the "label reference" methods like order_by(), group_by();
+        these functions will now at compile time attempt to resolve a single
+        string argument to a column or label expression present in the
+        selectable; if none is located, the expression still renders, but
+        you get the warning again. The rationale here is that the implicit
+        conversion from string to text is more unexpected than not these days,
+        and it is better that the user send more direction to the Core / ORM
+        when passing a raw string as to what direction should be taken.
+        Core/ORM tutorials have been updated to go more in depth as to how text
+        is handled.
+
+        .. seealso::
+
+            :ref:`migration_2992`
+
+
+    .. change::
         :tags: feature, engine
         :tickets: 3178
 
@@ -68,7 +100,7 @@
             :ref:`migration_3177`
 
     .. change::
-        :tags: change, orm
+        :tags: changed, orm
 
         The ``proc()`` callable passed to the ``create_row_processor()``
         method of custom :class:`.Bundle` classes now accepts only a single
@@ -79,7 +111,7 @@
             :ref:`bundle_api_change`
 
     .. change::
-        :tags: change, orm
+        :tags: changed, orm
 
         Deprecated event hooks removed:  ``populate_instance``,
         ``create_instance``, ``translate_row``, ``append_result``

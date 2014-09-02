@@ -1206,8 +1206,8 @@ class _hash_limit_string(compat.text_type):
 
 
     """
-    def __new__(cls, value, args, num):
-        interpolated = value % args + \
+    def __new__(cls, value, num, args):
+        interpolated = (value % args) + \
             (" (this warning may be suppressed after %d occurrences)" % num)
         self = super(_hash_limit_string, cls).__new__(cls, interpolated)
         self._hash = hash("%s_%d" % (value, hash(interpolated) % num))
@@ -1230,13 +1230,13 @@ def warn(msg):
     warnings.warn(msg, exc.SAWarning, stacklevel=2)
 
 
-def warn_limited(msg, *args):
+def warn_limited(msg, args):
     """Issue a warning with a paramterized string, limiting the number
     of registrations.
 
     """
     if args:
-        msg = _hash_limit_string(msg, args, 10)
+        msg = _hash_limit_string(msg, 10, args)
     warnings.warn(msg, exc.SAWarning, stacklevel=2)
 
 

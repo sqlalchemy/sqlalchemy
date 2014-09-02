@@ -835,6 +835,11 @@ need to refer to any pre-established :class:`.Table` metadata:
     the less flexibility and ability for manipulation/transformation
     the statement will have.
 
+.. versionchanged:: 1.0.0
+   The :func:`.select` construct emits warnings when string SQL
+   fragments are coerced to :func:`.text`, and :func:`.text` should
+   be used explicitly.  See :ref:`migration_2992` for background.
+
 .. _sqlexpression_literal_column:
 
 Using More Specific Text with :func:`.table`, :func:`.literal_column`, and :func:`.column`

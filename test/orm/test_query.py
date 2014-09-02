@@ -2,7 +2,8 @@ from sqlalchemy import (
     testing, null, exists, text, union, literal, literal_column, func, between,
     Unicode, desc, and_, bindparam, select, distinct, or_, collate, insert,
     Integer, String, Boolean, exc as sa_exc, util, cast)
-from sqlalchemy.sql import operators, column, expression
+from sqlalchemy.sql import operators, expression
+from sqlalchemy import column, table
 from sqlalchemy.engine import default
 from sqlalchemy.orm import (
     attributes, mapper, relationship, create_session, synonym, Session,
@@ -12,7 +13,7 @@ from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.testing.assertions import (
-    eq_, assert_raises, assert_raises_message)
+    eq_, assert_raises, assert_raises_message, expect_warnings)
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from test.orm import _fixtures
 from sqlalchemy.orm.util import join, with_parent
@@ -746,11 +747,11 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             q = meth(q, *arg, **kw)
             assert_raises(
                 sa_exc.InvalidRequestError,
-                q.from_statement, "x"
+                q.from_statement, text("x")
             )
 
             q = s.query(User)
-            q = q.from_statement("x")
+            q = q.from_statement(text("x"))
             assert_raises(
                 sa_exc.InvalidRequestError,
                 meth, q, *arg, **kw
@@ -1670,7 +1671,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         s = create_session()
         self.assert_compile(
-            s.query(User).filter("name='ed'"),
+            s.query(User).filter(text("name='ed'")),
             "SELECT users.id AS users_id, users.name "
             "AS users_name FROM users WHERE name='ed'"
         )
@@ -1759,7 +1760,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         )
 
         for q in (
-                q3.order_by(User.id, "anon_1_param_1"),
+                q3.order_by(User.id, text("anon_1_param_1")),
                 q6.order_by(User.id, "foo")):
             eq_(
                 q.all(),
@@ -2139,7 +2140,7 @@ class YieldTest(_fixtures.FixtureTest):
         sess = create_session()
         q = iter(
             sess.query(User).yield_per(1).from_statement(
-                "select * from users"))
+                text("select * from users")))
 
         ret = []
         eq_(len(sess.identity_map), 0)
@@ -2279,52 +2280,57 @@ class TextTest(QueryTest):
     def test_fulltext(self):
         User = self.classes.User
 
-        eq_(
-            create_session().query(User).
-            from_statement("select * from users order by id").all(),
-            [User(id=7), User(id=8), User(id=9), User(id=10)]
-        )
+        with expect_warnings("Textual SQL"):
+            eq_(
+                create_session().query(User).
+                from_statement("select * from users order by id").all(),
+                [User(id=7), User(id=8), User(id=9), User(id=10)]
+            )
 
         eq_(
             create_session().query(User).from_statement(
-                "select * from users order by id").first(), User(id=7)
+                text("select * from users order by id")).first(), User(id=7)
         )
         eq_(
             create_session().query(User).from_statement(
-                "select * from users where name='nonexistent'").first(), None)
+                text("select * from users where name='nonexistent'")).first(),
+            None)
 
     def test_fragment(self):
         User = self.classes.User
 
-        eq_(
-            create_session().query(User).filter("id in (8, 9)").all(),
-            [User(id=8), User(id=9)]
+        with expect_warnings("Textual SQL expression"):
+            eq_(
+                create_session().query(User).filter("id in (8, 9)").all(),
+                [User(id=8), User(id=9)]
 
-        )
+            )
 
-        eq_(
-            create_session().query(User).filter("name='fred'").
-            filter("id=9").all(), [User(id=9)]
-        )
-        eq_(
-            create_session().query(User).filter("name='fred'").
-            filter(User.id == 9).all(), [User(id=9)]
-        )
+            eq_(
+                create_session().query(User).filter("name='fred'").
+                filter("id=9").all(), [User(id=9)]
+            )
+            eq_(
+                create_session().query(User).filter("name='fred'").
+                filter(User.id == 9).all(), [User(id=9)]
+            )
 
-    def test_binds(self):
+    def test_binds_coerce(self):
         User = self.classes.User
 
-        eq_(
-            create_session().query(User).filter("id in (:id1, :id2)").
-            params(id1=8, id2=9).all(), [User(id=8), User(id=9)]
-        )
+        with expect_warnings("Textual SQL expression"):
+            eq_(
+                create_session().query(User).filter("id in (:id1, :id2)").
+                params(id1=8, id2=9).all(), [User(id=8), User(id=9)]
+            )
 
     def test_as_column(self):
         User = self.classes.User
 
         s = create_session()
-        assert_raises(sa_exc.InvalidRequestError, s.query,
-                    User.id, text("users.name"))
+        assert_raises(
+            sa_exc.InvalidRequestError, s.query,
+            User.id, text("users.name"))
 
         eq_(
             s.query(User.id, "name").order_by(User.id).all(),
@@ -2335,7 +2341,8 @@ class TextTest(QueryTest):
         s = create_session()
         eq_(
             s.query(User).from_statement(
-                select(['id', 'name']).select_from('users').order_by('id'),
+                select([column('id'), column('name')]).
+                select_from(table('users')).order_by('id'),
             ).all(),
             [User(id=7), User(id=8), User(id=9), User(id=10)]
         )
@@ -2371,6 +2378,45 @@ class TextTest(QueryTest):
                 text("select * from users").columns(id=Integer, name=String)
             ).order_by(User.id).all(),
             [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
+
+
+class TextWarningTest(QueryTest, AssertsCompiledSQL):
+    def _test(self, fn, arg, offending_clause, expected):
+        assert_raises_message(
+            sa.exc.SAWarning,
+            r"Textual (?:SQL|column|SQL FROM) expression %(stmt)r should be "
+            r"explicitly declared (?:with|as) text\(%(stmt)r\)" % {
+                "stmt": util.ellipses_string(offending_clause),
+            },
+            fn, arg
+        )
+
+        with expect_warnings("Textual "):
+            stmt = fn(arg)
+            self.assert_compile(stmt, expected)
+
+    def test_filter(self):
+        User = self.classes.User
+        self._test(
+            Session().query(User.id).filter, "myid == 5", "myid == 5",
+            "SELECT users.id AS users_id FROM users WHERE myid == 5"
+        )
+
+    def test_having(self):
+        User = self.classes.User
+        self._test(
+            Session().query(User.id).having, "myid == 5", "myid == 5",
+            "SELECT users.id AS users_id FROM users HAVING myid == 5"
+        )
+
+    def test_from_statement(self):
+        User = self.classes.User
+        self._test(
+            Session().query(User.id).from_statement,
+            "select id from user",
+            "select id from user",
+            "select id from user",
         )
 
 
@@ -2821,7 +2867,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         c = column('x', Boolean)
         self.assert_compile(
             s.query(c).filter(c),
-            "SELECT x AS x WHERE x",
+            "SELECT x WHERE x",
             dialect=self._dialect(True)
         )
 
@@ -2830,7 +2876,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         c = column('x', Boolean)
         self.assert_compile(
             s.query(c).filter(c),
-            "SELECT x AS x WHERE x = 1",
+            "SELECT x WHERE x = 1",
             dialect=self._dialect(False)
         )
 
@@ -2839,7 +2885,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         c = column('x', Boolean)
         self.assert_compile(
             s.query(c).filter(~c),
-            "SELECT x AS x WHERE x = 0",
+            "SELECT x WHERE x = 0",
             dialect=self._dialect(False)
         )
 
@@ -2848,7 +2894,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         c = column('x', Boolean)
         self.assert_compile(
             s.query(c).filter(~c),
-            "SELECT x AS x WHERE NOT x",
+            "SELECT x WHERE NOT x",
             dialect=self._dialect(True)
         )
 
@@ -2857,6 +2903,6 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         c = column('x', Boolean)
         self.assert_compile(
             s.query(c).having(c),
-            "SELECT x AS x HAVING x = 1",
+            "SELECT x HAVING x = 1",
             dialect=self._dialect(False)
         )

@@ -1,7 +1,7 @@
 #! coding:utf-8
 
 from sqlalchemy import Column, Integer, MetaData, String, Table,\
-    bindparam, exc, func, insert, select
+    bindparam, exc, func, insert, select, column
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
@@ -238,8 +238,8 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_insert_from_select_union(self):
         mytable = self.tables.mytable
 
-        name = 'name'
-        description = 'desc'
+        name = column('name')
+        description = column('desc')
         sel = select(
             [name, mytable.c.description],
         ).union(
@@ -252,7 +252,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             ins,
             "INSERT INTO mytable (name, description) "
             "SELECT name, mytable.description FROM mytable "
-            "UNION SELECT name, desc"
+            'UNION SELECT name, "desc"'
         )
 
     def test_insert_from_select_col_values(self):

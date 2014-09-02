@@ -61,7 +61,7 @@ changelog_sections = ["general", "orm", "orm declarative", "orm querying", \
                 "postgresql", "mysql", "sqlite", "mssql", \
                 "oracle", "firebird"]
 # tags to sort on inside of sections
-changelog_inner_tag_sort = ["feature", "bug", "moved", "changed", "removed"]
+changelog_inner_tag_sort = ["feature", "changed", "removed", "bug", "moved"]
 
 # how to render changelog links
 changelog_render_ticket = "http://www.sqlalchemy.org/trac/ticket/%s"

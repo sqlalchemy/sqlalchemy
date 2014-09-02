@@ -19,7 +19,8 @@ from .visitors import Visitable, cloned_traverse, traverse
 from .annotation import Annotated
 import itertools
 from .base import Executable, PARSE_AUTOCOMMIT, Immutable, NO_ARG
-from .base import _generative, Generative
+from .base import _generative
+import numbers
 
 import re
 import operator
@@ -624,7 +625,7 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     __visit_name__ = 'column'
     primary_key = False
     foreign_keys = []
-    _label = None
+    _label = _columns_clause_label = None
     _key_label = key = None
     _alt_names = ()
 
@@ -1180,6 +1181,10 @@ class TextClause(Executable, ClauseElement):
 
     _hide_froms = []
 
+    # help in those cases where text() is
+    # interpreted in a column expression situation
+    key = _label = _columns_clause_label = None
+
     def __init__(
             self,
             text,
@@ -1694,13 +1699,16 @@ class ClauseList(ClauseElement):
         self.operator = kwargs.pop('operator', operators.comma_op)
         self.group = kwargs.pop('group', True)
         self.group_contents = kwargs.pop('group_contents', True)
+        text_converter = kwargs.pop(
+            '_literal_as_text',
+            _expression_literal_as_text)
         if self.group_contents:
             self.clauses = [
-                _literal_as_text(clause).self_group(against=self.operator)
+                text_converter(clause).self_group(against=self.operator)
                 for clause in clauses]
         else:
             self.clauses = [
-                _literal_as_text(clause)
+                text_converter(clause)
                 for clause in clauses]
 
     def __iter__(self):
@@ -1767,7 +1775,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
         clauses = util.coerce_generator_arg(clauses)
         for clause in clauses:
-            clause = _literal_as_text(clause)
+            clause = _expression_literal_as_text(clause)
 
             if isinstance(clause, continue_on):
                 continue
@@ -2280,6 +2288,13 @@ class Extract(ColumnElement):
         return self.expr._from_objects
 
 
+class _label_reference(ColumnElement):
+    __visit_name__ = 'label_reference'
+
+    def __init__(self, text):
+        self.text = text
+
+
 class UnaryExpression(ColumnElement):
     """Define a 'unary' expression.
 
@@ -2343,7 +2358,8 @@ class UnaryExpression(ColumnElement):
 
         """
         return UnaryExpression(
-            _literal_as_text(column), modifier=operators.nullsfirst_op)
+            _literal_as_label_reference(column),
+            modifier=operators.nullsfirst_op)
 
     @classmethod
     def _create_nullslast(cls, column):
@@ -2383,7 +2399,8 @@ class UnaryExpression(ColumnElement):
 
         """
         return UnaryExpression(
-            _literal_as_text(column), modifier=operators.nullslast_op)
+            _literal_as_label_reference(column),
+            modifier=operators.nullslast_op)
 
     @classmethod
     def _create_desc(cls, column):
@@ -2421,7 +2438,7 @@ class UnaryExpression(ColumnElement):
 
         """
         return UnaryExpression(
-            _literal_as_text(column), modifier=operators.desc_op)
+            _literal_as_label_reference(column), modifier=operators.desc_op)
 
     @classmethod
     def _create_asc(cls, column):
@@ -2458,7 +2475,7 @@ class UnaryExpression(ColumnElement):
 
         """
         return UnaryExpression(
-            _literal_as_text(column), modifier=operators.asc_op)
+            _literal_as_label_reference(column), modifier=operators.asc_op)
 
     @classmethod
     def _create_distinct(cls, expr):
@@ -2742,9 +2759,13 @@ class Over(ColumnElement):
         """
         self.func = func
         if order_by is not None:
-            self.order_by = ClauseList(*util.to_list(order_by))
+            self.order_by = ClauseList(
+                *util.to_list(order_by),
+                _literal_as_text=_literal_as_label_reference)
         if partition_by is not None:
-            self.partition_by = ClauseList(*util.to_list(partition_by))
+            self.partition_by = ClauseList(
+                *util.to_list(partition_by),
+                _literal_as_text=_literal_as_label_reference)
 
     @util.memoized_property
     def type(self):
@@ -2804,7 +2825,8 @@ class Label(ColumnElement):
             self.name = _anonymous_label(
                 '%%(%d %s)s' % (id(self), getattr(element, 'name', 'anon'))
             )
-        self.key = self._label = self._key_label = self.name
+        self.key = self._label = self._key_label = \
+            self._columns_clause_label = self.name
         self._element = element
         self._type = type_
         self._proxies = [element]
@@ -2869,7 +2891,7 @@ class ColumnClause(Immutable, ColumnElement):
     :class:`.Column` class, is typically invoked using the
     :func:`.column` function, as in::
 
-        from sqlalchemy.sql import column
+        from sqlalchemy import column
 
         id, name = column("id"), column("name")
         stmt = select([id, name]).select_from("user")
@@ -2909,7 +2931,7 @@ class ColumnClause(Immutable, ColumnElement):
         :class:`.Column` class.  The :func:`.column` function can
         be invoked with just a name alone, as in::
 
-            from sqlalchemy.sql import column
+            from sqlalchemy import column
 
             id, name = column("id"), column("name")
             stmt = select([id, name]).select_from("user")
@@ -2941,7 +2963,7 @@ class ColumnClause(Immutable, ColumnElement):
         (which is the lightweight analogue to :class:`.Table`) to produce
         a working table construct with minimal boilerplate::
 
-            from sqlalchemy.sql import table, column
+            from sqlalchemy import table, column, select
 
             user = table("user",
                     column("id"),
@@ -2956,6 +2978,10 @@ class ColumnClause(Immutable, ColumnElement):
         ad-hoc fashion and is not associated with any
         :class:`.schema.MetaData`, DDL, or events, unlike its
         :class:`.Table` counterpart.
+
+        .. versionchanged:: 1.0.0 :func:`.expression.column` can now
+           be imported from the plain ``sqlalchemy`` namespace like any
+           other SQL element.
 
         :param text: the text of the element.
 
@@ -3034,6 +3060,13 @@ class ColumnClause(Immutable, ColumnElement):
     @_memoized_property
     def _label(self):
         return self._gen_label(self.name)
+
+    @_memoized_property
+    def _columns_clause_label(self):
+        if self.table is None:
+            return None
+        else:
+            return self._label
 
     def _gen_label(self, name):
         t = self.table
@@ -3438,12 +3471,29 @@ def _clause_element_as_expr(element):
         return element
 
 
-def _literal_as_text(element):
+def _literal_as_label_reference(element):
+    if isinstance(element, util.string_types):
+        return _label_reference(element)
+    else:
+        return _literal_as_text(element)
+
+
+def _expression_literal_as_text(element):
+    return _literal_as_text(element, warn=True)
+
+
+def _literal_as_text(element, warn=False):
     if isinstance(element, Visitable):
         return element
     elif hasattr(element, '__clause_element__'):
         return element.__clause_element__()
     elif isinstance(element, util.string_types):
+        if warn:
+            util.warn_limited(
+                "Textual SQL expression %(expr)r should be "
+                "explicitly declared as text(%(expr)r)",
+                {"expr": util.ellipses_string(element)})
+
         return TextClause(util.text_type(element))
     elif isinstance(element, (util.NoneType, bool)):
         return _const_expr(element)
@@ -3498,6 +3548,8 @@ def _literal_as_binds(element, name=None, type_=None):
     else:
         return element
 
+_guess_straight_column = re.compile(r'^\w\S*$', re.I)
+
 
 def _interpret_as_column_or_from(element):
     if isinstance(element, Visitable):
@@ -3512,7 +3564,31 @@ def _interpret_as_column_or_from(element):
     elif hasattr(insp, "selectable"):
         return insp.selectable
 
-    return ColumnClause(str(element), is_literal=True)
+    # be forgiving as this is an extremely common
+    # and known expression
+    if element == "*":
+        guess_is_literal = True
+    elif isinstance(element, (numbers.Number)):
+        return ColumnClause(str(element), is_literal=True)
+    else:
+        element = str(element)
+        # give into temptation, as this fact we are guessing about
+        # is not one we've previously ever needed our users tell us;
+        # but let them know we are not happy about it
+        guess_is_literal = not _guess_straight_column.match(element)
+        util.warn_limited(
+            "Textual column expression %(column)r should be "
+            "explicitly declared with text(%(column)r), "
+            "or use %(literal_column)s(%(column)r) "
+            "for more specificity",
+            {
+                "column": util.ellipses_string(element),
+                "literal_column": "literal_column"
+                if guess_is_literal else "column"
+            })
+    return ColumnClause(
+        element,
+        is_literal=guess_is_literal)
 
 
 def _const_expr(element):

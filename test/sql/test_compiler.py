@@ -239,7 +239,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     def test_select_precol_compile_ordering(self):
-        s1 = select([column('x')]).select_from('a').limit(5).as_scalar()
+        s1 = select([column('x')]).select_from(text('a')).limit(5).as_scalar()
         s2 = select([s1]).limit(10)
 
         class MyCompiler(compiler.SQLCompiler):
@@ -346,7 +346,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_from_clauselist(self):
         self.assert_compile(
             select([ClauseList(column('a'), column('b'))]
-                   ).select_from('sometable'),
+                   ).select_from(text('sometable')),
             'SELECT a, b FROM sometable'
         )
 
@@ -462,7 +462,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select(["a", "a", "a"]),
+            select([column("a"), column("a"), column("a")]),
             "SELECT a, a, a"
         )
 
@@ -933,7 +933,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_conjunctions(self):
-        a, b, c = 'a', 'b', 'c'
+        a, b, c = text('a'), text('b'), text('c')
         x = and_(a, b, c)
         assert isinstance(x.type, Boolean)
         assert str(x) == 'a AND b AND c'
@@ -944,7 +944,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             and_(table1.c.myid == 12, table1.c.name == 'asdf',
-                 table2.c.othername == 'foo', "sysdate() = today()"),
+                 table2.c.othername == 'foo', text("sysdate() = today()")),
             "mytable.myid = :myid_1 AND mytable.name = :name_1 "
             "AND myothertable.othername = "
             ":othername_1 AND sysdate() = today()"
@@ -955,7 +955,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.myid == 12,
                 or_(table2.c.othername == 'asdf',
                     table2.c.othername == 'foo', table2.c.otherid == 9),
-                "sysdate() = today()",
+                text("sysdate() = today()"),
             ),
             'mytable.myid = :myid_1 AND (myothertable.othername = '
             ':othername_1 OR myothertable.othername = :othername_2 OR '
@@ -1067,8 +1067,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_multiple_col_binds(self):
         self.assert_compile(
-            select(["*"], or_(table1.c.myid == 12, table1.c.myid == 'asdf',
-                              table1.c.myid == 'foo')),
+            select(
+                [literal_column("*")],
+                or_(
+                    table1.c.myid == 12, table1.c.myid == 'asdf',
+                    table1.c.myid == 'foo')
+            ),
             "SELECT * FROM mytable WHERE mytable.myid = :myid_1 "
             "OR mytable.myid = :myid_2 OR mytable.myid = :myid_3"
         )
@@ -1478,7 +1482,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.name == 'fred',
                 table1.c.myid == 10,
                 table2.c.othername != 'jack',
-                "EXISTS (select yay from foo where boo = lar)"
+                text("EXISTS (select yay from foo where boo = lar)")
             ),
             from_obj=[outerjoin(table1, table2,
                                 table1.c.myid == table2.c.otherid)]
@@ -1551,7 +1555,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name "
             "FROM mytable UNION SELECT myothertable.otherid, "
             "myothertable.othername "
-            "FROM myothertable ORDER BY myid LIMIT :param_1 OFFSET :param_2",
+            "FROM myothertable ORDER BY myid "  # note table name is omitted
+            "LIMIT :param_1 OFFSET :param_2",
             {'param_1': 5, 'param_2': 10}
         )
 
@@ -1614,7 +1619,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_compound_grouping(self):
-        s = select([column('foo'), column('bar')]).select_from('bat')
+        s = select([column('foo'), column('bar')]).select_from(text('bat'))
 
         self.assert_compile(
             union(union(union(s, s), s), s),
@@ -2130,10 +2135,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([
                 func.max(table1.c.name).over(
-                    partition_by=['foo']
+                    partition_by=['description']
                 )
             ]),
-            "SELECT max(mytable.name) OVER (PARTITION BY foo) "
+            "SELECT max(mytable.name) OVER (PARTITION BY mytable.description) "
             "AS anon_1 FROM mytable"
         )
         # from partition_by
@@ -2396,7 +2401,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_literal_as_text_fromstring(self):
         self.assert_compile(
-            and_("a", "b"),
+            and_(text("a"), text("b")),
             "a AND b"
         )
 

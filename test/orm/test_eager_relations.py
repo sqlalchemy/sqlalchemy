@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload, deferred, undefer, \
     joinedload_all, backref, Session,\
     defaultload, Load
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, \
-    func
+    func, text
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     lazyload, aliased, column_property
@@ -632,7 +632,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         # they should be required to locate only their aliased/fully table
         # qualified column name.
         noeagers = create_session().query(User).\
-            from_statement("select * from users").all()
+            from_statement(text("select * from users")).all()
         assert 'orders' not in noeagers[0].__dict__
         assert 'addresses' not in noeagers[0].__dict__
 
@@ -1109,7 +1109,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         q = create_session().query(User)
 
-        l = q.filter("users.id in (7, 8, 9)").order_by("users.id")
+        l = q.filter(text("users.id in (7, 8, 9)")).order_by(text("users.id"))
 
         def go():
             eq_(self.static.user_order_result[0:3], l.all())

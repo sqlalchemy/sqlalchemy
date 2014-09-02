@@ -10,7 +10,7 @@ import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, table, text
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, create_session
 from sqlalchemy.testing import eq_
@@ -215,7 +215,7 @@ class EagerTest(fixtures.MappedTest):
         q = s.query(Thing).options(sa.orm.joinedload('category'))
         l = (q.filter(
             (tests.c.owner_id==1) &
-            ('options.someoption is null or options.someoption=%s' % false)).
+            text('options.someoption is null or options.someoption=%s' % false)).
              join('owner_option'))
 
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]

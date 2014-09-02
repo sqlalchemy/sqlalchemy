@@ -2433,7 +2433,7 @@ class CheckConstraint(Constraint):
 
         super(CheckConstraint, self).\
             __init__(name, deferrable, initially, _create_rule, info=info)
-        self.sqltext = _literal_as_text(sqltext)
+        self.sqltext = _literal_as_text(sqltext, warn=False)
         if table is not None:
             self._set_parent_with_dispatch(table)
         elif _autoattach:
