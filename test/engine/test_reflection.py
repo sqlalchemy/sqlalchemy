@@ -967,6 +967,26 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert set([t2.c.name, t2.c.id]) == set(r2.columns)
         assert set([t2.c.name]) == set(r3.columns)
 
+    @testing.provide_metadata
+    def test_index_reflection_cols_busted(self):
+        t = Table('x', self.metadata,
+                  Column('a', Integer), Column('b', Integer))
+        sa.Index('x_ix', t.c.a, t.c.b)
+        self.metadata.create_all()
+
+        def mock_get_columns(self, connection, table_name, **kw):
+            return [
+                {"name": "b", "type": Integer, "primary_key": False}
+            ]
+
+        with testing.mock.patch.object(
+                testing.db.dialect, "get_columns", mock_get_columns):
+            m = MetaData()
+            with testing.expect_warnings(
+                    "index key 'a' was not located in columns"):
+                t = Table('x', m, autoload=True, autoload_with=testing.db)
+
+        eq_(list(t.indexes)[0].columns, [t.c.b])
 
     @testing.requires.views
     @testing.provide_metadata
