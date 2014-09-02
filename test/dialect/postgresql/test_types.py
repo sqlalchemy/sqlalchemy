@@ -7,7 +7,7 @@ from sqlalchemy import testing
 import datetime
 from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
     func, DateTime, Numeric, exc, String, cast, REAL, TypeDecorator, Unicode, \
-    Text, null
+    Text, null, text
 from sqlalchemy.sql import operators
 from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -906,7 +906,7 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
         engine = testing.db
         connection = engine.connect()
 
-        s = select(["timestamp '2007-12-25'"])
+        s = select([text("timestamp '2007-12-25'")])
         result = connection.execute(s).first()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 

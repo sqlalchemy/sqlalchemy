@@ -2,7 +2,7 @@
 from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy import String, Integer, select
+from sqlalchemy import String, Integer, select, column
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, Session
 from sqlalchemy.testing import eq_, AssertsCompiledSQL
@@ -29,12 +29,13 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         Subset = self.classes.Subset
 
 
-        selectable = select(["x", "y", "z"]).alias()
+        selectable = select([column("x"), column("y"), column("z")]).alias()
         mapper(Subset, selectable, primary_key=[selectable.c.x])
 
         self.assert_compile(
             Session().query(Subset),
-            "SELECT anon_1.x, anon_1.y, anon_1.z FROM (SELECT x, y, z) AS anon_1",
+            "SELECT anon_1.x AS anon_1_x, anon_1.y AS anon_1_y, "
+            "anon_1.z AS anon_1_z FROM (SELECT x, y, z) AS anon_1",
             use_default_dialect=True
         )
 
@@ -42,7 +43,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         Subset = self.classes.Subset
 
 
-        selectable = select(["x", "y", "z"]).alias()
+        selectable = select([column("x"), column("y"), column("z")]).alias()
         assert_raises_message(
             sa.exc.ArgumentError,
             "could not assemble any primary key columns",

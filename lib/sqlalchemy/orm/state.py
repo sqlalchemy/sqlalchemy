@@ -58,7 +58,6 @@ class InstanceState(interfaces.InspectionAttr):
     expired = False
     deleted = False
     _load_pending = False
-
     is_instance = True
 
     def __init__(self, obj, manager):
@@ -221,7 +220,7 @@ class InstanceState(interfaces.InspectionAttr):
 
     def _cleanup(self, ref):
         instance_dict = self._instance_dict()
-        if instance_dict:
+        if instance_dict is not None:
             instance_dict.discard(self)
 
         self.callables.clear()
@@ -334,20 +333,6 @@ class InstanceState(interfaces.InspectionAttr):
         if old is not None and self.manager[key].impl.collection:
             self.manager[key].impl._invalidate_collection(old)
         self.callables.pop(key, None)
-
-    def _expire_attribute_pre_commit(self, dict_, key):
-        """a fast expire that can be called by column loaders during a load.
-
-        The additional bookkeeping is finished up in commit_all().
-
-        Should only be called for scalar attributes.
-
-        This method is actually called a lot with joined-table
-        loading, when the second table isn't present in the result.
-
-        """
-        dict_.pop(key, None)
-        self.callables[key] = self
 
     @classmethod
     def _row_processor(cls, manager, fn, key):

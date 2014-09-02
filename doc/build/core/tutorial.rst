@@ -754,11 +754,11 @@ Using Text
 Our last example really became a handful to type. Going from what one
 understands to be a textual SQL expression into a Python construct which
 groups components together in a programmatic style can be hard. That's why
-SQLAlchemy lets you just use strings too. The :func:`~.expression.text` construct represents
-any textual statement, in a backend-agnostic way.
-To use bind parameters with :func:`~.expression.text`, always use the
-named colon format. Such as below, we create a :func:`~.expression.text` and execute it,
-feeding in the bind parameters to the :meth:`~.Connection.execute` method:
+SQLAlchemy lets you just use strings, for those cases when the SQL
+is already known and there isn't a strong need for the statement to support
+dynamic features.  The :func:`~.expression.text` construct is used
+to compose a textual statement that is passed to the database mostly
+unchanged.  Below, we create a :func:`~.expression.text` object and execute it:
 
 .. sourcecode:: pycon+sql
 
@@ -778,28 +778,41 @@ feeding in the bind parameters to the :meth:`~.Connection.execute` method:
     ('m', 'z', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-To gain a "hybrid" approach, the :func:`.select` construct accepts strings for most
-of its arguments. Below we combine the usage of strings with our constructed
-:func:`.select` object, by using the :func:`.select` object to structure the
-statement, and strings to provide all the content within the structure. For
-this example, SQLAlchemy is not given any :class:`~sqlalchemy.schema.Column`
-or :class:`~sqlalchemy.schema.Table` objects in any of its expressions, so it
-cannot generate a FROM clause. So we also use the :meth:`~.Select.select_from`
-method, which accepts a :class:`.FromClause` or string expression
-to be placed within the FROM clause:
+Above, we can see that bound parameters are specified in
+:func:`~.expression.text` using the named colon format; this format is
+consistent regardless of database backend.  To send values in for the
+parameters, we passed them into the :meth:`~.Connection.execute` method
+as additional arguments.  Depending on how we are working, we can also
+send values to be associated directly with the :func:`~.expression.text`
+construct using the :meth:`~.TextClause.bindparams` method; if we are
+using datatypes that need special handling as they are received in Python,
+or we'd like to compose our :func:`~.expression.text` object into a larger
+expression, we may also wish to use the :meth:`~.TextClause.columns` method
+in order to specify column return types and names.
+
+:func:`~.expression.text` can also be used freely within a
+:func:`~.expression.select` object, which accepts :func:`~.expression.text`
+objects as an argument for most of its builder functions.
+Below, we combine the usage of :func:`~.expression.text` within a
+:func:`.select` object.  The :func:`~.expression.select` construct provides the "geometry"
+of the statement, and the :func:`~.expression.text` construct provides the
+textual content within this form.  We can build a statement without the
+need to refer to any pre-established :class:`.Table` metadata:
 
 .. sourcecode:: pycon+sql
 
     >>> s = select([
-    ...            "users.fullname || ', ' || addresses.email_address AS title"
-    ...          ]).\
-    ...           where(
-    ...              and_(
-    ...                 "users.id = addresses.user_id",
-    ...                 "users.name BETWEEN 'm' AND 'z'",
-    ...                 "(addresses.email_address LIKE :x OR addresses.email_address LIKE :y)"
+    ...        text("users.fullname || ', ' || addresses.email_address AS title")
+    ...     ]).\
+    ...         where(
+    ...             and_(
+    ...                 text("users.id = addresses.user_id"),
+    ...                 text("users.name BETWEEN 'm' AND 'z'"),
+    ...                 text(
+    ...                     "(addresses.email_address LIKE :x "
+    ...                     "OR addresses.email_address LIKE :y)")
     ...             )
-    ...           ).select_from('users, addresses')
+    ...         ).select_from(text('users, addresses'))
     {sql}>>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
@@ -808,21 +821,141 @@ to be placed within the FROM clause:
     ('%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-Going from constructed SQL to text, we lose some capabilities. We lose the
-capability for SQLAlchemy to compile our expression to a specific target
-database; above, our expression won't work with MySQL since it has no ``||``
-construct. It also becomes more tedious for SQLAlchemy to be made aware of the
-datatypes in use; for example, if our bind parameters required UTF-8 encoding
-before going in, or conversion from a Python ``datetime`` into a string (as is
-required with SQLite), we would have to add extra information to our
-:func:`~.expression.text` construct. Similar issues arise on the result set side, where
-SQLAlchemy also performs type-specific data conversion in some cases; still
-more information can be added to :func:`~.expression.text` to work around this. But what we
-really lose from our statement is the ability to manipulate it, transform it,
-and analyze it. These features are critical when using the ORM, which makes
-heavy usage of relational transformations. To show off what we mean, we'll
-first introduce the ALIAS construct and the JOIN construct, just so we have
-some juicier bits to play with.
+.. topic:: Why not use strings everywhere?
+
+    When we use literal strings, the Core can't adapt our SQL to work
+    on different database backends.  Above, our expression won't work
+    with MySQL since MySQL doesn't have the ``||`` construct.
+    If we only use :func:`.text` to specify columns, our :func:`.select`
+    construct will have an empty ``.c`` collection
+    that we'd normally use to create subqueries.
+    We also lose typing information about result columns and bound parameters,
+    which is often needed to correctly translate data values between
+    Python and the database.  Overall, the more :func:`.text` we use,
+    the less flexibility and ability for manipulation/transformation
+    the statement will have.
+
+.. versionchanged:: 1.0.0
+   The :func:`.select` construct emits warnings when string SQL
+   fragments are coerced to :func:`.text`, and :func:`.text` should
+   be used explicitly.  See :ref:`migration_2992` for background.
+
+.. _sqlexpression_literal_column:
+
+Using More Specific Text with :func:`.table`, :func:`.literal_column`, and :func:`.column`
+-------------------------------------------------------------------------------------------
+
+We can move our level of structure back in the other direction too,
+by using :func:`~.expression.column`, :func:`~.expression.literal_column`,
+and :func:`~.expression.table` for some of the
+key elements of our statement.   Using these constructs, we can get
+some more expression capabilities than if we used :func:`~.expression.text`
+directly, as they provide to the Core more information about how the strings
+they store are to be used, but still without the need to get into full
+:class:`.Table` based metadata.  Below, we also specify the :class:`.String`
+datatype for two of the key :func:`~.expression.literal_column` objects,
+so that the string-specific concatenation operator becomes available.
+We also use :func:`~.expression.literal_column` in order to use table-qualified
+expressions, e.g. ``users.fullname``, that will be rendered as is;
+using :func:`~.expression.column` implies an individual column name that may
+be quoted:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import select, and_, text, String
+    >>> from sqlalchemy.sql import table, literal_column
+    >>> s = select([
+    ...    literal_column("users.fullname", String) +
+    ...    ' , ' +
+    ...    literal_column("addresses.email_address").label("title")
+    ... ]).\
+    ...    where(
+    ...        and_(
+    ...            literal_column("users.id") == literal_column("addresses.user_id"),
+    ...            text("users.name BETWEEN 'm' AND 'z'"),
+    ...            text(
+    ...                "(addresses.email_address LIKE :x OR "
+    ...                "addresses.email_address LIKE :y)")
+    ...        )
+    ...    ).select_from(table('users')).select_from(table('addresses'))
+
+    {sql}>>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall() #doctest: +NORMALIZE_WHITESPACE
+    SELECT "users.fullname" || ? || "addresses.email_address" AS anon_1
+    FROM users, addresses
+    WHERE "users.id" = "addresses.user_id"
+    AND users.name BETWEEN 'm' AND 'z'
+    AND (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
+    (' , ', '%@aol.com', '%@msn.com')
+    {stop}[(u'Wendy Williams, wendy@aol.com',)]
+
+Ordering or Grouping by a Label
+-------------------------------
+
+One place where we sometimes want to use a string as a shortcut is when
+our statement has some labeled column element that we want to refer to in
+a place such as the "ORDER BY" or "GROUP BY" clause; other candidates include
+fields within an "OVER" or "DISTINCT" clause.  If we have such a label
+in our :func:`.select` construct, we can refer to it directly by passing the
+string straight into :meth:`.select.order_by` or :meth:`.select.group_by`,
+among others.  This will refer to the named label and also prevent the
+expression from being rendered twice:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import func
+    >>> stmt = select([
+    ...         addresses.c.user_id,
+    ...         func.count(addresses.c.id).label('num_addresses')]).\
+    ...         order_by("num_addresses")
+
+    {sql}>>> conn.execute(stmt).fetchall() # doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses.user_id, count(addresses.id) AS num_addresses
+    FROM addresses ORDER BY num_addresses
+    ()
+    {stop}[(2, 4)]
+
+We can use modifiers like :func:`.asc` or :func:`.desc` by passing the string
+name:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import func, desc
+    >>> stmt = select([
+    ...         addresses.c.user_id,
+    ...         func.count(addresses.c.id).label('num_addresses')]).\
+    ...         order_by(desc("num_addresses"))
+
+    {sql}>>> conn.execute(stmt).fetchall() # doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses.user_id, count(addresses.id) AS num_addresses
+    FROM addresses ORDER BY num_addresses DESC
+    ()
+    {stop}[(2, 4)]
+
+Note that the string feature here is very much tailored to when we have
+already used the :meth:`~.ColumnElement.label` method to create a
+specifically-named label.  In other cases, we always want to refer to the
+:class:`.ColumnElement` object directly so that the expression system can
+make the most effective choices for rendering.  Below, we illustrate how using
+the :class:`.ColumnElement` eliminates ambiguity when we want to order
+by a column name that appears more than once:
+
+.. sourcecode:: pycon+sql
+
+    >>> u1a, u1b = users.alias(), users.alias()
+    >>> stmt = select([u1a, u1b]).\
+    ...             where(u1a.c.name > u1b.c.name).\
+    ...             order_by(u1a.c.name)  # using "name" here would be ambiguous
+
+    {sql}>>> conn.execute(stmt).fetchall() # doctest: +NORMALIZE_WHITESPACE
+    SELECT users_1.id, users_1.name, users_1.fullname, users_2.id,
+    users_2.name, users_2.fullname
+    FROM users AS users_1, users AS users_2
+    WHERE users_1.name > users_2.name ORDER BY users_1.name
+    ()
+    {stop}[(2, u'wendy', u'Wendy Williams', 1, u'jack', u'Jack Jones')]
+
+
+
 
 Using Aliases
 ==============

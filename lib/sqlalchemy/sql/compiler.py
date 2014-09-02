@@ -494,6 +494,28 @@ class SQLCompiler(Compiled):
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
         return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
+    def visit_label_reference(self, element, **kwargs):
+        if not self.stack:
+            # compiling the element outside of the context of a SELECT
+            return self.process(
+                element._text_clause
+            )
+
+        selectable = self.stack[-1]['selectable']
+        try:
+            col = selectable._inner_column_dict[element.text]
+        except KeyError:
+            # treat it like text()
+            util.warn_limited(
+                "Can't resolve label reference %r; converting to text()",
+                util.ellipses_string(element.text))
+            return self.process(
+                element._text_clause
+            )
+        else:
+            kwargs['render_label_as_label'] = col
+            return self.process(col, **kwargs)
+
     def visit_label(self, label,
                     add_to_result_map=None,
                     within_label_clause=False,
@@ -761,7 +783,8 @@ class SQLCompiler(Compiled):
             {
                 'correlate_froms': entry['correlate_froms'],
                 'iswrapper': toplevel,
-                'asfrom_froms': entry['asfrom_froms']
+                'asfrom_froms': entry['asfrom_froms'],
+                'selectable': cs
             })
 
         keyword = self.compound_keywords.get(cs.keyword)
@@ -1480,7 +1503,8 @@ class SQLCompiler(Compiled):
         new_entry = {
             'asfrom_froms': new_correlate_froms,
             'iswrapper': iswrapper,
-            'correlate_froms': all_correlate_froms
+            'correlate_froms': all_correlate_froms,
+            'selectable': select,
         }
         self.stack.append(new_entry)
 
@@ -1791,7 +1815,8 @@ class SQLCompiler(Compiled):
         self.stack.append(
             {'correlate_froms': set([update_stmt.table]),
              "iswrapper": False,
-             "asfrom_froms": set([update_stmt.table])})
+             "asfrom_froms": set([update_stmt.table]),
+             "selectable": update_stmt})
 
         self.isupdate = True
 
@@ -1981,11 +2006,13 @@ class SQLCompiler(Compiled):
 
         need_pks = self.isinsert and \
             not self.inline and \
-            not stmt._returning
+            not stmt._returning and \
+            not stmt._has_multi_parameters
 
         implicit_returning = need_pks and \
             self.dialect.implicit_returning and \
             stmt.table.implicit_returning
+
         if self.isinsert:
             implicit_return_defaults = (implicit_returning and
                                         stmt._return_defaults)
@@ -2245,7 +2272,8 @@ class SQLCompiler(Compiled):
     def visit_delete(self, delete_stmt, **kw):
         self.stack.append({'correlate_froms': set([delete_stmt.table]),
                            "iswrapper": False,
-                           "asfrom_froms": set([delete_stmt.table])})
+                           "asfrom_froms": set([delete_stmt.table]),
+                           "selectable": delete_stmt})
         self.isdelete = True
 
         text = "DELETE "

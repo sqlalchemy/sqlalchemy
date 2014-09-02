@@ -106,7 +106,8 @@ from .elements import _literal_as_text, _clause_element_as_expr,\
     _is_column, _labeled, _only_column_elements, _string_or_unprintable, \
     _truncated_label, _clone, _cloned_difference, _cloned_intersection,\
     _column_as_key, _literal_as_binds, _select_iterables, \
-    _corresponding_column_or_error
+    _corresponding_column_or_error, _literal_as_label_reference, \
+    _expression_literal_as_text
 from .selectable import _interpret_as_from
 
 

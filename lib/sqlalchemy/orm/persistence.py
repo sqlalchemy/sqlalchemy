@@ -659,8 +659,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
         elif needs_version_id:
             util.warn("Dialect %s does not support updated rowcount "
                       "- versioning cannot be verified." %
-                      c.dialect.dialect_description,
-                      stacklevel=12)
+                      c.dialect.dialect_description)
 
 
 def _emit_insert_statements(base_mapper, uowtransaction,

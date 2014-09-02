@@ -15,8 +15,8 @@ from .elements import ClauseElement, TextClause, ClauseList, \
 from .elements import _clone, \
     _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
     _select_iterables, _anonymous_label, _clause_element_as_expr,\
-    _cloned_intersection, _cloned_difference, True_, _only_column_elements,\
-    TRUE
+    _cloned_intersection, _cloned_difference, True_, \
+    _literal_as_label_reference
 from .base import Immutable, Executable, _generative, \
     ColumnCollection, ColumnSet, _from_objects, Generative
 from . import type_api
@@ -36,6 +36,12 @@ def _interpret_as_from(element):
     insp = inspection.inspect(element, raiseerr=False)
     if insp is None:
         if isinstance(element, util.string_types):
+            util.warn_limited(
+                "Textual SQL FROM expression %(expr)r should be "
+                "explicitly declared as text(%(expr)r), "
+                "or use table(%(expr)r) for more specificity",
+                {"expr": util.ellipses_string(element)})
+
             return TextClause(util.text_type(element))
     elif hasattr(insp, "selectable"):
         return insp.selectable
@@ -1177,7 +1183,7 @@ class TableClause(Immutable, FromClause):
     collection of columns, which are typically produced
     by the :func:`.expression.column` function::
 
-        from sqlalchemy.sql import table, column
+        from sqlalchemy import table, column
 
         user = table("user",
                 column("id"),
@@ -1218,11 +1224,9 @@ class TableClause(Immutable, FromClause):
         :class:`~.schema.Table` object.
         It may be used to construct lightweight table constructs.
 
-        Note that the :func:`.expression.table` function is not part of
-        the ``sqlalchemy`` namespace.  It must be imported from the
-        ``sql`` package::
-
-            from sqlalchemy.sql import table, column
+        .. versionchanged:: 1.0.0 :func:`.expression.table` can now
+           be imported from the plain ``sqlalchemy`` namespace like any
+           other SQL element.
 
         :param name: Name of the table.
 
@@ -1626,9 +1630,13 @@ class GenerativeSelect(SelectBase):
         self._bind = bind
 
         if order_by is not None:
-            self._order_by_clause = ClauseList(*util.to_list(order_by))
+            self._order_by_clause = ClauseList(
+                *util.to_list(order_by),
+                _literal_as_text=_literal_as_label_reference)
         if group_by is not None:
-            self._group_by_clause = ClauseList(*util.to_list(group_by))
+            self._group_by_clause = ClauseList(
+                *util.to_list(group_by),
+                _literal_as_text=_literal_as_label_reference)
 
     @property
     def for_update(self):
@@ -1784,7 +1792,8 @@ class GenerativeSelect(SelectBase):
         else:
             if getattr(self, '_order_by_clause', None) is not None:
                 clauses = list(self._order_by_clause) + list(clauses)
-            self._order_by_clause = ClauseList(*clauses)
+            self._order_by_clause = ClauseList(
+                *clauses, _literal_as_text=_literal_as_label_reference)
 
     def append_group_by(self, *clauses):
         """Append the given GROUP BY criterion applied to this selectable.
@@ -1801,7 +1810,12 @@ class GenerativeSelect(SelectBase):
         else:
             if getattr(self, '_group_by_clause', None) is not None:
                 clauses = list(self._group_by_clause) + list(clauses)
-            self._group_by_clause = ClauseList(*clauses)
+            self._group_by_clause = ClauseList(
+                *clauses, _literal_as_text=_literal_as_label_reference)
+
+    @property
+    def _inner_column_dict(self):
+        raise NotImplementedError()
 
     def _copy_internals(self, clone=_clone, **kw):
         if self._limit_clause is not None:
@@ -1868,6 +1882,12 @@ class CompoundSelect(GenerativeSelect):
             self.selects.append(s.self_group(self))
 
         GenerativeSelect.__init__(self, **kwargs)
+
+    @property
+    def _inner_column_dict(self):
+        return dict(
+            (c.key, c) for c in self.c
+        )
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
@@ -2092,7 +2112,7 @@ class HasPrefixes(object):
 
     def _setup_prefixes(self, prefixes, dialect=None):
         self._prefixes = self._prefixes + tuple(
-            [(_literal_as_text(p), dialect) for p in prefixes])
+            [(_literal_as_text(p, warn=False), dialect) for p in prefixes])
 
 
 class Select(HasPrefixes, GenerativeSelect):
@@ -2477,6 +2497,15 @@ class Select(HasPrefixes, GenerativeSelect):
         """
         return _select_iterables(self._raw_columns)
 
+    @_memoized_property
+    def _inner_column_dict(self):
+        d = dict(
+            (c._label or c.key, c)
+            for c in _select_iterables(self._raw_columns))
+        d.update((c.key, c) for c in _select_iterables(self.froms))
+
+        return d
+
     def is_derived_from(self, fromclause):
         if self in fromclause._cloned_set:
             return True
@@ -2706,7 +2735,7 @@ class Select(HasPrefixes, GenerativeSelect):
 
         """
         if expr:
-            expr = [_literal_as_text(e) for e in expr]
+            expr = [_literal_as_label_reference(e) for e in expr]
             if isinstance(self._distinct, list):
                 self._distinct = self._distinct + expr
             else:
@@ -2945,9 +2974,10 @@ class Select(HasPrefixes, GenerativeSelect):
             names = set()
 
             def name_for_col(c):
-                if c._label is None:
+                if c._columns_clause_label is None:
                     return (None, c)
-                name = c._label
+
+                name = c._columns_clause_label
                 if name in names:
                     name = c.anon_label
                 else:

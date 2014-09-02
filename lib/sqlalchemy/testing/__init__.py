@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from .warnings import testing_warn, assert_warnings, resetwarnings
+from .warnings import assert_warnings
 
 from . import config
 
@@ -21,7 +21,7 @@ def against(*queries):
 from .assertions import emits_warning, emits_warning_on, uses_deprecated, \
     eq_, ne_, is_, is_not_, startswith_, assert_raises, \
     assert_raises_message, AssertsCompiledSQL, ComparesTables, \
-    AssertsExecutionResults, expect_deprecated
+    AssertsExecutionResults, expect_deprecated, expect_warnings
 
 from .util import run_as_contextmanager, rowset, fail, provide_metadata, adict
 

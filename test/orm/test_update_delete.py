@@ -1,7 +1,7 @@
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, or_, and_, exc, \
-    select, func, Boolean, case
+    select, func, Boolean, case, text
 from sqlalchemy.orm import mapper, relationship, backref, Session, \
     joinedload, aliased
 from sqlalchemy import testing
@@ -105,7 +105,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess = Session()
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter('name = :name').params(
+        sess.query(User).filter(text('name = :name')).params(
             name='john').delete('fetch')
         assert john not in sess
 
@@ -229,7 +229,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
 
-        sess.query(User).filter('age > :x').params(x=29).\
+        sess.query(User).filter(text('age > :x')).params(x=29).\
             update({'age': User.age - 10}, synchronize_session='fetch')
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])

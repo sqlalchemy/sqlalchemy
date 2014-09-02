@@ -9,79 +9,77 @@ from __future__ import absolute_import
 
 from . import util as testutil
 from sqlalchemy import pool, orm, util
-from sqlalchemy.engine import default, create_engine, url
-from sqlalchemy import exc as sa_exc
+from sqlalchemy.engine import default, url
 from sqlalchemy.util import decorator
-from sqlalchemy import types as sqltypes, schema
+from sqlalchemy import types as sqltypes, schema, exc as sa_exc
 import warnings
 import re
-from .warnings import resetwarnings
 from .exclusions import db_spec, _is_excluded
 from . import assertsql
 from . import config
-import itertools
 from .util import fail
 import contextlib
+from . import mock
+
+
+def expect_warnings(*messages):
+    """Context manager which expects one or more warnings.
+
+    With no arguments, squelches all SAWarnings emitted via
+    sqlalchemy.util.warn and sqlalchemy.util.warn_limited.   Otherwise
+    pass string expressions that will match selected warnings via regex;
+    all non-matching warnings are sent through.
+
+    Note that the test suite sets SAWarning warnings to raise exceptions.
+
+    """
+    return _expect_warnings(sa_exc.SAWarning, messages)
+
+
+@contextlib.contextmanager
+def expect_warnings_on(db, *messages):
+    """Context manager which expects one or more warnings on specific
+    dialects.
+
+    """
+    spec = db_spec(db)
+
+    if isinstance(db, util.string_types) and not spec(config._current):
+        yield
+    elif not _is_excluded(*db):
+        yield
+    else:
+        with expect_warnings(*messages):
+            yield
 
 
 def emits_warning(*messages):
-    """Mark a test as emitting a warning.
-
-    With no arguments, squelches all SAWarning failures.  Or pass one or more
-    strings; these will be matched to the root of the warning description by
-    warnings.filterwarnings().
-    """
-    # TODO: it would be nice to assert that a named warning was
-    # emitted. should work with some monkeypatching of warnings,
-    # and may work on non-CPython if they keep to the spirit of
-    # warnings.showwarning's docstring.
-    # - update: jython looks ok, it uses cpython's module
+    """Decorator form of expect_warnings()."""
 
     @decorator
     def decorate(fn, *args, **kw):
-        # todo: should probably be strict about this, too
-        filters = [dict(action='ignore',
-                        category=sa_exc.SAPendingDeprecationWarning)]
-        if not messages:
-            filters.append(dict(action='ignore',
-                                category=sa_exc.SAWarning))
-        else:
-            filters.extend(dict(action='ignore',
-                                message=message,
-                                category=sa_exc.SAWarning)
-                           for message in messages)
-        for f in filters:
-            warnings.filterwarnings(**f)
-        try:
+        with expect_warnings(*messages):
             return fn(*args, **kw)
-        finally:
-            resetwarnings()
+
     return decorate
 
 
-def emits_warning_on(db, *warnings):
+def expect_deprecated(*messages):
+    return _expect_warnings(sa_exc.SADeprecationWarning, messages)
+
+
+def emits_warning_on(db, *messages):
     """Mark a test as emitting a warning on a specific dialect.
 
     With no arguments, squelches all SAWarning failures.  Or pass one or more
     strings; these will be matched to the root of the warning description by
     warnings.filterwarnings().
     """
-    spec = db_spec(db)
-
     @decorator
     def decorate(fn, *args, **kw):
-        if isinstance(db, util.string_types):
-            if not spec(config._current):
-                return fn(*args, **kw)
-            else:
-                wrapped = emits_warning(*warnings)(fn)
-                return wrapped(*args, **kw)
-        else:
-            if not _is_excluded(*db):
-                return fn(*args, **kw)
-            else:
-                wrapped = emits_warning(*warnings)(fn)
-                return wrapped(*args, **kw)
+        with expect_warnings_on(db, *messages):
+            return fn(*args, **kw)
+
     return decorate
 
 
@@ -105,29 +103,27 @@ def uses_deprecated(*messages):
 
 
 @contextlib.contextmanager
-def expect_deprecated(*messages):
-    # todo: should probably be strict about this, too
-    filters = [dict(action='ignore',
-                    category=sa_exc.SAPendingDeprecationWarning)]
-    if not messages:
-        filters.append(dict(action='ignore',
-                            category=sa_exc.SADeprecationWarning))
-    else:
-        filters.extend(
-            [dict(action='ignore',
-                  message=message,
-                  category=sa_exc.SADeprecationWarning)
-             for message in
-             [(m.startswith('//') and
-               ('Call to deprecated function ' + m[2:]) or m)
-              for m in messages]])
+def _expect_warnings(exc_cls, messages):
 
-    for f in filters:
-        warnings.filterwarnings(**f)
-    try:
+    filters = [re.compile(msg, re.I) for msg in messages]
+
+    real_warn = warnings.warn
+
+    def our_warn(msg, exception, *arg, **kw):
+        if not issubclass(exception, exc_cls):
+            return real_warn(msg, exception, *arg, **kw)
+
+        if not filters:
+            return
+
+        for filter_ in filters:
+            if filter_.match(msg):
+                break
+        else:
+            real_warn(msg, exception, *arg, **kw)
+
+    with mock.patch("warnings.warn", our_warn):
         yield
-    finally:
-        resetwarnings()
 
 
 def global_cleanup_assertions():

@@ -12,26 +12,24 @@ the functions here are called primarily by Query, Mapper,
 as well as some of the attribute loading strategies.
 
 """
-
+from __future__ import absolute_import
 
 from .. import util
-from . import attributes, exc as orm_exc, state as statelib
-from .interfaces import EXT_CONTINUE
+from . import attributes, exc as orm_exc
 from ..sql import util as sql_util
 from .util import _none_set, state_str
 from .. import exc as sa_exc
+import collections
 
 _new_runid = util.counter()
 
 
 def instances(query, cursor, context):
     """Return an ORM result as an iterator."""
-    session = query.session
 
     context.runid = _new_runid()
 
-    filter_fns = [ent.filter_fn
-                  for ent in query._entities]
+    filter_fns = [ent.filter_fn for ent in query._entities]
     filtered = id in filter_fns
 
     single_entity = len(query._entities) == 1 and \
@@ -44,18 +42,17 @@ def instances(query, cursor, context):
             def filter_fn(row):
                 return tuple(fn(x) for x, fn in zip(row, filter_fns))
 
-    custom_rows = single_entity and \
-        query._entities[0].custom_rows
-
     (process, labels) = \
         list(zip(*[
             query_entity.row_processor(query,
-                                       context, custom_rows)
+                                       context, cursor)
             for query_entity in query._entities
         ]))
 
+    if not single_entity:
+        keyed_tuple = util.lightweight_named_tuple('result', labels)
+
     while True:
-        context.progress = {}
         context.partials = {}
 
         if query._yield_per:
@@ -65,32 +62,15 @@ def instances(query, cursor, context):
         else:
             fetch = cursor.fetchall()
 
-        if custom_rows:
-            rows = []
-            for row in fetch:
-                process[0](row, rows)
-        elif single_entity:
-            rows = [process[0](row, None) for row in fetch]
+        if single_entity:
+            proc = process[0]
+            rows = [proc(row) for row in fetch]
         else:
-            rows = [util.KeyedTuple([proc(row, None) for proc in process],
-                                    labels) for row in fetch]
+            rows = [keyed_tuple([proc(row) for proc in process])
+                    for row in fetch]
 
         if filtered:
             rows = util.unique_list(rows, filter_fn)
-
-        if context.refresh_state and query._only_load_props \
-                and context.refresh_state in context.progress:
-            context.refresh_state._commit(
-                context.refresh_state.dict, query._only_load_props)
-            context.progress.pop(context.refresh_state)
-
-        statelib.InstanceState._commit_all_states(
-            context.progress.items(),
-            session.identity_map
-        )
-
-        for state, (dict_, attrs) in context.partials.items():
-            state._commit(dict_, attrs)
 
         for row in rows:
             yield row
@@ -126,6 +106,7 @@ def merge_result(querylib, query, iterator, load=True):
                                if isinstance(e, querylib._MapperEntity)]
             result = []
             keys = [ent._label_name for ent in query._entities]
+            keyed_tuple = util.lightweight_named_tuple('result', keys)
             for row in iterator:
                 newrow = list(row)
                 for i in mapped_entities:
@@ -134,7 +115,7 @@ def merge_result(querylib, query, iterator, load=True):
                             attributes.instance_state(newrow[i]),
                             attributes.instance_dict(newrow[i]),
                             load=load, _recursive={})
-                result.append(util.KeyedTuple(newrow, keys))
+                result.append(keyed_tuple(newrow))
 
         return iter(result)
     finally:
@@ -233,11 +214,10 @@ def load_on_ident(query, key,
         return None
 
 
-def instance_processor(mapper, context, path, adapter,
-                       polymorphic_from=None,
-                       only_load_props=None,
-                       refresh_state=None,
-                       polymorphic_discriminator=None):
+def instance_processor(mapper, context, result, path, adapter,
+                       only_load_props=None, refresh_state=None,
+                       polymorphic_discriminator=None,
+                       _polymorphic_from=None):
     """Produce a mapper level row processor callable
        which processes rows into mapped instances."""
 
@@ -249,292 +229,264 @@ def instance_processor(mapper, context, path, adapter,
 
     pk_cols = mapper.primary_key
 
-    if polymorphic_from or refresh_state:
-        polymorphic_on = None
-    else:
-        if polymorphic_discriminator is not None:
-            polymorphic_on = polymorphic_discriminator
-        else:
-            polymorphic_on = mapper.polymorphic_on
-        polymorphic_instances = util.PopulateDict(
-            _configure_subclass_mapper(
-                mapper,
-                context, path, adapter)
-        )
-
-    version_id_col = mapper.version_id_col
-
     if adapter:
         pk_cols = [adapter.columns[c] for c in pk_cols]
-        if polymorphic_on is not None:
-            polymorphic_on = adapter.columns[polymorphic_on]
-        if version_id_col is not None:
-            version_id_col = adapter.columns[version_id_col]
 
     identity_class = mapper._identity_class
 
-    new_populators = []
-    existing_populators = []
-    eager_populators = []
+    populators = collections.defaultdict(list)
 
-    load_path = context.query._current_path + path \
-        if context.query._current_path.path \
-        else path
+    props = mapper._props.values()
+    if only_load_props is not None:
+        props = (p for p in props if p.key in only_load_props)
 
-    def populate_state(state, dict_, row, isnew, only_load_props):
-        if isnew:
-            if context.propagate_options:
-                state.load_options = context.propagate_options
-            if state.load_options:
-                state.load_path = load_path
+    for prop in props:
+        prop.create_row_processor(
+            context, path, mapper, result, adapter, populators)
 
-        if not new_populators:
-            _populators(mapper, context, path, row, adapter,
-                        new_populators,
-                        existing_populators,
-                        eager_populators
-                        )
-
-        if isnew:
-            populators = new_populators
-        else:
-            populators = existing_populators
-
-        if only_load_props is None:
-            for key, populator in populators:
-                populator(state, dict_, row)
-        elif only_load_props:
-            for key, populator in populators:
-                if key in only_load_props:
-                    populator(state, dict_, row)
+    propagate_options = context.propagate_options
+    if propagate_options:
+        load_path = context.query._current_path + path \
+            if context.query._current_path.path else path
 
     session_identity_map = context.session.identity_map
 
-    listeners = mapper.dispatch
-
-    # legacy events - I'd very much like to yank these totally
-    translate_row = listeners.translate_row or None
-    create_instance = listeners.create_instance or None
-    populate_instance = listeners.populate_instance or None
-    append_result = listeners.append_result or None
-    ####
-
     populate_existing = context.populate_existing or mapper.always_refresh
-    invoke_all_eagers = context.invoke_all_eagers
-    load_evt = mapper.class_manager.dispatch.load or None
-    refresh_evt = mapper.class_manager.dispatch.refresh or None
+    load_evt = bool(mapper.class_manager.dispatch.load)
+    refresh_evt = bool(mapper.class_manager.dispatch.refresh)
     instance_state = attributes.instance_state
     instance_dict = attributes.instance_dict
+    session_id = context.session.hash_key
+    version_check = context.version_check
+    runid = context.runid
+
+    if refresh_state:
+        refresh_identity_key = refresh_state.key
+        if refresh_identity_key is None:
+            # super-rare condition; a refresh is being called
+            # on a non-instance-key instance; this is meant to only
+            # occur within a flush()
+            refresh_identity_key = \
+                mapper._identity_key_from_state(refresh_state)
+    else:
+        refresh_identity_key = None
 
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
     else:
         is_not_primary_key = _none_set.intersection
 
-    def _instance(row, result):
-        if not new_populators and invoke_all_eagers:
-            _populators(mapper, context, path, row, adapter,
-                        new_populators,
-                        existing_populators,
-                        eager_populators)
+    def _instance(row):
 
-        if translate_row:
-            for fn in translate_row:
-                ret = fn(mapper, context, row)
-                if ret is not EXT_CONTINUE:
-                    row = ret
-                    break
-
-        if polymorphic_on is not None:
-            discriminator = row[polymorphic_on]
-            if discriminator is not None:
-                _instance = polymorphic_instances[discriminator]
-                if _instance:
-                    return _instance(row, result)
-
-        # determine identity key
-        if refresh_state:
-            identitykey = refresh_state.key
-            if identitykey is None:
-                # super-rare condition; a refresh is being called
-                # on a non-instance-key instance; this is meant to only
-                # occur within a flush()
-                identitykey = mapper._identity_key_from_state(refresh_state)
+        # determine the state that we'll be populating
+        if refresh_identity_key:
+            # fixed state that we're refreshing
+            state = refresh_state
+            instance = state.obj()
+            dict_ = instance_dict(instance)
+            isnew = state.runid != runid
+            currentload = True
+            loaded_instance = False
         else:
+            # look at the row, see if that identity is in the
+            # session, or we have to create a new one
             identitykey = (
                 identity_class,
                 tuple([row[column] for column in pk_cols])
             )
 
-        instance = session_identity_map.get(identitykey)
+            instance = session_identity_map.get(identitykey)
 
-        if instance is not None:
-            state = instance_state(instance)
-            dict_ = instance_dict(instance)
+            if instance is not None:
+                # existing instance
+                state = instance_state(instance)
+                dict_ = instance_dict(instance)
 
-            isnew = state.runid != context.runid
-            currentload = not isnew
-            loaded_instance = False
+                isnew = state.runid != runid
+                currentload = not isnew
+                loaded_instance = False
 
-            if not currentload and \
-                    version_id_col is not None and \
-                    context.version_check and \
-                    mapper._get_state_attr_by_column(
-                        state,
-                        dict_,
-                        mapper.version_id_col) != \
-                    row[version_id_col]:
+                if version_check and not currentload:
+                    _validate_version_id(mapper, state, dict_, row, adapter)
 
-                raise orm_exc.StaleDataError(
-                    "Instance '%s' has version id '%s' which "
-                    "does not match database-loaded version id '%s'."
-                    % (state_str(state),
-                       mapper._get_state_attr_by_column(
-                        state, dict_,
-                        mapper.version_id_col),
-                       row[version_id_col]))
-        elif refresh_state:
-            # out of band refresh_state detected (i.e. its not in the
-            # session.identity_map) honor it anyway.  this can happen
-            # if a _get() occurs within save_obj(), such as
-            # when eager_defaults is True.
-            state = refresh_state
-            instance = state.obj()
-            dict_ = instance_dict(instance)
-            isnew = state.runid != context.runid
-            currentload = True
-            loaded_instance = False
-        else:
-            # check for non-NULL values in the primary key columns,
-            # else no entity is returned for the row
-            if is_not_primary_key(identitykey[1]):
-                return None
-
-            isnew = True
-            currentload = True
-            loaded_instance = True
-
-            if create_instance:
-                for fn in create_instance:
-                    instance = fn(mapper, context,
-                                  row, mapper.class_)
-                    if instance is not EXT_CONTINUE:
-                        manager = attributes.manager_of_class(
-                            instance.__class__)
-                        # TODO: if manager is None, raise a friendly error
-                        # about returning instances of unmapped types
-                        manager.setup_instance(instance)
-                        break
-                else:
-                    instance = mapper.class_manager.new_instance()
             else:
+                # create a new instance
+
+                # check for non-NULL values in the primary key columns,
+                # else no entity is returned for the row
+                if is_not_primary_key(identitykey[1]):
+                    return None
+
+                isnew = True
+                currentload = True
+                loaded_instance = True
+
                 instance = mapper.class_manager.new_instance()
 
-            dict_ = instance_dict(instance)
-            state = instance_state(instance)
-            state.key = identitykey
+                dict_ = instance_dict(instance)
+                state = instance_state(instance)
+                state.key = identitykey
 
-            # attach instance to session.
-            state.session_id = context.session.hash_key
-            session_identity_map._add_unpresent(state, identitykey)
+                # attach instance to session.
+                state.session_id = session_id
+                session_identity_map._add_unpresent(state, identitykey)
 
+        # populate.  this looks at whether this state is new
+        # for this load or was existing, and whether or not this
+        # row is the first row with this identity.
         if currentload or populate_existing:
-            # state is being fully loaded, so populate.
-            # add to the "context.progress" collection.
+            # full population routines.  Objects here are either
+            # just created, or we are doing a populate_existing
+
+            if isnew and propagate_options:
+                state.load_options = propagate_options
+                state.load_path = load_path
+
+            _populate_full(
+                context, row, state, dict_, isnew,
+                loaded_instance, populate_existing, populators)
+
             if isnew:
-                state.runid = context.runid
-                context.progress[state] = dict_
+                if loaded_instance and load_evt:
+                    state.manager.dispatch.load(state, context)
+                elif refresh_evt:
+                    state.manager.dispatch.refresh(
+                        state, context, only_load_props)
 
-            if populate_instance:
-                for fn in populate_instance:
-                    ret = fn(mapper, context, row, state,
-                             only_load_props=only_load_props,
-                             instancekey=identitykey, isnew=isnew)
-                    if ret is not EXT_CONTINUE:
-                        break
-                else:
-                    populate_state(state, dict_, row, isnew, only_load_props)
-            else:
-                populate_state(state, dict_, row, isnew, only_load_props)
+                if populate_existing or state.modified:
+                    if refresh_state and only_load_props:
+                        state._commit(dict_, only_load_props)
+                    else:
+                        state._commit_all(dict_, session_identity_map)
 
-            if loaded_instance and load_evt:
-                state.manager.dispatch.load(state, context)
-            elif isnew and refresh_evt:
-                state.manager.dispatch.refresh(
-                    state, context, only_load_props)
+        else:
+            # partial population routines, for objects that were already
+            # in the Session, but a row matches them; apply eager loaders
+            # on existing objects, etc.
+            unloaded = state.unloaded
+            isnew = state not in context.partials
 
-        elif state in context.partials or state.unloaded or eager_populators:
-            # state is having a partial set of its attributes
-            # refreshed.  Populate those attributes,
-            # and add to the "context.partials" collection.
-            if state in context.partials:
-                isnew = False
-                (d_, attrs) = context.partials[state]
-            else:
-                isnew = True
-                attrs = state.unloaded
-                context.partials[state] = (dict_, attrs)
+            if not isnew or unloaded or populators["eager"]:
+                # state is having a partial set of its attributes
+                # refreshed.  Populate those attributes,
+                # and add to the "context.partials" collection.
 
-            if populate_instance:
-                for fn in populate_instance:
-                    ret = fn(mapper, context, row, state,
-                             only_load_props=attrs,
-                             instancekey=identitykey, isnew=isnew)
-                    if ret is not EXT_CONTINUE:
-                        break
-                else:
-                    populate_state(state, dict_, row, isnew, attrs)
-            else:
-                populate_state(state, dict_, row, isnew, attrs)
+                to_load = _populate_partial(
+                    context, row, state, dict_, isnew,
+                    unloaded, populators)
 
-            for key, pop in eager_populators:
-                if key not in state.unloaded:
-                    pop(state, dict_, row)
+                if isnew:
+                    if refresh_evt:
+                        state.manager.dispatch.refresh(
+                            state, context, to_load)
 
-            if isnew and refresh_evt:
-                state.manager.dispatch.refresh(state, context, attrs)
-
-        if result is not None:
-            if append_result:
-                for fn in append_result:
-                    if fn(mapper, context, row, state,
-                          result, instancekey=identitykey,
-                          isnew=isnew) is not EXT_CONTINUE:
-                        break
-                else:
-                    result.append(instance)
-            else:
-                result.append(instance)
+                    state._commit(dict_, to_load)
 
         return instance
+
+    if not _polymorphic_from and not refresh_state:
+        # if we are doing polymorphic, dispatch to a different _instance()
+        # method specific to the subclass mapper
+        _instance = _decorate_polymorphic_switch(
+            _instance, context, mapper, result, path,
+            polymorphic_discriminator, adapter)
+
     return _instance
 
 
-def _populators(mapper, context, path, row, adapter,
-                new_populators, existing_populators, eager_populators):
-    """Produce a collection of attribute level row processor
-    callables."""
+def _populate_full(
+        context, row, state, dict_, isnew,
+        loaded_instance, populate_existing, populators):
+    if isnew:
+        # first time we are seeing a row with this identity.
+        state.runid = context.runid
 
-    delayed_populators = []
-    pops = (new_populators, existing_populators, delayed_populators,
-            eager_populators)
+        for key, getter in populators["quick"]:
+            dict_[key] = getter(row)
+        if populate_existing:
+            for key, set_callable in populators["expire"]:
+                dict_.pop(key, None)
+                if set_callable:
+                    state.callables[key] = state
+        else:
+            for key, set_callable in populators["expire"]:
+                if set_callable:
+                    state.callables[key] = state
+        for key, populator in populators["new"]:
+            populator(state, dict_, row)
+        for key, populator in populators["delayed"]:
+            populator(state, dict_, row)
+    else:
+        # have already seen rows with this identity.
+        for key, populator in populators["existing"]:
+            populator(state, dict_, row)
 
-    for prop in mapper._props.values():
 
-        for i, pop in enumerate(prop.create_row_processor(
-                context,
-                path,
-                mapper, row, adapter)):
-            if pop is not None:
-                pops[i].append((prop.key, pop))
+def _populate_partial(
+        context, row, state, dict_, isnew,
+        unloaded, populators):
+    if not isnew:
+        to_load = context.partials[state]
+        for key, populator in populators["existing"]:
+            if key in to_load:
+                populator(state, dict_, row)
+    else:
+        to_load = unloaded
+        context.partials[state] = to_load
 
-    if delayed_populators:
-        new_populators.extend(delayed_populators)
+        for key, getter in populators["quick"]:
+            if key in to_load:
+                dict_[key] = getter(row)
+        for key, set_callable in populators["expire"]:
+            if key in to_load:
+                dict_.pop(key, None)
+                if set_callable:
+                    state.callables[key] = state
+        for key, populator in populators["new"]:
+            if key in to_load:
+                populator(state, dict_, row)
+        for key, populator in populators["delayed"]:
+            if key in to_load:
+                populator(state, dict_, row)
+    for key, populator in populators["eager"]:
+        if key not in unloaded:
+            populator(state, dict_, row)
+
+    return to_load
 
 
-def _configure_subclass_mapper(mapper, context, path, adapter):
-    """Produce a mapper level row processor callable factory for mappers
-    inheriting this one."""
+def _validate_version_id(mapper, state, dict_, row, adapter):
+
+    version_id_col = mapper.version_id_col
+
+    if version_id_col is None:
+        return
+
+    if adapter:
+        version_id_col = adapter.columns[version_id_col]
+
+    if mapper._get_state_attr_by_column(
+            state, dict_, mapper.version_id_col) != row[version_id_col]:
+        raise orm_exc.StaleDataError(
+            "Instance '%s' has version id '%s' which "
+            "does not match database-loaded version id '%s'."
+            % (state_str(state), mapper._get_state_attr_by_column(
+               state, dict_, mapper.version_id_col),
+               row[version_id_col]))
+
+
+def _decorate_polymorphic_switch(
+        instance_fn, context, mapper, result, path,
+        polymorphic_discriminator, adapter):
+    if polymorphic_discriminator is not None:
+        polymorphic_on = polymorphic_discriminator
+    else:
+        polymorphic_on = mapper.polymorphic_on
+    if polymorphic_on is None:
+        return instance_fn
+
+    if adapter:
+        polymorphic_on = adapter.columns[polymorphic_on]
 
     def configure_subclass_mapper(discriminator):
         try:
@@ -543,16 +495,26 @@ def _configure_subclass_mapper(mapper, context, path, adapter):
             raise AssertionError(
                 "No such polymorphic_identity %r is defined" %
                 discriminator)
-        if sub_mapper is mapper:
-            return None
+        else:
+            if sub_mapper is mapper:
+                return None
 
-        return instance_processor(
-            sub_mapper,
-            context,
-            path,
-            adapter,
-            polymorphic_from=mapper)
-    return configure_subclass_mapper
+            return instance_processor(
+                sub_mapper, context, result,
+                path, adapter, _polymorphic_from=mapper)
+
+    polymorphic_instances = util.PopulateDict(
+        configure_subclass_mapper
+    )
+
+    def polymorphic_instance(row):
+        discriminator = row[polymorphic_on]
+        if discriminator is not None:
+            _instance = polymorphic_instances[discriminator]
+            if _instance:
+                return _instance(row)
+        return instance_fn(row)
+    return polymorphic_instance
 
 
 def load_scalar_attributes(mapper, state, attribute_names):
@@ -600,10 +562,11 @@ def load_scalar_attributes(mapper, state, attribute_names):
         if (_none_set.issubset(identity_key) and
                 not mapper.allow_partial_pks) or \
                 _none_set.issuperset(identity_key):
-            util.warn("Instance %s to be refreshed doesn't "
-                      "contain a full primary key - can't be refreshed "
-                      "(and shouldn't be expired, either)."
-                      % state_str(state))
+            util.warn_limited(
+                "Instance %s to be refreshed doesn't "
+                "contain a full primary key - can't be refreshed "
+                "(and shouldn't be expired, either).",
+                state_str(state))
             return
 
         result = load_on_ident(

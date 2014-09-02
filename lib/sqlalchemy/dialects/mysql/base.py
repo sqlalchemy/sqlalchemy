@@ -190,15 +190,13 @@ SQLAlchemy standardizes the DBAPI ``cursor.rowcount`` attribute to be the
 usual definition of "number of rows matched by an UPDATE or DELETE" statement.
 This is in contradiction to the default setting on most MySQL DBAPI drivers,
 which is "number of rows actually modified/deleted".  For this reason, the
-SQLAlchemy MySQL dialects always set the ``constants.CLIENT.FOUND_ROWS`` flag,
-or whatever is equivalent for the DBAPI in use, on connect, unless the flag
-value is overridden using DBAPI-specific options
-(such as ``client_flag`` for the MySQL-Python driver, ``found_rows`` for the
-OurSQL driver).
+SQLAlchemy MySQL dialects always add the ``constants.CLIENT.FOUND_ROWS``
+flag, or whatever is equivalent for the target dialect, upon connection.
+This setting is currently hardcoded.
 
-See also:
+.. seealso::
 
-:attr:`.ResultProxy.rowcount`
+    :attr:`.ResultProxy.rowcount`
 
 
 CAST Support

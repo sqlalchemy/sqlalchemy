@@ -193,7 +193,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                 kw['distinct'] = distinct
             if prefixes is not None:
                 kw['prefixes'] = prefixes
-            return str(select(['q'], **kw).compile(dialect=dialect))
+            return str(select([column('q')], **kw).compile(dialect=dialect))
 
         eq_(gen(None), 'SELECT q')
         eq_(gen(True), 'SELECT DISTINCT q')

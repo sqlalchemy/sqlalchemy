@@ -5,11 +5,10 @@ modern (i.e. not deprecated) alternative to them.  The tests snippets here can
 be migrated directly to the wiki, docs, etc.
 
 """
-from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, func
+from sqlalchemy import Integer, String, ForeignKey, func, text
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import mapper, relationship, relation, create_session, sessionmaker
+from sqlalchemy.orm import mapper, relationship, create_session, sessionmaker
 from sqlalchemy.testing import fixtures
 
 
@@ -513,7 +512,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         session = create_session()
 
         users = (session.query(User).
-                 from_statement('SELECT * FROM users_table')).all()
+                 from_statement(text('SELECT * FROM users_table'))).all()
         assert len(users) == 4
 
     def test_select_whereclause(self):
@@ -532,6 +531,6 @@ class QueryAlternativesTest(fixtures.MappedTest):
         users = session.query(User).filter(User.name=='ed').all()
         assert len(users) == 1 and users[0].name == 'ed'
 
-        users = session.query(User).filter("name='ed'").all()
+        users = session.query(User).filter(text("name='ed'")).all()
         assert len(users) == 1 and users[0].name == 'ed'
 

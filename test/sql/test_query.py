@@ -6,7 +6,7 @@ from sqlalchemy import (
     exc, sql, func, select, String, Integer, MetaData, and_, ForeignKey,
     union, intersect, except_, union_all, VARCHAR, INT, CHAR, text, Sequence,
     bindparam, literal, not_, type_coerce, literal_column, desc, asc,
-    TypeDecorator, or_, cast)
+    TypeDecorator, or_, cast, table, column)
 from sqlalchemy.engine import default, result as _result
 from sqlalchemy.testing.schema import Table, Column
 
@@ -275,6 +275,13 @@ class QueryTest(fixtures.TestBase):
 
         r = t6.insert().values(manual_id=id).execute()
         eq_(r.inserted_primary_key, [12, 1])
+
+    def test_implicit_id_insert_select(self):
+        stmt = users.insert().from_select(
+            (users.c.user_id, users.c.user_name),
+            users.select().where(users.c.user_id == 20))
+
+        testing.db.execute(stmt)
 
     def test_row_iteration(self):
         users.insert().execute(
@@ -857,8 +864,10 @@ class QueryTest(fixtures.TestBase):
         # this will create column() objects inside
         # the select(), these need to match on name anyway
         r = testing.db.execute(
-            select(['user_id', 'user_name']).select_from('query_users').
-            where('user_id=2')
+            select([
+                column('user_id'), column('user_name')
+            ]).select_from(table('query_users')).
+            where(text('user_id=2'))
         ).first()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(
@@ -1757,7 +1766,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         # columns which the statement is against to be lightweight
         # cols, which results in a more liberal comparison scheme
         a, b = sql.column('a'), sql.column('b')
-        stmt = select([a, b]).select_from("keyed2")
+        stmt = select([a, b]).select_from(table("keyed2"))
         row = testing.db.execute(stmt).first()
 
         assert keyed2.c.a in row

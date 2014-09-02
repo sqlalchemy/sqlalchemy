@@ -3,7 +3,7 @@ from sqlalchemy.testing import (
     fixtures, eq_, assert_raises, assert_raises_message, AssertsCompiledSQL)
 from sqlalchemy import (
     exc as sa_exc, util, Integer, Table, String, ForeignKey, select, func,
-    and_, asc, desc, inspect, literal_column, cast, exists)
+    and_, asc, desc, inspect, literal_column, cast, exists, text)
 from sqlalchemy.orm import (
     configure_mappers, Session, mapper, create_session, relationship,
     column_property, joinedload_all, contains_eager, contains_alias,
@@ -438,8 +438,8 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             q3.order_by(c1),
             "SELECT anon_1.c1 AS anon_1_c1, anon_1.c2 "
-            "AS anon_1_c2 FROM (SELECT c1 AS c1, c2 AS c2 WHERE "
-            "c1 = :c1_1 UNION SELECT c1 AS c1, c2 AS c2 "
+            "AS anon_1_c2 FROM (SELECT c1, c2 WHERE "
+            "c1 = :c1_1 UNION SELECT c1, c2 "
             "WHERE c1 = :c1_2) AS anon_1 ORDER BY anon_1.c1"
         )
 
@@ -455,7 +455,7 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
             "SELECT anon_1.anon_2_c1 AS anon_1_anon_2_c1, anon_1.anon_2_c2 AS "
             "anon_1_anon_2_c2 FROM (SELECT anon_2.c1 AS anon_2_c1, anon_2.c2 "
             "AS anon_2_c2 "
-            "FROM (SELECT c1 AS c1, c2 AS c2 WHERE c1 = :c1_1) AS "
+            "FROM (SELECT c1, c2 WHERE c1 = :c1_1) AS "
             "anon_2) AS anon_1 ORDER BY anon_1.anon_2_c1"
         )
 
@@ -470,8 +470,8 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             q3.order_by(c1),
             "SELECT anon_1.c1 AS anon_1_c1, anon_1.c2 "
-            "AS anon_1_c2 FROM (SELECT c1 AS c1, c2 AS c2 WHERE "
-            "c1 = :c1_1 UNION SELECT c1 AS c1, c2 AS c2 "
+            "AS anon_1_c2 FROM (SELECT c1, c2 WHERE "
+            "c1 = :c1_1 UNION SELECT c1, c2 "
             "WHERE c1 = :c1_2) AS anon_1 ORDER BY anon_1.c1"
         )
 
@@ -643,7 +643,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         query = users.select(users.c.id == 7).\
             union(users.select(users.c.id > 7)).alias('ulist').\
             outerjoin(addresses).\
-            select(use_labels=True, order_by=['ulist.id', addresses.c.id])
+            select(
+                use_labels=True,
+                order_by=[text('ulist.id'), addresses.c.id])
         sess = create_session()
         q = sess.query(User)
 
@@ -663,7 +665,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         query = users.select(users.c.id == 7).\
             union(users.select(users.c.id > 7)).alias('ulist').\
             outerjoin(addresses). \
-            select(use_labels=True, order_by=['ulist.id', addresses.c.id])
+            select(
+                use_labels=True,
+                order_by=[text('ulist.id'), addresses.c.id])
         sess = create_session()
         q = sess.query(User)
 
@@ -682,7 +686,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         query = users.select(users.c.id == 7).\
             union(users.select(users.c.id > 7)).alias('ulist').\
             outerjoin(addresses). \
-            select(use_labels=True, order_by=['ulist.id', addresses.c.id])
+            select(
+                use_labels=True,
+                order_by=[text('ulist.id'), addresses.c.id])
         sess = create_session()
 
         # better way.  use select_entity_from()
@@ -706,7 +712,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         query = users.select(users.c.id == 7).\
             union(users.select(users.c.id > 7)).\
             alias('ulist').outerjoin(adalias).\
-            select(use_labels=True, order_by=['ulist.id', adalias.c.id])
+            select(use_labels=True, order_by=[text('ulist.id'), adalias.c.id])
 
         def go():
             l = sess.query(User).select_entity_from(query).\

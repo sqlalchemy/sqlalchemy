@@ -497,7 +497,7 @@ class OptionsTest(PathTest, QueryTest):
 
 class OptionsNoPropTest(_fixtures.FixtureTest):
     """test the error messages emitted when using property
-    options in conjunection with column-only entities, or
+    options in conjunction with column-only entities, or
     for not existing options
 
     """

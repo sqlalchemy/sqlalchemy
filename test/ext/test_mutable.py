@@ -119,6 +119,18 @@ class _MutableDictTestBase(object):
 
         eq_(f1.data, {})
 
+    def test_update(self):
+        sess = Session()
+
+        f1 = Foo(data={'a': 'b'})
+        sess.add(f1)
+        sess.commit()
+
+        f1.data.update({'a': 'z'})
+        sess.commit()
+
+        eq_(f1.data, {'a': 'z'})
+
     def test_setdefault(self):
         sess = Session()
 
@@ -330,6 +342,59 @@ class MutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest
             Column('data', JSONEncodedDict),
             Column('unrelated_data', String(50))
         )
+
+
+class CustomMutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
+
+    CustomMutableDict = None
+
+    @classmethod
+    def _type_fixture(cls):
+        if not(getattr(cls, 'CustomMutableDict')):
+            MutableDict = super(CustomMutableAssociationScalarJSONTest, cls)._type_fixture()
+            class CustomMutableDict(MutableDict):
+                pass
+            cls.CustomMutableDict = CustomMutableDict
+        return cls.CustomMutableDict
+
+    @classmethod
+    def define_tables(cls, metadata):
+        import json
+
+        class JSONEncodedDict(TypeDecorator):
+            impl = VARCHAR(50)
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    value = json.dumps(value)
+
+                return value
+
+            def process_result_value(self, value, dialect):
+                if value is not None:
+                    value = json.loads(value)
+                return value
+
+        CustomMutableDict = cls._type_fixture()
+        CustomMutableDict.associate_with(JSONEncodedDict)
+
+        Table('foo', metadata,
+            Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
+            Column('data', JSONEncodedDict),
+            Column('unrelated_data', String(50))
+        )
+
+    def test_pickle_parent(self):
+        # Picklers don't know how to pickle CustomMutableDict, but we aren't testing that here
+        pass
+
+    def test_coerce(self):
+        sess = Session()
+        f1 = Foo(data={'a': 'b'})
+        sess.add(f1)
+        sess.flush()
+        eq_(type(f1.data), self._type_fixture())
 
 
 class _CompositeTestBase(object):

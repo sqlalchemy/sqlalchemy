@@ -1,10 +1,13 @@
 """Test the TextClause and related constructs."""
 
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_, assert_raises_message
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_, \
+    assert_raises_message, expect_warnings
 from sqlalchemy import text, select, Integer, String, Float, \
-    bindparam, and_, func, literal_column, exc, MetaData, Table, Column
+    bindparam, and_, func, literal_column, exc, MetaData, Table, Column,\
+    asc, func, desc, union
 from sqlalchemy.types import NullType
 from sqlalchemy.sql import table, column
+from sqlalchemy import util
 
 table1 = table('mytable',
                column('myid', Integer),
@@ -38,9 +41,14 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_composition_one(self):
         self.assert_compile(select(
-            ["foobar(a)", "pk_foo_bar(syslaal)"],
-            "a = 12",
-            from_obj=["foobar left outer join lala on foobar.foo = lala.foo"]
+            [
+                literal_column("foobar(a)"),
+                literal_column("pk_foo_bar(syslaal)")
+            ],
+            text("a = 12"),
+            from_obj=[
+                text("foobar left outer join lala on foobar.foo = lala.foo")
+            ]
         ),
             "SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar "
             "left outer join lala on foobar.foo = lala.foo WHERE a = 12"
@@ -48,18 +56,18 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_composition_two(self):
         s = select()
-        s.append_column("column1")
-        s.append_column("column2")
-        s.append_whereclause("column1=12")
-        s.append_whereclause("column2=19")
+        s.append_column(column("column1"))
+        s.append_column(column("column2"))
+        s.append_whereclause(text("column1=12"))
+        s.append_whereclause(text("column2=19"))
         s = s.order_by("column1")
-        s.append_from("table1")
+        s.append_from(text("table1"))
         self.assert_compile(s, "SELECT column1, column2 FROM table1 WHERE "
                             "column1=12 AND column2=19 ORDER BY column1")
 
     def test_select_composition_three(self):
         self.assert_compile(
-            select(["column1", "column2"],
+            select([column("column1"), column("column2")],
                    from_obj=table1).alias('somealias').select(),
             "SELECT somealias.column1, somealias.column2 FROM "
             "(SELECT column1, column2 FROM mytable) AS somealias"
@@ -68,9 +76,13 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_composition_four(self):
         # test that use_labels doesn't interfere with literal columns
         self.assert_compile(
-            select(["column1", "column2", table1.c.myid], from_obj=table1,
-                   use_labels=True),
-            "SELECT column1, column2, mytable.myid AS mytable_myid "
+            select([
+                text("column1"), column("column2"),
+                column("column3").label("bar"), table1.c.myid],
+                from_obj=table1,
+                use_labels=True),
+            "SELECT column1, column2, column3 AS bar, "
+            "mytable.myid AS mytable_myid "
             "FROM mytable"
         )
 
@@ -78,8 +90,10 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         # test that use_labels doesn't interfere
         # with literal columns that have textual labels
         self.assert_compile(
-            select(["column1 AS foobar", "column2 AS hoho", table1.c.myid],
-                   from_obj=table1, use_labels=True),
+            select([
+                text("column1 AS foobar"), text("column2 AS hoho"),
+                table1.c.myid],
+                from_obj=table1, use_labels=True),
             "SELECT column1 AS foobar, column2 AS hoho, "
             "mytable.myid AS mytable_myid FROM mytable"
         )
@@ -89,8 +103,10 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         # doesn't interfere with literal columns,
         # exported columns don't get quoted
         self.assert_compile(
-            select(["column1 AS foobar", "column2 AS hoho", table1.c.myid],
-                   from_obj=[table1]).select(),
+            select([
+                literal_column("column1 AS foobar"),
+                literal_column("column2 AS hoho"), table1.c.myid],
+                from_obj=[table1]).select(),
             "SELECT column1 AS foobar, column2 AS hoho, myid FROM "
             "(SELECT column1 AS foobar, column2 AS hoho, "
             "mytable.myid AS myid FROM mytable)"
@@ -98,25 +114,29 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_composition_seven(self):
         self.assert_compile(
-            select(['col1', 'col2'], from_obj='tablename').alias('myalias'),
+            select([
+                literal_column('col1'),
+                literal_column('col2')
+            ], from_obj=table('tablename')).alias('myalias'),
             "SELECT col1, col2 FROM tablename"
         )
 
     def test_select_composition_eight(self):
         self.assert_compile(select(
-            [table1.alias('t'), "foo.f"],
-            "foo.f = t.id",
-            from_obj=["(select f from bar where lala=heyhey) foo"]
+            [table1.alias('t'), text("foo.f")],
+            text("foo.f = t.id"),
+            from_obj=[text("(select f from bar where lala=heyhey) foo")]
         ),
             "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
             "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
 
     def test_select_bundle_columns(self):
         self.assert_compile(select(
-            [table1, table2.c.otherid, "sysdate()", "foo, bar, lala"],
+            [table1, table2.c.otherid,
+                text("sysdate()"), text("foo, bar, lala")],
             and_(
-                "foo.id = foofoo(lala)",
-                "datetime(foo) = Today",
+                text("foo.id = foofoo(lala)"),
+                text("datetime(foo) = Today"),
                 table1.c.myid == table2.c.otherid,
             )
         ),
@@ -469,4 +489,193 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             set(t.element._bindparams),
             set(["bat", "foo", "bar"])
+        )
+
+
+class TextWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _test(self, fn, arg, offending_clause, expected):
+        assert_raises_message(
+            exc.SAWarning,
+            r"Textual (?:SQL|column|SQL FROM) expression %(stmt)r should be "
+            r"explicitly declared (?:with|as) text\(%(stmt)r\)" % {
+                "stmt": util.ellipses_string(offending_clause),
+            },
+            fn, arg
+        )
+
+        with expect_warnings("Textual "):
+            stmt = fn(arg)
+            self.assert_compile(stmt, expected)
+
+    def test_where(self):
+        self._test(
+            select([table1.c.myid]).where, "myid == 5", "myid == 5",
+            "SELECT mytable.myid FROM mytable WHERE myid == 5"
+        )
+
+    def test_column(self):
+        self._test(
+            select, ["myid"], "myid",
+            "SELECT myid"
+        )
+
+    def test_having(self):
+        self._test(
+            select([table1.c.myid]).having, "myid == 5", "myid == 5",
+            "SELECT mytable.myid FROM mytable HAVING myid == 5"
+        )
+
+    def test_from(self):
+        self._test(
+            select([table1.c.myid]).select_from, "mytable", "mytable",
+            "SELECT mytable.myid FROM mytable, mytable"   # two FROMs
+        )
+
+
+class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _test_warning(self, stmt, offending_clause, expected):
+        with expect_warnings(
+                "Can't resolve label reference %r;" % offending_clause):
+            self.assert_compile(
+                stmt,
+                expected
+            )
+        assert_raises_message(
+            exc.SAWarning,
+            "Can't resolve label reference %r; converting to text" %
+            offending_clause,
+            stmt.compile
+        )
+
+    def test_order_by_label(self):
+        stmt = select([table1.c.myid.label('foo')]).order_by('foo')
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid AS foo FROM mytable ORDER BY foo"
+        )
+
+    def test_order_by_colname(self):
+        stmt = select([table1.c.myid]).order_by('name')
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable ORDER BY mytable.name"
+        )
+
+    def test_order_by_alias_colname(self):
+        t1 = table1.alias()
+        stmt = select([t1.c.myid]).apply_labels().order_by('name')
+        self.assert_compile(
+            stmt,
+            "SELECT mytable_1.myid AS mytable_1_myid "
+            "FROM mytable AS mytable_1 ORDER BY mytable_1.name"
+        )
+
+    def test_unresolvable_warning_order_by(self):
+        stmt = select([table1.c.myid]).order_by('foobar')
+        self._test_warning(
+            stmt, "foobar",
+            "SELECT mytable.myid FROM mytable ORDER BY foobar"
+        )
+
+    def test_group_by_label(self):
+        stmt = select([table1.c.myid.label('foo')]).group_by('foo')
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid AS foo FROM mytable GROUP BY foo"
+        )
+
+    def test_group_by_colname(self):
+        stmt = select([table1.c.myid]).group_by('name')
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable GROUP BY mytable.name"
+        )
+
+    def test_unresolvable_warning_group_by(self):
+        stmt = select([table1.c.myid]).group_by('foobar')
+        self._test_warning(
+            stmt, "foobar",
+            "SELECT mytable.myid FROM mytable GROUP BY foobar"
+        )
+
+    def test_asc(self):
+        stmt = select([table1.c.myid]).order_by(asc('name'), 'description')
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable "
+            "ORDER BY mytable.name ASC, mytable.description"
+        )
+
+    def test_group_by_subquery(self):
+        stmt = select([table1]).alias()
+        stmt = select([stmt]).apply_labels().group_by("myid")
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.myid AS anon_1_myid, anon_1.name AS anon_1_name, "
+            "anon_1.description AS anon_1_description FROM "
+            "(SELECT mytable.myid AS myid, mytable.name AS name, "
+            "mytable.description AS description FROM mytable) AS anon_1 "
+            "GROUP BY anon_1.myid"
+        )
+
+    def test_order_by_func_label_desc(self):
+        stmt = select([func.foo('bar').label('fb'), table1]).\
+            order_by(desc('fb'))
+
+        self.assert_compile(
+            stmt,
+            "SELECT foo(:foo_1) AS fb, mytable.myid, mytable.name, "
+            "mytable.description FROM mytable ORDER BY fb DESC"
+        )
+
+    def test_pg_distinct(self):
+        stmt = select([table1]).distinct('name')
+        self.assert_compile(
+            stmt,
+            "SELECT DISTINCT ON (mytable.name) mytable.myid, "
+            "mytable.name, mytable.description FROM mytable",
+            dialect="postgresql"
+        )
+
+    def test_over(self):
+        stmt = select([column("foo"), column("bar")])
+        stmt = select(
+            [func.row_number().
+             over(order_by='foo', partition_by='bar')]
+        ).select_from(stmt)
+
+        self.assert_compile(
+            stmt,
+            "SELECT row_number() OVER (PARTITION BY bar ORDER BY foo) "
+            "AS anon_1 FROM (SELECT foo, bar)"
+        )
+
+    def test_union_column(self):
+        s1 = select([table1])
+        s2 = select([table1])
+        stmt = union(s1, s2).order_by("name")
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, mytable.description FROM "
+            "mytable UNION SELECT mytable.myid, mytable.name, "
+            "mytable.description FROM mytable ORDER BY name"
+        )
+
+    def test_union_label(self):
+        s1 = select([func.foo("hoho").label('x')])
+        s2 = select([func.foo("Bar").label('y')])
+        stmt = union(s1, s2).order_by("x")
+        self.assert_compile(
+            stmt,
+            "SELECT foo(:foo_1) AS x UNION SELECT foo(:foo_2) AS y ORDER BY x"
+        )
+
+    def test_standalone_units_stringable(self):
+        self.assert_compile(
+            desc("somelabel"),
+            "somelabel DESC"
         )

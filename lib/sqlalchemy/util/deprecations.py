@@ -102,7 +102,7 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
     @decorator
     def warned(fn, *args, **kwargs):
-        warnings.warn(wtype(message), stacklevel=3)
+        warnings.warn(message, wtype, stacklevel=3)
         return fn(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ''

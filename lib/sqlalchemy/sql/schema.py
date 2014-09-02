@@ -1124,8 +1124,12 @@ class Column(SchemaItem, ColumnClause):
             else:
                 if getattr(self.type, '_warn_on_bytestring', False):
                     if isinstance(self.default, util.binary_type):
-                        util.warn("Unicode column received non-unicode "
-                                  "default value.")
+                        util.warn(
+                            "Unicode column '%s' has non-unicode "
+                            "default value %r specified." % (
+                                self.key,
+                                self.default
+                            ))
                 args.append(ColumnDefault(self.default))
 
         if self.server_default is not None:
@@ -2429,7 +2433,7 @@ class CheckConstraint(Constraint):
 
         super(CheckConstraint, self).\
             __init__(name, deferrable, initially, _create_rule, info=info)
-        self.sqltext = _literal_as_text(sqltext)
+        self.sqltext = _literal_as_text(sqltext, warn=False)
         if table is not None:
             self._set_parent_with_dispatch(table)
         elif _autoattach:

@@ -181,7 +181,7 @@ def post_begin():
     from sqlalchemy.testing import fixtures, engines, exclusions, \
         assertions, warnings, profiling, config
     from sqlalchemy import util
-
+    warnings.setup_filters()
 
 def _log(opt_str, value, parser):
     global logging
@@ -491,13 +491,11 @@ def before_test(test, test_module_name, test_class, test_name):
 
     id_ = "%s.%s.%s" % (test_module_name, name, test_name)
 
-    warnings.resetwarnings()
     profiling._current_test = id_
 
 
 def after_test(test):
     engines.testing_reaper._after_test_ctx()
-    warnings.resetwarnings()
 
 
 def _possible_configs_for_cls(cls, reasons=None):

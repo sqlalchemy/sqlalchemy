@@ -14,6 +14,36 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3180
+
+        An adjustment to table/index reflection such that if an index
+        reports a column that isn't found to be present in the table,
+        a warning is emitted and the column is skipped.  This can occur
+        for some special system column situations as has been observed
+        with Oracle.
+
+    .. change::
+        :tags: bug, ext
+        :versions: 1.0.0
+        :pullrequest: bitbucket:28
+
+        Fixed bug where :ref:`ext.mutable.MutableDict`
+        failed to implement the ``update()`` dictionary method, thus
+        not catching changes. Pull request courtesy Matt Chisholm.
+
+    .. change::
+        :tags: bug, ext
+        :versions: 1.0.0
+        :pullrequest: bitbucket:27
+
+        Fixed bug where a custom subclass of :ref:`ext.mutable.MutableDict`
+        would not show up in a "coerce" operation, and would instead
+        return a plain :ref:`ext.mutable.MutableDict`.  Pull request
+        courtesy Matt Chisholm.
+
+    .. change::
         :tags: bug, pool
         :versions: 1.0.0
         :tickets: 3168

@@ -16,6 +16,180 @@
 .. changelog::
 	:version: 1.0.0
 
+    Version 1.0.0 is the first release of the 1.0 series.   Many changes
+    described here are also present in the 0.9 and sometimes the 0.8
+    series as well.  For changes that are specific to 1.0 with an emphasis
+    on compatibility concerns, see :doc:`/changelog/migration_10`.
+
+    .. change::
+        :tags: changed, sql
+
+        The :func:`~.expression.column` and :func:`~.expression.table`
+        constructs are now importable from the "from sqlalchemy" namespace,
+        just like every other Core construct.
+
+    .. change::
+        :tags: changed, sql
+        :tickets: 2992
+
+        The implicit conversion of strings to :func:`.text` constructs
+        when passed to most builder methods of :func:`.select` as
+        well as :class:`.Query` now emits a warning with just the
+        plain string sent.   The textual conversion still proceeds normally,
+        however.  The only method that accepts a string without a warning
+        are the "label reference" methods like order_by(), group_by();
+        these functions will now at compile time attempt to resolve a single
+        string argument to a column or label expression present in the
+        selectable; if none is located, the expression still renders, but
+        you get the warning again. The rationale here is that the implicit
+        conversion from string to text is more unexpected than not these days,
+        and it is better that the user send more direction to the Core / ORM
+        when passing a raw string as to what direction should be taken.
+        Core/ORM tutorials have been updated to go more in depth as to how text
+        is handled.
+
+        .. seealso::
+
+            :ref:`migration_2992`
+
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 3178
+
+        A new style of warning can be emitted which will "filter" up to
+        N occurrences of a parameterized string.   This allows parameterized
+        warnings that can refer to their arguments to be delivered a fixed
+        number of times until allowing Python warning filters to squelch them,
+        and prevents memory from growing unbounded within Python's
+        warning registries.
+
+        .. seealso::
+
+            :ref:`feature_3178`
+
+    .. change::
+        :tags: feature, orm
+
+        The :class:`.Query` will raise an exception when :meth:`.Query.yield_per`
+        is used with mappings or options where either
+        subquery eager loading, or joined eager loading with collections,
+        would take place.  These loading strategies are
+        not currently compatible with yield_per, so by raising this error,
+        the method is safer to use.  Eager loads can be disabled with
+        the ``lazyload('*')`` option or :meth:`.Query.enable_eagerloads`.
+
+        .. seealso::
+
+            :ref:`migration_yield_per_eager_loading`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3177
+
+        Changed the approach by which the "single inheritance criterion"
+        is applied, when using :meth:`.Query.from_self`, or its common
+        user :meth:`.Query.count`.  The criteria to limit rows to those
+        with a certain type is now indicated on the inside subquery,
+        not the outside one, so that even if the "type" column is not
+        available in the columns clause, we can filter on it on the "inner"
+        query.
+
+        .. seealso::
+
+            :ref:`migration_3177`
+
+    .. change::
+        :tags: changed, orm
+
+        The ``proc()`` callable passed to the ``create_row_processor()``
+        method of custom :class:`.Bundle` classes now accepts only a single
+        "row" argument.
+
+        .. seealso::
+
+            :ref:`bundle_api_change`
+
+    .. change::
+        :tags: changed, orm
+
+        Deprecated event hooks removed:  ``populate_instance``,
+        ``create_instance``, ``translate_row``, ``append_result``
+
+        .. seealso::
+
+            :ref:`migration_deprecated_orm_events`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3145
+
+        Made a small adjustment to the mechanics of lazy loading,
+        such that it has less chance of interfering with a joinload() in the
+        very rare circumstance that an object points to itself; in this
+        scenario, the object refers to itself while loading its attributes
+        which can cause a mixup between loaders.   The use case of
+        "object points to itself" is not fully supported, but the fix also
+        removes some overhead so for now is part of testing.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3176
+
+        A new implementation for :class:`.KeyedTuple` used by the
+        :class:`.Query` object offers dramatic speed improvements when
+        fetching large numbers of column-oriented rows.
+
+        .. seealso::
+
+            :ref:`feature_3176`
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3008
+
+        The behavior of :paramref:`.joinedload.innerjoin` as well as
+        :paramref:`.relationship.innerjoin` is now to use "nested"
+        inner joins, that is, right-nested, as the default behavior when an
+        inner join joined eager load is chained to an outer join eager load.
+
+        .. seealso::
+
+            :ref:`migration_3008`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3171
+
+        The "resurrect" ORM event has been removed.  This event hook had
+        no purpose since the old "mutable attribute" system was removed
+        in 0.8.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3169
+
+        Using :meth:`.Insert.from_select`  now implies ``inline=True``
+        on :func:`.insert`.  This helps to fix a bug where an
+        INSERT...FROM SELECT construct would inadvertently be compiled
+        as "implicit returning" on supporting backends, which would
+        cause breakage in the case of an INSERT that inserts zero rows
+        (as implicit returning expects a row), as well as arbitrary
+        return data in the case of an INSERT that inserts multiple
+        rows (e.g. only the first row of many).
+        A similar change is also applied to an INSERT..VALUES
+        with multiple parameter sets; implicit RETURNING will no longer emit
+        for this statement either.  As both of these constructs deal
+        with varible numbers of rows, the
+        :attr:`.ResultProxy.inserted_primary_key` accessor does not
+        apply.   Previously, there was a documentation note that one
+        may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
+        don't support returning and therefore can't do "implicit" returning,
+        but there's no reason an INSERT...FROM SELECT needs implicit returning
+        in any case.   Regular explicit :meth:`.Insert.returning` should
+        be used to return variable numbers of result rows if inserted
+        data is needed.
+
     .. change::
         :tags: bug, orm
         :tickets: 3167
@@ -25,6 +199,19 @@
         when those columns were the targets of a "fetch and populate"
         operation, such as an autoincremented primary key, a Python side
         default, or a server-side default "eagerly" fetched via RETURNING.
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 2051
+
+        Added support for PG table options TABLESPACE, ON COMMIT,
+        WITH(OUT) OIDS, and INHERITS, when rendering DDL via
+        the :class:`.Table` construct.   Pull request courtesy
+        malikdiarra.
+
+        .. seealso::
+
+            :ref:`postgresql_table_options`
 
     .. change::
         :tags: bug, orm, py3k
@@ -42,8 +229,10 @@
         statements can be batched; this will be invoked within flush
         to the degree that subsequent UPDATE statements for the
         same mapping and table involve the identical columns within the
-        VALUES clause, as well as that no VALUES-level SQL expressions
-        are embedded.
+        VALUES clause, that no SET-level SQL expressions
+        are embedded, and that the versioning requirements for the mapping
+        are compatible with the backend dialect's ability to return
+        a correct rowcount for an executemany operation.
 
     .. change::
         :tags: engine, bug

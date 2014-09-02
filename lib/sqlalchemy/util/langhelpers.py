@@ -1189,24 +1189,55 @@ def warn_exception(func, *args, **kwargs):
         warn("%s('%s') ignored" % sys.exc_info()[0:2])
 
 
-def warn(msg, stacklevel=3):
+def ellipses_string(value, len_=25):
+    if len(value) > len_:
+        return "%s..." % value[0:len_]
+    else:
+        return value
+
+
+class _hash_limit_string(compat.text_type):
+    """A string subclass that can only be hashed on a maximum amount
+    of unique values.
+
+    This is used for warnings so that we can send out parameterized warnings
+    without the __warningregistry__ of the module,  or the non-overridable
+    "once" registry within warnings.py, overloading memory,
+
+
+    """
+    def __new__(cls, value, num, args):
+        interpolated = (value % args) + \
+            (" (this warning may be suppressed after %d occurrences)" % num)
+        self = super(_hash_limit_string, cls).__new__(cls, interpolated)
+        self._hash = hash("%s_%d" % (value, hash(interpolated) % num))
+        return self
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+
+def warn(msg):
     """Issue a warning.
 
     If msg is a string, :class:`.exc.SAWarning` is used as
     the category.
 
-    .. note::
+    """
+    warnings.warn(msg, exc.SAWarning, stacklevel=2)
 
-       This function is swapped out when the test suite
-       runs, with a compatible version that uses
-       warnings.warn_explicit, so that the warnings registry can
-       be controlled.
+
+def warn_limited(msg, args):
+    """Issue a warning with a paramterized string, limiting the number
+    of registrations.
 
     """
-    if isinstance(msg, compat.string_types):
-        warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
-    else:
-        warnings.warn(msg, stacklevel=stacklevel)
+    if args:
+        msg = _hash_limit_string(msg, 10, args)
+    warnings.warn(msg, exc.SAWarning, stacklevel=2)
 
 
 def only_once(fn):
@@ -1249,3 +1280,11 @@ def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
     return tb[start:end + 1]
 
 NoneType = type(None)
+
+def attrsetter(attrname):
+    code = \
+        "def set(obj, value):"\
+        "    obj.%s = value" % attrname
+    env = locals().copy()
+    exec(code, env)
+    return env['set']

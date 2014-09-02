@@ -85,10 +85,6 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         for meth in [
             'init',
             'init_failure',
-            'translate_row',
-            'create_instance',
-            'append_result',
-            'populate_instance',
             'load',
             'refresh',
             'expire',
@@ -131,10 +127,9 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         eq_(canary,
             ['init', 'before_insert',
-             'after_insert', 'expire', 'translate_row',
-             'populate_instance', 'refresh',
-             'append_result', 'translate_row', 'create_instance',
-             'populate_instance', 'load', 'append_result',
+             'after_insert', 'expire',
+             'refresh',
+             'load',
              'before_update', 'after_update', 'before_delete',
              'after_delete'])
 
@@ -240,16 +235,13 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.delete(am)
         sess.flush()
         eq_(canary1, ['init', 'before_insert', 'after_insert',
-            'translate_row', 'populate_instance','refresh',
-            'append_result', 'translate_row', 'create_instance'
-            , 'populate_instance', 'load', 'append_result',
+            'refresh', 'load',
             'before_update', 'after_update', 'before_delete',
             'after_delete'])
         eq_(canary2, [])
         eq_(canary3, ['init', 'before_insert', 'after_insert',
-            'translate_row', 'populate_instance','refresh',
-            'append_result', 'translate_row', 'create_instance'
-            , 'populate_instance', 'load', 'append_result',
+            'refresh',
+            'load',
             'before_update', 'after_update', 'before_delete',
             'after_delete'])
 
@@ -282,16 +274,12 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.delete(am)
         sess.flush()
         eq_(canary1, ['init', 'before_insert', 'after_insert',
-            'translate_row', 'populate_instance','refresh',
-            'append_result', 'translate_row', 'create_instance'
-            , 'populate_instance', 'load', 'append_result',
+            'refresh', 'load',
             'before_update', 'after_update', 'before_delete',
             'after_delete'])
         eq_(canary2, [])
         eq_(canary3, ['init', 'before_insert', 'after_insert',
-            'translate_row', 'populate_instance','refresh',
-            'append_result', 'translate_row', 'create_instance'
-            , 'populate_instance', 'load', 'append_result',
+            'refresh', 'load',
             'before_update', 'after_update', 'before_delete',
             'after_delete'])
 
@@ -374,25 +362,6 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         eq_(m1.mock_calls, [call()])
         eq_(m2.mock_calls, [call()])
-
-    def test_retval(self):
-        User, users = self.classes.User, self.tables.users
-
-        def create_instance(mapper, context, row, class_):
-            u = User.__new__(User)
-            u.foo = True
-            return u
-
-        mapper(User, users)
-        event.listen(User, 'create_instance', create_instance, retval=True)
-        sess = create_session()
-        u1 = User()
-        u1.name = 'ed'
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
-        u = sess.query(User).first()
-        assert u.foo
 
     def test_instrument_event(self):
         Address, addresses, users, User = (self.classes.Address,
@@ -964,6 +933,50 @@ class RefreshTest(_fixtures.FixtureTest):
         sess.query(User).first()
         eq_(canary, [])
 
+    def test_changes_reset(self):
+        """test the contract of load/refresh such that history is reset.
+
+        This has never been an official contract but we are testing it
+        here to ensure it is maintained given the loading performance
+        enhancements.
+
+        """
+        User = self.classes.User
+
+        @event.listens_for(User, "load")
+        def canary1(obj, context):
+            obj.name = 'new name!'
+
+        @event.listens_for(User, "refresh")
+        def canary2(obj, context, props):
+            obj.name = 'refreshed name!'
+
+        sess = Session()
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+
+        u1 = sess.query(User).first()
+        eq_(
+            attributes.get_history(u1, "name"),
+            ((), ['new name!'], ())
+        )
+        assert "name" not in attributes.instance_state(u1).committed_state
+        assert u1 not in sess.dirty
+
+        sess.expire(u1)
+        u1.id
+        eq_(
+            attributes.get_history(u1, "name"),
+            ((), ['refreshed name!'], ())
+        )
+        assert "name" not in attributes.instance_state(u1).committed_state
+        assert u1 in sess.dirty
+
+
+
+
     def test_repeated_rows(self):
         User = self.classes.User
 
@@ -1515,24 +1528,8 @@ class MapperExtensionTest(_fixtures.FixtureTest):
                 methods.append('init_failed')
                 return sa.orm.EXT_CONTINUE
 
-            def translate_row(self, mapper, context, row):
-                methods.append('translate_row')
-                return sa.orm.EXT_CONTINUE
-
-            def create_instance(self, mapper, selectcontext, row, class_):
-                methods.append('create_instance')
-                return sa.orm.EXT_CONTINUE
-
             def reconstruct_instance(self, mapper, instance):
                 methods.append('reconstruct_instance')
-                return sa.orm.EXT_CONTINUE
-
-            def append_result(self, mapper, selectcontext, row, instance, result, **flags):
-                methods.append('append_result')
-                return sa.orm.EXT_CONTINUE
-
-            def populate_instance(self, mapper, selectcontext, row, instance, **flags):
-                methods.append('populate_instance')
                 return sa.orm.EXT_CONTINUE
 
             def before_insert(self, mapper, connection, instance):
@@ -1582,9 +1579,8 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(methods,
             ['instrument_class', 'init_instance', 'before_insert',
-             'after_insert', 'translate_row', 'populate_instance',
-             'append_result', 'translate_row', 'create_instance',
-             'populate_instance', 'reconstruct_instance', 'append_result',
+             'after_insert',
+             'reconstruct_instance',
              'before_update', 'after_update', 'before_delete', 'after_delete'])
 
     def test_inheritance(self):
@@ -1614,10 +1610,9 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(methods,
             ['instrument_class', 'instrument_class', 'init_instance',
-             'before_insert', 'after_insert', 'translate_row',
-             'populate_instance', 'append_result', 'translate_row',
-             'create_instance', 'populate_instance', 'reconstruct_instance',
-             'append_result', 'before_update', 'after_update', 'before_delete',
+             'before_insert', 'after_insert',
+             'reconstruct_instance',
+             'before_update', 'after_update', 'before_delete',
              'after_delete'])
 
     def test_before_after_only_collection(self):
@@ -1691,27 +1686,11 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(methods,
             ['instrument_class', 'instrument_class', 'init_instance',
-             'before_insert', 'after_insert', 'translate_row',
-             'populate_instance', 'append_result', 'translate_row',
-             'create_instance', 'populate_instance', 'reconstruct_instance',
-             'append_result', 'before_update', 'after_update', 'before_delete',
+             'before_insert', 'after_insert',
+             'reconstruct_instance',
+             'before_update', 'after_update', 'before_delete',
              'after_delete'])
 
-    def test_create_instance(self):
-        User, users = self.classes.User, self.tables.users
-
-        class CreateUserExt(sa.orm.MapperExtension):
-            def create_instance(self, mapper, selectcontext, row, class_):
-                return User.__new__(User)
-
-        mapper(User, users, extension=CreateUserExt())
-        sess = create_session()
-        u1 = User()
-        u1.name = 'ed'
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
-        assert sess.query(User).first()
 
     def test_unnecessary_methods_not_evented(self):
         users = self.tables.users

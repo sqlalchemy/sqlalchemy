@@ -397,7 +397,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         query = select([table1, table2], or_(table1.c.name == 'fred',
                        table1.c.myid == 10, table2.c.othername != 'jack',
-                       'EXISTS (select yay from foo where boo = lar)'
+                       text('EXISTS (select yay from foo where boo = lar)')
                        ), from_obj=[outerjoin(table1, table2,
                        table1.c.myid == table2.c.otherid)])
         self.assert_compile(query,

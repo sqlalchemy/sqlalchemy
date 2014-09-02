@@ -28,7 +28,6 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
     __only_on__ = 'postgresql+psycopg2'
 
     def _run_steps(self, ctx):
-        #self._baseline_1_create_tables()
         with ctx():
             self._baseline_1a_populate()
         with ctx():
@@ -41,7 +40,6 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
             self._baseline_5_aggregates()
         with ctx():
             self._baseline_6_editing()
-        #self._baseline_7_drop()
 
     def setup_engine(self):
         self._baseline_1_create_tables()

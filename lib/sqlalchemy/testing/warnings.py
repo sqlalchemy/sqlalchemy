@@ -9,25 +9,11 @@ from __future__ import absolute_import
 
 import warnings
 from .. import exc as sa_exc
-from .. import util
 import re
 
 
-def testing_warn(msg, stacklevel=3):
-    """Replaces sqlalchemy.util.warn during tests."""
-
-    filename = "sqlalchemy.testing.warnings"
-    lineno = 1
-    if isinstance(msg, util.string_types):
-        warnings.warn_explicit(msg, sa_exc.SAWarning, filename, lineno)
-    else:
-        warnings.warn_explicit(msg, filename, lineno)
-
-
-def resetwarnings():
-    """Reset warning behavior to testing defaults."""
-
-    util.warn = util.langhelpers.warn = testing_warn
+def setup_filters():
+    """Set global warning behavior for the test suite."""
 
     warnings.filterwarnings('ignore',
                             category=sa_exc.SAPendingDeprecationWarning)
@@ -35,24 +21,20 @@ def resetwarnings():
     warnings.filterwarnings('error', category=sa_exc.SAWarning)
 
 
-def assert_warnings(fn, warnings, regex=False):
+def assert_warnings(fn, warning_msgs, regex=False):
     """Assert that each of the given warnings are emitted by fn."""
 
-    from .assertions import eq_, emits_warning
+    from .assertions import eq_
 
-    canary = []
-    orig_warn = util.warn
+    with warnings.catch_warnings(record=True) as log:
+        # ensure that nothing is going into __warningregistry__
+        warnings.filterwarnings("always")
 
-    def capture_warnings(*args, **kw):
-        orig_warn(*args, **kw)
-        popwarn = warnings.pop(0)
-        canary.append(popwarn)
+        result = fn()
+    for warning in log:
+        popwarn = warning_msgs.pop(0)
         if regex:
-            assert re.match(popwarn, args[0])
+            assert re.match(popwarn, str(warning.message))
         else:
-            eq_(args[0], popwarn)
-    util.warn = util.langhelpers.warn = capture_warnings
-
-    result = emits_warning()(fn)()
-    assert canary, "No warning was emitted"
+            eq_(popwarn, str(warning.message))
     return result

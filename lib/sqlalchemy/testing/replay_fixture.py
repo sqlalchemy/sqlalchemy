@@ -29,9 +29,11 @@ class ReplayFixtureTest(fixtures.TestBase):
         self.session = Session(engine)
 
         self.setup_engine()
-        self._run_steps(ctx=self._dummy_ctx)
-        self.teardown_engine()
-        engine.dispose()
+        try:
+            self._run_steps(ctx=self._dummy_ctx)
+        finally:
+            self.teardown_engine()
+            engine.dispose()
 
         player = lambda: dbapi_session.player()
         engine = create_engine(
@@ -43,8 +45,11 @@ class ReplayFixtureTest(fixtures.TestBase):
         self.session = Session(engine)
 
         self.setup_engine()
-        self._run_steps(ctx=profiling.count_functions)
-        self.teardown_engine()
+        try:
+            self._run_steps(ctx=profiling.count_functions)
+        finally:
+            self.session.close()
+            engine.dispose()
 
     def setup_engine(self):
         pass

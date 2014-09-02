@@ -218,7 +218,7 @@ class Query(object):
     def _adapt_col_list(self, cols):
         return [
             self._adapt_clause(
-                expression._literal_as_text(o),
+                expression._literal_as_label_reference(o),
                 True, True)
             for o in cols
         ]
@@ -595,10 +595,18 @@ class Query(object):
 
         This is used primarily when nesting the Query's
         statement into a subquery or other
-        selectable.
+        selectable, or when using :meth:`.Query.yield_per`.
 
         """
         self._enable_eagerloads = value
+
+    def _no_yield_per(self, message):
+        raise sa_exc.InvalidRequestError(
+            "The yield_per Query option is currently not "
+            "compatible with %s eager loading.  Please "
+            "specify lazyload('*') or query.enable_eagerloads(False) in "
+            "order to "
+            "proceed with query.yield_per()." % message)
 
     @_generative()
     def with_labels(self):
@@ -705,24 +713,58 @@ class Query(object):
     def yield_per(self, count):
         """Yield only ``count`` rows at a time.
 
-        WARNING: use this method with caution; if the same instance is present
-        in more than one batch of rows, end-user changes to attributes will be
-        overwritten.
+        The purpose of this method is when fetching very large result sets
+        (> 10K rows), to batch results in sub-collections and yield them
+        out partially, so that the Python interpreter doesn't need to declare
+        very large areas of memory which is both time consuming and leads
+        to excessive memory use.   The performance from fetching hundreds of
+        thousands of rows can often double when a suitable yield-per setting
+        (e.g. approximately 1000) is used, even with DBAPIs that buffer
+        rows (which are most).
 
-        In particular, it's usually impossible to use this setting with
-        eagerly loaded collections (i.e. any lazy='joined' or 'subquery')
-        since those collections will be cleared for a new load when
-        encountered in a subsequent result batch.   In the case of 'subquery'
-        loading, the full result for all rows is fetched which generally
-        defeats the purpose of :meth:`~sqlalchemy.orm.query.Query.yield_per`.
+        The :meth:`.Query.yield_per` method **is not compatible with most
+        eager loading schemes, including subqueryload and joinedload with
+        collections**.  For this reason, it may be helpful to disable
+        eager loads, either unconditionally with
+        :meth:`.Query.enable_eagerloads`::
 
-        Also note that while :meth:`~sqlalchemy.orm.query.Query.yield_per`
-        will set the ``stream_results`` execution option to True, currently
-        this is only understood by
-        :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect which will
-        stream results using server side cursors instead of pre-buffer all
-        rows for this query. Other DBAPIs pre-buffer all rows before making
-        them available.
+            q = sess.query(Object).yield_per(100).enable_eagerloads(False)
+
+        Or more selectively using :func:`.lazyload`; such as with
+        an asterisk to specify the default loader scheme::
+
+            q = sess.query(Object).yield_per(100).\\
+                options(lazyload('*'), joinedload(Object.some_related))
+
+        .. warning::
+
+            Use this method with caution; if the same instance is
+            present in more than one batch of rows, end-user changes
+            to attributes will be overwritten.
+
+            In particular, it's usually impossible to use this setting
+            with eagerly loaded collections (i.e. any lazy='joined' or
+            'subquery') since those collections will be cleared for a
+            new load when encountered in a subsequent result batch.
+            In the case of 'subquery' loading, the full result for all
+            rows is fetched which generally defeats the purpose of
+            :meth:`~sqlalchemy.orm.query.Query.yield_per`.
+
+            Also note that while
+            :meth:`~sqlalchemy.orm.query.Query.yield_per` will set the
+            ``stream_results`` execution option to True, currently
+            this is only understood by
+            :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect
+            which will stream results using server side cursors
+            instead of pre-buffer all rows for this query. Other
+            DBAPIs **pre-buffer all rows** before making them
+            available.  The memory use of raw database rows is much less
+            than that of an ORM-mapped object, but should still be taken into
+            consideration when benchmarking.
+
+        .. seealso::
+
+            :meth:`.Query.enable_eagerloads`
 
         """
         self._yield_per = count
@@ -945,9 +987,9 @@ class Query(object):
 
         """
         fromclause = self.with_labels().enable_eagerloads(False).\
-            _set_enable_single_crit(False).\
             statement.correlate(None)
         q = self._from_selectable(fromclause)
+        q._enable_single_crit = False
         if entities:
             q._set_entities(entities)
         return q
@@ -1240,7 +1282,7 @@ class Query(object):
 
         """
         for criterion in list(criterion):
-            criterion = expression._literal_as_text(criterion)
+            criterion = expression._expression_literal_as_text(criterion)
 
             criterion = self._adapt_clause(criterion, True, True)
 
@@ -1339,8 +1381,7 @@ class Query(object):
 
         """
 
-        if isinstance(criterion, util.string_types):
-            criterion = sql.text(criterion)
+        criterion = expression._expression_literal_as_text(criterion)
 
         if criterion is not None and \
                 not isinstance(criterion, sql.ClauseElement):
@@ -2306,13 +2347,18 @@ class Query(object):
         This method bypasses all internal statement compilation, and the
         statement is executed without modification.
 
-        The statement argument is either a string, a ``select()`` construct,
-        or a ``text()`` construct, and should return the set of columns
-        appropriate to the entity class represented by this ``Query``.
+        The statement is typically either a :func:`~.expression.text`
+        or :func:`~.expression.select` construct, and should return the set
+        of columns
+        appropriate to the entity class represented by this :class:`.Query`.
+
+        .. seealso::
+
+            :ref:`orm_tutorial_literal_sql` - usage examples in the
+            ORM tutorial
 
         """
-        if isinstance(statement, util.string_types):
-            statement = sql.text(statement)
+        statement = expression._expression_literal_as_text(statement)
 
         if not isinstance(statement,
                           (expression.TextClause,
@@ -2558,7 +2604,7 @@ class Query(object):
         # .with_only_columns() after we have a core select() so that
         # we get just "SELECT 1" without any entities.
         return sql.exists(self.add_columns('1').with_labels().
-                          statement.with_only_columns(['1']))
+                          statement.with_only_columns([1]))
 
     def count(self):
         """Return a count of rows this Query would return.
@@ -3003,7 +3049,6 @@ class _MapperEntity(_QueryEntity):
         else:
             self._label_name = self.mapper.class_.__name__
         self.path = self.entity_zero._path_registry
-        self.custom_rows = bool(self.mapper.dispatch.append_result)
 
     def set_with_polymorphic(self, query, cls_or_mappers,
                              selectable, polymorphic_on):
@@ -3082,7 +3127,7 @@ class _MapperEntity(_QueryEntity):
 
         return ret
 
-    def row_processor(self, query, context, custom_rows):
+    def row_processor(self, query, context, result):
         adapter = self._get_entity_clauses(query, context)
 
         if context.adapter and adapter:
@@ -3102,6 +3147,7 @@ class _MapperEntity(_QueryEntity):
             _instance = loading.instance_processor(
                 self.mapper,
                 context,
+                result,
                 self.path,
                 adapter,
                 only_load_props=query._only_load_props,
@@ -3112,6 +3158,7 @@ class _MapperEntity(_QueryEntity):
             _instance = loading.instance_processor(
                 self.mapper,
                 context,
+                result,
                 self.path,
                 adapter,
                 polymorphic_discriminator=self._polymorphic_discriminator
@@ -3275,9 +3322,10 @@ class Bundle(object):
             :ref:`bundles` - includes an example of subclassing.
 
         """
-        def proc(row, result):
-            return util.KeyedTuple(
-                [proc(row, None) for proc in procs], labels)
+        keyed_tuple = util.lightweight_named_tuple('result', labels)
+
+        def proc(row):
+            return keyed_tuple([proc(row) for proc in procs])
         return proc
 
 
@@ -3302,7 +3350,6 @@ class _BundleEntity(_QueryEntity):
 
         self.supports_single_entity = self.bundle.single_entity
 
-    custom_rows = False
 
     @property
     def entity_zero(self):
@@ -3344,9 +3391,9 @@ class _BundleEntity(_QueryEntity):
         for ent in self._entities:
             ent.setup_context(query, context)
 
-    def row_processor(self, query, context, custom_rows):
+    def row_processor(self, query, context, result):
         procs, labels = zip(
-            *[ent.row_processor(query, context, custom_rows)
+            *[ent.row_processor(query, context, result)
               for ent in self._entities]
         )
 
@@ -3436,7 +3483,6 @@ class _ColumnEntity(_QueryEntity):
             self.entity_zero = None
 
     supports_single_entity = False
-    custom_rows = False
 
     @property
     def entity_zero_or_selectable(self):
@@ -3473,17 +3519,15 @@ class _ColumnEntity(_QueryEntity):
     def _resolve_expr_against_query_aliases(self, query, expr, context):
         return query._adapt_clause(expr, False, True)
 
-    def row_processor(self, query, context, custom_rows):
+    def row_processor(self, query, context, result):
         column = self._resolve_expr_against_query_aliases(
             query, self.column, context)
 
         if context.adapter:
             column = context.adapter.columns[column]
 
-        def proc(row, result):
-            return row[column]
-
-        return proc, self._label_name
+        getter = result._getter(column)
+        return getter, self._label_name
 
     def setup_context(self, query, context):
         column = self._resolve_expr_against_query_aliases(

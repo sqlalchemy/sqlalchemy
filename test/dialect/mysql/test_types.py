@@ -565,13 +565,15 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 
         with testing.expect_deprecated('Manually quoting ENUM value literals'):
             e1, e2 = mysql.ENUM("'a'", "'b'"), mysql.ENUM("'a'", "'b'")
+            e3 = mysql.ENUM("'a'", "'b'", strict=True)
+            e4 = mysql.ENUM("'a'", "'b'", strict=True)
 
         enum_table = Table('mysql_enum', self.metadata,
             Column('e1', e1),
             Column('e2', e2, nullable=False),
             Column('e2generic', Enum("a", "b"), nullable=False),
-            Column('e3', mysql.ENUM("'a'", "'b'", strict=True)),
-            Column('e4', mysql.ENUM("'a'", "'b'", strict=True),
+            Column('e3', e3),
+            Column('e4', e4,
                    nullable=False),
             Column('e5', mysql.ENUM("a", "b")),
             Column('e5generic', Enum("a", "b")),
@@ -622,13 +624,14 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 
         with testing.expect_deprecated('Manually quoting SET value literals'):
             e1, e2 = mysql.SET("'a'", "'b'"), mysql.SET("'a'", "'b'")
-
+            e4 = mysql.SET("'a'", "b")
+            e5 = mysql.SET("'a'", "'b'", quoting="quoted")
         set_table = Table('mysql_set', self.metadata,
             Column('e1', e1),
             Column('e2', e2, nullable=False),
             Column('e3', mysql.SET("a", "b")),
-            Column('e4', mysql.SET("'a'", "b")),
-            Column('e5', mysql.SET("'a'", "'b'", quoting="quoted"))
+            Column('e4', e4),
+            Column('e5', e5)
             )
 
         eq_(colspec(set_table.c.e1),

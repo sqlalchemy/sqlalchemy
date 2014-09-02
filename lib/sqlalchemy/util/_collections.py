@@ -17,7 +17,20 @@ import types
 EMPTY_SET = frozenset()
 
 
-class KeyedTuple(tuple):
+class AbstractKeyedTuple(tuple):
+    def keys(self):
+        """Return a list of string key names for this :class:`.KeyedTuple`.
+
+        .. seealso::
+
+            :attr:`.KeyedTuple._fields`
+
+        """
+
+        return list(self._fields)
+
+
+class KeyedTuple(AbstractKeyedTuple):
     """``tuple`` subclass that adds labeled names.
 
     E.g.::
@@ -56,22 +69,12 @@ class KeyedTuple(tuple):
 
     def __new__(cls, vals, labels=None):
         t = tuple.__new__(cls, vals)
-        t._labels = []
         if labels:
             t.__dict__.update(zip(labels, vals))
-            t._labels = labels
+        else:
+            labels = []
+        t.__dict__['_labels'] = labels
         return t
-
-    def keys(self):
-        """Return a list of string key names for this :class:`.KeyedTuple`.
-
-        .. seealso::
-
-            :attr:`.KeyedTuple._fields`
-
-        """
-
-        return [l for l in self._labels if l is not None]
 
     @property
     def _fields(self):
@@ -86,7 +89,10 @@ class KeyedTuple(tuple):
             :meth:`.KeyedTuple.keys`
 
         """
-        return tuple(self.keys())
+        return tuple([l for l in self._labels if l is not None])
+
+    def __setattr__(self, key, value):
+        raise AttributeError("Can't set attribute: %s" % key)
 
     def _asdict(self):
         """Return the contents of this :class:`.KeyedTuple` as a dictionary.
@@ -98,6 +104,40 @@ class KeyedTuple(tuple):
 
         """
         return dict((key, self.__dict__[key]) for key in self.keys())
+
+
+class _LW(AbstractKeyedTuple):
+    __slots__ = ()
+
+    def __new__(cls, vals):
+        return tuple.__new__(cls, vals)
+
+    def __reduce__(self):
+        # for pickling, degrade down to the regular
+        # KeyedTuple, thus avoiding anonymous class pickling
+        # difficulties
+        return KeyedTuple, (list(self), self._real_fields)
+
+    def _asdict(self):
+        """Return the contents of this :class:`.KeyedTuple` as a dictionary."""
+
+        d = dict(zip(self._real_fields, self))
+        d.pop(None, None)
+        return d
+
+
+def lightweight_named_tuple(name, fields):
+
+    tp_cls = type(name, (_LW,), {})
+    for idx, field in enumerate(fields):
+        if field is None:
+            continue
+        setattr(tp_cls, field, property(operator.itemgetter(idx)))
+
+    tp_cls._real_fields = fields
+    tp_cls._fields = tuple([f for f in fields if f is not None])
+
+    return tp_cls
 
 
 class ImmutableContainer(object):

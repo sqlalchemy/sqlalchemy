@@ -340,7 +340,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_method_three(self):
         expr = func.rows("foo")
         self.assert_compile(
-            select(['foo']).select_from(expr),
+            select([column('foo')]).select_from(expr),
             "SELECT foo FROM rows(:rows_1)"
         )
 
