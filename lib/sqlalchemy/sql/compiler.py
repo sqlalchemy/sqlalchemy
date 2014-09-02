@@ -495,6 +495,12 @@ class SQLCompiler(Compiled):
         return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
     def visit_label_reference(self, element, **kwargs):
+        if not self.stack:
+            # compiling the element outside of the context of a SELECT
+            return self.process(
+                element._text_clause
+            )
+
         selectable = self.stack[-1]['selectable']
         try:
             col = selectable._inner_column_dict[element.text]
@@ -504,7 +510,7 @@ class SQLCompiler(Compiled):
                 "Can't resolve label reference %r; converting to text()",
                 util.ellipses_string(element.text))
             return self.process(
-                elements.TextClause._create_text(element.text)
+                element._text_clause
             )
         else:
             kwargs['render_label_as_label'] = col

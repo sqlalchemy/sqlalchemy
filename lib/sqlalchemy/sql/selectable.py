@@ -2976,6 +2976,7 @@ class Select(HasPrefixes, GenerativeSelect):
             def name_for_col(c):
                 if c._columns_clause_label is None:
                     return (None, c)
+
                 name = c._columns_clause_label
                 if name in names:
                     name = c.anon_label

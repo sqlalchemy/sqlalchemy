@@ -2292,7 +2292,11 @@ class _label_reference(ColumnElement):
     __visit_name__ = 'label_reference'
 
     def __init__(self, text):
-        self.text = text
+        self.text = self.key = text
+
+    @util.memoized_property
+    def _text_clause(self):
+        return TextClause._create_text(self.text)
 
 
 class UnaryExpression(ColumnElement):

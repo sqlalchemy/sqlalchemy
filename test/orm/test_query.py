@@ -2276,7 +2276,7 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
         )
 
 
-class TextTest(QueryTest):
+class TextTest(QueryTest, AssertsCompiledSQL):
     def test_fulltext(self):
         User = self.classes.User
 
@@ -2378,6 +2378,44 @@ class TextTest(QueryTest):
                 text("select * from users").columns(id=Integer, name=String)
             ).order_by(User.id).all(),
             [User(id=7), User(id=8), User(id=9), User(id=10)]
+        )
+
+    def test_order_by_w_eager(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        s = create_session()
+
+        # here, we are seeing how Query has to take the order by expressions
+        # of the query and then add them to the columns list, so that the
+        # outer subquery can order by that same label.  With the anonymous
+        # label, our column gets sucked up and restated again in the
+        # inner columns list!
+        # we could try to play games with making this "smarter" but it
+        # would add permanent overhead to Select._columns_plus_names,
+        # since that's where references would need to be resolved.
+        # so as it is, this query takes the _label_reference and makes a
+        # full blown proxy and all the rest of it.
+        self.assert_compile(
+            s.query(User).options(joinedload("addresses")).
+            order_by(desc("name")).limit(1),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "anon_1.anon_2 AS anon_1_anon_2, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name, "
+            "users.name AS anon_2 FROM users ORDER BY users.name "
+            "DESC LIMIT ? OFFSET ?) AS anon_1 "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.anon_2 DESC, addresses_1.id"
+        )
+
+        eq_(
+            s.query(User).options(joinedload("addresses")).
+                order_by(desc("name")).first(),
+            User(name='jack', addresses=[Address()])
         )
 
 

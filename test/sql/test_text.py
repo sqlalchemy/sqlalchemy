@@ -674,3 +674,8 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT foo(:foo_1) AS x UNION SELECT foo(:foo_2) AS y ORDER BY x"
         )
 
+    def test_standalone_units_stringable(self):
+        self.assert_compile(
+            desc("somelabel"),
+            "somelabel DESC"
+        )
