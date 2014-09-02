@@ -2408,7 +2408,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             "addresses_1.email_address AS addresses_1_email_address "
             "FROM (SELECT users.id AS users_id, users.name AS users_name, "
             "users.name AS anon_2 FROM users ORDER BY users.name "
-            "DESC LIMIT ? OFFSET ?) AS anon_1 "
+            "DESC LIMIT :param_1) AS anon_1 "
             "LEFT OUTER JOIN addresses AS addresses_1 "
             "ON anon_1.users_id = addresses_1.user_id "
             "ORDER BY anon_1.anon_2 DESC, addresses_1.id"
