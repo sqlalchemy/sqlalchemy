@@ -578,18 +578,27 @@ class Inspector(object):
             name = index_d['name']
             columns = index_d['column_names']
             unique = index_d['unique']
-            flavor = index_d.get('type', 'unknown type')
+            flavor = index_d.get('type', 'index')
             if include_columns and \
                     not set(columns).issubset(include_columns):
                 util.warn(
-                    "Omitting %s KEY for (%s), key covers omitted columns." %
+                    "Omitting %s key for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
                 continue
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
-            sa_schema.Index(name, *[
-                cols_by_orig_name[c] if c in cols_by_orig_name
-                else table.c[c]
-                for c in columns
-            ],
-                **dict(unique=unique))
+            idx_cols = []
+            for c in columns:
+                try:
+                    idx_col = cols_by_orig_name[c] \
+                        if c in cols_by_orig_name else table.c[c]
+                except KeyError:
+                    util.warn(
+                        "%s key '%s' was not located in "
+                        "columns for table '%s'" % (
+                            flavor, c, table_name
+                        ))
+                else:
+                    idx_cols.append(idx_col)
+
+            sa_schema.Index(name, *idx_cols, **dict(unique=unique))

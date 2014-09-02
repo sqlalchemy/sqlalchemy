@@ -14,6 +14,17 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3180
+
+        An adjustment to table/index reflection such that if an index
+        reports a column that isn't found to be present in the table,
+        a warning is emitted and the column is skipped.  This can occur
+        for some special system column situations as has been observed
+        with Oracle.
+
+    .. change::
         :tags: bug, ext
         :versions: 1.0.0
         :pullrequest: bitbucket:28
