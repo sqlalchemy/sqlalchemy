@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: August 26, 2014
+    Document last updated: September 1, 2014
 
 Introduction
 ============
@@ -20,445 +20,6 @@ their applications from the 0.9 series of SQLAlchemy to 1.0.
 Please carefully review
 :ref:`behavioral_changes_orm_10` and :ref:`behavioral_changes_core_10` for
 potentially backwards-incompatible changes.
-
-
-.. _behavioral_changes_orm_10:
-
-Behavioral Changes - ORM
-========================
-
-.. _migration_3061:
-
-Changes to attribute events and other operations regarding attributes that have no pre-existing value
-------------------------------------------------------------------------------------------------------
-
-In this change, the default return value of ``None`` when accessing an object
-is now returned dynamically on each access, rather than implicitly setting the
-attribute's state with a special "set" operation when it is first accessed.
-The visible result of this change is that ``obj.__dict__`` is not implicitly
-modified on get, and there are also some minor behavioral changes
-for :func:`.attributes.get_history` and related functions.
-
-Given an object with no state::
-
-	>>> obj = Foo()
-
-It has always been SQLAlchemy's behavior such that if we access a scalar
-or many-to-one attribute that was never set, it is returned as ``None``::
-
-	>>> obj.someattr
-	None
-
-This value of ``None`` is in fact now part of the state of ``obj``, and is
-not unlike as though we had set the attribute explicitly, e.g.
-``obj.someattr = None``.  However, the "set on get" here would behave
-differently as far as history and events.   It would not emit any attribute
-event, and additionally if we view history, we see this::
-
-	>>> inspect(obj).attrs.someattr.history
-	History(added=(), unchanged=[None], deleted=())	  # 0.9 and below
-
-That is, it's as though the attribute were always ``None`` and were
-never changed.  This is explicitly different from if we had set the
-attribute first instead::
-
-	>>> obj = Foo()
-	>>> obj.someattr = None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=[None], unchanged=(), deleted=())  # all versions
-
-The above means that the behavior of our "set" operation can be corrupted
-by the fact that the value was accessed via "get" earlier.  In 1.0, this
-inconsistency has been resolved, by no longer actually setting anything
-when the default "getter" is used.
-
-	>>> obj = Foo()
-	>>> obj.someattr
-	None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=(), unchanged=(), deleted=())  # 1.0
-	>>> obj.someattr = None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=[None], unchanged=(), deleted=())
-
-The reason the above behavior hasn't had much impact is because the
-INSERT statement in relational databases considers a missing value to be
-the same as NULL in most cases.   Whether SQLAlchemy received a history
-event for a particular attribute set to None or not would usually not matter;
-as the difference between sending None/NULL or not wouldn't have an impact.
-However, as :ticket:`3060` illustrates, there are some seldom edge cases
-where we do in fact want to positively have ``None`` set.  Also, allowing
-the attribute event here means it's now possible to create "default value"
-functions for ORM mapped attributes.
-
-As part of this change, the generation of the implicit "None" is now disabled
-for other situations where this used to occur; this includes when an
-attribute set operation on a many-to-one is received; previously, the "old" value
-would be "None" if it had been not set otherwise; it now will send the
-value :data:`.orm.attributes.NEVER_SET`, which is a value that may be sent
-to an attribute listener now.   This symbol may also be received when
-calling on mapper utility functions such as :meth:`.Mapper.primary_key_from_instance`;
-if the primary key attributes have no setting at all, whereas the value
-would be ``None`` before, it will now be the :data:`.orm.attributes.NEVER_SET`
-symbol, and no change to the object's state occurs.
-
-:ticket:`3061`
-
-.. _migration_2992:
-
-Warnings emitted when coercing full SQL fragments into text()
--------------------------------------------------------------
-
-Since SQLAlchemy's inception, there has always been an emphasis on not getting
-in the way of the usage of plain text.   The Core and ORM expression systems
-were intended to allow any number of points at which the user can just
-use plain text SQL expressions, not just in the sense that you can send a
-full SQL string to :meth:`.Connection.execute`, but that you can send strings
-with SQL expressions into many functions, such as :meth:`.Select.where`,
-:meth:`.Query.filter`, and :meth:`.Select.order_by`.
-
-Note that by "SQL expressions" we mean a **full fragment of a SQL string**,
-such as::
-
-	# the argument sent to where() is a full SQL expression
-	stmt = select([sometable]).where("somecolumn = 'value'")
-
-and we are **not talking about string arguments**, that is, the normal
-behavior of passing string values that become parameterized::
-
-	# This is a normal Core expression with a string argument -
-	# we aren't talking about this!!
-	stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
-
-The Core tutorial has long featured an example of the use of this technique,
-using a :func:`.select` construct where virtually all components of it
-are specified as straight strings.  However, despite this long-standing
-behavior and example, users are apparently surprised that this behavior
-exists, and when asking around the community, I was unable to find any user
-that was in fact *not* surprised that you can send a full string into a method
-like :meth:`.Query.filter`.
-
-So the change here is to encourage the user to qualify textual strings when
-composing SQL that is partially or fully composed from textual fragments.
-When composing a select as below::
-
-	stmt = select(["a", "b"]).where("a = b").select_from("sometable")
-
-The statement is built up normally, with all the same coercions as before.
-However, one will see the following warnings emitted::
-
-	SAWarning: Textual column expression 'a' should be explicitly declared
-	with text('a'), or use column('a') for more specificity
-	(this warning may be suppressed after 10 occurrences)
-
-	SAWarning: Textual column expression 'b' should be explicitly declared
-	with text('b'), or use column('b') for more specificity
-	(this warning may be suppressed after 10 occurrences)
-
-	SAWarning: Textual SQL expression 'a = b' should be explicitly declared
-	as text('a = b') (this warning may be suppressed after 10 occurrences)
-
-	SAWarning: Textual SQL FROM expression 'sometable' should be explicitly
-	declared as text('sometable'), or use table('sometable') for more
-	specificity (this warning may be suppressed after 10 occurrences)
-
-These warnings attempt to show exactly where the issue is by displaying
-the parameters as well as where the string was received.
-The warnings make use of the :ref:`feature_3178` so that parameterized warnings
-can be emitted safely without running out of memory, and as always, if
-one wishes the warnings to be exceptions, the
-`Python Warnings Filter <https://docs.python.org/2/library/warnings.html>`_
-should be used::
-
-	import warnings
-	warnings.simplefilter("error")   # all warnings raise an exception
-
-Given the above warnings, our statement works just fine, but
-to get rid of the warnings we would rewrite our statement as follows::
-
-	from sqlalchemy import select, text
-	stmt = select([
-            text("a"),
-            text("b")
-        ]).where(text("a = b")).select_from(text("sometable"))
-
-and as the warnings suggest, we can give our statement more specificity
-about the text if we use :func:`.column` and :func:`.table`::
-
-	from sqlalchemy import select, text, column, table
-
-	stmt = select([column("a"), column("b")]).\\
-		where(text("a = b")).select_from(table("sometable"))
-
-Where note also that :func:`.table` and :func:`.column` can now
-be imported from "sqlalchemy" without the "sql" part.
-
-The behavior here applies to :func:`.select` as well as to key methods
-on :class:`.Query`, including :meth:`.Query.filter`,
-:meth:`.Query.from_statement` and :meth:`.Query.having`.
-
-ORDER BY and GROUP BY are special cases
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-There is one case where usage of a string has special meaning, and as part
-of this change we have enhanced its functionality.  When we have a
-:func:`.select` or :class:`.Query` that refers to some column name or named
-label, we might want to GROUP BY and/or ORDER BY known columns or labels::
-
-	stmt = select([
-		user.c.name,
-		func.count(user.c.id).label("id_count")
-	]).group_by("name").order_by("id_count")
-
-In the above statement we expect to see "ORDER BY id_count", as opposed to a
-re-statement of the function.   The string argument given is actively
-matched to an entry in the columns clause during compilation, so the above
-statement would produce as we expect, without warnings::
-
-	SELECT users.name, count(users.id) AS id_count
-	FROM users GROUP BY users.name ORDER BY id_count
-
-However, if we refer to a name that cannot be located, then we get
-the warning again, as below::
-
-	stmt = select([
-            user.c.name,
-            func.count(user.c.id).label("id_count")
-        ]).order_by("some_label")
-
-The output does what we say, but again it warns us::
-
-	SAWarning: Can't resolve label reference 'some_label'; converting to
-	text() (this warning may be suppressed after 10 occurrences)
-
-	SELECT users.name, count(users.id) AS id_count
-	FROM users ORDER BY some_label
-
-The above behavior applies to all those places where we might want to refer
-to a so-called "label reference"; ORDER BY and GROUP BY, but also within an
-OVER clause as well as a DISTINCT ON clause that refers to columns (e.g. the
-Postgresql syntax).
-
-We can still specify any arbitrary expression for ORDER BY or others using
-:func:`.text`::
-
-	stmt = select([users]).order_by(text("some special expression"))
-
-The upshot of the whole change is that SQLAlchemy now would like us
-to tell it when a string is sent that this string is explicitly
-a :func:`.text` construct, or a column, table, etc., and if we use it as a
-label name in an order by, group by, or other expression, SQLAlchemy expects
-that the string resolves to something known, else it should again
-be qualified with :func:`.text` or similar.
-
-:ticket:`2992`
-
-.. _migration_yield_per_eager_loading:
-
-Joined/Subquery eager loading explicitly disallowed with yield_per
-------------------------------------------------------------------
-
-In order to make the :meth:`.Query.yield_per` method easier to use,
-an exception is raised if any subquery eager loaders, or joined
-eager loaders that would use collections, are
-to take effect when yield_per is used, as these are currently not compatible
-with yield-per (subquery loading could be in theory, however).
-When this error is raised, the :func:`.lazyload` option can be sent with
-an asterisk::
-
-	q = sess.query(Object).options(lazyload('*')).yield_per(100)
-
-or use :meth:`.Query.enable_eagerloads`::
-
-	q = sess.query(Object).enable_eagerloads(False).yield_per(100)
-
-The :func:`.lazyload` option has the advantage that additional many-to-one
-joined loader options can still be used::
-
-	q = sess.query(Object).options(
-		lazyload('*'), joinedload("some_manytoone")).yield_per(100)
-
-
-.. _migration_migration_deprecated_orm_events:
-
-Deprecated ORM Event Hooks Removed
-----------------------------------
-
-The following ORM event hooks, some of which have been deprecated since
-0.5, have been removed:   ``translate_row``, ``populate_instance``,
-``append_result``, ``create_instance``.  The use cases for these hooks
-originated in the very early 0.1 / 0.2 series of SQLAlchemy and have long
-since been unnecessary.  In particular, the hooks were largely unusable
-as the behavioral contracts within these events was strongly linked to
-the surrounding internals, such as how an instance needs to be created
-and initialized as well as how columns are located within an ORM-generated
-row.   The removal of these hooks greatly simplifies the mechanics of ORM
-object loading.
-
-.. _bundle_api_change:
-
-API Change for new Bundle feature when custom row loaders are used
-------------------------------------------------------------------
-
-The new :class:`.Bundle` object of 0.9 has a small change in API,
-when the ``create_row_processor()`` method is overridden on a custom class.
-Previously, the sample code looked like::
-
-    from sqlalchemy.orm import Bundle
-
-    class DictBundle(Bundle):
-        def create_row_processor(self, query, procs, labels):
-            """Override create_row_processor to return values as dictionaries"""
-            def proc(row, result):
-                return dict(
-                            zip(labels, (proc(row, result) for proc in procs))
-                        )
-            return proc
-
-The unused ``result`` member is now removed::
-
-    from sqlalchemy.orm import Bundle
-
-    class DictBundle(Bundle):
-        def create_row_processor(self, query, procs, labels):
-            """Override create_row_processor to return values as dictionaries"""
-            def proc(row):
-                return dict(
-                            zip(labels, (proc(row) for proc in procs))
-                        )
-            return proc
-
-.. seealso::
-
-	:ref:`bundles`
-
-.. _migration_3008:
-
-Right inner join nesting now the default for joinedload with innerjoin=True
----------------------------------------------------------------------------
-
-The behavior of :paramref:`.joinedload.innerjoin` as well as
-:paramref:`.relationship.innerjoin` is now to use "nested"
-inner joins, that is, right-nested, as the default behavior when an
-inner join joined eager load is chained to an outer join eager load.  In
-order to get the old behavior of chaining all joined eager loads as
-outer join when an outer join is present, use ``innerjoin="unnested"``.
-
-As introduced in :ref:`feature_2976` from version 0.9, the behavior of
-``innerjoin="nested"`` is that an inner join eager load chained to an outer
-join eager load will use a right-nested join.  ``"nested"`` is now implied
-when using ``innerjoin=True``::
-
-	query(User).options(
-		joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
-
-With the new default, this will render the FROM clause in the form::
-
-	FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
-
-That is, using a right-nested join for the INNER join so that the full
-result of ``users`` can be returned.   The use of an INNER join is more efficient
-than using an OUTER join, and allows the :paramref:`.joinedload.innerjoin`
-optimization parameter to take effect in all cases.
-
-To get the older behavior, use ``innerjoin="unnested"``::
-
-	query(User).options(
-		joinedload("orders", innerjoin=False).joinedload("items", innerjoin="unnested"))
-
-This will avoid right-nested joins and chain the joins together using all
-OUTER joins despite the innerjoin directive::
-
-	FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
-
-As noted in the 0.9 notes, the only database backend that has difficulty
-with right-nested joins is SQLite; SQLAlchemy as of 0.9 converts a right-nested
-join into a subquery as a join target on SQLite.
-
-.. seealso::
-
-	:ref:`feature_2976` - description of the feature as introduced in 0.9.4.
-
-:ticket:`3008`
-
-query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
------------------------------------------------------------------------------------
-
-The "evaulator" for :meth:`.Query.update` won't work with multi-table
-updates, and needs to be set to ``synchronize_session=False`` or
-``synchronize_session='fetch'`` when multiple tables are present.
-The new behavior is that an explicit exception is now raised, with a message
-to change the synchronize setting.
-This is upgraded from a warning emitted as of 0.9.7.
-
-:ticket:`3117`
-
-Resurrect Event has been Removed
---------------------------------
-
-The "resurrect" ORM event has been removed entirely.  This event ceased to
-have any function since version 0.8 removed the older "mutable" system
-from the unit of work.
-
-
-.. _behavioral_changes_core_10:
-
-Behavioral Changes - Core
-=========================
-
-.. _change_3163:
-
-Event listeners can not be added or removed from within that event's runner
----------------------------------------------------------------------------
-
-Removal of an event listener from inside that same event itself would
-modify  the elements of a list during iteration, which would cause
-still-attached event listeners to silently fail to fire.    To prevent
-this while still maintaining performance, the lists have been replaced
-with ``collections.deque()``, which does not allow any additions or
-removals during iteration, and instead raises ``RuntimeError``.
-
-:ticket:`3163`
-
-.. _change_3169:
-
-The INSERT...FROM SELECT construct now implies ``inline=True``
---------------------------------------------------------------
-
-Using :meth:`.Insert.from_select` now implies ``inline=True``
-on :func:`.insert`.  This helps to fix a bug where an
-INSERT...FROM SELECT construct would inadvertently be compiled
-as "implicit returning" on supporting backends, which would
-cause breakage in the case of an INSERT that inserts zero rows
-(as implicit returning expects a row), as well as arbitrary
-return data in the case of an INSERT that inserts multiple
-rows (e.g. only the first row of many).
-A similar change is also applied to an INSERT..VALUES
-with multiple parameter sets; implicit RETURNING will no longer emit
-for this statement either.  As both of these constructs deal
-with varible numbers of rows, the
-:attr:`.ResultProxy.inserted_primary_key` accessor does not
-apply.   Previously, there was a documentation note that one
-may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
-don't support returning and therefore can't do "implicit" returning,
-but there's no reason an INSERT...FROM SELECT needs implicit returning
-in any case.   Regular explicit :meth:`.Insert.returning` should
-be used to return variable numbers of result rows if inserted
-data is needed.
-
-:ticket:`3169`
-
-.. _change_3027:
-
-``autoload_with`` now implies ``autoload=True``
------------------------------------------------
-
-A :class:`.Table` can be set up for reflection by passing
-:paramref:`.Table.autoload_with` alone::
-
-	my_table = Table('my_table', metadata, autoload_with=some_engine)
-
-:ticket:`3027`
 
 
 New Features
@@ -488,6 +49,7 @@ instead raise a :class:`.CompileError` on access.  A third-party dialect which
 wishes to support the new feature should now call upon the ``._limit_clause``
 and ``._offset_clause`` attributes to receive the full SQL expression, rather
 than the integer value.
+
 
 Behavioral Improvements
 =======================
@@ -744,6 +306,446 @@ Renders::
 
 
 :ticket:`3177`
+
+.. _behavioral_changes_orm_10:
+
+Behavioral Changes - ORM
+========================
+
+.. _migration_3061:
+
+Changes to attribute events and other operations regarding attributes that have no pre-existing value
+------------------------------------------------------------------------------------------------------
+
+In this change, the default return value of ``None`` when accessing an object
+is now returned dynamically on each access, rather than implicitly setting the
+attribute's state with a special "set" operation when it is first accessed.
+The visible result of this change is that ``obj.__dict__`` is not implicitly
+modified on get, and there are also some minor behavioral changes
+for :func:`.attributes.get_history` and related functions.
+
+Given an object with no state::
+
+	>>> obj = Foo()
+
+It has always been SQLAlchemy's behavior such that if we access a scalar
+or many-to-one attribute that was never set, it is returned as ``None``::
+
+	>>> obj.someattr
+	None
+
+This value of ``None`` is in fact now part of the state of ``obj``, and is
+not unlike as though we had set the attribute explicitly, e.g.
+``obj.someattr = None``.  However, the "set on get" here would behave
+differently as far as history and events.   It would not emit any attribute
+event, and additionally if we view history, we see this::
+
+	>>> inspect(obj).attrs.someattr.history
+	History(added=(), unchanged=[None], deleted=())	  # 0.9 and below
+
+That is, it's as though the attribute were always ``None`` and were
+never changed.  This is explicitly different from if we had set the
+attribute first instead::
+
+	>>> obj = Foo()
+	>>> obj.someattr = None
+	>>> inspect(obj).attrs.someattr.history
+	History(added=[None], unchanged=(), deleted=())  # all versions
+
+The above means that the behavior of our "set" operation can be corrupted
+by the fact that the value was accessed via "get" earlier.  In 1.0, this
+inconsistency has been resolved, by no longer actually setting anything
+when the default "getter" is used.
+
+	>>> obj = Foo()
+	>>> obj.someattr
+	None
+	>>> inspect(obj).attrs.someattr.history
+	History(added=(), unchanged=(), deleted=())  # 1.0
+	>>> obj.someattr = None
+	>>> inspect(obj).attrs.someattr.history
+	History(added=[None], unchanged=(), deleted=())
+
+The reason the above behavior hasn't had much impact is because the
+INSERT statement in relational databases considers a missing value to be
+the same as NULL in most cases.   Whether SQLAlchemy received a history
+event for a particular attribute set to None or not would usually not matter;
+as the difference between sending None/NULL or not wouldn't have an impact.
+However, as :ticket:`3060` illustrates, there are some seldom edge cases
+where we do in fact want to positively have ``None`` set.  Also, allowing
+the attribute event here means it's now possible to create "default value"
+functions for ORM mapped attributes.
+
+As part of this change, the generation of the implicit "None" is now disabled
+for other situations where this used to occur; this includes when an
+attribute set operation on a many-to-one is received; previously, the "old" value
+would be "None" if it had been not set otherwise; it now will send the
+value :data:`.orm.attributes.NEVER_SET`, which is a value that may be sent
+to an attribute listener now.   This symbol may also be received when
+calling on mapper utility functions such as :meth:`.Mapper.primary_key_from_instance`;
+if the primary key attributes have no setting at all, whereas the value
+would be ``None`` before, it will now be the :data:`.orm.attributes.NEVER_SET`
+symbol, and no change to the object's state occurs.
+
+:ticket:`3061`
+
+.. _migration_yield_per_eager_loading:
+
+Joined/Subquery eager loading explicitly disallowed with yield_per
+------------------------------------------------------------------
+
+In order to make the :meth:`.Query.yield_per` method easier to use,
+an exception is raised if any subquery eager loaders, or joined
+eager loaders that would use collections, are
+to take effect when yield_per is used, as these are currently not compatible
+with yield-per (subquery loading could be in theory, however).
+When this error is raised, the :func:`.lazyload` option can be sent with
+an asterisk::
+
+	q = sess.query(Object).options(lazyload('*')).yield_per(100)
+
+or use :meth:`.Query.enable_eagerloads`::
+
+	q = sess.query(Object).enable_eagerloads(False).yield_per(100)
+
+The :func:`.lazyload` option has the advantage that additional many-to-one
+joined loader options can still be used::
+
+	q = sess.query(Object).options(
+		lazyload('*'), joinedload("some_manytoone")).yield_per(100)
+
+
+.. _migration_migration_deprecated_orm_events:
+
+Deprecated ORM Event Hooks Removed
+----------------------------------
+
+The following ORM event hooks, some of which have been deprecated since
+0.5, have been removed:   ``translate_row``, ``populate_instance``,
+``append_result``, ``create_instance``.  The use cases for these hooks
+originated in the very early 0.1 / 0.2 series of SQLAlchemy and have long
+since been unnecessary.  In particular, the hooks were largely unusable
+as the behavioral contracts within these events was strongly linked to
+the surrounding internals, such as how an instance needs to be created
+and initialized as well as how columns are located within an ORM-generated
+row.   The removal of these hooks greatly simplifies the mechanics of ORM
+object loading.
+
+.. _bundle_api_change:
+
+API Change for new Bundle feature when custom row loaders are used
+------------------------------------------------------------------
+
+The new :class:`.Bundle` object of 0.9 has a small change in API,
+when the ``create_row_processor()`` method is overridden on a custom class.
+Previously, the sample code looked like::
+
+    from sqlalchemy.orm import Bundle
+
+    class DictBundle(Bundle):
+        def create_row_processor(self, query, procs, labels):
+            """Override create_row_processor to return values as dictionaries"""
+            def proc(row, result):
+                return dict(
+                            zip(labels, (proc(row, result) for proc in procs))
+                        )
+            return proc
+
+The unused ``result`` member is now removed::
+
+    from sqlalchemy.orm import Bundle
+
+    class DictBundle(Bundle):
+        def create_row_processor(self, query, procs, labels):
+            """Override create_row_processor to return values as dictionaries"""
+            def proc(row):
+                return dict(
+                            zip(labels, (proc(row) for proc in procs))
+                        )
+            return proc
+
+.. seealso::
+
+	:ref:`bundles`
+
+.. _migration_3008:
+
+Right inner join nesting now the default for joinedload with innerjoin=True
+---------------------------------------------------------------------------
+
+The behavior of :paramref:`.joinedload.innerjoin` as well as
+:paramref:`.relationship.innerjoin` is now to use "nested"
+inner joins, that is, right-nested, as the default behavior when an
+inner join joined eager load is chained to an outer join eager load.  In
+order to get the old behavior of chaining all joined eager loads as
+outer join when an outer join is present, use ``innerjoin="unnested"``.
+
+As introduced in :ref:`feature_2976` from version 0.9, the behavior of
+``innerjoin="nested"`` is that an inner join eager load chained to an outer
+join eager load will use a right-nested join.  ``"nested"`` is now implied
+when using ``innerjoin=True``::
+
+	query(User).options(
+		joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
+
+With the new default, this will render the FROM clause in the form::
+
+	FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
+
+That is, using a right-nested join for the INNER join so that the full
+result of ``users`` can be returned.   The use of an INNER join is more efficient
+than using an OUTER join, and allows the :paramref:`.joinedload.innerjoin`
+optimization parameter to take effect in all cases.
+
+To get the older behavior, use ``innerjoin="unnested"``::
+
+	query(User).options(
+		joinedload("orders", innerjoin=False).joinedload("items", innerjoin="unnested"))
+
+This will avoid right-nested joins and chain the joins together using all
+OUTER joins despite the innerjoin directive::
+
+	FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
+
+As noted in the 0.9 notes, the only database backend that has difficulty
+with right-nested joins is SQLite; SQLAlchemy as of 0.9 converts a right-nested
+join into a subquery as a join target on SQLite.
+
+.. seealso::
+
+	:ref:`feature_2976` - description of the feature as introduced in 0.9.4.
+
+:ticket:`3008`
+
+query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
+-----------------------------------------------------------------------------------
+
+The "evaulator" for :meth:`.Query.update` won't work with multi-table
+updates, and needs to be set to ``synchronize_session=False`` or
+``synchronize_session='fetch'`` when multiple tables are present.
+The new behavior is that an explicit exception is now raised, with a message
+to change the synchronize setting.
+This is upgraded from a warning emitted as of 0.9.7.
+
+:ticket:`3117`
+
+Resurrect Event has been Removed
+--------------------------------
+
+The "resurrect" ORM event has been removed entirely.  This event ceased to
+have any function since version 0.8 removed the older "mutable" system
+from the unit of work.
+
+
+.. _behavioral_changes_core_10:
+
+Behavioral Changes - Core
+=========================
+
+.. _migration_2992:
+
+Warnings emitted when coercing full SQL fragments into text()
+-------------------------------------------------------------
+
+Since SQLAlchemy's inception, there has always been an emphasis on not getting
+in the way of the usage of plain text.   The Core and ORM expression systems
+were intended to allow any number of points at which the user can just
+use plain text SQL expressions, not just in the sense that you can send a
+full SQL string to :meth:`.Connection.execute`, but that you can send strings
+with SQL expressions into many functions, such as :meth:`.Select.where`,
+:meth:`.Query.filter`, and :meth:`.Select.order_by`.
+
+Note that by "SQL expressions" we mean a **full fragment of a SQL string**,
+such as::
+
+	# the argument sent to where() is a full SQL expression
+	stmt = select([sometable]).where("somecolumn = 'value'")
+
+and we are **not talking about string arguments**, that is, the normal
+behavior of passing string values that become parameterized::
+
+	# This is a normal Core expression with a string argument -
+	# we aren't talking about this!!
+	stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
+
+The Core tutorial has long featured an example of the use of this technique,
+using a :func:`.select` construct where virtually all components of it
+are specified as straight strings.  However, despite this long-standing
+behavior and example, users are apparently surprised that this behavior
+exists, and when asking around the community, I was unable to find any user
+that was in fact *not* surprised that you can send a full string into a method
+like :meth:`.Query.filter`.
+
+So the change here is to encourage the user to qualify textual strings when
+composing SQL that is partially or fully composed from textual fragments.
+When composing a select as below::
+
+	stmt = select(["a", "b"]).where("a = b").select_from("sometable")
+
+The statement is built up normally, with all the same coercions as before.
+However, one will see the following warnings emitted::
+
+	SAWarning: Textual column expression 'a' should be explicitly declared
+	with text('a'), or use column('a') for more specificity
+	(this warning may be suppressed after 10 occurrences)
+
+	SAWarning: Textual column expression 'b' should be explicitly declared
+	with text('b'), or use column('b') for more specificity
+	(this warning may be suppressed after 10 occurrences)
+
+	SAWarning: Textual SQL expression 'a = b' should be explicitly declared
+	as text('a = b') (this warning may be suppressed after 10 occurrences)
+
+	SAWarning: Textual SQL FROM expression 'sometable' should be explicitly
+	declared as text('sometable'), or use table('sometable') for more
+	specificity (this warning may be suppressed after 10 occurrences)
+
+These warnings attempt to show exactly where the issue is by displaying
+the parameters as well as where the string was received.
+The warnings make use of the :ref:`feature_3178` so that parameterized warnings
+can be emitted safely without running out of memory, and as always, if
+one wishes the warnings to be exceptions, the
+`Python Warnings Filter <https://docs.python.org/2/library/warnings.html>`_
+should be used::
+
+	import warnings
+	warnings.simplefilter("error")   # all warnings raise an exception
+
+Given the above warnings, our statement works just fine, but
+to get rid of the warnings we would rewrite our statement as follows::
+
+	from sqlalchemy import select, text
+	stmt = select([
+            text("a"),
+            text("b")
+        ]).where(text("a = b")).select_from(text("sometable"))
+
+and as the warnings suggest, we can give our statement more specificity
+about the text if we use :func:`.column` and :func:`.table`::
+
+	from sqlalchemy import select, text, column, table
+
+	stmt = select([column("a"), column("b")]).\
+		where(text("a = b")).select_from(table("sometable"))
+
+Where note also that :func:`.table` and :func:`.column` can now
+be imported from "sqlalchemy" without the "sql" part.
+
+The behavior here applies to :func:`.select` as well as to key methods
+on :class:`.Query`, including :meth:`.Query.filter`,
+:meth:`.Query.from_statement` and :meth:`.Query.having`.
+
+ORDER BY and GROUP BY are special cases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There is one case where usage of a string has special meaning, and as part
+of this change we have enhanced its functionality.  When we have a
+:func:`.select` or :class:`.Query` that refers to some column name or named
+label, we might want to GROUP BY and/or ORDER BY known columns or labels::
+
+	stmt = select([
+		user.c.name,
+		func.count(user.c.id).label("id_count")
+	]).group_by("name").order_by("id_count")
+
+In the above statement we expect to see "ORDER BY id_count", as opposed to a
+re-statement of the function.   The string argument given is actively
+matched to an entry in the columns clause during compilation, so the above
+statement would produce as we expect, without warnings (though note that
+the ``"name"`` expression has been resolved to ``users.name``!)::
+
+	SELECT users.name, count(users.id) AS id_count
+	FROM users GROUP BY users.name ORDER BY id_count
+
+However, if we refer to a name that cannot be located, then we get
+the warning again, as below::
+
+	stmt = select([
+            user.c.name,
+            func.count(user.c.id).label("id_count")
+        ]).order_by("some_label")
+
+The output does what we say, but again it warns us::
+
+	SAWarning: Can't resolve label reference 'some_label'; converting to
+	text() (this warning may be suppressed after 10 occurrences)
+
+	SELECT users.name, count(users.id) AS id_count
+	FROM users ORDER BY some_label
+
+The above behavior applies to all those places where we might want to refer
+to a so-called "label reference"; ORDER BY and GROUP BY, but also within an
+OVER clause as well as a DISTINCT ON clause that refers to columns (e.g. the
+Postgresql syntax).
+
+We can still specify any arbitrary expression for ORDER BY or others using
+:func:`.text`::
+
+	stmt = select([users]).order_by(text("some special expression"))
+
+The upshot of the whole change is that SQLAlchemy now would like us
+to tell it when a string is sent that this string is explicitly
+a :func:`.text` construct, or a column, table, etc., and if we use it as a
+label name in an order by, group by, or other expression, SQLAlchemy expects
+that the string resolves to something known, else it should again
+be qualified with :func:`.text` or similar.
+
+:ticket:`2992`
+
+.. _change_3163:
+
+Event listeners can not be added or removed from within that event's runner
+---------------------------------------------------------------------------
+
+Removal of an event listener from inside that same event itself would
+modify  the elements of a list during iteration, which would cause
+still-attached event listeners to silently fail to fire.    To prevent
+this while still maintaining performance, the lists have been replaced
+with ``collections.deque()``, which does not allow any additions or
+removals during iteration, and instead raises ``RuntimeError``.
+
+:ticket:`3163`
+
+.. _change_3169:
+
+The INSERT...FROM SELECT construct now implies ``inline=True``
+--------------------------------------------------------------
+
+Using :meth:`.Insert.from_select` now implies ``inline=True``
+on :func:`.insert`.  This helps to fix a bug where an
+INSERT...FROM SELECT construct would inadvertently be compiled
+as "implicit returning" on supporting backends, which would
+cause breakage in the case of an INSERT that inserts zero rows
+(as implicit returning expects a row), as well as arbitrary
+return data in the case of an INSERT that inserts multiple
+rows (e.g. only the first row of many).
+A similar change is also applied to an INSERT..VALUES
+with multiple parameter sets; implicit RETURNING will no longer emit
+for this statement either.  As both of these constructs deal
+with varible numbers of rows, the
+:attr:`.ResultProxy.inserted_primary_key` accessor does not
+apply.   Previously, there was a documentation note that one
+may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
+don't support returning and therefore can't do "implicit" returning,
+but there's no reason an INSERT...FROM SELECT needs implicit returning
+in any case.   Regular explicit :meth:`.Insert.returning` should
+be used to return variable numbers of result rows if inserted
+data is needed.
+
+:ticket:`3169`
+
+.. _change_3027:
+
+``autoload_with`` now implies ``autoload=True``
+-----------------------------------------------
+
+A :class:`.Table` can be set up for reflection by passing
+:paramref:`.Table.autoload_with` alone::
+
+	my_table = Table('my_table', metadata, autoload_with=some_engine)
+
+:ticket:`3027`
+
 
 
 Dialect Changes
