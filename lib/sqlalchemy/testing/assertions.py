@@ -24,6 +24,28 @@ from .util import fail
 import contextlib
 
 
+@contextlib.contextmanager
+def expect_warnings(*messages):
+    """Context manager to expect warnings with the given messages."""
+
+    filters = [dict(action='ignore',
+                    category=sa_exc.SAPendingDeprecationWarning)]
+    if not messages:
+        filters.append(dict(action='ignore',
+                            category=sa_exc.SAWarning))
+    else:
+        filters.extend(dict(action='ignore',
+                            message=message,
+                            category=sa_exc.SAWarning)
+                       for message in messages)
+    for f in filters:
+        warnings.filterwarnings(**f)
+    try:
+        yield
+    finally:
+        resetwarnings()
+
+
 def emits_warning(*messages):
     """Mark a test as emitting a warning.
 
@@ -31,31 +53,10 @@ def emits_warning(*messages):
     strings; these will be matched to the root of the warning description by
     warnings.filterwarnings().
     """
-    # TODO: it would be nice to assert that a named warning was
-    # emitted. should work with some monkeypatching of warnings,
-    # and may work on non-CPython if they keep to the spirit of
-    # warnings.showwarning's docstring.
-    # - update: jython looks ok, it uses cpython's module
-
     @decorator
     def decorate(fn, *args, **kw):
-        # todo: should probably be strict about this, too
-        filters = [dict(action='ignore',
-                        category=sa_exc.SAPendingDeprecationWarning)]
-        if not messages:
-            filters.append(dict(action='ignore',
-                                category=sa_exc.SAWarning))
-        else:
-            filters.extend(dict(action='ignore',
-                                message=message,
-                                category=sa_exc.SAWarning)
-                           for message in messages)
-        for f in filters:
-            warnings.filterwarnings(**f)
-        try:
+        with expect_warnings(*messages):
             return fn(*args, **kw)
-        finally:
-            resetwarnings()
     return decorate
 
 
