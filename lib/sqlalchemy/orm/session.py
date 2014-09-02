@@ -2036,20 +2036,22 @@ class Session(_SessionClassMethods):
             with util.safe_reraise():
                 transaction.rollback(_capture_exception=True)
 
-    def bulk_save_objects(self, objects):
+    def bulk_save_objects(self, objects, return_defaults=False):
         for (mapper, isupdate), states in itertools.groupby(
             (attributes.instance_state(obj) for obj in objects),
             lambda state: (state.mapper, state.key is not None)
         ):
-            self._bulk_save_mappings(mapper, states, isupdate, True)
+            self._bulk_save_mappings(
+                mapper, states, isupdate, True, return_defaults)
 
-    def bulk_insert_mappings(self, mapper, mappings):
-        self._bulk_save_mappings(mapper, mappings, False, False)
+    def bulk_insert_mappings(self, mapper, mappings, return_defaults=False):
+        self._bulk_save_mappings(mapper, mappings, False, False, return_defaults)
 
     def bulk_update_mappings(self, mapper, mappings):
-        self._bulk_save_mappings(mapper, mappings, True, False)
+        self._bulk_save_mappings(mapper, mappings, True, False, False)
 
-    def _bulk_save_mappings(self, mapper, mappings, isupdate, isstates):
+    def _bulk_save_mappings(
+            self, mapper, mappings, isupdate, isstates, return_defaults):
         mapper = _class_to_mapper(mapper)
         self._flushing = True
 
@@ -2061,7 +2063,7 @@ class Session(_SessionClassMethods):
                     mapper, mappings, transaction, isstates)
             else:
                 persistence._bulk_insert(
-                    mapper, mappings, transaction, isstates)
+                    mapper, mappings, transaction, isstates, return_defaults)
             transaction.commit()
 
         except:
