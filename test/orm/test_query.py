@@ -2277,6 +2277,8 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
 
 
 class TextTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_fulltext(self):
         User = self.classes.User
 
