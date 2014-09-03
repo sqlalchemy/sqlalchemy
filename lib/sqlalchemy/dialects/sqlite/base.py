@@ -591,19 +591,19 @@ class SQLiteCompiler(compiler.SQLCompiler):
             raise exc.CompileError(
                 "%s is not a valid extract argument." % extract.field)
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         text = ""
         if select._limit_clause is not None:
-            text += "\n LIMIT " + self.process(select._limit_clause)
+            text += "\n LIMIT " + self.process(select._limit_clause, **kw)
         if select._offset_clause is not None:
             if select._limit_clause is None:
                 text += "\n LIMIT " + self.process(sql.literal(-1))
-            text += " OFFSET " + self.process(select._offset_clause)
+            text += " OFFSET " + self.process(select._offset_clause, **kw)
         else:
-            text += " OFFSET " + self.process(sql.literal(0))
+            text += " OFFSET " + self.process(sql.literal(0), **kw)
         return text
 
-    def for_update_clause(self, select):
+    def for_update_clause(self, select, **kw):
         # sqlite has no "FOR UPDATE" AFAICT
         return ''
 

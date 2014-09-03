@@ -346,7 +346,7 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
     def get_from_hint_text(self, table, text):
         return text
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         # Limit in sybase is after the select keyword
         return ""
 

@@ -375,7 +375,11 @@
 		here is fully backwards compatible with existing third party dialects,
 		however those dialects which implement special LIMIT/OFFSET systems
 		will need modification in order to take advantage of the new
-		capabilities.  Work on this feature is courtesy of Dobes Vandermeer.
+		capabilities.  Limit and offset also support "literal_binds" mode,
+        where bound parameters are rendered inline as strings based on
+        a compile-time option.
+        Work on this feature is courtesy of Dobes Vandermeer.
+
 
 		.. seealso::
 

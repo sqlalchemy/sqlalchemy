@@ -1309,14 +1309,14 @@ class PGCompiler(compiler.SQLCompiler):
     def visit_sequence(self, seq):
         return "nextval('%s')" % self.preparer.format_sequence(seq)
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         text = ""
         if select._limit_clause is not None:
-            text += " \n LIMIT " + self.process(select._limit_clause)
+            text += " \n LIMIT " + self.process(select._limit_clause, **kw)
         if select._offset_clause is not None:
             if select._limit_clause is None:
                 text += " \n LIMIT ALL"
-            text += " OFFSET " + self.process(select._offset_clause)
+            text += " OFFSET " + self.process(select._offset_clause, **kw)
         return text
 
     def format_from_hint_text(self, sqltext, table, hint, iscrud):
@@ -1337,7 +1337,7 @@ class PGCompiler(compiler.SQLCompiler):
         else:
             return ""
 
-    def for_update_clause(self, select):
+    def for_update_clause(self, select, **kw):
 
         if select._for_update_arg.read:
             tmp = " FOR SHARE"
@@ -1349,7 +1349,7 @@ class PGCompiler(compiler.SQLCompiler):
                 c.table if isinstance(c, expression.ColumnClause)
                 else c for c in select._for_update_arg.of)
             tmp += " OF " + ", ".join(
-                self.process(table, ashint=True)
+                self.process(table, ashint=True, **kw)
                 for table in tables
             )
 

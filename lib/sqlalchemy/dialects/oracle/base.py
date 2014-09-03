@@ -740,10 +740,10 @@ class OracleCompiler(compiler.SQLCompiler):
         kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
         return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         return ""
 
-    def for_update_clause(self, select):
+    def for_update_clause(self, select, **kw):
         if self.is_subquery():
             return ""
 
@@ -751,7 +751,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
         if select._for_update_arg.of:
             tmp += ' OF ' + ', '.join(
-                self.process(elem) for elem in
+                self.process(elem, **kw) for elem in
                 select._for_update_arg.of
             )
 
