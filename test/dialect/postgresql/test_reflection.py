@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 
-class AlternateRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+class AltRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     """Test reflection on materialized views and foreign tables"""
 
     __requires__ = 'postgresql_test_dblink',
@@ -23,7 +23,8 @@ class AlternateRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults)
     @classmethod
     def setup_class(cls):
         from sqlalchemy.testing import config
-        cls.dblink = config.file_config.get('sqla_testing', 'postgres_test_db_link')
+        cls.dblink = config.file_config.get('sqla_testing',
+                                            'postgres_test_db_link')
 
         metadata = MetaData(testing.db)
         testtable = Table(
@@ -39,8 +40,10 @@ class AlternateRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults)
 
         for ddl in \
                 "CREATE MATERIALIZED VIEW test_mview AS SELECT * FROM testtable;", \
-                "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname 'test', host '%s');" % cls.dblink, \
-                "CREATE USER MAPPING FOR public SERVER test_server options (user 'scott', password 'tiger');", \
+                "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw \
+                    OPTIONS (dbname 'test', host '%s');" % cls.dblink, \
+                "CREATE USER MAPPING FOR public \
+                    SERVER test_server options (user 'scott', password 'tiger');", \
                 "CREATE FOREIGN TABLE test_foreigntable ( \
                     id          INT, \
                     data        VARCHAR(30) \
@@ -63,7 +66,8 @@ class AlternateRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults)
     def test_mview_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('test_mview', metadata, autoload=True)
-        eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected mview didn't equal expected columns")
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected mview didn't equal expected columns")
 
     def test_mview_select(self):
         metadata = MetaData(testing.db)
@@ -75,7 +79,8 @@ class AlternateRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults)
     def test_foreign_table_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('test_foreigntable', metadata, autoload=True)
-        eq_(set(table.columns.keys()), set(['id', 'data']), "Columns of reflected foreign table didn't equal expected columns")
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected foreign table didn't equal expected columns")
 
     def test_foreign_table_select(self):
         metadata = MetaData(testing.db)

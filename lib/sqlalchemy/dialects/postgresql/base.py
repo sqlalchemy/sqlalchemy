@@ -2086,7 +2086,7 @@ class PGDialect(default.DefaultDialect):
         s = """
         SELECT relname
         FROM pg_class c
-        WHERE relkind = 'v'
+        WHERE relkind IN ('m', v')
           AND '%(schema)s' = (select nspname from pg_namespace n
           where n.oid = c.relnamespace)
         """ % dict(schema=current_schema)
@@ -2097,6 +2097,24 @@ class PGDialect(default.DefaultDialect):
         else:
             view_names = [row[0] for row in connection.execute(s)]
         return view_names
+
+    @reflection.cache
+    def get_foreign_table_names(self, connection, schema=None, **kw):
+        if schema is not None:
+            current_schema = schema
+        else:
+            current_schema = self.default_schema_name
+
+        result = connection.execute(
+            sql.text("SELECT relname FROM pg_class c "
+                     "WHERE relkind = 'f' "
+                     "AND '%s' = (select nspname from pg_namespace n "
+                     "where n.oid = c.relnamespace) " %
+                     current_schema,
+                     typemap={'relname': sqltypes.Unicode}
+                     )
+        )
+        return [row[0] for row in result]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
@@ -2434,7 +2452,7 @@ class PGDialect(default.DefaultDialect):
 
         # cast indkey as varchar since it's an int2vector,
         # returned as a list by some drivers such as pypostgresql
-        
+
         IDX_SQL = """
           SELECT
               i.relname as relname,
