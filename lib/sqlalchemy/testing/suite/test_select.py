@@ -136,6 +136,21 @@ class LimitOffsetTest(fixtures.TablesTest):
             [(2, 2, 3), (3, 3, 4)]
         )
 
+    def test_limit_offset_nobinds(self):
+        """test that 'literal binds' mode works - no bound params."""
+
+        table = self.tables.some_table
+        stmt = select([table]).order_by(table.c.id).limit(2).offset(1)
+        sql = stmt.compile(
+            dialect=config.db.dialect,
+            compile_kwargs={"literal_binds": True})
+        sql = str(sql)
+
+        self._assert_result(
+            sql,
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
     @testing.requires.bound_limit_offset
     def test_bound_limit(self):
         table = self.tables.some_table

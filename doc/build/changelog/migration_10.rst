@@ -808,6 +808,24 @@ a cursor to be closed unless all results are fully fetched.
 
 :ticket:`2515`
 
+.. _change_3182:
+
+PyODBC driver name is required with hostname-based SQL Server connections
+-------------------------------------------------------------------------
+
+Connecting to SQL Server with PyODBC using a DSN-less connection, e.g.
+with an explicit hostname, now requires a driver name - SQLAlchemy will no
+longer attempt to guess a default::
+
+    engine = create_engine("mssql+pyodbc://scott:tiger@myhost:port/databasename?driver=SQL+Server+Native+Client+10.0")
+
+SQLAlchemy's previously hardcoded default of "SQL Server" is obsolete on
+Windows, and SQLAlchemy cannot be tasked with guessing the best driver
+based on operation system/driver detection.   Using a DSN is always preferred
+when using ODBC to avoid this issue entirely.
+
+:ticket:`3182`
+
 .. _change_2984:
 
 Drizzle Dialect is now an External Dialect

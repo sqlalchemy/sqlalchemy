@@ -924,7 +924,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def get_crud_hint_text(self, table, text):
         return text
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         # Limit in mssql is after the select keyword
         return ""
 

@@ -1662,13 +1662,13 @@ class MySQLCompiler(compiler.SQLCompiler):
              " ON ",
              self.process(join.onclause, **kwargs)))
 
-    def for_update_clause(self, select):
+    def for_update_clause(self, select, **kw):
         if select._for_update_arg.read:
             return " LOCK IN SHARE MODE"
         else:
             return " FOR UPDATE"
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         # MySQL supports:
         #   LIMIT <limit>
         #   LIMIT <offset>, <limit>
@@ -1694,15 +1694,15 @@ class MySQLCompiler(compiler.SQLCompiler):
                 # bound as part of MySQL's "syntax" for OFFSET with
                 # no LIMIT
                 return ' \n LIMIT %s, %s' % (
-                    self.process(offset_clause),
+                    self.process(offset_clause, **kw),
                     "18446744073709551615")
             else:
                 return ' \n LIMIT %s, %s' % (
-                    self.process(offset_clause),
-                    self.process(limit_clause))
+                    self.process(offset_clause, **kw),
+                    self.process(limit_clause, **kw))
         else:
             # No offset provided, so just use the limit
-            return ' \n LIMIT %s' % (self.process(limit_clause),)
+            return ' \n LIMIT %s' % (self.process(limit_clause, **kw),)
 
     def update_limit_clause(self, update_stmt):
         limit = update_stmt.kwargs.get('%s_limit' % self.dialect.name, None)

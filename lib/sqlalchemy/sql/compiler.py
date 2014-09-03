@@ -1593,10 +1593,10 @@ class SQLCompiler(Compiled):
 
         if (select._limit_clause is not None or
                 select._offset_clause is not None):
-            text += self.limit_clause(select)
+            text += self.limit_clause(select, **kwargs)
 
         if select._for_update_arg is not None:
-            text += self.for_update_clause(select)
+            text += self.for_update_clause(select, **kwargs)
 
         if self.ctes and \
                 compound_index == 0 and toplevel:
@@ -1653,7 +1653,7 @@ class SQLCompiler(Compiled):
         else:
             return ""
 
-    def for_update_clause(self, select):
+    def for_update_clause(self, select, **kw):
         return " FOR UPDATE"
 
     def returning_clause(self, stmt, returning_cols):
@@ -1661,14 +1661,14 @@ class SQLCompiler(Compiled):
             "RETURNING is not supported by this "
             "dialect's statement compiler.")
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         text = ""
         if select._limit_clause is not None:
-            text += "\n LIMIT " + self.process(select._limit_clause)
+            text += "\n LIMIT " + self.process(select._limit_clause, **kw)
         if select._offset_clause is not None:
             if select._limit_clause is None:
                 text += "\n LIMIT -1"
-            text += " OFFSET " + self.process(select._offset_clause)
+            text += " OFFSET " + self.process(select._offset_clause, **kw)
         return text
 
     def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,

@@ -256,7 +256,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             select._offset))
                 return result
 
-            def limit_clause(self, select):
+            def limit_clause(self, select, **kw):
                 return ""
 
         dialect = default.DefaultDialect()

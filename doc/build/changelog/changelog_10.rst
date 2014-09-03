@@ -22,6 +22,20 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: changed, mssql
+        :tickets: 3182
+
+        The hostname-based connection format for SQL Server when using
+        pyodbc will no longer specify a default "driver name", and a warning
+        is emitted if this is missing.  The optimal driver name for SQL Server
+        changes frequently and is per-platform, so hostname based connections
+        need to specify this.  DSN-based connections are preferred.
+
+        .. seealso::
+
+            :ref:`change_3182`
+
+    .. change::
         :tags: changed, sql
 
         The :func:`~.expression.column` and :func:`~.expression.table`
@@ -361,7 +375,11 @@
 		here is fully backwards compatible with existing third party dialects,
 		however those dialects which implement special LIMIT/OFFSET systems
 		will need modification in order to take advantage of the new
-		capabilities.  Work on this feature is courtesy of Dobes Vandermeer.
+		capabilities.  Limit and offset also support "literal_binds" mode,
+        where bound parameters are rendered inline as strings based on
+        a compile-time option.
+        Work on this feature is courtesy of Dobes Vandermeer.
+
 
 		.. seealso::
 

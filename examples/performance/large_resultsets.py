@@ -132,8 +132,6 @@ def _test_dbapi_raw(n, fetchall):
 
     sql = str(compiled)
 
-    import pdb
-    pdb.set_trace()
     conn = engine.raw_connection()
     cursor = conn.cursor()
     cursor.execute(sql)
