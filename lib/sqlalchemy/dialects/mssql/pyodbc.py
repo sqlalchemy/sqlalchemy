@@ -12,74 +12,57 @@
     :connectstring: mssql+pyodbc://<username>:<password>@<dsnname>
     :url: http://pypi.python.org/pypi/pyodbc/
 
-Additional Connection Examples
--------------------------------
+Connecting to PyODBC
+--------------------
 
-Examples of pyodbc connection string URLs:
+The URL here is to be translated to PyODBC connection strings, as
+detailed in `ConnectionStrings <https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_.
 
-* ``mssql+pyodbc://mydsn`` - connects using the specified DSN named ``mydsn``.
-  The connection string that is created will appear like::
+DSN Connections
+^^^^^^^^^^^^^^^
 
-    dsn=mydsn;Trusted_Connection=Yes
+A DSN-based connection is **preferred** overall when using ODBC.  A
+basic DSN-based connection looks like::
 
-* ``mssql+pyodbc://user:pass@mydsn`` - connects using the DSN named
-  ``mydsn`` passing in the ``UID`` and ``PWD`` information. The
-  connection string that is created will appear like::
+    engine = create_engine("mssql+pyodbc://scott:tiger@some_dsn")
+
+Which above, will pass the following connection string to PyODBC::
 
     dsn=mydsn;UID=user;PWD=pass
 
-* ``mssql+pyodbc://user:pass@mydsn/?LANGUAGE=us_english`` - connects
-  using the DSN named ``mydsn`` passing in the ``UID`` and ``PWD``
-  information, plus the additional connection configuration option
-  ``LANGUAGE``. The connection string that is created will appear
-  like::
+If the username and password are omitted, the DSN form will also add
+the ``Trusted_Connection=yes`` directive to the ODBC string.
 
-    dsn=mydsn;UID=user;PWD=pass;LANGUAGE=us_english
+Hostname Connections
+^^^^^^^^^^^^^^^^^^^^
 
-* ``mssql+pyodbc://user:pass@host/db`` - connects using a connection
-  that would appear like::
+Hostname-based connections are **not preferred**, however are supported.
+The ODBC driver name must be explicitly specified::
 
-    DRIVER={SQL Server};Server=host;Database=db;UID=user;PWD=pass
+    engine = create_engine("mssql+pyodbc://scott:tiger@myhost:port/databasename?driver=SQL+Server+Native+Client+10.0")
 
-* ``mssql+pyodbc://user:pass@host:123/db`` - connects using a connection
-  string which includes the port
-  information using the comma syntax. This will create the following
-  connection string::
+.. versionchanged:: 1.0.0 Hostname-based PyODBC connections now require the
+   SQL Server driver name specified explicitly.  SQLAlchemy cannot
+   choose an optimal default here as it varies based on platform
+   and installed drivers.
 
-    DRIVER={SQL Server};Server=host,123;Database=db;UID=user;PWD=pass
+Other keywords interpreted by the Pyodbc dialect to be passed to
+``pyodbc.connect()`` in both the DSN and hostname cases include:
+``odbc_autotranslate``, ``ansi``, ``unicode_results``, ``autocommit``.
 
-* ``mssql+pyodbc://user:pass@host/db?port=123`` - connects using a connection
-  string that includes the port
-  information as a separate ``port`` keyword. This will create the
-  following connection string::
+Pass through exact Pyodbc string
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    DRIVER={SQL Server};Server=host;Database=db;UID=user;PWD=pass;port=123
+A PyODBC connection string can also be sent exactly as specified in
+`ConnectionStrings <https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_
+into the driver using the parameter ``odbc_connect``.  The delimeters must be URL escaped, however,
+as illustrated below using ``urllib.quote_plus``::
 
-* ``mssql+pyodbc://user:pass@host/db?driver=MyDriver`` - connects using a
-  connection string that includes a custom ODBC driver name.  This will create
-  the following connection string::
+    import urllib
+    params = urllib.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
 
-    DRIVER={MyDriver};Server=host;Database=db;UID=user;PWD=pass
+    engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 
-If you require a connection string that is outside the options
-presented above, use the ``odbc_connect`` keyword to pass in a
-urlencoded connection string. What gets passed in will be urldecoded
-and passed directly.
-
-For example::
-
-    mssql+pyodbc:///?odbc_connect=dsn%3Dmydsn%3BDatabase%3Ddb
-
-would create the following connection string::
-
-    dsn=mydsn;Database=db
-
-Encoding your connection string can be easily accomplished through
-the python shell. For example::
-
-    >>> import urllib
-    >>> urllib.quote_plus('dsn=mydsn;Database=db')
-    'dsn%3Dmydsn%3BDatabase%3Ddb'
 
 Unicode Binds
 -------------
@@ -242,8 +225,6 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
 
     execution_ctx_cls = MSExecutionContext_pyodbc
-
-    pyodbc_driver_name = 'SQL Server'
 
     colspecs = util.update_copy(
         MSDialect.colspecs,

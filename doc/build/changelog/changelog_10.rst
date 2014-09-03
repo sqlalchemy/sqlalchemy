@@ -22,6 +22,20 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: changed, mssql
+        :tickets: 3182
+
+        The hostname-based connection format for SQL Server when using
+        pyodbc will no longer specify a default "driver name", and a warning
+        is emitted if this is missing.  The optimal driver name for SQL Server
+        changes frequently and is per-platform, so hostname based connections
+        need to specify this.  DSN-based connections are preferred.
+
+        .. seealso::
+
+            :ref:`change_3182`
+
+    .. change::
         :tags: changed, sql
 
         The :func:`~.expression.column` and :func:`~.expression.table`

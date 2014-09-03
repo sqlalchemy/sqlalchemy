@@ -26,7 +26,7 @@ class PyODBCConnector(Connector):
     supports_native_decimal = True
     default_paramstyle = 'named'
 
-    # for non-DSN connections, this should
+    # for non-DSN connections, this *may* be used to
     # hold the desired driver name
     pyodbc_driver_name = None
 
@@ -75,10 +75,21 @@ class PyODBCConnector(Connector):
                 if 'port' in keys and 'port' not in query:
                     port = ',%d' % int(keys.pop('port'))
 
-                connectors = ["DRIVER={%s}" %
-                              keys.pop('driver', self.pyodbc_driver_name),
-                              'Server=%s%s' % (keys.pop('host', ''), port),
-                              'Database=%s' % keys.pop('database', '')]
+                connectors = []
+                driver = keys.pop('driver', self.pyodbc_driver_name)
+                if driver is None:
+                    util.warn(
+                        "No driver name specified; "
+                        "this is expected by PyODBC when using "
+                        "DSN-less connections")
+                else:
+                    connectors.append("DRIVER={%s}" % driver)
+
+                connectors.extend(
+                    [
+                        'Server=%s%s' % (keys.pop('host', ''), port),
+                        'Database=%s' % keys.pop('database', '')
+                    ])
 
             user = keys.pop("user", None)
             if user:
