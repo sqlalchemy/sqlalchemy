@@ -44,12 +44,12 @@ import os
 import time
 
 
-
 class Profiler(object):
     tests = []
 
-    def __init__(self, setup, options):
+    def __init__(self, options, setup=None, setup_once=None):
         self.setup = setup
+        self.setup_once = setup_once
         self.test = options.test
         self.dburl = options.dburl
         self.runsnake = options.runsnake
@@ -72,6 +72,9 @@ class Profiler(object):
         else:
             tests = self.tests
 
+        if self.setup_once:
+            print("Running setup once...")
+            self.setup_once(self.dburl, self.echo, self.num)
         print("Tests to run: %s" % ", ".join([t.__name__ for t in tests]))
         for test in tests:
             self._run_test(test)
@@ -100,14 +103,15 @@ class Profiler(object):
             self.stats.append(TestResult(self, fn, total_time=total))
 
     def _run_test(self, fn):
-        self.setup(self.dburl, self.echo)
+        if self.setup:
+            self.setup(self.dburl, self.echo, self.num)
         if self.profile or self.runsnake or self.dump:
             self._run_with_profile(fn)
         else:
             self._run_with_time(fn)
 
     @classmethod
-    def main(cls, setup):
+    def main(cls, num, setup=None, setup_once=None):
         parser = argparse.ArgumentParser()
 
         parser.add_argument(
@@ -119,8 +123,9 @@ class Profiler(object):
             help="database URL, default sqlite:///profile.db"
         )
         parser.add_argument(
-            '--num', type=int, default=100000,
-            help="Number of iterations/items/etc for tests, default 100000"
+            '--num', type=int, default=num,
+            help="Number of iterations/items/etc for tests; "
+                 "default is %d module-specific" % num
         )
         parser.add_argument(
             '--profile', action='store_true',
@@ -133,13 +138,12 @@ class Profiler(object):
             help='invoke runsnakerun (implies --profile)')
         parser.add_argument(
             '--echo', action='store_true',
-            help="Echo SQL output"
-            )
+            help="Echo SQL output")
         args = parser.parse_args()
 
         args.profile = args.profile or args.dump or args.runsnake
 
-        Profiler(setup, args).run()
+        Profiler(args, setup=setup, setup_once=setup_once).run()
 
 
 class TestResult(object):

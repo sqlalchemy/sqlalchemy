@@ -1,7 +1,7 @@
 from . import Profiler
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, bindparam
 from sqlalchemy.orm import Session
 
 Base = declarative_base()
@@ -15,7 +15,7 @@ class Customer(Base):
     description = Column(String(255))
 
 
-def setup_database(dburl, echo):
+def setup_database(dburl, echo, num):
     global engine
     engine = create_engine(dburl, echo=echo)
     Base.metadata.drop_all(engine)
@@ -111,22 +111,35 @@ def test_core_insert(n):
 
 
 @Profiler.profile
-def test_sqlite_raw(n):
-    """pysqlite's pure C API inserting rows in bulk, no pure Python at all"""
-    conn = engine.raw_connection()
+def test_dbapi_raw(n):
+    """The DBAPI's pure C API inserting rows in bulk, no pure Python at all"""
+
+    conn = engine.pool._creator()
     cursor = conn.cursor()
-    cursor.executemany(
-        "INSERT INTO customer (name, description) VALUES(:name, :description)",
-        [
+    compiled = Customer.__table__.insert().values(
+        name=bindparam('name'),
+        description=bindparam('description')).\
+        compile(dialect=engine.dialect)
+
+    if compiled.positional:
+        args = (
+            ('customer name %d' % i, 'customer description %d' % i)
+            for i in range(n))
+    else:
+        args = (
             dict(
                 name='customer name %d' % i,
                 description='customer description %d' % i
             )
             for i in range(n)
-        ]
+        )
+
+    cursor.executemany(
+        str(compiled),
+        list(args)
     )
     conn.commit()
-
+    conn.close()
 
 if __name__ == '__main__':
-    Profiler.main(setup=setup_database)
+    Profiler.main(setup=setup_database, num=100000)
