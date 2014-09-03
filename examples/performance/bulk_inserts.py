@@ -1,4 +1,4 @@
-import time
+from . import Profiler
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, create_engine
@@ -15,21 +15,14 @@ class Customer(Base):
     description = Column(String(255))
 
 
-def setup_database():
+def setup_database(dburl, echo):
     global engine
-    engine = create_engine("sqlite:///insert_speed.db", echo=False)
+    engine = create_engine(dburl, echo=echo)
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-_tests = []
 
-
-def _test(fn):
-    _tests.append(fn)
-    return fn
-
-
-@_test
+@Profiler.profile
 def test_flush_no_pk(n):
     """Individual INSERT statements via the ORM, calling upon last row id"""
     session = Session(bind=engine)
@@ -44,7 +37,7 @@ def test_flush_no_pk(n):
     session.commit()
 
 
-@_test
+@Profiler.profile
 def test_bulk_save_return_pks(n):
     """Individual INSERT statements in "bulk", but calling upon last row id"""
     session = Session(bind=engine)
@@ -58,7 +51,7 @@ def test_bulk_save_return_pks(n):
     session.commit()
 
 
-@_test
+@Profiler.profile
 def test_flush_pk_given(n):
     """Batched INSERT statements via the ORM, PKs already defined"""
     session = Session(bind=engine)
@@ -74,7 +67,7 @@ def test_flush_pk_given(n):
     session.commit()
 
 
-@_test
+@Profiler.profile
 def test_bulk_save(n):
     """Batched INSERT statements via the ORM in "bulk", discarding PK values."""
     session = Session(bind=engine)
@@ -88,7 +81,7 @@ def test_bulk_save(n):
     session.commit()
 
 
-@_test
+@Profiler.profile
 def test_bulk_insert_mappings(n):
     """Batched INSERT statements via the ORM "bulk", using dictionaries instead of objects"""
     session = Session(bind=engine)
@@ -102,7 +95,7 @@ def test_bulk_insert_mappings(n):
     session.commit()
 
 
-@_test
+@Profiler.profile
 def test_core_insert(n):
     """A single Core INSERT construct inserting mappings in bulk."""
     conn = engine.connect()
@@ -117,7 +110,7 @@ def test_core_insert(n):
         ])
 
 
-@_test
+@Profiler.profile
 def test_sqlite_raw(n):
     """pysqlite's pure C API inserting rows in bulk, no pure Python at all"""
     conn = engine.raw_connection()
@@ -135,14 +128,5 @@ def test_sqlite_raw(n):
     conn.commit()
 
 
-def run_tests(n):
-    for fn in _tests:
-        setup_database()
-        now = time.time()
-        fn(n)
-        total = time.time() - now
-
-        print("Test: %s; Total time %s" % (fn.__doc__, total))
-
 if __name__ == '__main__':
-    run_tests(100000)
+    Profiler.main(setup=setup_database)
