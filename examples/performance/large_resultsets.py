@@ -121,7 +121,7 @@ def test_core_fetchmany(n):
 
 @Profiler.profile
 def test_dbapi_fetchall_plus_append_objects(n):
-    """Load rows using DBAPI fetchall(), make a list of objects."""
+    """Load rows using DBAPI fetchall(), generate an object for each row."""
 
     _test_dbapi_raw(n, True)
 
@@ -156,12 +156,10 @@ def _test_dbapi_raw(n, make_objects):
     cursor.execute(sql)
 
     if make_objects:
-        result = []
         for row in cursor.fetchall():
             # ensure that we fully fetch!
             customer = SimpleCustomer(
                 id=row[0], name=row[1], description=row[2])
-            result.append(customer)
     else:
         for row in cursor.fetchall():
             # ensure that we fully fetch!

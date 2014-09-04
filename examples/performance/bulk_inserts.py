@@ -1,3 +1,8 @@
+"""This series of tests illustrates different ways to INSERT a large number
+of rows in bulk.
+
+
+"""
 from . import Profiler
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -69,7 +74,7 @@ def test_flush_pk_given(n):
 
 @Profiler.profile
 def test_bulk_save(n):
-    """Batched INSERT statements via the ORM in "bulk", discarding PK values."""
+    """Batched INSERT statements via the ORM in "bulk", discarding PKs."""
     session = Session(bind=engine)
     session.bulk_save_objects([
         Customer(
@@ -83,7 +88,7 @@ def test_bulk_save(n):
 
 @Profiler.profile
 def test_bulk_insert_mappings(n):
-    """Batched INSERT statements via the ORM "bulk", using dictionaries instead of objects"""
+    """Batched INSERT statements via the ORM "bulk", using dictionaries."""
     session = Session(bind=engine)
     session.bulk_insert_mappings(Customer, [
         dict(
@@ -112,7 +117,7 @@ def test_core_insert(n):
 
 @Profiler.profile
 def test_dbapi_raw(n):
-    """The DBAPI's pure C API inserting rows in bulk, no pure Python at all"""
+    """The DBAPI's API inserting rows in bulk."""
 
     conn = engine.pool._creator()
     cursor = conn.cursor()
