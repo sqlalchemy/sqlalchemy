@@ -1,11 +1,22 @@
-"""In this series of tests, we are looking at time to load 1M very small
-and simple rows.
+"""In this series of tests, we are looking at time to load a large number
+of very small and simple rows.
+
+A special test here illustrates the difference between fetching the
+rows from the raw DBAPI and throwing them away, vs. assembling each
+row into a completely basic Python object and appending to a list. The
+time spent typically more than doubles.  The point is that while
+DBAPIs will give you raw rows very fast if they are written in C, the
+moment you do anything with those rows, even something trivial,
+overhead grows extremely fast in cPython. SQLAlchemy's Core and
+lighter-weight ORM options add absolutely minimal overhead, and the
+full blown ORM doesn't do terribly either even though mapped objects
+provide a huge amount of functionality.
 
 """
 from . import Profiler
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine, literal_column
+from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import Session, Bundle
 
 Base = declarative_base()
@@ -71,7 +82,7 @@ def test_orm_columns(n):
 
 @Profiler.profile
 def test_core_fetchall(n):
-    """Load Core result rows using Core / fetchall."""
+    """Load Core result rows using fetchall."""
 
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n)).fetchall()
@@ -80,9 +91,8 @@ def test_core_fetchall(n):
 
 
 @Profiler.profile
-def test_core_fetchchunks_w_streaming(n):
-    """Load Core result rows using Core with fetchmany and
-    streaming results."""
+def test_core_fetchmany_w_streaming(n):
+    """Load Core result rows using fetchmany/streaming."""
 
     with engine.connect() as conn:
         result = conn.execution_options(stream_results=True).\
@@ -96,7 +106,7 @@ def test_core_fetchchunks_w_streaming(n):
 
 
 @Profiler.profile
-def test_core_fetchchunks(n):
+def test_core_fetchmany(n):
     """Load Core result rows using Core / fetchmany."""
 
     with engine.connect() as conn:
@@ -110,25 +120,34 @@ def test_core_fetchchunks(n):
 
 
 @Profiler.profile
-def test_dbapi_fetchall(n):
-    """Load DBAPI cursor rows using fetchall()"""
+def test_dbapi_fetchall_plus_append_objects(n):
+    """Load rows using DBAPI fetchall(), make a list of objects."""
 
     _test_dbapi_raw(n, True)
 
 
 @Profiler.profile
-def test_dbapi_fetchchunks(n):
-    """Load DBAPI cursor rows using fetchmany()
-    (usually doesn't limit memory)"""
+def test_dbapi_fetchall_no_object(n):
+    """Load rows using DBAPI fetchall(), don't make any objects."""
 
     _test_dbapi_raw(n, False)
 
 
-def _test_dbapi_raw(n, fetchall):
+def _test_dbapi_raw(n, make_objects):
     compiled = Customer.__table__.select().limit(n).\
         compile(
             dialect=engine.dialect,
             compile_kwargs={"literal_binds": True})
+
+    if make_objects:
+        # because if you're going to roll your own, you're probably
+        # going to do this, so see how this pushes you right back into
+        # ORM land anyway :)
+        class SimpleCustomer(object):
+            def __init__(self, id, name, description):
+                self.id = id
+                self.name = name
+                self.description = description
 
     sql = str(compiled)
 
@@ -136,18 +155,19 @@ def _test_dbapi_raw(n, fetchall):
     cursor = conn.cursor()
     cursor.execute(sql)
 
-    if fetchall:
+    if make_objects:
+        result = []
+        for row in cursor.fetchall():
+            # ensure that we fully fetch!
+            customer = SimpleCustomer(
+                id=row[0], name=row[1], description=row[2])
+            result.append(customer)
+    else:
         for row in cursor.fetchall():
             # ensure that we fully fetch!
             data = row[0], row[1], row[2]
-    else:
-        while True:
-            chunk = cursor.fetchmany(10000)
-            if not chunk:
-                break
-            for row in chunk:
-                data = row[0], row[1], row[2]
+
     conn.close()
 
 if __name__ == '__main__':
-    Profiler.main(setup_once=setup_database, num=1000000)
+    Profiler.main(setup_once=setup_database, num=500000)
