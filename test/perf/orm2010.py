@@ -126,6 +126,9 @@ def run_with_profile(runsnake=False, dump=False):
     import pstats
     filename = "orm2010.profile"
 
+    if os.path.exists("orm2010.profile"):
+        os.remove("orm2010.profile")
+
     def status(msg):
         print(msg)
 

@@ -442,11 +442,13 @@ class SQLCompiler(Compiled):
 
         if params:
             pd = {}
-            for bindparam, name in self.bind_names.items():
+            for bindparam in self.bind_names:
+                name = self.bind_names[bindparam]
                 if bindparam.key in params:
                     pd[name] = params[bindparam.key]
                 elif name in params:
                     pd[name] = params[name]
+
                 elif _check and bindparam.required:
                     if _group_number:
                         raise exc.InvalidRequestError(
@@ -457,8 +459,11 @@ class SQLCompiler(Compiled):
                         raise exc.InvalidRequestError(
                             "A value is required for bind parameter %r"
                             % bindparam.key)
-                else:
+
+                elif bindparam.callable:
                     pd[name] = bindparam.effective_value
+                else:
+                    pd[name] = bindparam.value
             return pd
         else:
             pd = {}
@@ -473,7 +478,11 @@ class SQLCompiler(Compiled):
                         raise exc.InvalidRequestError(
                             "A value is required for bind parameter %r"
                             % bindparam.key)
-                pd[self.bind_names[bindparam]] = bindparam.effective_value
+
+                if bindparam.callable:
+                    pd[self.bind_names[bindparam]] = bindparam.effective_value
+                else:
+                    pd[self.bind_names[bindparam]] = bindparam.value
             return pd
 
     @property
