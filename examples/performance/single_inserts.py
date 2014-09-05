@@ -88,6 +88,23 @@ def test_core(n):
 
 
 @Profiler.profile
+def test_core_query_caching(n):
+    """Individual INSERT/COMMIT pairs using Core with query caching"""
+
+    cache = {}
+    ins = Customer.__table__.insert()
+    for i in range(n):
+        with engine.begin() as conn:
+            conn.execution_options(compiled_cache=cache).execute(
+                ins,
+                dict(
+                    name='customer name %d' % i,
+                    description='customer description %d' % i
+                )
+            )
+
+
+@Profiler.profile
 def test_dbapi_raw_w_connect(n):
     """Individual INSERT/COMMIT pairs using a pure DBAPI connection,
     connect each time."""
@@ -130,6 +147,7 @@ def _test_dbapi_raw(n, connect):
             conn = engine.pool._creator()
             cursor = conn.cursor()
             cursor.execute(sql, arg)
+            lastrowid = cursor.lastrowid
             conn.commit()
             conn.close()
     else:
@@ -137,6 +155,7 @@ def _test_dbapi_raw(n, connect):
             conn = engine.raw_connection()
             cursor = conn.cursor()
             cursor.execute(sql, arg)
+            lastrowid = cursor.lastrowid
             conn.commit()
             conn.close()
 
