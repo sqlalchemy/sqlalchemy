@@ -1,9 +1,30 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_
 from sqlalchemy import *
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
+
+
+class IdiosyncrasyTest(fixtures.TestBase, AssertsCompiledSQL):
+    __only_on__ = 'mysql'
+    __backend__ = True
+
+    def test_is_boolean_symbols_despite_no_native(self):
+        is_(
+            testing.db.scalar(select([cast(true().is_(true()), Boolean)])),
+            True
+        )
+
+        is_(
+            testing.db.scalar(select([cast(true().isnot(true()), Boolean)])),
+            False
+        )
+
+        is_(
+            testing.db.scalar(select([cast(false().is_(false()), Boolean)])),
+            True
+        )
 
 
 class MatchTest(fixtures.TestBase, AssertsCompiledSQL):

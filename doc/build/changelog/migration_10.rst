@@ -808,6 +808,25 @@ a cursor to be closed unless all results are fully fetched.
 
 :ticket:`2515`
 
+.. _bug_3186:
+
+MySQL boolean symbols "true", "false" work again
+------------------------------------------------
+
+0.9's overhaul of the IS/IS NOT operators as well as boolean types in
+:ticket:`2682` disallowed the MySQL dialect from making use of the
+"true" and "false" symbols in the context of "IS" / "IS NOT".  Apparently,
+even though MySQL has no "boolean" type, it supports IS / IS NOT when the
+special "true" and "false" symbols are used, even though these are otherwise
+synonymous with "1" and "0" (and IS/IS NOT don't work with the numerics).
+
+So the change here is that the MySQL dialect remains "non native boolean",
+but the :func:`.true` and :func:`.false` symbols again produce the
+keywords "true" and "false", so that an expression like ``column.is_(true())``
+again works on MySQL.
+
+:ticket:`3186`
+
 .. _change_3182:
 
 PyODBC driver name is required with hostname-based SQL Server connections

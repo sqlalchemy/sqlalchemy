@@ -22,6 +22,23 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 3186
+
+        MySQL boolean symbols "true", "false" work again.  0.9's change
+        in :ticket:`2682` disallowed the MySQL dialect from making use of the
+        "true" and "false" symbols in the context of "IS" / "IS NOT", but
+        MySQL supports this syntax even though it has no boolean type.
+        MySQL remains "non native boolean", but the :func:`.true`
+        and :func:`.false` symbols again produce the
+        keywords "true" and "false", so that an expression like
+        ``column.is_(true())`` again works on MySQL.
+
+        .. seealso::
+
+            :ref:`bug_3186`
+
+    .. change::
         :tags: changed, mssql
         :tickets: 3182
 
