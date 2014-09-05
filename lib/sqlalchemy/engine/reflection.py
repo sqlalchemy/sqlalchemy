@@ -227,6 +227,9 @@ class Inspector(object):
         :param schema: Optional, retrieve names from a non-default schema.
          For special quoting, use :class:`.quoted_name`.
 
+        .. versionchanged:: 1.0.0 now returns materialized views as well
+        as normal views.
+
         """
 
         return self.dialect.get_view_names(self.bind, schema,

@@ -107,7 +107,6 @@ class DefaultDialect(interfaces.Dialect):
     default_paramstyle = 'named'
     supports_default_values = False
     supports_empty_insert = True
-    supports_foreign_tables = False
     supports_multivalues_insert = False
 
     server_version_info = None

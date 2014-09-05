@@ -107,6 +107,12 @@ class AltRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             (89, 'd1',)
         ]
 
+    def test_get_foreign_table_names(self):
+        inspector = inspect(testing.db)
+        connection = testing.db.connect()
+        ft_names = inspector.get_foreign_table_names(connection)
+        assert u'test_foreigntable' in ft_names
+
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     """Test PostgreSQL domains"""

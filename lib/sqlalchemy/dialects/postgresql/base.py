@@ -1679,6 +1679,23 @@ class PGInspector(reflection.Inspector):
         schema = schema or self.default_schema_name
         return self.dialect._load_enums(self.bind, schema)
 
+    def get_foreign_table_names(self, connection, schema=None, **kw):
+        if schema is not None:
+            current_schema = schema
+        else:
+            current_schema = self.default_schema_name
+
+        result = connection.execute(
+            sql.text("SELECT relname FROM pg_class c "
+                     "WHERE relkind = 'f' "
+                     "AND '%s' = (select nspname from pg_namespace n "
+                     "where n.oid = c.relnamespace) " %
+                     current_schema,
+                     typemap={'relname': sqltypes.Unicode}
+                     )
+        )
+        return [row[0] for row in result]
+
 
 class CreateEnumType(schema._CreateDropBase):
     __visit_name__ = "create_enum_type"
@@ -1753,7 +1770,6 @@ class PGDialect(default.DefaultDialect):
 
     supports_default_values = True
     supports_empty_insert = False
-    supports_foreign_tables = True
     supports_multivalues_insert = True
     default_paramstyle = 'pyformat'
     ischema_names = ischema_names
@@ -2098,24 +2114,6 @@ class PGDialect(default.DefaultDialect):
         else:
             view_names = [row[0] for row in connection.execute(s)]
         return view_names
-
-    @reflection.cache
-    def get_foreign_table_names(self, connection, schema=None, **kw):
-        if schema is not None:
-            current_schema = schema
-        else:
-            current_schema = self.default_schema_name
-
-        result = connection.execute(
-            sql.text("SELECT relname FROM pg_class c "
-                     "WHERE relkind = 'f' "
-                     "AND '%s' = (select nspname from pg_namespace n "
-                     "where n.oid = c.relnamespace) " %
-                     current_schema,
-                     typemap={'relname': sqltypes.Unicode}
-                     )
-        )
-        return [row[0] for row in result]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
