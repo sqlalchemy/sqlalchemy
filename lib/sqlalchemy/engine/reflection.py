@@ -583,7 +583,7 @@ class Inspector(object):
                     not set(columns).issubset(include_columns):
                 util.warn(
                     "Omitting %s key for (%s), key covers omitted columns." %
-                    (flavor, ', '.join(columns)))
+                    (flavor or "index", ', '.join(columns)))
                 continue
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
@@ -596,7 +596,7 @@ class Inspector(object):
                     util.warn(
                         "%s key '%s' was not located in "
                         "columns for table '%s'" % (
-                            flavor, c, table_name
+                            flavor or "index", c, table_name
                         ))
                 else:
                     idx_cols.append(idx_col)
