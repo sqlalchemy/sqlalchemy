@@ -2576,7 +2576,8 @@ class MySQLDialect(default.DefaultDialect):
             index_d['name'] = spec['name']
             index_d['column_names'] = [s[0] for s in spec['columns']]
             index_d['unique'] = unique
-            index_d['type'] = flavor
+            if flavor:
+                index_d['type'] = flavor
             indexes.append(index_d)
         return indexes
 
