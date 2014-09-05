@@ -799,9 +799,9 @@ def _postfetch(mapper, uowtransaction, table,
     after an INSERT or UPDATE statement has proceeded for that
     state."""
 
-    prefetch_cols = result.context.prefetch_cols
-    postfetch_cols = result.context.postfetch_cols
-    returning_cols = result.context.returning_cols
+    prefetch_cols = result.context.compiled.prefetch
+    postfetch_cols = result.context.compiled.postfetch
+    returning_cols = result.context.compiled.returning
 
     if mapper.version_id_col is not None:
         prefetch_cols = list(prefetch_cols) + [mapper.version_id_col]

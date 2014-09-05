@@ -1,8 +1,10 @@
-from sqlalchemy import exc as exceptions, select, MetaData, Integer, or_
+from sqlalchemy import exc as exceptions, select, MetaData, Integer, or_, \
+    bindparam
 from sqlalchemy.engine import default
 from sqlalchemy.sql import table, column
+from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.testing import AssertsCompiledSQL, assert_raises, engines,\
-    fixtures
+    fixtures, eq_
 from sqlalchemy.testing.schema import Table, Column
 
 IDENT_LENGTH = 29
@@ -246,6 +248,47 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             },
             checkpositional=(4, 2),
             dialect=self._length_fixture(positional=True)
+        )
+
+    def test_bind_param_non_truncated(self):
+        table1 = self.table1
+        stmt = table1.insert().values(
+            this_is_the_data_column=
+            bindparam("this_is_the_long_bindparam_name")
+        )
+        compiled = stmt.compile(dialect=self._length_fixture(length=10))
+        eq_(
+            compiled.construct_params(
+                params={"this_is_the_long_bindparam_name": 5}),
+            {'this_is_the_long_bindparam_name': 5}
+        )
+
+    def test_bind_param_truncated_named(self):
+        table1 = self.table1
+        bp = bindparam(_truncated_label("this_is_the_long_bindparam_name"))
+        stmt = table1.insert().values(
+            this_is_the_data_column=bp
+        )
+        compiled = stmt.compile(dialect=self._length_fixture(length=10))
+        eq_(
+            compiled.construct_params(params={
+                "this_is_the_long_bindparam_name": 5}),
+            {"this_1": 5}
+        )
+
+    def test_bind_param_truncated_positional(self):
+        table1 = self.table1
+        bp = bindparam(_truncated_label("this_is_the_long_bindparam_name"))
+        stmt = table1.insert().values(
+            this_is_the_data_column=bp
+        )
+        compiled = stmt.compile(
+            dialect=self._length_fixture(length=10, positional=True))
+
+        eq_(
+            compiled.construct_params(params={
+                "this_is_the_long_bindparam_name": 5}),
+            {"this_1": 5}
         )
 
 
