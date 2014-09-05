@@ -253,6 +253,15 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def foreign_tables(self):
+        """target platform supports FOREIGN TABLEs."""
+
+        return exclusions.only_if(
+            lambda config: config.db.dialect.supports_foreign_tables,
+            "%(database)s %(does_support)s 'FOREIGN TABLEs'"
+        )
+
+    @property
     def schemas(self):
         """Target database must support external schemas, and have one
         named 'test_schema'."""
@@ -300,6 +309,12 @@ class SuiteRequirements(Requirements):
         """target database must support inspection of the full CREATE VIEW definition.
         """
         return self.views
+
+    @property
+    def foreign_table_reflection(self):
+        """target database must support inspection of the full CREATE FOREIGN TABLE definition.
+        """
+        return self.foreign_tables
 
     @property
     def schema_reflection(self):

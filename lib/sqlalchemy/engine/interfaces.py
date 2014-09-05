@@ -319,8 +319,8 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_foreign_tables(self, connection, view_name, schema=None, **kw):
-        """Return a list of foreign table names for `schema`."""
+    def get_foreign_table_names(self, connection, schema=None, **kw):
+        """Return a list of foreign table names for `schema`.
         """
 
         raise NotImplementedError()
