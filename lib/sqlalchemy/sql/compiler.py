@@ -512,7 +512,7 @@ class SQLCompiler(Compiled):
 
         selectable = self.stack[-1]['selectable']
         try:
-            col = selectable._inner_column_dict[element.text]
+            col = selectable._label_resolve_dict[element.text]
         except KeyError:
             # treat it like text()
             util.warn_limited(
@@ -700,6 +700,10 @@ class SQLCompiler(Compiled):
         # note that its OK we aren't expanding tables and other selectables
         # here; we can only add a label in the ORDER BY for an individual
         # label expression in the columns clause.
+
+        # TODO: we should see if we can bring _resolve_label
+        # into this
+
 
         raw_col = set(l._order_by_label_element.name
                       for l in order_by_select._raw_columns

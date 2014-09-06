@@ -278,7 +278,7 @@ class ORMAdapter(sql_util.ColumnAdapter):
     """
 
     def __init__(self, entity, equivalents=None, adapt_required=False,
-                 chain_to=None):
+                 chain_to=None, allow_label_resolve=True):
         info = inspection.inspect(entity)
 
         self.mapper = info.mapper
@@ -288,9 +288,10 @@ class ORMAdapter(sql_util.ColumnAdapter):
             self.aliased_class = entity
         else:
             self.aliased_class = None
-        sql_util.ColumnAdapter.__init__(self, selectable,
-                                        equivalents, chain_to,
-                                        adapt_required=adapt_required)
+        sql_util.ColumnAdapter.__init__(
+            self, selectable, equivalents, chain_to,
+            adapt_required=adapt_required,
+            allow_label_resolve=allow_label_resolve)
 
     def replace(self, elem):
         entity = elem._annotations.get('parentmapper', None)

@@ -1242,7 +1242,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         clauses = orm_util.ORMAdapter(
             to_adapt,
             equivalents=self.mapper._equivalent_columns,
-            adapt_required=True)
+            adapt_required=True, allow_label_resolve=False)
         assert clauses.aliased_class is not None
 
         if self.parent_property.direction != interfaces.MANYTOONE:

@@ -1814,7 +1814,7 @@ class GenerativeSelect(SelectBase):
                 *clauses, _literal_as_text=_literal_as_label_reference)
 
     @property
-    def _inner_column_dict(self):
+    def _label_resolve_dict(self):
         raise NotImplementedError()
 
     def _copy_internals(self, clone=_clone, **kw):
@@ -1884,7 +1884,7 @@ class CompoundSelect(GenerativeSelect):
         GenerativeSelect.__init__(self, **kwargs)
 
     @property
-    def _inner_column_dict(self):
+    def _label_resolve_dict(self):
         return dict(
             (c.key, c) for c in self.c
         )
@@ -2498,11 +2498,14 @@ class Select(HasPrefixes, GenerativeSelect):
         return _select_iterables(self._raw_columns)
 
     @_memoized_property
-    def _inner_column_dict(self):
+    def _label_resolve_dict(self):
         d = dict(
-            (c._label or c.key, c)
-            for c in _select_iterables(self._raw_columns))
-        d.update((c.key, c) for c in _select_iterables(self.froms))
+            (c._resolve_label or c._label or c.key, c)
+            for c in _select_iterables(self._raw_columns)
+            if c._allow_label_resolve)
+        d.update(
+            (c.key, c) for c in
+            _select_iterables(self.froms) if c._allow_label_resolve)
 
         return d
 

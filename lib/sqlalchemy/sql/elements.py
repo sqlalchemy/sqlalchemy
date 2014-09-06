@@ -675,6 +675,19 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
 
     """
 
+    _resolve_label = None
+    """The name that should be used to identify this ColumnElement in a
+    select() object when "label resolution" logic is used; this refers
+    to using a string name in an expression like order_by() or group_by()
+    that wishes to target a labeled expression in the columns clause.
+
+    The name is distinct from that of .name or ._label to account for the case
+    where anonymizing logic may be used to change the name that's actually
+    rendered at compile time; this attribute should hold onto the original
+    name that was user-assigned when producing a .label() construct.
+
+    """
+
     _alt_names = ()
 
     def self_group(self, against=None):
@@ -690,6 +703,8 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
             return AsBoolean(self, operators.isfalse, operators.istrue)
         else:
             return super(ColumnElement, self)._negate()
+
+    _allow_label_resolve = True
 
     @util.memoized_property
     def type(self):
@@ -1231,7 +1246,7 @@ class TextClause(Executable, ClauseElement):
 
     # help in those cases where text() is
     # interpreted in a column expression situation
-    key = _label = None
+    key = _label = _resolve_label = None
 
     def __init__(
             self,
@@ -2869,8 +2884,13 @@ class Label(ColumnElement):
         :param obj: a :class:`.ColumnElement`.
 
         """
+
+        if isinstance(element, Label):
+            self._resolve_label = element._label
+
         while isinstance(element, Label):
             element = element.element
+
         if name:
             self.name = name
         else:
@@ -2884,6 +2904,10 @@ class Label(ColumnElement):
 
     def __reduce__(self):
         return self.__class__, (self.name, self._element, self._type)
+
+    @util.memoized_property
+    def _allow_label_resolve(self):
+        return self.element._allow_label_resolve
 
     @util.memoized_property
     def _order_by_label_element(self):

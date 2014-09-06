@@ -548,13 +548,15 @@ class ColumnAdapter(ClauseAdapter):
 
     def __init__(self, selectable, equivalents=None,
                  chain_to=None, include=None,
-                 exclude=None, adapt_required=False):
+                 exclude=None, adapt_required=False,
+                 allow_label_resolve=True):
         ClauseAdapter.__init__(self, selectable, equivalents,
                                include, exclude)
         if chain_to:
             self.chain(chain_to)
         self.columns = util.populate_column_dict(self._locate_col)
         self.adapt_required = adapt_required
+        self.allow_label_resolve = allow_label_resolve
 
     def wrap(self, adapter):
         ac = self.__class__.__new__(self.__class__)
@@ -580,6 +582,7 @@ class ColumnAdapter(ClauseAdapter):
             c = self.adapt_clause(col)
 
             # anonymize labels in case they have a hardcoded name
+            # see test_eager_relations.py -> SubqueryTest.test_label_anonymizing
             if isinstance(c, Label):
                 c = c.label(None)
 
@@ -591,6 +594,7 @@ class ColumnAdapter(ClauseAdapter):
         if self.adapt_required and c is col:
             return None
 
+        c._allow_label_resolve = self.allow_label_resolve
         return c
 
     def adapted_row(self, row):

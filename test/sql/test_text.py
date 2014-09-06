@@ -6,7 +6,7 @@ from sqlalchemy import text, select, Integer, String, Float, \
     bindparam, and_, func, literal_column, exc, MetaData, Table, Column,\
     asc, func, desc, union
 from sqlalchemy.types import NullType
-from sqlalchemy.sql import table, column
+from sqlalchemy.sql import table, column, util as sql_util
 from sqlalchemy import util
 
 table1 = table('mytable',
@@ -678,4 +678,30 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             desc("somelabel"),
             "somelabel DESC"
+        )
+
+    def test_anonymized_via_columnadapter(self):
+        """test issue #3148
+
+        Testing the anonymization applied from the ColumnAdapter.columns
+        collection, typically as used in eager loading.
+
+        """
+        exprs = [
+            table1.c.myid,
+            table1.c.name.label('t1name'),
+            func.foo("hoho").label('x')]
+
+        ta = table1.alias()
+        adapter = sql_util.ColumnAdapter(ta)
+
+        s1 = select([adapter.columns[expr] for expr in exprs]).\
+            apply_labels().order_by("myid", "t1name", "x")
+
+        # our "t1name" and "x" labels get modified
+        self.assert_compile(
+            s1,
+            "SELECT mytable_1.myid AS mytable_1_myid, "
+            "mytable_1.name AS name_1, foo(:foo_2) AS foo_1 "
+            "FROM mytable AS mytable_1 ORDER BY mytable_1.myid, name_1, foo_1"
         )

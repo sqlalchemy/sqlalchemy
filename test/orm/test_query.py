@@ -8,7 +8,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.orm import (
     attributes, mapper, relationship, create_session, synonym, Session,
     aliased, column_property, joinedload_all, joinedload, Query, Bundle,
-    subqueryload, backref, lazyload)
+    subqueryload, backref, lazyload, defer)
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
@@ -1230,6 +1230,70 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
                 (
                     User(id=7, name='jack'),
                     Address(email_address='jack@bean.com', user_id=7, id=1))])
+
+
+class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+    run_setup_mappers = 'each'
+
+    def _fixture(self):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+        mapper(User, users, properties={
+            "ead": column_property(
+                select([func.max(addresses.c.email_address)]).\
+                    where(addresses.c.user_id == users.c.id).\
+                    correlate(users).label("email_ad")
+            )
+        })
+        mapper(Address, addresses)
+
+    def test_order_by_column_prop_label(self):
+        User, Address = self.classes("User", "Address")
+        self._fixture()
+
+        s = Session()
+        q = s.query(User).order_by("email_ad")
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses "
+            "WHERE addresses.user_id = users.id) AS email_ad, "
+            "users.id AS users_id, users.name AS users_name "
+            "FROM users ORDER BY email_ad"
+        )
+
+    def test_order_by_column_prop_attrname(self):
+        User, Address = self.classes("User", "Address")
+        self._fixture()
+
+        s = Session()
+        q = s.query(User).order_by(User.ead)
+        # this one is a bit of a surprise; this is compiler
+        # label-order-by logic kicking in, but won't work in more
+        # complex cases.
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses "
+            "WHERE addresses.user_id = users.id) AS email_ad, "
+            "users.id AS users_id, users.name AS users_name "
+            "FROM users ORDER BY email_ad"
+        )
+
+    def test_order_by_column_prop_attrname_non_present(self):
+        User, Address = self.classes("User", "Address")
+        self._fixture()
+
+        s = Session()
+        q = s.query(User).options(defer(User.ead)).order_by(User.ead)
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users ORDER BY (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses "
+            "WHERE addresses.user_id = users.id)"
+        )
 
 
 # more slice tests are available in test/orm/generative.py
