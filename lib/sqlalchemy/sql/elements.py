@@ -625,8 +625,56 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     __visit_name__ = 'column'
     primary_key = False
     foreign_keys = []
-    _label = _columns_clause_label = None
-    _key_label = key = None
+
+    _label = None
+    """The named label that can be used to target
+    this column in a result set.
+
+    This label is almost always the label used when
+    rendering <expr> AS <label> in a SELECT statement.  It also
+    refers to a name that this column expression can be located from
+    in a result set.
+
+    For a regular Column bound to a Table, this is typically the label
+    <tablename>_<columnname>.  For other constructs, different rules
+    may apply, such as anonymized labels and others.
+
+    """
+
+    key = None
+    """the 'key' that in some circumstances refers to this object in a
+    Python namespace.
+
+    This typically refers to the "key" of the column as present in the
+    ``.c`` collection of a selectable, e.g. sometable.c["somekey"] would
+    return a Column with a .key of "somekey".
+
+    """
+
+    _key_label = None
+    """A label-based version of 'key' that in some circumstances refers
+    to this object in a Python namespace.
+
+
+    _key_label comes into play when a select() statement is constructed with
+    apply_labels(); in this case, all Column objects in the ``.c`` collection
+    are rendered as <tablename>_<columnname> in SQL; this is essentially the
+    value of ._label.  But to locate those columns in the ``.c`` collection,
+    the name is along the lines of <tablename>_<key>; that's the typical
+    value of .key_label.
+
+    """
+
+    _render_label_in_columns_clause = True
+    """A flag used by select._columns_plus_names that helps to determine
+    we are actually going to render in terms of "SELECT <col> AS <label>".
+    This flag can be returned as False for some Column objects that want
+    to be rendered as simple "SELECT <col>"; typically columns that don't have
+    any parent table and are named the same as what the label would be
+    in any case.
+
+    """
+
     _alt_names = ()
 
     def self_group(self, against=None):
@@ -1183,7 +1231,7 @@ class TextClause(Executable, ClauseElement):
 
     # help in those cases where text() is
     # interpreted in a column expression situation
-    key = _label = _columns_clause_label = None
+    key = _label = None
 
     def __init__(
             self,
@@ -2829,8 +2877,7 @@ class Label(ColumnElement):
             self.name = _anonymous_label(
                 '%%(%d %s)s' % (id(self), getattr(element, 'name', 'anon'))
             )
-        self.key = self._label = self._key_label = \
-            self._columns_clause_label = self.name
+        self.key = self._label = self._key_label = self.name
         self._element = element
         self._type = type_
         self._proxies = [element]
@@ -3066,11 +3113,8 @@ class ColumnClause(Immutable, ColumnElement):
         return self._gen_label(self.name)
 
     @_memoized_property
-    def _columns_clause_label(self):
-        if self.table is None:
-            return None
-        else:
-            return self._label
+    def _render_label_in_columns_clause(self):
+        return self.table is not None
 
     def _gen_label(self, name):
         t = self.table

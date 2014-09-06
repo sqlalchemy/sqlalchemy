@@ -2974,10 +2974,10 @@ class Select(HasPrefixes, GenerativeSelect):
             names = set()
 
             def name_for_col(c):
-                if c._columns_clause_label is None:
+                if c._label is None or not c._render_label_in_columns_clause:
                     return (None, c)
 
-                name = c._columns_clause_label
+                name = c._label
                 if name in names:
                     name = c.anon_label
                 else:
