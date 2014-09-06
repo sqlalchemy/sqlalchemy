@@ -21,6 +21,10 @@ class Customer(Base):
     description = Column(String(255))
 
 
+Profiler.init("single_inserts", num=10000)
+
+
+@Profiler.setup
 def setup_database(dburl, echo, num):
     global engine
     engine = create_engine(dburl, echo=echo)
@@ -106,16 +110,14 @@ def test_core_query_caching(n):
 
 @Profiler.profile
 def test_dbapi_raw_w_connect(n):
-    """Individual INSERT/COMMIT pairs using a pure DBAPI connection,
-    connect each time."""
+    """Individual INSERT/COMMIT pairs w/ DBAPI + connection each time"""
 
     _test_dbapi_raw(n, True)
 
 
 @Profiler.profile
 def test_dbapi_raw_w_pool(n):
-    """Individual INSERT/COMMIT pairs using a pure DBAPI connection,
-    using a connection pool."""
+    """Individual INSERT/COMMIT pairs w/ DBAPI + connection pool"""
 
     _test_dbapi_raw(n, False)
 
@@ -161,4 +163,4 @@ def _test_dbapi_raw(n, connect):
 
 
 if __name__ == '__main__':
-    Profiler.main(setup=setup_database, num=10000)
+    Profiler.main()

@@ -30,6 +30,10 @@ class Customer(Base):
     description = Column(String(255))
 
 
+Profiler.init("large_resultsets", num=500000)
+
+
+@Profiler.setup_once
 def setup_database(dburl, echo, num):
     global engine
     engine = create_engine(dburl, echo=echo)
@@ -168,4 +172,4 @@ def _test_dbapi_raw(n, make_objects):
     conn.close()
 
 if __name__ == '__main__':
-    Profiler.main(setup_once=setup_database, num=500000)
+    Profiler.main()

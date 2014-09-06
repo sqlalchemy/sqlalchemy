@@ -20,6 +20,10 @@ class Customer(Base):
     description = Column(String(255))
 
 
+Profiler.init("bulk_inserts", num=100000)
+
+
+@Profiler.setup
 def setup_database(dburl, echo, num):
     global engine
     engine = create_engine(dburl, echo=echo)
@@ -147,4 +151,4 @@ def test_dbapi_raw(n):
     conn.close()
 
 if __name__ == '__main__':
-    Profiler.main(setup=setup_database, num=100000)
+    Profiler.main()
