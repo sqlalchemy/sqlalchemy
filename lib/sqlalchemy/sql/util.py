@@ -488,8 +488,10 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
     def __init__(self, selectable, equivalents=None,
                  include=None, exclude=None,
                  include_fn=None, exclude_fn=None,
-                 adapt_on_names=False):
-        self.__traverse_options__ = {'stop_on': [selectable]}
+                 adapt_on_names=False, anonymize_labels=False):
+        self.__traverse_options__ = {
+            'stop_on': [selectable],
+            'anonymize_labels': anonymize_labels}
         self.selectable = selectable
         if include:
             assert not include_fn
@@ -549,9 +551,14 @@ class ColumnAdapter(ClauseAdapter):
     def __init__(self, selectable, equivalents=None,
                  chain_to=None, include=None,
                  exclude=None, adapt_required=False,
-                 allow_label_resolve=True):
+                 adapt_on_names=False,
+                 allow_label_resolve=True,
+                 anonymize_labels=False):
         ClauseAdapter.__init__(self, selectable, equivalents,
-                               include, exclude)
+                               include, exclude,
+                               adapt_on_names=adapt_on_names,
+                               anonymize_labels=anonymize_labels)
+
         if chain_to:
             self.chain(chain_to)
         self.columns = util.populate_column_dict(self._locate_col)
@@ -567,7 +574,13 @@ class ColumnAdapter(ClauseAdapter):
         ac.columns = util.populate_column_dict(ac._locate_col)
         return ac
 
-    adapt_clause = ClauseAdapter.traverse
+    def traverse(self, obj):
+        new_obj = ClauseAdapter.traverse(self, obj)
+        if new_obj is not obj:
+            self.columns[obj] = new_obj
+        return new_obj
+
+    adapt_clause = traverse
     adapt_list = ClauseAdapter.copy_and_process
 
     def _wrap(self, local, wrapped):
@@ -580,11 +593,6 @@ class ColumnAdapter(ClauseAdapter):
         c = self._corresponding_column(col, True)
         if c is None:
             c = self.adapt_clause(col)
-
-            # anonymize labels in case they have a hardcoded name
-            # see test_eager_relations.py -> SubqueryTest.test_label_anonymizing
-            if isinstance(c, Label):
-                c = c.label(None)
 
         # adapt_required used by eager loading to indicate that
         # we don't trust a result row column that is not translated.

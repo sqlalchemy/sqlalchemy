@@ -1207,6 +1207,52 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE c.bid = anon_1.b_aid"
         )
 
+        t1 = table("table1",
+                   column("col1"),
+                   column("col2"),
+                   column("col3"),
+                   )
+        t2 = table("table2",
+                   column("col1"),
+                   column("col2"),
+                   column("col3"),
+                   )
+
+    def test_label_anonymize_one(self):
+        t1a = t1.alias()
+        adapter = sql_util.ClauseAdapter(t1a, anonymize_labels=True)
+
+        expr = select([t1.c.col2]).where(t1.c.col3 == 5).label('expr')
+        expr_adapted = adapter.traverse(expr)
+
+        stmt = select([expr, expr_adapted]).order_by(expr, expr_adapted)
+        self.assert_compile(
+            stmt,
+            "SELECT "
+            "(SELECT table1.col2 FROM table1 WHERE table1.col3 = :col3_1) "
+            "AS expr, "
+            "(SELECT table1_1.col2 FROM table1 AS table1_1 "
+            "WHERE table1_1.col3 = :col3_2) AS anon_1 "
+            "ORDER BY expr, anon_1"
+        )
+
+    def test_label_anonymize_two(self):
+        t1a = t1.alias()
+        adapter = sql_util.ClauseAdapter(t1a, anonymize_labels=True)
+
+        expr = select([t1.c.col2]).where(t1.c.col3 == 5).label(None)
+        expr_adapted = adapter.traverse(expr)
+
+        stmt = select([expr, expr_adapted]).order_by(expr, expr_adapted)
+        self.assert_compile(
+            stmt,
+            "SELECT "
+            "(SELECT table1.col2 FROM table1 WHERE table1.col3 = :col3_1) "
+            "AS anon_1, "
+            "(SELECT table1_1.col2 FROM table1 AS table1_1 "
+            "WHERE table1_1.col3 = :col3_2) AS anon_2 "
+            "ORDER BY anon_1, anon_2"
+        )
 
 class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

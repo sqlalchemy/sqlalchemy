@@ -688,6 +688,10 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
 
     """
 
+    _allow_label_resolve = True
+    """A flag that can be flipped to prevent a column from being resolvable
+    by string label name."""
+
     _alt_names = ()
 
     def self_group(self, against=None):
@@ -703,8 +707,6 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
             return AsBoolean(self, operators.isfalse, operators.istrue)
         else:
             return super(ColumnElement, self)._negate()
-
-    _allow_label_resolve = True
 
     @util.memoized_property
     def type(self):
@@ -1247,6 +1249,8 @@ class TextClause(Executable, ClauseElement):
     # help in those cases where text() is
     # interpreted in a column expression situation
     key = _label = _resolve_label = None
+
+    _allow_label_resolve = False
 
     def __init__(
             self,
@@ -2943,8 +2947,14 @@ class Label(ColumnElement):
     def get_children(self, **kwargs):
         return self.element,
 
-    def _copy_internals(self, clone=_clone, **kw):
+    def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
         self.element = clone(self.element, **kw)
+        if anonymize_labels:
+            self.name = _anonymous_label(
+                '%%(%d %s)s' % (
+                    id(self), getattr(self.element, 'name', 'anon'))
+            )
+            self.key = self._label = self._key_label = self.name
 
     @property
     def _from_objects(self):

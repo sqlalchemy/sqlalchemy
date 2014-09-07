@@ -278,7 +278,8 @@ class ORMAdapter(sql_util.ColumnAdapter):
     """
 
     def __init__(self, entity, equivalents=None, adapt_required=False,
-                 chain_to=None, allow_label_resolve=True):
+                 chain_to=None, allow_label_resolve=True,
+                 anonymize_labels=False):
         info = inspection.inspect(entity)
 
         self.mapper = info.mapper
@@ -291,7 +292,8 @@ class ORMAdapter(sql_util.ColumnAdapter):
         sql_util.ColumnAdapter.__init__(
             self, selectable, equivalents, chain_to,
             adapt_required=adapt_required,
-            allow_label_resolve=allow_label_resolve)
+            allow_label_resolve=allow_label_resolve,
+            anonymize_labels=anonymize_labels)
 
     def replace(self, elem):
         entity = elem._annotations.get('parentmapper', None)
@@ -355,6 +357,7 @@ class AliasedClass(object):
         if alias is None:
             alias = mapper._with_polymorphic_selectable.alias(
                 name=name, flat=flat)
+
         self._aliased_insp = AliasedInsp(
             self,
             mapper,
@@ -461,9 +464,9 @@ class AliasedInsp(InspectionAttr):
         self._base_alias = _base_alias or self
         self._use_mapper_path = _use_mapper_path
 
-        self._adapter = sql_util.ClauseAdapter(
+        self._adapter = sql_util.ColumnAdapter(
             selectable, equivalents=mapper._equivalent_columns,
-            adapt_on_names=adapt_on_names)
+            adapt_on_names=adapt_on_names, anonymize_labels=True)
 
         self._adapt_on_names = adapt_on_names
         self._target = mapper.class_

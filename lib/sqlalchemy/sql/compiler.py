@@ -701,13 +701,7 @@ class SQLCompiler(Compiled):
         # here; we can only add a label in the ORDER BY for an individual
         # label expression in the columns clause.
 
-        # TODO: we should see if we can bring _resolve_label
-        # into this
-
-
-        raw_col = set(l._order_by_label_element.name
-                      for l in order_by_select._raw_columns
-                      if l._order_by_label_element is not None)
+        raw_col = set(order_by_select._label_resolve_dict.keys())
 
         return ", ".join(
             s for s in
@@ -716,7 +710,7 @@ class SQLCompiler(Compiled):
                     self,
                     render_label_as_label=c._order_by_label_element if
                     c._order_by_label_element is not None and
-                    c._order_by_label_element.name in raw_col
+                    c._order_by_label_element._label in raw_col
                     else None,
                     **kw)
                 for c in clauselist.clauses)
