@@ -32,7 +32,7 @@
 <%inherit file="${context['base']}"/>
 
 <%
-    if mako_layout == 'epub':
+    if builder == 'epub':
         next.body()
         return
 %>
