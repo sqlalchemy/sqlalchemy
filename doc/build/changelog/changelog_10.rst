@@ -22,6 +22,33 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3148, 3188
+
+        A major rework to the behavior of expression labels, most
+        specifically when used with ColumnProperty constructs with
+        custom SQL expressions and in conjunction with the "order by
+        labels" logic first introduced in 0.9.  Fixes include that an
+        ``order_by(Entity.some_col_prop)`` will now make use of "order by
+        label" rules even if Entity has been subject to aliasing,
+        either via inheritance rendering or via the use of the
+        ``aliased()`` construct; rendering of the same column property
+        multiple times with aliasing (e.g. ``query(Entity.some_prop,
+        entity_alias.some_prop)``) will label each occurrence of the
+        entity with a distinct label, and additionally "order by
+        label" rules will work for both (e.g.
+        ``order_by(Entity.some_prop, entity_alias.some_prop)``).
+        Additional issues that could prevent the "order by label"
+        logic from working in 0.9, most notably that the state of a
+        Label could change such that "order by label" would stop
+        working depending on how things were called, has been fixed.
+
+        .. seealso::
+
+            :ref:`bug_3188`
+
+
+    .. change::
         :tags: bug, mysql
         :tickets: 3186
 

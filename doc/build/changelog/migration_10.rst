@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: September 1, 2014
+    Document last updated: September 7, 2014
 
 Introduction
 ============
@@ -306,6 +306,86 @@ Renders::
 
 
 :ticket:`3177`
+
+
+.. _bug_3188:
+
+ColumnProperty constructs work a lot better with aliases, order_by
+-------------------------------------------------------------------
+
+A variety of issues regarding :func:`.column_property` have been fixed,
+most specifically with regards to the :func:`.aliased` construct as well
+as the "order by label" logic introduced in 0.9 (see :ref:`migration_1068`).
+
+Given a mapping like the following::
+
+	class A(Base):
+	    __tablename__ = 'a'
+
+	    id = Column(Integer, primary_key=True)
+
+	class B(Base):
+	    __tablename__ = 'b'
+
+	    id = Column(Integer, primary_key=True)
+	    a_id = Column(ForeignKey('a.id'))
+
+
+	A.b = column_property(
+	        select([func.max(B.id)]).where(B.a_id == A.id).correlate(A)
+	    )
+
+A simple scenario that included "A.b" twice would fail to render
+correctly::
+
+	print sess.query(A, a1).order_by(a1.b)
+
+This would order by the wrong column::
+
+	SELECT a.id AS a_id, (SELECT max(b.id) AS max_1 FROM b
+	WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
+	(SELECT max(b.id) AS max_2
+	FROM b WHERE b.a_id = a_1.id) AS anon_2
+	FROM a, a AS a_1 ORDER BY anon_1
+
+New output::
+
+	SELECT a.id AS a_id, (SELECT max(b.id) AS max_1
+	FROM b WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
+	(SELECT max(b.id) AS max_2
+	FROM b WHERE b.a_id = a_1.id) AS anon_2
+	FROM a, a AS a_1 ORDER BY anon_2
+
+There were also many scenarios where the "order by" logic would fail
+to order by label, for example if the mapping were "polymorphic"::
+
+	class A(Base):
+	    __tablename__ = 'a'
+
+	    id = Column(Integer, primary_key=True)
+	    type = Column(String)
+
+	    __mapper_args__ = {'polymorphic_on': type, 'with_polymorphic': '*'}
+
+The order_by would fail to use the label, as it would be anonymized due
+to the polymorphic loading::
+
+	SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
+	FROM b WHERE b.a_id = a.id) AS anon_1
+	FROM a ORDER BY (SELECT max(b.id) AS max_2
+	FROM b WHERE b.a_id = a.id)
+
+Now that the order by label tracks the anonymized label, this now works::
+
+	SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
+	FROM b WHERE b.a_id = a.id) AS anon_1
+	FROM a ORDER BY anon_1
+
+Included in these fixes are a variety of heisenbugs that could corrupt
+the state of an ``aliased()`` construct such that the labeling logic
+would again fail; these have also been fixed.
+
+:ticket:`3148` :ticket:`3188`
 
 .. _behavioral_changes_orm_10:
 
