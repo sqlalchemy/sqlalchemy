@@ -9,11 +9,12 @@
 
 Contains various base classes used throughout the ORM.
 
-Defines the now deprecated ORM extension classes as well
-as ORM internals.
+Defines some key base classes prominent within the internals,
+as well as the now-deprecated ORM extension classes.
 
 Other than the deprecated extensions, this module and the
-classes within should be considered mostly private.
+classes within are mostly private, though some attributes
+are exposed when inspecting mappings.
 
 """
 
@@ -67,9 +68,15 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
 
     This collection is checked before the 'cascade_iterator' method is called.
 
+    The collection typically only applies to a RelationshipProperty.
+
     """
 
     is_property = True
+    """Part of the InspectionAttr interface; states this object is a
+    mapper property.
+
+    """
 
     def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
@@ -77,16 +84,15 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
         Each MapperProperty associated with the target mapper processes the
         statement referenced by the query context, adding columns and/or
         criterion as appropriate.
-        """
 
-        pass
+        """
 
     def create_row_processor(self, context, path,
                              mapper, result, adapter, populators):
-        """Return a 3-tuple consisting of three row processing functions.
+        """Produce row processing functions and append to the given
+        set of populators lists.
 
         """
-        pass
 
     def cascade_iterator(self, type_, state, visited_instances=None,
                          halt_on=None):
@@ -98,16 +104,40 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
         Note that the 'cascade' collection on this MapperProperty is
         checked first for the given type before cascade_iterator is called.
 
-        See PropertyLoader for the related instance implementation.
+        This method typically only applies to RelationshipProperty.
+
         """
 
         return iter(())
 
     def set_parent(self, parent, init):
+        """Set the parent mapper that references this MapperProperty.
+
+        This method is overridden by some subclasses to perform extra
+        setup when the mapper is first known.
+
+        """
         self.parent = parent
 
-    def instrument_class(self, mapper):  # pragma: no-coverage
-        raise NotImplementedError()
+    def instrument_class(self, mapper):
+        """Hook called by the Mapper to the property to initiate
+        instrumentation of the class attribute managed by this
+        MapperProperty.
+
+        The MapperProperty here will typically call out to the
+        attributes module to set up an InstrumentedAttribute.
+
+        This step is the first of two steps to set up an InstrumentedAttribute,
+        and is called early in the mapper setup process.
+
+        The second step is typically the init_class_attribute step,
+        called from StrategizedProperty via the post_instrument_class()
+        hook.  This step assigns additional state to the InstrumentedAttribute
+        (specifically the "impl") which has been determined after the
+        MapperProperty has determined what kind of persistence
+        management it needs to do (e.g. scalar, object, collection, etc).
+
+        """
 
     _configure_started = False
     _configure_finished = False
@@ -157,44 +187,27 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
 
         """
 
-        pass
-
     def post_instrument_class(self, mapper):
         """Perform instrumentation adjustments that need to occur
         after init() has completed.
 
+        The given Mapper is the Mapper invoking the operation, which
+        may not be the same Mapper as self.parent in an inheritance
+        scenario; however, Mapper will always at least be a sub-mapper of
+        self.parent.
+
+        This method is typically used by StrategizedProperty, which delegates
+        it to LoaderStrategy.init_class_attribute() to perform final setup
+        on the class-bound InstrumentedAttribute.
+
         """
-        pass
-
-    def is_primary(self):
-        """Return True if this ``MapperProperty``'s mapper is the
-        primary mapper for its class.
-
-        This flag is used to indicate that the ``MapperProperty`` can
-        define attribute instrumentation for the class at the class
-        level (as opposed to the individual instance level).
-        """
-
-        return not self.parent.non_primary
 
     def merge(self, session, source_state, source_dict, dest_state,
               dest_dict, load, _recursive):
         """Merge the attribute represented by this ``MapperProperty``
-        from source to destination object"""
+        from source to destination object.
 
-        pass
-
-    def compare(self, operator, value, **kw):
-        """Return a compare operation for the columns represented by
-        this ``MapperProperty`` to the given value, which may be a
-        column value or an instance.  'operator' is an operator from
-        the operators module, or from sql.Comparator.
-
-        By default uses the PropComparator attached to this MapperProperty
-        under the attribute name "comparator".
         """
-
-        return operator(self.comparator, value)
 
     def __repr__(self):
         return '<%s at 0x%x; %s>' % (
@@ -203,8 +216,7 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
 
 
 class PropComparator(operators.ColumnOperators):
-    """Defines boolean, comparison, and other operators for
-    :class:`.MapperProperty` objects.
+    """Defines SQL operators for :class:`.MapperProperty` objects.
 
     SQLAlchemy allows for operators to
     be redefined at both the Core and ORM level.  :class:`.PropComparator`
@@ -399,6 +411,13 @@ class StrategizedProperty(MapperProperty):
     strategies can be selected at Query time through the usage of
     ``StrategizedOption`` objects via the Query.options() method.
 
+    The mechanics of StrategizedProperty are used for every Query
+    invocation for every mapped attribute participating in that Query,
+    to determine first how the attribute will be rendered in SQL
+    and secondly how the attribute will retrieve a value from a result
+    row and apply it to a mapped object.  The routines here are very
+    performance-critical.
+
     """
 
     strategy_wildcard_key = None
@@ -460,7 +479,7 @@ class StrategizedProperty(MapperProperty):
         self.strategy = self._get_strategy_by_cls(self.strategy_class)
 
     def post_instrument_class(self, mapper):
-        if self.is_primary() and \
+        if not self.parent.non_primary and \
                 not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
 
@@ -493,18 +512,24 @@ class MapperOption(object):
 
     propagate_to_loaders = False
     """if True, indicate this option should be carried along
-    Query object generated by scalar or object lazy loaders.
+    to "secondary" Query objects produced during lazy loads
+    or refresh operations.
+
     """
 
     def process_query(self, query):
-        pass
+        """Apply a modification to the given :class:`.Query`."""
 
     def process_query_conditionally(self, query):
         """same as process_query(), except that this option may not
         apply to the given query.
 
-        Used when secondary loaders resend existing options to a new
-        Query."""
+        This is typically used during a lazy load or scalar refresh
+        operation to propagate options stated in the original Query to the
+        new Query being used for the load.  It occurs for those options that
+        specify propagate_to_loaders=True.
+
+        """
 
         self.process_query(query)
 
@@ -523,9 +548,9 @@ class LoaderStrategy(object):
 
     * it processes the ``QueryContext`` at statement construction time,
       where it can modify the SQL statement that is being produced.
-      Simple column attributes may add their represented column to the
-      list of selected columns, *eager loading* properties may add
-      ``LEFT OUTER JOIN`` clauses to the statement.
+      For example, simple column attributes will add their represented
+      column to the list of selected columns, a joined eager loader
+      may establish join clauses to add to the statement.
 
     * It produces "row processor" functions at result fetching time.
       These "row processor" functions populate a particular attribute
@@ -543,17 +568,26 @@ class LoaderStrategy(object):
         pass
 
     def setup_query(self, context, entity, path, loadopt, adapter, **kwargs):
-        pass
+        """Establish column and other state for a given QueryContext.
+
+        This method fulfills the contract specified by MapperProperty.setup().
+
+        StrategizedProperty delegates its setup() method
+        directly to this method.
+
+        """
 
     def create_row_processor(self, context, path, loadopt, mapper,
                              result, adapter, populators):
-        """Return row processing functions which fulfill the contract
-        specified by MapperProperty.create_row_processor.
+        """Establish row processing functions for a given QueryContext.
 
-        StrategizedProperty delegates its create_row_processor method
-        directly to this method. """
+        This method fulfills the contract specified by
+        MapperProperty.create_row_processor().
 
-        pass
+        StrategizedProperty delegates its create_row_processor() method
+        directly to this method.
+
+        """
 
     def __str__(self):
         return str(self.parent_property)

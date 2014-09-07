@@ -896,9 +896,7 @@ def with_parent(instance, prop):
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 
-    return prop.compare(operators.eq,
-                        instance,
-                        value_is_parent=True)
+    return prop._with_parent(instance)
 
 
 def has_identity(object):

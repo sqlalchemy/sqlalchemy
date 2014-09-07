@@ -1307,25 +1307,10 @@ class RelationshipProperty(StrategizedProperty):
                 mapperlib.Mapper._configure_all()
             return self.prop
 
-    def compare(self, op, value,
-                value_is_parent=False,
-                alias_secondary=True):
-        if op == operators.eq:
-            if value is None:
-                if self.uselist:
-                    return ~sql.exists([1], self.primaryjoin)
-                else:
-                    return self._optimized_compare(
-                        None,
-                        value_is_parent=value_is_parent,
-                        alias_secondary=alias_secondary)
-            else:
-                return self._optimized_compare(
-                    value,
-                    value_is_parent=value_is_parent,
-                    alias_secondary=alias_secondary)
-        else:
-            return op(self.comparator, value)
+    def _with_parent(self, instance, alias_secondary=True):
+        assert instance is not None
+        return self._optimized_compare(
+            instance, value_is_parent=True, alias_secondary=alias_secondary)
 
     def _optimized_compare(self, value, value_is_parent=False,
                            adapt_source=None,
@@ -1633,7 +1618,7 @@ class RelationshipProperty(StrategizedProperty):
         """Test that this relationship is legal, warn about
         inheritance conflicts."""
 
-        if not self.is_primary() and not mapperlib.class_mapper(
+        if self.parent.non_primary and not mapperlib.class_mapper(
                 self.parent.class_,
                 configure=False).has_property(self.key):
             raise sa_exc.ArgumentError(
@@ -1719,7 +1704,7 @@ class RelationshipProperty(StrategizedProperty):
         """Interpret the 'backref' instruction to create a
         :func:`.relationship` complementary to this one."""
 
-        if not self.is_primary():
+        if self.parent.non_primary:
             return
         if self.backref is not None and not self.back_populates:
             if isinstance(self.backref, util.string_types):
