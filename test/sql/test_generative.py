@@ -10,7 +10,7 @@ from sqlalchemy.sql.visitors import ClauseVisitor, CloningVisitor, \
     cloned_traverse, ReplacingCloningVisitor
 from sqlalchemy import exc
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, is_, is_not_, assert_raises, assert_raises_message
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
@@ -696,6 +696,244 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 WHERE table1.col1 = anon_1.col1)")
 
 
+class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_class(cls):
+        global t1, t2
+        t1 = table("table1",
+                   column("col1"),
+                   column("col2"),
+                   column("col3"),
+                   column("col4")
+                   )
+        t2 = table("table2",
+                   column("col1"),
+                   column("col2"),
+                   column("col3"),
+                   )
+
+    def test_traverse_memoizes_w_columns(self):
+        t1a = t1.alias()
+        adapter = sql_util.ColumnAdapter(t1a, anonymize_labels=True)
+
+        expr = select([t1a.c.col1]).label('x')
+        expr_adapted = adapter.traverse(expr)
+        is_not_(expr, expr_adapted)
+        is_(
+            adapter.columns[expr],
+            expr_adapted
+        )
+
+    def test_traverse_memoizes_w_itself(self):
+        t1a = t1.alias()
+        adapter = sql_util.ColumnAdapter(t1a, anonymize_labels=True)
+
+        expr = select([t1a.c.col1]).label('x')
+        expr_adapted = adapter.traverse(expr)
+        is_not_(expr, expr_adapted)
+        is_(
+            adapter.traverse(expr),
+            expr_adapted
+        )
+
+    def test_columns_memoizes_w_itself(self):
+        t1a = t1.alias()
+        adapter = sql_util.ColumnAdapter(t1a, anonymize_labels=True)
+
+        expr = select([t1a.c.col1]).label('x')
+        expr_adapted = adapter.columns[expr]
+        is_not_(expr, expr_adapted)
+        is_(
+            adapter.columns[expr],
+            expr_adapted
+        )
+
+    def test_wrapping_fallthrough(self):
+        t1a = t1.alias(name="t1a")
+        t2a = t2.alias(name="t2a")
+        a1 = sql_util.ColumnAdapter(t1a)
+
+        s1 = select([t1a.c.col1, t2a.c.col1]).apply_labels().alias()
+        a2 = sql_util.ColumnAdapter(s1)
+        a3 = a2.wrap(a1)
+        a4 = a1.wrap(a2)
+        a5 = a1.chain(a2)
+
+        # t1.c.col1 -> s1.c.t1a_col1
+
+        # adapted by a2
+        is_(
+            a3.columns[t1.c.col1], s1.c.t1a_col1
+        )
+        is_(
+            a4.columns[t1.c.col1], s1.c.t1a_col1
+        )
+
+        # chaining can't fall through because a1 grabs it
+        # first
+        is_(
+            a5.columns[t1.c.col1], t1a.c.col1
+        )
+
+        # t2.c.col1 -> s1.c.t2a_col1
+
+        # adapted by a2
+        is_(
+            a3.columns[t2.c.col1], s1.c.t2a_col1
+        )
+        is_(
+            a4.columns[t2.c.col1], s1.c.t2a_col1
+        )
+        # chaining, t2 hits s1
+        is_(
+            a5.columns[t2.c.col1], s1.c.t2a_col1
+        )
+
+        # t1.c.col2 -> t1a.c.col2
+
+        # fallthrough to a1
+        is_(
+            a3.columns[t1.c.col2], t1a.c.col2
+        )
+        is_(
+            a4.columns[t1.c.col2], t1a.c.col2
+        )
+
+        # chaining hits a1
+        is_(
+            a5.columns[t1.c.col2], t1a.c.col2
+        )
+
+        # t2.c.col2 -> t2.c.col2
+
+        # fallthrough to no adaption
+        is_(
+            a3.columns[t2.c.col2], t2.c.col2
+        )
+        is_(
+            a4.columns[t2.c.col2], t2.c.col2
+        )
+
+    def test_wrapping_ordering(self):
+        """illustrate an example where order of wrappers matters.
+
+        This test illustrates both the ordering being significant
+        as well as a scenario where multiple translations are needed
+        (e.g. wrapping vs. chaining).
+
+        """
+
+        stmt = select([t1.c.col1, t2.c.col1]).apply_labels()
+
+        sa = stmt.alias()
+        stmt2 = select([t2, sa])
+
+        a1 = sql_util.ColumnAdapter(stmt)
+        a2 = sql_util.ColumnAdapter(stmt2)
+
+        a2_to_a1 = a2.wrap(a1)
+        a1_to_a2 = a1.wrap(a2)
+
+        # when stmt2 and stmt represent the same column
+        # in different contexts, order of wrapping matters
+
+        # t2.c.col1 via a2 is stmt2.c.col1; then ignored by a1
+        is_(
+            a2_to_a1.columns[t2.c.col1], stmt2.c.col1
+        )
+        # t2.c.col1 via a1 is stmt.c.table2_col1; a2 then
+        # sends this to stmt2.c.table2_col1
+        is_(
+            a1_to_a2.columns[t2.c.col1], stmt2.c.table2_col1
+        )
+
+        # for mutually exclusive columns, order doesn't matter
+        is_(
+            a2_to_a1.columns[t1.c.col1], stmt2.c.table1_col1
+        )
+        is_(
+            a1_to_a2.columns[t1.c.col1], stmt2.c.table1_col1
+        )
+        is_(
+            a2_to_a1.columns[t2.c.col2], stmt2.c.col2
+        )
+
+
+    def test_wrapping_multiple(self):
+        """illustrate that wrapping runs both adapters"""
+
+        t1a = t1.alias(name="t1a")
+        t2a = t2.alias(name="t2a")
+        a1 = sql_util.ColumnAdapter(t1a)
+        a2 = sql_util.ColumnAdapter(t2a)
+        a3 = a2.wrap(a1)
+
+        stmt = select([t1.c.col1, t2.c.col2])
+
+        self.assert_compile(
+            a3.traverse(stmt),
+            "SELECT t1a.col1, t2a.col2 FROM table1 AS t1a, table2 AS t2a"
+        )
+
+        # chaining does too because these adapters don't share any
+        # columns
+        a4 = a2.chain(a1)
+        self.assert_compile(
+            a4.traverse(stmt),
+            "SELECT t1a.col1, t2a.col2 FROM table1 AS t1a, table2 AS t2a"
+        )
+
+    def test_wrapping_inclusions(self):
+        """test wrapping and inclusion rules together,
+        taking into account multiple objects with equivalent hash identity."""
+
+        t1a = t1.alias(name="t1a")
+        t2a = t2.alias(name="t2a")
+        a1 = sql_util.ColumnAdapter(
+            t1a,
+            include_fn=lambda col: "a1" in col._annotations)
+
+        s1 = select([t1a, t2a]).apply_labels().alias()
+        a2 = sql_util.ColumnAdapter(
+            s1,
+            include_fn=lambda col: "a2" in col._annotations)
+        a3 = a2.wrap(a1)
+
+        c1a1 = t1.c.col1._annotate(dict(a1=True))
+        c1a2 = t1.c.col1._annotate(dict(a2=True))
+        c1aa = t1.c.col1._annotate(dict(a1=True, a2=True))
+
+        c2a1 = t2.c.col1._annotate(dict(a1=True))
+        c2a2 = t2.c.col1._annotate(dict(a2=True))
+        c2aa = t2.c.col1._annotate(dict(a1=True, a2=True))
+
+        is_(
+            a3.columns[c1a1], t1a.c.col1
+        )
+        is_(
+            a3.columns[c1a2], s1.c.t1a_col1
+        )
+        is_(
+            a3.columns[c1aa], s1.c.t1a_col1
+        )
+
+        # not covered by a1, accepted by a2
+        is_(
+            a3.columns[c2aa], s1.c.t2a_col1
+        )
+
+        # not covered by a1, accepted by a2
+        is_(
+            a3.columns[c2a2], s1.c.t2a_col1
+        )
+        # not covered by a1, rejected by a2
+        is_(
+            a3.columns[c2a1], c2a1
+        )
+
+
 class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -1022,7 +1260,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         assert str(e) == "a.id = a.xxx_id"
         b = a.alias()
 
-        e = sql_util.ClauseAdapter(b, include=set([a.c.id]),
+        e = sql_util.ClauseAdapter(b, include_fn=lambda x: x in set([a.c.id]),
                                    equivalents={a.c.id: set([a.c.id])}
                                    ).traverse(e)
 
@@ -1253,6 +1491,28 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE table1_1.col3 = :col3_2) AS anon_2 "
             "ORDER BY anon_1, anon_2"
         )
+
+    def test_label_anonymize_three(self):
+        t1a = t1.alias()
+        adapter = sql_util.ColumnAdapter(
+            t1a, anonymize_labels=True,
+            allow_label_resolve=False)
+
+        expr = select([t1.c.col2]).where(t1.c.col3 == 5).label(None)
+        l1 = expr
+        is_(l1._order_by_label_element, l1)
+        eq_(l1._allow_label_resolve, True)
+
+        expr_adapted = adapter.traverse(expr)
+        l2 = expr_adapted
+        is_(l2._order_by_label_element, l2)
+        eq_(l2._allow_label_resolve, False)
+
+        l3 = adapter.traverse(expr)
+        is_(l3._order_by_label_element, l3)
+        eq_(l3._allow_label_resolve, False)
+
+
 
 class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

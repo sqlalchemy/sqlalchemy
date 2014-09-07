@@ -14,7 +14,7 @@ from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.testing.assertions import (
     eq_, assert_raises, assert_raises_message, expect_warnings)
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL, assert_warnings
 from test.orm import _fixtures
 from sqlalchemy.orm.util import join, with_parent
 
@@ -1236,21 +1236,23 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = 'default'
     run_setup_mappers = 'each'
 
-    def _fixture(self):
+    def _fixture(self, label=True):
         User, Address = self.classes("User", "Address")
         users, addresses = self.tables("users", "addresses")
+        stmt = select([func.max(addresses.c.email_address)]).\
+            where(addresses.c.user_id == users.c.id).\
+            correlate(users)
+        if label:
+            stmt = stmt.label("email_ad")
+
         mapper(User, users, properties={
-            "ead": column_property(
-                select([func.max(addresses.c.email_address)]).\
-                    where(addresses.c.user_id == users.c.id).\
-                    correlate(users).label("email_ad")
-            )
+            "ead": column_property(stmt)
         })
         mapper(Address, addresses)
 
-    def test_order_by_column_prop_label(self):
+    def test_order_by_column_prop_string(self):
         User, Address = self.classes("User", "Address")
-        self._fixture()
+        self._fixture(label=True)
 
         s = Session()
         q = s.query(User).order_by("email_ad")
@@ -1263,9 +1265,169 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "FROM users ORDER BY email_ad"
         )
 
-    def test_order_by_column_prop_attrname(self):
+    def test_order_by_column_prop_aliased_string(self):
         User, Address = self.classes("User", "Address")
-        self._fixture()
+        self._fixture(label=True)
+
+        s = Session()
+        ua = aliased(User)
+        q = s.query(ua).order_by("email_ad")
+
+        def go():
+            self.assert_compile(
+                q,
+                "SELECT (SELECT max(addresses.email_address) AS max_1 "
+                "FROM addresses WHERE addresses.user_id = users_1.id) "
+                "AS anon_1, users_1.id AS users_1_id, "
+                "users_1.name AS users_1_name FROM users AS users_1 "
+                "ORDER BY email_ad"
+            )
+        assert_warnings(
+            go,
+            ["Can't resolve label reference 'email_ad'"], regex=True)
+
+    def test_order_by_column_labeled_prop_attr_aliased_one(self):
+        User = self.classes.User
+        self._fixture(label=True)
+
+        ua = aliased(User)
+        s = Session()
+        q = s.query(ua).order_by(ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses WHERE addresses.user_id = users_1.id) AS anon_1, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 ORDER BY anon_1"
+        )
+
+    def test_order_by_column_labeled_prop_attr_aliased_two(self):
+        User = self.classes.User
+        self._fixture(label=True)
+
+        ua = aliased(User)
+        s = Session()
+        q = s.query(ua.ead).order_by(ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses, "
+            "users AS users_1 WHERE addresses.user_id = users_1.id) "
+            "AS anon_1 ORDER BY anon_1"
+        )
+
+        # we're also testing that the state of "ua" is OK after the
+        # previous call, so the batching into one test is intentional
+        q = s.query(ua).order_by(ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses WHERE addresses.user_id = users_1.id) AS anon_1, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 ORDER BY anon_1"
+        )
+
+    def test_order_by_column_labeled_prop_attr_aliased_three(self):
+        User = self.classes.User
+        self._fixture(label=True)
+
+        ua = aliased(User)
+        s = Session()
+        q = s.query(User.ead, ua.ead).order_by(User.ead, ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses, users WHERE addresses.user_id = users.id) "
+            "AS email_ad, (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses, users AS users_1 WHERE addresses.user_id = "
+            "users_1.id) AS anon_1 ORDER BY email_ad, anon_1"
+        )
+
+        q = s.query(User, ua).order_by(User.ead, ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses WHERE addresses.user_id = users.id) AS "
+            "email_ad, users.id AS users_id, users.name AS users_name, "
+            "(SELECT max(addresses.email_address) AS max_1 FROM addresses "
+            "WHERE addresses.user_id = users_1.id) AS anon_1, users_1.id "
+            "AS users_1_id, users_1.name AS users_1_name FROM users, "
+            "users AS users_1 ORDER BY email_ad, anon_1"
+        )
+
+    def test_order_by_column_unlabeled_prop_attr_aliased_one(self):
+        User = self.classes.User
+        self._fixture(label=False)
+
+        ua = aliased(User)
+        s = Session()
+        q = s.query(ua).order_by(ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses WHERE addresses.user_id = users_1.id) AS anon_1, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 ORDER BY anon_1"
+        )
+
+    def test_order_by_column_unlabeled_prop_attr_aliased_two(self):
+        User = self.classes.User
+        self._fixture(label=False)
+
+        ua = aliased(User)
+        s = Session()
+        q = s.query(ua.ead).order_by(ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses, "
+            "users AS users_1 WHERE addresses.user_id = users_1.id) "
+            "AS anon_1 ORDER BY anon_1"
+        )
+
+        # we're also testing that the state of "ua" is OK after the
+        # previous call, so the batching into one test is intentional
+        q = s.query(ua).order_by(ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses WHERE addresses.user_id = users_1.id) AS anon_1, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 ORDER BY anon_1"
+        )
+
+    def test_order_by_column_unlabeled_prop_attr_aliased_three(self):
+        User = self.classes.User
+        self._fixture(label=False)
+
+        ua = aliased(User)
+        s = Session()
+        q = s.query(User.ead, ua.ead).order_by(User.ead, ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses, users WHERE addresses.user_id = users.id) "
+            "AS anon_1, (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses, users AS users_1 "
+            "WHERE addresses.user_id = users_1.id) AS anon_2 "
+            "ORDER BY anon_1, anon_2"
+        )
+
+        q = s.query(User, ua).order_by(User.ead, ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 "
+            "FROM addresses WHERE addresses.user_id = users.id) AS "
+            "anon_1, users.id AS users_id, users.name AS users_name, "
+            "(SELECT max(addresses.email_address) AS max_1 FROM addresses "
+            "WHERE addresses.user_id = users_1.id) AS anon_2, users_1.id "
+            "AS users_1_id, users_1.name AS users_1_name FROM users, "
+            "users AS users_1 ORDER BY anon_1, anon_2"
+        )
+
+    def test_order_by_column_prop_attr(self):
+        User, Address = self.classes("User", "Address")
+        self._fixture(label=True)
 
         s = Session()
         q = s.query(User).order_by(User.ead)
@@ -1281,9 +1443,9 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "FROM users ORDER BY email_ad"
         )
 
-    def test_order_by_column_prop_attrname_non_present(self):
+    def test_order_by_column_prop_attr_non_present(self):
         User, Address = self.classes("User", "Address")
-        self._fixture()
+        self._fixture(label=True)
 
         s = Session()
         q = s.query(User).options(defer(User.ead)).order_by(User.ead)

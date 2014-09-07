@@ -2588,7 +2588,7 @@ class UnaryExpression(ColumnElement):
         return UnaryExpression(
             expr, operator=operators.distinct_op, type_=expr.type)
 
-    @util.memoized_property
+    @property
     def _order_by_label_element(self):
         if self.modifier in (operators.desc_op, operators.asc_op):
             return self.element._order_by_label_element
@@ -2913,7 +2913,7 @@ class Label(ColumnElement):
     def _allow_label_resolve(self):
         return self.element._allow_label_resolve
 
-    @util.memoized_property
+    @property
     def _order_by_label_element(self):
         return self
 
@@ -2949,6 +2949,7 @@ class Label(ColumnElement):
 
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
         self.element = clone(self.element, **kw)
+        self.__dict__.pop('_allow_label_resolve', None)
         if anonymize_labels:
             self.name = _anonymous_label(
                 '%%(%d %s)s' % (

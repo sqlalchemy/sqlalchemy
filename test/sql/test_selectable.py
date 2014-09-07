@@ -1724,6 +1724,13 @@ class AnnotationsTest(fixtures.TestBase):
         b5 = visitors.cloned_traverse(b3, {}, {'binary': visit_binary})
         assert str(b5) == ":bar = table1.col2"
 
+    def test_label_accessors(self):
+        t1 = table('t1', column('c1'))
+        l1 = t1.c.c1.label(None)
+        is_(l1._order_by_label_element, l1)
+        l1a = l1._annotate({"foo": "bar"})
+        is_(l1a._order_by_label_element, l1a)
+
     def test_annotate_aliased(self):
         t1 = table('t1', column('c1'))
         s = select([(t1.c.c1 + 3).label('bat')])

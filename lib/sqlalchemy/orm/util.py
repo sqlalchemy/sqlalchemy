@@ -270,10 +270,8 @@ first()
 
 
 class ORMAdapter(sql_util.ColumnAdapter):
-    """Extends ColumnAdapter to accept ORM entities.
-
-    The selectable is extracted from the given entity,
-    and the AliasedClass if any is referenced.
+    """ColumnAdapter subclass which excludes adaptation of entities from
+    non-matching mappers.
 
     """
 
@@ -289,18 +287,18 @@ class ORMAdapter(sql_util.ColumnAdapter):
             self.aliased_class = entity
         else:
             self.aliased_class = None
+
         sql_util.ColumnAdapter.__init__(
             self, selectable, equivalents, chain_to,
             adapt_required=adapt_required,
             allow_label_resolve=allow_label_resolve,
-            anonymize_labels=anonymize_labels)
+            anonymize_labels=anonymize_labels,
+            include_fn=self._include_fn
+        )
 
-    def replace(self, elem):
+    def _include_fn(self, elem):
         entity = elem._annotations.get('parentmapper', None)
-        if not entity or entity.isa(self.mapper):
-            return sql_util.ColumnAdapter.replace(self, elem)
-        else:
-            return None
+        return not entity or entity.isa(self.mapper)
 
 
 class AliasedClass(object):
