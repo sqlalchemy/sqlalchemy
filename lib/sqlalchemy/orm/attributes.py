@@ -863,7 +863,7 @@ class CollectionAttributeImpl(AttributeImpl):
         self.copy = copy_function
         self.collection_factory = typecallable
 
-        if hasattr(self.collection_factory, "_sa_linker"):
+        if getattr(self.collection_factory, "_sa_linker", None):
 
             @event.listens_for(self, "init_collection")
             def link(target, collection, collection_adapter):
