@@ -2356,14 +2356,39 @@ class Extract(ColumnElement):
 
 
 class _label_reference(ColumnElement):
+    """Wrap a column expression as it appears in a 'reference' context.
+
+    This expression is any that inclues an _order_by_label_element,
+    which is a Label, or a DESC / ASC construct wrapping a Label.
+
+    The production of _label_reference() should occur when an expression
+    is added to this context; this includes the ORDER BY or GROUP BY of a
+    SELECT statement, as well as a few other places, such as the ORDER BY
+    within an OVER clause.
+
+    """
     __visit_name__ = 'label_reference'
 
-    def __init__(self, text):
-        self.text = self.key = text
+    def __init__(self, element):
+        self.element = element
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.element = clone(self.element, **kw)
+
+    @property
+    def _from_objects(self):
+        return ()
+
+
+class _textual_label_reference(ColumnElement):
+    __visit_name__ = 'textual_label_reference'
+
+    def __init__(self, element):
+        self.element = element
 
     @util.memoized_property
     def _text_clause(self):
-        return TextClause._create_text(self.text)
+        return TextClause._create_text(self.element)
 
 
 class UnaryExpression(ColumnElement):
@@ -3556,6 +3581,13 @@ def _clause_element_as_expr(element):
 
 def _literal_as_label_reference(element):
     if isinstance(element, util.string_types):
+        return _textual_label_reference(element)
+
+    elif hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+
+    if isinstance(element, ColumnElement) and \
+            element._order_by_label_element is not None:
         return _label_reference(element)
     else:
         return _literal_as_text(element)

@@ -1885,9 +1885,10 @@ class CompoundSelect(GenerativeSelect):
 
     @property
     def _label_resolve_dict(self):
-        return dict(
+        d = dict(
             (c.key, c) for c in self.c
         )
+        return d, d
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
@@ -2499,15 +2500,16 @@ class Select(HasPrefixes, GenerativeSelect):
 
     @_memoized_property
     def _label_resolve_dict(self):
-        d = dict(
+        with_cols = dict(
             (c._resolve_label or c._label or c.key, c)
             for c in _select_iterables(self._raw_columns)
             if c._allow_label_resolve)
-        d.update(
+        only_froms = dict(
             (c.key, c) for c in
             _select_iterables(self.froms) if c._allow_label_resolve)
+        with_cols.update(only_froms)
 
-        return d
+        return with_cols, only_froms
 
     def is_derived_from(self, fromclause):
         if self in fromclause._cloned_set:
