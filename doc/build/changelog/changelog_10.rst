@@ -22,6 +22,15 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, orm
+
+        Added new event handlers :meth:`.AttributeEvents.init_collection`
+        and :meth:`.AttributeEvents.dispose_collection`, which track when
+        a collection is first associated with an instance and when it is
+        replaced.  These handlers supersede the :meth:`.collection.linker`
+        annotation. The old hook remains supported through an event adapter.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3148, 3188
 
