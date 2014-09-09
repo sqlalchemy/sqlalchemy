@@ -683,6 +683,30 @@ as more string, integer and date operators.
 
 :ticket:`2547`
 
+.. _feature_2623:
+
+Multiple-VALUES support for Insert
+-----------------------------------
+
+The :meth:`.Insert.values` method now supports a list of dictionaries,
+which will render a multi-VALUES statement such as
+``VALUES (<row1>), (<row2>), ...``.  This is only relevant to backends which
+support this syntax, including Postgresql, SQLite, and MySQL.  It is
+not the same thing as the usual ``executemany()`` style of INSERT which
+remains unchanged::
+
+    users.insert().values([
+                        {"name": "some name"},
+                        {"name": "some other name"},
+                        {"name": "yet another name"},
+                    ])
+
+.. seealso::
+
+    :meth:`.Insert.values`
+
+:ticket:`2623`
+
 Type Expressions
 -----------------
 
