@@ -1664,14 +1664,33 @@ class GenerativeSelect(SelectBase):
     @_generative
     def limit(self, limit):
         """return a new selectable with the given LIMIT criterion
-        applied."""
+        applied.
+
+        This is a numerical value which usually renders as a ``LIMIT``
+        expression in the resulting select.  Backends that don't
+        support ``LIMIT`` will attempt to provide similar
+        functionality.
+
+        :param limit: an integer LIMIT parameter.
+
+        """
 
         self._limit = util.asint(limit)
 
     @_generative
     def offset(self, offset):
         """return a new selectable with the given OFFSET criterion
-        applied."""
+        applied.
+
+
+        This is a numeric value which usually renders as an ``OFFSET``
+        expression in the resulting select.  Backends that don't
+        support ``OFFSET`` will attempt to provide similar
+        functionality.
+
+        :param offset: an integer OFFSET parameter.
+
+        """
 
         self._offset = util.asint(offset)
 
@@ -2060,37 +2079,56 @@ class Select(HasPrefixes, GenerativeSelect):
             :func:`.select`.
 
         :param columns:
-          A list of :class:`.ClauseElement` objects, typically
-          :class:`.ColumnElement` objects or subclasses, which will form the
-          columns clause of the resulting statement. For all members which are
-          instances of :class:`.Selectable`, the individual
-          :class:`.ColumnElement` members of the :class:`.Selectable` will be
-          added individually to the columns clause. For example, specifying a
-          :class:`~sqlalchemy.schema.Table` instance will result in all the
-          contained :class:`~sqlalchemy.schema.Column` objects within to be
-          added to the columns clause.
+          A list of :class:`.ColumnElement` or :class:`.FromClause`
+          objects which will form the columns clause of the resulting
+          statement.   For those objects that are instances of
+          :class:`.FromClause` (typically :class:`.Table` or :class:`.Alias`
+          objects), the :attr:`.FromClause.c` collection is extracted
+          to form a collection of :class:`.ColumnElement` objects.
 
-          This argument is not present on the form of :func:`select()`
-          available on :class:`~sqlalchemy.schema.Table`.
+          This parameter will also accept :class:`.Text` constructs as
+          given, as well as ORM-mapped classes.
+
+          .. note::
+
+            The :paramref:`.select.columns` parameter is not available
+            in the method form of :func:`.select`, e.g.
+            :meth:`.FromClause.select`.
+
+          .. seealso::
+
+            :meth:`.Select.column`
+
+            :meth:`.Select.with_only_columns`
 
         :param whereclause:
           A :class:`.ClauseElement` expression which will be used to form the
-          ``WHERE`` clause.
+          ``WHERE`` clause.   It is typically preferable to add WHERE
+          criterion to an existing :class:`.Select` using method chaining
+          with :meth:`.Select.where`.
+
+          .. seealso::
+
+            :meth:`.Select.where`
 
         :param from_obj:
           A list of :class:`.ClauseElement` objects which will be added to the
-          ``FROM`` clause of the resulting statement. Note that "from" objects
-          are automatically located within the columns and whereclause
-          ClauseElements.  Use this parameter to explicitly specify "from"
-          objects which are not automatically locatable. This could include
-          :class:`~sqlalchemy.schema.Table` objects that aren't otherwise
-          present, or :class:`.Join` objects whose presence will supersede
-          that of the :class:`~sqlalchemy.schema.Table` objects already
-          located in the other clauses.
+          ``FROM`` clause of the resulting statement.  This is equivalent
+          to calling :meth:`.Select.select_from` using method chaining on
+          an existing :class:`.Select` object.
+
+          .. seealso::
+
+            :meth:`.Select.select_from` - full description of explicit
+            FROM clause specification.
 
         :param autocommit:
-          Deprecated.  Use .execution_options(autocommit=<True|False>)
+          Deprecated.  Use ``.execution_options(autocommit=<True|False>)``
           to set the autocommit option.
+
+          .. seealso::
+
+            :meth:`.Executable.execution_options`
 
         :param bind=None:
           an :class:`~.Engine` or :class:`~.Connection` instance
@@ -2103,11 +2141,13 @@ class Select(HasPrefixes, GenerativeSelect):
         :param correlate=True:
           indicates that this :class:`.Select` object should have its
           contained :class:`.FromClause` elements "correlated" to an enclosing
-          :class:`.Select` object.  This means that any
-          :class:`.ClauseElement` instance within the "froms" collection of
-          this :class:`.Select` which is also present in the "froms"
-          collection of an enclosing select will not be rendered in the
-          ``FROM`` clause of this select statement.
+          :class:`.Select` object.  It is typically preferable to specify
+          correlations on an existing :class:`.Select` construct using
+          :meth:`.Select.correlate`.
+
+          .. seealso::
+
+            :meth:`.Select.correlate` - full description of correlation.
 
         :param distinct=False:
           when ``True``, applies a ``DISTINCT`` qualifier to the columns
@@ -2118,15 +2158,19 @@ class Select(HasPrefixes, GenerativeSelect):
           is understood by the Postgresql dialect to render the
           ``DISTINCT ON (<columns>)`` syntax.
 
-          ``distinct`` is also available via the :meth:`~.Select.distinct`
-          generative method.
+          ``distinct`` is also available on an existing :class:`.Select`
+          object via the :meth:`~.Select.distinct` method.
+
+          .. seealso::
+
+            :meth:`.Select.distinct`
 
         :param for_update=False:
           when ``True``, applies ``FOR UPDATE`` to the end of the
           resulting statement.
 
           .. deprecated:: 0.9.0 - use
-             :meth:`.GenerativeSelect.with_for_update` to specify the
+             :meth:`.Select.with_for_update` to specify the
              structure of the ``FOR UPDATE`` clause.
 
           ``for_update`` accepts various string values interpreted by
@@ -2141,32 +2185,62 @@ class Select(HasPrefixes, GenerativeSelect):
 
          .. seealso::
 
-            :meth:`.GenerativeSelect.with_for_update` - improved API for
+            :meth:`.Select.with_for_update` - improved API for
             specifying the ``FOR UPDATE`` clause.
 
         :param group_by:
           a list of :class:`.ClauseElement` objects which will comprise the
-          ``GROUP BY`` clause of the resulting select.
+          ``GROUP BY`` clause of the resulting select.  This parameter
+          is typically specified more naturally using the
+          :meth:`.Select.group_by` method on an existing :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.group_by`
 
         :param having:
           a :class:`.ClauseElement` that will comprise the ``HAVING`` clause
-          of the resulting select when ``GROUP BY`` is used.
+          of the resulting select when ``GROUP BY`` is used.  This parameter
+          is typically specified more naturally using the
+          :meth:`.Select.having` method on an existing :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.having`
 
         :param limit=None:
-          a numerical value which usually compiles to a ``LIMIT``
-          expression in the resulting select.  Databases that don't
+          a numerical value which usually renders as a ``LIMIT``
+          expression in the resulting select.  Backends that don't
           support ``LIMIT`` will attempt to provide similar
-          functionality.
+          functionality.    This parameter is typically specified more naturally
+          using the :meth:`.Select.limit` method on an existing
+          :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.limit`
 
         :param offset=None:
-          a numeric value which usually compiles to an ``OFFSET``
-          expression in the resulting select.  Databases that don't
+          a numeric value which usually renders as an ``OFFSET``
+          expression in the resulting select.  Backends that don't
           support ``OFFSET`` will attempt to provide similar
-          functionality.
+          functionality.  This parameter is typically specified more naturally
+          using the :meth:`.Select.offset` method on an existing
+          :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.offset`
 
         :param order_by:
           a scalar or list of :class:`.ClauseElement` objects which will
           comprise the ``ORDER BY`` clause of the resulting select.
+          This parameter is typically specified more naturally using the
+          :meth:`.Select.order_by` method on an existing :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.order_by`
 
         :param use_labels=False:
           when ``True``, the statement will be generated using labels
@@ -2177,8 +2251,13 @@ class Select(HasPrefixes, GenerativeSelect):
           collection of the resulting :class:`.Select` object will use these
           names as well for targeting column members.
 
-          use_labels is also available via the
-          :meth:`~.GenerativeSelect.apply_labels` generative method.
+          This parameter can also be specified on an existing
+          :class:`.Select` object using the :meth:`.Select.apply_labels`
+          method.
+
+          .. seealso::
+
+            :meth:`.Select.apply_labels`
 
         """
         self._auto_correlate = correlate
