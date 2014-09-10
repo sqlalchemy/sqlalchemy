@@ -539,6 +539,11 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         expr2 = CloningVisitor().traverse(expr)
         assert str(expr) == str(expr2)
 
+    def test_aggregatefilter(self):
+        expr = func.count(1).filter(t1.c.col1 > 1)
+        expr2 = CloningVisitor().traverse(expr)
+        assert str(expr) == str(expr2)
+
     def test_adapt_union(self):
         u = union(
             t1.select().where(t1.c.col1 == 4),
