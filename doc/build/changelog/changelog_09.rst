@@ -14,6 +14,17 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, ext
+        :verions: 1.0.0
+        :tickets: 3191
+
+        Fixed bug in ordering list where the order of items would be
+        thrown off during a collection replace event, if the
+        reorder_on_append flag were set to True.  The fix ensures that the
+        ordering list only impacts the list that is explicitly associated
+        with the object.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :tickets: 3180

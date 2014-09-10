@@ -585,6 +585,16 @@ class CollectionAdapter(object):
         "The entity collection being adapted."
         return self._data()
 
+    @property
+    def _referenced_by_owner(self):
+        """return True if the owner state still refers to this collection.
+
+        This will return False within a bulk replace operation,
+        where this collection is the one being replaced.
+
+        """
+        return self.owner_state.dict[self._key] is self._data()
+
     @util.memoized_property
     def attr(self):
         return self.owner_state.manager[self._key].impl
