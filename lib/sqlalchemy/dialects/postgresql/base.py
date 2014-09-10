@@ -2471,14 +2471,19 @@ class PGDialect(default.DefaultDialect):
           SELECT
               i.relname as relname,
               ix.indisunique, ix.indexprs, ix.indpred,
-              a.attname, a.attnum, ix.indkey%s
+              a.attname, a.attnum, c.conrelid, ix.indkey%s
           FROM
               pg_class t
                     join pg_index ix on t.oid = ix.indrelid
-                    join pg_class i on i.oid=ix.indexrelid
+                    join pg_class i on i.oid = ix.indexrelid
                     left outer join
                         pg_attribute a
-                        on t.oid=a.attrelid and %s
+                        on t.oid = a.attrelid and %s
+                    left outer join
+                        pg_constraint c
+                        on (ix.indrelid = c.conrelid and
+                            ix.indexrelid = c.conindid and
+                            c.contype in ('p', 'u', 'x'))
           WHERE
               t.relkind IN ('r', 'v', 'f', 'm')
               and t.oid = :table_oid
@@ -2501,7 +2506,7 @@ class PGDialect(default.DefaultDialect):
 
         sv_idx_name = None
         for row in c.fetchall():
-            idx_name, unique, expr, prd, col, col_num, idx_key = row
+            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key = row
 
             if expr:
                 if idx_name != sv_idx_name:
@@ -2523,11 +2528,14 @@ class PGDialect(default.DefaultDialect):
                 index['cols'][col_num] = col
             index['key'] = [int(k.strip()) for k in idx_key.split()]
             index['unique'] = unique
+            index['duplicates_constraint'] = (None if conrelid is None
+                                                   else idx_name)
 
         return [
             {'name': name,
              'unique': idx['unique'],
-             'column_names': [idx['cols'][i] for i in idx['key']]}
+             'column_names': [idx['cols'][i] for i in idx['key']],
+             'duplicates_constraint': idx['duplicates_constraint']}
             for name, idx in indexes.items()
         ]
 

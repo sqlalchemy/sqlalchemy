@@ -487,10 +487,12 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.temp_table_reflection
     def test_get_temp_table_unique_constraints(self):
         insp = inspect(self.metadata.bind)
-        eq_(
-            insp.get_unique_constraints('user_tmp'),
-            [{'column_names': ['name'], 'name': 'user_tmp_uq'}]
-        )
+        reflected = insp.get_unique_constraints('user_tmp')
+        for refl in reflected:
+            # Different dialects handle duplicate index and constraints
+            # differently, so ignore this flag
+            refl.pop('duplicates_index', None)
+        eq_(reflected, [{'column_names': ['name'], 'name': 'user_tmp_uq'}])
 
     @testing.requires.temp_table_reflection
     def test_get_temp_table_indexes(self):
@@ -544,6 +546,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
         )
 
         for orig, refl in zip(uniques, reflected):
+            # Different dialects handle duplicate index and constraints
+            # differently, so ignore this flag
+            refl.pop('duplicates_index', None)
             eq_(orig, refl)
 
     @testing.provide_metadata
