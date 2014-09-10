@@ -2191,6 +2191,23 @@ class InstrumentationTest(fixtures.ORMTest):
         f1.attr = l2
         eq_(canary, [adapter_1, f1.attr._sa_adapter, None])
 
+    def test_referenced_by_owner(self):
+
+        class Foo(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(
+            Foo, 'attr', uselist=True, useobject=True)
+
+        f1 = Foo()
+        f1.attr.append(3)
+
+        adapter = collections.collection_adapter(f1.attr)
+        assert adapter._referenced_by_owner
+
+        f1.attr = []
+        assert not adapter._referenced_by_owner
 
 
 

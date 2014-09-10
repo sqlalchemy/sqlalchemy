@@ -119,7 +119,7 @@ start numbering at 1 or some other integer, provide ``count_from=1``.
 
 
 """
-from ..orm.collections import collection
+from ..orm.collections import collection, collection_adapter
 from .. import util
 
 __all__ = ['ordering_list']
@@ -319,7 +319,10 @@ class OrderingList(list):
 
     def remove(self, entity):
         super(OrderingList, self).remove(entity)
-        self._reorder()
+
+        adapter = collection_adapter(self)
+        if adapter and adapter._referenced_by_owner:
+            self._reorder()
 
     def pop(self, index=-1):
         entity = super(OrderingList, self).pop(index)

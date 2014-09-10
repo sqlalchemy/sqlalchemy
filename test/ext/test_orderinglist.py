@@ -349,6 +349,28 @@ class OrderingListTest(fixtures.TestBase):
         self.assert_(srt.bullets[1].text == 'new 2')
         self.assert_(srt.bullets[2].text == '3')
 
+    def test_replace_two(self):
+        """test #3191"""
+
+        self._setup(ordering_list('position', reorder_on_append=True))
+
+        s1 = Slide('Slide #1')
+
+        b1, b2, b3, b4 = Bullet('1'), Bullet('2'), Bullet('3'), Bullet('4')
+        s1.bullets = [b1, b2, b3]
+
+        eq_(
+            [b.position for b in s1.bullets],
+            [0, 1, 2]
+        )
+
+        s1.bullets = [b4, b2, b1]
+        eq_(
+            [b.position for b in s1.bullets],
+            [0, 1, 2]
+        )
+
+
     def test_funky_ordering(self):
         class Pos(object):
             def __init__(self):
