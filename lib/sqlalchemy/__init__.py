@@ -7,6 +7,7 @@
 
 
 from .sql import (
+    aggregatefilter,
     alias,
     and_,
     asc,

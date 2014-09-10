@@ -2888,6 +2888,71 @@ class Over(ColumnElement):
         ))
 
 
+class AggregateFilter(ColumnElement):
+    """Represent an aggregate FILTER clause.
+
+    This is a special operator against aggregate functions,
+    which controls which rows are passed to it.
+    It's supported only by certain database backends.
+
+    """
+    __visit_name__ = 'aggregatefilter'
+
+    criterion = None
+
+    def __init__(self, func, *criterion):
+        """Produce an :class:`.AggregateFilter` object against a function.
+
+        Used against aggregate functions,
+        for database backends that support aggregate "FILTER" clause.
+
+        E.g.::
+
+        from sqlalchemy import aggregatefilter
+        aggregatefilter(func.count(1), MyClass.name == 'some name')
+
+        Would produce "COUNT(1) FILTER (WHERE myclass.name = 'some name')".
+
+        This function is also available from the :data:`~.expression.func`
+        construct itself via the :meth:`.FunctionElement.filter` method.
+
+        """
+        self.func = func
+        self.filter(*criterion)
+
+    def filter(self, *criterion):
+        for criterion in list(criterion):
+            criterion = _expression_literal_as_text(criterion)
+
+            if self.criterion is not None:
+                self.criterion = self.criterion & criterion
+            else:
+                self.criterion = criterion
+
+        return self
+
+    @util.memoized_property
+    def type(self):
+        return self.func.type
+
+    def get_children(self, **kwargs):
+        return [c for c in
+                (self.func, self.criterion)
+                if c is not None]
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.func = clone(self.func, **kw)
+        if self.criterion is not None:
+            self.criterion = clone(self.criterion, **kw)
+
+    @property
+    def _from_objects(self):
+        return list(itertools.chain(
+            *[c._from_objects for c in (self.func, self.criterion)
+              if c is not None]
+        ))
+
+
 class Label(ColumnElement):
     """Represents a column label (AS).
 

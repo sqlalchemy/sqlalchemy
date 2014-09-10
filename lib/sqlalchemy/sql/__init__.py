@@ -19,6 +19,7 @@ from .expression import (
     Selectable,
     TableClause,
     Update,
+    aggregatefilter,
     alias,
     and_,
     asc,
