@@ -2888,28 +2888,28 @@ class Over(ColumnElement):
         ))
 
 
-class AggregateFilter(ColumnElement):
-    """Represent an aggregate FILTER clause.
+class FunctionFilter(ColumnElement):
+    """Represent a function FILTER clause.
 
-    This is a special operator against aggregate functions,
+    This is a special operator against aggregate and window functions,
     which controls which rows are passed to it.
     It's supported only by certain database backends.
 
     """
-    __visit_name__ = 'aggregatefilter'
+    __visit_name__ = 'funcfilter'
 
     criterion = None
 
     def __init__(self, func, *criterion):
-        """Produce an :class:`.AggregateFilter` object against a function.
+        """Produce an :class:`.FunctionFilter` object against a function.
 
-        Used against aggregate functions,
-        for database backends that support aggregate "FILTER" clause.
+        Used against aggregate and window functions,
+        for database backends that support the "FILTER" clause.
 
         E.g.::
 
-        from sqlalchemy import aggregatefilter
-        aggregatefilter(func.count(1), MyClass.name == 'some name')
+        from sqlalchemy import funcfilter
+        funcfilter(func.count(1), MyClass.name == 'some name')
 
         Would produce "COUNT(1) FILTER (WHERE myclass.name = 'some name')".
 

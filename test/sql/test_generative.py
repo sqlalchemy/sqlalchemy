@@ -539,7 +539,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         expr2 = CloningVisitor().traverse(expr)
         assert str(expr) == str(expr2)
 
-    def test_aggregatefilter(self):
+    def test_funcfilter(self):
         expr = func.count(1).filter(t1.c.col1 > 1)
         expr2 = CloningVisitor().traverse(expr)
         assert str(expr) == str(expr2)

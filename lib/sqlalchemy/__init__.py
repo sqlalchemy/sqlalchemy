@@ -7,7 +7,6 @@
 
 
 from .sql import (
-    aggregatefilter,
     alias,
     and_,
     asc,
@@ -26,6 +25,7 @@ from .sql import (
     extract,
     false,
     func,
+    funcfilter,
     insert,
     intersect,
     intersect_all,

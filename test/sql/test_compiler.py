@@ -2190,7 +2190,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "(ORDER BY mytable.myid + :myid_1) AS anon_1 FROM mytable"
         )
 
-    def test_aggregate_filter(self):
+    def test_funcfilter(self):
         self.assert_compile(
             func.count(1).filter(),
             "count(:param_1)"

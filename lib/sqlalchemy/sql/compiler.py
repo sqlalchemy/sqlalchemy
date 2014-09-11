@@ -760,10 +760,10 @@ class SQLCompiler(Compiled):
             )
         )
 
-    def visit_aggregatefilter(self, aggregatefilter, **kwargs):
+    def visit_funcfilter(self, funcfilter, **kwargs):
         return "%s FILTER (WHERE %s)" % (
-            aggregatefilter.func._compiler_dispatch(self, **kwargs),
-            aggregatefilter.criterion._compiler_dispatch(self, **kwargs)
+            funcfilter.func._compiler_dispatch(self, **kwargs),
+            funcfilter.criterion._compiler_dispatch(self, **kwargs)
         )
 
     def visit_extract(self, extract, **kwargs):

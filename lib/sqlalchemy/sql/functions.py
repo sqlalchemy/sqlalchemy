@@ -12,7 +12,7 @@ from . import sqltypes, schema
 from .base import Executable, ColumnCollection
 from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
     literal_column, _type_from_args, ColumnElement, _clone,\
-    Over, BindParameter, AggregateFilter
+    Over, BindParameter, FunctionFilter
 from .selectable import FromClause, Select, Alias
 
 from . import operators
@@ -119,8 +119,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def filter(self, *criterion):
         """Produce a FILTER clause against this function.
 
-        Used against aggregate functions,
-        for database backends that support aggregate "FILTER" clause.
+        Used against aggregate and window functions,
+        for database backends that support the "FILTER" clause.
 
         The expression::
 
@@ -128,15 +128,15 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         is shorthand for::
 
-            from sqlalchemy import aggregatefilter
-            aggregatefilter(func.count(1), True)
+            from sqlalchemy import funcfilter
+            funcfilter(func.count(1), True)
 
-        See :func:`~.expression.aggregatefilter` for a full description.
+        See :func:`~.expression.funcfilter` for a full description.
 
         """
         if not criterion:
             return self
-        return AggregateFilter(self, *criterion)
+        return FunctionFilter(self, *criterion)
 
     @property
     def _from_objects(self):
