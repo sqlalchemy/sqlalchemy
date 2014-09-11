@@ -2908,8 +2908,8 @@ class FunctionFilter(ColumnElement):
 
         E.g.::
 
-        from sqlalchemy import funcfilter
-        funcfilter(func.count(1), MyClass.name == 'some name')
+            from sqlalchemy import funcfilter
+            funcfilter(func.count(1), MyClass.name == 'some name')
 
         Would produce "COUNT(1) FILTER (WHERE myclass.name = 'some name')".
 
