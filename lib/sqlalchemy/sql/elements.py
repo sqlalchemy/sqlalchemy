@@ -2901,7 +2901,7 @@ class FunctionFilter(ColumnElement):
     criterion = None
 
     def __init__(self, func, *criterion):
-        """Produce an :class:`.FunctionFilter` object against a function.
+        """Produce a :class:`.FunctionFilter` object against a function.
 
         Used against aggregate and window functions,
         for database backends that support the "FILTER" clause.
