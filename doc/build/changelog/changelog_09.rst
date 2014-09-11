@@ -14,8 +14,18 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, orm
+        :versions: 1.0.0
+        :tickets: 3194
+
+        Fixed warning that would emit when a complex self-referential
+        primaryjoin contained functions, while at the same time remote_side
+        was specified; the warning would suggest setting "remote side".
+        It now only emits if remote_side isn't present.
+
+    .. change::
         :tags: bug, ext
-        :verions: 1.0.0
+        :versions: 1.0.0
         :tickets: 3191
 
         Fixed bug in ordering list where the order of items would be

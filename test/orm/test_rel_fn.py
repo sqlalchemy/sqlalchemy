@@ -242,6 +242,22 @@ class _JoinFixtures(object):
             **kw
         )
 
+    def _join_fixture_o2m_composite_selfref_func_remote_side(self, **kw):
+        return relationships.JoinCondition(
+            self.composite_selfref,
+            self.composite_selfref,
+            self.composite_selfref,
+            self.composite_selfref,
+            primaryjoin=and_(
+                self.composite_selfref.c.group_id ==
+                    func.foo(self.composite_selfref.c.group_id),
+                self.composite_selfref.c.parent_id ==
+                    self.composite_selfref.c.id
+            ),
+            remote_side=set([self.composite_selfref.c.parent_id]),
+            **kw
+        )
+
     def _join_fixture_o2m_composite_selfref_func_annotated(self, **kw):
         return relationships.JoinCondition(
             self.composite_selfref,
@@ -728,6 +744,10 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase,
         self._assert_non_simple_warning(
             self._join_fixture_o2m_composite_selfref_func
         )
+
+    def test_determine_local_remote_pairs_o2m_composite_selfref_func_rs(self):
+        # no warning
+        self._join_fixture_o2m_composite_selfref_func_remote_side()
 
     def test_determine_local_remote_pairs_o2m_overlap_func_warning(self):
         self._assert_non_simple_warning(
