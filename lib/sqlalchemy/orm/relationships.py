@@ -2200,7 +2200,7 @@ class JoinCondition(object):
         elif self._local_remote_pairs or self._remote_side:
             self._annotate_remote_from_args()
         elif self._refers_to_parent_table():
-            self._annotate_selfref(lambda col: "foreign" in col._annotations)
+            self._annotate_selfref(lambda col: "foreign" in col._annotations, False)
         elif self._tables_overlap():
             self._annotate_remote_with_overlap()
         else:
@@ -2219,7 +2219,7 @@ class JoinCondition(object):
         self.secondaryjoin = visitors.replacement_traverse(
             self.secondaryjoin, {}, repl)
 
-    def _annotate_selfref(self, fn):
+    def _annotate_selfref(self, fn, remote_side_given):
         """annotate 'remote' in primaryjoin, secondaryjoin
         when the relationship is detected as self-referential.
 
@@ -2234,7 +2234,7 @@ class JoinCondition(object):
                 if fn(binary.right) and not equated:
                     binary.right = binary.right._annotate(
                         {"remote": True})
-            else:
+            elif not remote_side_given:
                 self._warn_non_column_elements()
 
         self.primaryjoin = visitors.cloned_traverse(
@@ -2259,7 +2259,7 @@ class JoinCondition(object):
             remote_side = self._remote_side
 
         if self._refers_to_parent_table():
-            self._annotate_selfref(lambda col: col in remote_side)
+            self._annotate_selfref(lambda col: col in remote_side, True)
         else:
             def repl(element):
                 if element in remote_side:
