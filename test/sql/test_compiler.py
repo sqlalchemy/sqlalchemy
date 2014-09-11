@@ -2254,6 +2254,33 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM mytable"
         )
 
+        # test filtered windowing:
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    order_by=table1.c.name
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (ORDER BY mytable.name) AS anon_1 FROM mytable"
+        )
+
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    order_by=table1.c.name,
+                    partition_by=['description']
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (PARTITION BY mytable.description ORDER BY mytable.name) "
+            "AS anon_1 FROM mytable"
+        )
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,

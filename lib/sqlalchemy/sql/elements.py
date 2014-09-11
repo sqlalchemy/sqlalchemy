@@ -2931,6 +2931,26 @@ class FunctionFilter(ColumnElement):
 
         return self
 
+    def over(self, partition_by=None, order_by=None):
+        """Produce an OVER clause against this filtered function.
+
+        Used against aggregate or so-called "window" functions,
+        for database backends that support window functions.
+
+        The expression::
+
+            func.rank().filter(MyClass.y > 5).over(order_by='x')
+
+        is shorthand for::
+
+            from sqlalchemy import over, funcfilter
+            over(funcfilter(func.rank(), MyClass.y > 5), order_by='x')
+
+        See :func:`~.expression.over` for a full description.
+
+        """
+        return Over(self, partition_by=partition_by, order_by=order_by)
+
     @util.memoized_property
     def type(self):
         return self.func.type
