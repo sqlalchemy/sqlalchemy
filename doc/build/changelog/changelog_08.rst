@@ -2156,6 +2156,10 @@
       Supported by Postgresql, SQLite, and MySQL.
       Big thanks to Idan Kamara for doing the legwork on this one.
 
+      .. seealso::
+
+        :ref:`feature_2623`
+
     .. change::
         :tags: oracle, bug
         :tickets: 2620

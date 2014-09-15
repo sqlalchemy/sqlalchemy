@@ -221,10 +221,8 @@ class AppenderMixin(object):
 
         mapper = object_mapper(instance)
         prop = mapper._props[self.attr.key]
-        self._criterion = prop.compare(
-            operators.eq,
+        self._criterion = prop._with_parent(
             instance,
-            value_is_parent=True,
             alias_secondary=False)
 
         if self.attr.order_by:

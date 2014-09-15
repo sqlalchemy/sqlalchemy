@@ -429,6 +429,10 @@ class collection(object):
         the instance.  A single argument is passed: the collection adapter
         that has been linked, or None if unlinking.
 
+        .. deprecated:: 1.0.0 - the :meth:`.collection.linker` handler
+           is superseded by the :meth:`.AttributeEvents.init_collection`
+           and :meth:`.AttributeEvents.dispose_collection` handlers.
+
         """
         fn._sa_instrument_role = 'linker'
         return fn
@@ -575,7 +579,7 @@ class CollectionAdapter(object):
         self._key = attr.key
         self._data = weakref.ref(data)
         self.owner_state = owner_state
-        self.link_to_self(data)
+        data._sa_adapter = self
 
     def _warn_invalidated(self):
         util.warn("This collection has been invalidated.")
@@ -585,23 +589,19 @@ class CollectionAdapter(object):
         "The entity collection being adapted."
         return self._data()
 
+    @property
+    def _referenced_by_owner(self):
+        """return True if the owner state still refers to this collection.
+
+        This will return False within a bulk replace operation,
+        where this collection is the one being replaced.
+
+        """
+        return self.owner_state.dict[self._key] is self._data()
+
     @util.memoized_property
     def attr(self):
         return self.owner_state.manager[self._key].impl
-
-    def link_to_self(self, data):
-        """Link a collection to this adapter"""
-
-        data._sa_adapter = self
-        if data._sa_linker:
-            data._sa_linker(self)
-
-    def unlink(self, data):
-        """Unlink a collection from any adapter"""
-
-        del data._sa_adapter
-        if data._sa_linker:
-            data._sa_linker(None)
 
     def adapt_like_to_iterable(self, obj):
         """Converts collection-compatible objects to an iterable of values.
@@ -945,8 +945,7 @@ def _instrument_class(cls):
         setattr(cls, '_sa_%s' % role, getattr(cls, method_name))
 
     cls._sa_adapter = None
-    if not hasattr(cls, '_sa_linker'):
-        cls._sa_linker = None
+
     if not hasattr(cls, '_sa_converter'):
         cls._sa_converter = None
     cls._sa_instrumented = id(cls)

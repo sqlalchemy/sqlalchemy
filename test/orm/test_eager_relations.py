@@ -14,7 +14,7 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from sqlalchemy.sql import operators
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures, expect_warnings
 from test.orm import _fixtures
 from sqlalchemy.util import OrderedDict as odict
 import datetime
@@ -209,6 +209,55 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ]),
             User(id=10, addresses=[])
             ], sess.query(User).order_by(User.id).all())
+
+    def test_no_ad_hoc_orderby(self):
+        """part of #2992; make sure string label references can't
+        access an eager loader, else an eager load can corrupt the query.
+
+        """
+        Address, addresses, users, User = (self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties=dict(
+            addresses=relationship(
+                Address),
+        ))
+
+        sess = create_session()
+        q = sess.query(User).\
+            join("addresses").\
+            options(joinedload("addresses")).\
+            order_by("email_address")
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "addresses_1.id AS addresses_1_id, addresses_1.user_id AS "
+            "addresses_1_user_id, addresses_1.email_address AS "
+            "addresses_1_email_address FROM users JOIN addresses "
+            "ON users.id = addresses.user_id LEFT OUTER JOIN addresses "
+            "AS addresses_1 ON users.id = addresses_1.user_id "
+            "ORDER BY addresses.email_address"
+        )
+
+        q = sess.query(User).options(joinedload("addresses")).\
+            order_by("email_address")
+
+        with expect_warnings("Can't resolve label reference 'email_address'"):
+            self.assert_compile(
+                q,
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "addresses_1.id AS addresses_1_id, addresses_1.user_id AS "
+                "addresses_1_user_id, addresses_1.email_address AS "
+                "addresses_1_email_address FROM users LEFT OUTER JOIN "
+                "addresses AS addresses_1 ON users.id = addresses_1.user_id "
+                "ORDER BY email_address"
+            )
+
+
 
     def test_deferred_fk_col(self):
         users, Dingaling, User, dingalings, Address, addresses = (

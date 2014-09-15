@@ -1307,25 +1307,10 @@ class RelationshipProperty(StrategizedProperty):
                 mapperlib.Mapper._configure_all()
             return self.prop
 
-    def compare(self, op, value,
-                value_is_parent=False,
-                alias_secondary=True):
-        if op == operators.eq:
-            if value is None:
-                if self.uselist:
-                    return ~sql.exists([1], self.primaryjoin)
-                else:
-                    return self._optimized_compare(
-                        None,
-                        value_is_parent=value_is_parent,
-                        alias_secondary=alias_secondary)
-            else:
-                return self._optimized_compare(
-                    value,
-                    value_is_parent=value_is_parent,
-                    alias_secondary=alias_secondary)
-        else:
-            return op(self.comparator, value)
+    def _with_parent(self, instance, alias_secondary=True):
+        assert instance is not None
+        return self._optimized_compare(
+            instance, value_is_parent=True, alias_secondary=alias_secondary)
 
     def _optimized_compare(self, value, value_is_parent=False,
                            adapt_source=None,
@@ -1633,7 +1618,7 @@ class RelationshipProperty(StrategizedProperty):
         """Test that this relationship is legal, warn about
         inheritance conflicts."""
 
-        if not self.is_primary() and not mapperlib.class_mapper(
+        if self.parent.non_primary and not mapperlib.class_mapper(
                 self.parent.class_,
                 configure=False).has_property(self.key):
             raise sa_exc.ArgumentError(
@@ -1719,7 +1704,7 @@ class RelationshipProperty(StrategizedProperty):
         """Interpret the 'backref' instruction to create a
         :func:`.relationship` complementary to this one."""
 
-        if not self.is_primary():
+        if self.parent.non_primary:
             return
         if self.backref is not None and not self.back_populates:
             if isinstance(self.backref, util.string_types):
@@ -2196,7 +2181,7 @@ class JoinCondition(object):
         elif self._local_remote_pairs or self._remote_side:
             self._annotate_remote_from_args()
         elif self._refers_to_parent_table():
-            self._annotate_selfref(lambda col: "foreign" in col._annotations)
+            self._annotate_selfref(lambda col: "foreign" in col._annotations, False)
         elif self._tables_overlap():
             self._annotate_remote_with_overlap()
         else:
@@ -2215,7 +2200,7 @@ class JoinCondition(object):
         self.secondaryjoin = visitors.replacement_traverse(
             self.secondaryjoin, {}, repl)
 
-    def _annotate_selfref(self, fn):
+    def _annotate_selfref(self, fn, remote_side_given):
         """annotate 'remote' in primaryjoin, secondaryjoin
         when the relationship is detected as self-referential.
 
@@ -2230,7 +2215,7 @@ class JoinCondition(object):
                 if fn(binary.right) and not equated:
                     binary.right = binary.right._annotate(
                         {"remote": True})
-            else:
+            elif not remote_side_given:
                 self._warn_non_column_elements()
 
         self.primaryjoin = visitors.cloned_traverse(
@@ -2255,7 +2240,7 @@ class JoinCondition(object):
             remote_side = self._remote_side
 
         if self._refers_to_parent_table():
-            self._annotate_selfref(lambda col: col in remote_side)
+            self._annotate_selfref(lambda col: col in remote_side, True)
         else:
             def repl(element):
                 if element in remote_side:

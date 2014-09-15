@@ -6,10 +6,12 @@
 /doc/build/output/
 /dogpile_data/
 *.orig
+*,cover
 /.tox
 .venv
 *.egg-info
 .coverage
+coverage.xml
 .*,cover
 *.class
 *.so

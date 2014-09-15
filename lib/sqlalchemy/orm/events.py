@@ -1593,3 +1593,56 @@ class AttributeEvents(event.Events):
          the given value, or a new effective value, should be returned.
 
         """
+
+    def init_collection(self, target, collection, collection_adapter):
+        """Receive a 'collection init' event.
+
+        This event is triggered for a collection-based attribute, when
+        the initial "empty collection" is first generated for a blank
+        attribute, as well as for when the collection is replaced with
+        a new one, such as via a set event.
+
+        E.g., given that ``User.addresses`` is a relationship-based
+        collection, the event is triggered here::
+
+            u1 = User()
+            u1.addresses.append(a1)  #  <- new collection
+
+        and also during replace operations::
+
+            u1.addresess = [a2, a3]  #  <- new collection
+
+        :param target: the object instance receiving the event.
+         If the listener is registered with ``raw=True``, this will
+         be the :class:`.InstanceState` object.
+        :param collection: the new collection.  This will always be generated
+         from what was specified as
+         :paramref:`.RelationshipProperty.collection_class`, and will always
+         be empty.
+        :param collection_adpater: the :class:`.CollectionAdapter` that will
+         mediate internal access to the collection.
+
+        .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
+           and :meth:`.AttributeEvents.dispose_collection` events supersede
+           the :class:`.collection.linker` hook.
+
+        """
+
+    def dispose_collection(self, target, collection, collection_adpater):
+        """Receive a 'collection dispose' event.
+
+        This event is triggered for a collection-based attribute when
+        a collection is replaced, that is::
+
+            u1.addresses.append(a1)
+
+            u1.addresses = [a2, a3]  # <- old collection is disposed
+
+        The mechanics of the event will typically include that the given
+        collection is empty, even if it stored objects while being replaced.
+
+        .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
+           and :meth:`.AttributeEvents.dispose_collection` events supersede
+           the :class:`.collection.linker` hook.
+
+        """

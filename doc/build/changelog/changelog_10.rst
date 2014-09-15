@@ -22,6 +22,59 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, orm
+
+        Added new event handlers :meth:`.AttributeEvents.init_collection`
+        and :meth:`.AttributeEvents.dispose_collection`, which track when
+        a collection is first associated with an instance and when it is
+        replaced.  These handlers supersede the :meth:`.collection.linker`
+        annotation. The old hook remains supported through an event adapter.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3148, 3188
+
+        A major rework to the behavior of expression labels, most
+        specifically when used with ColumnProperty constructs with
+        custom SQL expressions and in conjunction with the "order by
+        labels" logic first introduced in 0.9.  Fixes include that an
+        ``order_by(Entity.some_col_prop)`` will now make use of "order by
+        label" rules even if Entity has been subject to aliasing,
+        either via inheritance rendering or via the use of the
+        ``aliased()`` construct; rendering of the same column property
+        multiple times with aliasing (e.g. ``query(Entity.some_prop,
+        entity_alias.some_prop)``) will label each occurrence of the
+        entity with a distinct label, and additionally "order by
+        label" rules will work for both (e.g.
+        ``order_by(Entity.some_prop, entity_alias.some_prop)``).
+        Additional issues that could prevent the "order by label"
+        logic from working in 0.9, most notably that the state of a
+        Label could change such that "order by label" would stop
+        working depending on how things were called, has been fixed.
+
+        .. seealso::
+
+            :ref:`bug_3188`
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 3186
+
+        MySQL boolean symbols "true", "false" work again.  0.9's change
+        in :ticket:`2682` disallowed the MySQL dialect from making use of the
+        "true" and "false" symbols in the context of "IS" / "IS NOT", but
+        MySQL supports this syntax even though it has no boolean type.
+        MySQL remains "non native boolean", but the :func:`.true`
+        and :func:`.false` symbols again produce the
+        keywords "true" and "false", so that an expression like
+        ``column.is_(true())`` again works on MySQL.
+
+        .. seealso::
+
+            :ref:`bug_3186`
+
+    .. change::
         :tags: changed, mssql
         :tickets: 3182
 

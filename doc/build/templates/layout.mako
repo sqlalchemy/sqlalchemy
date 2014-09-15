@@ -32,6 +32,13 @@
 <%inherit file="${context['base']}"/>
 
 <%
+    if builder == 'epub':
+        next.body()
+        return
+%>
+
+
+<%
 withsidebar = bool(toc) and current_page_name != 'index'
 %>
 

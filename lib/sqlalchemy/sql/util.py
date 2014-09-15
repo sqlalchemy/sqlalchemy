@@ -16,7 +16,7 @@ from itertools import chain
 from collections import deque
 
 from .elements import BindParameter, ColumnClause, ColumnElement, \
-    Null, UnaryExpression, literal_column, Label
+    Null, UnaryExpression, literal_column, Label, _label_reference
 from .selectable import ScalarSelect, Join, FromClause, FromGrouping
 from .schema import Column
 
@@ -161,6 +161,8 @@ def unwrap_order_by(clause):
                 not isinstance(t, UnaryExpression) or
                 not operators.is_ordering_modifier(t.modifier)
         ):
+            if isinstance(t, _label_reference):
+                t = t.element
             cols.add(t)
         else:
             for c in t.get_children():
@@ -428,35 +430,6 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
     return pairs
 
 
-class AliasedRow(object):
-    """Wrap a RowProxy with a translation map.
-
-    This object allows a set of keys to be translated
-    to those present in a RowProxy.
-
-    """
-
-    def __init__(self, row, map):
-        # AliasedRow objects don't nest, so un-nest
-        # if another AliasedRow was passed
-        if isinstance(row, AliasedRow):
-            self.row = row.row
-        else:
-            self.row = row
-        self.map = map
-
-    def __contains__(self, key):
-        return self.map[key] in self.row
-
-    def has_key(self, key):
-        return key in self
-
-    def __getitem__(self, key):
-        return self.row[self.map[key]]
-
-    def keys(self):
-        return self.row.keys()
-
 
 class ClauseAdapter(visitors.ReplacingCloningVisitor):
     """Clones and modifies clauses based on column correspondence.
@@ -486,21 +459,14 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
     """
 
     def __init__(self, selectable, equivalents=None,
-                 include=None, exclude=None,
                  include_fn=None, exclude_fn=None,
-                 adapt_on_names=False):
-        self.__traverse_options__ = {'stop_on': [selectable]}
+                 adapt_on_names=False, anonymize_labels=False):
+        self.__traverse_options__ = {
+            'stop_on': [selectable],
+            'anonymize_labels': anonymize_labels}
         self.selectable = selectable
-        if include:
-            assert not include_fn
-            self.include_fn = lambda e: e in include
-        else:
-            self.include_fn = include_fn
-        if exclude:
-            assert not exclude_fn
-            self.exclude_fn = lambda e: e in exclude
-        else:
-            self.exclude_fn = exclude_fn
+        self.include_fn = include_fn
+        self.exclude_fn = exclude_fn
         self.equivalents = util.column_dict(equivalents or {})
         self.adapt_on_names = adapt_on_names
 
@@ -520,10 +486,8 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
             newcol = self.selectable.c.get(col.name)
         return newcol
 
-    magic_flag = False
-
     def replace(self, col):
-        if not self.magic_flag and isinstance(col, FromClause) and \
+        if isinstance(col, FromClause) and \
                 self.selectable.is_derived_from(col):
             return self.selectable
         elif not isinstance(col, ColumnElement):
@@ -539,62 +503,102 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
 class ColumnAdapter(ClauseAdapter):
     """Extends ClauseAdapter with extra utility functions.
 
-    Provides the ability to "wrap" this ClauseAdapter
-    around another, a columns dictionary which returns
-    adapted elements given an original, and an
-    adapted_row() factory.
+    Key aspects of ColumnAdapter include:
+
+    * Expressions that are adapted are stored in a persistent
+      .columns collection; so that an expression E adapted into
+      an expression E1, will return the same object E1 when adapted
+      a second time.   This is important in particular for things like
+      Label objects that are anonymized, so that the ColumnAdapter can
+      be used to present a consistent "adapted" view of things.
+
+    * Exclusion of items from the persistent collection based on
+      include/exclude rules, but also independent of hash identity.
+      This because "annotated" items all have the same hash identity as their
+      parent.
+
+    * "wrapping" capability is added, so that the replacement of an expression
+      E can proceed through a series of adapters.  This differs from the
+      visitor's "chaining" feature in that the resulting object is passed
+      through all replacing functions unconditionally, rather than stopping
+      at the first one that returns non-None.
+
+    * An adapt_required option, used by eager loading to indicate that
+      We don't trust a result row column that is not translated.
+      This is to prevent a column from being interpreted as that
+      of the child row in a self-referential scenario, see
+      inheritance/test_basic.py->EagerTargetingTest.test_adapt_stringency
 
     """
 
     def __init__(self, selectable, equivalents=None,
-                 chain_to=None, include=None,
-                 exclude=None, adapt_required=False):
+                 chain_to=None, adapt_required=False,
+                 include_fn=None, exclude_fn=None,
+                 adapt_on_names=False,
+                 allow_label_resolve=True,
+                 anonymize_labels=False):
         ClauseAdapter.__init__(self, selectable, equivalents,
-                               include, exclude)
+                               include_fn=include_fn, exclude_fn=exclude_fn,
+                               adapt_on_names=adapt_on_names,
+                               anonymize_labels=anonymize_labels)
+
         if chain_to:
             self.chain(chain_to)
         self.columns = util.populate_column_dict(self._locate_col)
+        if self.include_fn or self.exclude_fn:
+            self.columns = self._IncludeExcludeMapping(self, self.columns)
         self.adapt_required = adapt_required
+        self.allow_label_resolve = allow_label_resolve
+        self._wrap = None
+
+    class _IncludeExcludeMapping(object):
+        def __init__(self, parent, columns):
+            self.parent = parent
+            self.columns = columns
+
+        def __getitem__(self, key):
+            if (
+                self.parent.include_fn and not self.parent.include_fn(key)
+            ) or (
+                self.parent.exclude_fn and self.parent.exclude_fn(key)
+            ):
+                if self.parent._wrap:
+                    return self.parent._wrap.columns[key]
+                else:
+                    return key
+            return self.columns[key]
 
     def wrap(self, adapter):
         ac = self.__class__.__new__(self.__class__)
-        ac.__dict__ = self.__dict__.copy()
-        ac._locate_col = ac._wrap(ac._locate_col, adapter._locate_col)
-        ac.adapt_clause = ac._wrap(ac.adapt_clause, adapter.adapt_clause)
-        ac.adapt_list = ac._wrap(ac.adapt_list, adapter.adapt_list)
+        ac.__dict__.update(self.__dict__)
+        ac._wrap = adapter
         ac.columns = util.populate_column_dict(ac._locate_col)
+        if ac.include_fn or ac.exclude_fn:
+            ac.columns = self._IncludeExcludeMapping(ac, ac.columns)
+
         return ac
 
-    adapt_clause = ClauseAdapter.traverse
+    def traverse(self, obj):
+        return self.columns[obj]
+
+    adapt_clause = traverse
     adapt_list = ClauseAdapter.copy_and_process
 
-    def _wrap(self, local, wrapped):
-        def locate(col):
-            col = local(col)
-            return wrapped(col)
-        return locate
-
     def _locate_col(self, col):
-        c = self._corresponding_column(col, True)
-        if c is None:
-            c = self.adapt_clause(col)
 
-            # anonymize labels in case they have a hardcoded name
-            if isinstance(c, Label):
-                c = c.label(None)
+        c = ClauseAdapter.traverse(self, col)
 
-        # adapt_required used by eager loading to indicate that
-        # we don't trust a result row column that is not translated.
-        # this is to prevent a column from being interpreted as that
-        # of the child row in a self-referential scenario, see
-        # inheritance/test_basic.py->EagerTargetingTest.test_adapt_stringency
+        if self._wrap:
+            c2 = self._wrap._locate_col(c)
+            if c2 is not None:
+                c = c2
+
         if self.adapt_required and c is col:
             return None
 
-        return c
+        c._allow_label_resolve = self.allow_label_resolve
 
-    def adapted_row(self, row):
-        return AliasedRow(row, self.columns)
+        return c
 
     def __getstate__(self):
         d = self.__dict__.copy()

@@ -625,8 +625,73 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     __visit_name__ = 'column'
     primary_key = False
     foreign_keys = []
-    _label = _columns_clause_label = None
-    _key_label = key = None
+
+    _label = None
+    """The named label that can be used to target
+    this column in a result set.
+
+    This label is almost always the label used when
+    rendering <expr> AS <label> in a SELECT statement.  It also
+    refers to a name that this column expression can be located from
+    in a result set.
+
+    For a regular Column bound to a Table, this is typically the label
+    <tablename>_<columnname>.  For other constructs, different rules
+    may apply, such as anonymized labels and others.
+
+    """
+
+    key = None
+    """the 'key' that in some circumstances refers to this object in a
+    Python namespace.
+
+    This typically refers to the "key" of the column as present in the
+    ``.c`` collection of a selectable, e.g. sometable.c["somekey"] would
+    return a Column with a .key of "somekey".
+
+    """
+
+    _key_label = None
+    """A label-based version of 'key' that in some circumstances refers
+    to this object in a Python namespace.
+
+
+    _key_label comes into play when a select() statement is constructed with
+    apply_labels(); in this case, all Column objects in the ``.c`` collection
+    are rendered as <tablename>_<columnname> in SQL; this is essentially the
+    value of ._label.  But to locate those columns in the ``.c`` collection,
+    the name is along the lines of <tablename>_<key>; that's the typical
+    value of .key_label.
+
+    """
+
+    _render_label_in_columns_clause = True
+    """A flag used by select._columns_plus_names that helps to determine
+    we are actually going to render in terms of "SELECT <col> AS <label>".
+    This flag can be returned as False for some Column objects that want
+    to be rendered as simple "SELECT <col>"; typically columns that don't have
+    any parent table and are named the same as what the label would be
+    in any case.
+
+    """
+
+    _resolve_label = None
+    """The name that should be used to identify this ColumnElement in a
+    select() object when "label resolution" logic is used; this refers
+    to using a string name in an expression like order_by() or group_by()
+    that wishes to target a labeled expression in the columns clause.
+
+    The name is distinct from that of .name or ._label to account for the case
+    where anonymizing logic may be used to change the name that's actually
+    rendered at compile time; this attribute should hold onto the original
+    name that was user-assigned when producing a .label() construct.
+
+    """
+
+    _allow_label_resolve = True
+    """A flag that can be flipped to prevent a column from being resolvable
+    by string label name."""
+
     _alt_names = ()
 
     def self_group(self, against=None):
@@ -1183,7 +1248,9 @@ class TextClause(Executable, ClauseElement):
 
     # help in those cases where text() is
     # interpreted in a column expression situation
-    key = _label = _columns_clause_label = None
+    key = _label = _resolve_label = None
+
+    _allow_label_resolve = False
 
     def __init__(
             self,
@@ -2289,14 +2356,39 @@ class Extract(ColumnElement):
 
 
 class _label_reference(ColumnElement):
+    """Wrap a column expression as it appears in a 'reference' context.
+
+    This expression is any that inclues an _order_by_label_element,
+    which is a Label, or a DESC / ASC construct wrapping a Label.
+
+    The production of _label_reference() should occur when an expression
+    is added to this context; this includes the ORDER BY or GROUP BY of a
+    SELECT statement, as well as a few other places, such as the ORDER BY
+    within an OVER clause.
+
+    """
     __visit_name__ = 'label_reference'
 
-    def __init__(self, text):
-        self.text = self.key = text
+    def __init__(self, element):
+        self.element = element
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.element = clone(self.element, **kw)
+
+    @property
+    def _from_objects(self):
+        return ()
+
+
+class _textual_label_reference(ColumnElement):
+    __visit_name__ = 'textual_label_reference'
+
+    def __init__(self, element):
+        self.element = element
 
     @util.memoized_property
     def _text_clause(self):
-        return TextClause._create_text(self.text)
+        return TextClause._create_text(self.element)
 
 
 class UnaryExpression(ColumnElement):
@@ -2521,7 +2613,7 @@ class UnaryExpression(ColumnElement):
         return UnaryExpression(
             expr, operator=operators.distinct_op, type_=expr.type)
 
-    @util.memoized_property
+    @property
     def _order_by_label_element(self):
         if self.modifier in (operators.desc_op, operators.asc_op):
             return self.element._order_by_label_element
@@ -2821,16 +2913,20 @@ class Label(ColumnElement):
         :param obj: a :class:`.ColumnElement`.
 
         """
+
+        if isinstance(element, Label):
+            self._resolve_label = element._label
+
         while isinstance(element, Label):
             element = element.element
+
         if name:
             self.name = name
         else:
             self.name = _anonymous_label(
                 '%%(%d %s)s' % (id(self), getattr(element, 'name', 'anon'))
             )
-        self.key = self._label = self._key_label = \
-            self._columns_clause_label = self.name
+        self.key = self._label = self._key_label = self.name
         self._element = element
         self._type = type_
         self._proxies = [element]
@@ -2839,6 +2935,10 @@ class Label(ColumnElement):
         return self.__class__, (self.name, self._element, self._type)
 
     @util.memoized_property
+    def _allow_label_resolve(self):
+        return self.element._allow_label_resolve
+
+    @property
     def _order_by_label_element(self):
         return self
 
@@ -2872,8 +2972,15 @@ class Label(ColumnElement):
     def get_children(self, **kwargs):
         return self.element,
 
-    def _copy_internals(self, clone=_clone, **kw):
+    def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
         self.element = clone(self.element, **kw)
+        self.__dict__.pop('_allow_label_resolve', None)
+        if anonymize_labels:
+            self.name = _anonymous_label(
+                '%%(%d %s)s' % (
+                    id(self), getattr(self.element, 'name', 'anon'))
+            )
+            self.key = self._label = self._key_label = self.name
 
     @property
     def _from_objects(self):
@@ -3066,11 +3173,8 @@ class ColumnClause(Immutable, ColumnElement):
         return self._gen_label(self.name)
 
     @_memoized_property
-    def _columns_clause_label(self):
-        if self.table is None:
-            return None
-        else:
-            return self._label
+    def _render_label_in_columns_clause(self):
+        return self.table is not None
 
     def _gen_label(self, name):
         t = self.table
@@ -3477,6 +3581,13 @@ def _clause_element_as_expr(element):
 
 def _literal_as_label_reference(element):
     if isinstance(element, util.string_types):
+        return _textual_label_reference(element)
+
+    elif hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+
+    if isinstance(element, ColumnElement) and \
+            element._order_by_label_element is not None:
         return _label_reference(element)
     else:
         return _literal_as_text(element)

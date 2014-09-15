@@ -137,10 +137,7 @@ class Query(object):
                             )
                         aliased_adapter = None
                     elif ext_info.is_aliased_class:
-                        aliased_adapter = sql_util.ColumnAdapter(
-                            ext_info.selectable,
-                            ext_info.mapper._equivalent_columns
-                        )
+                        aliased_adapter = ext_info._adapter
                     else:
                         aliased_adapter = None
 

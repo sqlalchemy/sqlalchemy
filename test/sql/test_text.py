@@ -1,12 +1,12 @@
 """Test the TextClause and related constructs."""
 
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_, \
-    assert_raises_message, expect_warnings
+    assert_raises_message, expect_warnings, assert_warnings
 from sqlalchemy import text, select, Integer, String, Float, \
     bindparam, and_, func, literal_column, exc, MetaData, Table, Column,\
     asc, func, desc, union
 from sqlalchemy.types import NullType
-from sqlalchemy.sql import table, column
+from sqlalchemy.sql import table, column, util as sql_util
 from sqlalchemy import util
 
 table1 = table('mytable',
@@ -679,3 +679,63 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             desc("somelabel"),
             "somelabel DESC"
         )
+
+    def test_columnadapter_anonymized(self):
+        """test issue #3148
+
+        Testing the anonymization applied from the ColumnAdapter.columns
+        collection, typically as used in eager loading.
+
+        """
+        exprs = [
+            table1.c.myid,
+            table1.c.name.label('t1name'),
+            func.foo("hoho").label('x')]
+
+        ta = table1.alias()
+        adapter = sql_util.ColumnAdapter(ta, anonymize_labels=True)
+
+        s1 = select([adapter.columns[expr] for expr in exprs]).\
+            apply_labels().order_by("myid", "t1name", "x")
+
+        def go():
+            # the labels here are anonymized, so label naming
+            # can't catch these.
+            self.assert_compile(
+                s1,
+                "SELECT mytable_1.myid AS mytable_1_myid, "
+                "mytable_1.name AS name_1, foo(:foo_2) AS foo_1 "
+                "FROM mytable AS mytable_1 ORDER BY mytable_1.myid, t1name, x"
+            )
+
+        assert_warnings(
+            go,
+            ["Can't resolve label reference 't1name'",
+             "Can't resolve label reference 'x'"], regex=True)
+
+    def test_columnadapter_non_anonymized(self):
+        """test issue #3148
+
+        Testing the anonymization applied from the ColumnAdapter.columns
+        collection, typically as used in eager loading.
+
+        """
+        exprs = [
+            table1.c.myid,
+            table1.c.name.label('t1name'),
+            func.foo("hoho").label('x')]
+
+        ta = table1.alias()
+        adapter = sql_util.ColumnAdapter(ta)
+
+        s1 = select([adapter.columns[expr] for expr in exprs]).\
+            apply_labels().order_by("myid", "t1name", "x")
+
+        # labels are maintained
+        self.assert_compile(
+            s1,
+            "SELECT mytable_1.myid AS mytable_1_myid, "
+            "mytable_1.name AS t1name, foo(:foo_1) AS x "
+            "FROM mytable AS mytable_1 ORDER BY mytable_1.myid, t1name, x"
+        )
+

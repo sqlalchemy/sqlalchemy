@@ -1637,6 +1637,14 @@ class MySQLCompiler(compiler.SQLCompiler):
             value = value.replace('\\', '\\\\')
         return value
 
+    # override native_boolean=False behavior here, as
+    # MySQL still supports native boolean
+    def visit_true(self, element, **kw):
+        return "true"
+
+    def visit_false(self, element, **kw):
+        return "false"
+
     def get_select_precolumns(self, select):
         """Add special MySQL keywords in place of DISTINCT.
 
@@ -2215,6 +2223,10 @@ class MySQLDialect(default.DefaultDialect):
     name = 'mysql'
     supports_alter = True
 
+    # MySQL has no true "boolean" type; we
+    # allow for the "true" and "false" keywords, however
+    supports_native_boolean = False
+
     # identifiers are 64, however aliases can be 255...
     max_identifier_length = 255
     max_index_name_length = 64
@@ -2564,7 +2576,8 @@ class MySQLDialect(default.DefaultDialect):
             index_d['name'] = spec['name']
             index_d['column_names'] = [s[0] for s in spec['columns']]
             index_d['unique'] = unique
-            index_d['type'] = flavor
+            if flavor:
+                index_d['type'] = flavor
             indexes.append(index_d)
         return indexes
 

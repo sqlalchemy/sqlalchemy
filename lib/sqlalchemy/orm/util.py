@@ -270,15 +270,14 @@ first()
 
 
 class ORMAdapter(sql_util.ColumnAdapter):
-    """Extends ColumnAdapter to accept ORM entities.
-
-    The selectable is extracted from the given entity,
-    and the AliasedClass if any is referenced.
+    """ColumnAdapter subclass which excludes adaptation of entities from
+    non-matching mappers.
 
     """
 
     def __init__(self, entity, equivalents=None, adapt_required=False,
-                 chain_to=None):
+                 chain_to=None, allow_label_resolve=True,
+                 anonymize_labels=False):
         info = inspection.inspect(entity)
 
         self.mapper = info.mapper
@@ -288,16 +287,18 @@ class ORMAdapter(sql_util.ColumnAdapter):
             self.aliased_class = entity
         else:
             self.aliased_class = None
-        sql_util.ColumnAdapter.__init__(self, selectable,
-                                        equivalents, chain_to,
-                                        adapt_required=adapt_required)
 
-    def replace(self, elem):
+        sql_util.ColumnAdapter.__init__(
+            self, selectable, equivalents, chain_to,
+            adapt_required=adapt_required,
+            allow_label_resolve=allow_label_resolve,
+            anonymize_labels=anonymize_labels,
+            include_fn=self._include_fn
+        )
+
+    def _include_fn(self, elem):
         entity = elem._annotations.get('parentmapper', None)
-        if not entity or entity.isa(self.mapper):
-            return sql_util.ColumnAdapter.replace(self, elem)
-        else:
-            return None
+        return not entity or entity.isa(self.mapper)
 
 
 class AliasedClass(object):
@@ -354,6 +355,7 @@ class AliasedClass(object):
         if alias is None:
             alias = mapper._with_polymorphic_selectable.alias(
                 name=name, flat=flat)
+
         self._aliased_insp = AliasedInsp(
             self,
             mapper,
@@ -460,9 +462,9 @@ class AliasedInsp(InspectionAttr):
         self._base_alias = _base_alias or self
         self._use_mapper_path = _use_mapper_path
 
-        self._adapter = sql_util.ClauseAdapter(
+        self._adapter = sql_util.ColumnAdapter(
             selectable, equivalents=mapper._equivalent_columns,
-            adapt_on_names=adapt_on_names)
+            adapt_on_names=adapt_on_names, anonymize_labels=True)
 
         self._adapt_on_names = adapt_on_names
         self._target = mapper.class_
@@ -894,9 +896,7 @@ def with_parent(instance, prop):
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 
-    return prop.compare(operators.eq,
-                        instance,
-                        value_is_parent=True)
+    return prop._with_parent(instance)
 
 
 def has_identity(object):

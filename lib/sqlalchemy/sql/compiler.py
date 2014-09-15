@@ -503,7 +503,35 @@ class SQLCompiler(Compiled):
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
         return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
-    def visit_label_reference(self, element, **kwargs):
+    def visit_label_reference(
+            self, element, within_columns_clause=False, **kwargs):
+        if self.stack and self.dialect.supports_simple_order_by_label:
+            selectable = self.stack[-1]['selectable']
+
+            with_cols, only_froms = selectable._label_resolve_dict
+            if within_columns_clause:
+                resolve_dict = only_froms
+            else:
+                resolve_dict = with_cols
+
+            # this can be None in the case that a _label_reference()
+            # were subject to a replacement operation, in which case
+            # the replacement of the Label element may have changed
+            # to something else like a ColumnClause expression.
+            order_by_elem = element.element._order_by_label_element
+
+            if order_by_elem is not None and order_by_elem.name in \
+                    resolve_dict:
+
+                kwargs['render_label_as_label'] = \
+                    element.element._order_by_label_element
+
+        return self.process(
+            element.element, within_columns_clause=within_columns_clause,
+            **kwargs)
+
+    def visit_textual_label_reference(
+            self, element, within_columns_clause=False, **kwargs):
         if not self.stack:
             # compiling the element outside of the context of a SELECT
             return self.process(
@@ -511,19 +539,25 @@ class SQLCompiler(Compiled):
             )
 
         selectable = self.stack[-1]['selectable']
+        with_cols, only_froms = selectable._label_resolve_dict
+
         try:
-            col = selectable._inner_column_dict[element.text]
+            if within_columns_clause:
+                col = only_froms[element.element]
+            else:
+                col = with_cols[element.element]
         except KeyError:
             # treat it like text()
             util.warn_limited(
                 "Can't resolve label reference %r; converting to text()",
-                util.ellipses_string(element.text))
+                util.ellipses_string(element.element))
             return self.process(
                 element._text_clause
             )
         else:
             kwargs['render_label_as_label'] = col
-            return self.process(col, **kwargs)
+            return self.process(
+                col, within_columns_clause=within_columns_clause, **kwargs)
 
     def visit_label(self, label,
                     add_to_result_map=None,
@@ -678,11 +712,7 @@ class SQLCompiler(Compiled):
         else:
             return "0"
 
-    def visit_clauselist(self, clauselist, order_by_select=None, **kw):
-        if order_by_select is not None:
-            return self._order_by_clauselist(
-                clauselist, order_by_select, **kw)
-
+    def visit_clauselist(self, clauselist, **kw):
         sep = clauselist.operator
         if sep is None:
             sep = " "
@@ -695,28 +725,6 @@ class SQLCompiler(Compiled):
                 for c in clauselist.clauses)
             if s)
 
-    def _order_by_clauselist(self, clauselist, order_by_select, **kw):
-        # look through raw columns collection for labels.
-        # note that its OK we aren't expanding tables and other selectables
-        # here; we can only add a label in the ORDER BY for an individual
-        # label expression in the columns clause.
-
-        raw_col = set(l._order_by_label_element.name
-                      for l in order_by_select._raw_columns
-                      if l._order_by_label_element is not None)
-
-        return ", ".join(
-            s for s in
-            (
-                c._compiler_dispatch(
-                    self,
-                    render_label_as_label=c._order_by_label_element if
-                    c._order_by_label_element is not None and
-                    c._order_by_label_element.name in raw_col
-                    else None,
-                    **kw)
-                for c in clauselist.clauses)
-            if s)
 
     def visit_case(self, clause, **kwargs):
         x = "CASE "
@@ -1592,13 +1600,7 @@ class SQLCompiler(Compiled):
                 text += " \nHAVING " + t
 
         if select._order_by_clause.clauses:
-            if self.dialect.supports_simple_order_by_label:
-                order_by_select = select
-            else:
-                order_by_select = None
-
-            text += self.order_by_clause(
-                select, order_by_select=order_by_select, **kwargs)
+            text += self.order_by_clause(select, **kwargs)
 
         if (select._limit_clause is not None or
                 select._offset_clause is not None):

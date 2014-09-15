@@ -30,7 +30,7 @@ SQLAlchemy itself is possible.
 
 """
 
-from sqlalchemy.testing.plugin.noseplugin import NoseSQLAlchemy
+from .plugin.noseplugin import NoseSQLAlchemy
 
 import nose
 
