@@ -58,7 +58,7 @@ class NoseSQLAlchemy(Plugin):
         plugin_base.set_coverage_flag(options.enable_plugin_coverage)
 
         global fixtures
-        from sqlalchemy.testing import fixtures
+        from sqlalchemy.testing import fixtures  # noqa
 
     def begin(self):
         plugin_base.post_begin()
@@ -76,9 +76,12 @@ class NoseSQLAlchemy(Plugin):
         return plugin_base.want_class(cls)
 
     def beforeTest(self, test):
-        plugin_base.before_test(test,
-                                test.test.cls.__module__,
-                                test.test.cls, test.test.method.__name__)
+        if not hasattr(test.test, 'cls'):
+            return
+        plugin_base.before_test(
+            test,
+            test.test.cls.__module__,
+            test.test.cls, test.test.method.__name__)
 
     def afterTest(self, test):
         plugin_base.after_test(test)
