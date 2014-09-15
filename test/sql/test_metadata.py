@@ -16,7 +16,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
 from sqlalchemy.testing import eq_, is_, mock
 from contextlib import contextmanager
-
+from sqlalchemy import util
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
 
@@ -2626,7 +2626,7 @@ class DialectKWArgTest(fixtures.TestBase):
                         lambda arg: "goofy_%s" % arg):
             with self._fixture():
                 idx = Index('a', 'b')
-                idx.kwargs[u'participating_x'] = 7
+                idx.kwargs[util.u('participating_x')] = 7
 
                 eq_(
                     list(idx.dialect_kwargs),
