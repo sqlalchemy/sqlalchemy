@@ -81,6 +81,8 @@ class NoseSQLAlchemy(Plugin):
         return plugin_base.want_class(cls)
 
     def beforeTest(self, test):
+        if not hasattr(test.test, 'cls'):
+            return
         plugin_base.before_test(
             test,
             test.test.cls.__module__,
