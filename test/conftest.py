@@ -7,9 +7,23 @@ installs SQLAlchemy's testing plugin into the local environment.
 
 """
 import sys
+import os
 
-from os import path
 for pth in ['../lib']:
-    sys.path.insert(0, path.join(path.dirname(path.abspath(__file__)), pth))
+    sys.path.insert(
+        0,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), pth))
 
-from sqlalchemy.testing.plugin.pytestplugin import *
+
+# use bootstrapping so that test plugins are loaded
+# without touching the main library before coverage starts
+bootstrap_file = os.path.join(
+    os.path.dirname(__file__), "..", "lib", "sqlalchemy",
+    "testing", "plugin", "bootstrap.py"
+)
+
+with open(bootstrap_file) as f:
+    code = compile(f.read(), "bootstrap.py", 'exec')
+    to_bootstrap = "pytest"
+    exec(code, globals(), locals())
+    from pytestplugin import *  # noqa

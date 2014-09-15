@@ -1,8 +1,10 @@
 from sqlalchemy.engine import url as sa_url
 from sqlalchemy import text
 from sqlalchemy.util import compat
-from .. import config, engines
-import os
+from . import config, engines
+
+
+FOLLOWER_IDENT = None
 
 
 class register(object):
