@@ -13,68 +13,37 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 
-class AltRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
-    """Test reflection on materialized views and foreign tables"""
+class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
+    """Test reflection on foreign tables"""
 
     __requires__ = 'postgresql_test_dblink',
     __only_on__ = 'postgresql >= 9.3'
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def define_tables(cls, metadata):
         from sqlalchemy.testing import config
-        cls.dblink = config.file_config.get('sqla_testing',
-                                            'postgres_test_db_link')
+        dblink = config.file_config.get(
+            'sqla_testing', 'postgres_test_db_link')
 
-        metadata = MetaData(testing.db)
-        testtable = Table(
-            'testtable', metadata,
-            Column(
-                'id', Integer, primary_key=True),
-            Column(
-                'data', String(30)))
-        metadata.create_all()
-        testtable.insert().execute({'id': 89, 'data': 'd1'})
+        for ddl in [
+            "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw "
+            "OPTIONS (dbname 'test', host '%s')" % dblink,
+            "CREATE USER MAPPING FOR scott \
+            SERVER test_server options (user 'scott', password 'tiger')",
+            "CREATE FOREIGN TABLE test_foreigntable ( "
+            "   id          INT, "
+            "   data        VARCHAR(30) "
+            ") SERVER test_server OPTIONS (table_name 'testtable')",
+        ]:
+            sa.event.listen(metadata, "after_create", sa.DDL(ddl))
 
-        con = testing.db.connect()
-
-        for ddl in \
-                "CREATE MATERIALIZED VIEW test_mview AS SELECT * FROM testtable;", \
-                "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw \
-                    OPTIONS (dbname 'test', host '%s');" % cls.dblink, \
-                "CREATE USER MAPPING FOR public \
-                    SERVER test_server options (user 'scott', password 'tiger');", \
-                "CREATE FOREIGN TABLE test_foreigntable ( \
-                    id          INT, \
-                    data        VARCHAR(30) \
-                ) SERVER test_server OPTIONS (table_name 'testtable');":
-            try:
-                con.execute(ddl)
-            except exc.DBAPIError as e:
-                if 'already exists' not in str(e):
-                    raise e
-
-    @classmethod
-    def teardown_class(cls):
-        con = testing.db.connect()
-        con.execute('DROP FOREIGN TABLE test_foreigntable;')
-        con.execute('DROP USER MAPPING FOR public SERVER test_server;')
-        con.execute('DROP SERVER test_server;')
-        con.execute('DROP MATERIALIZED VIEW test_mview;')
-        con.execute('DROP TABLE testtable;')
-
-    def test_mview_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table('test_mview', metadata, autoload=True)
-        eq_(set(table.columns.keys()), set(['id', 'data']),
-            "Columns of reflected mview didn't equal expected columns")
-
-    def test_mview_select(self):
-        metadata = MetaData(testing.db)
-        table = Table('test_mview', metadata, autoload=True)
-        assert table.select().execute().fetchall() == [
-            (89, 'd1',)
-        ]
+        for ddl in [
+            'DROP FOREIGN TABLE test_foreigntable',
+            'DROP USER MAPPING FOR scott SERVER test_server',
+            "DROP SERVER test_server"
+        ]:
+            sa.event.listen(metadata, "before_drop", sa.DDL(ddl))
 
     def test_foreign_table_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -85,33 +54,78 @@ class AltRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     def test_foreign_table_select(self):
         metadata = MetaData(testing.db)
         table = Table('test_foreigntable', metadata, autoload=True)
-        assert table.select().execute().fetchall() == [
-            (89, 'd1',)
-        ]
+
+        with testing.db.begin() as conn:
+            eq_(
+                conn.execute(table.select()).fetchall(),
+                [(89, 'd1',)]
+            )
 
     def test_foreign_table_roundtrip(self):
         metadata = MetaData(testing.db)
         table = Table('test_foreigntable', metadata, autoload=True)
 
-        connection = testing.db.connect()
-        trans = connection.begin()
-        try:
-            table.delete().execute()
-            table.insert().execute({'id': 89, 'data': 'd1'})
-            trans.commit()
-        except:
-            trans.rollback()
-            raise
+        with testing.db.begin() as conn:
+            conn.execute(table.delete())
+            conn.execute(table.insert(), {'id': 89, 'data': 'd1'})
 
-        assert table.select().execute().fetchall() == [
-            (89, 'd1',)
-        ]
+        eq_(
+            testing.db.execute(table.select()).fetchall(),
+            [(89, 'd1',)]
+        )
 
     def test_get_foreign_table_names(self):
         inspector = inspect(testing.db)
-        connection = testing.db.connect()
-        ft_names = inspector.get_foreign_table_names(connection)
-        assert u'test_foreigntable' in ft_names
+        with testing.db.connect() as conn:
+            ft_names = inspector.get_foreign_table_names(conn)
+            eq_(ft_names, ['test_foreigntable'])
+
+
+class MaterialiedViewReflectionTest(
+        fixtures.TablesTest, AssertsExecutionResults):
+    """Test reflection on materialized views"""
+
+    __only_on__ = 'postgresql >= 9.3'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        testtable = Table(
+            'testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+
+        # insert data before we create the view
+        @sa.event.listens_for(testtable, "after_create")
+        def insert_data(target, connection, **kw):
+            connection.execute(
+                target.insert(),
+                {"id": 89, "data": 'd1'}
+            )
+
+        view = sa.DDL(
+            "CREATE MATERIALIZED VIEW test_mview AS "
+            "SELECT * FROM testtable")
+
+        sa.event.listen(testtable, 'after_create', view)
+        sa.event.listen(
+            testtable, 'before_drop',
+            sa.DDL("DROP MATERIALIZED VIEW test_mview")
+        )
+
+    def test_mview_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected mview didn't equal expected columns")
+
+    def test_mview_select(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(
+            table.select().execute().fetchall(),
+            [(89, 'd1',)]
+        )
 
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
