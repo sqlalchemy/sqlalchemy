@@ -13,8 +13,108 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 
-class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+class AltRelkindReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+    """Test reflection on materialized views and foreign tables"""
 
+    __requires__ = 'postgresql_test_dblink',
+    __only_on__ = 'postgresql >= 9.3'
+    __backend__ = True
+
+    @classmethod
+    def setup_class(cls):
+        from sqlalchemy.testing import config
+        cls.dblink = config.file_config.get('sqla_testing',
+                                            'postgres_test_db_link')
+
+        metadata = MetaData(testing.db)
+        testtable = Table(
+            'testtable', metadata,
+            Column(
+                'id', Integer, primary_key=True),
+            Column(
+                'data', String(30)))
+        metadata.create_all()
+        testtable.insert().execute({'id': 89, 'data': 'd1'})
+
+        con = testing.db.connect()
+
+        for ddl in \
+                "CREATE MATERIALIZED VIEW test_mview AS SELECT * FROM testtable;", \
+                "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw \
+                    OPTIONS (dbname 'test', host '%s');" % cls.dblink, \
+                "CREATE USER MAPPING FOR public \
+                    SERVER test_server options (user 'scott', password 'tiger');", \
+                "CREATE FOREIGN TABLE test_foreigntable ( \
+                    id          INT, \
+                    data        VARCHAR(30) \
+                ) SERVER test_server OPTIONS (table_name 'testtable');":
+            try:
+                con.execute(ddl)
+            except exc.DBAPIError as e:
+                if 'already exists' not in str(e):
+                    raise e
+
+    @classmethod
+    def teardown_class(cls):
+        con = testing.db.connect()
+        con.execute('DROP FOREIGN TABLE test_foreigntable;')
+        con.execute('DROP USER MAPPING FOR public SERVER test_server;')
+        con.execute('DROP SERVER test_server;')
+        con.execute('DROP MATERIALIZED VIEW test_mview;')
+        con.execute('DROP TABLE testtable;')
+
+    def test_mview_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected mview didn't equal expected columns")
+
+    def test_mview_select(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        assert table.select().execute().fetchall() == [
+            (89, 'd1',)
+        ]
+
+    def test_foreign_table_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected foreign table didn't equal expected columns")
+
+    def test_foreign_table_select(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True)
+        assert table.select().execute().fetchall() == [
+            (89, 'd1',)
+        ]
+
+    def test_foreign_table_roundtrip(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True)
+
+        connection = testing.db.connect()
+        trans = connection.begin()
+        try:
+            table.delete().execute()
+            table.insert().execute({'id': 89, 'data': 'd1'})
+            trans.commit()
+        except:
+            trans.rollback()
+            raise
+
+        assert table.select().execute().fetchall() == [
+            (89, 'd1',)
+        ]
+
+    def test_get_foreign_table_names(self):
+        inspector = inspect(testing.db)
+        connection = testing.db.connect()
+        ft_names = inspector.get_foreign_table_names(connection)
+        assert u'test_foreigntable' in ft_names
+
+
+class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     """Test PostgreSQL domains"""
 
     __only_on__ = 'postgresql > 8.3'
