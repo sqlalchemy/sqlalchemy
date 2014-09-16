@@ -52,12 +52,18 @@ def setup_database(dburl, echo, num):
 
 
 @Profiler.profile
-def test_orm_full_objects(n):
-    """Load fully tracked objects using the ORM."""
+def test_orm_full_objects_list(n):
+    """Load fully tracked ORM objects into one big list()."""
 
     sess = Session(engine)
-    # avoid using all() so that we don't have the overhead of building
-    # a large list of full objects in memory
+    objects = list(sess.query(Customer).limit(n))
+
+
+@Profiler.profile
+def test_orm_full_objects_chunks(n):
+    """Load fully tracked ORM objects a chunk at a time using yield_per()."""
+
+    sess = Session(engine)
     for obj in sess.query(Customer).yield_per(1000).limit(n):
         pass
 
