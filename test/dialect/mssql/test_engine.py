@@ -7,6 +7,8 @@ from sqlalchemy.engine import url
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing.mock import Mock
+
 
 class ParseConnectTest(fixtures.TestBase):
 
@@ -153,3 +155,21 @@ class ParseConnectTest(fixtures.TestBase):
         assert_raises_message(exc.SAWarning,
                               'Unrecognized server version info',
                               engine.connect)
+
+
+class VersionDetectionTest(fixtures.TestBase):
+    def test_pymssql_version(self):
+        dialect = pymssql.MSDialect_pymssql()
+
+        for vers in [
+            "Microsoft SQL Server Blah - 11.0.9216.62",
+            "Microsoft SQL Server (XYZ) - 11.0.9216.62 \n"
+            "Jul 18 2014 22:00:21 \nCopyright (c) Microsoft Corporation",
+            "Microsoft SQL Azure (RTM) - 11.0.9216.62 \n"
+            "Jul 18 2014 22:00:21 \nCopyright (c) Microsoft Corporation"
+        ]:
+            conn = Mock(scalar=Mock(return_value=vers))
+            eq_(
+                dialect._get_server_version_info(conn),
+                (11, 0, 9216, 62)
+            )

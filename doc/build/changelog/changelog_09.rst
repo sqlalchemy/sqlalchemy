@@ -14,6 +14,15 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, mssql
+        :versions: 1.0.0
+        :tickets: 3151
+
+        Fixed the version string detection in the pymssql dialect to
+        work with Microsoft SQL Azure, which changes the word "SQL Server"
+        to "SQL Azure".
+
+    .. change::
         :tags: bug, orm
         :versions: 1.0.0
         :tickets: 3194

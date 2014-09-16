@@ -63,7 +63,7 @@ class MSDialect_pymssql(MSDialect):
     def _get_server_version_info(self, connection):
         vers = connection.scalar("select @@version")
         m = re.match(
-            r"Microsoft SQL Server.*? - (\d+).(\d+).(\d+).(\d+)", vers)
+            r"Microsoft .*? - (\d+).(\d+).(\d+).(\d+)", vers)
         if m:
             return tuple(int(x) for x in m.group(1, 2, 3, 4))
         else:
