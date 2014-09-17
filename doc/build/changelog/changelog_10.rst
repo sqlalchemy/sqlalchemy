@@ -22,6 +22,24 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3204
+
+        Added :meth:`.Inspector.get_temp_table_names` and
+        :meth:`.Inspector.get_temp_view_names`; currently, only the
+        SQLite dialect supports these methods.    The return of temporary
+        table and view names has been **removed** from SQLite's version
+        of :meth:`.Inspector.get_table_names` and
+        :meth:`.Inspector.get_view_names`; other database backends cannot
+        support this information (such as MySQL), and the scope of operation
+        is different in that the tables can be local to a session and
+        typically aren't supported in remote schemas.
+
+        .. seealso::
+
+            :ref:`change_3204`
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 2891
         :pullreq: github:128

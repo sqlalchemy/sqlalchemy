@@ -297,6 +297,17 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def temp_table_names(self):
+        """target dialect supports listing of temporary table names"""
+
+        return only_on(['sqlite'])
+
+    @property
+    def temporary_views(self):
+        """target database supports temporary views"""
+        return only_on(['sqlite', 'postgresql'])
+
+    @property
     def update_nowait(self):
         """Target database must support SELECT...FOR UPDATE NOWAIT"""
         return skip_if(["firebird", "mssql", "mysql", "sqlite", "sybase"],

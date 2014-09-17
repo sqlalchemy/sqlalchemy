@@ -515,23 +515,6 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             cx.execute('DETACH DATABASE test_schema')
 
-    @testing.exclude('sqlite', '<', (2, 6), 'no database support')
-    def test_temp_table_reflection(self):
-        cx = testing.db.connect()
-        try:
-            cx.execute('CREATE TEMPORARY TABLE tempy (id INT)')
-            assert 'tempy' in cx.dialect.get_table_names(cx, None)
-            meta = MetaData(cx)
-            tempy = Table('tempy', meta, autoload=True)
-            assert len(tempy.c) == 1
-            meta.drop_all()
-        except:
-            try:
-                cx.execute('DROP TABLE tempy')
-            except exc.DBAPIError:
-                pass
-            raise
-
     def test_file_path_is_absolute(self):
         d = pysqlite_dialect.dialect()
         eq_(

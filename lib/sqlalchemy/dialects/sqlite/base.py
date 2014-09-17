@@ -829,20 +829,26 @@ class SQLiteDialect(default.DefaultDialect):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
             master = '%s.sqlite_master' % qschema
-            s = ("SELECT name FROM %s "
-                 "WHERE type='table' ORDER BY name") % (master,)
-            rs = connection.execute(s)
         else:
-            try:
-                s = ("SELECT name FROM "
-                     " (SELECT * FROM sqlite_master UNION ALL "
-                     "  SELECT * FROM sqlite_temp_master) "
-                     "WHERE type='table' ORDER BY name")
-                rs = connection.execute(s)
-            except exc.DBAPIError:
-                s = ("SELECT name FROM sqlite_master "
-                     "WHERE type='table' ORDER BY name")
-                rs = connection.execute(s)
+            master = "sqlite_master"
+        s = ("SELECT name FROM %s "
+             "WHERE type='table' ORDER BY name") % (master,)
+        rs = connection.execute(s)
+        return [row[0] for row in rs]
+
+    @reflection.cache
+    def get_temp_table_names(self, connection, **kw):
+        s = "SELECT name FROM sqlite_temp_master "\
+            "WHERE type='table' ORDER BY name "
+        rs = connection.execute(s)
+
+        return [row[0] for row in rs]
+
+    @reflection.cache
+    def get_temp_view_names(self, connection, **kw):
+        s = "SELECT name FROM sqlite_temp_master "\
+            "WHERE type='view' ORDER BY name "
+        rs = connection.execute(s)
 
         return [row[0] for row in rs]
 
@@ -869,20 +875,11 @@ class SQLiteDialect(default.DefaultDialect):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
             master = '%s.sqlite_master' % qschema
-            s = ("SELECT name FROM %s "
-                 "WHERE type='view' ORDER BY name") % (master,)
-            rs = connection.execute(s)
         else:
-            try:
-                s = ("SELECT name FROM "
-                     " (SELECT * FROM sqlite_master UNION ALL "
-                     "  SELECT * FROM sqlite_temp_master) "
-                     "WHERE type='view' ORDER BY name")
-                rs = connection.execute(s)
-            except exc.DBAPIError:
-                s = ("SELECT name FROM sqlite_master "
-                     "WHERE type='view' ORDER BY name")
-                rs = connection.execute(s)
+            master = "sqlite_master"
+        s = ("SELECT name FROM %s "
+             "WHERE type='view' ORDER BY name") % (master,)
+        rs = connection.execute(s)
 
         return [row[0] for row in rs]
 

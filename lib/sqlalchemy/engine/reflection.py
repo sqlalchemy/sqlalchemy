@@ -201,6 +201,30 @@ class Inspector(object):
             tnames = list(topological.sort(tuples, tnames))
         return tnames
 
+    def get_temp_table_names(self):
+        """return a list of temporary table names for the current bind.
+
+        This method is unsupported by most dialects; currently
+        only SQLite implements it.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return self.dialect.get_temp_table_names(
+            self.bind, info_cache=self.info_cache)
+
+    def get_temp_view_names(self):
+        """return a list of temporary view names for the current bind.
+
+        This method is unsupported by most dialects; currently
+        only SQLite implements it.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return self.dialect.get_temp_view_names(
+            self.bind, info_cache=self.info_cache)
+
     def get_table_options(self, table_name, schema=None, **kw):
         """Return a dictionary of options specified when the table of the
         given name was created.

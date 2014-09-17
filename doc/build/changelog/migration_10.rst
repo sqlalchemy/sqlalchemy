@@ -953,6 +953,26 @@ when using ODBC to avoid this issue entirely.
 
 :ticket:`3182`
 
+.. _change_3204:
+
+SQLite has distinct methods for temporary table/view name reporting
+-------------------------------------------------------------------
+
+The :meth:`.Inspector.get_table_names` and :meth:`.Inspector.get_view_names`
+methods in the case of SQLite would also return the names of temporary
+tables and views, which is not provided by any other dialect (in the case
+of MySQL at least it is not even possible).  This logic has been moved
+out to two new methods :meth:`.Inspector.get_temp_table_names` and
+:meth:`.Inspector.get_temp_view_names`.
+
+Note that reflection of a specific named temporary table or temporary view,
+either by ``Table('name', autoload=True)`` or via methods like
+:meth:`.Inspector.get_columns` continues to function for most if not all
+dialects.   For SQLite specifically, there is a bug fix for UNIQUE constraint
+reflection from temp tables as well, which is :ticket:`3203`.
+
+:ticket:`3204`
+
 .. _change_2984:
 
 Drizzle Dialect is now an External Dialect
