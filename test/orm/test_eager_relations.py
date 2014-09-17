@@ -1103,8 +1103,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             orders = relationship(Order, lazy = False, order_by=orders.c.id),
         ))
         q = create_session().query(User)
-        l = q.all()
-        eq_(self.static.user_all_result, q.order_by(User.id).all())
+        def go():
+            eq_(self.static.user_all_result, q.order_by(User.id).all())
+        self.assert_sql_count(testing.db, go, 1)
 
     def test_against_select(self):
         """test eager loading of a mapper which is against a select"""
