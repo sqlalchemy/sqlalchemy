@@ -23,6 +23,20 @@
 
     .. change::
         :tags: bug, sqlite
+        :tickets: 3203
+        :pullreq: bitbucket:31
+
+        SQLite now supports reflection of unique constraints from
+        temp tables; previously, this would fail with a TypeError.
+        Pull request courtesy Johannes Erdfelt.
+
+        .. seealso::
+
+            :ref:`change_3204` - changes regarding SQLite temporary
+            table and view reflection.
+
+    .. change::
+        :tags: bug, sqlite
         :tickets: 3204
 
         Added :meth:`.Inspector.get_temp_table_names` and
