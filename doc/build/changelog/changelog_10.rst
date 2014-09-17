@@ -22,6 +22,23 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 2891
+        :pullreq: github:128
+
+        Support has been added for reflection of materialized views
+        and foreign tables, as well as support for materialized views
+        within :meth:`.Inspector.get_view_names`, and a new method
+        :meth:`.PGInspector.get_foreign_table_names` available on the
+        Postgresql version of :class:`.Inspector`.  Pull request courtesy
+        Rodrigo Menezes.
+
+        .. seealso::
+
+            :ref:`feature_2891`
+
+
+    .. change::
         :tags: feature, orm
 
         Added new event handlers :meth:`.AttributeEvents.init_collection`

@@ -59,8 +59,14 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_get_foreign_table_names(self):
         inspector = inspect(testing.db)
         with testing.db.connect() as conn:
-            ft_names = inspector.get_foreign_table_names(conn)
+            ft_names = inspector.get_foreign_table_names()
             eq_(ft_names, ['test_foreigntable'])
+
+    def test_get_table_names_no_foreign(self):
+        inspector = inspect(testing.db)
+        with testing.db.connect() as conn:
+            names = inspector.get_table_names()
+            eq_(names, ['testtable'])
 
 
 class MaterialiedViewReflectionTest(
@@ -85,14 +91,23 @@ class MaterialiedViewReflectionTest(
                 {"id": 89, "data": 'd1'}
             )
 
-        view = sa.DDL(
+        materialized_view = sa.DDL(
             "CREATE MATERIALIZED VIEW test_mview AS "
             "SELECT * FROM testtable")
 
-        sa.event.listen(testtable, 'after_create', view)
+        plain_view = sa.DDL(
+            "CREATE VIEW test_regview AS "
+            "SELECT * FROM testtable")
+
+        sa.event.listen(testtable, 'after_create', plain_view)
+        sa.event.listen(testtable, 'after_create', materialized_view)
         sa.event.listen(
             testtable, 'before_drop',
             sa.DDL("DROP MATERIALIZED VIEW test_mview")
+        )
+        sa.event.listen(
+            testtable, 'before_drop',
+            sa.DDL("DROP VIEW test_regview")
         )
 
     def test_mview_is_reflected(self):
@@ -108,6 +123,10 @@ class MaterialiedViewReflectionTest(
             table.select().execute().fetchall(),
             [(89, 'd1',)]
         )
+
+    def test_get_view_names(self):
+        insp = inspect(testing.db)
+        eq_(set(insp.get_view_names()), set(['test_mview', 'test_regview']))
 
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
