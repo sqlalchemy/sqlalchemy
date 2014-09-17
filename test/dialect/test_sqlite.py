@@ -558,6 +558,24 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
+    def test_get_unique_constraints(self):
+        meta = MetaData(testing.db)
+        t1 = Table('foo', meta, Column('f', Integer),
+                   UniqueConstraint('f', name='foo_f'))
+        t2 = Table('bar', meta, Column('b', Integer),
+                   UniqueConstraint('b', name='bar_b'),
+                   prefixes=['TEMPORARY'])
+        meta.create_all()
+        from sqlalchemy.engine.reflection import Inspector
+        try:
+            inspector = Inspector(testing.db)
+            eq_(inspector.get_unique_constraints('foo'),
+                [{'column_names': [u'f'], 'name': u'foo_f'}])
+            eq_(inspector.get_unique_constraints('bar'),
+                [{'column_names': [u'b'], 'name': u'bar_b'}])
+        finally:
+            meta.drop_all()
+
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
