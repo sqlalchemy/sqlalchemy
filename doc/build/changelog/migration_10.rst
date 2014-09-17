@@ -865,6 +865,34 @@ method that returns information on all available ``ENUM`` types::
 
 	:meth:`.PGInspector.get_enums`
 
+.. _feature_2891:
+
+Postgresql Dialect reflects Materialized Views, Foreign Tables
+--------------------------------------------------------------
+
+Changes are as follows:
+
+* the :class:`Table` construct with ``autoload=True`` will now match a name
+  that exists in the database as a materialized view or foriegn table.
+
+* :meth:`.Inspector.get_view_names` will return plain and materialized view
+  names.
+
+* :meth:`.Inspector.get_table_names` does **not** change for Postgresql, it
+  continues to return only the names of plain tables.
+
+* A new method :meth:`.PGInspector.get_foreign_table_names` is added which
+  will return the names of tables that are specifically marked as "foreign"
+  in the Postgresql schema tables.
+
+The change to reflection involves adding ``'m'`` and ``'f'`` to the list
+of qualifiers we use when querying ``pg_class.relkind``, but this change
+is new in 1.0.0 to avoid any backwards-incompatible surprises for those
+running 0.9 in production.
+
+:ticket:`2891`
+
+
 MySQL internal "no such table" exceptions not passed to event handlers
 ----------------------------------------------------------------------
 

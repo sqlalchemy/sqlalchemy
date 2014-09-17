@@ -13,8 +13,123 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 
-class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
+    """Test reflection on foreign tables"""
 
+    __requires__ = 'postgresql_test_dblink',
+    __only_on__ = 'postgresql >= 9.3'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy.testing import config
+        dblink = config.file_config.get(
+            'sqla_testing', 'postgres_test_db_link')
+
+        testtable = Table(
+            'testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+
+        for ddl in [
+            "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw "
+            "OPTIONS (dbname 'test', host '%s')" % dblink,
+            "CREATE USER MAPPING FOR public \
+            SERVER test_server options (user 'scott', password 'tiger')",
+            "CREATE FOREIGN TABLE test_foreigntable ( "
+            "   id          INT, "
+            "   data        VARCHAR(30) "
+            ") SERVER test_server OPTIONS (table_name 'testtable')",
+        ]:
+            sa.event.listen(metadata, "after_create", sa.DDL(ddl))
+
+        for ddl in [
+            'DROP FOREIGN TABLE test_foreigntable',
+            'DROP USER MAPPING FOR public SERVER test_server',
+            "DROP SERVER test_server"
+        ]:
+            sa.event.listen(metadata, "before_drop", sa.DDL(ddl))
+
+    def test_foreign_table_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected foreign table didn't equal expected columns")
+
+    def test_get_foreign_table_names(self):
+        inspector = inspect(testing.db)
+        with testing.db.connect() as conn:
+            ft_names = inspector.get_foreign_table_names()
+            eq_(ft_names, ['test_foreigntable'])
+
+    def test_get_table_names_no_foreign(self):
+        inspector = inspect(testing.db)
+        with testing.db.connect() as conn:
+            names = inspector.get_table_names()
+            eq_(names, ['testtable'])
+
+
+class MaterialiedViewReflectionTest(
+        fixtures.TablesTest, AssertsExecutionResults):
+    """Test reflection on materialized views"""
+
+    __only_on__ = 'postgresql >= 9.3'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        testtable = Table(
+            'testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+
+        # insert data before we create the view
+        @sa.event.listens_for(testtable, "after_create")
+        def insert_data(target, connection, **kw):
+            connection.execute(
+                target.insert(),
+                {"id": 89, "data": 'd1'}
+            )
+
+        materialized_view = sa.DDL(
+            "CREATE MATERIALIZED VIEW test_mview AS "
+            "SELECT * FROM testtable")
+
+        plain_view = sa.DDL(
+            "CREATE VIEW test_regview AS "
+            "SELECT * FROM testtable")
+
+        sa.event.listen(testtable, 'after_create', plain_view)
+        sa.event.listen(testtable, 'after_create', materialized_view)
+        sa.event.listen(
+            testtable, 'before_drop',
+            sa.DDL("DROP MATERIALIZED VIEW test_mview")
+        )
+        sa.event.listen(
+            testtable, 'before_drop',
+            sa.DDL("DROP VIEW test_regview")
+        )
+
+    def test_mview_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected mview didn't equal expected columns")
+
+    def test_mview_select(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(
+            table.select().execute().fetchall(),
+            [(89, 'd1',)]
+        )
+
+    def test_get_view_names(self):
+        insp = inspect(testing.db)
+        eq_(set(insp.get_view_names()), set(['test_mview', 'test_regview']))
+
+
+class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     """Test PostgreSQL domains"""
 
     __only_on__ = 'postgresql > 8.3'

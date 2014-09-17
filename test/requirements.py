@@ -706,6 +706,14 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def postgresql_test_dblink(self):
+        return skip_if(
+                    lambda config: not config.file_config.has_option(
+                        'sqla_testing', 'postgres_test_db_link'),
+                    "postgres_test_db_link option not specified in config"
+                )
+
+    @property
     def percent_schema_names(self):
         return skip_if(
             [
