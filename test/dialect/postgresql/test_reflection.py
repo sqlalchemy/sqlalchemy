@@ -26,10 +26,15 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
         dblink = config.file_config.get(
             'sqla_testing', 'postgres_test_db_link')
 
+        testtable = Table(
+            'testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+
         for ddl in [
             "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw "
             "OPTIONS (dbname 'test', host '%s')" % dblink,
-            "CREATE USER MAPPING FOR scott \
+            "CREATE USER MAPPING FOR public \
             SERVER test_server options (user 'scott', password 'tiger')",
             "CREATE FOREIGN TABLE test_foreigntable ( "
             "   id          INT, "
@@ -40,7 +45,7 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
 
         for ddl in [
             'DROP FOREIGN TABLE test_foreigntable',
-            'DROP USER MAPPING FOR scott SERVER test_server',
+            'DROP USER MAPPING FOR public SERVER test_server',
             "DROP SERVER test_server"
         ]:
             sa.event.listen(metadata, "before_drop", sa.DDL(ddl))
@@ -50,29 +55,6 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
         table = Table('test_foreigntable', metadata, autoload=True)
         eq_(set(table.columns.keys()), set(['id', 'data']),
             "Columns of reflected foreign table didn't equal expected columns")
-
-    def test_foreign_table_select(self):
-        metadata = MetaData(testing.db)
-        table = Table('test_foreigntable', metadata, autoload=True)
-
-        with testing.db.begin() as conn:
-            eq_(
-                conn.execute(table.select()).fetchall(),
-                [(89, 'd1',)]
-            )
-
-    def test_foreign_table_roundtrip(self):
-        metadata = MetaData(testing.db)
-        table = Table('test_foreigntable', metadata, autoload=True)
-
-        with testing.db.begin() as conn:
-            conn.execute(table.delete())
-            conn.execute(table.insert(), {'id': 89, 'data': 'd1'})
-
-        eq_(
-            testing.db.execute(table.select()).fetchall(),
-            [(89, 'd1',)]
-        )
 
     def test_get_foreign_table_names(self):
         inspector = inspect(testing.db)
