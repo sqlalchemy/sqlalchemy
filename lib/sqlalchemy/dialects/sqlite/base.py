@@ -1097,16 +1097,24 @@ class SQLiteDialect(default.DefaultDialect):
     @reflection.cache
     def get_unique_constraints(self, connection, table_name,
                                schema=None, **kw):
-        UNIQUE_SQL = """
-            SELECT sql
-            FROM
-                sqlite_master
-            WHERE
-                type='table' AND
-                name=:table_name
-        """
-        c = connection.execute(UNIQUE_SQL, table_name=table_name)
-        table_data = c.fetchone()[0]
+        try:
+            s = ("SELECT sql FROM "
+                 " (SELECT * FROM sqlite_master UNION ALL "
+                 "  SELECT * FROM sqlite_temp_master) "
+                 "WHERE name = '%s' "
+                 "AND type = 'table'") % table_name
+            rs = connection.execute(s)
+        except exc.DBAPIError:
+            s = ("SELECT sql FROM sqlite_master WHERE name = '%s' "
+                 "AND type = 'table'") % table_name
+            rs = connection.execute(s)
+        row = rs.fetchone()
+        if row is None:
+            # sqlite won't return the schema for the sqlite_master or
+            # sqlite_temp_master tables from this query. These tables
+            # don't have any unique constraints anyway.
+            return []
+        table_data = row[0]
 
         UNIQUE_PATTERN = 'CONSTRAINT (\w+) UNIQUE \(([^\)]+)\)'
         return [
