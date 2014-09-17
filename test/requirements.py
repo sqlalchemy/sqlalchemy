@@ -300,7 +300,7 @@ class DefaultRequirements(SuiteRequirements):
     def temp_table_names(self):
         """target dialect supports listing of temporary table names"""
 
-        return only_on(['sqlite'])
+        return only_on(['sqlite', 'oracle'])
 
     @property
     def temporary_views(self):

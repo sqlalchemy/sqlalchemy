@@ -100,19 +100,31 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_temp_tables(cls, metadata):
-        temp_table = Table(
+        # cheat a bit, we should fix this with some dialect-level
+        # temp table fixture
+        if testing.against("oracle"):
+            kw = {
+                'prefixes': ["GLOBAL TEMPORARY"],
+                'oracle_on_commit': 'PRESERVE ROWS'
+            }
+        else:
+            kw = {
+                'prefixes': ["TEMPORARY"],
+            }
+
+        user_tmp = Table(
             "user_tmp", metadata,
             Column("id", sa.INT, primary_key=True),
             Column('name', sa.VARCHAR(50)),
             Column('foo', sa.INT),
             sa.UniqueConstraint('name', name='user_tmp_uq'),
             sa.Index("user_tmp_ix", "foo"),
-            prefixes=['TEMPORARY']
+            **kw
         )
         if testing.requires.view_reflection.enabled and \
                 testing.requires.temporary_views.enabled:
             event.listen(
-                temp_table, "after_create",
+                user_tmp, "after_create",
                 DDL("create temporary view user_tmp_v as "
                     "select * from user_tmp")
             )
@@ -186,7 +198,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.requires.temp_table_names
     def test_get_temp_table_names(self):
-        insp = inspect(self.metadata.bind)
+        insp = inspect(testing.db)
         temp_table_names = insp.get_temp_table_names()
         eq_(sorted(temp_table_names), ['user_tmp'])
 
@@ -485,6 +497,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         self._test_get_unique_constraints()
 
     @testing.requires.temp_table_reflection
+    @testing.requires.unique_constraint_reflection
     def test_get_temp_table_unique_constraints(self):
         insp = inspect(self.metadata.bind)
         eq_(
@@ -502,7 +515,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
             [idx for idx in indexes if idx['name'] == 'user_tmp_ix'],
             [{'unique': False, 'column_names': ['foo'], 'name': 'user_tmp_ix'}]
         )
-
 
     @testing.requires.unique_constraint_reflection
     @testing.requires.schemas

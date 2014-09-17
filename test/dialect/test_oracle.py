@@ -648,6 +648,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX bar ON foo (x > 5)"
         )
 
+    def test_table_options(self):
+        m = MetaData()
+
+        t = Table(
+            'foo', m,
+            Column('x', Integer),
+            prefixes=["GLOBAL TEMPORARY"],
+            oracle_on_commit="PRESERVE ROWS"
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE GLOBAL TEMPORARY TABLE "
+            "foo (x INTEGER) ON COMMIT PRESERVE ROWS"
+        )
+
+
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _dialect(self, server_version, **kw):

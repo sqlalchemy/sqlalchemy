@@ -955,11 +955,11 @@ when using ODBC to avoid this issue entirely.
 
 .. _change_3204:
 
-SQLite has distinct methods for temporary table/view name reporting
--------------------------------------------------------------------
+SQLite/Oracle have distinct methods for temporary table/view name reporting
+---------------------------------------------------------------------------
 
 The :meth:`.Inspector.get_table_names` and :meth:`.Inspector.get_view_names`
-methods in the case of SQLite would also return the names of temporary
+methods in the case of SQLite/Oracle would also return the names of temporary
 tables and views, which is not provided by any other dialect (in the case
 of MySQL at least it is not even possible).  This logic has been moved
 out to two new methods :meth:`.Inspector.get_temp_table_names` and
