@@ -1439,6 +1439,48 @@ class EngineEventsTest(fixtures.TestBase):
                 'begin', 'execute', 'cursor_execute', 'commit',
             ])
 
+    def test_transactional_named(self):
+        canary = []
+
+        def tracker(name):
+            def go(*args, **kw):
+                canary.append((name, set(kw)))
+            return go
+
+        engine = engines.testing_engine()
+        event.listen(engine, 'before_execute', tracker('execute'), named=True)
+        event.listen(
+            engine, 'before_cursor_execute',
+            tracker('cursor_execute'), named=True)
+        event.listen(engine, 'begin', tracker('begin'), named=True)
+        event.listen(engine, 'commit', tracker('commit'), named=True)
+        event.listen(engine, 'rollback', tracker('rollback'), named=True)
+
+        conn = engine.connect()
+        trans = conn.begin()
+        conn.execute(select([1]))
+        trans.rollback()
+        trans = conn.begin()
+        conn.execute(select([1]))
+        trans.commit()
+
+        eq_(
+            canary, [
+                ('begin', set(['conn', ])),
+                ('execute', set([
+                    'conn', 'clauseelement', 'multiparams', 'params'])),
+                ('cursor_execute', set([
+                    'conn', 'cursor', 'executemany',
+                    'statement', 'parameters', 'context'])),
+                ('rollback', set(['conn', ])), ('begin', set(['conn', ])),
+                ('execute', set([
+                    'conn', 'clauseelement', 'multiparams', 'params'])),
+                ('cursor_execute', set([
+                    'conn', 'cursor', 'executemany', 'statement',
+                    'parameters', 'context'])),
+                ('commit', set(['conn', ]))]
+        )
+
     @testing.requires.savepoints
     @testing.requires.two_phase_transactions
     def test_transactional_advanced(self):

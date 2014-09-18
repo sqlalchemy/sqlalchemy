@@ -2486,6 +2486,50 @@ class ListenerTest(fixtures.ORMTest):
         f1.barset.add(b1)
         assert f1.barset.pop().data == 'some bar appended'
 
+    def test_named(self):
+        canary = Mock()
+
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(
+            Foo, 'data', uselist=False,
+            useobject=False)
+        attributes.register_attribute(
+            Foo, 'barlist', uselist=True,
+            useobject=True)
+
+        event.listen(Foo.data, 'set', canary.set, named=True)
+        event.listen(Foo.barlist, 'append', canary.append, named=True)
+        event.listen(Foo.barlist, 'remove', canary.remove, named=True)
+
+        f1 = Foo()
+        b1 = Bar()
+        f1.data = 5
+        f1.barlist.append(b1)
+        f1.barlist.remove(b1)
+        eq_(
+            canary.mock_calls,
+            [
+                call.set(
+                    oldvalue=attributes.NO_VALUE,
+                    initiator=canary.mock_calls[0][2]['initiator'],
+                    target=f1, value=5),
+                call.append(
+                    initiator=canary.mock_calls[1][2]['initiator'],
+                    target=f1,
+                    value=b1),
+                call.remove(
+                    initiator=canary.mock_calls[2][2]['initiator'],
+                    target=f1,
+                    value=b1)]
+        )
+
     def test_none_on_collection_event(self):
         """test that append/remove of None in collections emits events.
 
