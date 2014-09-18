@@ -61,7 +61,8 @@ class InstrumentationEvents(event.Events):
     @classmethod
     def _listen(cls, event_key, propagate=True, **kw):
         target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, event_key.fn
+            event_key.dispatch_target, event_key.identifier, \
+            event_key._listen_fn
 
         def listen(target_cls, *arg):
             listen_cls = target()
@@ -192,7 +193,8 @@ class InstanceEvents(event.Events):
     @classmethod
     def _listen(cls, event_key, raw=False, propagate=False, **kw):
         target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, event_key.fn
+            event_key.dispatch_target, event_key.identifier, \
+            event_key._listen_fn
 
         if not raw:
             def wrap(state, *arg, **kw):
@@ -498,7 +500,8 @@ class MapperEvents(event.Events):
     def _listen(
             cls, event_key, raw=False, retval=False, propagate=False, **kw):
         target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, event_key.fn
+            event_key.dispatch_target, event_key.identifier, \
+            event_key._listen_fn
 
         if identifier in ("before_configured", "after_configured") and \
                 target is not mapperlib.Mapper:
@@ -1493,7 +1496,8 @@ class AttributeEvents(event.Events):
                 propagate=False):
 
         target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, event_key.fn
+            event_key.dispatch_target, event_key.identifier, \
+            event_key._listen_fn
 
         if active_history:
             target.dispatch._active_history = True

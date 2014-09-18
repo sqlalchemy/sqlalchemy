@@ -182,6 +182,17 @@ class _EventKey(object):
 
     def listen(self, *args, **kw):
         once = kw.pop("once", False)
+        named = kw.pop("named", False)
+
+        target, identifier, fn = \
+            self.dispatch_target, self.identifier, self._listen_fn
+
+        dispatch_descriptor = getattr(target.dispatch, identifier)
+
+        adjusted_fn = dispatch_descriptor._adjust_fn_spec(fn, named)
+
+        self = self.with_wrapper(adjusted_fn)
+
         if once:
             self.with_wrapper(
                 util.only_once(self._listen_fn)).listen(*args, **kw)
@@ -216,9 +227,6 @@ class _EventKey(object):
             self.dispatch_target, self.identifier, self._listen_fn
 
         dispatch_descriptor = getattr(target.dispatch, identifier)
-
-        fn = dispatch_descriptor._adjust_fn_spec(fn, named)
-        self = self.with_wrapper(fn)
 
         if insert:
             dispatch_descriptor.\

@@ -112,6 +112,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(User, users)
         canary = self.listen_all(User)
+        named_canary = self.listen_all(User, named=True)
 
         sess = create_session()
         u = User(name='u1')
@@ -125,13 +126,15 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         sess.delete(u)
         sess.flush()
-        eq_(canary,
-            ['init', 'before_insert',
-             'after_insert', 'expire',
-             'refresh',
-             'load',
-             'before_update', 'after_update', 'before_delete',
-             'after_delete'])
+        expected = [
+            'init', 'before_insert',
+            'after_insert', 'expire',
+            'refresh',
+            'load',
+            'before_update', 'after_update', 'before_delete',
+            'after_delete']
+        eq_(canary, expected)
+        eq_(named_canary, expected)
 
     def test_insert_before_configured(self):
         users, User = self.tables.users, self.classes.User
@@ -1192,6 +1195,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'after_flush', 'after_flush_postexec',
             'before_commit', 'after_commit','after_transaction_end']
         )
+
 
     def test_rollback_hook(self):
         User, users = self.classes.User, self.tables.users

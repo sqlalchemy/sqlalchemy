@@ -470,7 +470,8 @@ class ConnectionEvents(event.Events):
     @classmethod
     def _listen(cls, event_key, retval=False):
         target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, event_key.fn
+            event_key.dispatch_target, event_key.identifier, \
+            event_key._listen_fn
 
         target._has_events = True
 

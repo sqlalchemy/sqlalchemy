@@ -14,6 +14,19 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, orm, engine
+        :versions: 1.0.0
+        :tickets: 3197
+
+        Fixed bug that affected generally the same classes of event
+        as that of :ticket:`3199`, when the ``named=True`` parameter
+        would be used.  Some events would fail to register, and others
+        would not invoke the event arguments correctly, generally in the
+        case of when an event was "wrapped" for adaption in some other way.
+        The "named" mechanics have been rearranged to not interfere with
+        the argument signature expected by internal wrapper functions.
+
+    .. change::
         :tags: bug, declarative
         :versions: 1.0.0
         :tickets: 3208
