@@ -996,6 +996,25 @@ class RemovalTest(fixtures.TestBase):
             dispatch = event.dispatcher(TargetEvents)
         return Target
 
+    def _wrapped_fixture(self):
+        class TargetEvents(event.Events):
+            @classmethod
+            def _listen(cls, event_key):
+                fn = event_key.fn
+
+                def adapt(value):
+                    fn("adapted " + value)
+                event_key = event_key.with_wrapper(adapt)
+
+                event_key.base_listen()
+
+            def event_one(self, value):
+                pass
+
+        class Target(object):
+            dispatch = event.dispatcher(TargetEvents)
+        return Target
+
     def test_clslevel(self):
         Target = self._fixture()
 
@@ -1194,3 +1213,43 @@ class RemovalTest(fixtures.TestBase):
             "deque mutated during iteration",
             t1.dispatch.event_one
         )
+
+    def test_double_event_nonwrapped(self):
+        Target = self._fixture()
+
+        listen_one = Mock()
+        t1 = Target()
+        event.listen(t1, "event_one", listen_one)
+        event.listen(t1, "event_one", listen_one)
+
+        t1.dispatch.event_one("t1")
+
+        # doubles are eliminated
+        eq_(listen_one.mock_calls, [call("t1")])
+
+        # only one remove needed
+        event.remove(t1, "event_one", listen_one)
+        t1.dispatch.event_one("t2")
+
+        eq_(listen_one.mock_calls, [call("t1")])
+
+    def test_double_event_wrapped(self):
+        # this is issue #3199
+        Target = self._wrapped_fixture()
+
+        listen_one = Mock()
+        t1 = Target()
+
+        event.listen(t1, "event_one", listen_one)
+        event.listen(t1, "event_one", listen_one)
+
+        t1.dispatch.event_one("t1")
+
+        # doubles are eliminated
+        eq_(listen_one.mock_calls, [call("adapted t1")])
+
+        # only one remove needed
+        event.remove(t1, "event_one", listen_one)
+        t1.dispatch.event_one("t2")
+
+        eq_(listen_one.mock_calls, [call("adapted t1")])

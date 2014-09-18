@@ -14,6 +14,20 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, orm
+        :versions: 1.0.0
+        :tickets: 3199
+
+        Fixed bug that affected many classes of event, particularly
+        ORM events but also engine events, where the usual logic of
+        "de duplicating" a redundant call to :func:`.event.listen`
+        with the same arguments would fail, for those events where the
+        listener function is wrapped.  An assertion would be hit within
+        registry.py.  This assertion has now been integrated into the
+        deduplication check, with the added bonus of a simpler means
+        of checking deduplication across the board.
+
+    .. change::
         :tags: bug, mssql
         :versions: 1.0.0
         :tickets: 3151
