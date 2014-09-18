@@ -14,6 +14,17 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, declarative
+        :versions: 1.0.0
+        :tickets: 3208
+
+        Fixed an unlikely race condition observed in some exotic end-user
+        setups, where the attempt to check for "duplicate class name" in
+        declarative would hit upon a not-totally-cleaned-up weak reference
+        related to some other class being removed; the check here now ensures
+        the weakref still references an object before calling upon it further.
+
+    .. change::
         :tags: bug, orm
         :versions: 1.0.0
         :tickets: 3199

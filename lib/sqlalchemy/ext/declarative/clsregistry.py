@@ -103,7 +103,12 @@ class _MultipleClassMarker(object):
                 self.on_remove()
 
     def add_item(self, item):
-        modules = set([cls().__module__ for cls in self.contents])
+        # protect against class registration race condition against
+        # asynchronous garbage collection calling _remove_item,
+        # [ticket:3208]
+        modules = set([
+            cls.__module__ for cls in
+            [ref() for ref in self.contents] if cls is not None])
         if item.__module__ in modules:
             util.warn(
                 "This declarative base already contains a class with the "
