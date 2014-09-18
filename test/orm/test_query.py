@@ -2482,6 +2482,8 @@ class YieldTest(_fixtures.FixtureTest):
 
 
 class HintsTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_hints(self):
         User = self.classes.User
 
