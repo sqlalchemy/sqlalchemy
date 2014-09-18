@@ -1331,6 +1331,9 @@ class SQLCompiler(Compiled):
     def get_crud_hint_text(self, table, text):
         return None
 
+    def get_statement_hint_text(self, hint_texts):
+        return " ".join(hint_texts)
+
     def _transform_select_for_nested_joins(self, select):
         """Rewrite any "a JOIN (b JOIN c)" expression as
         "a JOIN (select * from b JOIN c) AS anon", to support
@@ -1608,6 +1611,15 @@ class SQLCompiler(Compiled):
 
         if select._for_update_arg is not None:
             text += self.for_update_clause(select, **kwargs)
+
+        if select._statement_hints:
+            per_dialect = [
+                ht for (dialect_name, ht)
+                in select._statement_hints
+                if dialect_name in ('*', self.dialect.name)
+            ]
+            if per_dialect:
+                text += " " + self.get_statement_hint_text(per_dialect)
 
         if self.ctes and \
                 compound_index == 0 and toplevel:

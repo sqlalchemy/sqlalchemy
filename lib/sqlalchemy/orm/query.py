@@ -1145,7 +1145,8 @@ class Query(object):
 
     @_generative()
     def with_hint(self, selectable, text, dialect_name='*'):
-        """Add an indexing hint for the given entity or selectable to
+        """Add an indexing or other executional context
+        hint for the given entity or selectable to
         this :class:`.Query`.
 
         Functionality is passed straight through to
@@ -1153,10 +1154,34 @@ class Query(object):
         with the addition that ``selectable`` can be a
         :class:`.Table`, :class:`.Alias`, or ORM entity / mapped class
         /etc.
+
+        .. seealso::
+
+            :meth:`.Query.with_statement_hint`
+
         """
-        selectable = inspect(selectable).selectable
+        if selectable is not None:
+            selectable = inspect(selectable).selectable
 
         self._with_hints += ((selectable, text, dialect_name),)
+
+    def with_statement_hint(self, text, dialect_name='*'):
+        """add a statement hint to this :class:`.Select`.
+
+        This method is similar to :meth:`.Select.with_hint` except that
+        it does not require an individual table, and instead applies to the
+        statement as a whole.
+
+        This feature calls down into :meth:`.Select.with_statement_hint`.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Query.with_hint`
+
+        """
+        return self.with_hint(None, text, dialect_name)
 
     @_generative()
     def execution_options(self, **kwargs):

@@ -2517,6 +2517,28 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
             "ON users_1.id > users.id", dialect=dialect
         )
 
+    def test_statement_hints(self):
+        User = self.classes.User
+
+        sess = create_session()
+        stmt = sess.query(User).\
+            with_statement_hint("test hint one").\
+            with_statement_hint("test hint two").\
+            with_statement_hint("test hint three", "postgresql")
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users test hint one test hint two",
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users test hint one test hint two test hint three",
+            dialect='postgresql'
+        )
+
 
 class TextTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = 'default'

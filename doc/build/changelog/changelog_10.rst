@@ -22,6 +22,14 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3206
+
+        Added new method :meth:`.Select.with_statement_hint` and ORM
+        method :meth:`.Query.with_statement_hint` to support statement-level
+        hints that are not specific to a table.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 3203
         :pullreq: bitbucket:31

@@ -2153,6 +2153,7 @@ class Select(HasPrefixes, GenerativeSelect):
 
     _prefixes = ()
     _hints = util.immutabledict()
+    _statement_hints = ()
     _distinct = False
     _from_cloned = None
     _correlate = ()
@@ -2525,10 +2526,30 @@ class Select(HasPrefixes, GenerativeSelect):
 
         return self._get_display_froms()
 
+    def with_statement_hint(self, text, dialect_name='*'):
+        """add a statement hint to this :class:`.Select`.
+
+        This method is similar to :meth:`.Select.with_hint` except that
+        it does not require an individual table, and instead applies to the
+        statement as a whole.
+
+        Hints here are specific to the backend database and may include
+        directives such as isolation levels, file directives, fetch directives,
+        etc.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Select.with_hint`
+
+        """
+        return self.with_hint(None, text, dialect_name)
+
     @_generative
     def with_hint(self, selectable, text, dialect_name='*'):
-        """Add an indexing hint for the given selectable to this
-        :class:`.Select`.
+        """Add an indexing or other executional context hint for the given
+        selectable to this :class:`.Select`.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
@@ -2555,9 +2576,16 @@ class Select(HasPrefixes, GenerativeSelect):
                     mytable, "+ index(%(name)s ix_mytable)", 'oracle').\\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
 
+        .. seealso::
+
+            :meth:`.Select.with_statement_hint`
+
         """
-        self._hints = self._hints.union(
-            {(selectable, dialect_name): text})
+        if selectable is None:
+            self._statement_hints += ((dialect_name, text), )
+        else:
+            self._hints = self._hints.union(
+                {(selectable, dialect_name): text})
 
     @property
     def type(self):

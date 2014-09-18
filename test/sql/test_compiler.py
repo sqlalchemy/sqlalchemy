@@ -2420,6 +2420,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 dialect=dialect
             )
 
+    def test_statement_hints(self):
+
+        stmt = select([table1.c.myid]).\
+            with_statement_hint("test hint one").\
+            with_statement_hint("test hint two", 'mysql')
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable test hint one",
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable test hint one test hint two",
+            dialect='mysql'
+        )
+
     def test_literal_as_text_fromstring(self):
         self.assert_compile(
             and_(text("a"), text("b")),
