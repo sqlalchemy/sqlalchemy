@@ -71,12 +71,14 @@ def _stored_in_collection(event_key, owner):
     listen_ref = weakref.ref(event_key._listen_fn)
 
     if owner_ref in dispatch_reg:
-        assert dispatch_reg[owner_ref] == listen_ref
-    else:
-        dispatch_reg[owner_ref] = listen_ref
+        return False
+
+    dispatch_reg[owner_ref] = listen_ref
 
     listener_to_key = _collection_to_key[owner_ref]
     listener_to_key[listen_ref] = key
+
+    return True
 
 
 def _removed_from_collection(event_key, owner):
@@ -229,18 +231,20 @@ class _EventKey(object):
     def _listen_fn(self):
         return self.fn_wrap or self.fn
 
-    def append_value_to_list(self, owner, list_, value):
-        _stored_in_collection(self, owner)
-        list_.append(value)
-
     def append_to_list(self, owner, list_):
-        _stored_in_collection(self, owner)
-        list_.append(self._listen_fn)
+        if _stored_in_collection(self, owner):
+            list_.append(self._listen_fn)
+            return True
+        else:
+            return False
 
     def remove_from_list(self, owner, list_):
         _removed_from_collection(self, owner)
         list_.remove(self._listen_fn)
 
     def prepend_to_list(self, owner, list_):
-        _stored_in_collection(self, owner)
-        list_.insert(0, self._listen_fn)
+        if _stored_in_collection(self, owner):
+            list_.insert(0, self._listen_fn)
+            return True
+        else:
+            return False
