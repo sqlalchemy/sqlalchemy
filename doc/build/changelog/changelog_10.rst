@@ -22,6 +22,22 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, ext
+        :tickets: 3210
+
+        The :mod:`sqlalchemy.ext.automap` extension will now set
+        ``cascade="all, delete-orphan"`` automatically on a one-to-many
+        relationship/backref where the foreign key is detected as containing
+        one or more non-nullable columns.  This argument is present in the
+        keywords passed to :func:`.automap.generate_relationship` in this
+        case and can still be overridden.  Additionally, if the
+        :class:`.ForeignKeyConstraint` specifies ``ondelete="CASCADE"``
+        for a non-nullable or ``ondelete="SET NULL"`` for a nullable set
+        of columns, the argument ``passive_deletes=True`` is also added to the
+        relationship.  Note that not all backends support reflection of
+        ondelete, but backends that do include Postgresql and MySQL.
+
+    .. change::
         :tags: feature, sql
         :tickets: 3206
 

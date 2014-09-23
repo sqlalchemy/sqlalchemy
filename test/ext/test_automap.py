@@ -1,7 +1,7 @@
 from sqlalchemy.testing import fixtures
 from ..orm._fixtures import FixtureTest
 from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import relationship, interfaces
+from sqlalchemy.orm import relationship, interfaces, configure_mappers
 from sqlalchemy.ext.automap import generate_relationship
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy import String, Integer, ForeignKey
@@ -155,6 +155,72 @@ class AutomapTest(fixtures.MappedTest):
             (Base, interfaces.MANYTOONE, "users"),
             (Base, interfaces.ONETOMANY, "addresses_collection"),
         ])
+
+
+class CascadeTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a", metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        Table(
+            "b", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', ForeignKey('a.id'), nullable=True)
+        )
+        Table(
+            "c", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', ForeignKey('a.id'), nullable=False)
+        )
+        Table(
+            "d", metadata,
+            Column('id', Integer, primary_key=True),
+            Column(
+                'aid', ForeignKey('a.id', ondelete="cascade"), nullable=False)
+        )
+        Table(
+            "e", metadata,
+            Column('id', Integer, primary_key=True),
+            Column(
+                'aid', ForeignKey('a.id', ondelete="set null"),
+                nullable=True)
+        )
+
+    def test_o2m_relationship_cascade(self):
+        Base = automap_base(metadata=self.metadata)
+        Base.prepare()
+
+        configure_mappers()
+
+        b_rel = Base.classes.a.b_collection
+        assert not b_rel.property.cascade.delete
+        assert not b_rel.property.cascade.delete_orphan
+        assert not b_rel.property.passive_deletes
+
+        assert b_rel.property.cascade.save_update
+
+        c_rel = Base.classes.a.c_collection
+        assert c_rel.property.cascade.delete
+        assert c_rel.property.cascade.delete_orphan
+        assert not c_rel.property.passive_deletes
+
+        assert c_rel.property.cascade.save_update
+
+        d_rel = Base.classes.a.d_collection
+        assert d_rel.property.cascade.delete
+        assert d_rel.property.cascade.delete_orphan
+        assert d_rel.property.passive_deletes
+
+        assert d_rel.property.cascade.save_update
+
+        e_rel = Base.classes.a.e_collection
+        assert not e_rel.property.cascade.delete
+        assert not e_rel.property.cascade.delete_orphan
+        assert e_rel.property.passive_deletes
+
+        assert e_rel.property.cascade.save_update
 
 
 class AutomapInhTest(fixtures.MappedTest):
