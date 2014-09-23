@@ -5,7 +5,9 @@ from sqlalchemy import exc, MetaData
 from sqlalchemy.ext.declarative import clsregistry
 import weakref
 
+
 class MockClass(object):
+
     def __init__(self, base, name):
         self._decl_class_registry = base
         tokens = name.split(".")
@@ -183,7 +185,7 @@ class ClsRegistryTest(fixtures.TestBase):
         f1 = MockClass(base, "foo.bar.Foo")
         clsregistry.add_class("Foo", f1)
         reg = base['_sa_module_registry']
-        mod_entry = reg['foo']['bar']
+        mod_entry = reg['foo']['bar']  # noqa
         resolver = clsregistry._resolver(f1, MockProp())
         resolver = resolver("foo")
         assert_raises_message(
@@ -232,4 +234,3 @@ class ClsRegistryTest(fixtures.TestBase):
         del f4
         gc_collect()
         assert 'single' not in reg
-
