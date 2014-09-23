@@ -412,8 +412,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except:
-                metadata._remove_table(name, schema)
-                raise
+                with util.safe_reraise():
+                    metadata._remove_table(name, schema)
 
     @property
     @util.deprecated('0.9', 'Use ``table.schema.quote``')

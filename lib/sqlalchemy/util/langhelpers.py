@@ -490,6 +490,8 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
             val = getattr(obj, arg, missing)
             if val is not missing and val != defval:
                 output.append('%s=%r' % (arg, val))
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             pass
 
@@ -499,6 +501,8 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
                 val = getattr(obj, arg, missing)
                 if val is not missing and val != defval:
                     output.append('%s=%r' % (arg, val))
+            except (SystemExit, KeyboardInterrupt):
+                raise
             except:
                 pass
 
@@ -1185,6 +1189,8 @@ def warn_exception(func, *args, **kwargs):
     """
     try:
         return func(*args, **kwargs)
+    except (SystemExit, KeyboardInterrupt):
+        raise
     except:
         warn("%s('%s') ignored" % sys.exc_info()[0:2])
 

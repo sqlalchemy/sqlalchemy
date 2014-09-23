@@ -120,6 +120,8 @@ def _pg_create_db(cfg, eng, ident):
             isolation_level="AUTOCOMMIT") as conn:
         try:
             _pg_drop_db(cfg, conn, ident)
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             pass
         currentdb = conn.scalar("select current_database()")
@@ -131,6 +133,8 @@ def _mysql_create_db(cfg, eng, ident):
     with eng.connect() as conn:
         try:
             _mysql_drop_db(cfg, conn, ident)
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             pass
         conn.execute("CREATE DATABASE %s" % ident)
@@ -173,14 +177,20 @@ def _mysql_drop_db(cfg, eng, ident):
     with eng.connect() as conn:
         try:
             conn.execute("DROP DATABASE %s_test_schema" % ident)
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             pass
         try:
             conn.execute("DROP DATABASE %s_test_schema_2" % ident)
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             pass
         try:
             conn.execute("DROP DATABASE %s" % ident)
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             pass
 

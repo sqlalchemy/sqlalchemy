@@ -846,6 +846,8 @@ class MSExecutionContext(default.DefaultExecutionContext):
                         "SET IDENTITY_INSERT %s OFF" %
                         self.dialect.identifier_preparer. format_table(
                             self.compiled.statement.table)))
+            except (SystemExit, KeyboardInterrupt):
+                raise
             except:
                 pass
 

@@ -103,6 +103,8 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
                     'client_flags', ClientFlag.get_default())
                 client_flags |= ClientFlag.FOUND_ROWS
                 opts['client_flags'] = client_flags
+            except (SystemExit, KeyboardInterrupt):
+                raise
             except:
                 pass
         return [[], opts]

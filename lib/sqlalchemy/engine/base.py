@@ -1135,6 +1135,8 @@ class Connection(Connectable):
                         per_fn = fn(ctx)
                         if per_fn is not None:
                             ctx.chained_exception = newraise = per_fn
+                    except (SystemExit, KeyboardInterrupt):
+                        raise
                     except Exception as _raised:
                         # handler raises an exception - stop processing
                         newraise = _raised

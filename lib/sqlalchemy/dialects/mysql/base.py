@@ -2317,6 +2317,8 @@ class MySQLDialect(default.DefaultDialect):
         # basic operations via autocommit fail.
         try:
             dbapi_connection.commit()
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             if self.server_version_info < (3, 23, 15):
                 args = sys.exc_info()[1].args
@@ -2329,6 +2331,8 @@ class MySQLDialect(default.DefaultDialect):
 
         try:
             dbapi_connection.rollback()
+        except (SystemExit, KeyboardInterrupt):
+            raise
         except:
             if self.server_version_info < (3, 23, 15):
                 args = sys.exc_info()[1].args

@@ -441,8 +441,8 @@ class _ConnectionRecord(object):
         try:
             dbapi_connection = rec.get_connection()
         except:
-            rec.checkin()
-            raise
+            with util.safe_reraise():
+                rec.checkin()
         echo = pool._should_log_debug()
         fairy = _ConnectionFairy(dbapi_connection, rec, echo)
         rec.fairy_ref = weakref.ref(
@@ -962,8 +962,8 @@ class QueuePool(Pool):
                 try:
                     return self._create_connection()
                 except:
-                    self._dec_overflow()
-                    raise
+                    with util.safe_reraise():
+                        self._dec_overflow()
             else:
                 return self._do_get()
 
