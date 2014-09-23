@@ -728,7 +728,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                           checkfirst=checkfirst)
 
     def tometadata(self, metadata, schema=RETAIN_SCHEMA,
-                   referred_schema_fn=None):
+                   referred_schema_fn=None, name=None):
         """Return a copy of this :class:`.Table` associated with a different
         :class:`.MetaData`.
 
@@ -785,13 +785,16 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
          .. versionadded:: 0.9.2
 
+        :param name: optional string name indicating the target table name.
+         If not specified or None, the table name is retained.
         """
-
+        if name is None:
+            name = self.name
         if schema is RETAIN_SCHEMA:
             schema = self.schema
         elif schema is None:
             schema = metadata.schema
-        key = _get_table_key(self.name, schema)
+        key = _get_table_key(name, schema)
         if key in metadata.tables:
             util.warn("Table '%s' already exists within the given "
                       "MetaData - not copying." % self.description)
@@ -801,7 +804,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         for c in self.columns:
             args.append(c.copy(schema=schema))
         table = Table(
-            self.name, metadata, schema=schema,
+            name, metadata, schema=schema,
             *args, **self.kwargs
         )
         for c in self.constraints:
