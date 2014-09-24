@@ -2616,6 +2616,19 @@ class Query(object):
                 SELECT 1 FROM users WHERE users.name = :name_1
             ) AS anon_1
 
+        The EXISTS construct is usually used in the WHERE clause::
+
+            session.query(User.id).filter(q.exists()).scalar()
+
+        Note that some databases such as SQL Server don't allow an
+        EXISTS expression to be present in the columns clause of a
+        SELECT.    To select a simple boolean value based on the exists
+        as a WHERE, use :func:`.literal`::
+
+            from sqlalchemy import literal
+
+            session.query(literal(True)).filter(q.exists()).scalar()
+
         .. versionadded:: 0.8.1
 
         """
