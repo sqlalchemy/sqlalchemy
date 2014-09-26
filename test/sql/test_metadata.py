@@ -2124,7 +2124,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         assert_raises_message(
             exc.ArgumentError,
-            "Column object already assigned to Table 't'",
+            "Column object 'x' already assigned to Table 't'",
             Table, 'q', MetaData(), c)
 
     def test_incomplete_key(self):
