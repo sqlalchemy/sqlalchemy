@@ -426,6 +426,12 @@ class Mapper(_InspectionAttr):
           thus persisting the value to the ``discriminator`` column
           in the database.
 
+          .. warning::
+
+             Currently, **only one discriminator column may be set**, typically
+             on the base-most class in the hierarchy. "Cascading" polymorphic
+             columns are not yet supported.
+
           .. seealso::
 
             :ref:`inheritance_toplevel`
