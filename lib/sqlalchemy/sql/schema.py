@@ -1222,8 +1222,10 @@ class Column(SchemaItem, ColumnClause):
         existing = getattr(self, 'table', None)
         if existing is not None and existing is not table:
             raise exc.ArgumentError(
-                "Column object already assigned to Table '%s'" %
-                existing.description)
+                "Column object '%s' already assigned to Table '%s'" % (
+                    self.key,
+                    existing.description
+                ))
 
         if self.key in table._columns:
             col = table._columns.get(self.key)

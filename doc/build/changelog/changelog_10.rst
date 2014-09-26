@@ -22,6 +22,35 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, declarative
+        :tickets: 2670
+
+        A relationship set up with :class:`.declared_attr` on
+        a :class:`.AbstractConcreteBase` base class will now be configured
+        on the abstract base mapping automatically, in addition to being
+        set up on descendant concrete classes as usual.
+
+        .. seealso::
+
+            :ref:`feature_3150`
+
+    .. change::
+        :tags: feature, declarative
+        :tickets: 3150
+
+        The :class:`.declared_attr` construct has newly improved
+        behaviors and features in conjunction with declarative.  The
+        decorated function will now have access to the final column
+        copies present on the local mixin when invoked, and will also
+        be invoked exactly once for each mapped class, the returned result
+        being memoized.   A new modifier :attr:`.declared_attr.cascading`
+        is added as well.
+
+        .. seealso::
+
+            :ref:`feature_3150`
+
+    .. change::
         :tags: feature, ext
         :tickets: 3210
 

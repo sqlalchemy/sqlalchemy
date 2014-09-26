@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: September 7, 2014
+    Document last updated: September 25, 2014
 
 Introduction
 ============
@@ -307,6 +307,140 @@ Renders::
 
 :ticket:`3177`
 
+.. _feature_3150:
+
+Improvements to declarative mixins, ``@declared_attr`` and related features
+----------------------------------------------------------------------------
+
+The declarative system in conjunction with :class:`.declared_attr` has been
+overhauled to support new capabilities.
+
+A function decorated with :class:`.declared_attr` is now called only **after**
+any mixin-based column copies are generated.  This means the function can
+call upon mixin-established columns and will receive a reference to the correct
+:class:`.Column` object::
+
+    class HasFooBar(object):
+        foobar = Column(Integer)
+
+        @declared_attr
+        def foobar_prop(cls):
+            return column_property('foobar: ' + cls.foobar)
+
+    class SomeClass(HasFooBar, Base):
+        __tablename__ = 'some_table'
+        id = Column(Integer, primary_key=True)
+
+Above, ``SomeClass.foobar_prop`` will be invoked against ``SomeClass``,
+and ``SomeClass.foobar`` will be the final :class:`.Column` object that is
+to be mapped to ``SomeClass``, as opposed to the non-copied object present
+directly on ``HasFooBar``, even though the columns aren't mapped yet.
+
+The :class:`.declared_attr` function now **memoizes** the value
+that's returned on a per-class basis, so that repeated calls to the same
+attribute will return the same value.  We can alter the example to illustrate
+this::
+
+    class HasFooBar(object):
+        @declared_attr
+        def foobar(cls):
+            return Column(Integer)
+
+        @declared_attr
+        def foobar_prop(cls):
+            return column_property('foobar: ' + cls.foobar)
+
+    class SomeClass(HasFooBar, Base):
+        __tablename__ = 'some_table'
+        id = Column(Integer, primary_key=True)
+
+Previously, ``SomeClass`` would be mapped with one particular copy of
+the ``foobar`` column, but the ``foobar_prop`` by calling upon ``foobar``
+a second time would produce a different column.   The value of
+``SomeClass.foobar`` is now memoized during declarative setup time, so that
+even before the attribute is mapped by the mapper, the interim column
+value will remain consistent no matter how many times the
+:class:`.declared_attr` is called upon.
+
+The two behaviors above should help considerably with declarative definition
+of many types of mapper properties that derive from other attributes, where
+the :class:`.declared_attr` function is called upon from other
+:class:`.declared_attr` functions locally present before the class is
+actually mapped.
+
+For a pretty slim edge case where one wishes to build a declarative mixin
+that establishes distinct columns per subclass, a new modifier
+:attr:`.declared_attr.cascading` is added.  With this modifier, the
+decorated function will be invoked individually for each class in the
+mapped inheritance hierarchy.  While this is already the behavior for
+special attributes such as ``__table_args__`` and ``__mapper_args__``,
+for columns and other properties the behavior by default assumes that attribute
+is affixed to the base class only, and just inherited from subclasses.
+With :attr:`.declared_attr.cascading`, individual behaviors can be
+applied::
+
+    class HasSomeAttribute(object):
+        @declared_attr.cascading
+        def some_id(cls):
+            if has_inherited_table(cls):
+                return Column(ForeignKey('myclass.id'), primary_key=True)
+            else:
+                return Column(Integer, primary_key=True)
+
+            return Column('id', Integer, primary_key=True)
+
+    class MyClass(HasSomeAttribute, Base):
+        ""
+        # ...
+
+    class MySubClass(MyClass):
+        ""
+        # ...
+
+.. seealso::
+
+    :ref:`mixin_inheritance_columns`
+
+Finally, the :class:`.AbstractConcreteBase` class has been reworked
+so that a relationship or other mapper property can be set up inline
+on the abstract base::
+
+    from sqlalchemy import Column, Integer, ForeignKey
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.ext.declarative import (declarative_base, declared_attr,
+        AbstractConcreteBase)
+
+    Base = declarative_base()
+
+    class Something(Base):
+        __tablename__ = u'something'
+        id = Column(Integer, primary_key=True)
+
+
+    class Abstract(AbstractConcreteBase, Base):
+        id = Column(Integer, primary_key=True)
+
+        @declared_attr
+        def something_id(cls):
+            return Column(ForeignKey(Something.id))
+
+        @declared_attr
+        def something(cls):
+            return relationship(Something)
+
+
+    class Concrete(Abstract):
+        __tablename__ = u'cca'
+        __mapper_args__ = {'polymorphic_identity': 'cca', 'concrete': True}
+
+
+The above mapping will set up a table ``cca`` with both an ``id`` and
+a ``something_id`` column, and ``Concrete`` will also have a relationship
+``something``.  The new feature is that ``Abstract`` will also have an
+independently configured relationship ``something`` that builds against
+the polymorphic union of the base.
+
+:ticket:`3150` :ticket:`2670` :ticket:`3149` :ticket:`2952` :ticket:`3050`
 
 .. _bug_3188:
 

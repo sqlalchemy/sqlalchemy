@@ -11,7 +11,7 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     polymorphic_union, deferred, Session
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
     ConcreteBase, has_inherited_table
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures, mock
 
 Base = None
 
@@ -1303,3 +1303,88 @@ class ConcreteExtensionConfigTest(
             "b.b_data AS b_data, 'b' AS type FROM b) AS pjoin "
             "ON pjoin.a_id = a.id"
         )
+
+    def test_prop_on_base(self):
+        """test [ticket:2670] """
+
+        counter = mock.Mock()
+
+        class Something(Base):
+            __tablename__ = 'something'
+            id = Column(Integer, primary_key=True)
+
+        class AbstractConcreteAbstraction(AbstractConcreteBase, Base):
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = Column(Integer)
+
+            @declared_attr
+            def something_id(cls):
+                return Column(ForeignKey(Something.id))
+
+            @declared_attr
+            def something(cls):
+                counter(cls, "something")
+                return relationship("Something")
+
+            @declared_attr
+            def something_else(cls):
+                counter(cls, "something_else")
+                return relationship("Something")
+
+        class ConcreteConcreteAbstraction(AbstractConcreteAbstraction):
+            __tablename__ = 'cca'
+            __mapper_args__ = {
+                'polymorphic_identity': 'ccb',
+                'concrete': True}
+
+        # concrete is mapped, the abstract base is not (yet)
+        assert ConcreteConcreteAbstraction.__mapper__
+        assert not hasattr(AbstractConcreteAbstraction, '__mapper__')
+
+        session = Session()
+        self.assert_compile(
+            session.query(ConcreteConcreteAbstraction).filter(
+                ConcreteConcreteAbstraction.something.has(id=1)),
+            "SELECT cca.id AS cca_id, cca.x AS cca_x, cca.y AS cca_y, "
+            "cca.something_id AS cca_something_id FROM cca WHERE EXISTS "
+            "(SELECT 1 FROM something WHERE something.id = cca.something_id "
+            "AND something.id = :id_1)"
+        )
+
+        # now it is
+        assert AbstractConcreteAbstraction.__mapper__
+
+        self.assert_compile(
+            session.query(ConcreteConcreteAbstraction).filter(
+                ConcreteConcreteAbstraction.something_else.has(id=1)),
+            "SELECT cca.id AS cca_id, cca.x AS cca_x, cca.y AS cca_y, "
+            "cca.something_id AS cca_something_id FROM cca WHERE EXISTS "
+            "(SELECT 1 FROM something WHERE something.id = cca.something_id "
+            "AND something.id = :id_1)"
+        )
+
+        self.assert_compile(
+            session.query(AbstractConcreteAbstraction).filter(
+                AbstractConcreteAbstraction.something.has(id=1)),
+            "SELECT pjoin.id AS pjoin_id, pjoin.x AS pjoin_x, "
+            "pjoin.y AS pjoin_y, pjoin.something_id AS pjoin_something_id, "
+            "pjoin.type AS pjoin_type FROM "
+            "(SELECT cca.id AS id, cca.x AS x, cca.y AS y, "
+            "cca.something_id AS something_id, 'ccb' AS type FROM cca) "
+            "AS pjoin WHERE EXISTS (SELECT 1 FROM something "
+            "WHERE something.id = pjoin.something_id AND something.id = :id_1)"
+        )
+
+        self.assert_compile(
+            session.query(AbstractConcreteAbstraction).filter(
+                AbstractConcreteAbstraction.something_else.has(id=1)),
+            "SELECT pjoin.id AS pjoin_id, pjoin.x AS pjoin_x, "
+            "pjoin.y AS pjoin_y, pjoin.something_id AS pjoin_something_id, "
+            "pjoin.type AS pjoin_type FROM "
+            "(SELECT cca.id AS id, cca.x AS x, cca.y AS y, "
+            "cca.something_id AS something_id, 'ccb' AS type FROM cca) "
+            "AS pjoin WHERE EXISTS (SELECT 1 FROM something "
+            "WHERE something.id = pjoin.something_id AND something.id = :id_1)"
+        )
+
