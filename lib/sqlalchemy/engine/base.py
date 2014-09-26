@@ -45,7 +45,7 @@ class Connection(Connectable):
     """
 
     def __init__(self, engine, connection=None, close_with_result=False,
-                 _branch=False, _execution_options=None,
+                 _branch_from=None, _execution_options=None,
                  _dispatch=None,
                  _has_events=None):
         """Construct a new Connection.
@@ -61,7 +61,8 @@ class Connection(Connectable):
         self.__transaction = None
         self.should_close_with_result = close_with_result
         self.__savepoint_seq = 0
-        self.__branch = _branch
+        self.__branch_from = _branch_from
+        self.__branch = _branch_from is not None
         self.__invalid = False
         self.__can_reconnect = True
         if _dispatch:
@@ -82,7 +83,7 @@ class Connection(Connectable):
             self._execution_options = engine._execution_options
 
         if self._has_events or self.engine._has_events:
-            self.dispatch.engine_connect(self, _branch)
+            self.dispatch.engine_connect(self, self.__branch)
 
     def _branch(self):
         """Return a new Connection which references this Connection's
@@ -92,13 +93,26 @@ class Connection(Connectable):
         This is used to execute "sub" statements within a single execution,
         usually an INSERT statement.
         """
+        if self.__branch_from:
+            return self.__branch_from._branch()
+        else:
+            return self.engine._connection_cls(
+                self.engine,
+                self.__connection,
+                _branch_from=self,
+                _has_events=self._has_events,
+                _dispatch=self.dispatch)
 
-        return self.engine._connection_cls(
-            self.engine,
-            self.__connection,
-            _branch=True,
-            _has_events=self._has_events,
-            _dispatch=self.dispatch)
+    @property
+    def _root(self):
+        """return the 'root' connection.
+
+        Returns 'self' if this connection is not a branch, else
+        returns the root connection from which we ultimately branched."""
+        if self.__branch_from:
+            return self.__branch_from
+        else:
+            return self
 
     def _clone(self):
         """Create a shallow copy of this Connection.
@@ -218,13 +232,13 @@ class Connection(Connectable):
         """Return True if this connection is closed."""
 
         return '_Connection__connection' not in self.__dict__ \
-            and not self.__can_reconnect
+            and not self._root.__can_reconnect
 
     @property
     def invalidated(self):
         """Return True if this connection was invalidated."""
 
-        return self.__invalid
+        return self._root.__invalid
 
     @property
     def connection(self):
@@ -236,6 +250,9 @@ class Connection(Connectable):
             return self._revalidate_connection()
 
     def _revalidate_connection(self):
+        if self.__branch_from:
+            return self._root._revalidate_connection()
+
         if self.__can_reconnect and self.__invalid:
             if self.__transaction is not None:
                 raise exc.InvalidRequestError(
@@ -343,6 +360,10 @@ class Connection(Connectable):
             :ref:`pool_connection_invalidation`
 
         """
+        if self.__branch_from:
+            self._root.invalidate()
+            return
+
         if self.invalidated:
             return
 

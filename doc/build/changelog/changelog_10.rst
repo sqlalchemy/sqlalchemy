@@ -22,6 +22,16 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sql, engine
+        :tickets: 3215
+
+        Fixed bug where a "branched" connection, that is the kind you get
+        when you call :meth:`.Connection.connect`, would not share invalidation
+        status with the parent.  The architecture of branching has been tweaked
+        a bit so that the branched connection defers to the parent for
+        all invalidation status and operations.
+
+    .. change::
         :tags: bug, declarative
         :tickets: 2670
 

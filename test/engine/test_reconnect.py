@@ -504,6 +504,38 @@ class RealReconnectTest(fixtures.TestBase):
         # pool isn't replaced
         assert self.engine.pool is p2
 
+    def test_branched_invalidate_branch_to_parent(self):
+        c1 = self.engine.connect()
+
+        c1_branch = c1.connect()
+        eq_(c1_branch.execute(select([1])).scalar(), 1)
+
+        self.engine.test_shutdown()
+
+        _assert_invalidated(c1_branch.execute, select([1]))
+        assert c1.invalidated
+        assert c1_branch.invalidated
+
+        c1_branch._revalidate_connection()
+        assert not c1.invalidated
+        assert not c1_branch.invalidated
+
+    def test_branched_invalidate_parent_to_branch(self):
+        c1 = self.engine.connect()
+
+        c1_branch = c1.connect()
+        eq_(c1_branch.execute(select([1])).scalar(), 1)
+
+        self.engine.test_shutdown()
+
+        _assert_invalidated(c1.execute, select([1]))
+        assert c1.invalidated
+        assert c1_branch.invalidated
+
+        c1._revalidate_connection()
+        assert not c1.invalidated
+        assert not c1_branch.invalidated
+
     def test_ensure_is_disconnect_gets_connection(self):
         def is_disconnect(e, conn, cursor):
             # connection is still present
