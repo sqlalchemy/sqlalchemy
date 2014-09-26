@@ -254,7 +254,6 @@ class _MapperConfig(object):
 
         for k in list(dict_):
 
-            # TODO: improve this ?  all dunders ?
             if k in ('__table__', '__tablename__', '__mapper_args__'):
                 continue
 
@@ -276,12 +275,18 @@ class _MapperConfig(object):
                           "%s: possibly a copy-and-paste error with a comma "
                           "left at the end of the line?" % k)
                 continue
-            if not isinstance(value, (Column, MapperProperty)):
+            elif not isinstance(value, (Column, MapperProperty)):
+                # using @declared_attr for some object that
+                # isn't Column/MapperProperty; remove from the dict_
+                # and place the evaulated value onto the class.
                 if not k.startswith('__'):
                     dict_.pop(k)
                     setattr(cls, k, value)
                 continue
-            if k == 'metadata':
+            # we expect to see the name 'metadata' in some valid cases;
+            # however at this point we see it's assigned to something trying
+            # to be mapped, so raise for that.
+            elif k == 'metadata':
                 raise exc.InvalidRequestError(
                     "Attribute name 'metadata' is reserved "
                     "for the MetaData instance when using a "
