@@ -37,7 +37,7 @@ any SQL expression, in addition to integer values, as arguments.  The ORM
 this is used to allow a bound parameter to be passed, which can be substituted
 with a value later::
 
-	sel = select([table]).limit(bindparam('mylimit')).offset(bindparam('myoffset'))
+    sel = select([table]).limit(bindparam('mylimit')).offset(bindparam('myoffset'))
 
 Dialects which don't support non-integer LIMIT or OFFSET expressions may continue
 to not support this behavior; third party dialects may also need modification
@@ -82,35 +82,35 @@ that a raw load of rows now populates ORM-based objects around 25% faster.
 Assuming a 1M row table, a script like the following illustrates the type
 of load that's improved the most::
 
-	import time
-	from sqlalchemy import Integer, Column, create_engine, Table
-	from sqlalchemy.orm import Session
-	from sqlalchemy.ext.declarative import declarative_base
+    import time
+    from sqlalchemy import Integer, Column, create_engine, Table
+    from sqlalchemy.orm import Session
+    from sqlalchemy.ext.declarative import declarative_base
 
-	Base = declarative_base()
+    Base = declarative_base()
 
-	class Foo(Base):
-	    __table__ = Table(
-	        'foo', Base.metadata,
-	        Column('id', Integer, primary_key=True),
-	        Column('a', Integer(), nullable=False),
-	        Column('b', Integer(), nullable=False),
-	        Column('c', Integer(), nullable=False),
-	    )
+    class Foo(Base):
+        __table__ = Table(
+            'foo', Base.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('a', Integer(), nullable=False),
+            Column('b', Integer(), nullable=False),
+            Column('c', Integer(), nullable=False),
+        )
 
-	engine = create_engine(
-		'mysql+mysqldb://scott:tiger@localhost/test', echo=True)
+    engine = create_engine(
+        'mysql+mysqldb://scott:tiger@localhost/test', echo=True)
 
-	sess = Session(engine)
+    sess = Session(engine)
 
-	now = time.time()
+    now = time.time()
 
-	# avoid using all() so that we don't have the overhead of building
-	# a large list of full objects in memory
-	for obj in sess.query(Foo).yield_per(100).limit(1000000):
-	    pass
+    # avoid using all() so that we don't have the overhead of building
+    # a large list of full objects in memory
+    for obj in sess.query(Foo).yield_per(100).limit(1000000):
+        pass
 
-	print("Total time: %d" % (time.time() - now))
+    print("Total time: %d" % (time.time() - now))
 
 Local MacBookPro results bench from 19 seconds for 0.9 down to 14 seconds for
 1.0.  The :meth:`.Query.yield_per` call is always a good idea when batching
@@ -130,7 +130,7 @@ New KeyedTuple implementation dramatically faster
 We took a look into the :class:`.KeyedTuple` implementation in the hopes
 of improving queries like this::
 
-	rows = sess.query(Foo.a, Foo.b, Foo.c).all()
+    rows = sess.query(Foo.a, Foo.b, Foo.c).all()
 
 The :class:`.KeyedTuple` class is used rather than Python's
 ``collections.namedtuple()``, because the latter has a very complex
@@ -146,26 +146,26 @@ which scenario.  In the "sweet spot", where we are both creating a good number
 of new types as well as fetching a good number of rows, the lightweight
 object totally smokes both namedtuple and KeyedTuple::
 
-	-----------------
-	size=10 num=10000                 # few rows, lots of queries
-	namedtuple: 3.60302400589         # namedtuple falls over
-	keyedtuple: 0.255059957504        # KeyedTuple very fast
-	lw keyed tuple: 0.582715034485    # lw keyed trails right on KeyedTuple
-	-----------------
-	size=100 num=1000                 # <--- sweet spot
-	namedtuple: 0.365247011185
-	keyedtuple: 0.24896979332
-	lw keyed tuple: 0.0889317989349   # lw keyed blows both away!
-	-----------------
-	size=10000 num=100
-	namedtuple: 0.572599887848
-	keyedtuple: 2.54251694679
-	lw keyed tuple: 0.613876104355
-	-----------------
-	size=1000000 num=10               # few queries, lots of rows
-	namedtuple: 5.79669594765         # namedtuple very fast
-	keyedtuple: 28.856498003          # KeyedTuple falls over
-	lw keyed tuple: 6.74346804619     # lw keyed trails right on namedtuple
+    -----------------
+    size=10 num=10000                 # few rows, lots of queries
+    namedtuple: 3.60302400589         # namedtuple falls over
+    keyedtuple: 0.255059957504        # KeyedTuple very fast
+    lw keyed tuple: 0.582715034485    # lw keyed trails right on KeyedTuple
+    -----------------
+    size=100 num=1000                 # <--- sweet spot
+    namedtuple: 0.365247011185
+    keyedtuple: 0.24896979332
+    lw keyed tuple: 0.0889317989349   # lw keyed blows both away!
+    -----------------
+    size=10000 num=100
+    namedtuple: 0.572599887848
+    keyedtuple: 2.54251694679
+    lw keyed tuple: 0.613876104355
+    -----------------
+    size=1000000 num=10               # few queries, lots of rows
+    namedtuple: 5.79669594765         # namedtuple very fast
+    keyedtuple: 28.856498003          # KeyedTuple falls over
+    lw keyed tuple: 6.74346804619     # lw keyed trails right on namedtuple
 
 
 :ticket:`3176`
@@ -195,27 +195,27 @@ them as duplicates.
 To illustrate, the following test script will show only ten warnings being
 emitted for ten of the parameter sets, out of a total of 1000::
 
-	from sqlalchemy import create_engine, Unicode, select, cast
-	import random
-	import warnings
+    from sqlalchemy import create_engine, Unicode, select, cast
+    import random
+    import warnings
 
-	e = create_engine("sqlite://")
+    e = create_engine("sqlite://")
 
-	# Use the "once" filter (which is also the default for Python
-	# warnings).  Exactly ten of these warnings will
-	# be emitted; beyond that, the Python warnings registry will accumulate
-	# new values as dupes of one of the ten existing.
-	warnings.filterwarnings("once")
+    # Use the "once" filter (which is also the default for Python
+    # warnings).  Exactly ten of these warnings will
+    # be emitted; beyond that, the Python warnings registry will accumulate
+    # new values as dupes of one of the ten existing.
+    warnings.filterwarnings("once")
 
-	for i in range(1000):
-	    e.execute(select([cast(
-	        ('foo_%d' % random.randint(0, 1000000)).encode('ascii'), Unicode)]))
+    for i in range(1000):
+        e.execute(select([cast(
+            ('foo_%d' % random.randint(0, 1000000)).encode('ascii'), Unicode)]))
 
 The format of the warning here is::
 
-	/path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
-	  non-unicode bind param value 'foo_4852'. (this warning may be
-	  suppressed after 10 occurrences)
+    /path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
+      non-unicode bind param value 'foo_4852'. (this warning may be
+      suppressed after 10 occurrences)
 
 
 :ticket:`3178`
@@ -233,15 +233,15 @@ However, as these objects are class-bound descriptors, they must be accessed
 at the attribute.  Below this is illustared using the
 :attr:`.Mapper.all_orm_descriptors` namespace::
 
-	class SomeObject(Base):
-	    # ...
+    class SomeObject(Base):
+        # ...
 
-	    @hybrid_property
-	    def some_prop(self):
-	        return self.value + 5
+        @hybrid_property
+        def some_prop(self):
+            return self.value + 5
 
 
-	inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
+    inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
 
 It is also available as a constructor argument for all :class:`.SchemaItem`
 objects (e.g. :class:`.ForeignKey`, :class:`.UniqueConstraint` etc.) as well
@@ -258,26 +258,26 @@ Change to single-table-inheritance criteria when using from_self(), count()
 
 Given a single-table inheritance mapping, such as::
 
-	class Widget(Base):
-		__table__ = 'widget_table'
+    class Widget(Base):
+        __table__ = 'widget_table'
 
-	class FooWidget(Widget):
-		pass
+    class FooWidget(Widget):
+        pass
 
 Using :meth:`.Query.from_self` or :meth:`.Query.count` against a subclass
 would produce a subquery, but then add the "WHERE" criteria for subtypes
 to the outside::
 
-	sess.query(FooWidget).from_self().all()
+    sess.query(FooWidget).from_self().all()
 
 rendering::
 
-	SELECT
-		anon_1.widgets_id AS anon_1_widgets_id,
-		anon_1.widgets_type AS anon_1_widgets_type
-	FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
-	FROM widgets) AS anon_1
-	WHERE anon_1.widgets_type IN (?)
+    SELECT
+        anon_1.widgets_id AS anon_1_widgets_id,
+        anon_1.widgets_type AS anon_1_widgets_type
+    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+    FROM widgets) AS anon_1
+    WHERE anon_1.widgets_type IN (?)
 
 The issue with this is that if the inner query does not specify all
 columns, then we can't add the WHERE clause on the outside (it actually tries,
@@ -286,23 +286,23 @@ apparently goes way back to 0.6.5 with the note "may need to make more
 adjustments to this".   Well, those adjustments have arrived!  So now the
 above query will render::
 
-	SELECT
-		anon_1.widgets_id AS anon_1_widgets_id,
-		anon_1.widgets_type AS anon_1_widgets_type
-	FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
-	FROM widgets
-	WHERE widgets.type IN (?)) AS anon_1
+    SELECT
+        anon_1.widgets_id AS anon_1_widgets_id,
+        anon_1.widgets_type AS anon_1_widgets_type
+    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+    FROM widgets
+    WHERE widgets.type IN (?)) AS anon_1
 
 So that queries that don't include "type" will still work!::
 
-	sess.query(FooWidget.id).count()
+    sess.query(FooWidget.id).count()
 
 Renders::
 
-	SELECT count(*) AS count_1
-	FROM (SELECT widgets.id AS widgets_id
-	FROM widgets
-	WHERE widgets.type IN (?)) AS anon_1
+    SELECT count(*) AS count_1
+    FROM (SELECT widgets.id AS widgets_id
+    FROM widgets
+    WHERE widgets.type IN (?)) AS anon_1
 
 
 :ticket:`3177`
@@ -319,67 +319,67 @@ as the "order by label" logic introduced in 0.9 (see :ref:`migration_1068`).
 
 Given a mapping like the following::
 
-	class A(Base):
-	    __tablename__ = 'a'
+    class A(Base):
+        __tablename__ = 'a'
 
-	    id = Column(Integer, primary_key=True)
+        id = Column(Integer, primary_key=True)
 
-	class B(Base):
-	    __tablename__ = 'b'
+    class B(Base):
+        __tablename__ = 'b'
 
-	    id = Column(Integer, primary_key=True)
-	    a_id = Column(ForeignKey('a.id'))
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
 
 
-	A.b = column_property(
-	        select([func.max(B.id)]).where(B.a_id == A.id).correlate(A)
-	    )
+    A.b = column_property(
+            select([func.max(B.id)]).where(B.a_id == A.id).correlate(A)
+        )
 
 A simple scenario that included "A.b" twice would fail to render
 correctly::
 
-	print sess.query(A, a1).order_by(a1.b)
+    print sess.query(A, a1).order_by(a1.b)
 
 This would order by the wrong column::
 
-	SELECT a.id AS a_id, (SELECT max(b.id) AS max_1 FROM b
-	WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
-	(SELECT max(b.id) AS max_2
-	FROM b WHERE b.a_id = a_1.id) AS anon_2
-	FROM a, a AS a_1 ORDER BY anon_1
+    SELECT a.id AS a_id, (SELECT max(b.id) AS max_1 FROM b
+    WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
+    (SELECT max(b.id) AS max_2
+    FROM b WHERE b.a_id = a_1.id) AS anon_2
+    FROM a, a AS a_1 ORDER BY anon_1
 
 New output::
 
-	SELECT a.id AS a_id, (SELECT max(b.id) AS max_1
-	FROM b WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
-	(SELECT max(b.id) AS max_2
-	FROM b WHERE b.a_id = a_1.id) AS anon_2
-	FROM a, a AS a_1 ORDER BY anon_2
+    SELECT a.id AS a_id, (SELECT max(b.id) AS max_1
+    FROM b WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
+    (SELECT max(b.id) AS max_2
+    FROM b WHERE b.a_id = a_1.id) AS anon_2
+    FROM a, a AS a_1 ORDER BY anon_2
 
 There were also many scenarios where the "order by" logic would fail
 to order by label, for example if the mapping were "polymorphic"::
 
-	class A(Base):
-	    __tablename__ = 'a'
+    class A(Base):
+        __tablename__ = 'a'
 
-	    id = Column(Integer, primary_key=True)
-	    type = Column(String)
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
 
-	    __mapper_args__ = {'polymorphic_on': type, 'with_polymorphic': '*'}
+        __mapper_args__ = {'polymorphic_on': type, 'with_polymorphic': '*'}
 
 The order_by would fail to use the label, as it would be anonymized due
 to the polymorphic loading::
 
-	SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
-	FROM b WHERE b.a_id = a.id) AS anon_1
-	FROM a ORDER BY (SELECT max(b.id) AS max_2
-	FROM b WHERE b.a_id = a.id)
+    SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
+    FROM b WHERE b.a_id = a.id) AS anon_1
+    FROM a ORDER BY (SELECT max(b.id) AS max_2
+    FROM b WHERE b.a_id = a.id)
 
 Now that the order by label tracks the anonymized label, this now works::
 
-	SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
-	FROM b WHERE b.a_id = a.id) AS anon_1
-	FROM a ORDER BY anon_1
+    SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
+    FROM b WHERE b.a_id = a.id) AS anon_1
+    FROM a ORDER BY anon_1
 
 Included in these fixes are a variety of heisenbugs that could corrupt
 the state of an ``aliased()`` construct such that the labeling logic
@@ -406,13 +406,13 @@ for :func:`.attributes.get_history` and related functions.
 
 Given an object with no state::
 
-	>>> obj = Foo()
+    >>> obj = Foo()
 
 It has always been SQLAlchemy's behavior such that if we access a scalar
 or many-to-one attribute that was never set, it is returned as ``None``::
 
-	>>> obj.someattr
-	None
+    >>> obj.someattr
+    None
 
 This value of ``None`` is in fact now part of the state of ``obj``, and is
 not unlike as though we had set the attribute explicitly, e.g.
@@ -420,31 +420,31 @@ not unlike as though we had set the attribute explicitly, e.g.
 differently as far as history and events.   It would not emit any attribute
 event, and additionally if we view history, we see this::
 
-	>>> inspect(obj).attrs.someattr.history
-	History(added=(), unchanged=[None], deleted=())	  # 0.9 and below
+    >>> inspect(obj).attrs.someattr.history
+    History(added=(), unchanged=[None], deleted=())   # 0.9 and below
 
 That is, it's as though the attribute were always ``None`` and were
 never changed.  This is explicitly different from if we had set the
 attribute first instead::
 
-	>>> obj = Foo()
-	>>> obj.someattr = None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=[None], unchanged=(), deleted=())  # all versions
+    >>> obj = Foo()
+    >>> obj.someattr = None
+    >>> inspect(obj).attrs.someattr.history
+    History(added=[None], unchanged=(), deleted=())  # all versions
 
 The above means that the behavior of our "set" operation can be corrupted
 by the fact that the value was accessed via "get" earlier.  In 1.0, this
 inconsistency has been resolved, by no longer actually setting anything
 when the default "getter" is used.
 
-	>>> obj = Foo()
-	>>> obj.someattr
-	None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=(), unchanged=(), deleted=())  # 1.0
-	>>> obj.someattr = None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=[None], unchanged=(), deleted=())
+    >>> obj = Foo()
+    >>> obj.someattr
+    None
+    >>> inspect(obj).attrs.someattr.history
+    History(added=(), unchanged=(), deleted=())  # 1.0
+    >>> obj.someattr = None
+    >>> inspect(obj).attrs.someattr.history
+    History(added=[None], unchanged=(), deleted=())
 
 The reason the above behavior hasn't had much impact is because the
 INSERT statement in relational databases considers a missing value to be
@@ -482,17 +482,17 @@ with yield-per (subquery loading could be in theory, however).
 When this error is raised, the :func:`.lazyload` option can be sent with
 an asterisk::
 
-	q = sess.query(Object).options(lazyload('*')).yield_per(100)
+    q = sess.query(Object).options(lazyload('*')).yield_per(100)
 
 or use :meth:`.Query.enable_eagerloads`::
 
-	q = sess.query(Object).enable_eagerloads(False).yield_per(100)
+    q = sess.query(Object).enable_eagerloads(False).yield_per(100)
 
 The :func:`.lazyload` option has the advantage that additional many-to-one
 joined loader options can still be used::
 
-	q = sess.query(Object).options(
-		lazyload('*'), joinedload("some_manytoone")).yield_per(100)
+    q = sess.query(Object).options(
+        lazyload('*'), joinedload("some_manytoone")).yield_per(100)
 
 
 .. _migration_migration_deprecated_orm_events:
@@ -546,7 +546,7 @@ The unused ``result`` member is now removed::
 
 .. seealso::
 
-	:ref:`bundles`
+    :ref:`bundles`
 
 .. _migration_3008:
 
@@ -565,12 +565,12 @@ As introduced in :ref:`feature_2976` from version 0.9, the behavior of
 join eager load will use a right-nested join.  ``"nested"`` is now implied
 when using ``innerjoin=True``::
 
-	query(User).options(
-		joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
+    query(User).options(
+        joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
 
 With the new default, this will render the FROM clause in the form::
 
-	FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
+    FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
 
 That is, using a right-nested join for the INNER join so that the full
 result of ``users`` can be returned.   The use of an INNER join is more efficient
@@ -579,13 +579,13 @@ optimization parameter to take effect in all cases.
 
 To get the older behavior, use ``innerjoin="unnested"``::
 
-	query(User).options(
-		joinedload("orders", innerjoin=False).joinedload("items", innerjoin="unnested"))
+    query(User).options(
+        joinedload("orders", innerjoin=False).joinedload("items", innerjoin="unnested"))
 
 This will avoid right-nested joins and chain the joins together using all
 OUTER joins despite the innerjoin directive::
 
-	FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
+    FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
 
 As noted in the 0.9 notes, the only database backend that has difficulty
 with right-nested joins is SQLite; SQLAlchemy as of 0.9 converts a right-nested
@@ -593,7 +593,7 @@ join into a subquery as a join target on SQLite.
 
 .. seealso::
 
-	:ref:`feature_2976` - description of the feature as introduced in 0.9.4.
+    :ref:`feature_2976` - description of the feature as introduced in 0.9.4.
 
 :ticket:`3008`
 
@@ -638,15 +638,15 @@ with SQL expressions into many functions, such as :meth:`.Select.where`,
 Note that by "SQL expressions" we mean a **full fragment of a SQL string**,
 such as::
 
-	# the argument sent to where() is a full SQL expression
-	stmt = select([sometable]).where("somecolumn = 'value'")
+    # the argument sent to where() is a full SQL expression
+    stmt = select([sometable]).where("somecolumn = 'value'")
 
 and we are **not talking about string arguments**, that is, the normal
 behavior of passing string values that become parameterized::
 
-	# This is a normal Core expression with a string argument -
-	# we aren't talking about this!!
-	stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
+    # This is a normal Core expression with a string argument -
+    # we aren't talking about this!!
+    stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
 
 The Core tutorial has long featured an example of the use of this technique,
 using a :func:`.select` construct where virtually all components of it
@@ -660,25 +660,25 @@ So the change here is to encourage the user to qualify textual strings when
 composing SQL that is partially or fully composed from textual fragments.
 When composing a select as below::
 
-	stmt = select(["a", "b"]).where("a = b").select_from("sometable")
+    stmt = select(["a", "b"]).where("a = b").select_from("sometable")
 
 The statement is built up normally, with all the same coercions as before.
 However, one will see the following warnings emitted::
 
-	SAWarning: Textual column expression 'a' should be explicitly declared
-	with text('a'), or use column('a') for more specificity
-	(this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual column expression 'a' should be explicitly declared
+    with text('a'), or use column('a') for more specificity
+    (this warning may be suppressed after 10 occurrences)
 
-	SAWarning: Textual column expression 'b' should be explicitly declared
-	with text('b'), or use column('b') for more specificity
-	(this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual column expression 'b' should be explicitly declared
+    with text('b'), or use column('b') for more specificity
+    (this warning may be suppressed after 10 occurrences)
 
-	SAWarning: Textual SQL expression 'a = b' should be explicitly declared
-	as text('a = b') (this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual SQL expression 'a = b' should be explicitly declared
+    as text('a = b') (this warning may be suppressed after 10 occurrences)
 
-	SAWarning: Textual SQL FROM expression 'sometable' should be explicitly
-	declared as text('sometable'), or use table('sometable') for more
-	specificity (this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual SQL FROM expression 'sometable' should be explicitly
+    declared as text('sometable'), or use table('sometable') for more
+    specificity (this warning may be suppressed after 10 occurrences)
 
 These warnings attempt to show exactly where the issue is by displaying
 the parameters as well as where the string was received.
@@ -688,14 +688,14 @@ one wishes the warnings to be exceptions, the
 `Python Warnings Filter <https://docs.python.org/2/library/warnings.html>`_
 should be used::
 
-	import warnings
-	warnings.simplefilter("error")   # all warnings raise an exception
+    import warnings
+    warnings.simplefilter("error")   # all warnings raise an exception
 
 Given the above warnings, our statement works just fine, but
 to get rid of the warnings we would rewrite our statement as follows::
 
-	from sqlalchemy import select, text
-	stmt = select([
+    from sqlalchemy import select, text
+    stmt = select([
             text("a"),
             text("b")
         ]).where(text("a = b")).select_from(text("sometable"))
@@ -703,10 +703,10 @@ to get rid of the warnings we would rewrite our statement as follows::
 and as the warnings suggest, we can give our statement more specificity
 about the text if we use :func:`.column` and :func:`.table`::
 
-	from sqlalchemy import select, text, column, table
+    from sqlalchemy import select, text, column, table
 
-	stmt = select([column("a"), column("b")]).\
-		where(text("a = b")).select_from(table("sometable"))
+    stmt = select([column("a"), column("b")]).\
+        where(text("a = b")).select_from(table("sometable"))
 
 Where note also that :func:`.table` and :func:`.column` can now
 be imported from "sqlalchemy" without the "sql" part.
@@ -723,10 +723,10 @@ of this change we have enhanced its functionality.  When we have a
 :func:`.select` or :class:`.Query` that refers to some column name or named
 label, we might want to GROUP BY and/or ORDER BY known columns or labels::
 
-	stmt = select([
-		user.c.name,
-		func.count(user.c.id).label("id_count")
-	]).group_by("name").order_by("id_count")
+    stmt = select([
+        user.c.name,
+        func.count(user.c.id).label("id_count")
+    ]).group_by("name").order_by("id_count")
 
 In the above statement we expect to see "ORDER BY id_count", as opposed to a
 re-statement of the function.   The string argument given is actively
@@ -734,24 +734,24 @@ matched to an entry in the columns clause during compilation, so the above
 statement would produce as we expect, without warnings (though note that
 the ``"name"`` expression has been resolved to ``users.name``!)::
 
-	SELECT users.name, count(users.id) AS id_count
-	FROM users GROUP BY users.name ORDER BY id_count
+    SELECT users.name, count(users.id) AS id_count
+    FROM users GROUP BY users.name ORDER BY id_count
 
 However, if we refer to a name that cannot be located, then we get
 the warning again, as below::
 
-	stmt = select([
+    stmt = select([
             user.c.name,
             func.count(user.c.id).label("id_count")
         ]).order_by("some_label")
 
 The output does what we say, but again it warns us::
 
-	SAWarning: Can't resolve label reference 'some_label'; converting to
-	text() (this warning may be suppressed after 10 occurrences)
+    SAWarning: Can't resolve label reference 'some_label'; converting to
+    text() (this warning may be suppressed after 10 occurrences)
 
-	SELECT users.name, count(users.id) AS id_count
-	FROM users ORDER BY some_label
+    SELECT users.name, count(users.id) AS id_count
+    FROM users ORDER BY some_label
 
 The above behavior applies to all those places where we might want to refer
 to a so-called "label reference"; ORDER BY and GROUP BY, but also within an
@@ -761,7 +761,7 @@ Postgresql syntax).
 We can still specify any arbitrary expression for ORDER BY or others using
 :func:`.text`::
 
-	stmt = select([users]).order_by(text("some special expression"))
+    stmt = select([users]).order_by(text("some special expression"))
 
 The upshot of the whole change is that SQLAlchemy now would like us
 to tell it when a string is sent that this string is explicitly
@@ -822,7 +822,7 @@ data is needed.
 A :class:`.Table` can be set up for reflection by passing
 :paramref:`.Table.autoload_with` alone::
 
-	my_table = Table('my_table', metadata, autoload_with=some_engine)
+    my_table = Table('my_table', metadata, autoload_with=some_engine)
 
 :ticket:`3027`
 
@@ -855,15 +855,15 @@ The :func:`.inspect` method returns a :class:`.PGInspector` object in the
 case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
 method that returns information on all available ``ENUM`` types::
 
-	from sqlalchemy import inspect, create_engine
+    from sqlalchemy import inspect, create_engine
 
-	engine = create_engine("postgresql+psycopg2://host/dbname")
-	insp = inspect(engine)
-	print(insp.get_enums())
+    engine = create_engine("postgresql+psycopg2://host/dbname")
+    insp = inspect(engine)
+    print(insp.get_enums())
 
 .. seealso::
 
-	:meth:`.PGInspector.get_enums`
+    :meth:`.PGInspector.get_enums`
 
 .. _feature_2891:
 
