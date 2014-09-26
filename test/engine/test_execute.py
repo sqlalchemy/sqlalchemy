@@ -982,6 +982,17 @@ class ExecutionOptionsTest(fixtures.TestBase):
         eq_(c1._execution_options, {"foo": "bar"})
         eq_(c2._execution_options, {"foo": "bar", "bat": "hoho"})
 
+    def test_branched_connection_execution_options(self):
+        engine = testing_engine("sqlite://")
+
+        conn = engine.connect()
+        c2 = conn.execution_options(foo="bar")
+        c2_branch = c2.connect()
+        eq_(
+            c2_branch._execution_options,
+            {"foo": "bar"}
+        )
+
 
 class AlternateResultProxyTest(fixtures.TestBase):
     __requires__ = ('sqlite', )

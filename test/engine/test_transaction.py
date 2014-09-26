@@ -133,6 +133,79 @@ class TransactionTest(fixtures.TestBase):
             finally:
                 connection.close()
 
+    def test_branch_nested_rollback(self):
+        connection = testing.db.connect()
+        try:
+            connection.begin()
+            branched = connection.connect()
+            assert branched.in_transaction()
+            branched.execute(users.insert(), user_id=1, user_name='user1')
+            nested = branched.begin()
+            branched.execute(users.insert(), user_id=2, user_name='user2')
+            nested.rollback()
+            assert not connection.in_transaction()
+            eq_(connection.scalar("select count(*) from query_users"), 0)
+
+        finally:
+            connection.close()
+
+    def test_branch_orig_rollback(self):
+        connection = testing.db.connect()
+        try:
+            branched = connection.connect()
+            branched.execute(users.insert(), user_id=1, user_name='user1')
+            nested = branched.begin()
+            assert branched.in_transaction()
+            branched.execute(users.insert(), user_id=2, user_name='user2')
+            nested.rollback()
+            eq_(connection.scalar("select count(*) from query_users"), 1)
+
+        finally:
+            connection.close()
+
+    def test_branch_autocommit(self):
+        connection = testing.db.connect()
+        try:
+            branched = connection.connect()
+            branched.execute(users.insert(), user_id=1, user_name='user1')
+        finally:
+            connection.close()
+        eq_(testing.db.scalar("select count(*) from query_users"), 1)
+
+    @testing.requires.savepoints
+    def test_branch_savepoint_rollback(self):
+        connection = testing.db.connect()
+        try:
+            trans = connection.begin()
+            branched = connection.connect()
+            assert branched.in_transaction()
+            branched.execute(users.insert(), user_id=1, user_name='user1')
+            nested = branched.begin_nested()
+            branched.execute(users.insert(), user_id=2, user_name='user2')
+            nested.rollback()
+            assert connection.in_transaction()
+            trans.commit()
+            eq_(connection.scalar("select count(*) from query_users"), 1)
+
+        finally:
+            connection.close()
+
+    @testing.requires.two_phase_transactions
+    def test_branch_twophase_rollback(self):
+        connection = testing.db.connect()
+        try:
+            branched = connection.connect()
+            assert not branched.in_transaction()
+            branched.execute(users.insert(), user_id=1, user_name='user1')
+            nested = branched.begin_twophase()
+            branched.execute(users.insert(), user_id=2, user_name='user2')
+            nested.rollback()
+            assert not connection.in_transaction()
+            eq_(connection.scalar("select count(*) from query_users"), 1)
+
+        finally:
+            connection.close()
+
     def test_retains_through_options(self):
         connection = testing.db.connect()
         try:

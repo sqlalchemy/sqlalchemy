@@ -32,6 +32,16 @@
         all invalidation status and operations.
 
     .. change::
+        :tags: bug, sql, engine
+        :tickets: 3190
+
+        Fixed bug where a "branched" connection, that is the kind you get
+        when you call :meth:`.Connection.connect`, would not share transaction
+        status with the parent.  The architecture of branching has been tweaked
+        a bit so that the branched connection defers to the parent for
+        all transactional status and operations.
+
+    .. change::
         :tags: bug, declarative
         :tickets: 2670
 

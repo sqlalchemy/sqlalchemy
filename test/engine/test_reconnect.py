@@ -8,7 +8,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.mock import Mock, call, patch
 
 
 class MockError(Exception):
@@ -507,18 +507,21 @@ class RealReconnectTest(fixtures.TestBase):
     def test_branched_invalidate_branch_to_parent(self):
         c1 = self.engine.connect()
 
-        c1_branch = c1.connect()
-        eq_(c1_branch.execute(select([1])).scalar(), 1)
+        with patch.object(self.engine.pool, "logger") as logger:
+            c1_branch = c1.connect()
+            eq_(c1_branch.execute(select([1])).scalar(), 1)
 
-        self.engine.test_shutdown()
+            self.engine.test_shutdown()
 
-        _assert_invalidated(c1_branch.execute, select([1]))
-        assert c1.invalidated
-        assert c1_branch.invalidated
+            _assert_invalidated(c1_branch.execute, select([1]))
+            assert c1.invalidated
+            assert c1_branch.invalidated
 
-        c1_branch._revalidate_connection()
-        assert not c1.invalidated
-        assert not c1_branch.invalidated
+            c1_branch._revalidate_connection()
+            assert not c1.invalidated
+            assert not c1_branch.invalidated
+
+        assert "Invalidate connection" in logger.mock_calls[0][1][0]
 
     def test_branched_invalidate_parent_to_branch(self):
         c1 = self.engine.connect()
@@ -535,6 +538,19 @@ class RealReconnectTest(fixtures.TestBase):
         c1._revalidate_connection()
         assert not c1.invalidated
         assert not c1_branch.invalidated
+
+    def test_branch_invalidate_state(self):
+        c1 = self.engine.connect()
+
+        c1_branch = c1.connect()
+
+        eq_(c1_branch.execute(select([1])).scalar(), 1)
+
+        self.engine.test_shutdown()
+
+        _assert_invalidated(c1_branch.execute, select([1]))
+        assert not c1_branch.closed
+        assert not c1_branch._connection_is_valid
 
     def test_ensure_is_disconnect_gets_connection(self):
         def is_disconnect(e, conn, cursor):
