@@ -149,6 +149,18 @@ class TransactionTest(fixtures.TestBase):
         finally:
             connection.close()
 
+    def test_branch_autorollback(self):
+        connection = testing.db.connect()
+        try:
+            branched = connection.connect()
+            branched.execute(users.insert(), user_id=1, user_name='user1')
+            try:
+                branched.execute(users.insert(), user_id=1, user_name='user1')
+            except exc.DBAPIError:
+                pass
+        finally:
+            connection.close()
+
     def test_branch_orig_rollback(self):
         connection = testing.db.connect()
         try:

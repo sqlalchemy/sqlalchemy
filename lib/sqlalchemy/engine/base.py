@@ -673,8 +673,8 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _autorollback(self):
-        if not self.in_transaction():
-            self._rollback_impl()
+        if not self._root.in_transaction():
+            self._root._rollback_impl()
 
     def close(self):
         """Close this :class:`.Connection`.
