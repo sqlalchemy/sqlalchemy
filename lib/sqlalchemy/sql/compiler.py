@@ -1491,6 +1491,79 @@ class SQLCompiler(Compiled):
                     select, transformed_select)
             return text
 
+        froms = self._setup_select_stack(select, entry, asfrom, iswrapper)
+
+        column_clause_args = kwargs.copy()
+        column_clause_args.update({
+            'within_label_clause': False,
+            'within_columns_clause': False
+        })
+
+        text = "SELECT "  # we're off to a good start !
+
+        if select._hints:
+            hint_text, byfrom = self._setup_select_hints(select)
+            if hint_text:
+                text += hint_text + " "
+        else:
+            byfrom = None
+
+        if select._prefixes:
+            text += self._generate_prefixes(
+                select, select._prefixes, **kwargs)
+
+        text += self.get_select_precolumns(select)
+
+        # the actual list of columns to print in the SELECT column list.
+        inner_columns = [
+            c for c in [
+                self._label_select_column(select,
+                                          column,
+                                          populate_result_map, asfrom,
+                                          column_clause_args,
+                                          name=name)
+                for name, column in select._columns_plus_names
+            ]
+            if c is not None
+        ]
+
+        text = self._compose_select_body(
+            text, select, inner_columns, froms, byfrom, kwargs)
+
+        if select._statement_hints:
+            per_dialect = [
+                ht for (dialect_name, ht)
+                in select._statement_hints
+                if dialect_name in ('*', self.dialect.name)
+            ]
+            if per_dialect:
+                text += " " + self.get_statement_hint_text(per_dialect)
+
+        if self.ctes and \
+                compound_index == 0 and toplevel:
+            text = self._render_cte_clause() + text
+
+        self.stack.pop(-1)
+
+        if asfrom and parens:
+            return "(" + text + ")"
+        else:
+            return text
+
+    def _setup_select_hints(self, select):
+        byfrom = dict([
+            (from_, hinttext % {
+                'name': from_._compiler_dispatch(
+                    self, ashint=True)
+            })
+            for (from_, dialect), hinttext in
+            select._hints.items()
+            if dialect in ('*', self.dialect.name)
+        ])
+        hint_text = self.get_select_hint_text(byfrom)
+        return hint_text, byfrom
+
+    def _setup_select_stack(self, select, entry, asfrom, iswrapper):
         correlate_froms = entry['correlate_froms']
         asfrom_froms = entry['asfrom_froms']
 
@@ -1514,48 +1587,10 @@ class SQLCompiler(Compiled):
             'selectable': select,
         }
         self.stack.append(new_entry)
+        return froms
 
-        column_clause_args = kwargs.copy()
-        column_clause_args.update({
-            'within_label_clause': False,
-            'within_columns_clause': False
-        })
-
-        text = "SELECT "  # we're off to a good start !
-
-        if select._hints:
-            byfrom = dict([
-                (from_, hinttext % {
-                    'name': from_._compiler_dispatch(
-                        self, ashint=True)
-                })
-                for (from_, dialect), hinttext in
-                select._hints.items()
-                if dialect in ('*', self.dialect.name)
-            ])
-            hint_text = self.get_select_hint_text(byfrom)
-            if hint_text:
-                text += hint_text + " "
-
-        if select._prefixes:
-            text += self._generate_prefixes(
-                select, select._prefixes, **kwargs)
-
-        text += self.get_select_precolumns(select)
-
-        # the actual list of columns to print in the SELECT column list.
-        inner_columns = [
-            c for c in [
-                self._label_select_column(select,
-                                          column,
-                                          populate_result_map, asfrom,
-                                          column_clause_args,
-                                          name=name)
-                for name, column in select._columns_plus_names
-            ]
-            if c is not None
-        ]
-
+    def _compose_select_body(
+            self, text, select, inner_columns, froms, byfrom, kwargs):
         text += ', '.join(inner_columns)
 
         if froms:
@@ -1599,25 +1634,7 @@ class SQLCompiler(Compiled):
         if select._for_update_arg is not None:
             text += self.for_update_clause(select, **kwargs)
 
-        if select._statement_hints:
-            per_dialect = [
-                ht for (dialect_name, ht)
-                in select._statement_hints
-                if dialect_name in ('*', self.dialect.name)
-            ]
-            if per_dialect:
-                text += " " + self.get_statement_hint_text(per_dialect)
-
-        if self.ctes and \
-                compound_index == 0 and toplevel:
-            text = self._render_cte_clause() + text
-
-        self.stack.pop(-1)
-
-        if asfrom and parens:
-            return "(" + text + ")"
-        else:
-            return text
+        return text
 
     def _generate_prefixes(self, stmt, prefixes, **kw):
         clause = " ".join(
