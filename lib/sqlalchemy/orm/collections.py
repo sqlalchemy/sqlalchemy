@@ -861,11 +861,24 @@ def _instrument_class(cls):
             "Can not instrument a built-in type. Use a "
             "subclass, even a trivial one.")
 
+    roles, methods = _locate_roles_and_methods(cls)
+
+    _setup_canned_roles(cls, roles, methods)
+
+    _assert_required_roles(cls, roles, methods)
+
+    _set_collection_attributes(cls, roles, methods)
+
+
+def _locate_roles_and_methods(cls):
+    """search for _sa_instrument_role-decorated methods in
+    method resolution order, assign to roles.
+
+    """
+
     roles = {}
     methods = {}
 
-    # search for _sa_instrument_role-decorated methods in
-    # method resolution order, assign to roles
     for supercls in cls.__mro__:
         for name, method in vars(supercls).items():
             if not util.callable(method):
@@ -890,14 +903,19 @@ def _instrument_class(cls):
                 assert op in ('fire_append_event', 'fire_remove_event')
                 after = op
             if before:
-                methods[name] = before[0], before[1], after
+                methods[name] = before + (after, )
             elif after:
                 methods[name] = None, None, after
+    return roles, methods
 
-    # see if this class has "canned" roles based on a known
-    # collection type (dict, set, list).  Apply those roles
-    # as needed to the "roles" dictionary, and also
-    # prepare "decorator" methods
+
+def _setup_canned_roles(cls, roles, methods):
+    """see if this class has "canned" roles based on a known
+    collection type (dict, set, list).  Apply those roles
+    as needed to the "roles" dictionary, and also
+    prepare "decorator" methods
+
+    """
     collection_type = util.duck_type_collection(cls)
     if collection_type in __interfaces:
         canned_roles, decorators = __interfaces[collection_type]
@@ -911,8 +929,12 @@ def _instrument_class(cls):
                     not hasattr(fn, '_sa_instrumented')):
                 setattr(cls, method, decorator(fn))
 
-    # ensure all roles are present, and apply implicit instrumentation if
-    # needed
+
+def _assert_required_roles(cls, roles, methods):
+    """ensure all roles are present, and apply implicit instrumentation if
+    needed
+
+    """
     if 'appender' not in roles or not hasattr(cls, roles['appender']):
         raise sa_exc.ArgumentError(
             "Type %s must elect an appender method to be "
@@ -934,8 +956,12 @@ def _instrument_class(cls):
             "Type %s must elect an iterator method to be "
             "a collection class" % cls.__name__)
 
-    # apply ad-hoc instrumentation from decorators, class-level defaults
-    # and implicit role declarations
+
+def _set_collection_attributes(cls, roles, methods):
+    """apply ad-hoc instrumentation from decorators, class-level defaults
+    and implicit role declarations
+
+    """
     for method_name, (before, argument, after) in methods.items():
         setattr(cls, method_name,
                 _instrument_membership_mutator(getattr(cls, method_name),
