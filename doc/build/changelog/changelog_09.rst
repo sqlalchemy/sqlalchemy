@@ -14,6 +14,20 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, sqlite
+        :versions: 1.0.0
+        :tickets: 3211
+
+        When selecting from a UNION using an attached database file,
+        the pysqlite driver reports column names in cursor.description
+        as 'dbname.tablename.colname', instead of 'tablename.colname' as
+        it normally does for a UNION (note that it's supposed to just be
+        'colname' for both, but we work around it).  The column translation
+        logic here has been adjusted to retrieve the rightmost token, rather
+        than the second token, so it works in both cases.   Workaround
+        courtesy Tony Roberts.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.0.0
         :tickets: 3021
