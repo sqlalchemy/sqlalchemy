@@ -14,6 +14,19 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, postgresql
+        :versions: 1.0.0
+        :tickets: 3021
+
+        A revisit to this issue first patched in 0.9.5, apparently
+        psycopg2's ``.closed`` accessor is not as reliable as we assumed,
+        so we have added an explicit check for the exception messages
+        "SSL SYSCALL error: Bad file descriptor" and
+        "SSL SYSCALL error: EOF detected" when detecting an
+        is-disconnect scenario.   We will continue to consult psycopg2's
+        connection.closed as a first check.
+
+    .. change::
         :tags: bug, orm, engine
         :versions: 1.0.0
         :tickets: 3197

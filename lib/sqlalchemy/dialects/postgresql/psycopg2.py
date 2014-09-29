@@ -512,12 +512,14 @@ class PGDialect_psycopg2(PGDialect):
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
             # check the "closed" flag.  this might not be
-            # present on old psycopg2 versions
+            # present on old psycopg2 versions.   Also,
+            # this flag doesn't actually help in a lot of disconnect
+            # situations, so don't rely on it.
             if getattr(connection, 'closed', False):
                 return True
 
-            # legacy checks based on strings.  the "closed" check
-            # above most likely obviates the need for any of these.
+            # checks based on strings.  in the case that .closed
+            # didn't cut it, fall back onto these.
             str_e = str(e).partition("\n")[0]
             for msg in [
                 # these error messages from libpq: interfaces/libpq/fe-misc.c
@@ -534,8 +536,10 @@ class PGDialect_psycopg2(PGDialect):
                 # not sure where this path is originally from, it may
                 # be obsolete.   It really says "losed", not "closed".
                 'losed the connection unexpectedly',
-                # this can occur in newer SSL
-                'connection has been closed unexpectedly'
+                # these can occur in newer SSL
+                'connection has been closed unexpectedly',
+                'SSL SYSCALL error: Bad file descriptor',
+                'SSL SYSCALL error: EOF detected',
             ]:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
