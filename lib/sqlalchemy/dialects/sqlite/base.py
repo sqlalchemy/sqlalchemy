@@ -713,10 +713,12 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         return self.execution_options.get("sqlite_raw_colnames", False)
 
     def _translate_colname(self, colname):
-        # adjust for dotted column names. SQLite in the case of UNION may
-        # store col names as "tablename.colname" in cursor.description
+        # adjust for dotted column names.  SQLite
+        # in the case of UNION may store col names as
+        # "tablename.colname", or if using an attached database,
+        # "database.tablename.colname", in cursor.description
         if not self._preserve_raw_colnames and "." in colname:
-            return colname.split(".")[1], colname
+            return colname.split(".")[-1], colname
         else:
             return colname, None
 
