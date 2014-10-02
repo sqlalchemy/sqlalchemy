@@ -248,9 +248,7 @@ class Pool(log.Identified):
         self.logger.debug("Closing connection %r", connection)
         try:
             self._dialect.do_close(connection)
-        except (SystemExit, KeyboardInterrupt):
-            raise
-        except:
+        except Exception:
             self.logger.error("Exception closing connection %r",
                               connection, exc_info=True)
 
@@ -569,12 +567,12 @@ def _finalize_fairy(connection, connection_record,
             # Immediately close detached instances
             if not connection_record:
                 pool._close_connection(connection)
-        except Exception as e:
+        except BaseException as e:
             pool.logger.error(
                 "Exception during reset or similar", exc_info=True)
             if connection_record:
                 connection_record.invalidate(e=e)
-            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+            if not isinstance(e, Exception):
                 raise
 
     if connection_record:
@@ -842,9 +840,7 @@ class SingletonThreadPool(Pool):
         for conn in self._all_conns:
             try:
                 conn.close()
-            except (SystemExit, KeyboardInterrupt):
-                raise
-            except:
+            except Exception:
                 # pysqlite won't even let you close a conn from a thread
                 # that didn't create it
                 pass

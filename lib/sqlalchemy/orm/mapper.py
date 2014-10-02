@@ -2649,9 +2649,7 @@ def configure_mappers():
                         mapper._expire_memoizations()
                         mapper.dispatch.mapper_configured(
                             mapper, mapper.class_)
-                    except (SystemExit, KeyboardInterrupt):
-                        raise
-                    except:
+                    except Exception:
                         exc = sys.exc_info()[1]
                         if not hasattr(exc, '_configure_failed'):
                             mapper._configure_failed = exc

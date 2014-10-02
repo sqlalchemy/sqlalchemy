@@ -3491,9 +3491,7 @@ def _string_or_unprintable(element):
     else:
         try:
             return str(element)
-        except (SystemExit, KeyboardInterrupt):
-            raise
-        except:
+        except Exception:
             return "unprintable element %r" % element
 
 
