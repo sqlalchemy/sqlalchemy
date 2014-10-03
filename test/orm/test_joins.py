@@ -721,6 +721,13 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 filter_by(id=3).outerjoin('orders','address').filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
 
+    def test_overlapping_paths_join_isouter(self):
+        User = self.classes.User
+
+        result = create_session().query(User).join('orders', 'items', isouter=True).\
+                filter_by(id=3).join('orders','address', isouter=True).filter_by(id=1).all()
+        assert [User(id=7, name='jack')] == result
+
     def test_from_joinpoint(self):
         Item, User, Order = (self.classes.Item,
                                 self.classes.User,
@@ -1088,7 +1095,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             [User(name='fred')]
         )
 
-
     def test_aliased_classes(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -1237,7 +1243,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_joins_from_adapted_entities(self):
         User = self.classes.User
 
-
         # test for #1853
 
         session = create_session()
@@ -1274,12 +1279,54 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                             'anon_2 ON anon_2.id = anon_1.users_id',
                             use_default_dialect=True)
 
+    def test_joins_from_adapted_entities_isouter(self):
+        User = self.classes.User
+
+        # test for #1853
+
+        session = create_session()
+        first = session.query(User)
+        second = session.query(User)
+        unioned = first.union(second)
+        subquery = session.query(User.id).subquery()
+        join = subquery, subquery.c.id == User.id
+        joined = unioned.join(*join, isouter=True)
+        self.assert_compile(joined,
+                            'SELECT anon_1.users_id AS '
+                            'anon_1_users_id, anon_1.users_name AS '
+                            'anon_1_users_name FROM (SELECT users.id '
+                            'AS users_id, users.name AS users_name '
+                            'FROM users UNION SELECT users.id AS '
+                            'users_id, users.name AS users_name FROM '
+                            'users) AS anon_1 LEFT OUTER JOIN (SELECT '
+                            'users.id AS id FROM users) AS anon_2 ON '
+                            'anon_2.id = anon_1.users_id',
+                            use_default_dialect=True)
+
+        first = session.query(User.id)
+        second = session.query(User.id)
+        unioned = first.union(second)
+        subquery = session.query(User.id).subquery()
+        join = subquery, subquery.c.id == User.id
+        joined = unioned.join(*join, isouter=True)
+        self.assert_compile(joined,
+                            'SELECT anon_1.users_id AS anon_1_users_id '
+                            'FROM (SELECT users.id AS users_id FROM '
+                            'users UNION SELECT users.id AS users_id '
+                            'FROM users) AS anon_1 LEFT OUTER JOIN '
+                            '(SELECT users.id AS id FROM users) AS '
+                            'anon_2 ON anon_2.id = anon_1.users_id',
+                            use_default_dialect=True)
+
     def test_reset_joinpoint(self):
         User = self.classes.User
 
         for aliased in (True, False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
             result = create_session().query(User).join('orders', 'items', aliased=aliased).filter_by(id=3).reset_joinpoint().join('orders','address', aliased=aliased).filter_by(id=1).all()
+            assert [User(id=7, name='jack')] == result
+
+            result = create_session().query(User).join('orders', 'items', aliased=aliased, isouter=True).filter_by(id=3).reset_joinpoint().join('orders','address', aliased=aliased, isouter=True).filter_by(id=1).all()
             assert [User(id=7, name='jack')] == result
 
             result = create_session().query(User).outerjoin('orders', 'items', aliased=aliased).filter_by(id=3).reset_joinpoint().outerjoin('orders','address', aliased=aliased).filter_by(id=1).all()

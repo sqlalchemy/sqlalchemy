@@ -1740,6 +1740,8 @@ class Query(object):
          anonymously aliased.  Subsequent calls to :meth:`~.Query.filter`
          and similar will adapt the incoming criterion to the target
          alias, until :meth:`~.Query.reset_joinpoint` is called.
+        :param isouter=False: If True, the join used will be a left outer join,
+         just as if the ``outerjoin()`` method were called.
         :param from_joinpoint=False: When using ``aliased=True``, a setting
          of True here will cause the join to be from the most recent
          joined target, rather than starting back from the original
@@ -1757,13 +1759,15 @@ class Query(object):
             SQLAlchemy versions was the primary ORM-level joining interface.
 
         """
-        aliased, from_joinpoint = kwargs.pop('aliased', False),\
-            kwargs.pop('from_joinpoint', False)
+        aliased, from_joinpoint, isouter = kwargs.pop('aliased', False),\
+            kwargs.pop('from_joinpoint', False),\
+            kwargs.pop('isouter', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
                             ','.join(kwargs.keys))
+        isouter = isouter
         return self._join(props,
-                          outerjoin=False, create_aliases=aliased,
+                          outerjoin=isouter, create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
 
     def outerjoin(self, *props, **kwargs):
@@ -3384,7 +3388,6 @@ class _BundleEntity(_QueryEntity):
         self.filter_fn = lambda item: item
 
         self.supports_single_entity = self.bundle.single_entity
-
 
     @property
     def entity_zero(self):
