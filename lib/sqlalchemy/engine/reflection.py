@@ -638,11 +638,14 @@ class Inspector(object):
             columns = index_d['column_names']
             unique = index_d['unique']
             flavor = index_d.get('type', 'index')
+            duplicates = index_d.get('duplicates_constraint')
             if include_columns and \
                     not set(columns).issubset(include_columns):
                 util.warn(
                     "Omitting %s key for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
+                continue
+            if duplicates:
                 continue
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
@@ -661,3 +664,34 @@ class Inspector(object):
                     idx_cols.append(idx_col)
 
             sa_schema.Index(name, *idx_cols, **dict(unique=unique))
+
+        # Unique Constraints
+        constraints = self.get_unique_constraints(table_name, schema)
+        for const_d in constraints:
+            conname = const_d['name']
+            columns = const_d['column_names']
+            duplicates = const_d.get('duplicates_index')
+            if include_columns and \
+                    not set(columns).issubset(include_columns):
+                util.warn(
+                    "Omitting unique constraint key for (%s), "
+                    "key covers omitted columns." %
+                    ', '.join(columns))
+                continue
+            if duplicates:
+                continue
+            # look for columns by orig name in cols_by_orig_name,
+            # but support columns that are in-Python only as fallback
+            constrained_cols = []
+            for c in columns:
+                try:
+                    constrained_col = cols_by_orig_name[c] \
+                        if c in cols_by_orig_name else table.c[c]
+                except KeyError:
+                    util.warn(
+                        "unique constraint key '%s' was not located in "
+                        "columns for table '%s'" % (c, table_name))
+                else:
+                    constrained_cols.append(constrained_col)
+            table.append_constraint(
+                sa_schema.UniqueConstraint(*constrained_cols, name=conname))

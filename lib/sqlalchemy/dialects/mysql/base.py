@@ -2590,7 +2590,8 @@ class MySQLDialect(default.DefaultDialect):
         return [
             {
                 'name': key['name'],
-                'column_names': [col[0] for col in key['columns']]
+                'column_names': [col[0] for col in key['columns']],
+                'duplicates_index': key['name'],
             }
             for key in parsed_state.keys
             if key['type'] == 'UNIQUE'
