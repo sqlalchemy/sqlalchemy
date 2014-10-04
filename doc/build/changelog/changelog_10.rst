@@ -22,6 +22,38 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3184
+        :pullreq: bitbucket:30
+
+        The :class:`.UniqueConstraint` construct is now included when
+        reflecting a :class:`.Table` object, for databases where this
+        is applicable.  In order to achieve this
+        with sufficient accuracy, MySQL and Postgresql now contain features
+        that correct for the duplication of indexes and unique constraints
+        when reflecting tables, indexes, and constraints.
+        In the case of MySQL, there is not actually a "unique constraint"
+        concept independent of a "unique index", so for this backend
+        :class:`.UniqueConstraint` continues to remain non-present for a
+        reflected :class:`.Table`.  For Postgresql, the query used to
+        detect indexes against ``pg_index`` has been improved to check for
+        the same construct in ``pg_constraint``, and the implicitly
+        constructed unique index is not included with a
+        reflected :class:`.Table`.
+
+        In both cases, the  :meth:`.Inspector.get_indexes` and the
+        :meth:`.Inspector.get_unique_constraints` methods return both
+        constructs individually, but include a new token
+        ``duplicates_constraint`` in the case of Postgresql or
+        ``duplicates_index`` in the case
+        of MySQL to indicate when this condition is detected.
+        Pull request courtesy Johannes Erdfelt.
+
+        .. seealso::
+
+            :ref:`feature_3184`
+
+    .. change::
         :tags: feature, postgresql
         :pullreq: github:134
 

@@ -341,6 +341,29 @@ reflection will not include foreign keys.  For these tables, you may supply a
 
     :ref:`mysql_storage_engines`
 
+.. _mysql_unique_constraints:
+
+MySQL Unique Constraints and Reflection
+---------------------------------------
+
+SQLAlchemy supports both the :class:`.Index` construct with the
+flag ``unique=True``, indicating a UNIQUE index, as well as the
+:class:`.UniqueConstraint` construct, representing a UNIQUE constraint.
+Both objects/syntaxes are supported by MySQL when emitting DDL to create
+these constraints.  However, MySQL does not have a unique constraint
+construct that is separate from a unique index; that is, the "UNIQUE"
+constraint on MySQL is equivalent to creating a "UNIQUE INDEX".
+
+When reflecting these constructs, the :meth:`.Inspector.get_indexes`
+and the :meth:`.Inspector.get_unique_constraints` methods will **both**
+return an entry for a UNIQUE index in MySQL.  However, when performing
+full table reflection using ``Table(..., autoload=True)``,
+the :class:`.UniqueConstraint` construct is
+**not** part of the fully reflected :class:`.Table` construct under any
+circumstances; this construct is always represented by a :class:`.Index`
+with the ``unique=True`` setting present in the :attr:`.Table.indexes`
+collection.
+
 
 .. _mysql_timestamp_null:
 

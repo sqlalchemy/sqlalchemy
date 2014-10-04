@@ -402,6 +402,28 @@ underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
 
+.. _postgresql_index_reflection:
+
+Postgresql Index Reflection
+---------------------------
+
+The Postgresql database creates a UNIQUE INDEX implicitly whenever the
+UNIQUE CONSTRAINT construct is used.   When inspecting a table using
+:class:`.Inspector`, the :meth:`.Inspector.get_indexes`
+and the :meth:`.Inspector.get_unique_constraints` will report on these
+two constructs distinctly; in the case of the index, the key
+``duplicates_constraint`` will be present in the index entry if it is
+detected as mirroring a constraint.   When performing reflection using
+``Table(..., autoload=True)``, the UNIQUE INDEX is **not** returned
+in :attr:`.Table.indexes` when it is detected as mirroring a
+:class:`.UniqueConstraint` in the :attr:`.Table.constraints` collection.
+
+.. versionchanged:: 1.0.0 - :class:`.Table` reflection now includes
+   :class:`.UniqueConstraint` objects present in the :attr:`.Table.constraints`
+   collection; the Postgresql backend will no longer include a "mirrored"
+   :class:`.Index` construct in :attr:`.Table.indexes` if it is detected
+   as corresponding to a unique constraint.
+
 Special Reflection Options
 --------------------------
 
@@ -2523,21 +2545,27 @@ class PGDialect(default.DefaultDialect):
                     % idx_name)
                 sv_idx_name = idx_name
 
+            has_idx = idx_name in indexes
             index = indexes[idx_name]
             if col is not None:
                 index['cols'][col_num] = col
-            index['key'] = [int(k.strip()) for k in idx_key.split()]
-            index['unique'] = unique
-            index['duplicates_constraint'] = (None if conrelid is None
-                                                   else idx_name)
+            if not has_idx:
+                index['key'] = [int(k.strip()) for k in idx_key.split()]
+                index['unique'] = unique
+                if conrelid is not None:
+                    index['duplicates_constraint'] = idx_name
 
-        return [
-            {'name': name,
-             'unique': idx['unique'],
-             'column_names': [idx['cols'][i] for i in idx['key']],
-             'duplicates_constraint': idx['duplicates_constraint']}
-            for name, idx in indexes.items()
-        ]
+        result = []
+        for name, idx in indexes.items():
+            entry = {
+                'name': name,
+                'unique': idx['unique'],
+                'column_names': [idx['cols'][i] for i in idx['key']]
+            }
+            if 'duplicates_constraint' in idx:
+                entry['duplicates_constraint'] = idx['duplicates_constraint']
+            result.append(entry)
+        return result
 
     @reflection.cache
     def get_unique_constraints(self, connection, table_name,

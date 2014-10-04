@@ -508,6 +508,10 @@ class Inspector(object):
             table_name, schema, table, cols_by_orig_name,
             include_columns, exclude_columns, reflection_options)
 
+        self._reflect_unique_constraints(
+            table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options)
+
     def _reflect_column(
         self, table, col_d, include_columns,
             exclude_columns, cols_by_orig_name):
@@ -665,8 +669,17 @@ class Inspector(object):
 
             sa_schema.Index(name, *idx_cols, **dict(unique=unique))
 
+    def _reflect_unique_constraints(
+        self, table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options):
+
         # Unique Constraints
-        constraints = self.get_unique_constraints(table_name, schema)
+        try:
+            constraints = self.get_unique_constraints(table_name, schema)
+        except NotImplementedError:
+            # optional dialect feature
+            return
+
         for const_d in constraints:
             conname = const_d['name']
             columns = const_d['column_names']

@@ -7,7 +7,8 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy import inspect
 from sqlalchemy import Table, Column, MetaData, Integer, String, \
-    PrimaryKeyConstraint, ForeignKey, join, Sequence, UniqueConstraint
+    PrimaryKeyConstraint, ForeignKey, join, Sequence, UniqueConstraint, \
+    Index
 from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -656,8 +657,7 @@ class ReflectionTest(fixtures.TestBase):
         conn.execute("ALTER TABLE t RENAME COLUMN x to y")
 
         ind = testing.db.dialect.get_indexes(conn, "t", None)
-        eq_(ind, [{'unique': False, 'duplicates_constraint': None,
-                   'column_names': ['y'], 'name': 'idx1'}])
+        eq_(ind, [{'unique': False, 'column_names': ['y'], 'name': 'idx1'}])
         conn.close()
 
     @testing.provide_metadata
@@ -804,37 +804,65 @@ class ReflectionTest(fixtures.TestBase):
                 'labels': ['sad', 'ok', 'happy']
             }])
 
+    @testing.provide_metadata
     def test_reflection_with_unique_constraint(self):
         insp = inspect(testing.db)
 
-        uc_table = Table('pgsql_uc', MetaData(testing.db),
+        meta = self.metadata
+        uc_table = Table('pgsql_uc', meta,
                          Column('a', String(10)),
                          UniqueConstraint('a', name='uc_a'))
 
-        try:
-            uc_table.create()
+        uc_table.create()
 
-            # PostgreSQL will create an implicit index for a unique
-            # constraint. As a result, the 0.9 API returns it as both
-            # an index and a constraint
-            indexes = set(i['name'] for i in insp.get_indexes('pgsql_uc'))
-            constraints = set(i['name']
-                              for i in insp.get_unique_constraints('pgsql_uc'))
+        # PostgreSQL will create an implicit index for a unique
+        # constraint.   Separately we get both
+        indexes = set(i['name'] for i in insp.get_indexes('pgsql_uc'))
+        constraints = set(i['name']
+                          for i in insp.get_unique_constraints('pgsql_uc'))
 
-            self.assert_('uc_a' in indexes)
-            self.assert_('uc_a' in constraints)
+        self.assert_('uc_a' in indexes)
+        self.assert_('uc_a' in constraints)
 
-            # However, upon creating a Table object via reflection, it should
-            # only appear as a unique constraint and not an index
-            reflected = Table('pgsql_uc', MetaData(testing.db), autoload=True)
+        # reflection corrects for the dupe
+        reflected = Table('pgsql_uc', MetaData(testing.db), autoload=True)
 
-            indexes = set(i.name for i in reflected.indexes)
-            constraints = set(uc.name for uc in reflected.constraints)
+        indexes = set(i.name for i in reflected.indexes)
+        constraints = set(uc.name for uc in reflected.constraints)
 
-            self.assert_('uc_a' not in indexes)
-            self.assert_('uc_a' in constraints)
-        finally:
-            uc_table.drop()
+        self.assert_('uc_a' not in indexes)
+        self.assert_('uc_a' in constraints)
+
+    @testing.provide_metadata
+    def test_reflect_unique_index(self):
+        insp = inspect(testing.db)
+
+        meta = self.metadata
+
+        # a unique index OTOH we are able to detect is an index
+        # and not a unique constraint
+        uc_table = Table('pgsql_uc', meta,
+                         Column('a', String(10)),
+                         Index('ix_a', 'a', unique=True))
+
+        uc_table.create()
+
+        indexes = dict((i['name'], i) for i in insp.get_indexes('pgsql_uc'))
+        constraints = set(i['name']
+                          for i in insp.get_unique_constraints('pgsql_uc'))
+
+        self.assert_('ix_a' in indexes)
+        assert indexes['ix_a']['unique']
+        self.assert_('ix_a' not in constraints)
+
+        reflected = Table('pgsql_uc', MetaData(testing.db), autoload=True)
+
+        indexes = dict((i.name, i) for i in reflected.indexes)
+        constraints = set(uc.name for uc in reflected.constraints)
+
+        self.assert_('ix_a' in indexes)
+        assert indexes['ix_a'].unique
+        self.assert_('ix_a' not in constraints)
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):

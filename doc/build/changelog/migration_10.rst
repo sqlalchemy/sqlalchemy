@@ -50,6 +50,62 @@ wishes to support the new feature should now call upon the ``._limit_clause``
 and ``._offset_clause`` attributes to receive the full SQL expression, rather
 than the integer value.
 
+.. _feature_3184:
+
+UniqueConstraint is now part of the Table reflection process
+------------------------------------------------------------
+
+A :class:`.Table` object populated using ``autoload=True`` will now
+include :class:`.UniqueConstraint` constructs as well as
+:class:`.Index` constructs.  This logic has a few caveats for
+Postgresql and Mysql:
+
+Postgresql
+^^^^^^^^^^
+
+Postgresql has the behavior such that when a UNIQUE constraint is
+created, it implicitly creates a UNIQUE INDEX corresponding to that
+constraint as well. The :meth:`.Inspector.get_indexes` and the
+:meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return these entries distinctly, where
+:meth:`.Inspector.get_indexes` now features a token
+``duplicates_constraint`` within the index entry  indicating the
+corresponding constraint when detected.   However, when performing
+full table reflection using  ``Table(..., autoload=True)``, the
+:class:`.Index` construct is detected as being linked to the
+:class:`.UniqueConstraint`, and is **not** present within the
+:attr:`.Table.indexes` collection; only the :class:`.UniqueConstraint`
+will be present in the :attr:`.Table.constraints` collection.   This
+deduplication logic works by joining to the ``pg_constraint`` table
+when querying ``pg_index`` to see if the two constructs are linked.
+
+MySQL
+^^^^^
+
+MySQL does not have separate concepts for a UNIQUE INDEX and a UNIQUE
+constraint.  While it supports both syntaxes when creating tables and indexes,
+it does not store them any differently. The
+:meth:`.Inspector.get_indexes`
+and the :meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return an entry for a UNIQUE index in MySQL,
+where :meth:`.Inspector.get_unique_constraints` features a new token
+``duplicates_index`` within the constraint entry indicating that this is a
+dupe entry corresponding to that index.  However, when performing
+full table reflection using ``Table(..., autoload=True)``,
+the :class:`.UniqueConstraint` construct is
+**not** part of the fully reflected :class:`.Table` construct under any
+circumstances; this construct is always represented by a :class:`.Index`
+with the ``unique=True`` setting present in the :attr:`.Table.indexes`
+collection.
+
+.. seealso::
+
+    :ref:`postgresql_index_reflection`
+
+    :ref:`mysql_unique_constraints`
+
+:ticket:`3184`
+
 
 Behavioral Improvements
 =======================
@@ -1042,6 +1098,7 @@ by Postgresql as of 9.4.  SQLAlchemy allows this using
     :meth:`.FunctionElement.filter`
 
     :class:`.FunctionFilter`
+
 
 MySQL internal "no such table" exceptions not passed to event handlers
 ----------------------------------------------------------------------
