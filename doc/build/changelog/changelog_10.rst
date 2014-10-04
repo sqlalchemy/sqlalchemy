@@ -22,6 +22,18 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: github:134
+
+        Added support for the FILTER keyword as applied to aggregate
+        functions, supported by Postgresql 9.4.   Pull request
+        courtesy Ilja Everilä.
+
+        .. seealso::
+
+            :ref:`feature_gh134`
+
+    .. change::
         :tags: bug, sql, engine
         :tickets: 3215
 

@@ -1,7 +1,8 @@
 from sqlalchemy.testing import eq_
 import datetime
 from sqlalchemy import func, select, Integer, literal, DateTime, Table, \
-    Column, Sequence, MetaData, extract, Date, String, bindparam
+    Column, Sequence, MetaData, extract, Date, String, bindparam, \
+    literal_column
 from sqlalchemy.sql import table, column
 from sqlalchemy import sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
@@ -13,6 +14,13 @@ import decimal
 from sqlalchemy import testing
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, engines
 from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
+
+
+table1 = table('mytable',
+               column('myid', Integer),
+               column('name', String),
+               column('description', String),
+               )
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -366,6 +374,108 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_alias_method_columns_two(self):
         expr = func.rows("foo").alias('bar')
         assert len(expr.c)
+
+    def test_funcfilter_empty(self):
+        self.assert_compile(
+            func.count(1).filter(),
+            "count(:param_1)"
+        )
+
+    def test_funcfilter_criterion(self):
+        self.assert_compile(
+            func.count(1).filter(
+                table1.c.name != None
+            ),
+            "count(:param_1) FILTER (WHERE mytable.name IS NOT NULL)"
+        )
+
+    def test_funcfilter_compound_criterion(self):
+        self.assert_compile(
+            func.count(1).filter(
+                table1.c.name == None,
+                table1.c.myid > 0
+            ),
+            "count(:param_1) FILTER (WHERE mytable.name IS NULL AND "
+            "mytable.myid > :myid_1)"
+        )
+
+    def test_funcfilter_label(self):
+        self.assert_compile(
+            select([func.count(1).filter(
+                table1.c.description != None
+            ).label('foo')]),
+            "SELECT count(:param_1) FILTER (WHERE mytable.description "
+            "IS NOT NULL) AS foo FROM mytable"
+        )
+
+    def test_funcfilter_fromobj_fromfunc(self):
+        # test from_obj generation.
+        # from func:
+        self.assert_compile(
+            select([
+                func.max(table1.c.name).filter(
+                    literal_column('description') != None
+                )
+            ]),
+            "SELECT max(mytable.name) FILTER (WHERE description "
+            "IS NOT NULL) AS anon_1 FROM mytable"
+        )
+
+    def test_funcfilter_fromobj_fromcriterion(self):
+        # from criterion:
+        self.assert_compile(
+            select([
+                func.count(1).filter(
+                    table1.c.name == 'name'
+                )
+            ]),
+            "SELECT count(:param_1) FILTER (WHERE mytable.name = :name_1) "
+            "AS anon_1 FROM mytable"
+        )
+
+    def test_funcfilter_chaining(self):
+        # test chaining:
+        self.assert_compile(
+            select([
+                func.count(1).filter(
+                    table1.c.name == 'name'
+                ).filter(
+                    table1.c.description == 'description'
+                )
+            ]),
+            "SELECT count(:param_1) FILTER (WHERE "
+            "mytable.name = :name_1 AND mytable.description = :description_1) "
+            "AS anon_1 FROM mytable"
+        )
+
+    def test_funcfilter_windowing_orderby(self):
+        # test filtered windowing:
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    order_by=table1.c.name
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (ORDER BY mytable.name) AS anon_1 FROM mytable"
+        )
+
+    def test_funcfilter_windowing_orderby_partitionby(self):
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    order_by=table1.c.name,
+                    partition_by=['description']
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (PARTITION BY mytable.description ORDER BY mytable.name) "
+            "AS anon_1 FROM mytable"
+        )
 
 
 class ExecuteTest(fixtures.TestBase):

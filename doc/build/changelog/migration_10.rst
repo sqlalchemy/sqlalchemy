@@ -1026,6 +1026,22 @@ running 0.9 in production.
 
 :ticket:`2891`
 
+.. _feature_gh134:
+
+Postgresql FILTER keyword
+-------------------------
+
+The SQL standard FILTER keyword for aggregate functions is now supported
+by Postgresql as of 9.4.  SQLAlchemy allows this using
+:meth:`.FunctionElement.filter`::
+
+    func.count(1).filter(True)
+
+.. seealso::
+
+    :meth:`.FunctionElement.filter`
+
+    :class:`.FunctionFilter`
 
 MySQL internal "no such table" exceptions not passed to event handlers
 ----------------------------------------------------------------------

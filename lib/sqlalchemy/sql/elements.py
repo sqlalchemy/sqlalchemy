@@ -2895,6 +2895,17 @@ class FunctionFilter(ColumnElement):
     which controls which rows are passed to it.
     It's supported only by certain database backends.
 
+    Invocation of :class:`.FunctionFilter` is via
+    :meth:`.FunctionElement.filter`::
+
+        func.count(1).filter(True)
+
+    .. versionadded:: 1.0.0
+
+    .. seealso::
+
+        :meth:`.FunctionElement.filter`
+
     """
     __visit_name__ = 'funcfilter'
 
@@ -2916,11 +2927,29 @@ class FunctionFilter(ColumnElement):
         This function is also available from the :data:`~.expression.func`
         construct itself via the :meth:`.FunctionElement.filter` method.
 
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.FunctionElement.filter`
+
+
         """
         self.func = func
         self.filter(*criterion)
 
     def filter(self, *criterion):
+        """Produce an additional FILTER against the function.
+
+        This method adds additional criteria to the initial criteria
+        set up by :meth:`.FunctionElement.filter`.
+
+        Multiple criteria are joined together at SQL render time
+        via ``AND``.
+
+
+        """
+
         for criterion in list(criterion):
             criterion = _expression_literal_as_text(criterion)
 

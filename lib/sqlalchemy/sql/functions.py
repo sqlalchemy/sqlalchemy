@@ -131,7 +131,14 @@ class FunctionElement(Executable, ColumnElement, FromClause):
             from sqlalchemy import funcfilter
             funcfilter(func.count(1), True)
 
-        See :func:`~.expression.funcfilter` for a full description.
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :class:`.FunctionFilter`
+
+            :func:`.funcfilter`
+
 
         """
         if not criterion:
