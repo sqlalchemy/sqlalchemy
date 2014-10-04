@@ -2190,6 +2190,97 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "(ORDER BY mytable.myid + :myid_1) AS anon_1 FROM mytable"
         )
 
+    def test_funcfilter(self):
+        self.assert_compile(
+            func.count(1).filter(),
+            "count(:param_1)"
+        )
+        self.assert_compile(
+            func.count(1).filter(
+                table1.c.name != None
+            ),
+            "count(:param_1) FILTER (WHERE mytable.name IS NOT NULL)"
+        )
+        self.assert_compile(
+            func.count(1).filter(
+                table1.c.name == None,
+                table1.c.myid > 0
+            ),
+            "count(:param_1) FILTER (WHERE mytable.name IS NULL AND "
+            "mytable.myid > :myid_1)"
+        )
+
+        self.assert_compile(
+            select([func.count(1).filter(
+                table1.c.description != None
+            ).label('foo')]),
+            "SELECT count(:param_1) FILTER (WHERE mytable.description "
+            "IS NOT NULL) AS foo FROM mytable"
+        )
+
+        # test from_obj generation.
+        # from func:
+        self.assert_compile(
+            select([
+                func.max(table1.c.name).filter(
+                    literal_column('description') != None
+                )
+            ]),
+            "SELECT max(mytable.name) FILTER (WHERE description "
+            "IS NOT NULL) AS anon_1 FROM mytable"
+        )
+        # from criterion:
+        self.assert_compile(
+            select([
+                func.count(1).filter(
+                    table1.c.name == 'name'
+                )
+            ]),
+            "SELECT count(:param_1) FILTER (WHERE mytable.name = :name_1) "
+            "AS anon_1 FROM mytable"
+        )
+
+        # test chaining:
+        self.assert_compile(
+            select([
+                func.count(1).filter(
+                    table1.c.name == 'name'
+                ).filter(
+                    table1.c.description == 'description'
+                )
+            ]),
+            "SELECT count(:param_1) FILTER (WHERE "
+            "mytable.name = :name_1 AND mytable.description = :description_1) "
+            "AS anon_1 FROM mytable"
+        )
+
+        # test filtered windowing:
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    order_by=table1.c.name
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (ORDER BY mytable.name) AS anon_1 FROM mytable"
+        )
+
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    order_by=table1.c.name,
+                    partition_by=['description']
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (PARTITION BY mytable.description ORDER BY mytable.name) "
+            "AS anon_1 FROM mytable"
+        )
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,

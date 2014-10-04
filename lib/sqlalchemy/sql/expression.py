@@ -36,7 +36,7 @@ from .elements import ClauseElement, ColumnElement,\
     True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
     Grouping, not_, \
     collate, literal_column, between,\
-    literal, outparam, type_coerce, ClauseList
+    literal, outparam, type_coerce, ClauseList, FunctionFilter
 
 from .elements import SavepointClause, RollbackToSavepointClause, \
     ReleaseSavepointClause
@@ -97,6 +97,8 @@ outerjoin = public_factory(Join._create_outerjoin, ".expression.outerjoin")
 insert = public_factory(Insert, ".expression.insert")
 update = public_factory(Update, ".expression.update")
 delete = public_factory(Delete, ".expression.delete")
+funcfilter = public_factory(
+    FunctionFilter, ".expression.funcfilter")
 
 
 # internal functions still being called from tests and the ORM,

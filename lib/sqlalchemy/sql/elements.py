@@ -2888,6 +2888,91 @@ class Over(ColumnElement):
         ))
 
 
+class FunctionFilter(ColumnElement):
+    """Represent a function FILTER clause.
+
+    This is a special operator against aggregate and window functions,
+    which controls which rows are passed to it.
+    It's supported only by certain database backends.
+
+    """
+    __visit_name__ = 'funcfilter'
+
+    criterion = None
+
+    def __init__(self, func, *criterion):
+        """Produce a :class:`.FunctionFilter` object against a function.
+
+        Used against aggregate and window functions,
+        for database backends that support the "FILTER" clause.
+
+        E.g.::
+
+            from sqlalchemy import funcfilter
+            funcfilter(func.count(1), MyClass.name == 'some name')
+
+        Would produce "COUNT(1) FILTER (WHERE myclass.name = 'some name')".
+
+        This function is also available from the :data:`~.expression.func`
+        construct itself via the :meth:`.FunctionElement.filter` method.
+
+        """
+        self.func = func
+        self.filter(*criterion)
+
+    def filter(self, *criterion):
+        for criterion in list(criterion):
+            criterion = _expression_literal_as_text(criterion)
+
+            if self.criterion is not None:
+                self.criterion = self.criterion & criterion
+            else:
+                self.criterion = criterion
+
+        return self
+
+    def over(self, partition_by=None, order_by=None):
+        """Produce an OVER clause against this filtered function.
+
+        Used against aggregate or so-called "window" functions,
+        for database backends that support window functions.
+
+        The expression::
+
+            func.rank().filter(MyClass.y > 5).over(order_by='x')
+
+        is shorthand for::
+
+            from sqlalchemy import over, funcfilter
+            over(funcfilter(func.rank(), MyClass.y > 5), order_by='x')
+
+        See :func:`~.expression.over` for a full description.
+
+        """
+        return Over(self, partition_by=partition_by, order_by=order_by)
+
+    @util.memoized_property
+    def type(self):
+        return self.func.type
+
+    def get_children(self, **kwargs):
+        return [c for c in
+                (self.func, self.criterion)
+                if c is not None]
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.func = clone(self.func, **kw)
+        if self.criterion is not None:
+            self.criterion = clone(self.criterion, **kw)
+
+    @property
+    def _from_objects(self):
+        return list(itertools.chain(
+            *[c._from_objects for c in (self.func, self.criterion)
+              if c is not None]
+        ))
+
+
 class Label(ColumnElement):
     """Represents a column label (AS).
 
