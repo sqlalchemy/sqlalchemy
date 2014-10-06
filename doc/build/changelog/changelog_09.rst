@@ -14,6 +14,23 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, engine
+        :versions: 1.0.0
+        :tickets: 3200
+
+        The execution options passed to an :class:`.Engine` either via
+        :paramref:`.create_engine.execution_options` or
+        :meth:`.Engine.update_execution_options` are not passed to the
+        special :class:`.Connection` used to initialize the dialect
+        within the "first connect" event; dialects will usually
+        perform their own queries in this phase, and none of the
+        current available  options should be applied here.  In
+        particular, the "autocommit" option was causing an attempt to
+        autocommit within this initial connect which would fail with
+        an AttributeError due to the non-standard state of the
+        :class:`.Connection`.
+
+    .. change::
         :tags: bug, sqlite
         :versions: 1.0.0
         :tickets: 3211
