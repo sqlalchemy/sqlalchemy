@@ -396,7 +396,7 @@ class AbstractConcreteBase(ConcreteBase):
 
         for scls in cls.__subclasses__():
             sm = _mapper_or_none(scls)
-            if sm.concrete and cls in scls.__bases__:
+            if sm and sm.concrete and cls in scls.__bases__:
                 sm._set_concrete_base(m)
 
 
