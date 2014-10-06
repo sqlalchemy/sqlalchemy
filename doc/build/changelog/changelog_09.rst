@@ -14,6 +14,15 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, declarative, orm
+        :versions: 1.0.0
+        :tickets: 3185
+
+        Fixed "'NoneType' object has no attribute 'concrete'" error
+        when using :class:`.AbstractConcreteBase` in conjunction with
+        a subclass that declares ``__abstract__``.
+
+    .. change::
         :tags: bug, engine
         :versions: 1.0.0
         :tickets: 3200

@@ -1388,3 +1388,32 @@ class ConcreteExtensionConfigTest(
             "WHERE something.id = pjoin.something_id AND something.id = :id_1)"
         )
 
+    def test_abstract_in_hierarchy(self):
+        class Document(Base, AbstractConcreteBase):
+            doctype = Column(String)
+
+        class ContactDocument(Document):
+            __abstract__ = True
+
+            send_method = Column(String)
+
+        class ActualDocument(ContactDocument):
+            __tablename__ = 'actual_documents'
+            __mapper_args__ = {
+                'concrete': True,
+                'polymorphic_identity': 'actual'}
+
+            id = Column(Integer, primary_key=True)
+
+        configure_mappers()
+        session = Session()
+        self.assert_compile(
+            session.query(Document),
+            "SELECT pjoin.doctype AS pjoin_doctype, "
+            "pjoin.send_method AS pjoin_send_method, "
+            "pjoin.id AS pjoin_id, pjoin.type AS pjoin_type "
+            "FROM (SELECT actual_documents.doctype AS doctype, "
+            "actual_documents.send_method AS send_method, "
+            "actual_documents.id AS id, 'actual' AS type "
+            "FROM actual_documents) AS pjoin"
+        )
