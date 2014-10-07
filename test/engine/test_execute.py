@@ -487,6 +487,18 @@ class ExecuteTest(fixtures.TestBase):
         conn.close()
 
     @testing.requires.ad_hoc_engines
+    def test_dialect_init_uses_options(self):
+        eng = create_engine(testing.db.url)
+
+        def my_init(connection):
+            connection.execution_options(foo='bar').execute(select([1]))
+
+        with patch.object(eng.dialect, "initialize", my_init):
+            conn = eng.connect()
+            eq_(conn._execution_options, {})
+            conn.close()
+
+    @testing.requires.ad_hoc_engines
     def test_generative_engine_event_dispatch_hasevents(self):
         def l1(*arg, **kw):
             pass
