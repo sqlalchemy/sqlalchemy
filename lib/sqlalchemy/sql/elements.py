@@ -228,6 +228,7 @@ class ClauseElement(Visitable):
     is_selectable = False
     is_clause_element = True
 
+    description = None
     _order_by_label_element = None
     _is_from_container = False
 
@@ -540,7 +541,7 @@ class ClauseElement(Visitable):
     __nonzero__ = __bool__
 
     def __repr__(self):
-        friendly = getattr(self, 'description', None)
+        friendly = self.description
         if friendly is None:
             return object.__repr__(self)
         else:
