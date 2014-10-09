@@ -14,6 +14,17 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3195
+
+        Fixed bug where a fair number of SQL elements within
+        the sql package would fail to ``__repr__()`` successfully,
+        due to a missing ``description`` attribute that would then invoke
+        a recursion overflow when an internal AttributeError would then
+        re-invoke ``__repr__()``.
+
+    .. change::
         :tags: bug, declarative, orm
         :versions: 1.0.0
         :tickets: 3185

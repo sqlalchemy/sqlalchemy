@@ -5,6 +5,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
 from sqlalchemy import *
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
     AssertsExecutionResults
+from sqlalchemy.sql import elements
 from sqlalchemy import testing
 from sqlalchemy.sql import util as sql_util, visitors, expression
 from sqlalchemy import exc
@@ -1925,6 +1926,29 @@ class AnnotationsTest(fixtures.TestBase):
         comp2 = c2.comparator
 
         assert (c2 == 5).left._annotations == {"foo": "bar", "bat": "hoho"}
+
+
+class ReprTest(fixtures.TestBase):
+    def test_ensure_repr_elements(self):
+        for obj in [
+            elements.Cast(1, 2),
+            elements.TypeClause(String()),
+            elements.ColumnClause('x'),
+            elements.BindParameter('q'),
+            elements.Null(),
+            elements.True_(),
+            elements.False_(),
+            elements.ClauseList(),
+            elements.BooleanClauseList.and_(),
+            elements.Tuple(),
+            elements.Case([]),
+            elements.Extract('foo', column('x')),
+            elements.UnaryExpression(column('x')),
+            elements.Grouping(column('x')),
+            elements.Over(func.foo()),
+            elements.Label('q', column('x')),
+        ]:
+            repr(obj)
 
 
 class WithLabelsTest(fixtures.TestBase):
