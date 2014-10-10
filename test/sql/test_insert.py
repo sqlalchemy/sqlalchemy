@@ -183,7 +183,23 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"name_1": "foo"}
         )
 
-    def test_insert_from_select_select_no_defaults(self):
+    def test_insert_from_select_no_defaults(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('foo', Integer, default=func.foobar()))
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid]).where(table1.c.name == 'foo')
+        ins = table.insert().\
+            from_select(["id"], sel, include_defaults=False)
+        self.assert_compile(
+            ins,
+            "INSERT INTO sometable (id) SELECT mytable.myid "
+            "FROM mytable WHERE mytable.name = :name_1",
+            checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_from_select_with_sql_defaults(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
                       Column('id', Integer, primary_key=True),
@@ -194,9 +210,71 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             from_select(["id"], sel)
         self.assert_compile(
             ins,
-            "INSERT INTO sometable (id) SELECT mytable.myid "
+            "INSERT INTO sometable (id, foo) SELECT "
+            "mytable.myid, foobar() AS foobar_1 "
             "FROM mytable WHERE mytable.name = :name_1",
             checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_from_select_with_python_defaults(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('foo', Integer, default=12))
+        table1 = self.tables.mytable
+        sel = select([table1.c.myid]).where(table1.c.name == 'foo')
+        ins = table.insert().\
+            from_select(["id"], sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO sometable (id, foo) SELECT "
+            "mytable.myid, :foo AS anon_1 "
+            "FROM mytable WHERE mytable.name = :name_1",
+            # value filled in at execution time
+            checkparams={"name_1": "foo", "foo": None}
+        )
+
+    def test_insert_from_select_override_defaults(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('foo', Integer, default=12))
+        table1 = self.tables.mytable
+        sel = select(
+            [table1.c.myid, table1.c.myid.label('q')]).where(
+            table1.c.name == 'foo')
+        ins = table.insert().\
+            from_select(["id", "foo"], sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO sometable (id, foo) SELECT "
+            "mytable.myid, mytable.myid AS q "
+            "FROM mytable WHERE mytable.name = :name_1",
+            checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_from_select_fn_defaults(self):
+        metadata = MetaData()
+
+        def foo(ctx):
+            return 12
+
+        table = Table('sometable', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('foo', Integer, default=foo))
+        table1 = self.tables.mytable
+        sel = select(
+            [table1.c.myid]).where(
+            table1.c.name == 'foo')
+        ins = table.insert().\
+            from_select(["id"], sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO sometable (id, foo) SELECT "
+            "mytable.myid, :foo AS anon_1 "
+            "FROM mytable WHERE mytable.name = :name_1",
+            # value filled in at execution time
+            checkparams={"name_1": "foo", "foo": None}
         )
 
     def test_insert_mix_select_values_exception(self):

@@ -22,6 +22,19 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+
+        :meth:`.Insert.from_select` now includes Python and SQL-expression
+        defaults if otherwise unspecified; the limitation where non-
+        server column defaults aren't included in an INSERT FROM
+        SELECT is now lifted and these expressions are rendered as
+        constants into the SELECT statement.
+
+        .. seealso::
+
+            :ref:`feature_insert_from_select_defaults`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3222
 
