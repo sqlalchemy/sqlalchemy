@@ -516,10 +516,12 @@ class Insert(ValuesBase):
 
         .. note::
 
-           A SELECT..INSERT construct in SQL has no VALUES clause.  Therefore
-           :class:`.Column` objects which utilize Python-side defaults
-           (e.g. as described at :ref:`metadata_defaults_toplevel`)
-           will **not** take effect when using :meth:`.Insert.from_select`.
+           Python-side and SQL function defaults, as described at
+           :ref:`metadata_defaults_toplevel`, are **not** automatically
+           included in the SELECT statement as rendered unless explicitly
+           added to the statement.  The behavior of automatically rendering
+           these default values and expressions is available as of SQLAlchemy
+           version 1.0.0.
 
         .. versionadded:: 0.8.3
 

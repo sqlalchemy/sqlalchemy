@@ -1,6 +1,7 @@
+.. module:: sqlalchemy.schema
+
 .. _metadata_defaults_toplevel:
 .. _metadata_defaults:
-.. module:: sqlalchemy.schema
 
 Column Insert/Update Defaults
 ==============================
