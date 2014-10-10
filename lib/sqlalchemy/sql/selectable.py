@@ -2435,7 +2435,7 @@ class Select(HasPrefixes, GenerativeSelect):
         following::
 
             select([mytable]).\\
-                with_hint(mytable, "+ index(%(name)s ix_mytable)")
+                with_hint(mytable, "index(%(name)s ix_mytable)")
 
         Would render SQL as::
 
@@ -2446,8 +2446,7 @@ class Select(HasPrefixes, GenerativeSelect):
         and Sybase simultaneously::
 
             select([mytable]).\\
-                with_hint(
-                    mytable, "+ index(%(name)s ix_mytable)", 'oracle').\\
+                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
 
         """
