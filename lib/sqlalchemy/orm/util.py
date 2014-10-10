@@ -804,6 +804,16 @@ class _ORMJoin(expression.Join):
 
         expression.Join.__init__(self, left, right, onclause, isouter)
 
+        if not prop and getattr(right_info, 'mapper', None) \
+                and right_info.mapper.single:
+            # if single inheritance target and we are using a manual
+            # or implicit ON clause, augment it the same way we'd augment the
+            # WHERE.
+            single_crit = right_info.mapper._single_table_criterion
+            if right_info.is_aliased_class:
+                single_crit = right_info._adapter.traverse(single_crit)
+            self.onclause = self.onclause & single_crit
+
     def join(self, right, onclause=None, isouter=False, join_to_left=None):
         return _ORMJoin(self, right, onclause, isouter)
 

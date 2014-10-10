@@ -22,6 +22,20 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3222
+
+        The ON clause rendered when using :meth:`.Query.join`,
+        :meth:`.Query.outerjoin`, or the standalone :func:`.orm.join` /
+        :func:`.orm.outerjoin` functions to a single-inheritance subclass will
+        now include the "single table criteria" in the ON clause even
+        if the ON clause is otherwise hand-rolled; it is now added to the
+        criteria using AND, the same way as if joining to a single-table
+        target using relationship or similar.
+
+        This is sort of in-between feature and bug.
+
+    .. change::
         :tags: feature, sql
         :tickets: 3184
         :pullreq: bitbucket:30
