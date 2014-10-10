@@ -576,6 +576,67 @@ Renders::
 :ticket:`3177`
 
 
+.. _migration_3222:
+
+
+single-table-inheritance criteria added to all ON clauses unconditionally
+-------------------------------------------------------------------------
+
+When joining to a single-table inheritance subclass target, the ORM always adds
+the "single table criteria" when joining on a relationship.  Given a
+mapping as::
+
+    class Widget(Base):
+        __tablename__ = 'widget'
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
+        related_id = Column(ForeignKey('related.id'))
+        related = relationship("Related", backref="widget")
+        __mapper_args__ = {'polymorphic_on': type}
+
+
+    class FooWidget(Widget):
+        __mapper_args__ = {'polymorphic_identity': 'foo'}
+
+
+    class Related(Base):
+        __tablename__ = 'related'
+        id = Column(Integer, primary_key=True)
+
+It's been the behavior for quite some time that a JOIN on the relationship
+will render a "single inheritance" clause for the type::
+
+    s.query(Related).join(FooWidget, Related.widget).all()
+
+SQL output::
+
+    SELECT related.id AS related_id
+    FROM related JOIN widget ON related.id = widget.related_id AND widget.type IN (:type_1)
+
+Above, because we joined to a subclass ``FooWidget``, :meth:`.Query.join`
+knew to add the ``AND widget.type IN ('foo')`` criteria to the ON clause.
+
+The change here is that the ``AND widget.type IN()`` criteria is now appended
+to *any* ON clause, not just those generated from a relationship,
+including one that is explicitly stated::
+
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget, FooWidget.related_id == Related.id).all()
+
+As well as the "implicit" join when no ON clause of any kind is stated::
+
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget).all()
+
+Previously, the ON clause for these would not include the single-inheritance
+criteria.  Applications that are already adding this criteria to work around
+this will want to remove its explicit use, though it should continue to work
+fine if the criteria happens to be rendered twice in the meantime.
+
+:ticket:`3222`
+
 .. _bug_3188:
 
 ColumnProperty constructs work a lot better with aliases, order_by

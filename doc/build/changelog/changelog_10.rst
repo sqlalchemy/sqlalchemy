@@ -35,6 +35,10 @@
 
         This is sort of in-between feature and bug.
 
+        .. seealso::
+
+            :ref:`migration_3222`
+
     .. change::
         :tags: feature, sql
         :tickets: 3184
