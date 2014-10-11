@@ -187,7 +187,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
         eq_(
             config.db.execute(
-                select([table]).order_by(table.c.data)
+                select([table]).order_by(table.c.data, table.c.id)
             ).fetchall(),
             [(1, 'data1', 5, 4), (2, 'data2', 5, 4),
                 (7, 'data2', 5, 4), (3, 'data3', 5, 4), (8, 'data3', 5, 4)]
