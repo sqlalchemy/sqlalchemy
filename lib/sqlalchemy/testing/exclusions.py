@@ -158,8 +158,7 @@ class Predicate(object):
     @classmethod
     def as_predicate(cls, predicate, description=None):
         if isinstance(predicate, compound):
-            return cls.as_predicate(predicate.fails.union(predicate.skips))
-
+            return cls.as_predicate(predicate.enabled_for_config, description)
         elif isinstance(predicate, Predicate):
             if description and predicate.description is None:
                 predicate.description = description
