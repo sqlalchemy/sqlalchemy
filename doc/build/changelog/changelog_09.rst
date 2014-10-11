@@ -14,6 +14,15 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, oracle
+        :versions: 1.0.0
+        :tickets: 2138
+
+        Fixed long-standing bug in Oracle dialect where bound parameter
+        names that started with numbers would not be quoted, as Oracle
+        doesn't like numerics in bound parameter names.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :tickets: 3195
