@@ -4,7 +4,7 @@ from .. import exclusions
 from ..assertions import eq_
 from .. import engines
 
-from sqlalchemy import Integer, String, select, literal_column
+from sqlalchemy import Integer, String, select, literal_column, literal
 
 from ..schema import Table, Column
 
@@ -96,7 +96,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
               Column('data', String(50)),
               Column('x', Integer, default=5),
               Column('y', Integer,
-                     default=literal_column("2", type_=Integer) + 2))
+                     default=literal_column("2", type_=Integer) + literal(2)))
 
     def test_autoclose_on_insert(self):
         if requirements.returning.enabled:
