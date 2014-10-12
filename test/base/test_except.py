@@ -2,19 +2,12 @@
 
 
 from sqlalchemy import exc as sa_exceptions
-from sqlalchemy import util
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import eq_
 
-if util.py2k:
-    from exceptions import StandardError, KeyboardInterrupt, SystemExit
-else:
-    Exception = BaseException
-
 
 class Error(Exception):
-    """This class will be old-style on <= 2.4 and new-style on >=
-    2.5."""
+    pass
 
 
 class DatabaseError(Error):
