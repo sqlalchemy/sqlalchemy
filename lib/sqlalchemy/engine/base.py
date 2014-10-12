@@ -1126,8 +1126,6 @@ class Connection(Connectable):
         """
         try:
             cursor.close()
-        except (SystemExit, KeyboardInterrupt):
-            raise
         except Exception:
             # log the error through the connection pool's logger.
             self.engine.pool.logger.error(

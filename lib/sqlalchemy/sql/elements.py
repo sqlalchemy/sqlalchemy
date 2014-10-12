@@ -3606,7 +3606,7 @@ def _string_or_unprintable(element):
     else:
         try:
             return str(element)
-        except:
+        except Exception:
             return "unprintable element %r" % element
 
 

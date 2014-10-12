@@ -490,7 +490,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
             val = getattr(obj, arg, missing)
             if val is not missing and val != defval:
                 output.append('%s=%r' % (arg, val))
-        except:
+        except Exception:
             pass
 
     if additional_kw:
@@ -499,7 +499,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
                 val = getattr(obj, arg, missing)
                 if val is not missing and val != defval:
                     output.append('%s=%r' % (arg, val))
-            except:
+            except Exception:
                 pass
 
     return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
@@ -1198,7 +1198,7 @@ def warn_exception(func, *args, **kwargs):
     """
     try:
         return func(*args, **kwargs)
-    except:
+    except Exception:
         warn("%s('%s') ignored" % sys.exc_info()[0:2])
 
 
