@@ -280,9 +280,13 @@ class DBAPIError(StatementError):
                  connection_invalidated=False):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
-        if (isinstance(orig, BaseException) and
-                not isinstance(orig, Exception)) or \
-                isinstance(orig, DontWrapMixin):
+        if isinstance(orig, (KeyboardInterrupt, SystemExit, DontWrapMixin)):
+
+        # TODO: shouldn't it work this way?  see if we can get this
+        # to work in py3k
+        #if (isinstance(orig, BaseException) and
+        #        not isinstance(orig, Exception)) or \
+        #        isinstance(orig, DontWrapMixin):
             return orig
 
         if orig is not None:
