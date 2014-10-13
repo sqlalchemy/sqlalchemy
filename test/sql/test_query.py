@@ -570,9 +570,6 @@ class QueryTest(fixtures.TestBase):
         ):
             eq_(expr.execute().fetchall(), result)
 
-    @testing.fails_if(
-        lambda: util.py3k and testing.against('mysql+mysqlconnector'),
-        "bug in mysqlconnector")
     @testing.requires.mod_operator_as_percent_sign
     @testing.emits_warning('.*now automatically escapes.*')
     def test_percents_in_text(self):
@@ -2510,9 +2507,6 @@ class OperatorTest(fixtures.TestBase):
         metadata.drop_all()
 
     # TODO: seems like more tests warranted for this setup.
-    @testing.fails_if(
-        lambda: util.py3k and testing.against('mysql+mysqlconnector'),
-        "bug in mysqlconnector")
     def test_modulo(self):
         eq_(
             select([flds.c.intcol % 3],
