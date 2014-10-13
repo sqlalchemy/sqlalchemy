@@ -12,6 +12,7 @@
 
 .. changelog::
     :version: 0.9.8
+    :released: October 13, 2014
 
     .. change::
         :tags: bug, mysql, mysqlconnector
