@@ -420,6 +420,12 @@ class DefaultRequirements(SuiteRequirements):
             no_support('sybase', 'FIXME: guessing, needs confirmation'),
             no_support('mssql+pymssql', 'no FreeTDS support'),
             LambdaPredicate(
+                lambda config: against(config, "mysql+mysqlconnector") and
+                config.db.dialect._mysqlconnector_version_info > (2, 0) and
+                util.py2k,
+                "bug in mysqlconnector 2.0"
+            ),
+            LambdaPredicate(
                 lambda config: against(config, 'mssql+pyodbc') and
                 config.db.dialect.freetds and
                 config.db.dialect.freetds_driver_version < "0.91",

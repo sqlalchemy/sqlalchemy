@@ -14,6 +14,27 @@
     :version: 0.9.8
 
     .. change::
+        :tags: bug, mysql, mysqlconnector
+        :versions: 1.0.0
+
+        Mysqlconnector as of version 2.0, probably as a side effect of
+        the  python 3 merge, now does not expect percent signs (e.g.
+        as used as the modulus operator and others) to be doubled,
+        even when using the "pyformat" bound parameter format (this
+        change is not documented by Mysqlconnector).  The dialect now
+        checks for py2k and for mysqlconnector less than version 2.0
+        when detecting if the modulus operator should be rendered as
+        ``%%`` or ``%``.
+
+    .. change::
+        :tags: bug, mysql, mysqlconnector
+        :versions: 1.0.0
+
+        Unicode SQL is now passed for MySQLconnector version 2.0 and above;
+        for Py2k and MySQL < 2.0, strings are encoded.
+
+
+    .. change::
         :tags: bug, oracle
         :versions: 1.0.0
         :tickets: 2138

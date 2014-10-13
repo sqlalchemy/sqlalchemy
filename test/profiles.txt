@@ -1,21 +1,21 @@
 # /Users/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and 
+# For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received. 
+# If a callcount does exist, it is compared to what we received.
 # assertions are raised if the counts do not match.
-# 
-# To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles 
+#
+# To add a new callcount test, apply the function_call_count
+# decorator and re-run the tests using the --write-profiles
 # option - this file will be rewritten including the new count.
-# 
+#
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
 test.aaa_profiling.test_compiler.CompileTest.test_insert 2.6_sqlite_pysqlite_nocextensions 72
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqlconnector_cextensions 73
-test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqlconnector_nocextensions 73
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqldb_cextensions 72
 test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_mysqldb_nocextensions 72
 test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_mysql_oursql_cextensions 73
@@ -27,8 +27,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_sqlite_pysqlite_cex
 test.aaa_profiling.test_compiler.CompileTest.test_insert 2.7_sqlite_pysqlite_nocextensions 72
 test.aaa_profiling.test_compiler.CompileTest.test_insert 3.2_postgresql_psycopg2_nocextensions 74
 test.aaa_profiling.test_compiler.CompileTest.test_insert 3.2_sqlite_pysqlite_nocextensions 74
-test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_mysql_mysqlconnector_cextensions 78
-test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_mysql_mysqlconnector_nocextensions 78
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_mysql_oursql_cextensions 77
 test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_mysql_oursql_nocextensions 77
 test.aaa_profiling.test_compiler.CompileTest.test_insert 3.3_oracle_cx_oracle_nocextensions 76
@@ -41,8 +41,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_insert 3.4_sqlite_pysqlite_noc
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_select
 
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.6_sqlite_pysqlite_nocextensions 141
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_mysql_mysqlconnector_cextensions 145
-test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_mysql_mysqlconnector_nocextensions 145
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_mysql_mysqldb_cextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_mysql_mysqldb_nocextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_mysql_oursql_cextensions 145
@@ -52,8 +52,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_postgresql_psycopg2
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_postgresql_psycopg2_nocextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_sqlite_pysqlite_cextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_select 2.7_sqlite_pysqlite_nocextensions 151
-test.aaa_profiling.test_compiler.CompileTest.test_select 3.3_mysql_mysqlconnector_cextensions 160
-test.aaa_profiling.test_compiler.CompileTest.test_select 3.3_mysql_mysqlconnector_nocextensions 160
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_select 3.3_mysql_oursql_cextensions 163
 test.aaa_profiling.test_compiler.CompileTest.test_select 3.3_mysql_oursql_nocextensions 163
 test.aaa_profiling.test_compiler.CompileTest.test_select 3.3_postgresql_psycopg2_cextensions 163
@@ -65,8 +65,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_select 3.4_sqlite_pysqlite_noc
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_select_labels
 
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.6_sqlite_pysqlite_nocextensions 175
-test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_mysql_mysqlconnector_cextensions 179
-test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_mysql_mysqlconnector_nocextensions 179
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_mysql_mysqldb_cextensions 185
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_mysql_mysqldb_nocextensions 185
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_mysql_oursql_cextensions 179
@@ -76,8 +76,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_postgresql_p
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_postgresql_psycopg2_nocextensions 185
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_sqlite_pysqlite_cextensions 185
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 2.7_sqlite_pysqlite_nocextensions 185
-test.aaa_profiling.test_compiler.CompileTest.test_select_labels 3.3_mysql_mysqlconnector_cextensions 194
-test.aaa_profiling.test_compiler.CompileTest.test_select_labels 3.3_mysql_mysqlconnector_nocextensions 194
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 3.3_mysql_oursql_cextensions 196
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 3.3_mysql_oursql_nocextensions 196
 test.aaa_profiling.test_compiler.CompileTest.test_select_labels 3.3_postgresql_psycopg2_cextensions 196
@@ -89,8 +89,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_select_labels 3.4_sqlite_pysql
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_update
 
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.6_sqlite_pysqlite_nocextensions 75
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqlconnector_cextensions 78
-test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqlconnector_nocextensions 78
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqldb_cextensions 75
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_mysqldb_nocextensions 75
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_mysql_oursql_cextensions 76
@@ -100,8 +100,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_postgresql_psycopg2
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_postgresql_psycopg2_nocextensions 75
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_sqlite_pysqlite_cextensions 75
 test.aaa_profiling.test_compiler.CompileTest.test_update 2.7_sqlite_pysqlite_nocextensions 75
-test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_mysql_mysqlconnector_cextensions 81
-test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_mysql_mysqlconnector_nocextensions 81
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_mysql_oursql_cextensions 80
 test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_mysql_oursql_nocextensions 80
 test.aaa_profiling.test_compiler.CompileTest.test_update 3.3_postgresql_psycopg2_cextensions 80
@@ -112,8 +112,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_update 3.4_sqlite_pysqlite_noc
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause
 
-test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_mysql_mysqlconnector_cextensions 147
-test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_mysql_mysqlconnector_nocextensions 147
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_mysql_mysqldb_cextensions 149
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_mysql_mysqldb_nocextensions 149
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_mysql_oursql_cextensions 147
@@ -123,8 +123,8 @@ test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_postgre
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_postgresql_psycopg2_nocextensions 149
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_sqlite_pysqlite_cextensions 149
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 2.7_sqlite_pysqlite_nocextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_mysql_mysqlconnector_cextensions 149
-test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_mysql_mysqlconnector_nocextensions 149
+
+
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_mysql_oursql_cextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_mysql_oursql_nocextensions 151
 test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.3_postgresql_psycopg2_cextensions 151
@@ -135,16 +135,16 @@ test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause 3.4_sqlite_
 
 # TEST: test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set
 
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_mysql_mysqlconnector_cextensions 4265
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_mysql_mysqlconnector_nocextensions 4265
+
+
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_mysql_mysqldb_cextensions 4265
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_mysql_mysqldb_nocextensions 4265
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_postgresql_psycopg2_cextensions 4265
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_postgresql_psycopg2_nocextensions 4265
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_sqlite_pysqlite_cextensions 4265
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 2.7_sqlite_pysqlite_nocextensions 4265
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 3.3_mysql_mysqlconnector_cextensions 4266
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 3.3_mysql_mysqlconnector_nocextensions 4266
+
+
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 3.3_postgresql_psycopg2_nocextensions 4266
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 3.3_sqlite_pysqlite_cextensions 4266
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 3.3_sqlite_pysqlite_nocextensions 4266
@@ -152,16 +152,16 @@ test.aaa_profiling.test_orm.AttributeOverheadTest.test_attribute_set 3.4_sqlite_
 
 # TEST: test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove
 
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_mysql_mysqlconnector_cextensions 6525
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_mysql_mysqlconnector_nocextensions 6525
+
+
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_mysql_mysqldb_cextensions 6525
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_mysql_mysqldb_nocextensions 6525
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_postgresql_psycopg2_cextensions 6525
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_postgresql_psycopg2_nocextensions 6525
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_sqlite_pysqlite_cextensions 6525
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 2.7_sqlite_pysqlite_nocextensions 6525
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 3.3_mysql_mysqlconnector_cextensions 6527
-test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 3.3_mysql_mysqlconnector_nocextensions 6527
+
+
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 3.3_postgresql_psycopg2_nocextensions 6527
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 3.3_sqlite_pysqlite_cextensions 6527
 test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 3.3_sqlite_pysqlite_nocextensions 6527
@@ -169,16 +169,16 @@ test.aaa_profiling.test_orm.AttributeOverheadTest.test_collection_append_remove 
 
 # TEST: test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline
 
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqlconnector_cextensions 100535
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqlconnector_nocextensions 120756
+
+
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_cextensions 30052
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_mysql_mysqldb_nocextensions 39069
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_postgresql_psycopg2_cextensions 42032
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_postgresql_psycopg2_nocextensions 51049
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_cextensions 30008
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_nocextensions 39025
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_mysql_mysqlconnector_cextensions 111677
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_mysql_mysqlconnector_nocextensions 120680
+
+
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_postgresql_psycopg2_cextensions 32141
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_postgresql_psycopg2_nocextensions 41144
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_sqlite_pysqlite_cextensions 31190
@@ -187,16 +187,16 @@ test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.4_sqlite_pysqlite_n
 
 # TEST: test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols
 
-test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_mysql_mysqlconnector_cextensions 57312
-test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_mysql_mysqlconnector_nocextensions 60317
+
+
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_mysql_mysqldb_cextensions 29994
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_mysql_mysqldb_nocextensions 32867
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_postgresql_psycopg2_cextensions 29830
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_postgresql_psycopg2_nocextensions 32835
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_sqlite_pysqlite_cextensions 29812
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_sqlite_pysqlite_nocextensions 32817
-test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_mysql_mysqlconnector_cextensions 57311
-test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_mysql_mysqlconnector_nocextensions 60314
+
+
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_postgresql_psycopg2_cextensions 31858
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_postgresql_psycopg2_nocextensions 34861
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_sqlite_pysqlite_cextensions 30960
@@ -206,8 +206,8 @@ test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.4_sqlite_pys
 # TEST: test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity
 
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 2.6_sqlite_pysqlite_nocextensions 17987
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 2.7_mysql_mysqlconnector_cextensions 17987
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 2.7_mysql_mysqlconnector_nocextensions 17987
+
+
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 2.7_mysql_mysqldb_cextensions 17987
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 2.7_mysql_mysqldb_nocextensions 17987
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 2.7_oracle_cx_oracle_nocextensions 17987
@@ -217,8 +217,8 @@ test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 2.7_sqlite_pysqlite_nocextensions 17987
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 3.2_postgresql_psycopg2_nocextensions 18987
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 3.2_sqlite_pysqlite_nocextensions 18987
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 3.3_mysql_mysqlconnector_cextensions 18987
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 3.3_mysql_mysqlconnector_nocextensions 18987
+
+
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 3.3_oracle_cx_oracle_nocextensions 18987
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 3.3_postgresql_psycopg2_cextensions 18987
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity 3.3_postgresql_psycopg2_nocextensions 18987
@@ -229,8 +229,8 @@ test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_
 # TEST: test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity
 
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 2.6_sqlite_pysqlite_nocextensions 154319
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 2.7_mysql_mysqlconnector_cextensions 206357
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 2.7_mysql_mysqlconnector_nocextensions 209107
+
+
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 2.7_mysql_mysqldb_cextensions 124069
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 2.7_mysql_mysqldb_nocextensions 126819
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 2.7_oracle_cx_oracle_nocextensions 128319
@@ -240,8 +240,8 @@ test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 2.7_sqlite_pysqlite_nocextensions 154319
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 3.2_postgresql_psycopg2_nocextensions 121790
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 3.2_sqlite_pysqlite_nocextensions 121822
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 3.3_mysql_mysqlconnector_cextensions 202862
-test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 3.3_mysql_mysqlconnector_nocextensions 204612
+
+
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 3.3_oracle_cx_oracle_nocextensions 130792
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 3.3_postgresql_psycopg2_cextensions 126077
 test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_no_identity 3.3_postgresql_psycopg2_nocextensions 121822
@@ -252,8 +252,8 @@ test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_
 # TEST: test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks
 
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.6_sqlite_pysqlite_nocextensions 21744
-test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.7_mysql_mysqlconnector_cextensions 25503
-test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.7_mysql_mysqlconnector_nocextensions 25763
+
+
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.7_mysql_mysqldb_cextensions 19838
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.7_mysql_mysqldb_nocextensions 20098
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.7_oracle_cx_oracle_nocextensions 20152
@@ -262,8 +262,7 @@ test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.7_sqlite_pysqlite_cextensions 21530
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 2.7_sqlite_pysqlite_nocextensions 21790
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.2_postgresql_psycopg2_nocextensions 20424
-test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.3_mysql_mysqlconnector_cextensions 25667
-test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.3_mysql_mysqlconnector_nocextensions 25907
+
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.3_oracle_cx_oracle_nocextensions 21244
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.3_postgresql_psycopg2_cextensions 20268
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.3_postgresql_psycopg2_nocextensions 20344
@@ -274,8 +273,8 @@ test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.
 # TEST: test.aaa_profiling.test_orm.MergeTest.test_merge_load
 
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.6_sqlite_pysqlite_nocextensions 1521
-test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqlconnector_cextensions 2271
-test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqlconnector_nocextensions 2478
+
+
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqldb_cextensions 1388
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_mysql_mysqldb_nocextensions 1413
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_oracle_cx_oracle_nocextensions 1349
@@ -284,8 +283,8 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_postgresql_psycopg2_no
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_sqlite_pysqlite_cextensions 1496
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 2.7_sqlite_pysqlite_nocextensions 1521
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.2_postgresql_psycopg2_nocextensions 1332
-test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.3_mysql_mysqlconnector_cextensions 2227
-test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.3_mysql_mysqlconnector_nocextensions 2242
+
+
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.3_oracle_cx_oracle_nocextensions 1366
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.3_postgresql_psycopg2_cextensions 1358
 test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.3_postgresql_psycopg2_nocextensions 1357
@@ -296,8 +295,8 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.4_sqlite_pysqlite_nocext
 # TEST: test.aaa_profiling.test_orm.MergeTest.test_merge_no_load
 
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.6_sqlite_pysqlite_nocextensions 122,18
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqlconnector_cextensions 120,19
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqlconnector_nocextensions 120,19
+
+
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqldb_cextensions 122,18
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqldb_nocextensions 122,18
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_oracle_cx_oracle_nocextensions 122,18
@@ -307,8 +306,8 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_cex
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_nocextensions 122,18
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.2_postgresql_psycopg2_nocextensions 127,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.2_sqlite_pysqlite_nocextensions 127,19
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_mysql_mysqlconnector_cextensions 132,20
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_mysql_mysqlconnector_nocextensions 132,20
+
+
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_oracle_cx_oracle_nocextensions 134,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_postgresql_psycopg2_cextensions 132,20
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_postgresql_psycopg2_nocextensions 127,19
@@ -319,8 +318,8 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_sqlite_pysqlite_noc
 # TEST: test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect
 
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.6_sqlite_pysqlite_nocextensions 87
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_mysql_mysqlconnector_cextensions 90
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_mysql_mysqlconnector_nocextensions 90
+
+
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_mysql_mysqldb_cextensions 87
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_mysql_mysqldb_nocextensions 87
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_oracle_cx_oracle_nocextensions 87
@@ -330,8 +329,8 @@ test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_sqlite_pysqlit
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_sqlite_pysqlite_nocextensions 87
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.2_postgresql_psycopg2_nocextensions 75
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.2_sqlite_pysqlite_nocextensions 75
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.3_mysql_mysqlconnector_cextensions 77
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.3_mysql_mysqlconnector_nocextensions 77
+
+
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.3_oracle_cx_oracle_nocextensions 74
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.3_postgresql_psycopg2_cextensions 74
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.3_postgresql_psycopg2_nocextensions 74
@@ -342,8 +341,8 @@ test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 3.4_sqlite_pysqlit
 # TEST: test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect
 
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.6_sqlite_pysqlite_nocextensions 29
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.7_mysql_mysqlconnector_cextensions 30
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.7_mysql_mysqlconnector_nocextensions 30
+
+
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.7_mysql_mysqldb_cextensions 29
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.7_mysql_mysqldb_nocextensions 29
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.7_oracle_cx_oracle_nocextensions 29
@@ -353,8 +352,8 @@ test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.7_sqlite_pysqli
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 2.7_sqlite_pysqlite_nocextensions 29
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.2_postgresql_psycopg2_nocextensions 23
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.2_sqlite_pysqlite_nocextensions 23
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.3_mysql_mysqlconnector_cextensions 23
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.3_mysql_mysqlconnector_nocextensions 23
+
+
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.3_oracle_cx_oracle_nocextensions 22
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.3_postgresql_psycopg2_cextensions 23
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.3_postgresql_psycopg2_nocextensions 22
@@ -365,8 +364,8 @@ test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect 3.4_sqlite_pysqli
 # TEST: test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect
 
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.6_sqlite_pysqlite_nocextensions 7
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.7_mysql_mysqlconnector_cextensions 7
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.7_mysql_mysqlconnector_nocextensions 7
+
+
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.7_mysql_mysqldb_cextensions 7
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.7_mysql_mysqldb_nocextensions 7
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.7_oracle_cx_oracle_nocextensions 7
@@ -376,8 +375,8 @@ test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.7_sq
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 2.7_sqlite_pysqlite_nocextensions 7
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.2_postgresql_psycopg2_nocextensions 8
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.2_sqlite_pysqlite_nocextensions 8
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.3_mysql_mysqlconnector_cextensions 8
-test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.3_mysql_mysqlconnector_nocextensions 8
+
+
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.3_oracle_cx_oracle_nocextensions 8
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.3_postgresql_psycopg2_cextensions 8
 test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.3_postgresql_psycopg2_nocextensions 8
@@ -388,8 +387,8 @@ test.aaa_profiling.test_pool.QueuePoolTest.test_second_samethread_connect 3.4_sq
 # TEST: test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute
 
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.6_sqlite_pysqlite_nocextensions 43
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_mysqlconnector_cextensions 42
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_mysqlconnector_nocextensions 44
+
+
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_mysqldb_cextensions 41
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_mysqldb_nocextensions 43
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_oursql_cextensions 42
@@ -401,8 +400,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_sqlite_pysqlite_nocextensions 43
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.2_postgresql_psycopg2_nocextensions 41
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.2_sqlite_pysqlite_nocextensions 41
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.3_mysql_mysqlconnector_cextensions 42
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.3_mysql_mysqlconnector_nocextensions 42
+
+
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.3_mysql_oursql_cextensions 42
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.3_mysql_oursql_nocextensions 42
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.3_oracle_cx_oracle_nocextensions 41
@@ -415,8 +414,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 
 # TEST: test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute
 
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.6_sqlite_pysqlite_nocextensions 73
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_mysqlconnector_cextensions 77
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_mysqlconnector_nocextensions 79
+
+
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_mysqldb_cextensions 77
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_mysqldb_nocextensions 79
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_oursql_cextensions 77
@@ -428,8 +427,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_sqlite_pysqlite_nocextensions 79
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.2_postgresql_psycopg2_nocextensions 71
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.2_sqlite_pysqlite_nocextensions 71
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.3_mysql_mysqlconnector_cextensions 77
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.3_mysql_mysqlconnector_nocextensions 77
+
+
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.3_mysql_oursql_cextensions 77
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.3_mysql_oursql_nocextensions 77
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.3_oracle_cx_oracle_nocextensions 71
@@ -442,8 +441,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.4_
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.6_sqlite_pysqlite_nocextensions 14
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqlconnector_cextensions 14
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqlconnector_nocextensions 14
+
+
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqldb_cextensions 14
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqldb_nocextensions 14
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_oursql_cextensions 14
@@ -455,8 +454,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_sqlite_pysqlite_nocextensions 14
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.2_postgresql_psycopg2_nocextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.2_sqlite_pysqlite_nocextensions 15
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.3_mysql_mysqlconnector_cextensions 15
-test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.3_mysql_mysqlconnector_nocextensions 15
+
+
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.3_mysql_oursql_cextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.3_mysql_oursql_nocextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.3_oracle_cx_oracle_nocextensions 15
@@ -469,8 +468,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.4
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_string
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.6_sqlite_pysqlite_nocextensions 15447
-test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqlconnector_cextensions 92960
-test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqlconnector_nocextensions 107978
+
+
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_cextensions 512
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_nocextensions 15505
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_oursql_cextensions 20479
@@ -482,8 +481,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_sqlite_pysqlite_
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_sqlite_pysqlite_nocextensions 15447
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.2_postgresql_psycopg2_nocextensions 14459
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.2_sqlite_pysqlite_nocextensions 14430
-test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.3_mysql_mysqlconnector_cextensions 109145
-test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.3_mysql_mysqlconnector_nocextensions 123145
+
+
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.3_mysql_oursql_cextensions 478
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.3_mysql_oursql_nocextensions 14478
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.3_oracle_cx_oracle_nocextensions 14548
@@ -496,8 +495,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.4_sqlite_pysqlite_
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_unicode
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.6_sqlite_pysqlite_nocextensions 15447
-test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqlconnector_cextensions 92960
-test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqlconnector_nocextensions 107978
+
+
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_cextensions 512
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_nocextensions 45505
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_oursql_cextensions 20479
@@ -509,8 +508,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_sqlite_pysqlite
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_sqlite_pysqlite_nocextensions 15447
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.2_postgresql_psycopg2_nocextensions 14459
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.2_sqlite_pysqlite_nocextensions 14430
-test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.3_mysql_mysqlconnector_cextensions 109145
-test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.3_mysql_mysqlconnector_nocextensions 123145
+
+
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.3_mysql_oursql_cextensions 478
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.3_mysql_oursql_nocextensions 14478
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.3_oracle_cx_oracle_nocextensions 14548
