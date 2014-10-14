@@ -1403,14 +1403,19 @@ class SessionInterface(fixtures.TestBase):
         eq_(watchdog, instance_methods,
             watchdog.symmetric_difference(instance_methods))
 
-    def _test_class_guards(self, user_arg):
+    def _test_class_guards(self, user_arg, is_class=True):
         watchdog = set()
 
         def raises_(method, *args, **kw):
             watchdog.add(method)
             callable_ = getattr(create_session(), method)
-            assert_raises(sa.orm.exc.UnmappedClassError,
-                              callable_, *args, **kw)
+            if is_class:
+                assert_raises(
+                    sa.orm.exc.UnmappedClassError,
+                    callable_, *args, **kw)
+            else:
+                assert_raises(
+                    sa.exc.NoInspectionAvailable, callable_, *args, **kw)
 
         raises_('connection', mapper=user_arg)
 
@@ -1433,7 +1438,7 @@ class SessionInterface(fixtures.TestBase):
     def test_unmapped_primitives(self):
         for prim in ('doh', 123, ('t', 'u', 'p', 'l', 'e')):
             self._test_instance_guards(prim)
-            self._test_class_guards(prim)
+            self._test_class_guards(prim, is_class=False)
 
     def test_unmapped_class_for_instance(self):
         class Unmapped(object):
@@ -1457,7 +1462,7 @@ class SessionInterface(fixtures.TestBase):
         self._map_it(Mapped)
 
         self._test_instance_guards(early)
-        self._test_class_guards(early)
+        self._test_class_guards(early, is_class=False)
 
 
 class TLTransactionTest(fixtures.MappedTest):

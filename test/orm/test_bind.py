@@ -1,13 +1,14 @@
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy import MetaData, Integer
+from sqlalchemy import MetaData, Integer, ForeignKey
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import mapper, create_session
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, eq_, engines
+from sqlalchemy.testing import fixtures, eq_, engines, is_
 from sqlalchemy.orm import relationship, Session, backref, sessionmaker
 from test.orm import _fixtures
+from sqlalchemy.testing.mock import Mock
 
 
 class BindIntegrationTest(_fixtures.FixtureTest):
@@ -249,3 +250,218 @@ class SessionBindTest(fixtures.MappedTest):
             ('Could not locate a bind configured on Mapper|Foo|test_table '
              'or this Session'),
             sess.flush)
+
+
+class GetBindTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'base_table', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        Table(
+            'w_mixin_table', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        Table(
+            'joined_sub_table', metadata,
+            Column('id', ForeignKey('base_table.id'), primary_key=True)
+        )
+        Table(
+            'concrete_sub_table', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class MixinOne(cls.Basic):
+            pass
+
+        class BaseClass(cls.Basic):
+            pass
+
+        class ClassWMixin(MixinOne, cls.Basic):
+            pass
+
+        class JoinedSubClass(BaseClass):
+            pass
+
+        class ConcreteSubClass(BaseClass):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.ClassWMixin, cls.tables.w_mixin_table)
+        mapper(cls.classes.BaseClass, cls.tables.base_table)
+        mapper(
+            cls.classes.JoinedSubClass,
+            cls.tables.joined_sub_table, inherits=cls.classes.BaseClass)
+        mapper(
+            cls.classes.ConcreteSubClass,
+            cls.tables.concrete_sub_table, inherits=cls.classes.BaseClass,
+            concrete=True)
+
+    def _fixture(self, binds):
+        return Session(binds=binds)
+
+    def test_fallback_table_metadata(self):
+        session = self._fixture({})
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            testing.db
+        )
+
+    def test_bind_base_table_base_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({
+            self.tables.base_table: base_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            base_class_bind
+        )
+
+    def test_bind_base_table_joined_sub_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({
+            self.tables.base_table: base_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            base_class_bind
+        )
+        is_(
+            session.get_bind(self.classes.JoinedSubClass),
+            base_class_bind
+        )
+
+    def test_bind_joined_sub_table_joined_sub_class(self):
+        base_class_bind = Mock(name='base')
+        joined_class_bind = Mock(name='joined')
+        session = self._fixture({
+            self.tables.base_table: base_class_bind,
+            self.tables.joined_sub_table: joined_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            base_class_bind
+        )
+        # joined table inheritance has to query based on the base
+        # table, so this is what we expect
+        is_(
+            session.get_bind(self.classes.JoinedSubClass),
+            base_class_bind
+        )
+
+    def test_bind_base_table_concrete_sub_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({
+            self.tables.base_table: base_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.ConcreteSubClass),
+            testing.db
+        )
+
+    def test_bind_sub_table_concrete_sub_class(self):
+        base_class_bind = Mock(name='base')
+        concrete_sub_bind = Mock(name='concrete')
+
+        session = self._fixture({
+            self.tables.base_table: base_class_bind,
+            self.tables.concrete_sub_table: concrete_sub_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            base_class_bind
+        )
+        is_(
+            session.get_bind(self.classes.ConcreteSubClass),
+            concrete_sub_bind
+        )
+
+    def test_bind_base_class_base_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({
+            self.classes.BaseClass: base_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            base_class_bind
+        )
+
+    def test_bind_mixin_class_simple_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({
+            self.classes.MixinOne: base_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.ClassWMixin),
+            base_class_bind
+        )
+
+    def test_bind_base_class_joined_sub_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({
+            self.classes.BaseClass: base_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.JoinedSubClass),
+            base_class_bind
+        )
+
+    def test_bind_joined_sub_class_joined_sub_class(self):
+        base_class_bind = Mock(name='base')
+        joined_class_bind = Mock(name='joined')
+        session = self._fixture({
+            self.classes.BaseClass: base_class_bind,
+            self.classes.JoinedSubClass: joined_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            base_class_bind
+        )
+        is_(
+            session.get_bind(self.classes.JoinedSubClass),
+            joined_class_bind
+        )
+
+    def test_bind_base_class_concrete_sub_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({
+            self.classes.BaseClass: base_class_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.ConcreteSubClass),
+            base_class_bind
+        )
+
+    def test_bind_sub_class_concrete_sub_class(self):
+        base_class_bind = Mock(name='base')
+        concrete_sub_bind = Mock(name='concrete')
+
+        session = self._fixture({
+            self.classes.BaseClass: base_class_bind,
+            self.classes.ConcreteSubClass: concrete_sub_bind
+        })
+
+        is_(
+            session.get_bind(self.classes.BaseClass),
+            base_class_bind
+        )
+        is_(
+            session.get_bind(self.classes.ConcreteSubClass),
+            concrete_sub_bind
+        )
+
+

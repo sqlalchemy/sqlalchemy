@@ -468,6 +468,48 @@ object totally smokes both namedtuple and KeyedTuple::
 
 :ticket:`3176`
 
+.. _bug_3035:
+
+Session.get_bind() handles a wider variety of inheritance scenarios
+-------------------------------------------------------------------
+
+The :meth:`.Session.get_bind` method is invoked whenever a query or unit
+of work flush process seeks to locate the database engine that corresponds
+to a particular class.   The method has been improved to handle a variety
+of inheritance-oriented scenarios, including:
+
+* Binding to a Mixin or Abstract Class::
+
+        class MyClass(SomeMixin, Base):
+            __tablename__ = 'my_table'
+            # ...
+
+        session = Session(binds={SomeMixin: some_engine})
+
+
+* Binding to inherited concrete subclasses individually based on table::
+
+        class BaseClass(Base):
+            __tablename__ = 'base'
+
+            # ...
+
+        class ConcreteSubClass(BaseClass):
+            __tablename__ = 'concrete'
+
+            # ...
+
+            __mapper_args__ = {'concrete': True}
+
+
+        session = Session(binds={
+            base_table: some_engine,
+            concrete_table: some_other_engine
+        })
+
+
+:ticket:`3035`
+
 .. _feature_3178:
 
 New systems to safely emit parameterized warnings

@@ -22,6 +22,19 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3035
+
+        Improvements to the mechanism used by :class:`.Session` to locate
+        "binds" (e.g. engines to use), such engines can be associated with
+        mixin classes, concrete subclasses, as well as a wider variety
+        of table metadata such as joined inheritance tables.
+
+        .. seealso::
+
+            :ref:`bug_3035`
+
+    .. change::
         :tags: bug, general
         :tickets: 3218
 
