@@ -22,6 +22,15 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, general
+        :tickets: 3218
+
+        The ``__module__`` attribute is now set for all those SQL and
+        ORM functions that are derived as "public factory" symbols, which
+        should assist with documentation tools being able to report on the
+        target module.
+
+    .. change::
         :tags: feature, sql
 
         :meth:`.Insert.from_select` now includes Python and SQL-expression

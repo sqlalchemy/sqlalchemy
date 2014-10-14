@@ -134,7 +134,8 @@ def public_factory(target, location):
         fn = target.__init__
         callable_ = target
         doc = "Construct a new :class:`.%s` object. \n\n"\
-            "This constructor is mirrored as a public API function; see :func:`~%s` "\
+            "This constructor is mirrored as a public API function; "\
+            "see :func:`~%s` "\
             "for a full usage and argument description." % (
                 target.__name__, location, )
     else:
@@ -155,6 +156,7 @@ def %(name)s(%(args)s):
     exec(code, env)
     decorated = env[location_name]
     decorated.__doc__ = fn.__doc__
+    decorated.__module__ = "sqlalchemy" + location.rsplit(".", 1)[0]
     if compat.py2k or hasattr(fn, '__func__'):
         fn.__func__.__doc__ = doc
     else:
