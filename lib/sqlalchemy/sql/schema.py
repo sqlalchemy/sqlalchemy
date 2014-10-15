@@ -1056,8 +1056,8 @@ class Column(SchemaItem, ColumnClause):
              conditionally rendered differently on different backends,
              consider custom compilation rules for :class:`.CreateColumn`.
 
-             ..versionadded:: 0.8.3 Added the ``system=True`` parameter to
-               :class:`.Column`.
+             .. versionadded:: 0.8.3 Added the ``system=True`` parameter to
+                :class:`.Column`.
 
         """
 
