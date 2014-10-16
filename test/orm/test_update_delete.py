@@ -1,9 +1,9 @@
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.testing import fixtures
-from sqlalchemy import Integer, String, ForeignKey, or_, and_, exc, \
+from sqlalchemy import Integer, String, ForeignKey, or_, exc, \
     select, func, Boolean, case, text
 from sqlalchemy.orm import mapper, relationship, backref, Session, \
-    joinedload, aliased
+    joinedload
 from sqlalchemy import testing
 
 from sqlalchemy.testing.schema import Table, Column
@@ -70,12 +70,14 @@ class UpdateDeleteTest(fixtures.MappedTest):
         ):
             assert_raises_message(
                 exc.InvalidRequestError,
-                r"Can't call Query.update\(\) when %s\(\) has been called" % mname,
+                r"Can't call Query.update\(\) when "
+                "%s\(\) has been called" % mname,
                 q.update,
                 {'name': 'ed'})
             assert_raises_message(
                 exc.InvalidRequestError,
-                r"Can't call Query.delete\(\) when %s\(\) has been called" % mname,
+                r"Can't call Query.delete\(\) when "
+                "%s\(\) has been called" % mname,
                 q.delete)
 
     def test_delete(self):
@@ -116,7 +118,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess = Session()
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).\
+        sess.query(User).filter(
+            or_(User.name == 'john', User.name == 'jill')).\
             delete(synchronize_session='evaluate')
         assert john not in sess and jill not in sess
         sess.rollback()
@@ -127,7 +130,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess = Session()
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).\
+        sess.query(User).filter(
+            or_(User.name == 'john', User.name == 'jill')).\
             delete(synchronize_session='fetch')
         assert john not in sess and jill not in sess
         sess.rollback()
@@ -139,7 +143,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess = Session()
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).\
+        sess.query(User).filter(
+            or_(User.name == 'john', User.name == 'jill')).\
             delete(synchronize_session=False)
 
         assert john in sess and jill in sess
@@ -152,7 +157,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess = Session()
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).\
+        sess.query(User).filter(
+            or_(User.name == 'john', User.name == 'jill')).\
             delete(synchronize_session='fetch')
 
         assert john not in sess and jill not in sess
@@ -393,7 +399,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess.query(User).filter_by(name='j2').\
             delete(
-            synchronize_session='evaluate')
+                synchronize_session='evaluate')
         assert john not in sess
 
     def test_autoflush_before_fetch_delete(self):
@@ -405,7 +411,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess.query(User).filter_by(name='j2').\
             delete(
-            synchronize_session='fetch')
+                synchronize_session='fetch')
         assert john not in sess
 
     def test_evaluate_before_update(self):
@@ -447,7 +453,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess.query(User).filter_by(name='john').\
             filter_by(age=25).\
             delete(
-            synchronize_session='evaluate')
+                synchronize_session='evaluate')
         assert john not in sess
 
     def test_fetch_before_delete(self):
@@ -460,7 +466,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess.query(User).filter_by(name='john').\
             filter_by(age=25).\
             delete(
-            synchronize_session='fetch')
+                synchronize_session='fetch')
         assert john not in sess
 
 
@@ -540,7 +546,8 @@ class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
         sess = Session()
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).options(joinedload(User.documents)).filter(User.age > 29).\
+        sess.query(User).options(
+            joinedload(User.documents)).filter(User.age > 29).\
             update({'age': User.age - 10}, synchronize_session='fetch')
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
@@ -632,8 +639,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             set([
                 (1, True), (2, None),
                 (3, None), (4, True),
-                (5, True), (6, None),
-            ])
+                (5, True), (6, None)])
         )
 
     def test_no_eval_against_multi_table_criteria(self):
@@ -666,8 +672,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             set([
                 (1, True), (2, None),
                 (3, None), (4, True),
-                (5, True), (6, None),
-            ])
+                (5, True), (6, None)])
         )
 
     @testing.requires.update_where_target_in_subquery
@@ -690,8 +695,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             set([
                 (1, True), (2, False),
                 (3, False), (4, True),
-                (5, True), (6, False),
-            ])
+                (5, True), (6, False)])
         )
 
     @testing.only_on('mysql', 'Multi table update')
@@ -706,8 +710,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             filter(User.id == 2).update({
                 Document.samename: 'd_samename',
                 User.samename: 'u_samename'
-            }, synchronize_session=False
-        )
+            }, synchronize_session=False)
         eq_(
             s.query(User.id, Document.samename, User.samename).
             filter(User.id == Document.user_id).
