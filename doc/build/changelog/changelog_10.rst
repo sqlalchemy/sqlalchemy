@@ -23,6 +23,22 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3228
+
+        The :meth:`.Query.update` method will now convert string key
+        names in the given dictionary of values into mapped attribute names
+        against the mapped class being updated.  Previously, string names
+        were taken in directly and passed to the core update statement without
+        any means to resolve against the mapped entity.  Support for synonyms
+        and hybrid attributes as the subject attributes of
+        :meth:`.Query.update` are also supported.
+
+        .. seealso::
+
+            :ref:`bug_3228`
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3035
 
         Improvements to the mechanism used by :class:`.Session` to locate

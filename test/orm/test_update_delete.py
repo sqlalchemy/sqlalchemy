@@ -1,9 +1,9 @@
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, or_, exc, \
-    select, func, Boolean, case, text
+    select, func, Boolean, case, text, column
 from sqlalchemy.orm import mapper, relationship, backref, Session, \
-    joinedload
+    joinedload, synonym
 from sqlalchemy import testing
 
 from sqlalchemy.testing.schema import Table, Column
@@ -18,7 +18,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
               Column('id', Integer, primary_key=True,
                      test_needs_autoincrement=True),
               Column('name', String(32)),
-              Column('age', Integer))
+              Column('age_int', Integer))
 
     @classmethod
     def setup_classes(cls):
@@ -30,10 +30,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
         users = cls.tables.users
 
         users.insert().execute([
-            dict(id=1, name='john', age=25),
-            dict(id=2, name='jack', age=47),
-            dict(id=3, name='jill', age=29),
-            dict(id=4, name='jane', age=37),
+            dict(id=1, name='john', age_int=25),
+            dict(id=2, name='jack', age_int=47),
+            dict(id=3, name='jill', age_int=29),
+            dict(id=4, name='jane', age_int=37),
         ])
 
     @classmethod
@@ -41,7 +41,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
         User = cls.classes.User
         users = cls.tables.users
 
-        mapper(User, users)
+        mapper(User, users, properties={
+            'age': users.c.age_int
+        })
 
     def test_illegal_eval(self):
         User = self.classes.User
@@ -79,6 +81,108 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 r"Can't call Query.delete\(\) when "
                 "%s\(\) has been called" % mname,
                 q.delete)
+
+    def test_evaluate_clauseelement(self):
+        User = self.classes.User
+
+        class Thing(object):
+            def __clause_element__(self):
+                return User.name.__clause_element__()
+
+        s = Session()
+        jill = s.query(User).get(3)
+        s.query(User).update(
+            {Thing(): 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.name, 'moonbeam')
+
+    def test_evaluate_invalid(self):
+        User = self.classes.User
+
+        class Thing(object):
+            def __clause_element__(self):
+                return 5
+
+        s = Session()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Invalid expression type: 5",
+            s.query(User).update, {Thing(): 'moonbeam'},
+            synchronize_session='evaluate'
+        )
+
+    def test_evaluate_unmapped_col(self):
+        User = self.classes.User
+
+        s = Session()
+        jill = s.query(User).get(3)
+        s.query(User).update(
+            {column('name'): 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.name, 'jill')
+        s.expire(jill)
+        eq_(jill.name, 'moonbeam')
+
+    def test_evaluate_synonym_string(self):
+        class Foo(object):
+            pass
+        mapper(Foo, self.tables.users, properties={
+            'uname': synonym("name", )
+        })
+
+        s = Session()
+        jill = s.query(Foo).get(3)
+        s.query(Foo).update(
+            {'uname': 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.uname, 'moonbeam')
+
+    def test_evaluate_synonym_attr(self):
+        class Foo(object):
+            pass
+        mapper(Foo, self.tables.users, properties={
+            'uname': synonym("name", )
+        })
+
+        s = Session()
+        jill = s.query(Foo).get(3)
+        s.query(Foo).update(
+            {Foo.uname: 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.uname, 'moonbeam')
+
+    def test_evaluate_double_synonym_attr(self):
+        class Foo(object):
+            pass
+        mapper(Foo, self.tables.users, properties={
+            'uname': synonym("name"),
+            'ufoo': synonym('uname')
+        })
+
+        s = Session()
+        jill = s.query(Foo).get(3)
+        s.query(Foo).update(
+            {Foo.ufoo: 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.ufoo, 'moonbeam')
+
+    def test_evaluate_hybrid_attr(self):
+        from sqlalchemy.ext.hybrid import hybrid_property
+
+        class Foo(object):
+            @hybrid_property
+            def uname(self):
+                return self.name
+
+        mapper(Foo, self.tables.users)
+
+        s = Session()
+        jill = s.query(Foo).get(3)
+        s.query(Foo).update(
+            {Foo.uname: 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.uname, 'moonbeam')
 
     def test_delete(self):
         User = self.classes.User
@@ -208,7 +312,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess.query(User).filter(User.age > 27).\
             update(
-                {users.c.age: User.age - 10}, synchronize_session='evaluate')
+                {users.c.age_int: User.age - 10},
+                synchronize_session='evaluate')
         eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 19, 27])
         eq_(sess.query(User.age).order_by(
             User.id).all(), list(zip([25, 27, 19, 27])))
@@ -219,12 +324,25 @@ class UpdateDeleteTest(fixtures.MappedTest):
         eq_(sess.query(User.age).order_by(
             User.id).all(), list(zip([15, 27, 19, 27])))
 
+    def test_update_against_table_col(self):
+        User, users = self.classes.User, self.tables.users
+
+        sess = Session()
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 47, 29, 37])
+        sess.query(User).filter(User.age > 27).\
+            update(
+                {users.c.age_int: User.age - 10},
+                synchronize_session='evaluate')
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 19, 27])
+
     def test_update_against_metadata(self):
         User, users = self.classes.User, self.tables.users
 
         sess = Session()
 
-        sess.query(users).update({users.c.age: 29}, synchronize_session=False)
+        sess.query(users).update(
+            {users.c.age_int: 29}, synchronize_session=False)
         eq_(sess.query(User.age).order_by(
             User.id).all(), list(zip([29, 29, 29, 29])))
 
@@ -235,7 +353,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
 
-        sess.query(User).filter(text('age > :x')).params(x=29).\
+        sess.query(User).filter(text('age_int > :x')).params(x=29).\
             update({'age': User.age - 10}, synchronize_session='fetch')
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])

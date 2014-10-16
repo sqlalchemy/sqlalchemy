@@ -510,6 +510,7 @@ of inheritance-oriented scenarios, including:
 
 :ticket:`3035`
 
+
 .. _feature_3178:
 
 New systems to safely emit parameterized warnings
@@ -792,6 +793,62 @@ would again fail; these have also been fixed.
 
 Behavioral Changes - ORM
 ========================
+
+.. _bug_3228:
+
+query.update() now resolves string names into mapped attribute names
+--------------------------------------------------------------------
+
+The documentation for :meth:`.Query.update` states that the given
+``values`` dictionary is "a dictionary with attributes names as keys",
+implying that these are mapped attribute names.  Unfortunately, the function
+was designed more in mind to receive attributes and SQL expressions and
+not as much strings; when strings
+were passed, these strings would be passed through straight to the core
+update statement without any resolution as far as how these names are
+represented on the mapped class, meaning the name would have to match that
+of a table column exactly, not how an attribute of that name was mapped
+onto the class.
+
+The string names are now resolved as attribute names in earnest::
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column('user_name', String(50))
+
+Above, the column ``user_name`` is mapped as ``name``.  Previously,
+a call to :meth:`.Query.update` that was passed strings would have to
+have been called as follows::
+
+    session.query(User).update({'user_name': 'moonbeam'})
+
+The given string is now resolved against the entity::
+
+    session.query(User).update({'name': 'moonbeam'})
+
+It is typically preferable to use the attribute directly, to avoid any
+ambiguity::
+
+    session.query(User).update({User.name: 'moonbeam'})
+
+The change also indicates that synonyms and hybrid attributes can be referred
+to by string name as well::
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column('user_name', String(50))
+
+        @hybrid_property
+        def fullname(self):
+            return self.name
+
+    session.query(User).update({'fullname': 'moonbeam'})
+
+:ticket:`3228`
 
 .. _migration_3061:
 
