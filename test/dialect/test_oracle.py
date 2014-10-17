@@ -104,6 +104,28 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             (2, 2, 2)
         )
 
+    def test_numeric_bind_round_trip(self):
+        eq_(
+            testing.db.scalar(
+                select([
+                    literal_column("2", type_=Integer()) +
+                    bindparam("2_1", value=2)])
+            ),
+            4
+        )
+
+    @testing.provide_metadata
+    def test_numeric_bind_in_crud(self):
+        t = Table(
+            "asfd", self.metadata,
+            Column("100K", Integer)
+        )
+        t.create()
+
+        testing.db.execute(t.insert(), {"100K": 10})
+        eq_(
+            testing.db.scalar(t.select()), 10
+        )
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "oracle" #oracle.dialect()

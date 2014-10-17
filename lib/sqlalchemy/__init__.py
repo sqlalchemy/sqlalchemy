@@ -25,6 +25,7 @@ from .sql import (
     extract,
     false,
     func,
+    funcfilter,
     insert,
     intersect,
     intersect_all,

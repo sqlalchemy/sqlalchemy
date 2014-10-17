@@ -641,14 +641,8 @@ class Session(_SessionClassMethods):
                 SessionExtension._adapt_listener(self, ext)
 
         if binds is not None:
-            for mapperortable, bind in binds.items():
-                insp = inspect(mapperortable)
-                if insp.is_selectable:
-                    self.bind_table(mapperortable, bind)
-                elif insp.is_mapper:
-                    self.bind_mapper(mapperortable, bind)
-                else:
-                    assert False
+            for key, bind in binds.items():
+                self._add_bind(key, bind)
 
         if not self.autocommit:
             self.begin()
@@ -1026,40 +1020,47 @@ class Session(_SessionClassMethods):
     # TODO: + crystallize + document resolution order
     #       vis. bind_mapper/bind_table
 
+    def _add_bind(self, key, bind):
+        try:
+            insp = inspect(key)
+        except sa_exc.NoInspectionAvailable:
+            if not isinstance(key, type):
+                raise exc.ArgumentError(
+                            "Not acceptable bind target: %s" %
+                            key)
+            else:
+                self.__binds[key] = bind
+        else:
+            if insp.is_selectable:
+                self.__binds[insp] = bind
+            elif insp.is_mapper:
+                self.__binds[insp.class_] = bind
+                for selectable in insp._all_tables:
+                    self.__binds[selectable] = bind
+            else:
+                raise exc.ArgumentError(
+                            "Not acceptable bind target: %s" %
+                            key)
+
     def bind_mapper(self, mapper, bind):
-        """Bind operations for a mapper to a Connectable.
+        """Associate a :class:`.Mapper` with a "bind", e.g. a :class:`.Engine`
+        or :class:`.Connection`.
 
-        mapper
-          A mapper instance or mapped class
-
-        bind
-          Any Connectable: a :class:`.Engine` or :class:`.Connection`.
-
-        All subsequent operations involving this mapper will use the given
-        `bind`.
+        The given mapper is added to a lookup used by the
+        :meth:`.Session.get_bind` method.
 
         """
-        if isinstance(mapper, type):
-            mapper = class_mapper(mapper)
-
-        self.__binds[mapper.base_mapper] = bind
-        for t in mapper._all_tables:
-            self.__binds[t] = bind
+        self._add_bind(mapper, bind)
 
     def bind_table(self, table, bind):
-        """Bind operations on a Table to a Connectable.
+        """Associate a :class:`.Table` with a "bind", e.g. a :class:`.Engine`
+        or :class:`.Connection`.
 
-        table
-          A :class:`.Table` instance
-
-        bind
-          Any Connectable: a :class:`.Engine` or :class:`.Connection`.
-
-        All subsequent operations involving this :class:`.Table` will use the
-        given `bind`.
+        The given mapper is added to a lookup used by the
+        :meth:`.Session.get_bind` method.
 
         """
-        self.__binds[table] = bind
+        self._add_bind(table, bind)
 
     def get_bind(self, mapper=None, clause=None):
         """Return a "bind" to which this :class:`.Session` is bound.
@@ -1113,6 +1114,7 @@ class Session(_SessionClassMethods):
             bound :class:`.MetaData`.
 
         """
+
         if mapper is clause is None:
             if self.bind:
                 return self.bind
@@ -1122,15 +1124,23 @@ class Session(_SessionClassMethods):
                     "Connection, and no context was provided to locate "
                     "a binding.")
 
-        c_mapper = mapper is not None and _class_to_mapper(mapper) or None
+        if mapper is not None:
+            try:
+                mapper = inspect(mapper)
+            except sa_exc.NoInspectionAvailable:
+                if isinstance(mapper, type):
+                    raise exc.UnmappedClassError(mapper)
+                else:
+                    raise
 
-        # manually bound?
         if self.__binds:
-            if c_mapper:
-                if c_mapper.base_mapper in self.__binds:
-                    return self.__binds[c_mapper.base_mapper]
-                elif c_mapper.mapped_table in self.__binds:
-                    return self.__binds[c_mapper.mapped_table]
+            if mapper:
+                for cls in mapper.class_.__mro__:
+                    if cls in self.__binds:
+                        return self.__binds[cls]
+                if clause is None:
+                    clause = mapper.mapped_table
+
             if clause is not None:
                 for t in sql_util.find_tables(clause, include_crud=True):
                     if t in self.__binds:
@@ -1142,12 +1152,12 @@ class Session(_SessionClassMethods):
         if isinstance(clause, sql.expression.ClauseElement) and clause.bind:
             return clause.bind
 
-        if c_mapper and c_mapper.mapped_table.bind:
-            return c_mapper.mapped_table.bind
+        if mapper and mapper.mapped_table.bind:
+            return mapper.mapped_table.bind
 
         context = []
         if mapper is not None:
-            context.append('mapper %s' % c_mapper)
+            context.append('mapper %s' % mapper)
         if clause is not None:
             context.append('SQL expression')
 

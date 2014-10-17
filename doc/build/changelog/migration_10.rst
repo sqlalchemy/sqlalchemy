@@ -25,6 +25,141 @@ potentially backwards-incompatible changes.
 New Features
 ============
 
+.. _feature_3150:
+
+Improvements to declarative mixins, ``@declared_attr`` and related features
+----------------------------------------------------------------------------
+
+The declarative system in conjunction with :class:`.declared_attr` has been
+overhauled to support new capabilities.
+
+A function decorated with :class:`.declared_attr` is now called only **after**
+any mixin-based column copies are generated.  This means the function can
+call upon mixin-established columns and will receive a reference to the correct
+:class:`.Column` object::
+
+    class HasFooBar(object):
+        foobar = Column(Integer)
+
+        @declared_attr
+        def foobar_prop(cls):
+            return column_property('foobar: ' + cls.foobar)
+
+    class SomeClass(HasFooBar, Base):
+        __tablename__ = 'some_table'
+        id = Column(Integer, primary_key=True)
+
+Above, ``SomeClass.foobar_prop`` will be invoked against ``SomeClass``,
+and ``SomeClass.foobar`` will be the final :class:`.Column` object that is
+to be mapped to ``SomeClass``, as opposed to the non-copied object present
+directly on ``HasFooBar``, even though the columns aren't mapped yet.
+
+The :class:`.declared_attr` function now **memoizes** the value
+that's returned on a per-class basis, so that repeated calls to the same
+attribute will return the same value.  We can alter the example to illustrate
+this::
+
+    class HasFooBar(object):
+        @declared_attr
+        def foobar(cls):
+            return Column(Integer)
+
+        @declared_attr
+        def foobar_prop(cls):
+            return column_property('foobar: ' + cls.foobar)
+
+    class SomeClass(HasFooBar, Base):
+        __tablename__ = 'some_table'
+        id = Column(Integer, primary_key=True)
+
+Previously, ``SomeClass`` would be mapped with one particular copy of
+the ``foobar`` column, but the ``foobar_prop`` by calling upon ``foobar``
+a second time would produce a different column.   The value of
+``SomeClass.foobar`` is now memoized during declarative setup time, so that
+even before the attribute is mapped by the mapper, the interim column
+value will remain consistent no matter how many times the
+:class:`.declared_attr` is called upon.
+
+The two behaviors above should help considerably with declarative definition
+of many types of mapper properties that derive from other attributes, where
+the :class:`.declared_attr` function is called upon from other
+:class:`.declared_attr` functions locally present before the class is
+actually mapped.
+
+For a pretty slim edge case where one wishes to build a declarative mixin
+that establishes distinct columns per subclass, a new modifier
+:attr:`.declared_attr.cascading` is added.  With this modifier, the
+decorated function will be invoked individually for each class in the
+mapped inheritance hierarchy.  While this is already the behavior for
+special attributes such as ``__table_args__`` and ``__mapper_args__``,
+for columns and other properties the behavior by default assumes that attribute
+is affixed to the base class only, and just inherited from subclasses.
+With :attr:`.declared_attr.cascading`, individual behaviors can be
+applied::
+
+    class HasSomeAttribute(object):
+        @declared_attr.cascading
+        def some_id(cls):
+            if has_inherited_table(cls):
+                return Column(ForeignKey('myclass.id'), primary_key=True)
+            else:
+                return Column(Integer, primary_key=True)
+
+            return Column('id', Integer, primary_key=True)
+
+    class MyClass(HasSomeAttribute, Base):
+        ""
+        # ...
+
+    class MySubClass(MyClass):
+        ""
+        # ...
+
+.. seealso::
+
+    :ref:`mixin_inheritance_columns`
+
+Finally, the :class:`.AbstractConcreteBase` class has been reworked
+so that a relationship or other mapper property can be set up inline
+on the abstract base::
+
+    from sqlalchemy import Column, Integer, ForeignKey
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.ext.declarative import (declarative_base, declared_attr,
+        AbstractConcreteBase)
+
+    Base = declarative_base()
+
+    class Something(Base):
+        __tablename__ = u'something'
+        id = Column(Integer, primary_key=True)
+
+
+    class Abstract(AbstractConcreteBase, Base):
+        id = Column(Integer, primary_key=True)
+
+        @declared_attr
+        def something_id(cls):
+            return Column(ForeignKey(Something.id))
+
+        @declared_attr
+        def something(cls):
+            return relationship(Something)
+
+
+    class Concrete(Abstract):
+        __tablename__ = u'cca'
+        __mapper_args__ = {'polymorphic_identity': 'cca', 'concrete': True}
+
+
+The above mapping will set up a table ``cca`` with both an ``id`` and
+a ``something_id`` column, and ``Concrete`` will also have a relationship
+``something``.  The new feature is that ``Abstract`` will also have an
+independently configured relationship ``something`` that builds against
+the polymorphic union of the base.
+
+:ticket:`3150` :ticket:`2670` :ticket:`3149` :ticket:`2952` :ticket:`3050`
+
 .. _feature_3034:
 
 Select/Query LIMIT / OFFSET may be specified as an arbitrary SQL expression
@@ -49,6 +184,170 @@ instead raise a :class:`.CompileError` on access.  A third-party dialect which
 wishes to support the new feature should now call upon the ``._limit_clause``
 and ``._offset_clause`` attributes to receive the full SQL expression, rather
 than the integer value.
+
+.. _change_2051:
+
+.. _feature_insert_from_select_defaults:
+
+INSERT FROM SELECT now includes Python and SQL-expression defaults
+-------------------------------------------------------------------
+
+:meth:`.Insert.from_select` now includes Python and SQL-expression defaults if
+otherwise unspecified; the limitation where non-server column defaults
+aren't included in an INSERT FROM SELECT is now lifted and these
+expressions are rendered as constants into the SELECT statement::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, select, func
+
+    m = MetaData()
+
+    t = Table(
+        't', m,
+        Column('x', Integer),
+        Column('y', Integer, default=func.somefunction()))
+
+    stmt = select([t.c.x])
+    print t.insert().from_select(['x'], stmt)
+
+Will render::
+
+    INSERT INTO t (x, y) SELECT t.x, somefunction() AS somefunction_1
+    FROM t
+
+The feature can be disabled using
+:paramref:`.Insert.from_select.include_defaults`.
+
+New Postgresql Table options
+-----------------------------
+
+Added support for PG table options TABLESPACE, ON COMMIT,
+WITH(OUT) OIDS, and INHERITS, when rendering DDL via
+the :class:`.Table` construct.
+
+.. seealso::
+
+    :ref:`postgresql_table_options`
+
+:ticket:`2051`
+
+.. _feature_get_enums:
+
+New get_enums() method with Postgresql Dialect
+----------------------------------------------
+
+The :func:`.inspect` method returns a :class:`.PGInspector` object in the
+case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
+method that returns information on all available ``ENUM`` types::
+
+    from sqlalchemy import inspect, create_engine
+
+    engine = create_engine("postgresql+psycopg2://host/dbname")
+    insp = inspect(engine)
+    print(insp.get_enums())
+
+.. seealso::
+
+    :meth:`.PGInspector.get_enums`
+
+.. _feature_2891:
+
+Postgresql Dialect reflects Materialized Views, Foreign Tables
+--------------------------------------------------------------
+
+Changes are as follows:
+
+* the :class:`Table` construct with ``autoload=True`` will now match a name
+  that exists in the database as a materialized view or foriegn table.
+
+* :meth:`.Inspector.get_view_names` will return plain and materialized view
+  names.
+
+* :meth:`.Inspector.get_table_names` does **not** change for Postgresql, it
+  continues to return only the names of plain tables.
+
+* A new method :meth:`.PGInspector.get_foreign_table_names` is added which
+  will return the names of tables that are specifically marked as "foreign"
+  in the Postgresql schema tables.
+
+The change to reflection involves adding ``'m'`` and ``'f'`` to the list
+of qualifiers we use when querying ``pg_class.relkind``, but this change
+is new in 1.0.0 to avoid any backwards-incompatible surprises for those
+running 0.9 in production.
+
+:ticket:`2891`
+
+.. _feature_gh134:
+
+Postgresql FILTER keyword
+-------------------------
+
+The SQL standard FILTER keyword for aggregate functions is now supported
+by Postgresql as of 9.4.  SQLAlchemy allows this using
+:meth:`.FunctionElement.filter`::
+
+    func.count(1).filter(True)
+
+.. seealso::
+
+    :meth:`.FunctionElement.filter`
+
+    :class:`.FunctionFilter`
+
+.. _feature_3184:
+
+UniqueConstraint is now part of the Table reflection process
+------------------------------------------------------------
+
+A :class:`.Table` object populated using ``autoload=True`` will now
+include :class:`.UniqueConstraint` constructs as well as
+:class:`.Index` constructs.  This logic has a few caveats for
+Postgresql and Mysql:
+
+Postgresql
+^^^^^^^^^^
+
+Postgresql has the behavior such that when a UNIQUE constraint is
+created, it implicitly creates a UNIQUE INDEX corresponding to that
+constraint as well. The :meth:`.Inspector.get_indexes` and the
+:meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return these entries distinctly, where
+:meth:`.Inspector.get_indexes` now features a token
+``duplicates_constraint`` within the index entry  indicating the
+corresponding constraint when detected.   However, when performing
+full table reflection using  ``Table(..., autoload=True)``, the
+:class:`.Index` construct is detected as being linked to the
+:class:`.UniqueConstraint`, and is **not** present within the
+:attr:`.Table.indexes` collection; only the :class:`.UniqueConstraint`
+will be present in the :attr:`.Table.constraints` collection.   This
+deduplication logic works by joining to the ``pg_constraint`` table
+when querying ``pg_index`` to see if the two constructs are linked.
+
+MySQL
+^^^^^
+
+MySQL does not have separate concepts for a UNIQUE INDEX and a UNIQUE
+constraint.  While it supports both syntaxes when creating tables and indexes,
+it does not store them any differently. The
+:meth:`.Inspector.get_indexes`
+and the :meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return an entry for a UNIQUE index in MySQL,
+where :meth:`.Inspector.get_unique_constraints` features a new token
+``duplicates_index`` within the constraint entry indicating that this is a
+dupe entry corresponding to that index.  However, when performing
+full table reflection using ``Table(..., autoload=True)``,
+the :class:`.UniqueConstraint` construct is
+**not** part of the fully reflected :class:`.Table` construct under any
+circumstances; this construct is always represented by a :class:`.Index`
+with the ``unique=True`` setting present in the :attr:`.Table.indexes`
+collection.
+
+.. seealso::
+
+    :ref:`postgresql_index_reflection`
+
+    :ref:`mysql_unique_constraints`
+
+:ticket:`3184`
 
 
 Behavioral Improvements
@@ -121,7 +420,6 @@ MacBookPro is 31 seconds on 0.9 and 26 seconds on 1.0, the extra time spent
 setting up very large memory buffers.
 
 
-
 .. _feature_3176:
 
 New KeyedTuple implementation dramatically faster
@@ -169,6 +467,49 @@ object totally smokes both namedtuple and KeyedTuple::
 
 
 :ticket:`3176`
+
+.. _bug_3035:
+
+Session.get_bind() handles a wider variety of inheritance scenarios
+-------------------------------------------------------------------
+
+The :meth:`.Session.get_bind` method is invoked whenever a query or unit
+of work flush process seeks to locate the database engine that corresponds
+to a particular class.   The method has been improved to handle a variety
+of inheritance-oriented scenarios, including:
+
+* Binding to a Mixin or Abstract Class::
+
+        class MyClass(SomeMixin, Base):
+            __tablename__ = 'my_table'
+            # ...
+
+        session = Session(binds={SomeMixin: some_engine})
+
+
+* Binding to inherited concrete subclasses individually based on table::
+
+        class BaseClass(Base):
+            __tablename__ = 'base'
+
+            # ...
+
+        class ConcreteSubClass(BaseClass):
+            __tablename__ = 'concrete'
+
+            # ...
+
+            __mapper_args__ = {'concrete': True}
+
+
+        session = Session(binds={
+            base_table: some_engine,
+            concrete_table: some_other_engine
+        })
+
+
+:ticket:`3035`
+
 
 .. _feature_3178:
 
@@ -307,140 +648,67 @@ Renders::
 
 :ticket:`3177`
 
-.. _feature_3150:
 
-Improvements to declarative mixins, ``@declared_attr`` and related features
-----------------------------------------------------------------------------
+.. _migration_3222:
 
-The declarative system in conjunction with :class:`.declared_attr` has been
-overhauled to support new capabilities.
 
-A function decorated with :class:`.declared_attr` is now called only **after**
-any mixin-based column copies are generated.  This means the function can
-call upon mixin-established columns and will receive a reference to the correct
-:class:`.Column` object::
+single-table-inheritance criteria added to all ON clauses unconditionally
+-------------------------------------------------------------------------
 
-    class HasFooBar(object):
-        foobar = Column(Integer)
+When joining to a single-table inheritance subclass target, the ORM always adds
+the "single table criteria" when joining on a relationship.  Given a
+mapping as::
 
-        @declared_attr
-        def foobar_prop(cls):
-            return column_property('foobar: ' + cls.foobar)
+    class Widget(Base):
+        __tablename__ = 'widget'
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
+        related_id = Column(ForeignKey('related.id'))
+        related = relationship("Related", backref="widget")
+        __mapper_args__ = {'polymorphic_on': type}
 
-    class SomeClass(HasFooBar, Base):
-        __tablename__ = 'some_table'
+
+    class FooWidget(Widget):
+        __mapper_args__ = {'polymorphic_identity': 'foo'}
+
+
+    class Related(Base):
+        __tablename__ = 'related'
         id = Column(Integer, primary_key=True)
 
-Above, ``SomeClass.foobar_prop`` will be invoked against ``SomeClass``,
-and ``SomeClass.foobar`` will be the final :class:`.Column` object that is
-to be mapped to ``SomeClass``, as opposed to the non-copied object present
-directly on ``HasFooBar``, even though the columns aren't mapped yet.
+It's been the behavior for quite some time that a JOIN on the relationship
+will render a "single inheritance" clause for the type::
 
-The :class:`.declared_attr` function now **memoizes** the value
-that's returned on a per-class basis, so that repeated calls to the same
-attribute will return the same value.  We can alter the example to illustrate
-this::
+    s.query(Related).join(FooWidget, Related.widget).all()
 
-    class HasFooBar(object):
-        @declared_attr
-        def foobar(cls):
-            return Column(Integer)
+SQL output::
 
-        @declared_attr
-        def foobar_prop(cls):
-            return column_property('foobar: ' + cls.foobar)
+    SELECT related.id AS related_id
+    FROM related JOIN widget ON related.id = widget.related_id AND widget.type IN (:type_1)
 
-    class SomeClass(HasFooBar, Base):
-        __tablename__ = 'some_table'
-        id = Column(Integer, primary_key=True)
+Above, because we joined to a subclass ``FooWidget``, :meth:`.Query.join`
+knew to add the ``AND widget.type IN ('foo')`` criteria to the ON clause.
 
-Previously, ``SomeClass`` would be mapped with one particular copy of
-the ``foobar`` column, but the ``foobar_prop`` by calling upon ``foobar``
-a second time would produce a different column.   The value of
-``SomeClass.foobar`` is now memoized during declarative setup time, so that
-even before the attribute is mapped by the mapper, the interim column
-value will remain consistent no matter how many times the
-:class:`.declared_attr` is called upon.
+The change here is that the ``AND widget.type IN()`` criteria is now appended
+to *any* ON clause, not just those generated from a relationship,
+including one that is explicitly stated::
 
-The two behaviors above should help considerably with declarative definition
-of many types of mapper properties that derive from other attributes, where
-the :class:`.declared_attr` function is called upon from other
-:class:`.declared_attr` functions locally present before the class is
-actually mapped.
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget, FooWidget.related_id == Related.id).all()
 
-For a pretty slim edge case where one wishes to build a declarative mixin
-that establishes distinct columns per subclass, a new modifier
-:attr:`.declared_attr.cascading` is added.  With this modifier, the
-decorated function will be invoked individually for each class in the
-mapped inheritance hierarchy.  While this is already the behavior for
-special attributes such as ``__table_args__`` and ``__mapper_args__``,
-for columns and other properties the behavior by default assumes that attribute
-is affixed to the base class only, and just inherited from subclasses.
-With :attr:`.declared_attr.cascading`, individual behaviors can be
-applied::
+As well as the "implicit" join when no ON clause of any kind is stated::
 
-    class HasSomeAttribute(object):
-        @declared_attr.cascading
-        def some_id(cls):
-            if has_inherited_table(cls):
-                return Column(ForeignKey('myclass.id'), primary_key=True)
-            else:
-                return Column(Integer, primary_key=True)
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget).all()
 
-            return Column('id', Integer, primary_key=True)
+Previously, the ON clause for these would not include the single-inheritance
+criteria.  Applications that are already adding this criteria to work around
+this will want to remove its explicit use, though it should continue to work
+fine if the criteria happens to be rendered twice in the meantime.
 
-    class MyClass(HasSomeAttribute, Base):
-        ""
-        # ...
-
-    class MySubClass(MyClass):
-        ""
-        # ...
-
-.. seealso::
-
-    :ref:`mixin_inheritance_columns`
-
-Finally, the :class:`.AbstractConcreteBase` class has been reworked
-so that a relationship or other mapper property can be set up inline
-on the abstract base::
-
-    from sqlalchemy import Column, Integer, ForeignKey
-    from sqlalchemy.orm import relationship
-    from sqlalchemy.ext.declarative import (declarative_base, declared_attr,
-        AbstractConcreteBase)
-
-    Base = declarative_base()
-
-    class Something(Base):
-        __tablename__ = u'something'
-        id = Column(Integer, primary_key=True)
-
-
-    class Abstract(AbstractConcreteBase, Base):
-        id = Column(Integer, primary_key=True)
-
-        @declared_attr
-        def something_id(cls):
-            return Column(ForeignKey(Something.id))
-
-        @declared_attr
-        def something(cls):
-            return relationship(Something)
-
-
-    class Concrete(Abstract):
-        __tablename__ = u'cca'
-        __mapper_args__ = {'polymorphic_identity': 'cca', 'concrete': True}
-
-
-The above mapping will set up a table ``cca`` with both an ``id`` and
-a ``something_id`` column, and ``Concrete`` will also have a relationship
-``something``.  The new feature is that ``Abstract`` will also have an
-independently configured relationship ``something`` that builds against
-the polymorphic union of the base.
-
-:ticket:`3150` :ticket:`2670` :ticket:`3149` :ticket:`2952` :ticket:`3050`
+:ticket:`3222`
 
 .. _bug_3188:
 
@@ -525,6 +793,62 @@ would again fail; these have also been fixed.
 
 Behavioral Changes - ORM
 ========================
+
+.. _bug_3228:
+
+query.update() now resolves string names into mapped attribute names
+--------------------------------------------------------------------
+
+The documentation for :meth:`.Query.update` states that the given
+``values`` dictionary is "a dictionary with attributes names as keys",
+implying that these are mapped attribute names.  Unfortunately, the function
+was designed more in mind to receive attributes and SQL expressions and
+not as much strings; when strings
+were passed, these strings would be passed through straight to the core
+update statement without any resolution as far as how these names are
+represented on the mapped class, meaning the name would have to match that
+of a table column exactly, not how an attribute of that name was mapped
+onto the class.
+
+The string names are now resolved as attribute names in earnest::
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column('user_name', String(50))
+
+Above, the column ``user_name`` is mapped as ``name``.  Previously,
+a call to :meth:`.Query.update` that was passed strings would have to
+have been called as follows::
+
+    session.query(User).update({'user_name': 'moonbeam'})
+
+The given string is now resolved against the entity::
+
+    session.query(User).update({'name': 'moonbeam'})
+
+It is typically preferable to use the attribute directly, to avoid any
+ambiguity::
+
+    session.query(User).update({User.name: 'moonbeam'})
+
+The change also indicates that synonyms and hybrid attributes can be referred
+to by string name as well::
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column('user_name', String(50))
+
+        @hybrid_property
+        def fullname(self):
+            return self.name
+
+    session.query(User).update({'fullname': 'moonbeam'})
+
+:ticket:`3228`
 
 .. _migration_3061:
 
@@ -964,67 +1288,6 @@ A :class:`.Table` can be set up for reflection by passing
 
 Dialect Changes
 ===============
-
-.. _change_2051:
-
-New Postgresql Table options
------------------------------
-
-Added support for PG table options TABLESPACE, ON COMMIT,
-WITH(OUT) OIDS, and INHERITS, when rendering DDL via
-the :class:`.Table` construct.
-
-.. seealso::
-
-    :ref:`postgresql_table_options`
-
-:ticket:`2051`
-
-.. _feature_get_enums:
-
-New get_enums() method with Postgresql Dialect
-----------------------------------------------
-
-The :func:`.inspect` method returns a :class:`.PGInspector` object in the
-case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
-method that returns information on all available ``ENUM`` types::
-
-    from sqlalchemy import inspect, create_engine
-
-    engine = create_engine("postgresql+psycopg2://host/dbname")
-    insp = inspect(engine)
-    print(insp.get_enums())
-
-.. seealso::
-
-    :meth:`.PGInspector.get_enums`
-
-.. _feature_2891:
-
-Postgresql Dialect reflects Materialized Views, Foreign Tables
---------------------------------------------------------------
-
-Changes are as follows:
-
-* the :class:`Table` construct with ``autoload=True`` will now match a name
-  that exists in the database as a materialized view or foriegn table.
-
-* :meth:`.Inspector.get_view_names` will return plain and materialized view
-  names.
-
-* :meth:`.Inspector.get_table_names` does **not** change for Postgresql, it
-  continues to return only the names of plain tables.
-
-* A new method :meth:`.PGInspector.get_foreign_table_names` is added which
-  will return the names of tables that are specifically marked as "foreign"
-  in the Postgresql schema tables.
-
-The change to reflection involves adding ``'m'`` and ``'f'`` to the list
-of qualifiers we use when querying ``pg_class.relkind``, but this change
-is new in 1.0.0 to avoid any backwards-incompatible surprises for those
-running 0.9 in production.
-
-:ticket:`2891`
 
 
 MySQL internal "no such table" exceptions not passed to event handlers

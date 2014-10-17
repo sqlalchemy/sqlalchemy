@@ -412,8 +412,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except:
-                metadata._remove_table(name, schema)
-                raise
+                with util.safe_reraise():
+                    metadata._remove_table(name, schema)
 
     @property
     @util.deprecated('0.9', 'Use ``table.schema.quote``')
@@ -1061,8 +1061,8 @@ class Column(SchemaItem, ColumnClause):
              conditionally rendered differently on different backends,
              consider custom compilation rules for :class:`.CreateColumn`.
 
-             ..versionadded:: 0.8.3 Added the ``system=True`` parameter to
-               :class:`.Column`.
+             .. versionadded:: 0.8.3 Added the ``system=True`` parameter to
+                :class:`.Column`.
 
         """
 

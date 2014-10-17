@@ -280,7 +280,9 @@ class DBAPIError(StatementError):
                  connection_invalidated=False):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
-        if isinstance(orig, (KeyboardInterrupt, SystemExit, DontWrapMixin)):
+        if (isinstance(orig, BaseException) and
+                not isinstance(orig, Exception)) or \
+                isinstance(orig, DontWrapMixin):
             return orig
 
         if orig is not None:
@@ -310,8 +312,6 @@ class DBAPIError(StatementError):
     def __init__(self, statement, params, orig, connection_invalidated=False):
         try:
             text = str(orig)
-        except (KeyboardInterrupt, SystemExit):
-            raise
         except Exception as e:
             text = 'Error in str() of DB-API-generated exception: ' + str(e)
         StatementError.__init__(

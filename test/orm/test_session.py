@@ -18,194 +18,6 @@ from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import event, ForeignKey
 
-class BindTest(_fixtures.FixtureTest):
-    run_inserts = None
-
-    def test_mapped_binds(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
-
-        # ensure tables are unbound
-        m2 = sa.MetaData()
-        users_unbound = users.tometadata(m2)
-        addresses_unbound = addresses.tometadata(m2)
-
-        mapper(Address, addresses_unbound)
-        mapper(User, users_unbound, properties={
-            'addresses': relationship(Address,
-                                 backref=backref("user", cascade="all"),
-                                 cascade="all")})
-
-        sess = Session(binds={User: self.metadata.bind,
-                                      Address: self.metadata.bind})
-
-        u1 = User(id=1, name='ed')
-        sess.add(u1)
-        eq_(sess.query(User).filter(User.id == 1).all(),
-            [User(id=1, name='ed')])
-
-        # test expression binding
-
-        sess.execute(users_unbound.insert(), params=dict(id=2,
-                     name='jack'))
-        eq_(sess.execute(users_unbound.select(users_unbound.c.id
-            == 2)).fetchall(), [(2, 'jack')])
-
-        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
-            [(2, 'jack')])
-
-        sess.execute(users_unbound.delete())
-        eq_(sess.execute(users_unbound.select()).fetchall(), [])
-
-        sess.close()
-
-    def test_table_binds(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
-
-        # ensure tables are unbound
-        m2 = sa.MetaData()
-        users_unbound = users.tometadata(m2)
-        addresses_unbound = addresses.tometadata(m2)
-
-        mapper(Address, addresses_unbound)
-        mapper(User, users_unbound, properties={
-            'addresses': relationship(Address,
-                                 backref=backref("user", cascade="all"),
-                                 cascade="all")})
-
-        Session = sessionmaker(binds={users_unbound: self.metadata.bind,
-                                      addresses_unbound: self.metadata.bind})
-        sess = Session()
-
-        u1 = User(id=1, name='ed')
-        sess.add(u1)
-        eq_(sess.query(User).filter(User.id == 1).all(),
-            [User(id=1, name='ed')])
-
-        sess.execute(users_unbound.insert(), params=dict(id=2, name='jack'))
-
-        eq_(sess.execute(users_unbound.select(users_unbound.c.id
-            == 2)).fetchall(), [(2, 'jack')])
-
-        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
-            [(2, 'jack')])
-
-        sess.execute(users_unbound.delete())
-        eq_(sess.execute(users_unbound.select()).fetchall(), [])
-
-        sess.close()
-
-    def test_bind_from_metadata(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-
-        session = create_session()
-        session.execute(users.insert(), dict(name='Johnny'))
-
-        assert len(session.query(User).filter_by(name='Johnny').all()) == 1
-
-        session.execute(users.delete())
-
-        assert len(session.query(User).filter_by(name='Johnny').all()) == 0
-        session.close()
-
-    def test_bind_arguments(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
-        mapper(User, users)
-        mapper(Address, addresses)
-
-        e1 = engines.testing_engine()
-        e2 = engines.testing_engine()
-        e3 = engines.testing_engine()
-
-        sess = Session(e3)
-        sess.bind_mapper(User, e1)
-        sess.bind_mapper(Address, e2)
-
-        assert sess.connection().engine is e3
-        assert sess.connection(bind=e1).engine is e1
-        assert sess.connection(mapper=Address, bind=e1).engine is e1
-        assert sess.connection(mapper=Address).engine is e2
-        assert sess.connection(clause=addresses.select()).engine is e2
-        assert sess.connection(mapper=User,
-                                clause=addresses.select()).engine is e1
-        assert sess.connection(mapper=User,
-                                clause=addresses.select(),
-                                bind=e2).engine is e2
-
-        sess.close()
-
-    @engines.close_open_connections
-    def test_bound_connection(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-        c = testing.db.connect()
-        sess = create_session(bind=c)
-        sess.begin()
-        transaction = sess.transaction
-        u = User(name='u1')
-        sess.add(u)
-        sess.flush()
-        assert transaction._connection_for_bind(testing.db) \
-            is transaction._connection_for_bind(c) is c
-
-        assert_raises_message(sa.exc.InvalidRequestError,
-                              'Session already has a Connection '
-                              'associated',
-                              transaction._connection_for_bind,
-                              testing.db.connect())
-        transaction.rollback()
-        assert len(sess.query(User).all()) == 0
-        sess.close()
-
-    def test_bound_connection_transactional(self):
-        User, users = self.classes.User, self.tables.users
-
-        mapper(User, users)
-        c = testing.db.connect()
-
-        sess = create_session(bind=c, autocommit=False)
-        u = User(name='u1')
-        sess.add(u)
-        sess.flush()
-        sess.close()
-        assert not c.in_transaction()
-        assert c.scalar("select count(1) from users") == 0
-
-        sess = create_session(bind=c, autocommit=False)
-        u = User(name='u2')
-        sess.add(u)
-        sess.flush()
-        sess.commit()
-        assert not c.in_transaction()
-        assert c.scalar("select count(1) from users") == 1
-        c.execute("delete from users")
-        assert c.scalar("select count(1) from users") == 0
-
-        c = testing.db.connect()
-
-        trans = c.begin()
-        sess = create_session(bind=c, autocommit=True)
-        u = User(name='u3')
-        sess.add(u)
-        sess.flush()
-        assert c.in_transaction()
-        trans.commit()
-        assert not c.in_transaction()
-        assert c.scalar("select count(1) from users") == 1
 
 class ExecutionTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1591,14 +1403,19 @@ class SessionInterface(fixtures.TestBase):
         eq_(watchdog, instance_methods,
             watchdog.symmetric_difference(instance_methods))
 
-    def _test_class_guards(self, user_arg):
+    def _test_class_guards(self, user_arg, is_class=True):
         watchdog = set()
 
         def raises_(method, *args, **kw):
             watchdog.add(method)
             callable_ = getattr(create_session(), method)
-            assert_raises(sa.orm.exc.UnmappedClassError,
-                              callable_, *args, **kw)
+            if is_class:
+                assert_raises(
+                    sa.orm.exc.UnmappedClassError,
+                    callable_, *args, **kw)
+            else:
+                assert_raises(
+                    sa.exc.NoInspectionAvailable, callable_, *args, **kw)
 
         raises_('connection', mapper=user_arg)
 
@@ -1621,7 +1438,7 @@ class SessionInterface(fixtures.TestBase):
     def test_unmapped_primitives(self):
         for prim in ('doh', 123, ('t', 'u', 'p', 'l', 'e')):
             self._test_instance_guards(prim)
-            self._test_class_guards(prim)
+            self._test_class_guards(prim, is_class=False)
 
     def test_unmapped_class_for_instance(self):
         class Unmapped(object):
@@ -1645,7 +1462,7 @@ class SessionInterface(fixtures.TestBase):
         self._map_it(Mapped)
 
         self._test_instance_guards(early)
-        self._test_class_guards(early)
+        self._test_class_guards(early, is_class=False)
 
 
 class TLTransactionTest(fixtures.MappedTest):

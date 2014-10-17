@@ -12,6 +12,74 @@
 
 .. changelog::
     :version: 0.9.8
+    :released: October 13, 2014
+
+    .. change::
+        :tags: bug, mysql, mysqlconnector
+        :versions: 1.0.0
+
+        Mysqlconnector as of version 2.0, probably as a side effect of
+        the  python 3 merge, now does not expect percent signs (e.g.
+        as used as the modulus operator and others) to be doubled,
+        even when using the "pyformat" bound parameter format (this
+        change is not documented by Mysqlconnector).  The dialect now
+        checks for py2k and for mysqlconnector less than version 2.0
+        when detecting if the modulus operator should be rendered as
+        ``%%`` or ``%``.
+
+    .. change::
+        :tags: bug, mysql, mysqlconnector
+        :versions: 1.0.0
+
+        Unicode SQL is now passed for MySQLconnector version 2.0 and above;
+        for Py2k and MySQL < 2.0, strings are encoded.
+
+
+    .. change::
+        :tags: bug, oracle
+        :versions: 1.0.0
+        :tickets: 2138
+
+        Fixed long-standing bug in Oracle dialect where bound parameter
+        names that started with numbers would not be quoted, as Oracle
+        doesn't like numerics in bound parameter names.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3195
+
+        Fixed bug where a fair number of SQL elements within
+        the sql package would fail to ``__repr__()`` successfully,
+        due to a missing ``description`` attribute that would then invoke
+        a recursion overflow when an internal AttributeError would then
+        re-invoke ``__repr__()``.
+
+    .. change::
+        :tags: bug, declarative, orm
+        :versions: 1.0.0
+        :tickets: 3185
+
+        Fixed "'NoneType' object has no attribute 'concrete'" error
+        when using :class:`.AbstractConcreteBase` in conjunction with
+        a subclass that declares ``__abstract__``.
+
+    .. change::
+        :tags: bug, engine
+        :versions: 1.0.0
+        :tickets: 3200
+
+        The execution options passed to an :class:`.Engine` either via
+        :paramref:`.create_engine.execution_options` or
+        :meth:`.Engine.update_execution_options` are not passed to the
+        special :class:`.Connection` used to initialize the dialect
+        within the "first connect" event; dialects will usually
+        perform their own queries in this phase, and none of the
+        current available  options should be applied here.  In
+        particular, the "autocommit" option was causing an attempt to
+        autocommit within this initial connect which would fail with
+        an AttributeError due to the non-standard state of the
+        :class:`.Connection`.
 
     .. change::
         :tags: bug, sqlite

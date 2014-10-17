@@ -12,7 +12,7 @@ from . import sqltypes, schema
 from .base import Executable, ColumnCollection
 from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
     literal_column, _type_from_args, ColumnElement, _clone,\
-    Over, BindParameter
+    Over, BindParameter, FunctionFilter
 from .selectable import FromClause, Select, Alias
 
 from . import operators
@@ -115,6 +115,35 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         """
         return Over(self, partition_by=partition_by, order_by=order_by)
+
+    def filter(self, *criterion):
+        """Produce a FILTER clause against this function.
+
+        Used against aggregate and window functions,
+        for database backends that support the "FILTER" clause.
+
+        The expression::
+
+            func.count(1).filter(True)
+
+        is shorthand for::
+
+            from sqlalchemy import funcfilter
+            funcfilter(func.count(1), True)
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :class:`.FunctionFilter`
+
+            :func:`.funcfilter`
+
+
+        """
+        if not criterion:
+            return self
+        return FunctionFilter(self, *criterion)
 
     @property
     def _from_objects(self):

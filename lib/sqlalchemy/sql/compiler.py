@@ -746,6 +746,12 @@ class SQLCompiler(Compiled):
             )
         )
 
+    def visit_funcfilter(self, funcfilter, **kwargs):
+        return "%s FILTER (WHERE %s)" % (
+            funcfilter.func._compiler_dispatch(self, **kwargs),
+            funcfilter.criterion._compiler_dispatch(self, **kwargs)
+        )
+
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
         return "EXTRACT(%s FROM %s)" % (
@@ -1787,7 +1793,7 @@ class SQLCompiler(Compiled):
                 text += " " + returning_clause
 
         if insert_stmt.select is not None:
-            text += " %s" % self.process(insert_stmt.select, **kw)
+            text += " %s" % self.process(self._insert_from_select, **kw)
         elif not crud_params and supports_default_values:
             text += " DEFAULT VALUES"
         elif insert_stmt._has_multi_parameters:

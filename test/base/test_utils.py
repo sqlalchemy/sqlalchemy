@@ -6,7 +6,7 @@ from sqlalchemy.testing import eq_, is_, ne_, fails_if
 from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
-
+from sqlalchemy.util import langhelpers
 
 class _KeyedTupleTest(object):
 
@@ -1272,6 +1272,43 @@ class DuckTypeCollectionTest(fixtures.TestBase):
             is_(util.duck_type_collection(type_), None)
             instance = type_()
             is_(util.duck_type_collection(instance), None)
+
+
+class PublicFactoryTest(fixtures.TestBase):
+
+    def _fixture(self):
+        class Thingy(object):
+            def __init__(self, value):
+                "make a thingy"
+                self.value = value
+
+            @classmethod
+            def foobar(cls, x, y):
+                "do the foobar"
+                return Thingy(x + y)
+
+        return Thingy
+
+    def test_classmethod(self):
+        Thingy = self._fixture()
+        foob = langhelpers.public_factory(
+            Thingy.foobar, ".sql.elements.foob")
+        eq_(foob(3, 4).value, 7)
+        eq_(foob(x=3, y=4).value, 7)
+        eq_(foob.__doc__, "do the foobar")
+        eq_(foob.__module__, "sqlalchemy.sql.elements")
+        assert Thingy.foobar.__doc__.startswith("This function is mirrored;")
+
+    def test_constructor(self):
+        Thingy = self._fixture()
+        foob = langhelpers.public_factory(
+            Thingy, ".sql.elements.foob")
+        eq_(foob(7).value, 7)
+        eq_(foob(value=7).value, 7)
+        eq_(foob.__doc__, "make a thingy")
+        eq_(foob.__module__, "sqlalchemy.sql.elements")
+        assert Thingy.__init__.__doc__.startswith(
+            "Construct a new :class:`.Thingy` object.")
 
 
 class ArgInspectionTest(fixtures.TestBase):

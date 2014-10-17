@@ -22,6 +22,119 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3228
+
+        The :meth:`.Query.update` method will now convert string key
+        names in the given dictionary of values into mapped attribute names
+        against the mapped class being updated.  Previously, string names
+        were taken in directly and passed to the core update statement without
+        any means to resolve against the mapped entity.  Support for synonyms
+        and hybrid attributes as the subject attributes of
+        :meth:`.Query.update` are also supported.
+
+        .. seealso::
+
+            :ref:`bug_3228`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3035
+
+        Improvements to the mechanism used by :class:`.Session` to locate
+        "binds" (e.g. engines to use), such engines can be associated with
+        mixin classes, concrete subclasses, as well as a wider variety
+        of table metadata such as joined inheritance tables.
+
+        .. seealso::
+
+            :ref:`bug_3035`
+
+    .. change::
+        :tags: bug, general
+        :tickets: 3218
+
+        The ``__module__`` attribute is now set for all those SQL and
+        ORM functions that are derived as "public factory" symbols, which
+        should assist with documentation tools being able to report on the
+        target module.
+
+    .. change::
+        :tags: feature, sql
+
+        :meth:`.Insert.from_select` now includes Python and SQL-expression
+        defaults if otherwise unspecified; the limitation where non-
+        server column defaults aren't included in an INSERT FROM
+        SELECT is now lifted and these expressions are rendered as
+        constants into the SELECT statement.
+
+        .. seealso::
+
+            :ref:`feature_insert_from_select_defaults`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3222
+
+        The ON clause rendered when using :meth:`.Query.join`,
+        :meth:`.Query.outerjoin`, or the standalone :func:`.orm.join` /
+        :func:`.orm.outerjoin` functions to a single-inheritance subclass will
+        now include the "single table criteria" in the ON clause even
+        if the ON clause is otherwise hand-rolled; it is now added to the
+        criteria using AND, the same way as if joining to a single-table
+        target using relationship or similar.
+
+        This is sort of in-between feature and bug.
+
+        .. seealso::
+
+            :ref:`migration_3222`
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3184
+        :pullreq: bitbucket:30
+
+        The :class:`.UniqueConstraint` construct is now included when
+        reflecting a :class:`.Table` object, for databases where this
+        is applicable.  In order to achieve this
+        with sufficient accuracy, MySQL and Postgresql now contain features
+        that correct for the duplication of indexes and unique constraints
+        when reflecting tables, indexes, and constraints.
+        In the case of MySQL, there is not actually a "unique constraint"
+        concept independent of a "unique index", so for this backend
+        :class:`.UniqueConstraint` continues to remain non-present for a
+        reflected :class:`.Table`.  For Postgresql, the query used to
+        detect indexes against ``pg_index`` has been improved to check for
+        the same construct in ``pg_constraint``, and the implicitly
+        constructed unique index is not included with a
+        reflected :class:`.Table`.
+
+        In both cases, the  :meth:`.Inspector.get_indexes` and the
+        :meth:`.Inspector.get_unique_constraints` methods return both
+        constructs individually, but include a new token
+        ``duplicates_constraint`` in the case of Postgresql or
+        ``duplicates_index`` in the case
+        of MySQL to indicate when this condition is detected.
+        Pull request courtesy Johannes Erdfelt.
+
+        .. seealso::
+
+            :ref:`feature_3184`
+
+    .. change::
+        :tags: feature, postgresql
+        :pullreq: github:134
+
+        Added support for the FILTER keyword as applied to aggregate
+        functions, supported by Postgresql 9.4.   Pull request
+        courtesy Ilja Everilä.
+
+        .. seealso::
+
+            :ref:`feature_gh134`
+
+    .. change::
         :tags: bug, sql, engine
         :tickets: 3215
 

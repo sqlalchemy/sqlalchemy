@@ -479,6 +479,26 @@ class ExecuteTest(fixtures.TestBase):
         eq_(canary, ["l1", "l2", "l3", "l1", "l2"])
 
     @testing.requires.ad_hoc_engines
+    def test_autocommit_option_no_issue_first_connect(self):
+        eng = create_engine(testing.db.url)
+        eng.update_execution_options(autocommit=True)
+        conn = eng.connect()
+        eq_(conn._execution_options, {"autocommit": True})
+        conn.close()
+
+    @testing.requires.ad_hoc_engines
+    def test_dialect_init_uses_options(self):
+        eng = create_engine(testing.db.url)
+
+        def my_init(connection):
+            connection.execution_options(foo='bar').execute(select([1]))
+
+        with patch.object(eng.dialect, "initialize", my_init):
+            conn = eng.connect()
+            eq_(conn._execution_options, {})
+            conn.close()
+
+    @testing.requires.ad_hoc_engines
     def test_generative_engine_event_dispatch_hasevents(self):
         def l1(*arg, **kw):
             pass

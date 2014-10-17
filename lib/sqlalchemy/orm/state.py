@@ -258,8 +258,8 @@ class InstanceState(interfaces.InspectionAttr):
         try:
             return manager.original_init(*mixed[1:], **kwargs)
         except:
-            manager.dispatch.init_failure(self, args, kwargs)
-            raise
+            with util.safe_reraise():
+                manager.dispatch.init_failure(self, args, kwargs)
 
     def get_history(self, key, passive):
         return self.manager[key].impl.get_history(self, self.dict, passive)
