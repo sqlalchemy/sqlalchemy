@@ -44,8 +44,10 @@ class WrapTest(fixtures.TestBase):
                 'this is a message',
                 None, OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError as exc:
-            assert str(exc) \
-                == "(OperationalError)  'this is a message' None"
+            eq_(
+                str(exc),
+                "(test.base.test_except.OperationalError)  "
+                "[SQL: 'this is a message']")
 
     def test_tostring_large_dict(self):
         try:
@@ -58,7 +60,8 @@ class WrapTest(fixtures.TestBase):
                 OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError as exc:
             assert str(exc).startswith(
-                "(OperationalError)  'this is a message' {")
+                "(test.base.test_except.OperationalError)  "
+                "[SQL: 'this is a message'] [parameters: {")
 
     def test_tostring_large_list(self):
         try:
@@ -68,8 +71,9 @@ class WrapTest(fixtures.TestBase):
                 OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError as exc:
             assert str(exc).startswith(
-                "(OperationalError)  'this is a "
-                "message' [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]")
+                "(test.base.test_except.OperationalError)  "
+                "[SQL: 'this is a message'] [parameters: "
+                "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]")
 
     def test_tostring_large_executemany(self):
         try:
@@ -81,9 +85,10 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(OperationalError)  'this is a message' [{1: 1}, "
+                "(test.base.test_except.OperationalError)  "
+                "[SQL: 'this is a message'] [parameters: [{1: 1}, "
                 "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: "
-                "1}, {1: 1}, {1: 1}]"
+                "1}, {1: 1}, {1: 1}]]"
             )
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', [
@@ -92,10 +97,11 @@ class WrapTest(fixtures.TestBase):
             ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError as exc:
             eq_(str(exc),
-                "(OperationalError)  'this is a message' [{1: 1}, "
+                "(test.base.test_except.OperationalError)  "
+                "[SQL: 'this is a message'] [parameters: [{1: 1}, "
                 "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, "
                 "{1: 1}, {1: 1}  ... displaying 10 of 11 total "
-                "bound parameter sets ...  {1: 1}, {1: 1}]"
+                "bound parameter sets ...  {1: 1}, {1: 1}]]"
                 )
         try:
             raise sa_exceptions.DBAPIError.instance(
@@ -108,8 +114,9 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(OperationalError)  'this is a message' [(1,), "
-                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]")
+                "(test.base.test_except.OperationalError)  "
+                "[SQL: 'this is a message'] [parameters: [(1,), "
+                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]]")
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', [
                 (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ),
@@ -117,10 +124,11 @@ class WrapTest(fixtures.TestBase):
             ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError as exc:
             eq_(str(exc),
-                "(OperationalError)  'this is a message' [(1,), "
+                "(test.base.test_except.OperationalError)  "
+                "[SQL: 'this is a message'] [parameters: [(1,), "
                 "(1,), (1,), (1,), (1,), (1,), (1,), (1,)  "
                 "... displaying 10 of 11 total bound "
-                "parameter sets ...  (1,), (1,)]"
+                "parameter sets ...  (1,), (1,)]]"
                 )
 
     def test_db_error_busted_dbapi(self):

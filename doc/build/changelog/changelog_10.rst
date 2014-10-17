@@ -22,6 +22,19 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3172
+
+        Exception messages have been spiffed up a bit.  The SQL statement
+        and parameters are not displayed if None, reducing confusion for
+        error messages that weren't related to a statement.  The full
+        module and classname for the DBAPI-level exception is displayed,
+        making it clear that this is a wrapped DBAPI exception.  The
+        statement and parameters themselves are bounded within a bracketed
+        sections to better isolate them from the error message and from
+        each other.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3228
 

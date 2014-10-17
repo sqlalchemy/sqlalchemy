@@ -285,7 +285,7 @@ class ExecuteTest(fixtures.TestBase):
         def _go(conn):
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"nope \(original cause: Exception: nope\) u?'SELECT 1 ",
+                r"\(exceptions.Exception\) nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).
                 where(
@@ -1608,7 +1608,7 @@ class HandleErrorTest(fixtures.TestBase):
         with engine.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"nope \(original cause: Exception: nope\) u?'SELECT 1 ",
+                r"\(exceptions.Exception\) nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(
                     column('foo') == literal('bar', MyType()))
@@ -1799,7 +1799,7 @@ class HandleErrorTest(fixtures.TestBase):
         with engine.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"nope \(original cause: Exception: nope\) u?'SELECT 1 ",
+                r"\(exceptions.Exception\) nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(
                     column('foo') == literal('bar', MyType()))
