@@ -672,12 +672,89 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
 
         self._test()
 
+    def test_overlapping_warning(self):
+        Employee, Company, employee_t, company_t = (self.classes.Employee,
+                                                    self.classes.Company,
+                                                    self.tables.employee_t,
+                                                    self.tables.company_t)
+
+        mapper(Company, company_t)
+        mapper(Employee, employee_t, properties={
+            'company': relationship(Company, backref='employees'),
+            'reports_to': relationship(
+                Employee,
+                primaryjoin=sa.and_(
+                    remote(employee_t.c.emp_id) == employee_t.c.reports_to_id,
+                    remote(employee_t.c.company_id) == employee_t.c.company_id
+                ),
+                backref=backref('employees')
+            )
+        })
+
+        assert_raises_message(
+            exc.SAWarning,
+            r"relationship .* will copy column .* to column "
+            "employee_t.company_id, which conflicts with relationship\(s\)",
+            configure_mappers
+        )
+
+    def test_annotated_no_overwriting(self):
+        Employee, Company, employee_t, company_t = (self.classes.Employee,
+                                                    self.classes.Company,
+                                                    self.tables.employee_t,
+                                                    self.tables.company_t)
+
+        mapper(Company, company_t)
+        mapper(Employee, employee_t, properties={
+            'company': relationship(Company, backref='employees'),
+            'reports_to': relationship(
+                Employee,
+                primaryjoin=sa.and_(
+                    remote(employee_t.c.emp_id) ==
+                    foreign(employee_t.c.reports_to_id),
+                    remote(employee_t.c.company_id) == employee_t.c.company_id
+                ),
+                backref=backref('employees')
+            )
+        })
+
+        self._test_no_warning()
+
+    def _test_no_overwrite(self, sess, expect_failure):
+        # test [ticket:3230]
+
+        Employee, Company = self.classes.Employee, self.classes.Company
+
+        c1 = sess.query(Company).filter_by(name='c1').one()
+        e3 = sess.query(Employee).filter_by(name='emp3').one()
+        e3.reports_to = None
+
+        if expect_failure:
+            # if foreign() isn't applied specifically to
+            # employee_t.c.reports_to_id only, then
+            # employee_t.c.company_id goes foreign as well and then
+            # this happens
+            assert_raises_message(
+                AssertionError,
+                "Dependency rule tried to blank-out primary key column "
+                "'employee_t.company_id'",
+                sess.flush
+            )
+        else:
+            sess.flush()
+            eq_(e3.company, c1)
+
+    @testing.emits_warning("relationship .* will copy column ")
     def _test(self):
+        self._test_no_warning(overwrites=True)
+
+    def _test_no_warning(self, overwrites=False):
         self._test_relationships()
         sess = Session()
         self._setup_data(sess)
         self._test_lazy_relations(sess)
         self._test_join_aliasing(sess)
+        self._test_no_overwrite(sess, expect_failure=overwrites)
 
     def _test_relationships(self):
         configure_mappers()
@@ -3044,7 +3121,8 @@ class SecondaryNestedJoinTest(fixtures.MappedTest, AssertsCompiledSQL,
                 secondaryjoin=d.c.id == b.c.d_id,
                 #primaryjoin=and_(a.c.b_id == j.c.b_id, a.c.id == j.c.c_a_id),
                 #secondaryjoin=d.c.id == j.c.b_d_id,
-                uselist=False
+                uselist=False,
+                viewonly=True
             )
         })
         mapper(B, b, properties={

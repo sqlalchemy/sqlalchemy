@@ -22,6 +22,24 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3230
+
+        A warning is emitted in the case of multiple relationships that
+        ultimately will populate a foreign key column in conflict with
+        another, where the relationships are attempting to copy values
+        from different source columns.  This occurs in the case where
+        composite foreign keys with overlapping columns are mapped to
+        relationships that each refer to a different referenced column.
+        A new documentation section illustrates the example as well as how
+        to overcome the issue by specifying "foreign" columns specifically
+        on a per-relationship basis.
+
+        .. seealso::
+
+            :ref:`relationship_overlapping_foreignkeys`
+
+    .. change::
         :tags: feature, sql
         :tickets: 3172
 

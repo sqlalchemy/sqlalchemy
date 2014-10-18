@@ -16,6 +16,7 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 from __future__ import absolute_import
 from .. import sql, util, exc as sa_exc, schema, log
 
+import weakref
 from .util import CascadeOptions, _orm_annotate, _orm_deannotate
 from . import dependency
 from . import attributes
@@ -1532,6 +1533,7 @@ class RelationshipProperty(StrategizedProperty):
         self._check_cascade_settings(self._cascade)
         self._post_init()
         self._generate_backref()
+        self._join_condition._warn_for_conflicting_sync_targets()
         super(RelationshipProperty, self).do_init()
         self._lazy_strategy = self._get_strategy((("lazy", "select"),))
 
@@ -2518,6 +2520,55 @@ class JoinCondition(object):
         self.synchronize_pairs = self._deannotate_pairs(sync_pairs)
         self.secondary_synchronize_pairs = \
             self._deannotate_pairs(secondary_sync_pairs)
+
+    _track_sync_targets = weakref.WeakKeyDictionary()
+
+    def _warn_for_conflicting_sync_targets(self):
+        if not self.support_sync:
+            return
+
+        # totally complex code that takes place for virtually all
+        # relationships, detecting an incredibly rare edge case,
+        # and even then, all just to emit a warning.
+        # we would like to detect if we are synchronizing any column
+        # pairs in conflict with another relationship that wishes to sync
+        # an entirely different column to the same target.  This is typically
+        # when using complex overlapping composite foreign keys.
+        for from_, to_ in [
+            (from_, to_)
+            for (from_, to_) in self.synchronize_pairs
+        ] + [
+            (from_, to_) for
+            (from_, to_) in self.secondary_synchronize_pairs
+        ]:
+            if to_ not in self._track_sync_targets:
+                self._track_sync_targets[to_] = weakref.WeakKeyDictionary(
+                    {self.prop: from_})
+            else:
+                other_props = []
+                prop_to_from = self._track_sync_targets[to_]
+                for pr, fr_ in prop_to_from.items():
+                    if pr.mapper in mapperlib._mapper_registry and \
+                        fr_ is not from_ and \
+                            pr not in self.prop._reverse_property:
+                        other_props.append((pr, fr_))
+
+                if other_props:
+                    util.warn(
+                        "relationship '%s' will copy column %s to column %s, "
+                        "which conflicts with relationship(s): %s. "
+                        "Consider applying "
+                        "viewonly=True to read-only relationships, or provide "
+                        "a primaryjoin condition marking writable columns "
+                        "with the foreign() annotation." % (
+                            self.prop,
+                            from_, to_,
+                            ", ".join(
+                                "'%s' (copies %s to %s)" % (pr, fr_, to_)
+                                for (pr, fr_) in other_props)
+                        )
+                    )
+                self._track_sync_targets[to_][self.prop] = from_
 
     @util.memoized_property
     def remote_columns(self):

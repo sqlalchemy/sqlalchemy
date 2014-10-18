@@ -361,6 +361,27 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 
+class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        Address = cls.classes.Address
+        users, addresses = (cls.tables.users, cls.tables.addresses)
+        mapper(User, users, properties={
+            'addresses': relationship(Address),
+            'ad_syn': synonym("addresses")
+        })
+        mapper(Address, addresses)
+
+    def test_join_on_synonym(self):
+        User = self.classes.User
+        self.assert_compile(
+            Session().query(User).join(User.ad_syn),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id"
+        )
+
+
 class JoinTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -407,24 +428,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Don't know how to join from x; please use select_from\(\) to "
             "establish the left entity/selectable of this join",
             sess.query(literal_column('x'), User).join, Address
-        )
-
-    def test_join_on_synonym(self):
-
-        class User(object):
-            pass
-        class Address(object):
-            pass
-        users, addresses = (self.tables.users, self.tables.addresses)
-        mapper(User, users, properties={
-            'addresses':relationship(Address),
-            'ad_syn':synonym("addresses")
-        })
-        mapper(Address, addresses)
-        self.assert_compile(
-            Session().query(User).join(User.ad_syn),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses ON users.id = addresses.user_id"
         )
 
     def test_multi_tuple_form(self):
