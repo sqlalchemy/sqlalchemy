@@ -204,6 +204,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         sess.flush()
         make_transient(u1)
         sess.rollback()
+        assert attributes.instance_state(u1).transient
 
     def test_make_transient_to_detached(self):
         users, User = self.tables.users, self.classes.User
@@ -661,7 +662,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         go()
         eq_(canary, [False])
 
-    def test_deleted_expunged(self):
+    def test_deleted_auto_expunged(self):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
@@ -681,6 +682,53 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.commit()
 
         assert object_session(u1) is None
+
+    def test_explicit_expunge_pending(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(name='x')
+        sess.add(u1)
+
+        sess.flush()
+        sess.expunge(u1)
+
+        assert u1 not in sess
+        assert object_session(u1) is None
+
+        sess.rollback()
+
+        assert u1 not in sess
+        assert object_session(u1) is None
+
+    def test_explicit_expunge_deleted(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        sess.add(User(name='x'))
+        sess.commit()
+
+        u1 = sess.query(User).first()
+        sess.delete(u1)
+
+        sess.flush()
+
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is sess
+
+        sess.expunge(u1)
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is None
+
+        sess.rollback()
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is None
+
 
 class SessionStateWFixtureTest(_fixtures.FixtureTest):
     __backend__ = True

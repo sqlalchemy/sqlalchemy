@@ -927,6 +927,39 @@ symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
 
+.. _bug_3139:
+
+session.expunge() will fully detach an object that's been deleted
+-----------------------------------------------------------------
+
+The behavior of :meth:`.Session.expunge` had a bug that caused an
+inconsistency in behavior regarding deleted objects.  The
+:func:`.object_session` function as well as the :attr:`.InstanceState.session`
+attribute would still report object as belonging to the :class:`.Session`
+subsequent to the expunge::
+
+    u1 = sess.query(User).first()
+    sess.delete(u1)
+
+    sess.flush()
+
+    assert u1 not in sess
+    assert inspect(u1).session is sess  # this is normal before commit
+
+    sess.expunge(u1)
+
+    assert u1 not in sess
+    assert inspect(u1).session is None  # would fail
+
+Note that it is normal for ``u1 not in sess`` to be True while
+``inspect(u1).session`` still refers to the session, while the transaction
+is ongoing subsequent to the delete operation and :meth:`.Session.expunge`
+has not been called; the full detachment normally completes once the
+transaction is committed.  This issue would also impact functions
+that rely on :meth:`.Session.expunge` such as :func:`.make_transient`.
+
+:ticket:`3139`
+
 .. _migration_yield_per_eager_loading:
 
 Joined/Subquery eager loading explicitly disallowed with yield_per

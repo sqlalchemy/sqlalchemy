@@ -23,6 +23,19 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3139
+
+        Fixed bug where :meth:`.Session.expunge` would not fully detach
+        the given object if the object had been subject to a delete
+        operation that was flushed, but not committed.  This would also
+        affect related operations like :func:`.make_transient`.
+
+        .. seealso::
+
+            :ref:`bug_3139`
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3230
 
         A warning is emitted in the case of multiple relationships that
