@@ -25,6 +25,10 @@ from sqlalchemy.util import nested
 users, metadata, users_autoinc = None, None, None
 
 
+class SomeException(Exception):
+    pass
+
+
 class ExecuteTest(fixtures.TestBase):
     __backend__ = True
 
@@ -280,12 +284,13 @@ class ExecuteTest(fixtures.TestBase):
             impl = Integer
 
             def process_bind_param(self, value, dialect):
-                raise Exception("nope")
+                raise SomeException("nope")
 
         def _go(conn):
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(exceptions.Exception\) nope \[SQL\: u?'SELECT 1 ",
+                r"\(test.engine.test_execute.SomeException\) "
+                "nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).
                 where(
@@ -561,7 +566,7 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
             if is_transaction:
                 conn = conn.connection
             conn.execute(self.table.insert().values(a=x, b=value))
-            raise Exception("breakage")
+            raise SomeException("breakage")
         return go
 
     def _assert_no_data(self):
@@ -1597,7 +1602,7 @@ class HandleErrorTest(fixtures.TestBase):
         listener = Mock(return_value=None)
         event.listen(engine, 'dbapi_error', listener)
 
-        nope = Exception("nope")
+        nope = SomeException("nope")
 
         class MyType(TypeDecorator):
             impl = Integer
@@ -1608,7 +1613,8 @@ class HandleErrorTest(fixtures.TestBase):
         with engine.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(exceptions.Exception\) nope \[SQL\: u?'SELECT 1 ",
+                r"\(test.engine.test_execute.SomeException\) "
+                "nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(
                     column('foo') == literal('bar', MyType()))
@@ -1788,7 +1794,7 @@ class HandleErrorTest(fixtures.TestBase):
         listener = Mock(return_value=None)
         event.listen(engine, 'handle_error', listener)
 
-        nope = Exception("nope")
+        nope = SomeException("nope")
 
         class MyType(TypeDecorator):
             impl = Integer
@@ -1799,7 +1805,8 @@ class HandleErrorTest(fixtures.TestBase):
         with engine.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(exceptions.Exception\) nope \[SQL\: u?'SELECT 1 ",
+                r"\(test.engine.test_execute.SomeException\) "
+                "nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(
                     column('foo') == literal('bar', MyType()))
