@@ -2443,16 +2443,17 @@ def make_transient_to_detached(instance):
 
 
 def object_session(instance):
-    """Return the ``Session`` to which instance belongs.
+    """Return the :class:`.Session` to which the given instance belongs.
 
-    If the instance is not a mapped instance, an error is raised.
+    This is essentially the same as the :attr:`.InstanceState.session`
+    accessor.  See that attribute for details.
 
     """
-
     try:
-        return _state_session(attributes.instance_state(instance))
+        state = attributes.instance_state(instance)
     except exc.NO_STATE:
         raise exc.UnmappedInstanceError(instance)
-
+    else:
+        return _state_session(state)
 
 _new_sessionid = util.counter()
