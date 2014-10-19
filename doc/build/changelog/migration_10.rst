@@ -789,6 +789,27 @@ would again fail; these have also been fixed.
 
 :ticket:`3148` :ticket:`3188`
 
+.. _bug_3170:
+
+null(), false() and true() constants are no longer singletons
+-------------------------------------------------------------
+
+These three constants were changed to return a "singleton" value
+in 0.9; unfortunately, that would lead to a query like the following
+to not render as expected::
+
+    select([null(), null()])
+
+rendering only ``SELECT NULL AS anon_1``, because the two :func:`.null`
+constructs would come out as the same  ``NULL`` object, and
+SQLAlchemy's Core model is based on object identity in order to
+determine lexical significance.    The change in 0.9 had no
+importance other than the desire to save on object overhead; in general,
+an unnamed construct needs to stay lexically unique so that it gets
+labeled uniquely.
+
+:ticket:`3170`
+
 .. _behavioral_changes_orm_10:
 
 Behavioral Changes - ORM

@@ -1617,10 +1617,10 @@ class Null(ColumnElement):
         return type_api.NULLTYPE
 
     @classmethod
-    def _singleton(cls):
+    def _instance(cls):
         """Return a constant :class:`.Null` construct."""
 
-        return NULL
+        return Null()
 
     def compare(self, other):
         return isinstance(other, Null)
@@ -1641,11 +1641,11 @@ class False_(ColumnElement):
         return type_api.BOOLEANTYPE
 
     def _negate(self):
-        return TRUE
+        return True_()
 
     @classmethod
-    def _singleton(cls):
-        """Return a constant :class:`.False_` construct.
+    def _instance(cls):
+        """Return a :class:`.False_` construct.
 
         E.g.::
 
@@ -1679,7 +1679,7 @@ class False_(ColumnElement):
 
         """
 
-        return FALSE
+        return False_()
 
     def compare(self, other):
         return isinstance(other, False_)
@@ -1700,17 +1700,17 @@ class True_(ColumnElement):
         return type_api.BOOLEANTYPE
 
     def _negate(self):
-        return FALSE
+        return False_()
 
     @classmethod
     def _ifnone(cls, other):
         if other is None:
-            return cls._singleton()
+            return cls._instance()
         else:
             return other
 
     @classmethod
-    def _singleton(cls):
+    def _instance(cls):
         """Return a constant :class:`.True_` construct.
 
         E.g.::
@@ -1745,14 +1745,10 @@ class True_(ColumnElement):
 
         """
 
-        return TRUE
+        return True_()
 
     def compare(self, other):
         return isinstance(other, True_)
-
-NULL = Null()
-FALSE = False_()
-TRUE = True_()
 
 
 class ClauseList(ClauseElement):

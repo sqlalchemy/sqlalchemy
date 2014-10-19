@@ -22,6 +22,21 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3170
+
+        Reversing a change that was made in 0.9, the "singleton" nature
+        of the "constants" :func:`.null`, :func:`.true`, and :func:`.false`
+        has been reverted.   These functions returning a "singleton" object
+        had the effect that different instances would be treated as the
+        same regardless of lexical use, which in particular would impact
+        the rendering of the columns clause of a SELECT statement.
+
+        .. seealso::
+
+            :ref:`bug_3170`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3139
 
