@@ -2521,32 +2521,37 @@ class JoinCondition(object):
         self.secondary_synchronize_pairs = \
             self._deannotate_pairs(secondary_sync_pairs)
 
-    _track_sync_targets = weakref.WeakKeyDictionary()
+    _track_overlapping_sync_targets = weakref.WeakKeyDictionary()
 
     def _warn_for_conflicting_sync_targets(self):
         if not self.support_sync:
             return
 
-        # totally complex code that takes place for virtually all
-        # relationships, detecting an incredibly rare edge case,
-        # and even then, all just to emit a warning.
         # we would like to detect if we are synchronizing any column
         # pairs in conflict with another relationship that wishes to sync
-        # an entirely different column to the same target.  This is typically
-        # when using complex overlapping composite foreign keys.
+        # an entirely different column to the same target.   This is a
+        # very rare edge case so we will try to minimize the memory/overhead
+        # impact of this check
         for from_, to_ in [
-            (from_, to_)
-            for (from_, to_) in self.synchronize_pairs
+            (from_, to_) for (from_, to_) in self.synchronize_pairs
         ] + [
-            (from_, to_) for
-            (from_, to_) in self.secondary_synchronize_pairs
+            (from_, to_) for (from_, to_) in self.secondary_synchronize_pairs
         ]:
-            if to_ not in self._track_sync_targets:
-                self._track_sync_targets[to_] = weakref.WeakKeyDictionary(
-                    {self.prop: from_})
+            # save ourselves a ton of memory and overhead by only
+            # considering columns that are subject to a overlapping
+            # FK constraints at the core level.   This condition can arise
+            # if multiple relationships overlap foreign() directly, but
+            # we're going to assume it's typically a ForeignKeyConstraint-
+            # level configuration that benefits from this warning.
+            if len(to_.foreign_keys) < 2:
+                continue
+
+            if to_ not in self._track_overlapping_sync_targets:
+                self._track_overlapping_sync_targets[to_] = \
+                    weakref.WeakKeyDictionary({self.prop: from_})
             else:
                 other_props = []
-                prop_to_from = self._track_sync_targets[to_]
+                prop_to_from = self._track_overlapping_sync_targets[to_]
                 for pr, fr_ in prop_to_from.items():
                     if pr.mapper in mapperlib._mapper_registry and \
                         fr_ is not from_ and \
@@ -2568,7 +2573,7 @@ class JoinCondition(object):
                                 for (pr, fr_) in other_props)
                         )
                     )
-                self._track_sync_targets[to_][self.prop] = from_
+                self._track_overlapping_sync_targets[to_][self.prop] = from_
 
     @util.memoized_property
     def remote_columns(self):
