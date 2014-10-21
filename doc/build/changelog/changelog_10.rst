@@ -22,6 +22,16 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :pullreq: github:137
+
+        Repaired support of the ``copy.deepcopy()`` call when used by the
+        :class:`.orm.util.CascadeOptions` argument, which occurs
+        if ``copy.deepcopy()`` is being used with :func:`.relationship`
+        (not an officially supported use case).  Pull request courtesy
+        duesenfranz.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3170
 
