@@ -30,13 +30,10 @@ class CascadeOptions(frozenset):
         'all', 'none', 'delete-orphan'])
     _allowed_cascades = all_cascades
 
-    def __new__(cls, arg):
-        values = set([
-            c for c
-            in re.split('\s*,\s*', arg or "")
-            if c
-        ])
-
+    def __new__(cls, value_list):
+        if isinstance(value_list, str) or value_list is None:
+            return cls.from_string(value_list)
+        values = set(value_list)
         if values.difference(cls._allowed_cascades):
             raise sa_exc.ArgumentError(
                 "Invalid cascade option(s): %s" %
@@ -70,6 +67,14 @@ class CascadeOptions(frozenset):
             ",".join([x for x in sorted(self)])
         )
 
+    @classmethod
+    def from_string(cls, arg):
+        values = [
+            c for c
+            in re.split('\s*,\s*', arg or "")
+            if c
+        ]
+        return cls(values)
 
 def _validator_events(
         desc, key, validator, include_removes, include_backrefs):
