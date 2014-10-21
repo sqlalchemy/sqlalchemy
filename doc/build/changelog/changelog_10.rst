@@ -22,6 +22,18 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+        :pullreq: github:139
+
+        Added a new parameter :paramref:`.Table.tometadata.name` to
+        the :meth:`.Table.tometadata` method.  Similar to
+        :paramref:`.Table.tometadata.schema`, this argument causes the newly
+        copied :class:`.Table` to take on the new name instead of
+        the existing one.  An interesting capability this adds is that of
+        copying a :class:`.Table` object to the *same* :class:`.MetaData`
+        target with a new name.  Pull request courtesy n.d. parker.
+
+    .. change::
         :tags: bug, orm
         :pullreq: github:137
 

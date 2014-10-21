@@ -722,6 +722,42 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         eq_((table.key, table2.key),
             ('myschema.mytable', 'myschema.newtable'))
 
+    def test_change_name_selfref_fk_moves(self):
+        meta = MetaData()
+
+        referenced = Table('ref', meta,
+                           Column('id', Integer, primary_key=True),
+                           )
+        table = Table('mytable', meta,
+                      Column('id', Integer, primary_key=True),
+                      Column('parent_id', ForeignKey('mytable.id')),
+                      Column('ref_id', ForeignKey('ref.id'))
+                      )
+
+        table2 = table.tometadata(table.metadata, name='newtable')
+        assert table.metadata is table2.metadata
+        assert table2.c.ref_id.references(referenced.c.id)
+        assert table2.c.parent_id.references(table2.c.id)
+
+    def test_change_name_selfref_fk_moves_w_schema(self):
+        meta = MetaData()
+
+        referenced = Table('ref', meta,
+                           Column('id', Integer, primary_key=True),
+                           )
+        table = Table('mytable', meta,
+                      Column('id', Integer, primary_key=True),
+                      Column('parent_id', ForeignKey('mytable.id')),
+                      Column('ref_id', ForeignKey('ref.id'))
+                      )
+
+        table2 = table.tometadata(
+            table.metadata, name='newtable', schema='newschema')
+        ref2 = referenced.tometadata(table.metadata, schema='newschema')
+        assert table.metadata is table2.metadata
+        assert table2.c.ref_id.references(ref2.c.id)
+        assert table2.c.parent_id.references(table2.c.id)
+
     def _assert_fk(self, t2, schema, expected, referred_schema_fn=None):
         m2 = MetaData()
         existing_schema = t2.schema

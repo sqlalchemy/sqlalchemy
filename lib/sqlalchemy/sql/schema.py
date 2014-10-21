@@ -786,7 +786,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
          .. versionadded:: 0.9.2
 
         :param name: optional string name indicating the target table name.
-         If not specified or None, the table name is retained.
+         If not specified or None, the table name is retained.  This allows
+         a :class:`.Table` to be copied to the same :class:`.MetaData` target
+         with a new name.
+
+         .. versionadded:: 1.0.0
+
         """
         if name is None:
             name = self.name
@@ -1552,7 +1557,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         )
         return self._schema_item_copy(fk)
 
-    def _get_colspec(self, schema=None):
+    def _get_colspec(self, schema=None, table_name=None):
         """Return a string based 'column specification' for this
         :class:`.ForeignKey`.
 
@@ -1562,7 +1567,15 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         """
         if schema:
             _schema, tname, colname = self._column_tokens
+            if table_name is not None:
+                tname = table_name
             return "%s.%s.%s" % (schema, tname, colname)
+        elif table_name:
+            schema, tname, colname = self._column_tokens
+            if schema:
+                return "%s.%s.%s" % (schema, table_name, colname)
+            else:
+                return "%s.%s" % (table_name, colname)
         elif self._table_column is not None:
             return "%s.%s" % (
                 self._table_column.table.fullname, self._table_column.key)
@@ -2654,10 +2667,15 @@ class ForeignKeyConstraint(Constraint):
             event.listen(table.metadata, "before_drop",
                          ddl.DropConstraint(self, on=supports_alter))
 
-    def copy(self, schema=None, **kw):
+    def copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(
             [x.parent.key for x in self._elements.values()],
-            [x._get_colspec(schema=schema)
+            [x._get_colspec(
+                schema=schema,
+                table_name=target_table.name
+                if target_table is not None
+                and x._table_key() == x.parent.table.key
+                else None)
              for x in self._elements.values()],
             name=self.name,
             onupdate=self.onupdate,
