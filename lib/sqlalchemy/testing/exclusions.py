@@ -12,6 +12,7 @@ from ..util import decorator
 from . import config
 from .. import util
 import inspect
+import sys
 import contextlib
 
 
@@ -120,20 +121,21 @@ class compound(object):
 
         try:
             return_value = fn(*args, **kw)
-        except Exception as ex:
-            self._expect_failure(config, ex, name=fn.__name__)
+        except Exception:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self._expect_failure(config, exc_type, exc_value, exc_traceback, name=fn.__name__)
         else:
             self._expect_success(config, name=fn.__name__)
             return return_value
 
-    def _expect_failure(self, config, ex, name='block'):
+    def _expect_failure(self, config, exc_type, exc_value, exc_traceback, name='block'):
         for fail in self.fails:
             if fail(config):
                 print(("%s failed as expected (%s): %s " % (
                     name, fail._as_string(config), str(ex))))
                 break
         else:
-            raise ex
+            raise exc_type, exc_value, exc_traceback
 
     def _expect_success(self, config, name='block'):
         if not self.fails:
