@@ -132,7 +132,7 @@ class compound(object):
         for fail in self.fails:
             if fail(config):
                 print(("%s failed as expected (%s): %s " % (
-                    name, fail._as_string(config), str(ex))))
+                    name, fail._as_string(config), str(exc_value))))
                 break
         else:
             raise exc_type, exc_value, exc_traceback
