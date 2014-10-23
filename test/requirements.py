@@ -39,6 +39,12 @@ class DefaultRequirements(SuiteRequirements):
             ])
 
     @property
+    def check_constraints(self):
+        """Target database must support check constraints."""
+
+        return exclusions.open()
+
+    @property
     def named_constraints(self):
         """target database must support names for constraints."""
 
