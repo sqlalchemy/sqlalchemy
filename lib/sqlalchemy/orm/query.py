@@ -1792,6 +1792,11 @@ class Query(object):
 
             left_entity = prop = None
 
+            if isinstance(onclause, interfaces.PropComparator):
+                of_type = getattr(onclause, '_of_type', None)
+            else:
+                of_type = None
+
             if isinstance(onclause, util.string_types):
                 left_entity = self._joinpoint_zero()
 
@@ -1818,8 +1823,6 @@ class Query(object):
 
             if isinstance(onclause, interfaces.PropComparator):
                 if right_entity is None:
-                    right_entity = onclause.property.mapper
-                    of_type = getattr(onclause, '_of_type', None)
                     if of_type:
                         right_entity = of_type
                     else:

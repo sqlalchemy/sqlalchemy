@@ -372,6 +372,30 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             ]
         )
 
+    def test_of_type_aliased_fromjoinpoint(self):
+        Company, Employee, Engineer = self.classes.Company,\
+                                self.classes.Employee,\
+                                self.classes.Engineer
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies, properties={
+            'employee':relationship(Employee)
+        })
+        mapper(Employee, employees, polymorphic_on=employees.c.type)
+        mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
+
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Company).outerjoin(
+                Company.employee.of_type(Engineer),
+                aliased=True, from_joinpoint=True),
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name FROM companies "
+            "LEFT OUTER JOIN employees AS employees_1 ON "
+            "companies.company_id = employees_1.company_id "
+            "AND employees_1.type IN (:type_1)"
+        )
+
     def test_outer_join(self):
         Company, Employee, Engineer = self.classes.Company,\
                                 self.classes.Employee,\
