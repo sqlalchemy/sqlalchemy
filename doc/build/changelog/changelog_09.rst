@@ -11,6 +11,19 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.9
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3232
+        :versions: 1.0.0
+
+        Fixed bug where the ON clause for :meth:`.Query.join`,
+        and :meth:`.Query.outerjoin` to a single-inheritance subclass
+        using ``of_type()`` would not render the "single table criteria" in
+        the ON clause if the ``from_joinpoint=True`` flag were set.
+
+.. changelog::
     :version: 0.9.8
     :released: October 13, 2014
 
