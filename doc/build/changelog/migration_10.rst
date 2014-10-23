@@ -1064,7 +1064,7 @@ A simple example is::
     print s.query(ASub1).join(B, ASub1.b).join(ASub2, ASub2.id == B.a_id)
 
 The two queries at the bottom are equivalent, and should both render
-the identical SQL:
+the identical SQL::
 
     SELECT a.id AS a_id, a.type AS a_type
     FROM a JOIN b ON b.a_id = a.id JOIN a ON b.a_id = a.id AND a.type IN (:type_1)
