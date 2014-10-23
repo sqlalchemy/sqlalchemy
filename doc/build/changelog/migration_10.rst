@@ -708,91 +708,11 @@ criteria.  Applications that are already adding this criteria to work around
 this will want to remove its explicit use, though it should continue to work
 fine if the criteria happens to be rendered twice in the meantime.
 
+.. seealso::
+
+	:ref:`bug_3233`
+
 :ticket:`3222`
-
-.. _bug_3233:
-
-Single inheritance join targets will no longer sometimes implicitly alias themselves
-------------------------------------------------------------------------------------
-
-This is a bug where an unexpected and inconsistent behavior would occur
-in some scenarios when joining to a single-table-inheritance entity.  The
-difficulty this might cause is that the query is supposed to raise an error,
-as it is invalid SQL, however the bug would cause an alias to be added which
-makes the query "work".   The issue is confusing because this aliasing
-is not applied consistently and could change based on the nature of the query
-preceding the join.
-
-A simple example is::
-
-    from sqlalchemy import Integer, Column, String, ForeignKey
-    from sqlalchemy.orm import Session, relationship
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
-
-    class A(Base):
-        __tablename__ = "a"
-
-        id = Column(Integer, primary_key=True)
-        type = Column(String)
-
-        __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': 'a'}
-
-
-    class ASub1(A):
-        __mapper_args__ = {'polymorphic_identity': 'asub1'}
-
-
-    class ASub2(A):
-        __mapper_args__ = {'polymorphic_identity': 'asub2'}
-
-
-    class B(Base):
-        __tablename__ = 'b'
-
-        id = Column(Integer, primary_key=True)
-
-        a_id = Column(Integer, ForeignKey("a.id"))
-
-        a = relationship("A", primaryjoin="B.a_id == A.id", backref='b')
-
-    s = Session()
-
-    print s.query(ASub1).join(B, ASub1.b).join(ASub2, B.a)
-
-    print s.query(ASub1).join(B, ASub1.b).join(ASub2, ASub2.id == B.a_id)
-
-The two queries at the bottom are equivalent, and should both render
-the identical SQL:
-
-    SELECT a.id AS a_id, a.type AS a_type
-    FROM a JOIN b ON b.a_id = a.id JOIN a ON b.a_id = a.id AND a.type IN (:type_1)
-    WHERE a.type IN (:type_2)
-
-The above SQL is invalid, as it renders "a" within the FROM list twice.
-The bug however would occur with the second query only and render this instead::
-
-    SELECT a.id AS a_id, a.type AS a_type
-    FROM a JOIN b ON b.a_id = a.id JOIN a AS a_1
-    ON a_1.id = b.a_id AND a_1.type IN (:type_1)
-    WHERE a_1.type IN (:type_2)
-
-Where above, the second join to "a" is aliased.  While this seems convenient,
-it's not how single-inheritance queries work in general and is misleading
-and inconsistent.
-
-The net effect is that applications which were relying on this bug will now
-have an error raised by the database.   The solution is to use the expected
-form.  When referring to multiple subclasses of a single-inheritance
-entity in a query, you must manually use aliases to disambiguate the table,
-as all the subclasses normally refer to the same table::
-
-    asub2_alias = aliased(ASub2)
-
-    print s.query(ASub1).join(B, ASub1.b).join(asub2_alias, B.a.of_type(asub2_alias))
-
-:ticket:`3233`
 
 .. _bug_3188:
 
@@ -1089,6 +1009,91 @@ joined loader options can still be used::
 
     q = sess.query(Object).options(
         lazyload('*'), joinedload("some_manytoone")).yield_per(100)
+
+.. _bug_3233:
+
+Single inheritance join targets will no longer sometimes implicitly alias themselves
+------------------------------------------------------------------------------------
+
+This is a bug where an unexpected and inconsistent behavior would occur
+in some scenarios when joining to a single-table-inheritance entity.  The
+difficulty this might cause is that the query is supposed to raise an error,
+as it is invalid SQL, however the bug would cause an alias to be added which
+makes the query "work".   The issue is confusing because this aliasing
+is not applied consistently and could change based on the nature of the query
+preceding the join.
+
+A simple example is::
+
+    from sqlalchemy import Integer, Column, String, ForeignKey
+    from sqlalchemy.orm import Session, relationship
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = "a"
+
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
+
+        __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': 'a'}
+
+
+    class ASub1(A):
+        __mapper_args__ = {'polymorphic_identity': 'asub1'}
+
+
+    class ASub2(A):
+        __mapper_args__ = {'polymorphic_identity': 'asub2'}
+
+
+    class B(Base):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+
+        a_id = Column(Integer, ForeignKey("a.id"))
+
+        a = relationship("A", primaryjoin="B.a_id == A.id", backref='b')
+
+    s = Session()
+
+    print s.query(ASub1).join(B, ASub1.b).join(ASub2, B.a)
+
+    print s.query(ASub1).join(B, ASub1.b).join(ASub2, ASub2.id == B.a_id)
+
+The two queries at the bottom are equivalent, and should both render
+the identical SQL:
+
+    SELECT a.id AS a_id, a.type AS a_type
+    FROM a JOIN b ON b.a_id = a.id JOIN a ON b.a_id = a.id AND a.type IN (:type_1)
+    WHERE a.type IN (:type_2)
+
+The above SQL is invalid, as it renders "a" within the FROM list twice.
+The bug however would occur with the second query only and render this instead::
+
+    SELECT a.id AS a_id, a.type AS a_type
+    FROM a JOIN b ON b.a_id = a.id JOIN a AS a_1
+    ON a_1.id = b.a_id AND a_1.type IN (:type_1)
+    WHERE a_1.type IN (:type_2)
+
+Where above, the second join to "a" is aliased.  While this seems convenient,
+it's not how single-inheritance queries work in general and is misleading
+and inconsistent.
+
+The net effect is that applications which were relying on this bug will now
+have an error raised by the database.   The solution is to use the expected
+form.  When referring to multiple subclasses of a single-inheritance
+entity in a query, you must manually use aliases to disambiguate the table,
+as all the subclasses normally refer to the same table::
+
+    asub2_alias = aliased(ASub2)
+
+    print s.query(ASub1).join(B, ASub1.b).join(asub2_alias, B.a.of_type(asub2_alias))
+
+:ticket:`3233`
+
 
 
 .. _migration_migration_deprecated_orm_events:
