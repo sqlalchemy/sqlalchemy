@@ -155,6 +155,25 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3233
+
+        Fixed bug in single table inheritance where a chain of joins
+        that included the same single inh entity more than once
+        (normally this should raise an error) could, in some cases
+        depending on what was being joined "from", implicitly alias the
+        second case of the single inh entity, producing
+        a query that "worked".   But as this implicit aliasing is not
+        intended in the case of single table inheritance, it didn't
+        really "work" fully and was very misleading, since it wouldn't
+        always appear.
+
+        .. seealso::
+
+            :ref:`bug_3233`
+
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3222
 
         The ON clause rendered when using :meth:`.Query.join`,

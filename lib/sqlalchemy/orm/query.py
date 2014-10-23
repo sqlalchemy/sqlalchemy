@@ -1947,11 +1947,9 @@ class Query(object):
                                 from_obj, r_info.selectable):
                         overlap = True
                         break
-            elif sql_util.selectables_overlap(l_info.selectable,
-                                              r_info.selectable):
-                overlap = True
 
-        if overlap and l_info.selectable is r_info.selectable:
+        if (overlap or not create_aliases) and \
+                l_info.selectable is r_info.selectable:
             raise sa_exc.InvalidRequestError(
                 "Can't join table/selectable '%s' to itself" %
                 l_info.selectable)
