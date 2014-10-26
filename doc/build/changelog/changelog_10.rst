@@ -22,6 +22,15 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sql
+        :pullreq: github:146
+
+        Fixed the name of the :paramref:`.PoolEvents.reset.dbapi_connection`
+        parameter as passed to this event; in particular this affects
+        usage of the "named" argument style for this event.  Pull request
+        courtesy Jason Goldberger.
+
+    .. change::
         :tags: feature, sql
         :pullreq: github:139
 
