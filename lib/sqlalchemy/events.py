@@ -338,7 +338,7 @@ class PoolEvents(event.Events):
 
         """
 
-    def reset(self, dbapi_connnection, connection_record):
+    def reset(self, dbapi_connection, connection_record):
         """Called before the "reset" action occurs for a pooled connection.
 
         This event represents
