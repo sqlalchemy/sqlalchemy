@@ -14,6 +14,18 @@
     :version: 0.9.9
 
     .. change::
+        :tags: feature, sqlite
+        :versions: 1.0.0
+
+        Added a new SQLite backend for the SQLCipher backend.  This backend
+        provides for encrypted SQLite databases using the pysqlcipher Python
+        driver, which is very similar to the pysqlite driver.
+
+        .. seealso::
+
+            :mod:`~sqlalchemy.dialects.sqlite.pysqlcipher`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3232
         :versions: 1.0.0

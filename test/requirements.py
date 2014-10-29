@@ -449,7 +449,7 @@ class DefaultRequirements(SuiteRequirements):
         after an insert() construct executes.
         """
         return fails_on_everything_except('mysql',
-                                      'sqlite+pysqlite',
+                                      'sqlite+pysqlite', 'sqlite+pysqlcipher',
                                       'sybase', 'mssql')
 
     @property
@@ -466,7 +466,7 @@ class DefaultRequirements(SuiteRequirements):
         """
         return skip_if('mssql+pymssql', 'crashes on pymssql') + \
                     fails_on_everything_except('mysql',
-                                       'sqlite+pysqlite')
+                                       'sqlite+pysqlite', 'sqlite+pysqlcipher')
 
     @property
     def sane_multi_rowcount(self):
