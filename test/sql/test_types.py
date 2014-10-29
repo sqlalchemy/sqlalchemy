@@ -558,7 +558,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         class MyType(types.TypeDecorator):
-            impl = String
+            impl = String(50)
 
             def process_bind_param(self, value, dialect):
                 return "BIND_IN" + str(value)
