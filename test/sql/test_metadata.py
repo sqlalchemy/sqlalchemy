@@ -1038,6 +1038,7 @@ class InfoTest(fixtures.TestBase):
 
 class TableTest(fixtures.TestBase, AssertsCompiledSQL):
 
+    @testing.requires.temporary_table
     @testing.skip_if('mssql', 'different col format')
     def test_prefixes(self):
         from sqlalchemy import Table
