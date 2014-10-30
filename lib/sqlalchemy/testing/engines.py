@@ -316,8 +316,6 @@ class DBAPIProxyConnection(object):
         self.cursor_cls = cursor_cls
 
     def cursor(self, *args, **kwargs):
-        print "DPA", args
-        print "DPK", kwargs
         return self.cursor_cls(self.engine, self.conn, *args, **kwargs)
 
     def close(self):
