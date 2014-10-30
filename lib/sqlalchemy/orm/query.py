@@ -1760,8 +1760,7 @@ class Query(object):
         aliased, from_joinpoint = kwargs.pop('aliased', False),\
             kwargs.pop('from_joinpoint', False)
         if kwargs:
-            raise TypeError("unknown arguments: %s" %
-                            ','.join(kwargs.keys))
+            raise TypeError("unknown arguments: %s" % ', '.join(kwargs))
         return self._join(props,
                           outerjoin=False, create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
