@@ -238,6 +238,22 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 checkparams=params
             )
 
+    def test_limit_offset_select_literal_binds(self):
+        stmt = select([1]).limit(5).offset(6)
+        self.assert_compile(
+            stmt,
+            "SELECT 1 LIMIT 5 OFFSET 6",
+            literal_binds=True
+        )
+
+    def test_limit_offset_compound_select_literal_binds(self):
+        stmt = select([1]).union(select([2])).limit(5).offset(6)
+        self.assert_compile(
+            stmt,
+            "SELECT 1 UNION SELECT 2 LIMIT 5 OFFSET 6",
+            literal_binds=True
+        )
+
     def test_select_precol_compile_ordering(self):
         s1 = select([column('x')]).select_from(text('a')).limit(5).as_scalar()
         s2 = select([s1]).limit(10)

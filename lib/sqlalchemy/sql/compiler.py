@@ -813,7 +813,7 @@ class SQLCompiler(Compiled):
         text += self.order_by_clause(cs, **kwargs)
         text += (cs._limit_clause is not None
                  or cs._offset_clause is not None) and \
-            self.limit_clause(cs) or ""
+            self.limit_clause(cs, **kwargs) or ""
 
         if self.ctes and \
                 compound_index == 0 and toplevel:
