@@ -71,12 +71,14 @@ def _stored_in_collection(event_key, owner):
     listen_ref = weakref.ref(event_key._listen_fn)
 
     if owner_ref in dispatch_reg:
-        assert dispatch_reg[owner_ref] == listen_ref
-    else:
-        dispatch_reg[owner_ref] = listen_ref
+        return False
+
+    dispatch_reg[owner_ref] = listen_ref
 
     listener_to_key = _collection_to_key[owner_ref]
     listener_to_key[listen_ref] = key
+
+    return True
 
 
 def _removed_from_collection(event_key, owner):
@@ -180,6 +182,17 @@ class _EventKey(object):
 
     def listen(self, *args, **kw):
         once = kw.pop("once", False)
+        named = kw.pop("named", False)
+
+        target, identifier, fn = \
+            self.dispatch_target, self.identifier, self._listen_fn
+
+        dispatch_descriptor = getattr(target.dispatch, identifier)
+
+        adjusted_fn = dispatch_descriptor._adjust_fn_spec(fn, named)
+
+        self = self.with_wrapper(adjusted_fn)
+
         if once:
             self.with_wrapper(
                 util.only_once(self._listen_fn)).listen(*args, **kw)
@@ -215,9 +228,6 @@ class _EventKey(object):
 
         dispatch_descriptor = getattr(target.dispatch, identifier)
 
-        fn = dispatch_descriptor._adjust_fn_spec(fn, named)
-        self = self.with_wrapper(fn)
-
         if insert:
             dispatch_descriptor.\
                 for_modify(target.dispatch).insert(self, propagate)
@@ -229,18 +239,20 @@ class _EventKey(object):
     def _listen_fn(self):
         return self.fn_wrap or self.fn
 
-    def append_value_to_list(self, owner, list_, value):
-        _stored_in_collection(self, owner)
-        list_.append(value)
-
     def append_to_list(self, owner, list_):
-        _stored_in_collection(self, owner)
-        list_.append(self._listen_fn)
+        if _stored_in_collection(self, owner):
+            list_.append(self._listen_fn)
+            return True
+        else:
+            return False
 
     def remove_from_list(self, owner, list_):
         _removed_from_collection(self, owner)
         list_.remove(self._listen_fn)
 
     def prepend_to_list(self, owner, list_):
-        _stored_in_collection(self, owner)
-        list_.appendleft(self._listen_fn)
+        if _stored_in_collection(self, owner):
+            list_.appendleft(self._listen_fn)
+            return True
+        else:
+            return False

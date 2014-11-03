@@ -201,6 +201,30 @@ class Inspector(object):
             tnames = list(topological.sort(tuples, tnames))
         return tnames
 
+    def get_temp_table_names(self):
+        """return a list of temporary table names for the current bind.
+
+        This method is unsupported by most dialects; currently
+        only SQLite implements it.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return self.dialect.get_temp_table_names(
+            self.bind, info_cache=self.info_cache)
+
+    def get_temp_view_names(self):
+        """return a list of temporary view names for the current bind.
+
+        This method is unsupported by most dialects; currently
+        only SQLite implements it.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return self.dialect.get_temp_view_names(
+            self.bind, info_cache=self.info_cache)
+
     def get_table_options(self, table_name, schema=None, **kw):
         """Return a dictionary of options specified when the table of the
         given name was created.
@@ -465,55 +489,87 @@ class Inspector(object):
         for col_d in self.get_columns(
                 table_name, schema, **table.dialect_kwargs):
             found_table = True
-            orig_name = col_d['name']
 
-            table.dispatch.column_reflect(self, table, col_d)
-
-            name = col_d['name']
-            if include_columns and name not in include_columns:
-                continue
-            if exclude_columns and name in exclude_columns:
-                continue
-
-            coltype = col_d['type']
-
-            col_kw = dict(
-                (k, col_d[k])
-                for k in ['nullable', 'autoincrement', 'quote', 'info', 'key']
-                if k in col_d
-            )
-
-            colargs = []
-            if col_d.get('default') is not None:
-                # the "default" value is assumed to be a literal SQL
-                # expression, so is wrapped in text() so that no quoting
-                # occurs on re-issuance.
-                colargs.append(
-                    sa_schema.DefaultClause(
-                        sql.text(col_d['default']), _reflected=True
-                    )
-                )
-
-            if 'sequence' in col_d:
-                # TODO: mssql and sybase are using this.
-                seq = col_d['sequence']
-                sequence = sa_schema.Sequence(seq['name'], 1, 1)
-                if 'start' in seq:
-                    sequence.start = seq['start']
-                if 'increment' in seq:
-                    sequence.increment = seq['increment']
-                colargs.append(sequence)
-
-            cols_by_orig_name[orig_name] = col = \
-                sa_schema.Column(name, coltype, *colargs, **col_kw)
-
-            if col.key in table.primary_key:
-                col.primary_key = True
-            table.append_column(col)
+            self._reflect_column(
+                table, col_d, include_columns,
+                exclude_columns, cols_by_orig_name)
 
         if not found_table:
             raise exc.NoSuchTableError(table.name)
 
+        self._reflect_pk(
+            table_name, schema, table, cols_by_orig_name, exclude_columns)
+
+        self._reflect_fk(
+            table_name, schema, table, cols_by_orig_name,
+            exclude_columns, reflection_options)
+
+        self._reflect_indexes(
+            table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options)
+
+        self._reflect_unique_constraints(
+            table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options)
+
+    def _reflect_column(
+        self, table, col_d, include_columns,
+            exclude_columns, cols_by_orig_name):
+
+        orig_name = col_d['name']
+
+        table.dispatch.column_reflect(self, table, col_d)
+
+        # fetch name again as column_reflect is allowed to
+        # change it
+        name = col_d['name']
+        if (include_columns and name not in include_columns) \
+                or (exclude_columns and name in exclude_columns):
+            return
+
+        coltype = col_d['type']
+
+        col_kw = dict(
+            (k, col_d[k])
+            for k in ['nullable', 'autoincrement', 'quote', 'info', 'key']
+            if k in col_d
+        )
+
+        colargs = []
+        if col_d.get('default') is not None:
+            # the "default" value is assumed to be a literal SQL
+            # expression, so is wrapped in text() so that no quoting
+            # occurs on re-issuance.
+            colargs.append(
+                sa_schema.DefaultClause(
+                    sql.text(col_d['default']), _reflected=True
+                )
+            )
+
+        if 'sequence' in col_d:
+            self._reflect_col_sequence(col_d, colargs)
+
+        cols_by_orig_name[orig_name] = col = \
+            sa_schema.Column(name, coltype, *colargs, **col_kw)
+
+        if col.key in table.primary_key:
+            col.primary_key = True
+        table.append_column(col)
+
+    def _reflect_col_sequence(self, col_d, colargs):
+        if 'sequence' in col_d:
+            # TODO: mssql and sybase are using this.
+            seq = col_d['sequence']
+            sequence = sa_schema.Sequence(seq['name'], 1, 1)
+            if 'start' in seq:
+                sequence.start = seq['start']
+            if 'increment' in seq:
+                sequence.increment = seq['increment']
+            colargs.append(sequence)
+
+    def _reflect_pk(
+            self, table_name, schema, table,
+            cols_by_orig_name, exclude_columns):
         pk_cons = self.get_pk_constraint(
             table_name, schema, **table.dialect_kwargs)
         if pk_cons:
@@ -530,6 +586,9 @@ class Inspector(object):
             # its column collection
             table.primary_key._reload(pk_cols)
 
+    def _reflect_fk(
+            self, table_name, schema, table, cols_by_orig_name,
+            exclude_columns, reflection_options):
         fkeys = self.get_foreign_keys(
             table_name, schema, **table.dialect_kwargs)
         for fkey_d in fkeys:
@@ -572,6 +631,10 @@ class Inspector(object):
                 sa_schema.ForeignKeyConstraint(constrained_columns, refspec,
                                                conname, link_to_name=True,
                                                **options))
+
+    def _reflect_indexes(
+        self, table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options):
         # Indexes
         indexes = self.get_indexes(table_name, schema)
         for index_d in indexes:
@@ -579,11 +642,14 @@ class Inspector(object):
             columns = index_d['column_names']
             unique = index_d['unique']
             flavor = index_d.get('type', 'index')
+            duplicates = index_d.get('duplicates_constraint')
             if include_columns and \
                     not set(columns).issubset(include_columns):
                 util.warn(
                     "Omitting %s key for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
+                continue
+            if duplicates:
                 continue
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
@@ -602,3 +668,43 @@ class Inspector(object):
                     idx_cols.append(idx_col)
 
             sa_schema.Index(name, *idx_cols, **dict(unique=unique))
+
+    def _reflect_unique_constraints(
+        self, table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options):
+
+        # Unique Constraints
+        try:
+            constraints = self.get_unique_constraints(table_name, schema)
+        except NotImplementedError:
+            # optional dialect feature
+            return
+
+        for const_d in constraints:
+            conname = const_d['name']
+            columns = const_d['column_names']
+            duplicates = const_d.get('duplicates_index')
+            if include_columns and \
+                    not set(columns).issubset(include_columns):
+                util.warn(
+                    "Omitting unique constraint key for (%s), "
+                    "key covers omitted columns." %
+                    ', '.join(columns))
+                continue
+            if duplicates:
+                continue
+            # look for columns by orig name in cols_by_orig_name,
+            # but support columns that are in-Python only as fallback
+            constrained_cols = []
+            for c in columns:
+                try:
+                    constrained_col = cols_by_orig_name[c] \
+                        if c in cols_by_orig_name else table.c[c]
+                except KeyError:
+                    util.warn(
+                        "unique constraint key '%s' was not located in "
+                        "columns for table '%s'" % (c, table_name))
+                else:
+                    constrained_cols.append(constrained_col)
+            table.append_constraint(
+                sa_schema.UniqueConstraint(*constrained_cols, name=conname))

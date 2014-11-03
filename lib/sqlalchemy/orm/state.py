@@ -145,7 +145,16 @@ class InstanceState(interfaces.InspectionAttr):
     @util.dependencies("sqlalchemy.orm.session")
     def session(self, sessionlib):
         """Return the owning :class:`.Session` for this instance,
-        or ``None`` if none available."""
+        or ``None`` if none available.
+
+        Note that the result here can in some cases be *different*
+        from that of ``obj in session``; an object that's been deleted
+        will report as not ``in session``, however if the transaction is
+        still in progress, this attribute will still refer to that session.
+        Only when the transaction is completed does the object become
+        fully detached under normal circumstances.
+
+        """
         return sessionlib._state_session(self)
 
     @property
@@ -258,8 +267,8 @@ class InstanceState(interfaces.InspectionAttr):
         try:
             return manager.original_init(*mixed[1:], **kwargs)
         except:
-            manager.dispatch.init_failure(self, args, kwargs)
-            raise
+            with util.safe_reraise():
+                manager.dispatch.init_failure(self, args, kwargs)
 
     def get_history(self, key, passive):
         return self.manager[key].impl.get_history(self, self.dict, passive)

@@ -283,6 +283,38 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         view_names = dialect.get_view_names(connection, "information_schema")
         self.assert_('TABLES' in view_names)
 
+    @testing.provide_metadata
+    def test_reflection_with_unique_constraint(self):
+        insp = inspect(testing.db)
+
+        meta = self.metadata
+        uc_table = Table('mysql_uc', meta,
+                         Column('a', String(10)),
+                         UniqueConstraint('a', name='uc_a'))
+
+        uc_table.create()
+
+        # MySQL converts unique constraints into unique indexes.
+        # separately we get both
+        indexes = dict((i['name'], i) for i in insp.get_indexes('mysql_uc'))
+        constraints = set(i['name']
+                          for i in insp.get_unique_constraints('mysql_uc'))
+
+        self.assert_('uc_a' in indexes)
+        self.assert_(indexes['uc_a']['unique'])
+        self.assert_('uc_a' in constraints)
+
+        # reflection here favors the unique index, as that's the
+        # more "official" MySQL construct
+        reflected = Table('mysql_uc', MetaData(testing.db), autoload=True)
+
+        indexes = dict((i.name, i) for i in reflected.indexes)
+        constraints = set(uc.name for uc in reflected.constraints)
+
+        self.assert_('uc_a' in indexes)
+        self.assert_(indexes['uc_a'].unique)
+        self.assert_('uc_a' not in constraints)
+
 
 class RawReflectionTest(fixtures.TestBase):
     def setup(self):

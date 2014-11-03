@@ -1079,12 +1079,15 @@ The above relationship will produce a join like::
     ON host_entry_1.ip_address = CAST(host_entry.content AS INET)
 
 An alternative syntax to the above is to use the :func:`.foreign` and
-:func:`.remote` :term:`annotations`, inline within the :paramref:`~.relationship.primaryjoin` expression.
+:func:`.remote` :term:`annotations`,
+inline within the :paramref:`~.relationship.primaryjoin` expression.
 This syntax represents the annotations that :func:`.relationship` normally
 applies by itself to the join condition given the :paramref:`~.relationship.foreign_keys` and
-:paramref:`~.relationship.remote_side` arguments; the functions are provided in the API in the
-rare case that :func:`.relationship` can't determine the exact location
-of these features on its own::
+:paramref:`~.relationship.remote_side` arguments.  These functions may
+be more succinct when an explicit join condition is present, and additionally
+serve to mark exactly the column that is "foreign" or "remote" independent
+of whether that column is stated multiple times or within complex
+SQL expressions::
 
     from sqlalchemy.orm import foreign, remote
 
@@ -1156,6 +1159,130 @@ Will render as::
 .. versionadded:: 0.9.2 - Added the :paramref:`.Operators.op.is_comparison`
    flag to assist in the creation of :func:`.relationship` constructs using
    custom operators.
+
+.. _relationship_overlapping_foreignkeys:
+
+Overlapping Foreign Keys
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+A rare scenario can arise when composite foreign keys are used, such that
+a single column may be the subject of more than one column
+referred to via foreign key constraint.
+
+Consider an (admittedly complex) mapping such as the ``Magazine`` object,
+referred to both by the ``Writer`` object and the ``Article`` object
+using a composite primary key scheme that includes ``magazine_id``
+for both; then to make ``Article`` refer to ``Writer`` as well,
+``Article.magazine_id`` is involved in two separate relationships;
+``Article.magazine`` and ``Article.writer``::
+
+    class Magazine(Base):
+        __tablename__ = 'magazine'
+
+        id = Column(Integer, primary_key=True)
+
+
+    class Article(Base):
+        __tablename__ = 'article'
+
+        article_id = Column(Integer)
+        magazine_id = Column(ForeignKey('magazine.id'))
+        writer_id = Column()
+
+        magazine = relationship("Magazine")
+        writer = relationship("Writer")
+
+        __table_args__ = (
+            PrimaryKeyConstraint('article_id', 'magazine_id'),
+            ForeignKeyConstraint(
+                ['writer_id', 'magazine_id'],
+                ['writer.id', 'writer.magazine_id']
+            ),
+        )
+
+
+    class Writer(Base):
+        __tablename__ = 'writer'
+
+        id = Column(Integer, primary_key=True)
+        magazine_id = Column(ForeignKey('magazine.id'), primary_key=True)
+        magazine = relationship("Magazine")
+
+When the above mapping is configured, we will see this warning emitted::
+
+    SAWarning: relationship 'Article.writer' will copy column
+    writer.magazine_id to column article.magazine_id,
+    which conflicts with relationship(s): 'Article.magazine'
+    (copies magazine.id to article.magazine_id). Consider applying
+    viewonly=True to read-only relationships, or provide a primaryjoin
+    condition marking writable columns with the foreign() annotation.
+
+What this refers to originates from the fact that ``Article.magazine_id`` is
+the subject of two different foreign key constraints; it refers to
+``Magazine.id`` directly as a source column, but also refers to
+``Writer.magazine_id`` as a source column in the context of the
+composite key to ``Writer``.   If we associate an ``Article`` with a
+particular ``Magazine``, but then associate the ``Article`` with a
+``Writer`` that's  associated  with a *different* ``Magazine``, the ORM
+will overwrite ``Article.magazine_id`` non-deterministically, silently
+changing which magazine we refer towards; it may
+also attempt to place NULL into this columnn if we de-associate a
+``Writer`` from an ``Article``.  The warning lets us know this is the case.
+
+To solve this, we need to break out the behavior of ``Article`` to include
+all three of the following features:
+
+1. ``Article`` first and foremost writes to
+   ``Article.magazine_id`` based on data persisted in the ``Article.magazine``
+   relationship only, that is a value copied from ``Magazine.id``.
+
+2. ``Article`` can write to ``Article.writer_id`` on behalf of data
+   persisted in the  ``Article.writer`` relationship, but only the
+   ``Writer.id`` column; the ``Writer.magazine_id`` column should not
+   be written into ``Article.magazine_id`` as it ultimately is sourced
+   from ``Magazine.id``.
+
+3. ``Article`` takes ``Article.magazine_id`` into account when loading
+   ``Article.writer``, even though it *doesn't* write to it on behalf
+   of this relationship.
+
+To get just #1 and #2, we could specify only ``Article.writer_id`` as the
+"foreign keys" for ``Article.writer``::
+
+    class Article(Base):
+        # ...
+
+        writer = relationship("Writer", foreign_keys='Article.writer_id')
+
+However, this has the effect of ``Article.writer`` not taking
+``Article.magazine_id`` into account when querying against ``Writer``:
+
+.. sourcecode:: sql
+
+    SELECT article.article_id AS article_article_id,
+        article.magazine_id AS article_magazine_id,
+        article.writer_id AS article_writer_id
+    FROM article
+    JOIN writer ON writer.id = article.writer_id
+
+Therefore, to get at all of #1, #2, and #3, we express the join condition
+as well as which columns to be written by combining
+:paramref:`~.relationship.primaryjoin` fully, along with either the
+:paramref:`~.relationship.foreign_keys` argument, or more succinctly by
+annotating with :func:`~.orm.foreign`::
+
+    class Article(Base):
+        # ...
+
+        writer = relationship(
+            "Writer",
+            primaryjoin="and_(Writer.id == foreign(Article.writer_id), "
+                        "Writer.magazine_id == Article.magazine_id)")
+
+.. versionchanged:: 1.0.0 the ORM will attempt to warn when a column is used
+   as the synchronization target from more than one relationship
+   simultaneously.
+
 
 Non-relational Comparisons / Materialized Path
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

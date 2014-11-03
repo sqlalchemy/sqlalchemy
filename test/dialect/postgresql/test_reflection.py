@@ -7,14 +7,130 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy import inspect
 from sqlalchemy import Table, Column, MetaData, Integer, String, \
-    PrimaryKeyConstraint, ForeignKey, join, Sequence
+    PrimaryKeyConstraint, ForeignKey, join, Sequence, UniqueConstraint, \
+    Index
 from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 
 
-class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
+    """Test reflection on foreign tables"""
 
+    __requires__ = 'postgresql_test_dblink',
+    __only_on__ = 'postgresql >= 9.3'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy.testing import config
+        dblink = config.file_config.get(
+            'sqla_testing', 'postgres_test_db_link')
+
+        testtable = Table(
+            'testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+
+        for ddl in [
+            "CREATE SERVER test_server FOREIGN DATA WRAPPER postgres_fdw "
+            "OPTIONS (dbname 'test', host '%s')" % dblink,
+            "CREATE USER MAPPING FOR public \
+            SERVER test_server options (user 'scott', password 'tiger')",
+            "CREATE FOREIGN TABLE test_foreigntable ( "
+            "   id          INT, "
+            "   data        VARCHAR(30) "
+            ") SERVER test_server OPTIONS (table_name 'testtable')",
+        ]:
+            sa.event.listen(metadata, "after_create", sa.DDL(ddl))
+
+        for ddl in [
+            'DROP FOREIGN TABLE test_foreigntable',
+            'DROP USER MAPPING FOR public SERVER test_server',
+            "DROP SERVER test_server"
+        ]:
+            sa.event.listen(metadata, "before_drop", sa.DDL(ddl))
+
+    def test_foreign_table_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_foreigntable', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected foreign table didn't equal expected columns")
+
+    def test_get_foreign_table_names(self):
+        inspector = inspect(testing.db)
+        with testing.db.connect() as conn:
+            ft_names = inspector.get_foreign_table_names()
+            eq_(ft_names, ['test_foreigntable'])
+
+    def test_get_table_names_no_foreign(self):
+        inspector = inspect(testing.db)
+        with testing.db.connect() as conn:
+            names = inspector.get_table_names()
+            eq_(names, ['testtable'])
+
+
+class MaterialiedViewReflectionTest(
+        fixtures.TablesTest, AssertsExecutionResults):
+    """Test reflection on materialized views"""
+
+    __only_on__ = 'postgresql >= 9.3'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        testtable = Table(
+            'testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+
+        # insert data before we create the view
+        @sa.event.listens_for(testtable, "after_create")
+        def insert_data(target, connection, **kw):
+            connection.execute(
+                target.insert(),
+                {"id": 89, "data": 'd1'}
+            )
+
+        materialized_view = sa.DDL(
+            "CREATE MATERIALIZED VIEW test_mview AS "
+            "SELECT * FROM testtable")
+
+        plain_view = sa.DDL(
+            "CREATE VIEW test_regview AS "
+            "SELECT * FROM testtable")
+
+        sa.event.listen(testtable, 'after_create', plain_view)
+        sa.event.listen(testtable, 'after_create', materialized_view)
+        sa.event.listen(
+            testtable, 'before_drop',
+            sa.DDL("DROP MATERIALIZED VIEW test_mview")
+        )
+        sa.event.listen(
+            testtable, 'before_drop',
+            sa.DDL("DROP VIEW test_regview")
+        )
+
+    def test_mview_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(set(table.columns.keys()), set(['id', 'data']),
+            "Columns of reflected mview didn't equal expected columns")
+
+    def test_mview_select(self):
+        metadata = MetaData(testing.db)
+        table = Table('test_mview', metadata, autoload=True)
+        eq_(
+            table.select().execute().fetchall(),
+            [(89, 'd1',)]
+        )
+
+    def test_get_view_names(self):
+        insp = inspect(testing.db)
+        eq_(set(insp.get_view_names()), set(['test_mview', 'test_regview']))
+
+
+class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     """Test PostgreSQL domains"""
 
     __only_on__ = 'postgresql > 8.3'
@@ -687,6 +803,66 @@ class ReflectionTest(fixtures.TestBase):
                 'schema': 'test_schema',
                 'labels': ['sad', 'ok', 'happy']
             }])
+
+    @testing.provide_metadata
+    def test_reflection_with_unique_constraint(self):
+        insp = inspect(testing.db)
+
+        meta = self.metadata
+        uc_table = Table('pgsql_uc', meta,
+                         Column('a', String(10)),
+                         UniqueConstraint('a', name='uc_a'))
+
+        uc_table.create()
+
+        # PostgreSQL will create an implicit index for a unique
+        # constraint.   Separately we get both
+        indexes = set(i['name'] for i in insp.get_indexes('pgsql_uc'))
+        constraints = set(i['name']
+                          for i in insp.get_unique_constraints('pgsql_uc'))
+
+        self.assert_('uc_a' in indexes)
+        self.assert_('uc_a' in constraints)
+
+        # reflection corrects for the dupe
+        reflected = Table('pgsql_uc', MetaData(testing.db), autoload=True)
+
+        indexes = set(i.name for i in reflected.indexes)
+        constraints = set(uc.name for uc in reflected.constraints)
+
+        self.assert_('uc_a' not in indexes)
+        self.assert_('uc_a' in constraints)
+
+    @testing.provide_metadata
+    def test_reflect_unique_index(self):
+        insp = inspect(testing.db)
+
+        meta = self.metadata
+
+        # a unique index OTOH we are able to detect is an index
+        # and not a unique constraint
+        uc_table = Table('pgsql_uc', meta,
+                         Column('a', String(10)),
+                         Index('ix_a', 'a', unique=True))
+
+        uc_table.create()
+
+        indexes = dict((i['name'], i) for i in insp.get_indexes('pgsql_uc'))
+        constraints = set(i['name']
+                          for i in insp.get_unique_constraints('pgsql_uc'))
+
+        self.assert_('ix_a' in indexes)
+        assert indexes['ix_a']['unique']
+        self.assert_('ix_a' not in constraints)
+
+        reflected = Table('pgsql_uc', MetaData(testing.db), autoload=True)
+
+        indexes = dict((i.name, i) for i in reflected.indexes)
+        constraints = set(uc.name for uc in reflected.constraints)
+
+        self.assert_('ix_a' in indexes)
+        assert indexes['ix_a'].unique
+        self.assert_('ix_a' not in constraints)
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):

@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: September 7, 2014
+    Document last updated: October 23, 2014
 
 Introduction
 ============
@@ -25,6 +25,141 @@ potentially backwards-incompatible changes.
 New Features
 ============
 
+.. _feature_3150:
+
+Improvements to declarative mixins, ``@declared_attr`` and related features
+----------------------------------------------------------------------------
+
+The declarative system in conjunction with :class:`.declared_attr` has been
+overhauled to support new capabilities.
+
+A function decorated with :class:`.declared_attr` is now called only **after**
+any mixin-based column copies are generated.  This means the function can
+call upon mixin-established columns and will receive a reference to the correct
+:class:`.Column` object::
+
+    class HasFooBar(object):
+        foobar = Column(Integer)
+
+        @declared_attr
+        def foobar_prop(cls):
+            return column_property('foobar: ' + cls.foobar)
+
+    class SomeClass(HasFooBar, Base):
+        __tablename__ = 'some_table'
+        id = Column(Integer, primary_key=True)
+
+Above, ``SomeClass.foobar_prop`` will be invoked against ``SomeClass``,
+and ``SomeClass.foobar`` will be the final :class:`.Column` object that is
+to be mapped to ``SomeClass``, as opposed to the non-copied object present
+directly on ``HasFooBar``, even though the columns aren't mapped yet.
+
+The :class:`.declared_attr` function now **memoizes** the value
+that's returned on a per-class basis, so that repeated calls to the same
+attribute will return the same value.  We can alter the example to illustrate
+this::
+
+    class HasFooBar(object):
+        @declared_attr
+        def foobar(cls):
+            return Column(Integer)
+
+        @declared_attr
+        def foobar_prop(cls):
+            return column_property('foobar: ' + cls.foobar)
+
+    class SomeClass(HasFooBar, Base):
+        __tablename__ = 'some_table'
+        id = Column(Integer, primary_key=True)
+
+Previously, ``SomeClass`` would be mapped with one particular copy of
+the ``foobar`` column, but the ``foobar_prop`` by calling upon ``foobar``
+a second time would produce a different column.   The value of
+``SomeClass.foobar`` is now memoized during declarative setup time, so that
+even before the attribute is mapped by the mapper, the interim column
+value will remain consistent no matter how many times the
+:class:`.declared_attr` is called upon.
+
+The two behaviors above should help considerably with declarative definition
+of many types of mapper properties that derive from other attributes, where
+the :class:`.declared_attr` function is called upon from other
+:class:`.declared_attr` functions locally present before the class is
+actually mapped.
+
+For a pretty slim edge case where one wishes to build a declarative mixin
+that establishes distinct columns per subclass, a new modifier
+:attr:`.declared_attr.cascading` is added.  With this modifier, the
+decorated function will be invoked individually for each class in the
+mapped inheritance hierarchy.  While this is already the behavior for
+special attributes such as ``__table_args__`` and ``__mapper_args__``,
+for columns and other properties the behavior by default assumes that attribute
+is affixed to the base class only, and just inherited from subclasses.
+With :attr:`.declared_attr.cascading`, individual behaviors can be
+applied::
+
+    class HasSomeAttribute(object):
+        @declared_attr.cascading
+        def some_id(cls):
+            if has_inherited_table(cls):
+                return Column(ForeignKey('myclass.id'), primary_key=True)
+            else:
+                return Column(Integer, primary_key=True)
+
+            return Column('id', Integer, primary_key=True)
+
+    class MyClass(HasSomeAttribute, Base):
+        ""
+        # ...
+
+    class MySubClass(MyClass):
+        ""
+        # ...
+
+.. seealso::
+
+    :ref:`mixin_inheritance_columns`
+
+Finally, the :class:`.AbstractConcreteBase` class has been reworked
+so that a relationship or other mapper property can be set up inline
+on the abstract base::
+
+    from sqlalchemy import Column, Integer, ForeignKey
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.ext.declarative import (declarative_base, declared_attr,
+        AbstractConcreteBase)
+
+    Base = declarative_base()
+
+    class Something(Base):
+        __tablename__ = u'something'
+        id = Column(Integer, primary_key=True)
+
+
+    class Abstract(AbstractConcreteBase, Base):
+        id = Column(Integer, primary_key=True)
+
+        @declared_attr
+        def something_id(cls):
+            return Column(ForeignKey(Something.id))
+
+        @declared_attr
+        def something(cls):
+            return relationship(Something)
+
+
+    class Concrete(Abstract):
+        __tablename__ = u'cca'
+        __mapper_args__ = {'polymorphic_identity': 'cca', 'concrete': True}
+
+
+The above mapping will set up a table ``cca`` with both an ``id`` and
+a ``something_id`` column, and ``Concrete`` will also have a relationship
+``something``.  The new feature is that ``Abstract`` will also have an
+independently configured relationship ``something`` that builds against
+the polymorphic union of the base.
+
+:ticket:`3150` :ticket:`2670` :ticket:`3149` :ticket:`2952` :ticket:`3050`
+
 .. _feature_3034:
 
 Select/Query LIMIT / OFFSET may be specified as an arbitrary SQL expression
@@ -37,7 +172,7 @@ any SQL expression, in addition to integer values, as arguments.  The ORM
 this is used to allow a bound parameter to be passed, which can be substituted
 with a value later::
 
-	sel = select([table]).limit(bindparam('mylimit')).offset(bindparam('myoffset'))
+    sel = select([table]).limit(bindparam('mylimit')).offset(bindparam('myoffset'))
 
 Dialects which don't support non-integer LIMIT or OFFSET expressions may continue
 to not support this behavior; third party dialects may also need modification
@@ -49,6 +184,170 @@ instead raise a :class:`.CompileError` on access.  A third-party dialect which
 wishes to support the new feature should now call upon the ``._limit_clause``
 and ``._offset_clause`` attributes to receive the full SQL expression, rather
 than the integer value.
+
+.. _change_2051:
+
+.. _feature_insert_from_select_defaults:
+
+INSERT FROM SELECT now includes Python and SQL-expression defaults
+-------------------------------------------------------------------
+
+:meth:`.Insert.from_select` now includes Python and SQL-expression defaults if
+otherwise unspecified; the limitation where non-server column defaults
+aren't included in an INSERT FROM SELECT is now lifted and these
+expressions are rendered as constants into the SELECT statement::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, select, func
+
+    m = MetaData()
+
+    t = Table(
+        't', m,
+        Column('x', Integer),
+        Column('y', Integer, default=func.somefunction()))
+
+    stmt = select([t.c.x])
+    print t.insert().from_select(['x'], stmt)
+
+Will render::
+
+    INSERT INTO t (x, y) SELECT t.x, somefunction() AS somefunction_1
+    FROM t
+
+The feature can be disabled using
+:paramref:`.Insert.from_select.include_defaults`.
+
+New Postgresql Table options
+-----------------------------
+
+Added support for PG table options TABLESPACE, ON COMMIT,
+WITH(OUT) OIDS, and INHERITS, when rendering DDL via
+the :class:`.Table` construct.
+
+.. seealso::
+
+    :ref:`postgresql_table_options`
+
+:ticket:`2051`
+
+.. _feature_get_enums:
+
+New get_enums() method with Postgresql Dialect
+----------------------------------------------
+
+The :func:`.inspect` method returns a :class:`.PGInspector` object in the
+case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
+method that returns information on all available ``ENUM`` types::
+
+    from sqlalchemy import inspect, create_engine
+
+    engine = create_engine("postgresql+psycopg2://host/dbname")
+    insp = inspect(engine)
+    print(insp.get_enums())
+
+.. seealso::
+
+    :meth:`.PGInspector.get_enums`
+
+.. _feature_2891:
+
+Postgresql Dialect reflects Materialized Views, Foreign Tables
+--------------------------------------------------------------
+
+Changes are as follows:
+
+* the :class:`Table` construct with ``autoload=True`` will now match a name
+  that exists in the database as a materialized view or foriegn table.
+
+* :meth:`.Inspector.get_view_names` will return plain and materialized view
+  names.
+
+* :meth:`.Inspector.get_table_names` does **not** change for Postgresql, it
+  continues to return only the names of plain tables.
+
+* A new method :meth:`.PGInspector.get_foreign_table_names` is added which
+  will return the names of tables that are specifically marked as "foreign"
+  in the Postgresql schema tables.
+
+The change to reflection involves adding ``'m'`` and ``'f'`` to the list
+of qualifiers we use when querying ``pg_class.relkind``, but this change
+is new in 1.0.0 to avoid any backwards-incompatible surprises for those
+running 0.9 in production.
+
+:ticket:`2891`
+
+.. _feature_gh134:
+
+Postgresql FILTER keyword
+-------------------------
+
+The SQL standard FILTER keyword for aggregate functions is now supported
+by Postgresql as of 9.4.  SQLAlchemy allows this using
+:meth:`.FunctionElement.filter`::
+
+    func.count(1).filter(True)
+
+.. seealso::
+
+    :meth:`.FunctionElement.filter`
+
+    :class:`.FunctionFilter`
+
+.. _feature_3184:
+
+UniqueConstraint is now part of the Table reflection process
+------------------------------------------------------------
+
+A :class:`.Table` object populated using ``autoload=True`` will now
+include :class:`.UniqueConstraint` constructs as well as
+:class:`.Index` constructs.  This logic has a few caveats for
+Postgresql and Mysql:
+
+Postgresql
+^^^^^^^^^^
+
+Postgresql has the behavior such that when a UNIQUE constraint is
+created, it implicitly creates a UNIQUE INDEX corresponding to that
+constraint as well. The :meth:`.Inspector.get_indexes` and the
+:meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return these entries distinctly, where
+:meth:`.Inspector.get_indexes` now features a token
+``duplicates_constraint`` within the index entry  indicating the
+corresponding constraint when detected.   However, when performing
+full table reflection using  ``Table(..., autoload=True)``, the
+:class:`.Index` construct is detected as being linked to the
+:class:`.UniqueConstraint`, and is **not** present within the
+:attr:`.Table.indexes` collection; only the :class:`.UniqueConstraint`
+will be present in the :attr:`.Table.constraints` collection.   This
+deduplication logic works by joining to the ``pg_constraint`` table
+when querying ``pg_index`` to see if the two constructs are linked.
+
+MySQL
+^^^^^
+
+MySQL does not have separate concepts for a UNIQUE INDEX and a UNIQUE
+constraint.  While it supports both syntaxes when creating tables and indexes,
+it does not store them any differently. The
+:meth:`.Inspector.get_indexes`
+and the :meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return an entry for a UNIQUE index in MySQL,
+where :meth:`.Inspector.get_unique_constraints` features a new token
+``duplicates_index`` within the constraint entry indicating that this is a
+dupe entry corresponding to that index.  However, when performing
+full table reflection using ``Table(..., autoload=True)``,
+the :class:`.UniqueConstraint` construct is
+**not** part of the fully reflected :class:`.Table` construct under any
+circumstances; this construct is always represented by a :class:`.Index`
+with the ``unique=True`` setting present in the :attr:`.Table.indexes`
+collection.
+
+.. seealso::
+
+    :ref:`postgresql_index_reflection`
+
+    :ref:`mysql_unique_constraints`
+
+:ticket:`3184`
 
 
 Behavioral Improvements
@@ -82,35 +381,35 @@ that a raw load of rows now populates ORM-based objects around 25% faster.
 Assuming a 1M row table, a script like the following illustrates the type
 of load that's improved the most::
 
-	import time
-	from sqlalchemy import Integer, Column, create_engine, Table
-	from sqlalchemy.orm import Session
-	from sqlalchemy.ext.declarative import declarative_base
+    import time
+    from sqlalchemy import Integer, Column, create_engine, Table
+    from sqlalchemy.orm import Session
+    from sqlalchemy.ext.declarative import declarative_base
 
-	Base = declarative_base()
+    Base = declarative_base()
 
-	class Foo(Base):
-	    __table__ = Table(
-	        'foo', Base.metadata,
-	        Column('id', Integer, primary_key=True),
-	        Column('a', Integer(), nullable=False),
-	        Column('b', Integer(), nullable=False),
-	        Column('c', Integer(), nullable=False),
-	    )
+    class Foo(Base):
+        __table__ = Table(
+            'foo', Base.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('a', Integer(), nullable=False),
+            Column('b', Integer(), nullable=False),
+            Column('c', Integer(), nullable=False),
+        )
 
-	engine = create_engine(
-		'mysql+mysqldb://scott:tiger@localhost/test', echo=True)
+    engine = create_engine(
+        'mysql+mysqldb://scott:tiger@localhost/test', echo=True)
 
-	sess = Session(engine)
+    sess = Session(engine)
 
-	now = time.time()
+    now = time.time()
 
-	# avoid using all() so that we don't have the overhead of building
-	# a large list of full objects in memory
-	for obj in sess.query(Foo).yield_per(100).limit(1000000):
-	    pass
+    # avoid using all() so that we don't have the overhead of building
+    # a large list of full objects in memory
+    for obj in sess.query(Foo).yield_per(100).limit(1000000):
+        pass
 
-	print("Total time: %d" % (time.time() - now))
+    print("Total time: %d" % (time.time() - now))
 
 Local MacBookPro results bench from 19 seconds for 0.9 down to 14 seconds for
 1.0.  The :meth:`.Query.yield_per` call is always a good idea when batching
@@ -121,7 +420,6 @@ MacBookPro is 31 seconds on 0.9 and 26 seconds on 1.0, the extra time spent
 setting up very large memory buffers.
 
 
-
 .. _feature_3176:
 
 New KeyedTuple implementation dramatically faster
@@ -130,7 +428,7 @@ New KeyedTuple implementation dramatically faster
 We took a look into the :class:`.KeyedTuple` implementation in the hopes
 of improving queries like this::
 
-	rows = sess.query(Foo.a, Foo.b, Foo.c).all()
+    rows = sess.query(Foo.a, Foo.b, Foo.c).all()
 
 The :class:`.KeyedTuple` class is used rather than Python's
 ``collections.namedtuple()``, because the latter has a very complex
@@ -146,29 +444,72 @@ which scenario.  In the "sweet spot", where we are both creating a good number
 of new types as well as fetching a good number of rows, the lightweight
 object totally smokes both namedtuple and KeyedTuple::
 
-	-----------------
-	size=10 num=10000                 # few rows, lots of queries
-	namedtuple: 3.60302400589         # namedtuple falls over
-	keyedtuple: 0.255059957504        # KeyedTuple very fast
-	lw keyed tuple: 0.582715034485    # lw keyed trails right on KeyedTuple
-	-----------------
-	size=100 num=1000                 # <--- sweet spot
-	namedtuple: 0.365247011185
-	keyedtuple: 0.24896979332
-	lw keyed tuple: 0.0889317989349   # lw keyed blows both away!
-	-----------------
-	size=10000 num=100
-	namedtuple: 0.572599887848
-	keyedtuple: 2.54251694679
-	lw keyed tuple: 0.613876104355
-	-----------------
-	size=1000000 num=10               # few queries, lots of rows
-	namedtuple: 5.79669594765         # namedtuple very fast
-	keyedtuple: 28.856498003          # KeyedTuple falls over
-	lw keyed tuple: 6.74346804619     # lw keyed trails right on namedtuple
+    -----------------
+    size=10 num=10000                 # few rows, lots of queries
+    namedtuple: 3.60302400589         # namedtuple falls over
+    keyedtuple: 0.255059957504        # KeyedTuple very fast
+    lw keyed tuple: 0.582715034485    # lw keyed trails right on KeyedTuple
+    -----------------
+    size=100 num=1000                 # <--- sweet spot
+    namedtuple: 0.365247011185
+    keyedtuple: 0.24896979332
+    lw keyed tuple: 0.0889317989349   # lw keyed blows both away!
+    -----------------
+    size=10000 num=100
+    namedtuple: 0.572599887848
+    keyedtuple: 2.54251694679
+    lw keyed tuple: 0.613876104355
+    -----------------
+    size=1000000 num=10               # few queries, lots of rows
+    namedtuple: 5.79669594765         # namedtuple very fast
+    keyedtuple: 28.856498003          # KeyedTuple falls over
+    lw keyed tuple: 6.74346804619     # lw keyed trails right on namedtuple
 
 
 :ticket:`3176`
+
+.. _bug_3035:
+
+Session.get_bind() handles a wider variety of inheritance scenarios
+-------------------------------------------------------------------
+
+The :meth:`.Session.get_bind` method is invoked whenever a query or unit
+of work flush process seeks to locate the database engine that corresponds
+to a particular class.   The method has been improved to handle a variety
+of inheritance-oriented scenarios, including:
+
+* Binding to a Mixin or Abstract Class::
+
+        class MyClass(SomeMixin, Base):
+            __tablename__ = 'my_table'
+            # ...
+
+        session = Session(binds={SomeMixin: some_engine})
+
+
+* Binding to inherited concrete subclasses individually based on table::
+
+        class BaseClass(Base):
+            __tablename__ = 'base'
+
+            # ...
+
+        class ConcreteSubClass(BaseClass):
+            __tablename__ = 'concrete'
+
+            # ...
+
+            __mapper_args__ = {'concrete': True}
+
+
+        session = Session(binds={
+            base_table: some_engine,
+            concrete_table: some_other_engine
+        })
+
+
+:ticket:`3035`
+
 
 .. _feature_3178:
 
@@ -195,27 +536,27 @@ them as duplicates.
 To illustrate, the following test script will show only ten warnings being
 emitted for ten of the parameter sets, out of a total of 1000::
 
-	from sqlalchemy import create_engine, Unicode, select, cast
-	import random
-	import warnings
+    from sqlalchemy import create_engine, Unicode, select, cast
+    import random
+    import warnings
 
-	e = create_engine("sqlite://")
+    e = create_engine("sqlite://")
 
-	# Use the "once" filter (which is also the default for Python
-	# warnings).  Exactly ten of these warnings will
-	# be emitted; beyond that, the Python warnings registry will accumulate
-	# new values as dupes of one of the ten existing.
-	warnings.filterwarnings("once")
+    # Use the "once" filter (which is also the default for Python
+    # warnings).  Exactly ten of these warnings will
+    # be emitted; beyond that, the Python warnings registry will accumulate
+    # new values as dupes of one of the ten existing.
+    warnings.filterwarnings("once")
 
-	for i in range(1000):
-	    e.execute(select([cast(
-	        ('foo_%d' % random.randint(0, 1000000)).encode('ascii'), Unicode)]))
+    for i in range(1000):
+        e.execute(select([cast(
+            ('foo_%d' % random.randint(0, 1000000)).encode('ascii'), Unicode)]))
 
 The format of the warning here is::
 
-	/path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
-	  non-unicode bind param value 'foo_4852'. (this warning may be
-	  suppressed after 10 occurrences)
+    /path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
+      non-unicode bind param value 'foo_4852'. (this warning may be
+      suppressed after 10 occurrences)
 
 
 :ticket:`3178`
@@ -233,15 +574,15 @@ However, as these objects are class-bound descriptors, they must be accessed
 at the attribute.  Below this is illustared using the
 :attr:`.Mapper.all_orm_descriptors` namespace::
 
-	class SomeObject(Base):
-	    # ...
+    class SomeObject(Base):
+        # ...
 
-	    @hybrid_property
-	    def some_prop(self):
-	        return self.value + 5
+        @hybrid_property
+        def some_prop(self):
+            return self.value + 5
 
 
-	inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
+    inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
 
 It is also available as a constructor argument for all :class:`.SchemaItem`
 objects (e.g. :class:`.ForeignKey`, :class:`.UniqueConstraint` etc.) as well
@@ -258,26 +599,26 @@ Change to single-table-inheritance criteria when using from_self(), count()
 
 Given a single-table inheritance mapping, such as::
 
-	class Widget(Base):
-		__table__ = 'widget_table'
+    class Widget(Base):
+        __table__ = 'widget_table'
 
-	class FooWidget(Widget):
-		pass
+    class FooWidget(Widget):
+        pass
 
 Using :meth:`.Query.from_self` or :meth:`.Query.count` against a subclass
 would produce a subquery, but then add the "WHERE" criteria for subtypes
 to the outside::
 
-	sess.query(FooWidget).from_self().all()
+    sess.query(FooWidget).from_self().all()
 
 rendering::
 
-	SELECT
-		anon_1.widgets_id AS anon_1_widgets_id,
-		anon_1.widgets_type AS anon_1_widgets_type
-	FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
-	FROM widgets) AS anon_1
-	WHERE anon_1.widgets_type IN (?)
+    SELECT
+        anon_1.widgets_id AS anon_1_widgets_id,
+        anon_1.widgets_type AS anon_1_widgets_type
+    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+    FROM widgets) AS anon_1
+    WHERE anon_1.widgets_type IN (?)
 
 The issue with this is that if the inner query does not specify all
 columns, then we can't add the WHERE clause on the outside (it actually tries,
@@ -286,27 +627,92 @@ apparently goes way back to 0.6.5 with the note "may need to make more
 adjustments to this".   Well, those adjustments have arrived!  So now the
 above query will render::
 
-	SELECT
-		anon_1.widgets_id AS anon_1_widgets_id,
-		anon_1.widgets_type AS anon_1_widgets_type
-	FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
-	FROM widgets
-	WHERE widgets.type IN (?)) AS anon_1
+    SELECT
+        anon_1.widgets_id AS anon_1_widgets_id,
+        anon_1.widgets_type AS anon_1_widgets_type
+    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+    FROM widgets
+    WHERE widgets.type IN (?)) AS anon_1
 
 So that queries that don't include "type" will still work!::
 
-	sess.query(FooWidget.id).count()
+    sess.query(FooWidget.id).count()
 
 Renders::
 
-	SELECT count(*) AS count_1
-	FROM (SELECT widgets.id AS widgets_id
-	FROM widgets
-	WHERE widgets.type IN (?)) AS anon_1
+    SELECT count(*) AS count_1
+    FROM (SELECT widgets.id AS widgets_id
+    FROM widgets
+    WHERE widgets.type IN (?)) AS anon_1
 
 
 :ticket:`3177`
 
+
+.. _migration_3222:
+
+
+single-table-inheritance criteria added to all ON clauses unconditionally
+-------------------------------------------------------------------------
+
+When joining to a single-table inheritance subclass target, the ORM always adds
+the "single table criteria" when joining on a relationship.  Given a
+mapping as::
+
+    class Widget(Base):
+        __tablename__ = 'widget'
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
+        related_id = Column(ForeignKey('related.id'))
+        related = relationship("Related", backref="widget")
+        __mapper_args__ = {'polymorphic_on': type}
+
+
+    class FooWidget(Widget):
+        __mapper_args__ = {'polymorphic_identity': 'foo'}
+
+
+    class Related(Base):
+        __tablename__ = 'related'
+        id = Column(Integer, primary_key=True)
+
+It's been the behavior for quite some time that a JOIN on the relationship
+will render a "single inheritance" clause for the type::
+
+    s.query(Related).join(FooWidget, Related.widget).all()
+
+SQL output::
+
+    SELECT related.id AS related_id
+    FROM related JOIN widget ON related.id = widget.related_id AND widget.type IN (:type_1)
+
+Above, because we joined to a subclass ``FooWidget``, :meth:`.Query.join`
+knew to add the ``AND widget.type IN ('foo')`` criteria to the ON clause.
+
+The change here is that the ``AND widget.type IN()`` criteria is now appended
+to *any* ON clause, not just those generated from a relationship,
+including one that is explicitly stated::
+
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget, FooWidget.related_id == Related.id).all()
+
+As well as the "implicit" join when no ON clause of any kind is stated::
+
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget).all()
+
+Previously, the ON clause for these would not include the single-inheritance
+criteria.  Applications that are already adding this criteria to work around
+this will want to remove its explicit use, though it should continue to work
+fine if the criteria happens to be rendered twice in the meantime.
+
+.. seealso::
+
+	:ref:`bug_3233`
+
+:ticket:`3222`
 
 .. _bug_3188:
 
@@ -319,67 +725,67 @@ as the "order by label" logic introduced in 0.9 (see :ref:`migration_1068`).
 
 Given a mapping like the following::
 
-	class A(Base):
-	    __tablename__ = 'a'
+    class A(Base):
+        __tablename__ = 'a'
 
-	    id = Column(Integer, primary_key=True)
+        id = Column(Integer, primary_key=True)
 
-	class B(Base):
-	    __tablename__ = 'b'
+    class B(Base):
+        __tablename__ = 'b'
 
-	    id = Column(Integer, primary_key=True)
-	    a_id = Column(ForeignKey('a.id'))
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
 
 
-	A.b = column_property(
-	        select([func.max(B.id)]).where(B.a_id == A.id).correlate(A)
-	    )
+    A.b = column_property(
+            select([func.max(B.id)]).where(B.a_id == A.id).correlate(A)
+        )
 
 A simple scenario that included "A.b" twice would fail to render
 correctly::
 
-	print sess.query(A, a1).order_by(a1.b)
+    print sess.query(A, a1).order_by(a1.b)
 
 This would order by the wrong column::
 
-	SELECT a.id AS a_id, (SELECT max(b.id) AS max_1 FROM b
-	WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
-	(SELECT max(b.id) AS max_2
-	FROM b WHERE b.a_id = a_1.id) AS anon_2
-	FROM a, a AS a_1 ORDER BY anon_1
+    SELECT a.id AS a_id, (SELECT max(b.id) AS max_1 FROM b
+    WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
+    (SELECT max(b.id) AS max_2
+    FROM b WHERE b.a_id = a_1.id) AS anon_2
+    FROM a, a AS a_1 ORDER BY anon_1
 
 New output::
 
-	SELECT a.id AS a_id, (SELECT max(b.id) AS max_1
-	FROM b WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
-	(SELECT max(b.id) AS max_2
-	FROM b WHERE b.a_id = a_1.id) AS anon_2
-	FROM a, a AS a_1 ORDER BY anon_2
+    SELECT a.id AS a_id, (SELECT max(b.id) AS max_1
+    FROM b WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
+    (SELECT max(b.id) AS max_2
+    FROM b WHERE b.a_id = a_1.id) AS anon_2
+    FROM a, a AS a_1 ORDER BY anon_2
 
 There were also many scenarios where the "order by" logic would fail
 to order by label, for example if the mapping were "polymorphic"::
 
-	class A(Base):
-	    __tablename__ = 'a'
+    class A(Base):
+        __tablename__ = 'a'
 
-	    id = Column(Integer, primary_key=True)
-	    type = Column(String)
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
 
-	    __mapper_args__ = {'polymorphic_on': type, 'with_polymorphic': '*'}
+        __mapper_args__ = {'polymorphic_on': type, 'with_polymorphic': '*'}
 
 The order_by would fail to use the label, as it would be anonymized due
 to the polymorphic loading::
 
-	SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
-	FROM b WHERE b.a_id = a.id) AS anon_1
-	FROM a ORDER BY (SELECT max(b.id) AS max_2
-	FROM b WHERE b.a_id = a.id)
+    SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
+    FROM b WHERE b.a_id = a.id) AS anon_1
+    FROM a ORDER BY (SELECT max(b.id) AS max_2
+    FROM b WHERE b.a_id = a.id)
 
 Now that the order by label tracks the anonymized label, this now works::
 
-	SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
-	FROM b WHERE b.a_id = a.id) AS anon_1
-	FROM a ORDER BY anon_1
+    SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
+    FROM b WHERE b.a_id = a.id) AS anon_1
+    FROM a ORDER BY anon_1
 
 Included in these fixes are a variety of heisenbugs that could corrupt
 the state of an ``aliased()`` construct such that the labeling logic
@@ -387,10 +793,87 @@ would again fail; these have also been fixed.
 
 :ticket:`3148` :ticket:`3188`
 
+.. _bug_3170:
+
+null(), false() and true() constants are no longer singletons
+-------------------------------------------------------------
+
+These three constants were changed to return a "singleton" value
+in 0.9; unfortunately, that would lead to a query like the following
+to not render as expected::
+
+    select([null(), null()])
+
+rendering only ``SELECT NULL AS anon_1``, because the two :func:`.null`
+constructs would come out as the same  ``NULL`` object, and
+SQLAlchemy's Core model is based on object identity in order to
+determine lexical significance.    The change in 0.9 had no
+importance other than the desire to save on object overhead; in general,
+an unnamed construct needs to stay lexically unique so that it gets
+labeled uniquely.
+
+:ticket:`3170`
+
 .. _behavioral_changes_orm_10:
 
 Behavioral Changes - ORM
 ========================
+
+.. _bug_3228:
+
+query.update() now resolves string names into mapped attribute names
+--------------------------------------------------------------------
+
+The documentation for :meth:`.Query.update` states that the given
+``values`` dictionary is "a dictionary with attributes names as keys",
+implying that these are mapped attribute names.  Unfortunately, the function
+was designed more in mind to receive attributes and SQL expressions and
+not as much strings; when strings
+were passed, these strings would be passed through straight to the core
+update statement without any resolution as far as how these names are
+represented on the mapped class, meaning the name would have to match that
+of a table column exactly, not how an attribute of that name was mapped
+onto the class.
+
+The string names are now resolved as attribute names in earnest::
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column('user_name', String(50))
+
+Above, the column ``user_name`` is mapped as ``name``.  Previously,
+a call to :meth:`.Query.update` that was passed strings would have to
+have been called as follows::
+
+    session.query(User).update({'user_name': 'moonbeam'})
+
+The given string is now resolved against the entity::
+
+    session.query(User).update({'name': 'moonbeam'})
+
+It is typically preferable to use the attribute directly, to avoid any
+ambiguity::
+
+    session.query(User).update({User.name: 'moonbeam'})
+
+The change also indicates that synonyms and hybrid attributes can be referred
+to by string name as well::
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column('user_name', String(50))
+
+        @hybrid_property
+        def fullname(self):
+            return self.name
+
+    session.query(User).update({'fullname': 'moonbeam'})
+
+:ticket:`3228`
 
 .. _migration_3061:
 
@@ -406,13 +889,13 @@ for :func:`.attributes.get_history` and related functions.
 
 Given an object with no state::
 
-	>>> obj = Foo()
+    >>> obj = Foo()
 
 It has always been SQLAlchemy's behavior such that if we access a scalar
 or many-to-one attribute that was never set, it is returned as ``None``::
 
-	>>> obj.someattr
-	None
+    >>> obj.someattr
+    None
 
 This value of ``None`` is in fact now part of the state of ``obj``, and is
 not unlike as though we had set the attribute explicitly, e.g.
@@ -420,31 +903,31 @@ not unlike as though we had set the attribute explicitly, e.g.
 differently as far as history and events.   It would not emit any attribute
 event, and additionally if we view history, we see this::
 
-	>>> inspect(obj).attrs.someattr.history
-	History(added=(), unchanged=[None], deleted=())	  # 0.9 and below
+    >>> inspect(obj).attrs.someattr.history
+    History(added=(), unchanged=[None], deleted=())   # 0.9 and below
 
 That is, it's as though the attribute were always ``None`` and were
 never changed.  This is explicitly different from if we had set the
 attribute first instead::
 
-	>>> obj = Foo()
-	>>> obj.someattr = None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=[None], unchanged=(), deleted=())  # all versions
+    >>> obj = Foo()
+    >>> obj.someattr = None
+    >>> inspect(obj).attrs.someattr.history
+    History(added=[None], unchanged=(), deleted=())  # all versions
 
 The above means that the behavior of our "set" operation can be corrupted
 by the fact that the value was accessed via "get" earlier.  In 1.0, this
 inconsistency has been resolved, by no longer actually setting anything
 when the default "getter" is used.
 
-	>>> obj = Foo()
-	>>> obj.someattr
-	None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=(), unchanged=(), deleted=())  # 1.0
-	>>> obj.someattr = None
-	>>> inspect(obj).attrs.someattr.history
-	History(added=[None], unchanged=(), deleted=())
+    >>> obj = Foo()
+    >>> obj.someattr
+    None
+    >>> inspect(obj).attrs.someattr.history
+    History(added=(), unchanged=(), deleted=())  # 1.0
+    >>> obj.someattr = None
+    >>> inspect(obj).attrs.someattr.history
+    History(added=[None], unchanged=(), deleted=())
 
 The reason the above behavior hasn't had much impact is because the
 INSERT statement in relational databases considers a missing value to be
@@ -469,6 +952,39 @@ symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
 
+.. _bug_3139:
+
+session.expunge() will fully detach an object that's been deleted
+-----------------------------------------------------------------
+
+The behavior of :meth:`.Session.expunge` had a bug that caused an
+inconsistency in behavior regarding deleted objects.  The
+:func:`.object_session` function as well as the :attr:`.InstanceState.session`
+attribute would still report object as belonging to the :class:`.Session`
+subsequent to the expunge::
+
+    u1 = sess.query(User).first()
+    sess.delete(u1)
+
+    sess.flush()
+
+    assert u1 not in sess
+    assert inspect(u1).session is sess  # this is normal before commit
+
+    sess.expunge(u1)
+
+    assert u1 not in sess
+    assert inspect(u1).session is None  # would fail
+
+Note that it is normal for ``u1 not in sess`` to be True while
+``inspect(u1).session`` still refers to the session, while the transaction
+is ongoing subsequent to the delete operation and :meth:`.Session.expunge`
+has not been called; the full detachment normally completes once the
+transaction is committed.  This issue would also impact functions
+that rely on :meth:`.Session.expunge` such as :func:`.make_transient`.
+
+:ticket:`3139`
+
 .. _migration_yield_per_eager_loading:
 
 Joined/Subquery eager loading explicitly disallowed with yield_per
@@ -482,17 +998,102 @@ with yield-per (subquery loading could be in theory, however).
 When this error is raised, the :func:`.lazyload` option can be sent with
 an asterisk::
 
-	q = sess.query(Object).options(lazyload('*')).yield_per(100)
+    q = sess.query(Object).options(lazyload('*')).yield_per(100)
 
 or use :meth:`.Query.enable_eagerloads`::
 
-	q = sess.query(Object).enable_eagerloads(False).yield_per(100)
+    q = sess.query(Object).enable_eagerloads(False).yield_per(100)
 
 The :func:`.lazyload` option has the advantage that additional many-to-one
 joined loader options can still be used::
 
-	q = sess.query(Object).options(
-		lazyload('*'), joinedload("some_manytoone")).yield_per(100)
+    q = sess.query(Object).options(
+        lazyload('*'), joinedload("some_manytoone")).yield_per(100)
+
+.. _bug_3233:
+
+Single inheritance join targets will no longer sometimes implicitly alias themselves
+------------------------------------------------------------------------------------
+
+This is a bug where an unexpected and inconsistent behavior would occur
+in some scenarios when joining to a single-table-inheritance entity.  The
+difficulty this might cause is that the query is supposed to raise an error,
+as it is invalid SQL, however the bug would cause an alias to be added which
+makes the query "work".   The issue is confusing because this aliasing
+is not applied consistently and could change based on the nature of the query
+preceding the join.
+
+A simple example is::
+
+    from sqlalchemy import Integer, Column, String, ForeignKey
+    from sqlalchemy.orm import Session, relationship
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = "a"
+
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
+
+        __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': 'a'}
+
+
+    class ASub1(A):
+        __mapper_args__ = {'polymorphic_identity': 'asub1'}
+
+
+    class ASub2(A):
+        __mapper_args__ = {'polymorphic_identity': 'asub2'}
+
+
+    class B(Base):
+        __tablename__ = 'b'
+
+        id = Column(Integer, primary_key=True)
+
+        a_id = Column(Integer, ForeignKey("a.id"))
+
+        a = relationship("A", primaryjoin="B.a_id == A.id", backref='b')
+
+    s = Session()
+
+    print s.query(ASub1).join(B, ASub1.b).join(ASub2, B.a)
+
+    print s.query(ASub1).join(B, ASub1.b).join(ASub2, ASub2.id == B.a_id)
+
+The two queries at the bottom are equivalent, and should both render
+the identical SQL::
+
+    SELECT a.id AS a_id, a.type AS a_type
+    FROM a JOIN b ON b.a_id = a.id JOIN a ON b.a_id = a.id AND a.type IN (:type_1)
+    WHERE a.type IN (:type_2)
+
+The above SQL is invalid, as it renders "a" within the FROM list twice.
+The bug however would occur with the second query only and render this instead::
+
+    SELECT a.id AS a_id, a.type AS a_type
+    FROM a JOIN b ON b.a_id = a.id JOIN a AS a_1
+    ON a_1.id = b.a_id AND a_1.type IN (:type_1)
+    WHERE a_1.type IN (:type_2)
+
+Where above, the second join to "a" is aliased.  While this seems convenient,
+it's not how single-inheritance queries work in general and is misleading
+and inconsistent.
+
+The net effect is that applications which were relying on this bug will now
+have an error raised by the database.   The solution is to use the expected
+form.  When referring to multiple subclasses of a single-inheritance
+entity in a query, you must manually use aliases to disambiguate the table,
+as all the subclasses normally refer to the same table::
+
+    asub2_alias = aliased(ASub2)
+
+    print s.query(ASub1).join(B, ASub1.b).join(asub2_alias, B.a.of_type(asub2_alias))
+
+:ticket:`3233`
+
 
 
 .. _migration_migration_deprecated_orm_events:
@@ -546,7 +1147,7 @@ The unused ``result`` member is now removed::
 
 .. seealso::
 
-	:ref:`bundles`
+    :ref:`bundles`
 
 .. _migration_3008:
 
@@ -565,12 +1166,12 @@ As introduced in :ref:`feature_2976` from version 0.9, the behavior of
 join eager load will use a right-nested join.  ``"nested"`` is now implied
 when using ``innerjoin=True``::
 
-	query(User).options(
-		joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
+    query(User).options(
+        joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True))
 
 With the new default, this will render the FROM clause in the form::
 
-	FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
+    FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
 
 That is, using a right-nested join for the INNER join so that the full
 result of ``users`` can be returned.   The use of an INNER join is more efficient
@@ -579,13 +1180,13 @@ optimization parameter to take effect in all cases.
 
 To get the older behavior, use ``innerjoin="unnested"``::
 
-	query(User).options(
-		joinedload("orders", innerjoin=False).joinedload("items", innerjoin="unnested"))
+    query(User).options(
+        joinedload("orders", innerjoin=False).joinedload("items", innerjoin="unnested"))
 
 This will avoid right-nested joins and chain the joins together using all
 OUTER joins despite the innerjoin directive::
 
-	FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
+    FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
 
 As noted in the 0.9 notes, the only database backend that has difficulty
 with right-nested joins is SQLite; SQLAlchemy as of 0.9 converts a right-nested
@@ -593,7 +1194,7 @@ join into a subquery as a join target on SQLite.
 
 .. seealso::
 
-	:ref:`feature_2976` - description of the feature as introduced in 0.9.4.
+    :ref:`feature_2976` - description of the feature as introduced in 0.9.4.
 
 :ticket:`3008`
 
@@ -638,15 +1239,15 @@ with SQL expressions into many functions, such as :meth:`.Select.where`,
 Note that by "SQL expressions" we mean a **full fragment of a SQL string**,
 such as::
 
-	# the argument sent to where() is a full SQL expression
-	stmt = select([sometable]).where("somecolumn = 'value'")
+    # the argument sent to where() is a full SQL expression
+    stmt = select([sometable]).where("somecolumn = 'value'")
 
 and we are **not talking about string arguments**, that is, the normal
 behavior of passing string values that become parameterized::
 
-	# This is a normal Core expression with a string argument -
-	# we aren't talking about this!!
-	stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
+    # This is a normal Core expression with a string argument -
+    # we aren't talking about this!!
+    stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
 
 The Core tutorial has long featured an example of the use of this technique,
 using a :func:`.select` construct where virtually all components of it
@@ -660,25 +1261,25 @@ So the change here is to encourage the user to qualify textual strings when
 composing SQL that is partially or fully composed from textual fragments.
 When composing a select as below::
 
-	stmt = select(["a", "b"]).where("a = b").select_from("sometable")
+    stmt = select(["a", "b"]).where("a = b").select_from("sometable")
 
 The statement is built up normally, with all the same coercions as before.
 However, one will see the following warnings emitted::
 
-	SAWarning: Textual column expression 'a' should be explicitly declared
-	with text('a'), or use column('a') for more specificity
-	(this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual column expression 'a' should be explicitly declared
+    with text('a'), or use column('a') for more specificity
+    (this warning may be suppressed after 10 occurrences)
 
-	SAWarning: Textual column expression 'b' should be explicitly declared
-	with text('b'), or use column('b') for more specificity
-	(this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual column expression 'b' should be explicitly declared
+    with text('b'), or use column('b') for more specificity
+    (this warning may be suppressed after 10 occurrences)
 
-	SAWarning: Textual SQL expression 'a = b' should be explicitly declared
-	as text('a = b') (this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual SQL expression 'a = b' should be explicitly declared
+    as text('a = b') (this warning may be suppressed after 10 occurrences)
 
-	SAWarning: Textual SQL FROM expression 'sometable' should be explicitly
-	declared as text('sometable'), or use table('sometable') for more
-	specificity (this warning may be suppressed after 10 occurrences)
+    SAWarning: Textual SQL FROM expression 'sometable' should be explicitly
+    declared as text('sometable'), or use table('sometable') for more
+    specificity (this warning may be suppressed after 10 occurrences)
 
 These warnings attempt to show exactly where the issue is by displaying
 the parameters as well as where the string was received.
@@ -688,14 +1289,14 @@ one wishes the warnings to be exceptions, the
 `Python Warnings Filter <https://docs.python.org/2/library/warnings.html>`_
 should be used::
 
-	import warnings
-	warnings.simplefilter("error")   # all warnings raise an exception
+    import warnings
+    warnings.simplefilter("error")   # all warnings raise an exception
 
 Given the above warnings, our statement works just fine, but
 to get rid of the warnings we would rewrite our statement as follows::
 
-	from sqlalchemy import select, text
-	stmt = select([
+    from sqlalchemy import select, text
+    stmt = select([
             text("a"),
             text("b")
         ]).where(text("a = b")).select_from(text("sometable"))
@@ -703,10 +1304,10 @@ to get rid of the warnings we would rewrite our statement as follows::
 and as the warnings suggest, we can give our statement more specificity
 about the text if we use :func:`.column` and :func:`.table`::
 
-	from sqlalchemy import select, text, column, table
+    from sqlalchemy import select, text, column, table
 
-	stmt = select([column("a"), column("b")]).\
-		where(text("a = b")).select_from(table("sometable"))
+    stmt = select([column("a"), column("b")]).\
+        where(text("a = b")).select_from(table("sometable"))
 
 Where note also that :func:`.table` and :func:`.column` can now
 be imported from "sqlalchemy" without the "sql" part.
@@ -723,10 +1324,10 @@ of this change we have enhanced its functionality.  When we have a
 :func:`.select` or :class:`.Query` that refers to some column name or named
 label, we might want to GROUP BY and/or ORDER BY known columns or labels::
 
-	stmt = select([
-		user.c.name,
-		func.count(user.c.id).label("id_count")
-	]).group_by("name").order_by("id_count")
+    stmt = select([
+        user.c.name,
+        func.count(user.c.id).label("id_count")
+    ]).group_by("name").order_by("id_count")
 
 In the above statement we expect to see "ORDER BY id_count", as opposed to a
 re-statement of the function.   The string argument given is actively
@@ -734,24 +1335,24 @@ matched to an entry in the columns clause during compilation, so the above
 statement would produce as we expect, without warnings (though note that
 the ``"name"`` expression has been resolved to ``users.name``!)::
 
-	SELECT users.name, count(users.id) AS id_count
-	FROM users GROUP BY users.name ORDER BY id_count
+    SELECT users.name, count(users.id) AS id_count
+    FROM users GROUP BY users.name ORDER BY id_count
 
 However, if we refer to a name that cannot be located, then we get
 the warning again, as below::
 
-	stmt = select([
+    stmt = select([
             user.c.name,
             func.count(user.c.id).label("id_count")
         ]).order_by("some_label")
 
 The output does what we say, but again it warns us::
 
-	SAWarning: Can't resolve label reference 'some_label'; converting to
-	text() (this warning may be suppressed after 10 occurrences)
+    SAWarning: Can't resolve label reference 'some_label'; converting to
+    text() (this warning may be suppressed after 10 occurrences)
 
-	SELECT users.name, count(users.id) AS id_count
-	FROM users ORDER BY some_label
+    SELECT users.name, count(users.id) AS id_count
+    FROM users ORDER BY some_label
 
 The above behavior applies to all those places where we might want to refer
 to a so-called "label reference"; ORDER BY and GROUP BY, but also within an
@@ -761,7 +1362,7 @@ Postgresql syntax).
 We can still specify any arbitrary expression for ORDER BY or others using
 :func:`.text`::
 
-	stmt = select([users]).order_by(text("some special expression"))
+    stmt = select([users]).order_by(text("some special expression"))
 
 The upshot of the whole change is that SQLAlchemy now would like us
 to tell it when a string is sent that this string is explicitly
@@ -822,7 +1423,7 @@ data is needed.
 A :class:`.Table` can be set up for reflection by passing
 :paramref:`.Table.autoload_with` alone::
 
-	my_table = Table('my_table', metadata, autoload_with=some_engine)
+    my_table = Table('my_table', metadata, autoload_with=some_engine)
 
 :ticket:`3027`
 
@@ -831,39 +1432,6 @@ A :class:`.Table` can be set up for reflection by passing
 Dialect Changes
 ===============
 
-.. _change_2051:
-
-New Postgresql Table options
------------------------------
-
-Added support for PG table options TABLESPACE, ON COMMIT,
-WITH(OUT) OIDS, and INHERITS, when rendering DDL via
-the :class:`.Table` construct.
-
-.. seealso::
-
-    :ref:`postgresql_table_options`
-
-:ticket:`2051`
-
-.. _feature_get_enums:
-
-New get_enums() method with Postgresql Dialect
-----------------------------------------------
-
-The :func:`.inspect` method returns a :class:`.PGInspector` object in the
-case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
-method that returns information on all available ``ENUM`` types::
-
-	from sqlalchemy import inspect, create_engine
-
-	engine = create_engine("postgresql+psycopg2://host/dbname")
-	insp = inspect(engine)
-	print(insp.get_enums())
-
-.. seealso::
-
-	:meth:`.PGInspector.get_enums`
 
 MySQL internal "no such table" exceptions not passed to event handlers
 ----------------------------------------------------------------------
@@ -924,6 +1492,26 @@ based on operation system/driver detection.   Using a DSN is always preferred
 when using ODBC to avoid this issue entirely.
 
 :ticket:`3182`
+
+.. _change_3204:
+
+SQLite/Oracle have distinct methods for temporary table/view name reporting
+---------------------------------------------------------------------------
+
+The :meth:`.Inspector.get_table_names` and :meth:`.Inspector.get_view_names`
+methods in the case of SQLite/Oracle would also return the names of temporary
+tables and views, which is not provided by any other dialect (in the case
+of MySQL at least it is not even possible).  This logic has been moved
+out to two new methods :meth:`.Inspector.get_temp_table_names` and
+:meth:`.Inspector.get_temp_view_names`.
+
+Note that reflection of a specific named temporary table or temporary view,
+either by ``Table('name', autoload=True)`` or via methods like
+:meth:`.Inspector.get_columns` continues to function for most if not all
+dialects.   For SQLite specifically, there is a bug fix for UNIQUE constraint
+reflection from temp tables as well, which is :ticket:`3203`.
+
+:ticket:`3204`
 
 .. _change_2984:
 

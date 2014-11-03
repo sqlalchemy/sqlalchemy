@@ -14,6 +14,7 @@ from sqlalchemy.dialects import sqlite
 from sqlalchemy.testing import fixtures
 from sqlalchemy.util import u, b
 from sqlalchemy import util
+import itertools
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
 
@@ -1277,4 +1278,68 @@ class UnicodeDefaultsTest(fixtures.TestBase):
             Column,
             "foobar", Unicode(32),
             default=default
+        )
+
+
+class InsertFromSelectTest(fixtures.TestBase):
+    __backend__ = True
+
+    def _fixture(self):
+        data = Table(
+            'data', self.metadata,
+            Column('x', Integer),
+            Column('y', Integer)
+        )
+        data.create()
+        testing.db.execute(data.insert(), {'x': 2, 'y': 5}, {'x': 7, 'y': 12})
+        return data
+
+    @testing.provide_metadata
+    def test_insert_from_select_override_defaults(self):
+        data = self._fixture()
+
+        table = Table('sometable', self.metadata,
+                      Column('x', Integer),
+                      Column('foo', Integer, default=12),
+                      Column('y', Integer))
+
+        table.create()
+
+        sel = select([data.c.x, data.c.y])
+
+        ins = table.insert().\
+            from_select(["x", "y"], sel)
+        testing.db.execute(ins)
+
+        eq_(
+            testing.db.execute(table.select().order_by(table.c.x)).fetchall(),
+            [(2, 12, 5), (7, 12, 12)]
+        )
+
+    @testing.provide_metadata
+    def test_insert_from_select_fn_defaults(self):
+        data = self._fixture()
+
+        counter = itertools.count(1)
+
+        def foo(ctx):
+            return next(counter)
+
+        table = Table('sometable', self.metadata,
+                      Column('x', Integer),
+                      Column('foo', Integer, default=foo),
+                      Column('y', Integer))
+
+        table.create()
+
+        sel = select([data.c.x, data.c.y])
+
+        ins = table.insert().\
+            from_select(["x", "y"], sel)
+        testing.db.execute(ins)
+
+        # counter is only called once!
+        eq_(
+            testing.db.execute(table.select().order_by(table.c.x)).fetchall(),
+            [(2, 1, 5), (7, 1, 12)]
         )

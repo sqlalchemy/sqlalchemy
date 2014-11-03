@@ -1236,7 +1236,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = 'default'
     run_setup_mappers = 'each'
 
-    def _fixture(self, label=True):
+    def _fixture(self, label=True, polymorphic=False):
         User, Address = self.classes("User", "Address")
         users, addresses = self.tables("users", "addresses")
         stmt = select([func.max(addresses.c.email_address)]).\
@@ -1247,7 +1247,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         mapper(User, users, properties={
             "ead": column_property(stmt)
-        })
+        }, with_polymorphic="*" if polymorphic else None)
         mapper(Address, addresses)
 
     def test_order_by_column_prop_string(self):
@@ -1354,6 +1354,22 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "AS users_1_id, users_1.name AS users_1_name FROM users, "
             "users AS users_1 ORDER BY email_ad, anon_1"
         )
+
+    def test_order_by_column_labeled_prop_attr_aliased_four(self):
+        User = self.classes.User
+        self._fixture(label=True, polymorphic=True)
+
+        ua = aliased(User)
+        s = Session()
+        q = s.query(ua, User.id).order_by(ua.ead)
+        self.assert_compile(
+            q,
+            "SELECT (SELECT max(addresses.email_address) AS max_1 FROM "
+            "addresses WHERE addresses.user_id = users_1.id) AS anon_1, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name, "
+            "users.id AS users_id FROM users AS users_1, users ORDER BY anon_1"
+        )
+
 
     def test_order_by_column_unlabeled_prop_attr_aliased_one(self):
         User = self.classes.User
@@ -2467,6 +2483,8 @@ class YieldTest(_fixtures.FixtureTest):
 
 
 class HintsTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_hints(self):
         User = self.classes.User
 
@@ -2500,6 +2518,28 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
             "FROM users INNER JOIN users AS users_1 "
             "USE INDEX (col1_index,col2_index) "
             "ON users_1.id > users.id", dialect=dialect
+        )
+
+    def test_statement_hints(self):
+        User = self.classes.User
+
+        sess = create_session()
+        stmt = sess.query(User).\
+            with_statement_hint("test hint one").\
+            with_statement_hint("test hint two").\
+            with_statement_hint("test hint three", "postgresql")
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users test hint one test hint two",
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users test hint one test hint two test hint three",
+            dialect='postgresql'
         )
 
 

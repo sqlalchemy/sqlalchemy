@@ -134,7 +134,8 @@ def public_factory(target, location):
         fn = target.__init__
         callable_ = target
         doc = "Construct a new :class:`.%s` object. \n\n"\
-            "This constructor is mirrored as a public API function; see :func:`~%s` "\
+            "This constructor is mirrored as a public API function; "\
+            "see :func:`~%s` "\
             "for a full usage and argument description." % (
                 target.__name__, location, )
     else:
@@ -155,6 +156,7 @@ def %(name)s(%(args)s):
     exec(code, env)
     decorated = env[location_name]
     decorated.__doc__ = fn.__doc__
+    decorated.__module__ = "sqlalchemy" + location.rsplit(".", 1)[0]
     if compat.py2k or hasattr(fn, '__func__'):
         fn.__func__.__doc__ = doc
     else:
@@ -490,7 +492,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
             val = getattr(obj, arg, missing)
             if val is not missing and val != defval:
                 output.append('%s=%r' % (arg, val))
-        except:
+        except Exception:
             pass
 
     if additional_kw:
@@ -499,7 +501,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
                 val = getattr(obj, arg, missing)
                 if val is not missing and val != defval:
                     output.append('%s=%r' % (arg, val))
-            except:
+            except Exception:
                 pass
 
     return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
@@ -1090,10 +1092,23 @@ class classproperty(property):
         return desc.fget(cls)
 
 
+class hybridproperty(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            clsval = self.func(owner)
+            clsval.__doc__ = self.func.__doc__
+            return clsval
+        else:
+            return self.func(instance)
+
+
 class hybridmethod(object):
     """Decorate a function as cls- or instance- level."""
 
-    def __init__(self, func, expr=None):
+    def __init__(self, func):
         self.func = func
 
     def __get__(self, instance, owner):
@@ -1185,7 +1200,7 @@ def warn_exception(func, *args, **kwargs):
     """
     try:
         return func(*args, **kwargs)
-    except:
+    except Exception:
         warn("%s('%s') ignored" % sys.exc_info()[0:2])
 
 

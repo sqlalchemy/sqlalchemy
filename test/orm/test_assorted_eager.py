@@ -82,8 +82,8 @@ class EagerTest(fixtures.MappedTest):
         mapper(Category, categories)
 
         mapper(Option, options, properties=dict(
-            owner=relationship(Owner),
-            test=relationship(Thing)))
+            owner=relationship(Owner, viewonly=True),
+            test=relationship(Thing, viewonly=True)))
 
         mapper(Thing, tests, properties=dict(
             owner=relationship(Owner, backref='tests'),

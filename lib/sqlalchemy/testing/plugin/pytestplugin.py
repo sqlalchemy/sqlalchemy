@@ -1,7 +1,13 @@
+try:
+    # installed by bootstrap.py
+    import sqla_plugin_base as plugin_base
+except ImportError:
+    # assume we're a package, use traditional import
+    from . import plugin_base
+
 import pytest
 import argparse
 import inspect
-from . import plugin_base
 import collections
 import itertools
 
@@ -42,6 +48,8 @@ def pytest_configure(config):
     plugin_base.set_coverage_flag(bool(getattr(config.option,
                                                "cov_source", False)))
 
+
+def pytest_sessionstart(session):
     plugin_base.post_begin()
 
 if has_xdist:
@@ -54,11 +62,11 @@ if has_xdist:
         plugin_base.memoize_important_follower_config(node.slaveinput)
 
         node.slaveinput["follower_ident"] = "test_%s" % next(_follower_count)
-        from . import provision
+        from sqlalchemy.testing import provision
         provision.create_follower_db(node.slaveinput["follower_ident"])
 
     def pytest_testnodedown(node, error):
-        from . import provision
+        from sqlalchemy.testing import provision
         provision.drop_follower_db(node.slaveinput["follower_ident"])
 
 

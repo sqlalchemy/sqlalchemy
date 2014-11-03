@@ -4,7 +4,7 @@ from .. import exclusions
 from ..assertions import eq_
 from .. import engines
 
-from sqlalchemy import Integer, String, select, util
+from sqlalchemy import Integer, String, select, literal_column, literal
 
 from ..schema import Table, Column
 
@@ -90,6 +90,13 @@ class InsertBehaviorTest(fixtures.TablesTest):
               Column('id', Integer, primary_key=True, autoincrement=False),
               Column('data', String(50))
               )
+        Table('includes_defaults', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', String(50)),
+              Column('x', Integer, default=5),
+              Column('y', Integer,
+                     default=literal_column("2", type_=Integer) + literal(2)))
 
     def test_autoclose_on_insert(self):
         if requirements.returning.enabled:
@@ -156,6 +163,34 @@ class InsertBehaviorTest(fixtures.TablesTest):
             ).fetchall(),
             [("data1", ), ("data2", ), ("data2", ),
                 ("data3", ), ("data3", )]
+        )
+
+    @requirements.insert_from_select
+    def test_insert_from_select_with_defaults(self):
+        table = self.tables.includes_defaults
+        config.db.execute(
+            table.insert(),
+            [
+                dict(id=1, data="data1"),
+                dict(id=2, data="data2"),
+                dict(id=3, data="data3"),
+            ]
+        )
+
+        config.db.execute(
+            table.insert(inline=True).
+            from_select(("id", "data",),
+                        select([table.c.id + 5, table.c.data]).
+                        where(table.c.data.in_(["data2", "data3"]))
+                        ),
+        )
+
+        eq_(
+            config.db.execute(
+                select([table]).order_by(table.c.data, table.c.id)
+            ).fetchall(),
+            [(1, 'data1', 5, 4), (2, 'data2', 5, 4),
+                (7, 'data2', 5, 4), (3, 'data3', 5, 4), (8, 'data3', 5, 4)]
         )
 
 

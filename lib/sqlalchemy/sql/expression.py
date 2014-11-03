@@ -36,7 +36,7 @@ from .elements import ClauseElement, ColumnElement,\
     True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
     Grouping, not_, \
     collate, literal_column, between,\
-    literal, outparam, type_coerce, ClauseList
+    literal, outparam, type_coerce, ClauseList, FunctionFilter
 
 from .elements import SavepointClause, RollbackToSavepointClause, \
     ReleaseSavepointClause
@@ -89,14 +89,16 @@ asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
 desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
 distinct = public_factory(
     UnaryExpression._create_distinct, ".expression.distinct")
-true = public_factory(True_._singleton, ".expression.true")
-false = public_factory(False_._singleton, ".expression.false")
-null = public_factory(Null._singleton, ".expression.null")
+true = public_factory(True_._instance, ".expression.true")
+false = public_factory(False_._instance, ".expression.false")
+null = public_factory(Null._instance, ".expression.null")
 join = public_factory(Join._create_join, ".expression.join")
 outerjoin = public_factory(Join._create_outerjoin, ".expression.outerjoin")
 insert = public_factory(Insert, ".expression.insert")
 update = public_factory(Update, ".expression.update")
 delete = public_factory(Delete, ".expression.delete")
+funcfilter = public_factory(
+    FunctionFilter, ".expression.funcfilter")
 
 
 # internal functions still being called from tests and the ORM,

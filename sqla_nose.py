@@ -8,22 +8,25 @@ installs SQLAlchemy's testing plugin into the local environment.
 """
 import sys
 import nose
-import warnings
+import os
 
 
-from os import path
 for pth in ['./lib']:
-    sys.path.insert(0, path.join(path.dirname(path.abspath(__file__)), pth))
+    sys.path.insert(
+        0, os.path.join(os.path.dirname(os.path.abspath(__file__)), pth))
 
-# installing without importing SQLAlchemy, so that coverage includes
-# SQLAlchemy itself.
-path = "lib/sqlalchemy/testing/plugin/noseplugin.py"
-if sys.version_info >= (3, 3):
-    from importlib import machinery
-    noseplugin = machinery.SourceFileLoader("noseplugin", path).load_module()
-else:
-    import imp
-    noseplugin = imp.load_source("noseplugin", path)
+# use bootstrapping so that test plugins are loaded
+# without touching the main library before coverage starts
+bootstrap_file = os.path.join(
+    os.path.dirname(__file__), "lib", "sqlalchemy",
+    "testing", "plugin", "bootstrap.py"
+)
+
+with open(bootstrap_file) as f:
+    code = compile(f.read(), "bootstrap.py", 'exec')
+    to_bootstrap = "nose"
+    exec(code, globals(), locals())
 
 
-nose.main(addplugins=[noseplugin.NoseSQLAlchemy()])
+from noseplugin import NoseSQLAlchemy
+nose.main(addplugins=[NoseSQLAlchemy()])

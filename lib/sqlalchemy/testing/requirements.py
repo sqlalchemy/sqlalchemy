@@ -314,6 +314,20 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def temp_table_reflection(self):
+        return exclusions.open()
+
+    @property
+    def temp_table_names(self):
+        """target dialect supports listing of temporary table names"""
+        return exclusions.closed()
+
+    @property
+    def temporary_views(self):
+        """target database supports temporary views"""
+        return exclusions.closed()
+
+    @property
     def index_reflection(self):
         return exclusions.open()
 

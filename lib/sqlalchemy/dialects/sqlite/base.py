@@ -713,10 +713,12 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         return self.execution_options.get("sqlite_raw_colnames", False)
 
     def _translate_colname(self, colname):
-        # adjust for dotted column names. SQLite in the case of UNION may
-        # store col names as "tablename.colname" in cursor.description
+        # adjust for dotted column names.  SQLite
+        # in the case of UNION may store col names as
+        # "tablename.colname", or if using an attached database,
+        # "database.tablename.colname", in cursor.description
         if not self._preserve_raw_colnames and "." in colname:
-            return colname.split(".")[1], colname
+            return colname.split(".")[-1], colname
         else:
             return colname, None
 
@@ -829,20 +831,26 @@ class SQLiteDialect(default.DefaultDialect):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
             master = '%s.sqlite_master' % qschema
-            s = ("SELECT name FROM %s "
-                 "WHERE type='table' ORDER BY name") % (master,)
-            rs = connection.execute(s)
         else:
-            try:
-                s = ("SELECT name FROM "
-                     " (SELECT * FROM sqlite_master UNION ALL "
-                     "  SELECT * FROM sqlite_temp_master) "
-                     "WHERE type='table' ORDER BY name")
-                rs = connection.execute(s)
-            except exc.DBAPIError:
-                s = ("SELECT name FROM sqlite_master "
-                     "WHERE type='table' ORDER BY name")
-                rs = connection.execute(s)
+            master = "sqlite_master"
+        s = ("SELECT name FROM %s "
+             "WHERE type='table' ORDER BY name") % (master,)
+        rs = connection.execute(s)
+        return [row[0] for row in rs]
+
+    @reflection.cache
+    def get_temp_table_names(self, connection, **kw):
+        s = "SELECT name FROM sqlite_temp_master "\
+            "WHERE type='table' ORDER BY name "
+        rs = connection.execute(s)
+
+        return [row[0] for row in rs]
+
+    @reflection.cache
+    def get_temp_view_names(self, connection, **kw):
+        s = "SELECT name FROM sqlite_temp_master "\
+            "WHERE type='view' ORDER BY name "
+        rs = connection.execute(s)
 
         return [row[0] for row in rs]
 
@@ -869,20 +877,11 @@ class SQLiteDialect(default.DefaultDialect):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
             master = '%s.sqlite_master' % qschema
-            s = ("SELECT name FROM %s "
-                 "WHERE type='view' ORDER BY name") % (master,)
-            rs = connection.execute(s)
         else:
-            try:
-                s = ("SELECT name FROM "
-                     " (SELECT * FROM sqlite_master UNION ALL "
-                     "  SELECT * FROM sqlite_temp_master) "
-                     "WHERE type='view' ORDER BY name")
-                rs = connection.execute(s)
-            except exc.DBAPIError:
-                s = ("SELECT name FROM sqlite_master "
-                     "WHERE type='view' ORDER BY name")
-                rs = connection.execute(s)
+            master = "sqlite_master"
+        s = ("SELECT name FROM %s "
+             "WHERE type='view' ORDER BY name") % (master,)
+        rs = connection.execute(s)
 
         return [row[0] for row in rs]
 
@@ -1097,16 +1096,24 @@ class SQLiteDialect(default.DefaultDialect):
     @reflection.cache
     def get_unique_constraints(self, connection, table_name,
                                schema=None, **kw):
-        UNIQUE_SQL = """
-            SELECT sql
-            FROM
-                sqlite_master
-            WHERE
-                type='table' AND
-                name=:table_name
-        """
-        c = connection.execute(UNIQUE_SQL, table_name=table_name)
-        table_data = c.fetchone()[0]
+        try:
+            s = ("SELECT sql FROM "
+                 " (SELECT * FROM sqlite_master UNION ALL "
+                 "  SELECT * FROM sqlite_temp_master) "
+                 "WHERE name = '%s' "
+                 "AND type = 'table'") % table_name
+            rs = connection.execute(s)
+        except exc.DBAPIError:
+            s = ("SELECT sql FROM sqlite_master WHERE name = '%s' "
+                 "AND type = 'table'") % table_name
+            rs = connection.execute(s)
+        row = rs.fetchone()
+        if row is None:
+            # sqlite won't return the schema for the sqlite_master or
+            # sqlite_temp_master tables from this query. These tables
+            # don't have any unique constraints anyway.
+            return []
+        table_data = row[0]
 
         UNIQUE_PATTERN = 'CONSTRAINT (\w+) UNIQUE \(([^\)]+)\)'
         return [

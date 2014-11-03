@@ -213,6 +213,21 @@ is reflected and the type is reported as ``DATE``, the time-supporting
    examining the type of column for use in special Python translations or
    for migrating schemas to other database backends.
 
+Oracle Table Options
+-------------------------
+
+The CREATE TABLE phrase supports the following options with Oracle
+in conjunction with the :class:`.Table` construct:
+
+
+* ``ON COMMIT``::
+
+    Table(
+        "some_table", metadata, ...,
+        prefixes=['GLOBAL TEMPORARY'], oracle_on_commit='PRESERVE ROWS')
+
+.. versionadded:: 1.0.0
+
 """
 
 import re
@@ -784,11 +799,22 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         return super(OracleDDLCompiler, self).\
             visit_create_index(create, include_schema=True)
 
+    def post_create_table(self, table):
+        table_opts = []
+        opts = table.dialect_options['oracle']
+
+        if opts['on_commit']:
+            on_commit_options = opts['on_commit'].replace("_", " ").upper()
+            table_opts.append('\n ON COMMIT %s' % on_commit_options)
+
+        return ''.join(table_opts)
+
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
     reserved_words = set([x.lower() for x in RESERVED_WORDS])
-    illegal_initial_characters = set(range(0, 10)).union(["_", "$"])
+    illegal_initial_characters = set(
+        (str(dig) for dig in range(0, 10))).union(["_", "$"])
 
     def _bindparam_requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""
@@ -842,7 +868,10 @@ class OracleDialect(default.DefaultDialect):
     reflection_options = ('oracle_resolve_synonyms', )
 
     construct_arguments = [
-        (sa_schema.Table, {"resolve_synonyms": False})
+        (sa_schema.Table, {
+            "resolve_synonyms": False,
+            "on_commit": None
+        })
     ]
 
     def __init__(self,
@@ -1029,7 +1058,21 @@ class OracleDialect(default.DefaultDialect):
             "WHERE nvl(tablespace_name, 'no tablespace') NOT IN "
             "('SYSTEM', 'SYSAUX') "
             "AND OWNER = :owner "
-            "AND IOT_NAME IS NULL")
+            "AND IOT_NAME IS NULL "
+            "AND DURATION IS NULL")
+        cursor = connection.execute(s, owner=schema)
+        return [self.normalize_name(row[0]) for row in cursor]
+
+    @reflection.cache
+    def get_temp_table_names(self, connection, **kw):
+        schema = self.denormalize_name(self.default_schema_name)
+        s = sql.text(
+            "SELECT table_name FROM all_tables "
+            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN "
+            "('SYSTEM', 'SYSAUX') "
+            "AND OWNER = :owner "
+            "AND IOT_NAME IS NULL "
+            "AND DURATION IS NOT NULL")
         cursor = connection.execute(s, owner=schema)
         return [self.normalize_name(row[0]) for row in cursor]
 

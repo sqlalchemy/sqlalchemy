@@ -45,7 +45,7 @@ class Connection(Connectable):
     """
 
     def __init__(self, engine, connection=None, close_with_result=False,
-                 _branch=False, _execution_options=None,
+                 _branch_from=None, _execution_options=None,
                  _dispatch=None,
                  _has_events=None):
         """Construct a new Connection.
@@ -57,48 +57,80 @@ class Connection(Connectable):
         """
         self.engine = engine
         self.dialect = engine.dialect
-        self.__connection = connection or engine.raw_connection()
-        self.__transaction = None
-        self.should_close_with_result = close_with_result
-        self.__savepoint_seq = 0
-        self.__branch = _branch
-        self.__invalid = False
-        self.__can_reconnect = True
-        if _dispatch:
-            self.dispatch = _dispatch
-        elif _has_events is None:
-            # if _has_events is sent explicitly as False,
-            # then don't join the dispatch of the engine; we don't
-            # want to handle any of the engine's events in that case.
-            self.dispatch = self.dispatch._join(engine.dispatch)
-        self._has_events = _has_events or (
-            _has_events is None and engine._has_events)
+        self.__branch_from = _branch_from
+        self.__branch = _branch_from is not None
 
-        self._echo = self.engine._should_log_info()
-        if _execution_options:
-            self._execution_options =\
-                engine._execution_options.union(_execution_options)
+        if _branch_from:
+            self.__connection = connection
+            self._execution_options = _execution_options
+            self._echo = _branch_from._echo
+            self.should_close_with_result = False
+            self.dispatch = _dispatch
+            self._has_events = _branch_from._has_events
         else:
+            self.__connection = connection \
+                if connection is not None else engine.raw_connection()
+            self.__transaction = None
+            self.__savepoint_seq = 0
+            self.should_close_with_result = close_with_result
+            self.__invalid = False
+            self.__can_reconnect = True
+            self._echo = self.engine._should_log_info()
+
+            if _has_events is None:
+                # if _has_events is sent explicitly as False,
+                # then don't join the dispatch of the engine; we don't
+                # want to handle any of the engine's events in that case.
+                self.dispatch = self.dispatch._join(engine.dispatch)
+            self._has_events = _has_events or (
+                _has_events is None and engine._has_events)
+
+            assert not _execution_options
             self._execution_options = engine._execution_options
 
         if self._has_events or self.engine._has_events:
-            self.dispatch.engine_connect(self, _branch)
+            self.dispatch.engine_connect(self, self.__branch)
 
     def _branch(self):
         """Return a new Connection which references this Connection's
         engine and connection; but does not have close_with_result enabled,
         and also whose close() method does nothing.
 
-        This is used to execute "sub" statements within a single execution,
-        usually an INSERT statement.
+        The Core uses this very sparingly, only in the case of
+        custom SQL default functions that are to be INSERTed as the
+        primary key of a row where we need to get the value back, so we have
+        to invoke it distinctly - this is a very uncommon case.
+
+        Userland code accesses _branch() when the connect() or
+        contextual_connect() methods are called.  The branched connection
+        acts as much as possible like the parent, except that it stays
+        connected when a close() event occurs.
+
+        """
+        if self.__branch_from:
+            return self.__branch_from._branch()
+        else:
+            return self.engine._connection_cls(
+                self.engine,
+                self.__connection,
+                _branch_from=self,
+                _execution_options=self._execution_options,
+                _has_events=self._has_events,
+                _dispatch=self.dispatch)
+
+    @property
+    def _root(self):
+        """return the 'root' connection.
+
+        Returns 'self' if this connection is not a branch, else
+        returns the root connection from which we ultimately branched.
+
         """
 
-        return self.engine._connection_cls(
-            self.engine,
-            self.__connection,
-            _branch=True,
-            _has_events=self._has_events,
-            _dispatch=self.dispatch)
+        if self.__branch_from:
+            return self.__branch_from
+        else:
+            return self
 
     def _clone(self):
         """Create a shallow copy of this Connection.
@@ -224,7 +256,7 @@ class Connection(Connectable):
     def invalidated(self):
         """Return True if this connection was invalidated."""
 
-        return self.__invalid
+        return self._root.__invalid
 
     @property
     def connection(self):
@@ -236,6 +268,9 @@ class Connection(Connectable):
             return self._revalidate_connection()
 
     def _revalidate_connection(self):
+        if self.__branch_from:
+            return self.__branch_from._revalidate_connection()
+
         if self.__can_reconnect and self.__invalid:
             if self.__transaction is not None:
                 raise exc.InvalidRequestError(
@@ -343,16 +378,17 @@ class Connection(Connectable):
             :ref:`pool_connection_invalidation`
 
         """
+
         if self.invalidated:
             return
 
         if self.closed:
             raise exc.ResourceClosedError("This Connection is closed")
 
-        if self._connection_is_valid:
-            self.__connection.invalidate(exception)
-        del self.__connection
-        self.__invalid = True
+        if self._root._connection_is_valid:
+            self._root.__connection.invalidate(exception)
+        del self._root.__connection
+        self._root.__invalid = True
 
     def detach(self):
         """Detach the underlying DB-API connection from its connection pool.
@@ -415,6 +451,8 @@ class Connection(Connectable):
         :class:`.Engine`.
 
         """
+        if self.__branch_from:
+            return self.__branch_from.begin()
 
         if self.__transaction is None:
             self.__transaction = RootTransaction(self)
@@ -436,6 +474,9 @@ class Connection(Connectable):
         See also :meth:`.Connection.begin`,
         :meth:`.Connection.begin_twophase`.
         """
+        if self.__branch_from:
+            return self.__branch_from.begin_nested()
+
         if self.__transaction is None:
             self.__transaction = RootTransaction(self)
         else:
@@ -459,6 +500,9 @@ class Connection(Connectable):
 
         """
 
+        if self.__branch_from:
+            return self.__branch_from.begin_twophase(xid=xid)
+
         if self.__transaction is not None:
             raise exc.InvalidRequestError(
                 "Cannot start a two phase transaction when a transaction "
@@ -479,10 +523,11 @@ class Connection(Connectable):
 
     def in_transaction(self):
         """Return True if a transaction is in progress."""
-
-        return self.__transaction is not None
+        return self._root.__transaction is not None
 
     def _begin_impl(self, transaction):
+        assert not self.__branch_from
+
         if self._echo:
             self.engine.logger.info("BEGIN (implicit)")
 
@@ -497,6 +542,8 @@ class Connection(Connectable):
             self._handle_dbapi_exception(e, None, None, None, None)
 
     def _rollback_impl(self):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.rollback(self)
 
@@ -516,6 +563,8 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _commit_impl(self, autocommit=False):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.commit(self)
 
@@ -532,6 +581,8 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _savepoint_impl(self, name=None):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.savepoint(self, name)
 
@@ -543,6 +594,8 @@ class Connection(Connectable):
             return name
 
     def _rollback_to_savepoint_impl(self, name, context):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.rollback_savepoint(self, name, context)
 
@@ -551,6 +604,8 @@ class Connection(Connectable):
         self.__transaction = context
 
     def _release_savepoint_impl(self, name, context):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.release_savepoint(self, name, context)
 
@@ -559,6 +614,8 @@ class Connection(Connectable):
         self.__transaction = context
 
     def _begin_twophase_impl(self, transaction):
+        assert not self.__branch_from
+
         if self._echo:
             self.engine.logger.info("BEGIN TWOPHASE (implicit)")
         if self._has_events or self.engine._has_events:
@@ -571,6 +628,8 @@ class Connection(Connectable):
                 self.connection._reset_agent = transaction
 
     def _prepare_twophase_impl(self, xid):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.prepare_twophase(self, xid)
 
@@ -579,6 +638,8 @@ class Connection(Connectable):
             self.engine.dialect.do_prepare_twophase(self, xid)
 
     def _rollback_twophase_impl(self, xid, is_prepared):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.rollback_twophase(self, xid, is_prepared)
 
@@ -595,6 +656,8 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _commit_twophase_impl(self, xid, is_prepared):
+        assert not self.__branch_from
+
         if self._has_events or self.engine._has_events:
             self.dispatch.commit_twophase(self, xid, is_prepared)
 
@@ -610,8 +673,8 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _autorollback(self):
-        if not self.in_transaction():
-            self._rollback_impl()
+        if not self._root.in_transaction():
+            self._root._rollback_impl()
 
     def close(self):
         """Close this :class:`.Connection`.
@@ -632,13 +695,21 @@ class Connection(Connectable):
         and will allow no further operations.
 
         """
+        if self.__branch_from:
+            try:
+                del self.__connection
+            except AttributeError:
+                pass
+            finally:
+                self.__can_reconnect = False
+                return
         try:
             conn = self.__connection
         except AttributeError:
             pass
         else:
-            if not self.__branch:
-                conn.close()
+
+            conn.close()
             if conn._reset_agent is self.__transaction:
                 conn._reset_agent = None
 
@@ -993,8 +1064,8 @@ class Connection(Connectable):
             result.rowcount
             result.close(_autoclose_connection=False)
 
-        if self.__transaction is None and context.should_autocommit:
-            self._commit_impl(autocommit=True)
+        if context.should_autocommit and self._root.__transaction is None:
+            self._root._commit_impl(autocommit=True)
 
         if result.closed and self.should_close_with_result:
             self.close()
@@ -1055,8 +1126,6 @@ class Connection(Connectable):
         """
         try:
             cursor.close()
-        except (SystemExit, KeyboardInterrupt):
-            raise
         except Exception:
             # log the error through the connection pool's logger.
             self.engine.pool.logger.error(

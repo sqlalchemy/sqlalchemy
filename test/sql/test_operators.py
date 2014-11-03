@@ -1,4 +1,4 @@
-from sqlalchemy.testing import fixtures, eq_, is_
+from sqlalchemy.testing import fixtures, eq_, is_, is_not_
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate, null, true, false
@@ -776,6 +776,25 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             select([x]).where(~null()),
             "SELECT x WHERE NOT NULL"
+        )
+
+    def test_constant_non_singleton(self):
+        is_not_(null(), null())
+        is_not_(false(), false())
+        is_not_(true(), true())
+
+    def test_constant_render_distinct(self):
+        self.assert_compile(
+            select([null(), null()]),
+            "SELECT NULL AS anon_1, NULL AS anon_2"
+        )
+        self.assert_compile(
+            select([true(), true()]),
+            "SELECT true AS anon_1, true AS anon_2"
+        )
+        self.assert_compile(
+            select([false(), false()]),
+            "SELECT false AS anon_1, false AS anon_2"
         )
 
 

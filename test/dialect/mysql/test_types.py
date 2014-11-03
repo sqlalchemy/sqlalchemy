@@ -154,10 +154,8 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 res
             )
 
-    @testing.fails_if(
-        lambda: testing.against("mysql+mysqlconnector")
-        and not util.py3k,
-        "bug in mysqlconnector; http://bugs.mysql.com/bug.php?id=73266")
+    # fixed in mysql-connector as of 2.0.1,
+    # see http://bugs.mysql.com/bug.php?id=73266
     @testing.provide_metadata
     def test_precision_float_roundtrip(self):
         t = Table('t', self.metadata,

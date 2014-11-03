@@ -238,6 +238,22 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 checkparams=params
             )
 
+    def test_limit_offset_select_literal_binds(self):
+        stmt = select([1]).limit(5).offset(6)
+        self.assert_compile(
+            stmt,
+            "SELECT 1 LIMIT 5 OFFSET 6",
+            literal_binds=True
+        )
+
+    def test_limit_offset_compound_select_literal_binds(self):
+        stmt = select([1]).union(select([2])).limit(5).offset(6)
+        self.assert_compile(
+            stmt,
+            "SELECT 1 UNION SELECT 2 LIMIT 5 OFFSET 6",
+            literal_binds=True
+        )
+
     def test_select_precol_compile_ordering(self):
         s1 = select([column('x')]).select_from(text('a')).limit(5).as_scalar()
         s2 = select([s1]).limit(10)
@@ -2169,6 +2185,27 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT x + foo() OVER () AS anon_1"
         )
 
+        # test a reference to a label that in the referecned selectable;
+        # this resolves
+        expr = (table1.c.myid + 5).label('sum')
+        stmt = select([expr]).alias()
+        self.assert_compile(
+            select([stmt.c.sum, func.row_number().over(order_by=stmt.c.sum)]),
+            "SELECT anon_1.sum, row_number() OVER (ORDER BY anon_1.sum) "
+            "AS anon_2 FROM (SELECT mytable.myid + :myid_1 AS sum "
+            "FROM mytable) AS anon_1"
+        )
+
+        # test a reference to a label that's at the same level as the OVER
+        # in the columns clause; doesn't resolve
+        expr = (table1.c.myid + 5).label('sum')
+        self.assert_compile(
+            select([expr, func.row_number().over(order_by=expr)]),
+            "SELECT mytable.myid + :myid_1 AS sum, "
+            "row_number() OVER "
+            "(ORDER BY mytable.myid + :myid_1) AS anon_1 FROM mytable"
+        )
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,
@@ -2398,6 +2435,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 expected,
                 dialect=dialect
             )
+
+    def test_statement_hints(self):
+
+        stmt = select([table1.c.myid]).\
+            with_statement_hint("test hint one").\
+            with_statement_hint("test hint two", 'mysql')
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable test hint one",
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable test hint one test hint two",
+            dialect='mysql'
+        )
 
     def test_literal_as_text_fromstring(self):
         self.assert_compile(

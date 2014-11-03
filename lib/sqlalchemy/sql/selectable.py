@@ -746,6 +746,33 @@ class Join(FromClause):
         providing a "natural join".
 
         """
+        constraints = cls._joincond_scan_left_right(
+            a, a_subset, b, consider_as_foreign_keys)
+
+        if len(constraints) > 1:
+            cls._joincond_trim_constraints(
+                a, b, constraints, consider_as_foreign_keys)
+
+        if len(constraints) == 0:
+            if isinstance(b, FromGrouping):
+                hint = " Perhaps you meant to convert the right side to a "\
+                    "subquery using alias()?"
+            else:
+                hint = ""
+            raise exc.NoForeignKeysError(
+                "Can't find any foreign key relationships "
+                "between '%s' and '%s'.%s" %
+                (a.description, b.description, hint))
+
+        crit = [(x == y) for x, y in list(constraints.values())[0]]
+        if len(crit) == 1:
+            return (crit[0])
+        else:
+            return and_(*crit)
+
+    @classmethod
+    def _joincond_scan_left_right(
+            cls, a, a_subset, b, consider_as_foreign_keys):
         constraints = collections.defaultdict(list)
 
         for left in (a_subset, a):
@@ -780,57 +807,41 @@ class Join(FromClause):
                         if nrte.table_name == b.name:
                             raise
                         else:
-                            # this is totally covered.  can't get
-                            # coverage to mark it.
                             continue
 
                     if col is not None:
                         constraints[fk.constraint].append((col, fk.parent))
             if constraints:
                 break
+        return constraints
 
+    @classmethod
+    def _joincond_trim_constraints(
+            cls, a, b, constraints, consider_as_foreign_keys):
+        # more than one constraint matched.  narrow down the list
+        # to include just those FKCs that match exactly to
+        # "consider_as_foreign_keys".
+        if consider_as_foreign_keys:
+            for const in list(constraints):
+                if set(f.parent for f in const.elements) != set(
+                        consider_as_foreign_keys):
+                    del constraints[const]
+
+        # if still multiple constraints, but
+        # they all refer to the exact same end result, use it.
         if len(constraints) > 1:
-            # more than one constraint matched.  narrow down the list
-            # to include just those FKCs that match exactly to
-            # "consider_as_foreign_keys".
-            if consider_as_foreign_keys:
-                for const in list(constraints):
-                    if set(f.parent for f in const.elements) != set(
-                            consider_as_foreign_keys):
-                        del constraints[const]
+            dedupe = set(tuple(crit) for crit in constraints.values())
+            if len(dedupe) == 1:
+                key = list(constraints)[0]
+                constraints = {key: constraints[key]}
 
-            # if still multiple constraints, but
-            # they all refer to the exact same end result, use it.
-            if len(constraints) > 1:
-                dedupe = set(tuple(crit) for crit in constraints.values())
-                if len(dedupe) == 1:
-                    key = list(constraints)[0]
-                    constraints = {key: constraints[key]}
-
-            if len(constraints) != 1:
-                raise exc.AmbiguousForeignKeysError(
-                    "Can't determine join between '%s' and '%s'; "
-                    "tables have more than one foreign key "
-                    "constraint relationship between them. "
-                    "Please specify the 'onclause' of this "
-                    "join explicitly." % (a.description, b.description))
-
-        if len(constraints) == 0:
-            if isinstance(b, FromGrouping):
-                hint = " Perhaps you meant to convert the right side to a "\
-                    "subquery using alias()?"
-            else:
-                hint = ""
-            raise exc.NoForeignKeysError(
-                "Can't find any foreign key relationships "
-                "between '%s' and '%s'.%s" %
-                (a.description, b.description, hint))
-
-        crit = [(x == y) for x, y in list(constraints.values())[0]]
-        if len(crit) == 1:
-            return (crit[0])
-        else:
-            return and_(*crit)
+        if len(constraints) != 1:
+            raise exc.AmbiguousForeignKeysError(
+                "Can't determine join between '%s' and '%s'; "
+                "tables have more than one foreign key "
+                "constraint relationship between them. "
+                "Please specify the 'onclause' of this "
+                "join explicitly." % (a.description, b.description))
 
     def select(self, whereclause=None, **kwargs):
         """Create a :class:`.Select` from this :class:`.Join`.
@@ -1742,14 +1753,42 @@ class GenerativeSelect(SelectBase):
     @_generative
     def limit(self, limit):
         """return a new selectable with the given LIMIT criterion
-        applied."""
+        applied.
+
+        This is a numerical value which usually renders as a ``LIMIT``
+        expression in the resulting select.  Backends that don't
+        support ``LIMIT`` will attempt to provide similar
+        functionality.
+
+        .. versionchanged:: 1.0.0 - :meth:`.Select.limit` can now
+           accept arbitrary SQL expressions as well as integer values.
+
+        :param limit: an integer LIMIT parameter, or a SQL expression
+         that provides an integer result.
+
+        """
 
         self._limit_clause = _offset_or_limit_clause(limit)
 
     @_generative
     def offset(self, offset):
         """return a new selectable with the given OFFSET criterion
-        applied."""
+        applied.
+
+
+        This is a numeric value which usually renders as an ``OFFSET``
+        expression in the resulting select.  Backends that don't
+        support ``OFFSET`` will attempt to provide similar
+        functionality.
+
+
+        .. versionchanged:: 1.0.0 - :meth:`.Select.offset` can now
+           accept arbitrary SQL expressions as well as integer values.
+
+        :param offset: an integer OFFSET parameter, or a SQL expression
+         that provides an integer result.
+
+        """
 
         self._offset_clause = _offset_or_limit_clause(offset)
 
@@ -1885,9 +1924,10 @@ class CompoundSelect(GenerativeSelect):
 
     @property
     def _label_resolve_dict(self):
-        return dict(
+        d = dict(
             (c.key, c) for c in self.c
         )
+        return d, d
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
@@ -2124,6 +2164,7 @@ class Select(HasPrefixes, GenerativeSelect):
 
     _prefixes = ()
     _hints = util.immutabledict()
+    _statement_hints = ()
     _distinct = False
     _from_cloned = None
     _correlate = ()
@@ -2155,37 +2196,56 @@ class Select(HasPrefixes, GenerativeSelect):
             :func:`.select`.
 
         :param columns:
-          A list of :class:`.ClauseElement` objects, typically
-          :class:`.ColumnElement` objects or subclasses, which will form the
-          columns clause of the resulting statement. For all members which are
-          instances of :class:`.Selectable`, the individual
-          :class:`.ColumnElement` members of the :class:`.Selectable` will be
-          added individually to the columns clause. For example, specifying a
-          :class:`~sqlalchemy.schema.Table` instance will result in all the
-          contained :class:`~sqlalchemy.schema.Column` objects within to be
-          added to the columns clause.
+          A list of :class:`.ColumnElement` or :class:`.FromClause`
+          objects which will form the columns clause of the resulting
+          statement.   For those objects that are instances of
+          :class:`.FromClause` (typically :class:`.Table` or :class:`.Alias`
+          objects), the :attr:`.FromClause.c` collection is extracted
+          to form a collection of :class:`.ColumnElement` objects.
 
-          This argument is not present on the form of :func:`select()`
-          available on :class:`~sqlalchemy.schema.Table`.
+          This parameter will also accept :class:`.Text` constructs as
+          given, as well as ORM-mapped classes.
+
+          .. note::
+
+            The :paramref:`.select.columns` parameter is not available
+            in the method form of :func:`.select`, e.g.
+            :meth:`.FromClause.select`.
+
+          .. seealso::
+
+            :meth:`.Select.column`
+
+            :meth:`.Select.with_only_columns`
 
         :param whereclause:
           A :class:`.ClauseElement` expression which will be used to form the
-          ``WHERE`` clause.
+          ``WHERE`` clause.   It is typically preferable to add WHERE
+          criterion to an existing :class:`.Select` using method chaining
+          with :meth:`.Select.where`.
+
+          .. seealso::
+
+            :meth:`.Select.where`
 
         :param from_obj:
           A list of :class:`.ClauseElement` objects which will be added to the
-          ``FROM`` clause of the resulting statement. Note that "from" objects
-          are automatically located within the columns and whereclause
-          ClauseElements.  Use this parameter to explicitly specify "from"
-          objects which are not automatically locatable. This could include
-          :class:`~sqlalchemy.schema.Table` objects that aren't otherwise
-          present, or :class:`.Join` objects whose presence will supersede
-          that of the :class:`~sqlalchemy.schema.Table` objects already
-          located in the other clauses.
+          ``FROM`` clause of the resulting statement.  This is equivalent
+          to calling :meth:`.Select.select_from` using method chaining on
+          an existing :class:`.Select` object.
+
+          .. seealso::
+
+            :meth:`.Select.select_from` - full description of explicit
+            FROM clause specification.
 
         :param autocommit:
-          Deprecated.  Use .execution_options(autocommit=<True|False>)
+          Deprecated.  Use ``.execution_options(autocommit=<True|False>)``
           to set the autocommit option.
+
+          .. seealso::
+
+            :meth:`.Executable.execution_options`
 
         :param bind=None:
           an :class:`~.Engine` or :class:`~.Connection` instance
@@ -2198,11 +2258,13 @@ class Select(HasPrefixes, GenerativeSelect):
         :param correlate=True:
           indicates that this :class:`.Select` object should have its
           contained :class:`.FromClause` elements "correlated" to an enclosing
-          :class:`.Select` object.  This means that any
-          :class:`.ClauseElement` instance within the "froms" collection of
-          this :class:`.Select` which is also present in the "froms"
-          collection of an enclosing select will not be rendered in the
-          ``FROM`` clause of this select statement.
+          :class:`.Select` object.  It is typically preferable to specify
+          correlations on an existing :class:`.Select` construct using
+          :meth:`.Select.correlate`.
+
+          .. seealso::
+
+            :meth:`.Select.correlate` - full description of correlation.
 
         :param distinct=False:
           when ``True``, applies a ``DISTINCT`` qualifier to the columns
@@ -2213,15 +2275,19 @@ class Select(HasPrefixes, GenerativeSelect):
           is understood by the Postgresql dialect to render the
           ``DISTINCT ON (<columns>)`` syntax.
 
-          ``distinct`` is also available via the :meth:`~.Select.distinct`
-          generative method.
+          ``distinct`` is also available on an existing :class:`.Select`
+          object via the :meth:`~.Select.distinct` method.
+
+          .. seealso::
+
+            :meth:`.Select.distinct`
 
         :param for_update=False:
           when ``True``, applies ``FOR UPDATE`` to the end of the
           resulting statement.
 
           .. deprecated:: 0.9.0 - use
-             :meth:`.GenerativeSelect.with_for_update` to specify the
+             :meth:`.Select.with_for_update` to specify the
              structure of the ``FOR UPDATE`` clause.
 
           ``for_update`` accepts various string values interpreted by
@@ -2236,32 +2302,62 @@ class Select(HasPrefixes, GenerativeSelect):
 
          .. seealso::
 
-            :meth:`.GenerativeSelect.with_for_update` - improved API for
+            :meth:`.Select.with_for_update` - improved API for
             specifying the ``FOR UPDATE`` clause.
 
         :param group_by:
           a list of :class:`.ClauseElement` objects which will comprise the
-          ``GROUP BY`` clause of the resulting select.
+          ``GROUP BY`` clause of the resulting select.  This parameter
+          is typically specified more naturally using the
+          :meth:`.Select.group_by` method on an existing :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.group_by`
 
         :param having:
           a :class:`.ClauseElement` that will comprise the ``HAVING`` clause
-          of the resulting select when ``GROUP BY`` is used.
+          of the resulting select when ``GROUP BY`` is used.  This parameter
+          is typically specified more naturally using the
+          :meth:`.Select.having` method on an existing :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.having`
 
         :param limit=None:
-          a numerical value which usually compiles to a ``LIMIT``
-          expression in the resulting select.  Databases that don't
+          a numerical value which usually renders as a ``LIMIT``
+          expression in the resulting select.  Backends that don't
           support ``LIMIT`` will attempt to provide similar
-          functionality.
+          functionality.    This parameter is typically specified more naturally
+          using the :meth:`.Select.limit` method on an existing
+          :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.limit`
 
         :param offset=None:
-          a numeric value which usually compiles to an ``OFFSET``
-          expression in the resulting select.  Databases that don't
+          a numeric value which usually renders as an ``OFFSET``
+          expression in the resulting select.  Backends that don't
           support ``OFFSET`` will attempt to provide similar
-          functionality.
+          functionality.  This parameter is typically specified more naturally
+          using the :meth:`.Select.offset` method on an existing
+          :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.offset`
 
         :param order_by:
           a scalar or list of :class:`.ClauseElement` objects which will
           comprise the ``ORDER BY`` clause of the resulting select.
+          This parameter is typically specified more naturally using the
+          :meth:`.Select.order_by` method on an existing :class:`.Select`.
+
+          .. seealso::
+
+            :meth:`.Select.order_by`
 
         :param use_labels=False:
           when ``True``, the statement will be generated using labels
@@ -2272,8 +2368,13 @@ class Select(HasPrefixes, GenerativeSelect):
           collection of the resulting :class:`.Select` object will use these
           names as well for targeting column members.
 
-          use_labels is also available via the
-          :meth:`~.GenerativeSelect.apply_labels` generative method.
+          This parameter can also be specified on an existing
+          :class:`.Select` object using the :meth:`.Select.apply_labels`
+          method.
+
+          .. seealso::
+
+            :meth:`.Select.apply_labels`
 
         """
         self._auto_correlate = correlate
@@ -2436,10 +2537,30 @@ class Select(HasPrefixes, GenerativeSelect):
 
         return self._get_display_froms()
 
+    def with_statement_hint(self, text, dialect_name='*'):
+        """add a statement hint to this :class:`.Select`.
+
+        This method is similar to :meth:`.Select.with_hint` except that
+        it does not require an individual table, and instead applies to the
+        statement as a whole.
+
+        Hints here are specific to the backend database and may include
+        directives such as isolation levels, file directives, fetch directives,
+        etc.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Select.with_hint`
+
+        """
+        return self.with_hint(None, text, dialect_name)
+
     @_generative
     def with_hint(self, selectable, text, dialect_name='*'):
-        """Add an indexing hint for the given selectable to this
-        :class:`.Select`.
+        """Add an indexing or other executional context hint for the given
+        selectable to this :class:`.Select`.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
@@ -2451,7 +2572,7 @@ class Select(HasPrefixes, GenerativeSelect):
         following::
 
             select([mytable]).\\
-                with_hint(mytable, "+ index(%(name)s ix_mytable)")
+                with_hint(mytable, "index(%(name)s ix_mytable)")
 
         Would render SQL as::
 
@@ -2462,13 +2583,19 @@ class Select(HasPrefixes, GenerativeSelect):
         and Sybase simultaneously::
 
             select([mytable]).\\
-                with_hint(
-                    mytable, "+ index(%(name)s ix_mytable)", 'oracle').\\
+                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
 
+        .. seealso::
+
+            :meth:`.Select.with_statement_hint`
+
         """
-        self._hints = self._hints.union(
-            {(selectable, dialect_name): text})
+        if selectable is None:
+            self._statement_hints += ((dialect_name, text), )
+        else:
+            self._hints = self._hints.union(
+                {(selectable, dialect_name): text})
 
     @property
     def type(self):
@@ -2499,15 +2626,16 @@ class Select(HasPrefixes, GenerativeSelect):
 
     @_memoized_property
     def _label_resolve_dict(self):
-        d = dict(
+        with_cols = dict(
             (c._resolve_label or c._label or c.key, c)
             for c in _select_iterables(self._raw_columns)
             if c._allow_label_resolve)
-        d.update(
+        only_froms = dict(
             (c.key, c) for c in
             _select_iterables(self.froms) if c._allow_label_resolve)
+        with_cols.update(only_froms)
 
-        return d
+        return with_cols, only_froms
 
     def is_derived_from(self, fromclause):
         if self in fromclause._cloned_set:

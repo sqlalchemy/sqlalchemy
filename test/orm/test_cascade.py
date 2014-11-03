@@ -1,3 +1,4 @@
+import copy
 
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, \
@@ -12,6 +13,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
+
 
 class CascadeArgTest(fixtures.MappedTest):
     run_inserts = None
@@ -84,6 +86,12 @@ class CascadeArgTest(fixtures.MappedTest):
         assert isinstance(
             orm_util.CascadeOptions("all, delete-orphan"),
             frozenset)
+
+    def test_cascade_deepcopy(self):
+        old = orm_util.CascadeOptions("all, delete-orphan")
+        new = copy.deepcopy(old)
+        eq_(old, new)
+
 
     def test_cascade_assignable(self):
         User, Address = self.classes.User, self.classes.Address

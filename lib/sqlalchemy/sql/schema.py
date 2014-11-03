@@ -412,8 +412,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except:
-                metadata._remove_table(name, schema)
-                raise
+                with util.safe_reraise():
+                    metadata._remove_table(name, schema)
 
     @property
     @util.deprecated('0.9', 'Use ``table.schema.quote``')
@@ -728,7 +728,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                           checkfirst=checkfirst)
 
     def tometadata(self, metadata, schema=RETAIN_SCHEMA,
-                   referred_schema_fn=None):
+                   referred_schema_fn=None, name=None):
         """Return a copy of this :class:`.Table` associated with a different
         :class:`.MetaData`.
 
@@ -785,13 +785,21 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
          .. versionadded:: 0.9.2
 
-        """
+        :param name: optional string name indicating the target table name.
+         If not specified or None, the table name is retained.  This allows
+         a :class:`.Table` to be copied to the same :class:`.MetaData` target
+         with a new name.
 
+         .. versionadded:: 1.0.0
+
+        """
+        if name is None:
+            name = self.name
         if schema is RETAIN_SCHEMA:
             schema = self.schema
         elif schema is None:
             schema = metadata.schema
-        key = _get_table_key(self.name, schema)
+        key = _get_table_key(name, schema)
         if key in metadata.tables:
             util.warn("Table '%s' already exists within the given "
                       "MetaData - not copying." % self.description)
@@ -801,7 +809,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         for c in self.columns:
             args.append(c.copy(schema=schema))
         table = Table(
-            self.name, metadata, schema=schema,
+            name, metadata, schema=schema,
             *args, **self.kwargs
         )
         for c in self.constraints:
@@ -1061,8 +1069,8 @@ class Column(SchemaItem, ColumnClause):
              conditionally rendered differently on different backends,
              consider custom compilation rules for :class:`.CreateColumn`.
 
-             ..versionadded:: 0.8.3 Added the ``system=True`` parameter to
-               :class:`.Column`.
+             .. versionadded:: 0.8.3 Added the ``system=True`` parameter to
+                :class:`.Column`.
 
         """
 
@@ -1222,8 +1230,10 @@ class Column(SchemaItem, ColumnClause):
         existing = getattr(self, 'table', None)
         if existing is not None and existing is not table:
             raise exc.ArgumentError(
-                "Column object already assigned to Table '%s'" %
-                existing.description)
+                "Column object '%s' already assigned to Table '%s'" % (
+                    self.key,
+                    existing.description
+                ))
 
         if self.key in table._columns:
             col = table._columns.get(self.key)
@@ -1547,7 +1557,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         )
         return self._schema_item_copy(fk)
 
-    def _get_colspec(self, schema=None):
+    def _get_colspec(self, schema=None, table_name=None):
         """Return a string based 'column specification' for this
         :class:`.ForeignKey`.
 
@@ -1557,7 +1567,15 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         """
         if schema:
             _schema, tname, colname = self._column_tokens
+            if table_name is not None:
+                tname = table_name
             return "%s.%s.%s" % (schema, tname, colname)
+        elif table_name:
+            schema, tname, colname = self._column_tokens
+            if schema:
+                return "%s.%s.%s" % (schema, table_name, colname)
+            else:
+                return "%s.%s" % (table_name, colname)
         elif self._table_column is not None:
             return "%s.%s" % (
                 self._table_column.table.fullname, self._table_column.key)
@@ -2649,10 +2667,15 @@ class ForeignKeyConstraint(Constraint):
             event.listen(table.metadata, "before_drop",
                          ddl.DropConstraint(self, on=supports_alter))
 
-    def copy(self, schema=None, **kw):
+    def copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(
             [x.parent.key for x in self._elements.values()],
-            [x._get_colspec(schema=schema)
+            [x._get_colspec(
+                schema=schema,
+                table_name=target_table.name
+                if target_table is not None
+                and x._table_key() == x.parent.table.key
+                else None)
              for x in self._elements.values()],
             name=self.name,
             onupdate=self.onupdate,

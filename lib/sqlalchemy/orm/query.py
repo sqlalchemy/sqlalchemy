@@ -1145,7 +1145,8 @@ class Query(object):
 
     @_generative()
     def with_hint(self, selectable, text, dialect_name='*'):
-        """Add an indexing hint for the given entity or selectable to
+        """Add an indexing or other executional context
+        hint for the given entity or selectable to
         this :class:`.Query`.
 
         Functionality is passed straight through to
@@ -1153,10 +1154,34 @@ class Query(object):
         with the addition that ``selectable`` can be a
         :class:`.Table`, :class:`.Alias`, or ORM entity / mapped class
         /etc.
+
+        .. seealso::
+
+            :meth:`.Query.with_statement_hint`
+
         """
-        selectable = inspect(selectable).selectable
+        if selectable is not None:
+            selectable = inspect(selectable).selectable
 
         self._with_hints += ((selectable, text, dialect_name),)
+
+    def with_statement_hint(self, text, dialect_name='*'):
+        """add a statement hint to this :class:`.Select`.
+
+        This method is similar to :meth:`.Select.with_hint` except that
+        it does not require an individual table, and instead applies to the
+        statement as a whole.
+
+        This feature calls down into :meth:`.Select.with_statement_hint`.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Query.with_hint`
+
+        """
+        return self.with_hint(None, text, dialect_name)
 
     @_generative()
     def execution_options(self, **kwargs):
@@ -1810,6 +1835,11 @@ class Query(object):
 
             left_entity = prop = None
 
+            if isinstance(onclause, interfaces.PropComparator):
+                of_type = getattr(onclause, '_of_type', None)
+            else:
+                of_type = None
+
             if isinstance(onclause, util.string_types):
                 left_entity = self._joinpoint_zero()
 
@@ -1836,8 +1866,6 @@ class Query(object):
 
             if isinstance(onclause, interfaces.PropComparator):
                 if right_entity is None:
-                    right_entity = onclause.property.mapper
-                    of_type = getattr(onclause, '_of_type', None)
                     if of_type:
                         right_entity = of_type
                     else:
@@ -1919,11 +1947,9 @@ class Query(object):
                                 from_obj, r_info.selectable):
                         overlap = True
                         break
-            elif sql_util.selectables_overlap(l_info.selectable,
-                                              r_info.selectable):
-                overlap = True
 
-        if overlap and l_info.selectable is r_info.selectable:
+        if (overlap or not create_aliases) and \
+                l_info.selectable is r_info.selectable:
             raise sa_exc.InvalidRequestError(
                 "Can't join table/selectable '%s' to itself" %
                 l_info.selectable)
@@ -2591,6 +2617,19 @@ class Query(object):
                 SELECT 1 FROM users WHERE users.name = :name_1
             ) AS anon_1
 
+        The EXISTS construct is usually used in the WHERE clause::
+
+            session.query(User.id).filter(q.exists()).scalar()
+
+        Note that some databases such as SQL Server don't allow an
+        EXISTS expression to be present in the columns clause of a
+        SELECT.    To select a simple boolean value based on the exists
+        as a WHERE, use :func:`.literal`::
+
+            from sqlalchemy import literal
+
+            session.query(literal(True)).filter(q.exists()).scalar()
+
         .. versionadded:: 0.8.1
 
         """
@@ -2718,8 +2757,24 @@ class Query(object):
 
         Updates rows matched by this query in the database.
 
-        :param values: a dictionary with attributes names as keys and literal
+        E.g.::
+
+            sess.query(User).filter(User.age == 25).\
+                update({User.age: User.age - 10}, synchronize_session='fetch')
+
+
+            sess.query(User).filter(User.age == 25).\
+                update({"age": User.age - 10}, synchronize_session='evaluate')
+
+
+        :param values: a dictionary with attributes names, or alternatively
+          mapped attributes or SQL expressions, as keys, and literal
           values or sql expressions as values.
+
+          .. versionchanged:: 1.0.0 - string names in the values dictionary
+             are now resolved against the mapped entity; previously, these
+             strings were passed as literal column names with no mapper-level
+             translation.
 
         :param synchronize_session: chooses the strategy to update the
             attributes on objects in the session. Valid values are:
@@ -2758,7 +2813,7 @@ class Query(object):
           which normally occurs upon :meth:`.Session.commit` or can be forced
           by using :meth:`.Session.expire_all`.
 
-        * As of 0.8, this method will support multiple table updates, as
+        * The method supports multiple table updates, as
           detailed in :ref:`multi_table_updates`, and this behavior does
           extend to support updates of joined-inheritance and other multiple
           table mappings.  However, the **join condition of an inheritance
@@ -2788,12 +2843,6 @@ class Query(object):
             :ref:`inserts_and_updates` - Core SQL tutorial
 
         """
-
-        # TODO: value keys need to be mapped to corresponding sql cols and
-        # instr.attr.s to string keys
-        # TODO: updates of manytoone relationships need to be converted to
-        # fk assignments
-        # TODO: cascades need handling.
 
         update_op = persistence.BulkUpdate.factory(
             self, synchronize_session, values)

@@ -228,6 +228,7 @@ class ClauseElement(Visitable):
     is_selectable = False
     is_clause_element = True
 
+    description = None
     _order_by_label_element = None
     _is_from_container = False
 
@@ -540,7 +541,7 @@ class ClauseElement(Visitable):
     __nonzero__ = __bool__
 
     def __repr__(self):
-        friendly = getattr(self, 'description', None)
+        friendly = self.description
         if friendly is None:
             return object.__repr__(self)
         else:
@@ -1616,10 +1617,10 @@ class Null(ColumnElement):
         return type_api.NULLTYPE
 
     @classmethod
-    def _singleton(cls):
+    def _instance(cls):
         """Return a constant :class:`.Null` construct."""
 
-        return NULL
+        return Null()
 
     def compare(self, other):
         return isinstance(other, Null)
@@ -1640,11 +1641,11 @@ class False_(ColumnElement):
         return type_api.BOOLEANTYPE
 
     def _negate(self):
-        return TRUE
+        return True_()
 
     @classmethod
-    def _singleton(cls):
-        """Return a constant :class:`.False_` construct.
+    def _instance(cls):
+        """Return a :class:`.False_` construct.
 
         E.g.::
 
@@ -1678,7 +1679,7 @@ class False_(ColumnElement):
 
         """
 
-        return FALSE
+        return False_()
 
     def compare(self, other):
         return isinstance(other, False_)
@@ -1699,17 +1700,17 @@ class True_(ColumnElement):
         return type_api.BOOLEANTYPE
 
     def _negate(self):
-        return FALSE
+        return False_()
 
     @classmethod
     def _ifnone(cls, other):
         if other is None:
-            return cls._singleton()
+            return cls._instance()
         else:
             return other
 
     @classmethod
-    def _singleton(cls):
+    def _instance(cls):
         """Return a constant :class:`.True_` construct.
 
         E.g.::
@@ -1744,14 +1745,10 @@ class True_(ColumnElement):
 
         """
 
-        return TRUE
+        return True_()
 
     def compare(self, other):
         return isinstance(other, True_)
-
-NULL = Null()
-FALSE = False_()
-TRUE = True_()
 
 
 class ClauseList(ClauseElement):
@@ -2356,14 +2353,39 @@ class Extract(ColumnElement):
 
 
 class _label_reference(ColumnElement):
+    """Wrap a column expression as it appears in a 'reference' context.
+
+    This expression is any that inclues an _order_by_label_element,
+    which is a Label, or a DESC / ASC construct wrapping a Label.
+
+    The production of _label_reference() should occur when an expression
+    is added to this context; this includes the ORDER BY or GROUP BY of a
+    SELECT statement, as well as a few other places, such as the ORDER BY
+    within an OVER clause.
+
+    """
     __visit_name__ = 'label_reference'
 
-    def __init__(self, text):
-        self.text = self.key = text
+    def __init__(self, element):
+        self.element = element
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.element = clone(self.element, **kw)
+
+    @property
+    def _from_objects(self):
+        return ()
+
+
+class _textual_label_reference(ColumnElement):
+    __visit_name__ = 'textual_label_reference'
+
+    def __init__(self, element):
+        self.element = element
 
     @util.memoized_property
     def _text_clause(self):
-        return TextClause._create_text(self.text)
+        return TextClause._create_text(self.element)
 
 
 class UnaryExpression(ColumnElement):
@@ -2859,6 +2881,120 @@ class Over(ColumnElement):
         return list(itertools.chain(
             *[c._from_objects for c in
                 (self.func, self.partition_by, self.order_by)
+              if c is not None]
+        ))
+
+
+class FunctionFilter(ColumnElement):
+    """Represent a function FILTER clause.
+
+    This is a special operator against aggregate and window functions,
+    which controls which rows are passed to it.
+    It's supported only by certain database backends.
+
+    Invocation of :class:`.FunctionFilter` is via
+    :meth:`.FunctionElement.filter`::
+
+        func.count(1).filter(True)
+
+    .. versionadded:: 1.0.0
+
+    .. seealso::
+
+        :meth:`.FunctionElement.filter`
+
+    """
+    __visit_name__ = 'funcfilter'
+
+    criterion = None
+
+    def __init__(self, func, *criterion):
+        """Produce a :class:`.FunctionFilter` object against a function.
+
+        Used against aggregate and window functions,
+        for database backends that support the "FILTER" clause.
+
+        E.g.::
+
+            from sqlalchemy import funcfilter
+            funcfilter(func.count(1), MyClass.name == 'some name')
+
+        Would produce "COUNT(1) FILTER (WHERE myclass.name = 'some name')".
+
+        This function is also available from the :data:`~.expression.func`
+        construct itself via the :meth:`.FunctionElement.filter` method.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.FunctionElement.filter`
+
+
+        """
+        self.func = func
+        self.filter(*criterion)
+
+    def filter(self, *criterion):
+        """Produce an additional FILTER against the function.
+
+        This method adds additional criteria to the initial criteria
+        set up by :meth:`.FunctionElement.filter`.
+
+        Multiple criteria are joined together at SQL render time
+        via ``AND``.
+
+
+        """
+
+        for criterion in list(criterion):
+            criterion = _expression_literal_as_text(criterion)
+
+            if self.criterion is not None:
+                self.criterion = self.criterion & criterion
+            else:
+                self.criterion = criterion
+
+        return self
+
+    def over(self, partition_by=None, order_by=None):
+        """Produce an OVER clause against this filtered function.
+
+        Used against aggregate or so-called "window" functions,
+        for database backends that support window functions.
+
+        The expression::
+
+            func.rank().filter(MyClass.y > 5).over(order_by='x')
+
+        is shorthand for::
+
+            from sqlalchemy import over, funcfilter
+            over(funcfilter(func.rank(), MyClass.y > 5), order_by='x')
+
+        See :func:`~.expression.over` for a full description.
+
+        """
+        return Over(self, partition_by=partition_by, order_by=order_by)
+
+    @util.memoized_property
+    def type(self):
+        return self.func.type
+
+    def get_children(self, **kwargs):
+        return [c for c in
+                (self.func, self.criterion)
+                if c is not None]
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.func = clone(self.func, **kw)
+        if self.criterion is not None:
+            self.criterion = clone(self.criterion, **kw)
+
+    @property
+    def _from_objects(self):
+        return list(itertools.chain(
+            *[c._from_objects for c in (self.func, self.criterion)
               if c is not None]
         ))
 
@@ -3466,7 +3602,7 @@ def _string_or_unprintable(element):
     else:
         try:
             return str(element)
-        except:
+        except Exception:
             return "unprintable element %r" % element
 
 
@@ -3556,6 +3692,13 @@ def _clause_element_as_expr(element):
 
 def _literal_as_label_reference(element):
     if isinstance(element, util.string_types):
+        return _textual_label_reference(element)
+
+    elif hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+
+    if isinstance(element, ColumnElement) and \
+            element._order_by_label_element is not None:
         return _label_reference(element)
     else:
         return _literal_as_text(element)

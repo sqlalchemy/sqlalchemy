@@ -12,6 +12,14 @@ way (e.g. as a package-less import).
 
 """
 
+try:
+    # installed by bootstrap.py
+    import sqla_plugin_base as plugin_base
+except ImportError:
+    # assume we're a package, use traditional import
+    from . import plugin_base
+
+
 import os
 import sys
 
@@ -19,16 +27,6 @@ from nose.plugins import Plugin
 fixtures = None
 
 py3k = sys.version_info >= (3, 0)
-# no package imports yet!  this prevents us from tripping coverage
-# too soon.
-path = os.path.join(os.path.dirname(__file__), "plugin_base.py")
-if sys.version_info >= (3, 3):
-    from importlib import machinery
-    plugin_base = machinery.SourceFileLoader(
-        "plugin_base", path).load_module()
-else:
-    import imp
-    plugin_base = imp.load_source("plugin_base", path)
 
 
 class NoseSQLAlchemy(Plugin):
@@ -58,10 +56,10 @@ class NoseSQLAlchemy(Plugin):
 
         plugin_base.set_coverage_flag(options.enable_plugin_coverage)
 
-        global fixtures
-        from sqlalchemy.testing import fixtures
-
     def begin(self):
+        global fixtures
+        from sqlalchemy.testing import fixtures  # noqa
+
         plugin_base.post_begin()
 
     def describeTest(self, test):
@@ -72,19 +70,23 @@ class NoseSQLAlchemy(Plugin):
 
     def wantMethod(self, fn):
         if py3k:
+            if not hasattr(fn.__self__, 'cls'):
+                return False
             cls = fn.__self__.cls
         else:
             cls = fn.im_class
-        print "METH:", fn, "CLS:", cls
         return plugin_base.want_method(cls, fn)
 
     def wantClass(self, cls):
         return plugin_base.want_class(cls)
 
     def beforeTest(self, test):
-        plugin_base.before_test(test,
-                                test.test.cls.__module__,
-                                test.test.cls, test.test.method.__name__)
+        if not hasattr(test.test, 'cls'):
+            return
+        plugin_base.before_test(
+            test,
+            test.test.cls.__module__,
+            test.test.cls, test.test.method.__name__)
 
     def afterTest(self, test):
         plugin_base.after_test(test)

@@ -11,7 +11,7 @@ from sqlalchemy import Table, select, bindparam, Column,\
     UniqueConstraint
 from sqlalchemy.types import Integer, String, Boolean, DateTime, Date, Time
 from sqlalchemy import types as sqltypes
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 from sqlalchemy.util import u, ue
 from sqlalchemy import exc, sql, schema, pool, util
 from sqlalchemy.dialects.sqlite import base as sqlite, \
@@ -480,57 +480,6 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         assert u('méil') in result.keys()
         assert ue('\u6e2c\u8a66') in result.keys()
 
-    def test_attached_as_schema(self):
-        cx = testing.db.connect()
-        try:
-            cx.execute('ATTACH DATABASE ":memory:" AS  test_schema')
-            dialect = cx.dialect
-            assert dialect.get_table_names(cx, 'test_schema') == []
-            meta = MetaData(cx)
-            Table('created', meta, Column('id', Integer),
-                  schema='test_schema')
-            alt_master = Table('sqlite_master', meta, autoload=True,
-                               schema='test_schema')
-            meta.create_all(cx)
-            eq_(dialect.get_table_names(cx, 'test_schema'), ['created'])
-            assert len(alt_master.c) > 0
-            meta.clear()
-            reflected = Table('created', meta, autoload=True,
-                              schema='test_schema')
-            assert len(reflected.c) == 1
-            cx.execute(reflected.insert(), dict(id=1))
-            r = cx.execute(reflected.select()).fetchall()
-            assert list(r) == [(1, )]
-            cx.execute(reflected.update(), dict(id=2))
-            r = cx.execute(reflected.select()).fetchall()
-            assert list(r) == [(2, )]
-            cx.execute(reflected.delete(reflected.c.id == 2))
-            r = cx.execute(reflected.select()).fetchall()
-            assert list(r) == []
-
-            # note that sqlite_master is cleared, above
-
-            meta.drop_all()
-            assert dialect.get_table_names(cx, 'test_schema') == []
-        finally:
-            cx.execute('DETACH DATABASE test_schema')
-
-    @testing.exclude('sqlite', '<', (2, 6), 'no database support')
-    def test_temp_table_reflection(self):
-        cx = testing.db.connect()
-        try:
-            cx.execute('CREATE TEMPORARY TABLE tempy (id INT)')
-            assert 'tempy' in cx.dialect.get_table_names(cx, None)
-            meta = MetaData(cx)
-            tempy = Table('tempy', meta, autoload=True)
-            assert len(tempy.c) == 1
-            meta.drop_all()
-        except:
-            try:
-                cx.execute('DROP TABLE tempy')
-            except exc.DBAPIError:
-                pass
-            raise
 
     def test_file_path_is_absolute(self):
         d = pysqlite_dialect.dialect()
@@ -548,7 +497,6 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
 
         e = create_engine('sqlite+pysqlite:///foo.db')
         assert e.pool.__class__ is pool.NullPool
-
 
     def test_dont_reflect_autoindex(self):
         meta = MetaData(testing.db)
@@ -574,6 +522,125 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             meta.create_all()
         finally:
             meta.drop_all()
+
+    def test_get_unique_constraints(self):
+        meta = MetaData(testing.db)
+        t1 = Table('foo', meta, Column('f', Integer),
+                   UniqueConstraint('f', name='foo_f'))
+        t2 = Table('bar', meta, Column('b', Integer),
+                   UniqueConstraint('b', name='bar_b'),
+                   prefixes=['TEMPORARY'])
+        meta.create_all()
+        from sqlalchemy.engine.reflection import Inspector
+        try:
+            inspector = Inspector(testing.db)
+            eq_(inspector.get_unique_constraints('foo'),
+                [{'column_names': [u'f'], 'name': u'foo_f'}])
+            eq_(inspector.get_unique_constraints('bar'),
+                [{'column_names': [u'b'], 'name': u'bar_b'}])
+        finally:
+            meta.drop_all()
+
+
+class AttachedMemoryDBTest(fixtures.TestBase):
+    __only_on__ = 'sqlite'
+
+    dbname = None
+
+    def setUp(self):
+        self.conn = conn = testing.db.connect()
+        if self.dbname is None:
+            dbname = ':memory:'
+        else:
+            dbname = self.dbname
+        conn.execute('ATTACH DATABASE "%s" AS  test_schema' % dbname)
+        self.metadata = MetaData()
+
+    def tearDown(self):
+        self.metadata.drop_all(self.conn)
+        self.conn.execute('DETACH DATABASE test_schema')
+        if self.dbname:
+            os.remove(self.dbname)
+
+    def _fixture(self):
+        meta = self.metadata
+        ct = Table(
+            'created', meta,
+            Column('id', Integer),
+            Column('name', String),
+            schema='test_schema')
+
+        meta.create_all(self.conn)
+        return ct
+
+    def test_no_tables(self):
+        insp = inspect(self.conn)
+        eq_(insp.get_table_names("test_schema"), [])
+
+    def test_table_names_present(self):
+        self._fixture()
+        insp = inspect(self.conn)
+        eq_(insp.get_table_names("test_schema"), ["created"])
+
+    def test_table_names_system(self):
+        self._fixture()
+        insp = inspect(self.conn)
+        eq_(insp.get_table_names("test_schema"), ["created"])
+
+    def test_reflect_system_table(self):
+        meta = MetaData(self.conn)
+        alt_master = Table(
+            'sqlite_master', meta, autoload=True,
+            autoload_with=self.conn,
+            schema='test_schema')
+        assert len(alt_master.c) > 0
+
+    def test_reflect_user_table(self):
+        self._fixture()
+
+        m2 = MetaData()
+        c2 = Table('created', m2, autoload=True, autoload_with=self.conn)
+        eq_(len(c2.c), 2)
+
+    def test_crud(self):
+        ct = self._fixture()
+
+        self.conn.execute(ct.insert(), {'id': 1, 'name': 'foo'})
+        eq_(
+            self.conn.execute(ct.select()).fetchall(),
+            [(1, 'foo')]
+        )
+
+        self.conn.execute(ct.update(), {'id': 2, 'name': 'bar'})
+        eq_(
+            self.conn.execute(ct.select()).fetchall(),
+            [(2, 'bar')]
+        )
+        self.conn.execute(ct.delete())
+        eq_(
+            self.conn.execute(ct.select()).fetchall(),
+            []
+        )
+
+    def test_col_targeting(self):
+        ct = self._fixture()
+
+        self.conn.execute(ct.insert(), {'id': 1, 'name': 'foo'})
+        row = self.conn.execute(ct.select()).first()
+        eq_(row['id'], 1)
+        eq_(row['name'], 'foo')
+
+    def test_col_targeting_union(self):
+        ct = self._fixture()
+
+        self.conn.execute(ct.insert(), {'id': 1, 'name': 'foo'})
+        row = self.conn.execute(ct.select().union(ct.select())).first()
+        eq_(row['id'], 1)
+        eq_(row['name'], 'foo')
+
+
+class AttachedFileDBTest(AttachedMemoryDBTest):
+    dbname = 'attached_db.db'
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):

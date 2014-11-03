@@ -104,6 +104,28 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             (2, 2, 2)
         )
 
+    def test_numeric_bind_round_trip(self):
+        eq_(
+            testing.db.scalar(
+                select([
+                    literal_column("2", type_=Integer()) +
+                    bindparam("2_1", value=2)])
+            ),
+            4
+        )
+
+    @testing.provide_metadata
+    def test_numeric_bind_in_crud(self):
+        t = Table(
+            "asfd", self.metadata,
+            Column("100K", Integer)
+        )
+        t.create()
+
+        testing.db.execute(t.insert(), {"100K": 10})
+        eq_(
+            testing.db.scalar(t.select()), 10
+        )
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "oracle" #oracle.dialect()
@@ -647,6 +669,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(Index("bar", t1.c.x > 5)),
             "CREATE INDEX bar ON foo (x > 5)"
         )
+
+    def test_table_options(self):
+        m = MetaData()
+
+        t = Table(
+            'foo', m,
+            Column('x', Integer),
+            prefixes=["GLOBAL TEMPORARY"],
+            oracle_on_commit="PRESERVE ROWS"
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE GLOBAL TEMPORARY TABLE "
+            "foo (x INTEGER) ON COMMIT PRESERVE ROWS"
+        )
+
 
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 

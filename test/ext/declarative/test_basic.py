@@ -1,6 +1,6 @@
 
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, is_
+    assert_raises_message
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 import sqlalchemy as sa
@@ -10,21 +10,21 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, \
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, configure_mappers, backref, clear_mappers, \
-    deferred, column_property, composite,\
-    Session, properties
-from sqlalchemy.testing import eq_
-from sqlalchemy.util import classproperty, with_metaclass
-from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
-    ConcreteBase, synonym_for
+    column_property, composite, Session, properties
+from sqlalchemy.util import with_metaclass
+from sqlalchemy.ext.declarative import declared_attr, synonym_for
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.util import gc_collect
 
 Base = None
 
+User = Address = None
+
+
 class DeclarativeTestBase(fixtures.TestBase,
-                            testing.AssertsExecutionResults,
-                            testing.AssertsCompiledSQL):
+                          testing.AssertsExecutionResults,
+                          testing.AssertsCompiledSQL):
     __dialect__ = 'default'
+
     def setup(self):
         global Base
         Base = decl.declarative_base(testing.db)
@@ -34,13 +34,15 @@ class DeclarativeTestBase(fixtures.TestBase,
         clear_mappers()
         Base.metadata.drop_all()
 
+
 class DeclarativeTest(DeclarativeTestBase):
+
     def test_basic(self):
         class User(Base, fixtures.ComparableEntity):
             __tablename__ = 'users'
 
             id = Column('id', Integer, primary_key=True,
-                                        test_needs_autoincrement=True)
+                        test_needs_autoincrement=True)
             name = Column('name', String(50))
             addresses = relationship("Address", backref="user")
 
@@ -48,7 +50,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'addresses'
 
             id = Column(Integer, primary_key=True,
-                                        test_needs_autoincrement=True)
+                        test_needs_autoincrement=True)
             email = Column(String(50), key='_email')
             user_id = Column('user_id', Integer, ForeignKey('users.id'),
                              key='_user_id')
@@ -82,7 +84,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'users'
 
             id = Column('id', Integer, primary_key=True,
-                                        test_needs_autoincrement=True)
+                        test_needs_autoincrement=True)
             name = Column('name', String(50))
             addresses = relationship(util.u("Address"), backref="user")
 
@@ -90,7 +92,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'addresses'
 
             id = Column(Integer, primary_key=True,
-                                        test_needs_autoincrement=True)
+                        test_needs_autoincrement=True)
             email = Column(String(50), key='_email')
             user_id = Column('user_id', Integer, ForeignKey('users.id'),
                              key='_user_id')
@@ -120,8 +122,10 @@ class DeclarativeTest(DeclarativeTestBase):
             __table_args__ = ()
 
     def test_cant_add_columns(self):
-        t = Table('t', Base.metadata, Column('id', Integer,
-                  primary_key=True), Column('data', String))
+        t = Table(
+            't', Base.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String))
 
         def go():
             class User(Base):
@@ -158,7 +162,6 @@ class DeclarativeTest(DeclarativeTestBase):
             go
         )
 
-
     def test_column_repeated_under_prop(self):
         def go():
             class Foo(Base):
@@ -180,6 +183,7 @@ class DeclarativeTest(DeclarativeTestBase):
         class A(Base):
             __tablename__ = 'a'
             id = Column(Integer, primary_key=True)
+
         class B(Base):
             __tablename__ = 'b'
             id = Column(Integer, primary_key=True)
@@ -196,6 +200,7 @@ class DeclarativeTest(DeclarativeTestBase):
         class A(Base):
             __tablename__ = 'a'
             id = Column(Integer, primary_key=True)
+
         class B(Base):
             __tablename__ = 'b'
             id = Column(Integer, primary_key=True)
@@ -213,11 +218,12 @@ class DeclarativeTest(DeclarativeTestBase):
 
         # metaclass to mock the way zope.interface breaks getattr()
         class BrokenMeta(type):
+
             def __getattribute__(self, attr):
                 if attr == 'xyzzy':
                     raise AttributeError('xyzzy')
                 else:
-                    return object.__getattribute__(self,attr)
+                    return object.__getattribute__(self, attr)
 
         # even though this class has an xyzzy attribute, getattr(cls,"xyzzy")
         # fails
@@ -225,13 +231,13 @@ class DeclarativeTest(DeclarativeTestBase):
             xyzzy = "magic"
 
         # _as_declarative() inspects obj.__class__.__bases__
-        class User(BrokenParent,fixtures.ComparableEntity):
+        class User(BrokenParent, fixtures.ComparableEntity):
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True,
-                test_needs_autoincrement=True)
+                        test_needs_autoincrement=True)
             name = Column('name', String(50))
 
-        decl.instrument_declarative(User,{},Base.metadata)
+        decl.instrument_declarative(User, {}, Base.metadata)
 
     def test_reserved_identifiers(self):
         def go1():
@@ -285,29 +291,28 @@ class DeclarativeTest(DeclarativeTestBase):
             email = Column('email', String(50))
             user_id = Column('user_id', Integer, ForeignKey('users.id'))
             user = relationship("User", primaryjoin=user_id == User.id,
-                            backref="addresses")
+                                backref="addresses")
 
         assert mapperlib.Mapper._new_mappers is True
-        u = User()
+        u = User()  # noqa
         assert User.addresses
         assert mapperlib.Mapper._new_mappers is False
 
     def test_string_dependency_resolution(self):
-        from sqlalchemy.sql import desc
-
         class User(Base, fixtures.ComparableEntity):
 
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True,
                         test_needs_autoincrement=True)
             name = Column(String(50))
-            addresses = relationship('Address',
-                    order_by='desc(Address.email)',
-                    primaryjoin='User.id==Address.user_id',
-                    foreign_keys='[Address.user_id]',
-                    backref=backref('user',
-                    primaryjoin='User.id==Address.user_id',
-                    foreign_keys='[Address.user_id]'))
+            addresses = relationship(
+                'Address',
+                order_by='desc(Address.email)',
+                primaryjoin='User.id==Address.user_id',
+                foreign_keys='[Address.user_id]',
+                backref=backref('user',
+                                primaryjoin='User.id==Address.user_id',
+                                foreign_keys='[Address.user_id]'))
 
         class Address(Base, fixtures.ComparableEntity):
 
@@ -319,14 +324,17 @@ class DeclarativeTest(DeclarativeTestBase):
 
         Base.metadata.create_all()
         sess = create_session()
-        u1 = User(name='ed', addresses=[Address(email='abc'),
-                  Address(email='def'), Address(email='xyz')])
+        u1 = User(
+            name='ed', addresses=[
+                Address(email='abc'),
+                Address(email='def'), Address(email='xyz')])
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(User).filter(User.name == 'ed').one(),
-            User(name='ed', addresses=[Address(email='xyz'),
-            Address(email='def'), Address(email='abc')]))
+            User(name='ed', addresses=[
+                Address(email='xyz'),
+                Address(email='def'), Address(email='abc')]))
 
         class Foo(Base, fixtures.ComparableEntity):
 
@@ -340,7 +348,6 @@ class DeclarativeTest(DeclarativeTestBase):
                               "ColumnProperty", configure_mappers)
 
     def test_string_dependency_resolution_synonym(self):
-        from sqlalchemy.sql import desc
 
         class User(Base, fixtures.ComparableEntity):
 
@@ -416,12 +423,13 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey('b.id'))
 
-            d = relationship("D",
-                            secondary="join(B, D, B.d_id == D.id)."
-                                        "join(C, C.d_id == D.id)",
-                            primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
-                            secondaryjoin="D.id == B.d_id",
-                        )
+            d = relationship(
+                "D",
+                secondary="join(B, D, B.d_id == D.id)."
+                "join(C, C.d_id == D.id)",
+                primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
+                secondaryjoin="D.id == B.d_id",
+            )
 
         class B(Base):
             __tablename__ = 'b'
@@ -444,9 +452,9 @@ class DeclarativeTest(DeclarativeTestBase):
         self.assert_compile(
             s.query(A).join(A.d),
             "SELECT a.id AS a_id, a.b_id AS a_b_id FROM a JOIN "
-                "(b AS b_1 JOIN d AS d_1 ON b_1.d_id = d_1.id "
-                "JOIN c AS c_1 ON c_1.d_id = d_1.id) ON a.b_id = b_1.id "
-                "AND a.id = c_1.a_id JOIN d ON d.id = b_1.d_id",
+            "(b AS b_1 JOIN d AS d_1 ON b_1.d_id = d_1.id "
+            "JOIN c AS c_1 ON c_1.d_id = d_1.id) ON a.b_id = b_1.id "
+            "AND a.id = c_1.a_id JOIN d ON d.id = b_1.d_id",
         )
 
     def test_string_dependency_resolution_no_table(self):
@@ -474,6 +482,7 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True,
                         test_needs_autoincrement=True)
             name = Column(String(50))
+
         class Address(Base, fixtures.ComparableEntity):
 
             __tablename__ = 'addresses'
@@ -481,7 +490,8 @@ class DeclarativeTest(DeclarativeTestBase):
                         test_needs_autoincrement=True)
             email = Column(String(50))
             user_id = Column(Integer)
-            user = relationship("User",
+            user = relationship(
+                "User",
                 primaryjoin="remote(User.id)==foreign(Address.user_id)"
             )
 
@@ -497,9 +507,9 @@ class DeclarativeTest(DeclarativeTestBase):
 
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True)
-            addresses = relationship('Address',
-                    primaryjoin='User.id==Address.user_id.prop.columns['
-                    '0]')
+            addresses = relationship(
+                'Address',
+                primaryjoin='User.id==Address.user_id.prop.columns[0]')
 
         class Address(Base, fixtures.ComparableEntity):
 
@@ -516,9 +526,10 @@ class DeclarativeTest(DeclarativeTestBase):
 
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True)
-            addresses = relationship('%s.Address' % __name__,
-                    primaryjoin='%s.User.id==%s.Address.user_id.prop.columns['
-                    '0]' % (__name__, __name__))
+            addresses = relationship(
+                '%s.Address' % __name__,
+                primaryjoin='%s.User.id==%s.Address.user_id.prop.columns[0]'
+                % (__name__, __name__))
 
         class Address(Base, fixtures.ComparableEntity):
 
@@ -538,8 +549,8 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             addresses = relationship('Address',
-                    primaryjoin='User.id==Address.user_id',
-                    backref='user')
+                                     primaryjoin='User.id==Address.user_id',
+                                     backref='user')
 
         class Address(Base, fixtures.ComparableEntity):
 
@@ -571,10 +582,11 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
 
-        user_to_prop = Table('user_to_prop', Base.metadata,
-                             Column('user_id', Integer,
-                             ForeignKey('users.id')), Column('prop_id',
-                             Integer, ForeignKey('props.id')))
+        user_to_prop = Table(
+            'user_to_prop', Base.metadata,
+            Column('user_id', Integer, ForeignKey('users.id')),
+            Column('prop_id', Integer, ForeignKey('props.id')))
+
         configure_mappers()
         assert class_mapper(User).get_property('props').secondary \
             is user_to_prop
@@ -585,27 +597,29 @@ class DeclarativeTest(DeclarativeTestBase):
         class User(Base):
 
             __tablename__ = 'users'
-            __table_args__ = {'schema':'fooschema'}
+            __table_args__ = {'schema': 'fooschema'}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
-            props = relationship('Prop', secondary='fooschema.user_to_prop',
-                         primaryjoin='User.id==fooschema.user_to_prop.c.user_id',
-                         secondaryjoin='fooschema.user_to_prop.c.prop_id==Prop.id',
-                         backref='users')
+            props = relationship(
+                'Prop', secondary='fooschema.user_to_prop',
+                primaryjoin='User.id==fooschema.user_to_prop.c.user_id',
+                secondaryjoin='fooschema.user_to_prop.c.prop_id==Prop.id',
+                backref='users')
 
         class Prop(Base):
 
             __tablename__ = 'props'
-            __table_args__ = {'schema':'fooschema'}
+            __table_args__ = {'schema': 'fooschema'}
 
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
 
-        user_to_prop = Table('user_to_prop', Base.metadata,
-                     Column('user_id', Integer, ForeignKey('fooschema.users.id')),
-                     Column('prop_id',Integer, ForeignKey('fooschema.props.id')),
-                     schema='fooschema')
+        user_to_prop = Table(
+            'user_to_prop', Base.metadata,
+            Column('user_id', Integer, ForeignKey('fooschema.users.id')),
+            Column('prop_id', Integer, ForeignKey('fooschema.props.id')),
+            schema='fooschema')
         configure_mappers()
 
         assert class_mapper(User).get_property('props').secondary \
@@ -618,9 +632,11 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'parent'
             id = Column(Integer, primary_key=True)
             name = Column(String)
-            children = relationship("Child",
-                    primaryjoin="Parent.name==remote(foreign(func.lower(Child.name_upper)))"
-                )
+            children = relationship(
+                "Child",
+                primaryjoin="Parent.name=="
+                "remote(foreign(func.lower(Child.name_upper)))"
+            )
 
         class Child(Base):
             __tablename__ = 'child'
@@ -667,8 +683,8 @@ class DeclarativeTest(DeclarativeTestBase):
                         test_needs_autoincrement=True)
             name = Column(String(50))
             addresses = relationship('Address', order_by=Address.email,
-                    foreign_keys=Address.user_id,
-                    remote_side=Address.user_id)
+                                     foreign_keys=Address.user_id,
+                                     remote_side=Address.user_id)
 
         # get the mapper for User.   User mapper will compile,
         # "addresses" relationship will call upon Address.user_id for
@@ -681,14 +697,16 @@ class DeclarativeTest(DeclarativeTestBase):
         class_mapper(User)
         Base.metadata.create_all()
         sess = create_session()
-        u1 = User(name='ed', addresses=[Address(email='abc'),
-                  Address(email='xyz'), Address(email='def')])
+        u1 = User(name='ed', addresses=[
+            Address(email='abc'),
+            Address(email='xyz'), Address(email='def')])
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(User).filter(User.name == 'ed').one(),
-            User(name='ed', addresses=[Address(email='abc'),
-            Address(email='def'), Address(email='xyz')]))
+            User(name='ed', addresses=[
+                Address(email='abc'),
+                Address(email='def'), Address(email='xyz')]))
 
     def test_nice_dependency_error(self):
 
@@ -726,14 +744,16 @@ class DeclarativeTest(DeclarativeTestBase):
         # the exception is preserved.  Remains the
         # same through repeated calls.
         for i in range(3):
-            assert_raises_message(sa.exc.InvalidRequestError,
-                            "^One or more mappers failed to initialize - "
-                            "can't proceed with initialization of other "
-                            "mappers.  Original exception was: When initializing.*",
-                            configure_mappers)
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "^One or more mappers failed to initialize - "
+                "can't proceed with initialization of other "
+                "mappers.  Original exception was: When initializing.*",
+                configure_mappers)
 
     def test_custom_base(self):
         class MyBase(object):
+
             def foobar(self):
                 return "foobar"
         Base = decl.declarative_base(cls=MyBase)
@@ -761,7 +781,7 @@ class DeclarativeTest(DeclarativeTestBase):
         Base.metadata.create_all()
         configure_mappers()
         assert class_mapper(Detail).get_property('master'
-                ).strategy.use_get
+                                                 ).strategy.use_get
         m1 = Master()
         d1 = Detail(master=m1)
         sess = create_session()
@@ -821,13 +841,15 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(Address.__table__.c['_email'].name, 'email')
         eq_(Address.__table__.c['_user_id'].name, 'user_id')
         u1 = User(name='u1', addresses=[Address(email='one'),
-                  Address(email='two')])
+                                        Address(email='two')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).all(), [User(name='u1',
-            addresses=[Address(email='one'), Address(email='two')])])
+        eq_(sess.query(User).all(), [
+            User(
+                name='u1',
+                addresses=[Address(email='one'), Address(email='two')])])
         a1 = sess.query(Address).filter(Address.email == 'two').one()
         eq_(a1, Address(email='two'))
         eq_(a1.user, User(name='u1'))
@@ -842,7 +864,8 @@ class DeclarativeTest(DeclarativeTestBase):
         class ASub(A):
             brap = A.data
         assert ASub.brap.property is A.data.property
-        assert isinstance(ASub.brap.original_property, properties.SynonymProperty)
+        assert isinstance(
+            ASub.brap.original_property, properties.SynonymProperty)
 
     def test_alt_name_attr_subclass_relationship_inline(self):
         # [ticket:2900]
@@ -857,10 +880,12 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column('id', Integer, primary_key=True)
 
         configure_mappers()
+
         class ASub(A):
             brap = A.b
         assert ASub.brap.property is A.b.property
-        assert isinstance(ASub.brap.original_property, properties.SynonymProperty)
+        assert isinstance(
+            ASub.brap.original_property, properties.SynonymProperty)
         ASub(brap=B())
 
     def test_alt_name_attr_subclass_column_attrset(self):
@@ -881,6 +906,7 @@ class DeclarativeTest(DeclarativeTestBase):
             b_id = Column(Integer, ForeignKey('b.id'))
             b = relationship("B", backref="as_")
         A.brap = A.b
+
         class B(Base):
             __tablename__ = 'b'
             id = Column('id', Integer, primary_key=True)
@@ -888,7 +914,6 @@ class DeclarativeTest(DeclarativeTestBase):
         assert A.brap.property is A.b.property
         assert isinstance(A.brap.original_property, properties.SynonymProperty)
         A(brap=B())
-
 
     def test_eager_order_by(self):
 
@@ -910,14 +935,14 @@ class DeclarativeTest(DeclarativeTestBase):
 
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='two'),
-                  Address(email='one')])
+                                        Address(email='one')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(User).options(joinedload(User.addresses)).all(),
             [User(name='u1', addresses=[Address(email='one'),
-            Address(email='two')])])
+                                        Address(email='two')])])
 
     def test_order_by_multi(self):
 
@@ -936,17 +961,17 @@ class DeclarativeTest(DeclarativeTestBase):
                         test_needs_autoincrement=True)
             name = Column('name', String(50))
             addresses = relationship('Address',
-                    order_by=(Address.email, Address.id))
+                                     order_by=(Address.email, Address.id))
 
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='two'),
-                  Address(email='one')])
+                                        Address(email='one')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
         u = sess.query(User).filter(User.name == 'u1').one()
-        a = u.addresses
+        u.addresses
 
     def test_as_declarative(self):
 
@@ -971,13 +996,15 @@ class DeclarativeTest(DeclarativeTestBase):
         decl.instrument_declarative(Address, reg, Base.metadata)
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
-                  Address(email='two')])
+                                        Address(email='two')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).all(), [User(name='u1',
-            addresses=[Address(email='one'), Address(email='two')])])
+        eq_(sess.query(User).all(), [
+            User(
+                name='u1',
+                addresses=[Address(email='one'), Address(email='two')])])
 
     def test_custom_mapper_attribute(self):
 
@@ -1045,7 +1072,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
                 __tablename__ = 'foo'
                 __table_args__ = ForeignKeyConstraint(['id'], ['foo.id'
-                        ])
+                                                               ])
                 id = Column('id', Integer, primary_key=True)
         assert_raises_message(sa.exc.ArgumentError,
                               '__table_args__ value must be a tuple, ', err)
@@ -1107,17 +1134,18 @@ class DeclarativeTest(DeclarativeTestBase):
 
         User.address_count = \
             sa.orm.column_property(sa.select([sa.func.count(Address.id)]).
-                    where(Address.user_id
-                                   == User.id).as_scalar())
+                                   where(Address.user_id
+                                         == User.id).as_scalar())
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
-                  Address(email='two')])
+                                        Address(email='two')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).all(), [User(name='u1', address_count=2,
-            addresses=[Address(email='one'), Address(email='two')])])
+        eq_(sess.query(User).all(), [
+            User(name='u1', address_count=2,
+                 addresses=[Address(email='one'), Address(email='two')])])
 
     def test_useless_declared_attr(self):
         class Address(Base, fixtures.ComparableEntity):
@@ -1140,23 +1168,26 @@ class DeclarativeTest(DeclarativeTestBase):
             def address_count(cls):
                 # this doesn't really gain us anything.  but if
                 # one is used, lets have it function as expected...
-                return sa.orm.column_property(sa.select([sa.func.count(Address.id)]).
-                        where(Address.user_id == cls.id))
+                return sa.orm.column_property(
+                    sa.select([sa.func.count(Address.id)]).
+                    where(Address.user_id == cls.id))
 
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
-                  Address(email='two')])
+                                        Address(email='two')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).all(), [User(name='u1', address_count=2,
-            addresses=[Address(email='one'), Address(email='two')])])
+        eq_(sess.query(User).all(), [
+            User(name='u1', address_count=2,
+                 addresses=[Address(email='one'), Address(email='two')])])
 
     def test_declared_on_base_class(self):
         class MyBase(Base):
             __tablename__ = 'foo'
             id = Column(Integer, primary_key=True)
+
             @declared_attr
             def somecol(cls):
                 return Column(Integer)
@@ -1213,18 +1244,19 @@ class DeclarativeTest(DeclarativeTestBase):
             adr_count = \
                 sa.orm.column_property(
                     sa.select([sa.func.count(Address.id)],
-                        Address.user_id == id).as_scalar())
+                              Address.user_id == id).as_scalar())
             addresses = relationship(Address)
 
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
-                  Address(email='two')])
+                                        Address(email='two')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).all(), [User(name='u1', adr_count=2,
-            addresses=[Address(email='one'), Address(email='two')])])
+        eq_(sess.query(User).all(), [
+            User(name='u1', adr_count=2,
+                 addresses=[Address(email='one'), Address(email='two')])])
 
     def test_column_properties_2(self):
 
@@ -1248,7 +1280,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         eq_(set(User.__table__.c.keys()), set(['id', 'name']))
         eq_(set(Address.__table__.c.keys()), set(['id', 'email',
-            'user_id']))
+                                                  'user_id']))
 
     def test_deferred(self):
 
@@ -1274,86 +1306,91 @@ class DeclarativeTest(DeclarativeTestBase):
 
     def test_composite_inline(self):
         class AddressComposite(fixtures.ComparableEntity):
+
             def __init__(self, street, state):
                 self.street = street
                 self.state = state
+
             def __composite_values__(self):
                 return [self.street, self.state]
 
         class User(Base, fixtures.ComparableEntity):
             __tablename__ = 'user'
             id = Column(Integer, primary_key=True,
-                            test_needs_autoincrement=True)
+                        test_needs_autoincrement=True)
             address = composite(AddressComposite,
-                Column('street', String(50)),
-                Column('state', String(2)),
-            )
+                                Column('street', String(50)),
+                                Column('state', String(2)),
+                                )
 
         Base.metadata.create_all()
         sess = Session()
         sess.add(User(
-                address=AddressComposite('123 anywhere street',
-                                'MD')
-                ))
+            address=AddressComposite('123 anywhere street',
+                                     'MD')
+        ))
         sess.commit()
         eq_(
             sess.query(User).all(),
             [User(address=AddressComposite('123 anywhere street',
-                                'MD'))]
+                                           'MD'))]
         )
 
     def test_composite_separate(self):
         class AddressComposite(fixtures.ComparableEntity):
+
             def __init__(self, street, state):
                 self.street = street
                 self.state = state
+
             def __composite_values__(self):
                 return [self.street, self.state]
 
         class User(Base, fixtures.ComparableEntity):
             __tablename__ = 'user'
             id = Column(Integer, primary_key=True,
-                            test_needs_autoincrement=True)
+                        test_needs_autoincrement=True)
             street = Column(String(50))
             state = Column(String(2))
             address = composite(AddressComposite,
-                street, state)
+                                street, state)
 
         Base.metadata.create_all()
         sess = Session()
         sess.add(User(
-                address=AddressComposite('123 anywhere street',
-                                'MD')
-                ))
+            address=AddressComposite('123 anywhere street',
+                                     'MD')
+        ))
         sess.commit()
         eq_(
             sess.query(User).all(),
             [User(address=AddressComposite('123 anywhere street',
-                                'MD'))]
+                                           'MD'))]
         )
 
     def test_mapping_to_join(self):
         users = Table('users', Base.metadata,
-            Column('id', Integer, primary_key=True)
-        )
+                      Column('id', Integer, primary_key=True)
+                      )
         addresses = Table('addresses', Base.metadata,
-            Column('id', Integer, primary_key=True),
-            Column('user_id', Integer, ForeignKey('users.id'))
-        )
+                          Column('id', Integer, primary_key=True),
+                          Column('user_id', Integer, ForeignKey('users.id'))
+                          )
         usersaddresses = sa.join(users, addresses, users.c.id
                                  == addresses.c.user_id)
+
         class User(Base):
             __table__ = usersaddresses
-            __table_args__ = {'primary_key':[users.c.id]}
+            __table_args__ = {'primary_key': [users.c.id]}
 
             # need to use column_property for now
             user_id = column_property(users.c.id, addresses.c.user_id)
             address_id = addresses.c.id
 
         assert User.__mapper__.get_property('user_id').columns[0] \
-                                is users.c.id
+            is users.c.id
         assert User.__mapper__.get_property('user_id').columns[1] \
-                                is addresses.c.user_id
+            is addresses.c.user_id
 
     def test_synonym_inline(self):
 
@@ -1372,7 +1409,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             name = sa.orm.synonym('_name',
                                   descriptor=property(_get_name,
-                                  _set_name))
+                                                      _set_name))
 
         Base.metadata.create_all()
         sess = create_session()
@@ -1381,7 +1418,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess.add(u1)
         sess.flush()
         eq_(sess.query(User).filter(User.name == 'SOMENAME someuser'
-            ).one(), u1)
+                                    ).one(), u1)
 
     def test_synonym_no_descriptor(self):
         from sqlalchemy.orm.properties import ColumnProperty
@@ -1434,7 +1471,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess.add(u1)
         sess.flush()
         eq_(sess.query(User).filter(User.name == 'SOMENAME someuser'
-            ).one(), u1)
+                                    ).one(), u1)
 
     def test_reentrant_compile_via_foreignkey(self):
 
@@ -1465,13 +1502,14 @@ class DeclarativeTest(DeclarativeTestBase):
         )
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
-                  Address(email='two')])
+                                        Address(email='two')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).all(), [User(name='u1',
-            addresses=[Address(email='one'), Address(email='two')])])
+        eq_(sess.query(User).all(), [
+            User(name='u1',
+                 addresses=[Address(email='one'), Address(email='two')])])
 
     def test_relationship_reference(self):
 
@@ -1490,21 +1528,22 @@ class DeclarativeTest(DeclarativeTestBase):
                         test_needs_autoincrement=True)
             name = Column('name', String(50))
             addresses = relationship('Address', backref='user',
-                    primaryjoin=id == Address.user_id)
+                                     primaryjoin=id == Address.user_id)
 
         User.address_count = \
             sa.orm.column_property(sa.select([sa.func.count(Address.id)]).
-                    where(Address.user_id
-                                   == User.id).as_scalar())
+                                   where(Address.user_id
+                                         == User.id).as_scalar())
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
-                  Address(email='two')])
+                                        Address(email='two')])
         sess = create_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).all(), [User(name='u1', address_count=2,
-            addresses=[Address(email='one'), Address(email='two')])])
+        eq_(sess.query(User).all(), [
+            User(name='u1', address_count=2,
+                 addresses=[Address(email='one'), Address(email='two')])])
 
     def test_pk_with_fk_init(self):
 
@@ -1526,9 +1565,11 @@ class DeclarativeTest(DeclarativeTestBase):
 
     def test_with_explicit_autoloaded(self):
         meta = MetaData(testing.db)
-        t1 = Table('t1', meta, Column('id', String(50),
+        t1 = Table(
+            't1', meta,
+            Column('id', String(50),
                    primary_key=True, test_needs_autoincrement=True),
-                   Column('data', String(50)))
+            Column('data', String(50)))
         meta.create_all()
         try:
 
@@ -1541,7 +1582,7 @@ class DeclarativeTest(DeclarativeTestBase):
             sess.add(m)
             sess.flush()
             eq_(t1.select().execute().fetchall(), [('someid', 'somedata'
-                )])
+                                                    )])
         finally:
             meta.drop_all()
 
@@ -1584,7 +1625,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 op,
                 other,
                 **kw
-                ):
+            ):
                 return op(self.upperself, other, **kw)
 
         class User(Base, fixtures.ComparableEntity):
@@ -1612,7 +1653,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(rt, u1)
         sess.expunge_all()
         rt = sess.query(User).filter(User.uc_name.startswith('SOMEUSE'
-                )).one()
+                                                             )).one()
         eq_(rt, u1)
 
     def test_duplicate_classes_in_base(self):
@@ -1629,7 +1670,6 @@ class DeclarativeTest(DeclarativeTestBase):
                 id=Column(Integer, primary_key=True)
             ))
         )
-
 
 
 def _produce_test(inline, stringbased):
@@ -1657,35 +1697,43 @@ def _produce_test(inline, stringbased):
                 user_id = Column(Integer, ForeignKey('users.id'))
                 if inline:
                     if stringbased:
-                        user = relationship('User',
-                                primaryjoin='User.id==Address.user_id',
-                                backref='addresses')
+                        user = relationship(
+                            'User',
+                            primaryjoin='User.id==Address.user_id',
+                            backref='addresses')
                     else:
                         user = relationship(User, primaryjoin=User.id
-                                == user_id, backref='addresses')
+                                            == user_id, backref='addresses')
 
             if not inline:
                 configure_mappers()
                 if stringbased:
-                    Address.user = relationship('User',
-                            primaryjoin='User.id==Address.user_id',
-                            backref='addresses')
+                    Address.user = relationship(
+                        'User',
+                        primaryjoin='User.id==Address.user_id',
+                        backref='addresses')
                 else:
-                    Address.user = relationship(User,
-                            primaryjoin=User.id == Address.user_id,
-                            backref='addresses')
+                    Address.user = relationship(
+                        User,
+                        primaryjoin=User.id == Address.user_id,
+                        backref='addresses')
 
         @classmethod
         def insert_data(cls):
-            params = [dict(list(zip(('id', 'name'), column_values)))
-                      for column_values in [(7, 'jack'), (8, 'ed'), (9,
-                      'fred'), (10, 'chuck')]]
+            params = [
+                dict(list(zip(('id', 'name'), column_values)))
+                for column_values in [
+                    (7, 'jack'), (8, 'ed'),
+                    (9, 'fred'), (10, 'chuck')]]
+
             User.__table__.insert().execute(params)
-            Address.__table__.insert().execute([dict(list(zip(('id',
-                    'user_id', 'email'), column_values)))
-                    for column_values in [(1, 7, 'jack@bean.com'), (2,
-                    8, 'ed@wood.com'), (3, 8, 'ed@bettyboop.com'), (4,
-                    8, 'ed@lala.com'), (5, 9, 'fred@fred.com')]])
+            Address.__table__.insert().execute([
+                dict(list(zip(('id', 'user_id', 'email'), column_values)))
+                for column_values in [
+                    (1, 7, 'jack@bean.com'),
+                    (2, 8, 'ed@wood.com'),
+                    (3, 8, 'ed@bettyboop.com'),
+                    (4, 8, 'ed@lala.com'), (5, 9, 'fred@fred.com')]])
 
         def test_aliased_join(self):
 
@@ -1699,13 +1747,14 @@ def _produce_test(inline, stringbased):
 
             sess = create_session()
             eq_(sess.query(User).join(User.addresses,
-                aliased=True).filter(Address.email == 'ed@wood.com'
-                ).filter(User.addresses.any(Address.email
-                == 'jack@bean.com')).all(), [])
+                                      aliased=True).filter(
+                Address.email == 'ed@wood.com').filter(
+                User.addresses.any(Address.email == 'jack@bean.com')).all(),
+                [])
 
-    ExplicitJoinTest.__name__ = 'ExplicitJoinTest%s%s' % (inline
-            and 'Inline' or 'Separate', stringbased and 'String'
-            or 'Literal')
+    ExplicitJoinTest.__name__ = 'ExplicitJoinTest%s%s' % (
+        inline and 'Inline' or 'Separate',
+        stringbased and 'String' or 'Literal')
     return ExplicitJoinTest
 
 for inline in True, False:
@@ -1713,4 +1762,3 @@ for inline in True, False:
         testclass = _produce_test(inline, stringbased)
         exec('%s = testclass' % testclass.__name__)
         del testclass
-

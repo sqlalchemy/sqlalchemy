@@ -10,12 +10,14 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     configure_mappers, clear_mappers, \
     polymorphic_union, deferred, Session
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
-            ConcreteBase, has_inherited_table
-from sqlalchemy.testing import fixtures
+    ConcreteBase, has_inherited_table
+from sqlalchemy.testing import fixtures, mock
 
 Base = None
 
+
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
+
     def setup(self):
         global Base
         Base = decl.declarative_base(testing.db)
@@ -24,6 +26,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
         Session.close_all()
         clear_mappers()
         Base.metadata.drop_all()
+
 
 class DeclarativeInheritanceTest(DeclarativeTestBase):
 
@@ -64,7 +67,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                                }
         assert class_mapper(Person).version_id_col == 'a'
         assert class_mapper(Person).include_properties == set(['id', 'a', 'b'])
-
 
     def test_custom_join_condition(self):
 
@@ -123,21 +125,23 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         Base.metadata.create_all()
         sess = create_session()
-        c1 = Company(name='MegaCorp, Inc.',
-                     employees=[Engineer(name='dilbert',
-                     primary_language='java'), Engineer(name='wally',
-                     primary_language='c++'), Manager(name='dogbert',
-                     golf_swing='fore!')])
+        c1 = Company(
+            name='MegaCorp, Inc.',
+            employees=[
+                Engineer(name='dilbert', primary_language='java'),
+                Engineer(name='wally', primary_language='c++'),
+                Manager(name='dogbert', golf_swing='fore!')])
+
         c2 = Company(name='Elbonia, Inc.',
                      employees=[Engineer(name='vlad',
-                     primary_language='cobol')])
+                                         primary_language='cobol')])
         sess.add(c1)
         sess.add(c2)
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(Company).filter(Company.employees.of_type(Engineer).
-            any(Engineer.primary_language
-            == 'cobol')).first(), c2)
+                                       any(Engineer.primary_language
+                                           == 'cobol')).first(), c2)
 
         # ensure that the Manager mapper was compiled with the Manager id
         # column as higher priority. this ensures that "Manager.id"
@@ -145,8 +149,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         # table (reversed from 0.6's behavior.)
 
         eq_(
-                Manager.id.property.columns,
-                [Manager.__table__.c.id, Person.__table__.c.id]
+            Manager.id.property.columns,
+            [Manager.__table__.c.id, Person.__table__.c.id]
         )
 
         # assert that the "id" column is available without a second
@@ -157,13 +161,13 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         def go():
             assert sess.query(Manager).filter(Manager.name == 'dogbert'
-                    ).one().id
+                                              ).one().id
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
         def go():
             assert sess.query(Person).filter(Manager.name == 'dogbert'
-                    ).one().id
+                                             ).one().id
 
         self.assert_sql_count(testing.db, go, 1)
 
@@ -186,7 +190,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                         primary_key=True)
 
         Engineer.primary_language = Column('primary_language',
-                String(50))
+                                           String(50))
         Base.metadata.create_all()
         sess = create_session()
         e1 = Engineer(primary_language='java', name='dilbert')
@@ -194,7 +198,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(Person).first(),
-                Engineer(primary_language='java', name='dilbert'))
+            Engineer(primary_language='java', name='dilbert'))
 
     def test_add_parentcol_after_the_fact(self):
 
@@ -258,8 +262,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.add(e1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(Person).first(), Admin(primary_language='java',
-            name='dilbert', workstation='foo'))
+        eq_(sess.query(Person).first(),
+            Admin(primary_language='java', name='dilbert', workstation='foo'))
 
     def test_subclass_mixin(self):
 
@@ -331,26 +335,25 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         class PlanBooking(Booking):
             __tablename__ = 'plan_booking'
             id = Column(Integer, ForeignKey(Booking.id),
-                            primary_key=True)
+                        primary_key=True)
 
         # referencing PlanBooking.id gives us the column
         # on plan_booking, not booking
         class FeatureBooking(Booking):
             __tablename__ = 'feature_booking'
             id = Column(Integer, ForeignKey(Booking.id),
-                                        primary_key=True)
+                        primary_key=True)
             plan_booking_id = Column(Integer,
-                                ForeignKey(PlanBooking.id))
+                                     ForeignKey(PlanBooking.id))
 
             plan_booking = relationship(PlanBooking,
-                        backref='feature_bookings')
+                                        backref='feature_bookings')
 
         assert FeatureBooking.__table__.c.plan_booking_id.\
-                    references(PlanBooking.__table__.c.id)
+            references(PlanBooking.__table__.c.id)
 
         assert FeatureBooking.__table__.c.id.\
-                    references(Booking.__table__.c.id)
-
+            references(Booking.__table__.c.id)
 
     def test_single_colsonbase(self):
         """test single inheritance where all the columns are on the base
@@ -387,23 +390,26 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         Base.metadata.create_all()
         sess = create_session()
-        c1 = Company(name='MegaCorp, Inc.',
-                     employees=[Engineer(name='dilbert',
-                     primary_language='java'), Engineer(name='wally',
-                     primary_language='c++'), Manager(name='dogbert',
-                     golf_swing='fore!')])
+        c1 = Company(
+            name='MegaCorp, Inc.',
+            employees=[
+                Engineer(name='dilbert', primary_language='java'),
+                Engineer(name='wally', primary_language='c++'),
+                Manager(name='dogbert', golf_swing='fore!')])
+
         c2 = Company(name='Elbonia, Inc.',
                      employees=[Engineer(name='vlad',
-                     primary_language='cobol')])
+                                         primary_language='cobol')])
         sess.add(c1)
         sess.add(c2)
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(Person).filter(Engineer.primary_language
-            == 'cobol').first(), Engineer(name='vlad'))
+                                      == 'cobol').first(),
+            Engineer(name='vlad'))
         eq_(sess.query(Company).filter(Company.employees.of_type(Engineer).
-            any(Engineer.primary_language
-            == 'cobol')).first(), c2)
+                                       any(Engineer.primary_language
+                                           == 'cobol')).first(), c2)
 
     def test_single_colsonsub(self):
         """test single inheritance where the columns are local to their
@@ -470,15 +476,17 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(Person).filter(Engineer.primary_language
-            == 'cobol').first(), Engineer(name='vlad'))
+                                      == 'cobol').first(),
+            Engineer(name='vlad'))
         eq_(sess.query(Company).filter(Company.employees.of_type(Engineer).
-            any(Engineer.primary_language
-            == 'cobol')).first(), c2)
+                                       any(Engineer.primary_language
+                                           == 'cobol')).first(), c2)
         eq_(sess.query(Engineer).filter_by(primary_language='cobol'
-            ).one(), Engineer(name='vlad', primary_language='cobol'))
+                                           ).one(),
+            Engineer(name='vlad', primary_language='cobol'))
 
     @testing.skip_if(lambda: testing.against('oracle'),
-                    "Test has an empty insert in it at the moment")
+                     "Test has an empty insert in it at the moment")
     def test_columns_single_inheritance_conflict_resolution(self):
         """Test that a declared_attr can return the existing column and it will
         be ignored.  this allows conditional columns to be added.
@@ -491,25 +499,29 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
 
         class Engineer(Person):
+
             """single table inheritance"""
 
             @declared_attr
             def target_id(cls):
-                return cls.__table__.c.get('target_id',
-                       Column(Integer, ForeignKey('other.id'))
-                    )
+                return cls.__table__.c.get(
+                    'target_id',
+                    Column(Integer, ForeignKey('other.id')))
+
             @declared_attr
             def target(cls):
                 return relationship("Other")
 
         class Manager(Person):
+
             """single table inheritance"""
 
             @declared_attr
             def target_id(cls):
-                return cls.__table__.c.get('target_id',
-                        Column(Integer, ForeignKey('other.id'))
-                    )
+                return cls.__table__.c.get(
+                    'target_id',
+                    Column(Integer, ForeignKey('other.id')))
+
             @declared_attr
             def target(cls):
                 return relationship("Other")
@@ -534,10 +546,9 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Engineer(target=o1),
             Manager(target=o2),
             Manager(target=o1)
-            ])
+        ])
         session.commit()
         eq_(session.query(Engineer).first().target, o1)
-
 
     def test_joined_from_single(self):
 
@@ -595,12 +606,13 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.expunge_all()
         eq_(sess.query(Person).with_polymorphic(Engineer).
             filter(Engineer.primary_language
-            == 'cobol').first(), Engineer(name='vlad'))
+                   == 'cobol').first(), Engineer(name='vlad'))
         eq_(sess.query(Company).filter(Company.employees.of_type(Engineer).
-            any(Engineer.primary_language
-            == 'cobol')).first(), c2)
+                                       any(Engineer.primary_language
+                                           == 'cobol')).first(), c2)
         eq_(sess.query(Engineer).filter_by(primary_language='cobol'
-            ).one(), Engineer(name='vlad', primary_language='cobol'))
+                                           ).one(),
+            Engineer(name='vlad', primary_language='cobol'))
 
     def test_single_from_joined_colsonsub(self):
         class Person(Base, fixtures.ComparableEntity):
@@ -661,7 +673,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(sess.query(Person).all(), [Person(name='ratbert')])
         sess.expunge_all()
         person = sess.query(Person).filter(Person.name == 'ratbert'
-                ).one()
+                                           ).one()
         assert 'name' not in person.__dict__
 
     def test_single_fksonsub(self):
@@ -683,7 +695,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
             __mapper_args__ = {'polymorphic_identity': 'engineer'}
             primary_language_id = Column(Integer,
-                    ForeignKey('languages.id'))
+                                         ForeignKey('languages.id'))
             primary_language = relationship('Language')
 
         class Language(Base, fixtures.ComparableEntity):
@@ -706,19 +718,19 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.expunge_all()
         eq_(sess.query(Person).filter(Engineer.primary_language.has(
             Language.name
-            == 'cobol')).first(), Engineer(name='vlad',
-            primary_language=Language(name='cobol')))
+            == 'cobol')).first(),
+            Engineer(name='vlad', primary_language=Language(name='cobol')))
         eq_(sess.query(Engineer).filter(Engineer.primary_language.has(
             Language.name
-            == 'cobol')).one(), Engineer(name='vlad',
-            primary_language=Language(name='cobol')))
+            == 'cobol')).one(),
+            Engineer(name='vlad', primary_language=Language(name='cobol')))
         eq_(sess.query(Person).join(Engineer.primary_language).order_by(
             Language.name).all(),
             [Engineer(name='vlad',
-            primary_language=Language(name='cobol')),
-            Engineer(name='wally', primary_language=Language(name='cpp'
-            )), Engineer(name='dilbert',
-            primary_language=Language(name='java'))])
+                      primary_language=Language(name='cobol')),
+             Engineer(name='wally', primary_language=Language(name='cpp'
+                                                              )),
+             Engineer(name='dilbert', primary_language=Language(name='java'))])
 
     def test_single_three_levels(self):
 
@@ -810,11 +822,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
                 __mapper_args__ = {'polymorphic_identity': 'engineer'}
                 primary_language = Column('primary_language',
-                        String(50))
+                                          String(50))
                 foo_bar = Column(Integer, primary_key=True)
 
         assert_raises_message(sa.exc.ArgumentError,
-                        'place primary key', go)
+                              'place primary key', go)
 
     def test_single_no_table_args(self):
 
@@ -832,7 +844,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
                 __mapper_args__ = {'polymorphic_identity': 'engineer'}
                 primary_language = Column('primary_language',
-                        String(50))
+                                          String(50))
 
                 # this should be on the Person class, as this is single
                 # table inheritance, which is why we test that this
@@ -849,6 +861,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
         a_1 = A
+
         class A(a_1):
             __tablename__ = 'b'
             id = Column(Integer(), ForeignKey(a_1.id), primary_key=True)
@@ -857,6 +870,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
 
 class OverlapColPrecedenceTest(DeclarativeTestBase):
+
     """test #1892 cases when declarative does column precedence."""
 
     def _run_test(self, Engineer, e_id, p_id):
@@ -895,7 +909,7 @@ class OverlapColPrecedenceTest(DeclarativeTestBase):
         class Engineer(Person):
             __tablename__ = 'engineer'
             id = Column("eid", Integer, ForeignKey('person.id'),
-                                                primary_key=True)
+                        primary_key=True)
 
         self._run_test(Engineer, "eid", "id")
 
@@ -907,15 +921,18 @@ class OverlapColPrecedenceTest(DeclarativeTestBase):
         class Engineer(Person):
             __tablename__ = 'engineer'
             id = Column("eid", Integer, ForeignKey('person.pid'),
-                                            primary_key=True)
+                        primary_key=True)
 
         self._run_test(Engineer, "eid", "pid")
 
 
 from test.orm.test_events import _RemoveListeners
+
+
 class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
+
     def _roundtrip(self, Employee, Manager, Engineer, Boss,
-                            polymorphic=True, explicit_type=False):
+                   polymorphic=True, explicit_type=False):
         Base.metadata.create_all()
         sess = create_session()
         e1 = Engineer(name='dilbert', primary_language='java')
@@ -932,7 +949,7 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                     assert_raises_message(
                         AttributeError,
                         "does not implement attribute .?'type' "
-                            "at the instance level.",
+                        "at the instance level.",
                         getattr, obj, "type"
                     )
         else:
@@ -946,37 +963,38 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
         if polymorphic:
             eq_(sess.query(Employee).order_by(Employee.name).all(),
                 [Engineer(name='dilbert'), Manager(name='dogbert'),
-                Boss(name='pointy haired'), Engineer(name='vlad'), Engineer(name='wally')])
+                 Boss(name='pointy haired'),
+                 Engineer(name='vlad'), Engineer(name='wally')])
         else:
             eq_(sess.query(Engineer).order_by(Engineer.name).all(),
                 [Engineer(name='dilbert'), Engineer(name='vlad'),
-                Engineer(name='wally')])
+                 Engineer(name='wally')])
             eq_(sess.query(Manager).all(), [Manager(name='dogbert')])
             eq_(sess.query(Boss).all(), [Boss(name='pointy haired')])
 
-
     def test_explicit(self):
-        engineers = Table('engineers', Base.metadata, Column('id',
-                          Integer, primary_key=True,
-                          test_needs_autoincrement=True),
-                        Column('name', String(50)),
-                        Column('primary_language', String(50)))
+        engineers = Table(
+            'engineers', Base.metadata,
+            Column('id',
+                   Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('name', String(50)),
+            Column('primary_language', String(50)))
         managers = Table('managers', Base.metadata,
-                    Column('id', Integer, primary_key=True,
-                                                test_needs_autoincrement=True),
-                    Column('name', String(50)),
-                    Column('golf_swing', String(50))
-                )
+                         Column('id', Integer, primary_key=True,
+                                test_needs_autoincrement=True),
+                         Column('name', String(50)),
+                         Column('golf_swing', String(50))
+                         )
         boss = Table('boss', Base.metadata,
-                    Column('id', Integer, primary_key=True,
-                                                test_needs_autoincrement=True),
-                    Column('name', String(50)),
-                    Column('golf_swing', String(50))
-                )
+                     Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
+                     Column('name', String(50)),
+                     Column('golf_swing', String(50))
+                     )
         punion = polymorphic_union({
-                                'engineer': engineers,
-                                'manager': managers,
-                                'boss': boss}, 'type', 'punion')
+            'engineer': engineers,
+            'manager': managers,
+            'boss': boss}, 'type', 'punion')
 
         class Employee(Base, fixtures.ComparableEntity):
 
@@ -1047,31 +1065,31 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
         class Manager(Employee):
             __tablename__ = 'manager'
             employee_id = Column(Integer, primary_key=True,
-                                    test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
             __mapper_args__ = {
-                            'polymorphic_identity': 'manager',
-                            'concrete': True}
+                'polymorphic_identity': 'manager',
+                'concrete': True}
 
         class Boss(Manager):
             __tablename__ = 'boss'
             employee_id = Column(Integer, primary_key=True,
-                                    test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
             __mapper_args__ = {
-                            'polymorphic_identity': 'boss',
-                            'concrete': True}
+                'polymorphic_identity': 'boss',
+                'concrete': True}
 
         class Engineer(Employee):
             __tablename__ = 'engineer'
             employee_id = Column(Integer, primary_key=True,
-                                    test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             primary_language = Column(String(40))
             __mapper_args__ = {'polymorphic_identity': 'engineer',
-                            'concrete': True}
+                               'concrete': True}
 
         self._roundtrip(Employee, Manager, Engineer, Boss)
 
@@ -1079,41 +1097,41 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
         class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
             __tablename__ = 'employee'
             employee_id = Column(Integer, primary_key=True,
-                                test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             __mapper_args__ = {
-                            'polymorphic_identity': 'employee',
-                            'concrete': True}
+                'polymorphic_identity': 'employee',
+                'concrete': True}
+
         class Manager(Employee):
             __tablename__ = 'manager'
             employee_id = Column(Integer, primary_key=True,
-                            test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
             __mapper_args__ = {
-                            'polymorphic_identity': 'manager',
-                            'concrete': True}
+                'polymorphic_identity': 'manager',
+                'concrete': True}
 
         class Boss(Manager):
             __tablename__ = 'boss'
             employee_id = Column(Integer, primary_key=True,
-                                    test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
             __mapper_args__ = {
-                            'polymorphic_identity': 'boss',
-                            'concrete': True}
+                'polymorphic_identity': 'boss',
+                'concrete': True}
 
         class Engineer(Employee):
             __tablename__ = 'engineer'
             employee_id = Column(Integer, primary_key=True,
-                            test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             primary_language = Column(String(40))
             __mapper_args__ = {'polymorphic_identity': 'engineer',
-                            'concrete': True}
+                               'concrete': True}
         self._roundtrip(Employee, Manager, Engineer, Boss)
-
 
     def test_has_inherited_table_doesnt_consider_base(self):
         class A(Base):
@@ -1140,7 +1158,7 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                     ret = {
                         'polymorphic_identity': 'default',
                         'polymorphic_on': cls.type,
-                        }
+                    }
                 else:
                     ret = {'polymorphic_identity': cls.__name__}
                 return ret
@@ -1161,7 +1179,7 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
         class Manager(Employee):
             __tablename__ = 'manager'
             employee_id = Column(Integer, primary_key=True,
-                                    test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
 
@@ -1170,13 +1188,13 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                 return "manager"
 
             __mapper_args__ = {
-                            'polymorphic_identity': "manager",
-                            'concrete': True}
+                'polymorphic_identity': "manager",
+                'concrete': True}
 
         class Boss(Manager):
             __tablename__ = 'boss'
             employee_id = Column(Integer, primary_key=True,
-                                    test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
 
@@ -1185,13 +1203,13 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                 return "boss"
 
             __mapper_args__ = {
-                            'polymorphic_identity': "boss",
-                            'concrete': True}
+                'polymorphic_identity': "boss",
+                'concrete': True}
 
         class Engineer(Employee):
             __tablename__ = 'engineer'
             employee_id = Column(Integer, primary_key=True,
-                            test_needs_autoincrement=True)
+                                 test_needs_autoincrement=True)
             name = Column(String(50))
             primary_language = Column(String(40))
 
@@ -1199,26 +1217,30 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             def type(self):
                 return "engineer"
             __mapper_args__ = {'polymorphic_identity': "engineer",
-                            'concrete': True}
+                               'concrete': True}
         self._roundtrip(Employee, Manager, Engineer, Boss, explicit_type=True)
 
-class ConcreteExtensionConfigTest(_RemoveListeners, testing.AssertsCompiledSQL, DeclarativeTestBase):
+
+class ConcreteExtensionConfigTest(
+        _RemoveListeners, testing.AssertsCompiledSQL, DeclarativeTestBase):
     __dialect__ = 'default'
 
     def test_classreg_setup(self):
         class A(Base, fixtures.ComparableEntity):
             __tablename__ = 'a'
-            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer,
+                        primary_key=True, test_needs_autoincrement=True)
             data = Column(String(50))
             collection = relationship("BC", primaryjoin="BC.a_id == A.id",
-                            collection_class=set)
+                                      collection_class=set)
 
         class BC(AbstractConcreteBase, Base, fixtures.ComparableEntity):
             pass
 
         class B(BC):
             __tablename__ = 'b'
-            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer,
+                        primary_key=True, test_needs_autoincrement=True)
 
             a_id = Column(Integer, ForeignKey('a.id'))
             data = Column(String(50))
@@ -1230,7 +1252,8 @@ class ConcreteExtensionConfigTest(_RemoveListeners, testing.AssertsCompiledSQL, 
 
         class C(BC):
             __tablename__ = 'c'
-            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer,
+                        primary_key=True, test_needs_autoincrement=True)
             a_id = Column(Integer, ForeignKey('a.id'))
             data = Column(String(50))
             c_data = Column(String(50))
@@ -1274,8 +1297,123 @@ class ConcreteExtensionConfigTest(_RemoveListeners, testing.AssertsCompiledSQL, 
             sess.query(A).join(A.collection),
             "SELECT a.id AS a_id, a.data AS a_data FROM a JOIN "
             "(SELECT c.id AS id, c.a_id AS a_id, c.data AS data, "
-                "c.c_data AS c_data, CAST(NULL AS VARCHAR(50)) AS b_data, "
-                "'c' AS type FROM c UNION ALL SELECT b.id AS id, b.a_id AS a_id, "
-                "b.data AS data, CAST(NULL AS VARCHAR(50)) AS c_data, "
-                "b.b_data AS b_data, 'b' AS type FROM b) AS pjoin ON pjoin.a_id = a.id"
+            "c.c_data AS c_data, CAST(NULL AS VARCHAR(50)) AS b_data, "
+            "'c' AS type FROM c UNION ALL SELECT b.id AS id, b.a_id AS a_id, "
+            "b.data AS data, CAST(NULL AS VARCHAR(50)) AS c_data, "
+            "b.b_data AS b_data, 'b' AS type FROM b) AS pjoin "
+            "ON pjoin.a_id = a.id"
+        )
+
+    def test_prop_on_base(self):
+        """test [ticket:2670] """
+
+        counter = mock.Mock()
+
+        class Something(Base):
+            __tablename__ = 'something'
+            id = Column(Integer, primary_key=True)
+
+        class AbstractConcreteAbstraction(AbstractConcreteBase, Base):
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = Column(Integer)
+
+            @declared_attr
+            def something_id(cls):
+                return Column(ForeignKey(Something.id))
+
+            @declared_attr
+            def something(cls):
+                counter(cls, "something")
+                return relationship("Something")
+
+            @declared_attr
+            def something_else(cls):
+                counter(cls, "something_else")
+                return relationship("Something")
+
+        class ConcreteConcreteAbstraction(AbstractConcreteAbstraction):
+            __tablename__ = 'cca'
+            __mapper_args__ = {
+                'polymorphic_identity': 'ccb',
+                'concrete': True}
+
+        # concrete is mapped, the abstract base is not (yet)
+        assert ConcreteConcreteAbstraction.__mapper__
+        assert not hasattr(AbstractConcreteAbstraction, '__mapper__')
+
+        session = Session()
+        self.assert_compile(
+            session.query(ConcreteConcreteAbstraction).filter(
+                ConcreteConcreteAbstraction.something.has(id=1)),
+            "SELECT cca.id AS cca_id, cca.x AS cca_x, cca.y AS cca_y, "
+            "cca.something_id AS cca_something_id FROM cca WHERE EXISTS "
+            "(SELECT 1 FROM something WHERE something.id = cca.something_id "
+            "AND something.id = :id_1)"
+        )
+
+        # now it is
+        assert AbstractConcreteAbstraction.__mapper__
+
+        self.assert_compile(
+            session.query(ConcreteConcreteAbstraction).filter(
+                ConcreteConcreteAbstraction.something_else.has(id=1)),
+            "SELECT cca.id AS cca_id, cca.x AS cca_x, cca.y AS cca_y, "
+            "cca.something_id AS cca_something_id FROM cca WHERE EXISTS "
+            "(SELECT 1 FROM something WHERE something.id = cca.something_id "
+            "AND something.id = :id_1)"
+        )
+
+        self.assert_compile(
+            session.query(AbstractConcreteAbstraction).filter(
+                AbstractConcreteAbstraction.something.has(id=1)),
+            "SELECT pjoin.id AS pjoin_id, pjoin.x AS pjoin_x, "
+            "pjoin.y AS pjoin_y, pjoin.something_id AS pjoin_something_id, "
+            "pjoin.type AS pjoin_type FROM "
+            "(SELECT cca.id AS id, cca.x AS x, cca.y AS y, "
+            "cca.something_id AS something_id, 'ccb' AS type FROM cca) "
+            "AS pjoin WHERE EXISTS (SELECT 1 FROM something "
+            "WHERE something.id = pjoin.something_id AND something.id = :id_1)"
+        )
+
+        self.assert_compile(
+            session.query(AbstractConcreteAbstraction).filter(
+                AbstractConcreteAbstraction.something_else.has(id=1)),
+            "SELECT pjoin.id AS pjoin_id, pjoin.x AS pjoin_x, "
+            "pjoin.y AS pjoin_y, pjoin.something_id AS pjoin_something_id, "
+            "pjoin.type AS pjoin_type FROM "
+            "(SELECT cca.id AS id, cca.x AS x, cca.y AS y, "
+            "cca.something_id AS something_id, 'ccb' AS type FROM cca) "
+            "AS pjoin WHERE EXISTS (SELECT 1 FROM something "
+            "WHERE something.id = pjoin.something_id AND something.id = :id_1)"
+        )
+
+    def test_abstract_in_hierarchy(self):
+        class Document(Base, AbstractConcreteBase):
+            doctype = Column(String)
+
+        class ContactDocument(Document):
+            __abstract__ = True
+
+            send_method = Column(String)
+
+        class ActualDocument(ContactDocument):
+            __tablename__ = 'actual_documents'
+            __mapper_args__ = {
+                'concrete': True,
+                'polymorphic_identity': 'actual'}
+
+            id = Column(Integer, primary_key=True)
+
+        configure_mappers()
+        session = Session()
+        self.assert_compile(
+            session.query(Document),
+            "SELECT pjoin.doctype AS pjoin_doctype, "
+            "pjoin.send_method AS pjoin_send_method, "
+            "pjoin.id AS pjoin_id, pjoin.type AS pjoin_type "
+            "FROM (SELECT actual_documents.doctype AS doctype, "
+            "actual_documents.send_method AS send_method, "
+            "actual_documents.id AS id, 'actual' AS type "
+            "FROM actual_documents) AS pjoin"
         )
