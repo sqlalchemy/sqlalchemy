@@ -1626,11 +1626,12 @@ very easy to use:
     >>> jack.addresses
     [<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
 
-.. warning::
+.. note::
 
-   If you use :func:`.subqueryload`, you should generally
-   :meth:`.Query.order_by` on a unique column in order to ensure correct
-   results. See :ref:`subquery_loading_tips`.
+   :func:`.subqueryload` when used in conjunction with limiting such as
+   :meth:`.Query.first`, :meth:`.Query.limit` or :meth:`.Query.offset`
+   should also include :meth:`.Query.order_by` on a unique column in order to
+   ensure correct results.  See :ref:`subqueryload_ordering`.
 
 Joined Load
 -------------
