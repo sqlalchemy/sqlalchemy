@@ -795,6 +795,9 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
         expressions and function calls.
 
         """
+        while self._is_clone_of is not None:
+            self = self._is_clone_of
+
         return _anonymous_label(
             '%%(%d %s)s' % (id(self), getattr(self, 'name', 'anon'))
         )
@@ -2668,6 +2671,10 @@ class Grouping(ColumnElement):
 
     def self_group(self, against=None):
         return self
+
+    @property
+    def _key_label(self):
+        return self._label
 
     @property
     def _label(self):

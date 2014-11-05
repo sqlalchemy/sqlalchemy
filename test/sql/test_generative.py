@@ -132,6 +132,19 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         assert struct == s2
         assert struct.is_other(s2)
 
+    def test_clone_anon_label(self):
+        from sqlalchemy.sql.elements import Grouping
+        c1 = Grouping(literal_column('q'))
+        s1 = select([c1])
+
+        class Vis(CloningVisitor):
+            def visit_grouping(self, elem):
+                pass
+
+        vis = Vis()
+        s2 = vis.traverse(s1)
+        eq_(list(s2.inner_columns)[0].anon_label, c1.anon_label)
+
     def test_change_in_place(self):
         struct = B(A("expr1"), A("expr2"), B(A("expr1b"),
                                              A("expr2b")), A("expr3"))

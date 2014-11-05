@@ -14,6 +14,17 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, orm, sqlite
+        :versions: 1.0.0
+        :tickets: 3241
+
+        Fixed bug regarding expression mutations which could express
+        itself as a "Could not locate column" error when using
+        :class:`.Query` to  select from multiple, anonymous column
+        entities when querying against SQLite, as a side effect of the
+        "join rewriting" feature used by the SQLite dialect.
+
+    .. change::
         :tags: feature, sqlite
         :versions: 1.0.0
 
