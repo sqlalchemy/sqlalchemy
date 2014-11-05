@@ -441,9 +441,9 @@ def _collect_delete_commands(base_mapper, uowtransaction, table,
                     state, state_dict, col)
             if value is None:
                 raise orm_exc.FlushError(
-                    "Can't delete from table "
+                    "Can't delete from table %s "
                     "using NULL for primary "
-                    "key value")
+                    "key value on column %s" % (table, col))
 
         if update_version_id is not None and \
                 table.c.contains_column(mapper.version_id_col):
