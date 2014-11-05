@@ -2505,7 +2505,8 @@ class PartialNullPKTest(fixtures.MappedTest):
         s.delete(t1)
         assert_raises_message(
             orm_exc.FlushError,
-            "Can't delete from table using NULL for primary key value",
+            "Can't delete from table t1 using NULL "
+            "for primary key value on column t1.col2",
             s.commit
         )
 
