@@ -120,6 +120,21 @@ query options:
     # set children to load eagerly with a second statement
     session.query(Parent).options(subqueryload('children')).all()
 
+.. _subquery_loading_tips:
+
+Subquery Loading Tips
+^^^^^^^^^^^^^^^^^^^^^
+
+If you have ``LIMIT`` or ``OFFSET`` in your query, you **must** ``ORDER BY`` a
+unique column, generally the primary key of your table, in order to ensure
+correct results (see :ref:`faq_subqueryload_sort`)::
+
+    # incorrect
+    session.query(User).options(subqueryload(User.addresses)).order_by(User.name).first()
+
+    # correct
+    session.query(User).options(subqueryload(User.addresses)).order_by(User.name, User.id).first()
+
 Loading Along Paths
 -------------------
 
