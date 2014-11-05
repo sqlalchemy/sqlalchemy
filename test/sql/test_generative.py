@@ -2,7 +2,7 @@ from sqlalchemy.sql import table, column, ClauseElement, operators
 from sqlalchemy.sql.expression import _clone, _from_objects
 from sqlalchemy import func, select, Integer, Table, \
     Column, MetaData, extract, String, bindparam, tuple_, and_, union, text,\
-    case, ForeignKey
+    case, ForeignKey, literal_column
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, \
     AssertsCompiledSQL
 from sqlalchemy import testing
