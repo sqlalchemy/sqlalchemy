@@ -35,6 +35,8 @@ used to construct any kind of typed SQL expression.
 
 .. autodata:: func
 
+.. autofunction:: funcfilter
+
 .. autofunction:: label
 
 .. autofunction:: literal
@@ -107,6 +109,9 @@ used to construct any kind of typed SQL expression.
    :members:
 
 .. autoclass:: sqlalchemy.sql.elements.False_
+   :members:
+
+.. autoclass:: FunctionFilter
    :members:
 
 .. autoclass:: Label

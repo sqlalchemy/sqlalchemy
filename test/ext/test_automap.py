@@ -1,12 +1,13 @@
-from sqlalchemy.testing import fixtures, eq_
+from sqlalchemy.testing import fixtures
 from ..orm._fixtures import FixtureTest
 from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import relationship, interfaces, backref
+from sqlalchemy.orm import relationship, interfaces, configure_mappers
 from sqlalchemy.ext.automap import generate_relationship
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.mock import Mock
 from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
+
 
 class AutomapTest(fixtures.MappedTest):
     @classmethod
@@ -27,6 +28,7 @@ class AutomapTest(fixtures.MappedTest):
     def test_relationship_explicit_override_o2m(self):
         Base = automap_base(metadata=self.metadata)
         prop = relationship("addresses", collection_class=set)
+
         class User(Base):
             __tablename__ = 'users'
 
@@ -44,6 +46,7 @@ class AutomapTest(fixtures.MappedTest):
         Base = automap_base(metadata=self.metadata)
 
         prop = relationship("users")
+
         class Address(Base):
             __tablename__ = 'addresses'
 
@@ -56,7 +59,6 @@ class AutomapTest(fixtures.MappedTest):
         a1 = Address(email_address='e1')
         u1 = User(name='u1', address_collection=[a1])
         assert a1.users is u1
-
 
     def test_relationship_self_referential(self):
         Base = automap_base(metadata=self.metadata)
@@ -75,17 +77,19 @@ class AutomapTest(fixtures.MappedTest):
         def classname_for_table(base, tablename, table):
             return str("cls_" + tablename)
 
-        def name_for_scalar_relationship(base, local_cls, referred_cls, constraint):
+        def name_for_scalar_relationship(
+                base, local_cls, referred_cls, constraint):
             return "scalar_" + referred_cls.__name__
 
-        def name_for_collection_relationship(base, local_cls, referred_cls, constraint):
+        def name_for_collection_relationship(
+                base, local_cls, referred_cls, constraint):
             return "coll_" + referred_cls.__name__
 
         Base.prepare(
-                    classname_for_table=classname_for_table,
-                    name_for_scalar_relationship=name_for_scalar_relationship,
-                    name_for_collection_relationship=name_for_collection_relationship
-                )
+            classname_for_table=classname_for_table,
+            name_for_scalar_relationship=name_for_scalar_relationship,
+            name_for_collection_relationship=name_for_collection_relationship
+        )
 
         User = Base.classes.cls_users
         Address = Base.classes.cls_addresses
@@ -113,9 +117,10 @@ class AutomapTest(fixtures.MappedTest):
         class Order(Base):
             __tablename__ = 'orders'
 
-            items_collection = relationship("items",
-                                    secondary="order_items",
-                                    collection_class=set)
+            items_collection = relationship(
+                "items",
+                secondary="order_items",
+                collection_class=set)
         Base.prepare()
 
         Item = Base.classes['items']
@@ -133,41 +138,115 @@ class AutomapTest(fixtures.MappedTest):
         Base = automap_base(metadata=self.metadata)
 
         mock = Mock()
-        def _gen_relationship(base, direction, return_fn, attrname,
-                                    local_cls, referred_cls, **kw):
+
+        def _gen_relationship(
+            base, direction, return_fn, attrname,
+                local_cls, referred_cls, **kw):
             mock(base, direction, attrname)
-            return generate_relationship(base, direction, return_fn,
-                                    attrname, local_cls, referred_cls, **kw)
+            return generate_relationship(
+                base, direction, return_fn,
+                attrname, local_cls, referred_cls, **kw)
 
         Base.prepare(generate_relationship=_gen_relationship)
         assert set(tuple(c[1]) for c in mock.mock_calls).issuperset([
-                (Base, interfaces.MANYTOONE, "nodes"),
-                (Base, interfaces.MANYTOMANY, "keywords_collection"),
-                (Base, interfaces.MANYTOMANY, "items_collection"),
-                (Base, interfaces.MANYTOONE, "users"),
-                (Base, interfaces.ONETOMANY, "addresses_collection"),
+            (Base, interfaces.MANYTOONE, "nodes"),
+            (Base, interfaces.MANYTOMANY, "keywords_collection"),
+            (Base, interfaces.MANYTOMANY, "items_collection"),
+            (Base, interfaces.MANYTOONE, "users"),
+            (Base, interfaces.ONETOMANY, "addresses_collection"),
         ])
+
+
+class CascadeTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a", metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        Table(
+            "b", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', ForeignKey('a.id'), nullable=True)
+        )
+        Table(
+            "c", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', ForeignKey('a.id'), nullable=False)
+        )
+        Table(
+            "d", metadata,
+            Column('id', Integer, primary_key=True),
+            Column(
+                'aid', ForeignKey('a.id', ondelete="cascade"), nullable=False)
+        )
+        Table(
+            "e", metadata,
+            Column('id', Integer, primary_key=True),
+            Column(
+                'aid', ForeignKey('a.id', ondelete="set null"),
+                nullable=True)
+        )
+
+    def test_o2m_relationship_cascade(self):
+        Base = automap_base(metadata=self.metadata)
+        Base.prepare()
+
+        configure_mappers()
+
+        b_rel = Base.classes.a.b_collection
+        assert not b_rel.property.cascade.delete
+        assert not b_rel.property.cascade.delete_orphan
+        assert not b_rel.property.passive_deletes
+
+        assert b_rel.property.cascade.save_update
+
+        c_rel = Base.classes.a.c_collection
+        assert c_rel.property.cascade.delete
+        assert c_rel.property.cascade.delete_orphan
+        assert not c_rel.property.passive_deletes
+
+        assert c_rel.property.cascade.save_update
+
+        d_rel = Base.classes.a.d_collection
+        assert d_rel.property.cascade.delete
+        assert d_rel.property.cascade.delete_orphan
+        assert d_rel.property.passive_deletes
+
+        assert d_rel.property.cascade.save_update
+
+        e_rel = Base.classes.a.e_collection
+        assert not e_rel.property.cascade.delete
+        assert not e_rel.property.cascade.delete_orphan
+        assert e_rel.property.passive_deletes
+
+        assert e_rel.property.cascade.save_update
 
 
 class AutomapInhTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('single', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('type', String(10)),
-                test_needs_fk=True
-            )
+        Table(
+            'single', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('type', String(10)),
+            test_needs_fk=True
+        )
 
-        Table('joined_base', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('type', String(10)),
-                test_needs_fk=True
-            )
+        Table(
+            'joined_base', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('type', String(10)),
+            test_needs_fk=True
+        )
 
-        Table('joined_inh', metadata,
-                Column('id', Integer, ForeignKey('joined_base.id'), primary_key=True),
-                test_needs_fk=True
-            )
+        Table(
+            'joined_inh', metadata,
+            Column(
+                'id', Integer,
+                ForeignKey('joined_base.id'), primary_key=True),
+            test_needs_fk=True
+        )
 
         FixtureTest.define_tables(metadata)
 
@@ -179,7 +258,8 @@ class AutomapInhTest(fixtures.MappedTest):
 
             type = Column(String)
 
-            __mapper_args__ = {"polymorphic_identity": "u0",
+            __mapper_args__ = {
+                "polymorphic_identity": "u0",
                 "polymorphic_on": type}
 
         class SubUser1(Single):
@@ -200,13 +280,13 @@ class AutomapInhTest(fixtures.MappedTest):
 
             type = Column(String)
 
-            __mapper_args__ = {"polymorphic_identity": "u0",
+            __mapper_args__ = {
+                "polymorphic_identity": "u0",
                 "polymorphic_on": type}
 
         class SubJoined(Joined):
             __tablename__ = 'joined_inh'
             __mapper_args__ = {"polymorphic_identity": "u1"}
-
 
         Base.prepare(engine=testing.db, reflect=True)
 
@@ -217,6 +297,9 @@ class AutomapInhTest(fixtures.MappedTest):
 
     def test_conditional_relationship(self):
         Base = automap_base()
+
         def _gen_relationship(*arg, **kw):
             return None
-        Base.prepare(engine=testing.db, reflect=True, generate_relationship=_gen_relationship)
+        Base.prepare(
+            engine=testing.db, reflect=True,
+            generate_relationship=_gen_relationship)

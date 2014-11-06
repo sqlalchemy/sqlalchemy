@@ -426,6 +426,12 @@ class Mapper(InspectionAttr):
           thus persisting the value to the ``discriminator`` column
           in the database.
 
+          .. warning::
+
+             Currently, **only one discriminator column may be set**, typically
+             on the base-most class in the hierarchy. "Cascading" polymorphic
+             columns are not yet supported.
+
           .. seealso::
 
             :ref:`inheritance_toplevel`
@@ -1080,6 +1086,9 @@ class Mapper(InspectionAttr):
         auto-session attachment logic.
 
         """
+
+        # when using declarative as of 1.0, the register_class has
+        # already happened from within declarative.
         manager = attributes.manager_of_class(self.class_)
 
         if self.non_primary:
@@ -1102,17 +1111,13 @@ class Mapper(InspectionAttr):
                     "create a non primary Mapper.  clear_mappers() will "
                     "remove *all* current mappers from all classes." %
                     self.class_)
-            # else:
-                # a ClassManager may already exist as
-                # ClassManager.instrument_attribute() creates
-                # new managers for each subclass if they don't yet exist.
+
+        if manager is None:
+            manager = instrumentation.register_class(self.class_)
 
         _mapper_registry[self] = True
 
         self.dispatch.instrument_class(self, self.class_)
-
-        if manager is None:
-            manager = instrumentation.register_class(self.class_)
 
         self.class_manager = manager
 
@@ -2657,7 +2662,7 @@ def configure_mappers():
                         mapper._expire_memoizations()
                         mapper.dispatch.mapper_configured(
                             mapper, mapper.class_)
-                    except:
+                    except Exception:
                         exc = sys.exc_info()[1]
                         if not hasattr(exc, '_configure_failed'):
                             mapper._configure_failed = exc

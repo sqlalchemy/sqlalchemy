@@ -475,6 +475,7 @@ class Insert(ValuesBase):
         ValuesBase.__init__(self, table, values, prefixes)
         self._bind = bind
         self.select = self.select_names = None
+        self.include_insert_from_select_defaults = False
         self.inline = inline
         self._returning = returning
         self._validate_dialect_kwargs(dialect_kw)
@@ -487,7 +488,7 @@ class Insert(ValuesBase):
             return ()
 
     @_generative
-    def from_select(self, names, select):
+    def from_select(self, names, select, include_defaults=True):
         """Return a new :class:`.Insert` construct which represents
         an ``INSERT...FROM SELECT`` statement.
 
@@ -506,6 +507,21 @@ class Insert(ValuesBase):
          is not checked before passing along to the database, the database
          would normally raise an exception if these column lists don't
          correspond.
+        :param include_defaults: if True, non-server default values and
+         SQL expressions as specified on :class:`.Column` objects
+         (as documented in :ref:`metadata_defaults_toplevel`) not
+         otherwise specified in the list of names will be rendered
+         into the INSERT and SELECT statements, so that these values are also
+         included in the data to be inserted.
+
+         .. note:: A Python-side default that uses a Python callable function
+            will only be invoked **once** for the whole statement, and **not
+            per row**.
+
+         .. versionadded:: 1.0.0 - :meth:`.Insert.from_select` now renders
+            Python-side and SQL expression column defaults into the
+            SELECT statement for columns otherwise not included in the
+            list of column names.
 
         .. versionchanged:: 1.0.0 an INSERT that uses FROM SELECT
            implies that the :paramref:`.insert.inline` flag is set to
@@ -513,13 +529,6 @@ class Insert(ValuesBase):
            the "last inserted primary key" or other defaults.  The statement
            deals with an arbitrary number of rows, so the
            :attr:`.ResultProxy.inserted_primary_key` accessor does not apply.
-
-        .. note::
-
-           A SELECT..INSERT construct in SQL has no VALUES clause.  Therefore
-           :class:`.Column` objects which utilize Python-side defaults
-           (e.g. as described at :ref:`metadata_defaults_toplevel`)
-           will **not** take effect when using :meth:`.Insert.from_select`.
 
         .. versionadded:: 0.8.3
 
@@ -533,6 +542,7 @@ class Insert(ValuesBase):
 
         self.select_names = names
         self.inline = True
+        self.include_insert_from_select_defaults = include_defaults
         self.select = _interpret_as_select(select)
 
     def _copy_internals(self, clone=_clone, **kw):

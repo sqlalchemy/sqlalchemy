@@ -37,8 +37,6 @@ class ConnectionKiller(object):
     def _safe(self, fn):
         try:
             fn()
-        except (SystemExit, KeyboardInterrupt):
-            raise
         except Exception as e:
             warnings.warn(
                 "testing_reaper couldn't "
@@ -168,8 +166,6 @@ class ReconnectFixture(object):
     def _safe(self, fn):
         try:
             fn()
-        except (SystemExit, KeyboardInterrupt):
-            raise
         except Exception as e:
             warnings.warn(
                 "ReconnectFixture couldn't "

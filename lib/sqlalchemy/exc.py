@@ -238,14 +238,16 @@ class StatementError(SQLAlchemyError):
 
     def __str__(self):
         from sqlalchemy.sql import util
-        params_repr = util._repr_params(self.params, 10)
 
+        details = [SQLAlchemyError.__str__(self)]
+        if self.statement:
+            details.append("[SQL: %r]" % self.statement)
+            if self.params:
+                params_repr = util._repr_params(self.params, 10)
+                details.append("[parameters: %r]" % params_repr)
         return ' '.join([
             "(%s)" % det for det in self.detail
-            ] + [
-                SQLAlchemyError.__str__(self),
-                repr(self.statement), repr(params_repr)
-            ])
+        ] + details)
 
     def __unicode__(self):
         return self.__str__()
@@ -280,17 +282,19 @@ class DBAPIError(StatementError):
                  connection_invalidated=False):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
-        if isinstance(orig, (KeyboardInterrupt, SystemExit, DontWrapMixin)):
+        if (isinstance(orig, BaseException) and
+                not isinstance(orig, Exception)) or \
+                isinstance(orig, DontWrapMixin):
             return orig
 
         if orig is not None:
             # not a DBAPI error, statement is present.
             # raise a StatementError
             if not isinstance(orig, dbapi_base_err) and statement:
-                msg = traceback.format_exception_only(
-                    orig.__class__, orig)[-1].strip()
                 return StatementError(
-                    "%s (original cause: %s)" % (str(orig), msg),
+                    "(%s.%s) %s" %
+                    (orig.__class__.__module__, orig.__class__.__name__,
+                     orig),
                     statement, params, orig
                 )
 
@@ -310,13 +314,12 @@ class DBAPIError(StatementError):
     def __init__(self, statement, params, orig, connection_invalidated=False):
         try:
             text = str(orig)
-        except (KeyboardInterrupt, SystemExit):
-            raise
         except Exception as e:
             text = 'Error in str() of DB-API-generated exception: ' + str(e)
         StatementError.__init__(
             self,
-            '(%s) %s' % (orig.__class__.__name__, text),
+            '(%s.%s) %s' % (
+                orig.__class__.__module__, orig.__class__.__name__, text, ),
             statement,
             params,
             orig

@@ -38,6 +38,7 @@ from .expression import (
     false,
     False_,
     func,
+    funcfilter,
     insert,
     intersect,
     intersect_all,

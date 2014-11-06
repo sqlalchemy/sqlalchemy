@@ -678,6 +678,86 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(str(table_c.join(table2_c).onclause),
             'myschema.mytable.myid = myschema.othertable.myid')
 
+    def test_change_name_retain_metadata(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+                      Column('myid', Integer, primary_key=True),
+                      Column('name', String(40), nullable=True),
+                      Column('description', String(30),
+                             CheckConstraint("description='hi'")),
+                      UniqueConstraint('name'),
+                      schema='myschema',
+                      )
+
+        table2 = table.tometadata(table.metadata, name='newtable')
+        table3 = table.tometadata(table.metadata, schema='newschema',
+                                  name='newtable')
+
+        assert table.metadata is table2.metadata
+        assert table.metadata is table3.metadata
+        eq_((table.name, table2.name, table3.name),
+            ('mytable', 'newtable', 'newtable'))
+        eq_((table.key, table2.key, table3.key),
+            ('myschema.mytable', 'myschema.newtable', 'newschema.newtable'))
+
+    def test_change_name_change_metadata(self):
+        meta = MetaData()
+        meta2 = MetaData()
+
+        table = Table('mytable', meta,
+                      Column('myid', Integer, primary_key=True),
+                      Column('name', String(40), nullable=True),
+                      Column('description', String(30),
+                             CheckConstraint("description='hi'")),
+                      UniqueConstraint('name'),
+                      schema='myschema',
+                      )
+
+        table2 = table.tometadata(meta2, name='newtable')
+
+        assert table.metadata is not table2.metadata
+        eq_((table.name, table2.name),
+            ('mytable', 'newtable'))
+        eq_((table.key, table2.key),
+            ('myschema.mytable', 'myschema.newtable'))
+
+    def test_change_name_selfref_fk_moves(self):
+        meta = MetaData()
+
+        referenced = Table('ref', meta,
+                           Column('id', Integer, primary_key=True),
+                           )
+        table = Table('mytable', meta,
+                      Column('id', Integer, primary_key=True),
+                      Column('parent_id', ForeignKey('mytable.id')),
+                      Column('ref_id', ForeignKey('ref.id'))
+                      )
+
+        table2 = table.tometadata(table.metadata, name='newtable')
+        assert table.metadata is table2.metadata
+        assert table2.c.ref_id.references(referenced.c.id)
+        assert table2.c.parent_id.references(table2.c.id)
+
+    def test_change_name_selfref_fk_moves_w_schema(self):
+        meta = MetaData()
+
+        referenced = Table('ref', meta,
+                           Column('id', Integer, primary_key=True),
+                           )
+        table = Table('mytable', meta,
+                      Column('id', Integer, primary_key=True),
+                      Column('parent_id', ForeignKey('mytable.id')),
+                      Column('ref_id', ForeignKey('ref.id'))
+                      )
+
+        table2 = table.tometadata(
+            table.metadata, name='newtable', schema='newschema')
+        ref2 = referenced.tometadata(table.metadata, schema='newschema')
+        assert table.metadata is table2.metadata
+        assert table2.c.ref_id.references(ref2.c.id)
+        assert table2.c.parent_id.references(table2.c.id)
+
     def _assert_fk(self, t2, schema, expected, referred_schema_fn=None):
         m2 = MetaData()
         existing_schema = t2.schema
@@ -2124,7 +2204,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         assert_raises_message(
             exc.ArgumentError,
-            "Column object already assigned to Table 't'",
+            "Column object 'x' already assigned to Table 't'",
             Table, 'q', MetaData(), c)
 
     def test_incomplete_key(self):

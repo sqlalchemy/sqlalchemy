@@ -746,6 +746,33 @@ class Join(FromClause):
         providing a "natural join".
 
         """
+        constraints = cls._joincond_scan_left_right(
+            a, a_subset, b, consider_as_foreign_keys)
+
+        if len(constraints) > 1:
+            cls._joincond_trim_constraints(
+                a, b, constraints, consider_as_foreign_keys)
+
+        if len(constraints) == 0:
+            if isinstance(b, FromGrouping):
+                hint = " Perhaps you meant to convert the right side to a "\
+                    "subquery using alias()?"
+            else:
+                hint = ""
+            raise exc.NoForeignKeysError(
+                "Can't find any foreign key relationships "
+                "between '%s' and '%s'.%s" %
+                (a.description, b.description, hint))
+
+        crit = [(x == y) for x, y in list(constraints.values())[0]]
+        if len(crit) == 1:
+            return (crit[0])
+        else:
+            return and_(*crit)
+
+    @classmethod
+    def _joincond_scan_left_right(
+            cls, a, a_subset, b, consider_as_foreign_keys):
         constraints = collections.defaultdict(list)
 
         for left in (a_subset, a):
@@ -780,57 +807,41 @@ class Join(FromClause):
                         if nrte.table_name == b.name:
                             raise
                         else:
-                            # this is totally covered.  can't get
-                            # coverage to mark it.
                             continue
 
                     if col is not None:
                         constraints[fk.constraint].append((col, fk.parent))
             if constraints:
                 break
+        return constraints
 
+    @classmethod
+    def _joincond_trim_constraints(
+            cls, a, b, constraints, consider_as_foreign_keys):
+        # more than one constraint matched.  narrow down the list
+        # to include just those FKCs that match exactly to
+        # "consider_as_foreign_keys".
+        if consider_as_foreign_keys:
+            for const in list(constraints):
+                if set(f.parent for f in const.elements) != set(
+                        consider_as_foreign_keys):
+                    del constraints[const]
+
+        # if still multiple constraints, but
+        # they all refer to the exact same end result, use it.
         if len(constraints) > 1:
-            # more than one constraint matched.  narrow down the list
-            # to include just those FKCs that match exactly to
-            # "consider_as_foreign_keys".
-            if consider_as_foreign_keys:
-                for const in list(constraints):
-                    if set(f.parent for f in const.elements) != set(
-                            consider_as_foreign_keys):
-                        del constraints[const]
+            dedupe = set(tuple(crit) for crit in constraints.values())
+            if len(dedupe) == 1:
+                key = list(constraints)[0]
+                constraints = {key: constraints[key]}
 
-            # if still multiple constraints, but
-            # they all refer to the exact same end result, use it.
-            if len(constraints) > 1:
-                dedupe = set(tuple(crit) for crit in constraints.values())
-                if len(dedupe) == 1:
-                    key = list(constraints)[0]
-                    constraints = {key: constraints[key]}
-
-            if len(constraints) != 1:
-                raise exc.AmbiguousForeignKeysError(
-                    "Can't determine join between '%s' and '%s'; "
-                    "tables have more than one foreign key "
-                    "constraint relationship between them. "
-                    "Please specify the 'onclause' of this "
-                    "join explicitly." % (a.description, b.description))
-
-        if len(constraints) == 0:
-            if isinstance(b, FromGrouping):
-                hint = " Perhaps you meant to convert the right side to a "\
-                    "subquery using alias()?"
-            else:
-                hint = ""
-            raise exc.NoForeignKeysError(
-                "Can't find any foreign key relationships "
-                "between '%s' and '%s'.%s" %
-                (a.description, b.description, hint))
-
-        crit = [(x == y) for x, y in list(constraints.values())[0]]
-        if len(crit) == 1:
-            return (crit[0])
-        else:
-            return and_(*crit)
+        if len(constraints) != 1:
+            raise exc.AmbiguousForeignKeysError(
+                "Can't determine join between '%s' and '%s'; "
+                "tables have more than one foreign key "
+                "constraint relationship between them. "
+                "Please specify the 'onclause' of this "
+                "join explicitly." % (a.description, b.description))
 
     def select(self, whereclause=None, **kwargs):
         """Create a :class:`.Select` from this :class:`.Join`.
@@ -2153,6 +2164,7 @@ class Select(HasPrefixes, GenerativeSelect):
 
     _prefixes = ()
     _hints = util.immutabledict()
+    _statement_hints = ()
     _distinct = False
     _from_cloned = None
     _correlate = ()
@@ -2525,10 +2537,30 @@ class Select(HasPrefixes, GenerativeSelect):
 
         return self._get_display_froms()
 
+    def with_statement_hint(self, text, dialect_name='*'):
+        """add a statement hint to this :class:`.Select`.
+
+        This method is similar to :meth:`.Select.with_hint` except that
+        it does not require an individual table, and instead applies to the
+        statement as a whole.
+
+        Hints here are specific to the backend database and may include
+        directives such as isolation levels, file directives, fetch directives,
+        etc.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Select.with_hint`
+
+        """
+        return self.with_hint(None, text, dialect_name)
+
     @_generative
     def with_hint(self, selectable, text, dialect_name='*'):
-        """Add an indexing hint for the given selectable to this
-        :class:`.Select`.
+        """Add an indexing or other executional context hint for the given
+        selectable to this :class:`.Select`.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
@@ -2540,7 +2572,7 @@ class Select(HasPrefixes, GenerativeSelect):
         following::
 
             select([mytable]).\\
-                with_hint(mytable, "+ index(%(name)s ix_mytable)")
+                with_hint(mytable, "index(%(name)s ix_mytable)")
 
         Would render SQL as::
 
@@ -2551,13 +2583,19 @@ class Select(HasPrefixes, GenerativeSelect):
         and Sybase simultaneously::
 
             select([mytable]).\\
-                with_hint(
-                    mytable, "+ index(%(name)s ix_mytable)", 'oracle').\\
+                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
 
+        .. seealso::
+
+            :meth:`.Select.with_statement_hint`
+
         """
-        self._hints = self._hints.union(
-            {(selectable, dialect_name): text})
+        if selectable is None:
+            self._statement_hints += ((dialect_name, text), )
+        else:
+            self._hints = self._hints.union(
+                {(selectable, dialect_name): text})
 
     @property
     def type(self):

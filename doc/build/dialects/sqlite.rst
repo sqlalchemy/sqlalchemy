@@ -29,3 +29,8 @@ Pysqlite
 --------
 
 .. automodule:: sqlalchemy.dialects.sqlite.pysqlite
+
+Pysqlcipher
+-----------
+
+.. automodule:: sqlalchemy.dialects.sqlite.pysqlcipher

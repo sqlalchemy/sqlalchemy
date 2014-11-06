@@ -120,6 +120,32 @@ query options:
     # set children to load eagerly with a second statement
     session.query(Parent).options(subqueryload('children')).all()
 
+.. _subqueryload_ordering:
+
+The Importance of Ordering
+--------------------------
+
+A query which makes use of :func:`.subqueryload` in conjunction with a
+limiting modifier such as :meth:`.Query.first`, :meth:`.Query.limit`,
+or :meth:`.Query.offset` should **always** include :meth:`.Query.order_by`
+against unique column(s) such as the primary key, so that the additional queries
+emitted by :func:`.subqueryload` include
+the same ordering as used by the parent query.  Without it, there is a chance
+that the inner query could return the wrong rows::
+
+    # incorrect, no ORDER BY
+    session.query(User).options(subqueryload(User.addresses)).first()
+
+    # incorrect if User.name is not unique
+    session.query(User).options(subqueryload(User.addresses)).order_by(User.name).first()
+
+    # correct
+    session.query(User).options(subqueryload(User.addresses)).order_by(User.name, User.id).first()
+
+.. seealso::
+
+    :ref:`faq_subqueryload_limit_sort` - detailed example
+
 Loading Along Paths
 -------------------
 

@@ -18,7 +18,7 @@ import operator
 from itertools import groupby, chain
 from .. import sql, util, exc as sa_exc, schema
 from . import attributes, sync, exc as orm_exc, evaluator
-from .base import state_str, _attr_as_key
+from .base import state_str, _attr_as_key, _entity_descriptor
 from ..sql import expression
 from . import loading
 
@@ -560,9 +560,9 @@ def _collect_delete_commands(base_mapper, uowtransaction, table,
                     state, state_dict, col)
             if value is None:
                 raise orm_exc.FlushError(
-                    "Can't delete from table "
+                    "Can't delete from table %s "
                     "using NULL for primary "
-                    "key value")
+                    "key value on column %s" % (table, col))
 
         if update_version_id is not None and \
                 mapper.version_id_col in mapper._cols_by_table[table]:
@@ -1112,6 +1112,7 @@ class BulkUpdate(BulkUD):
         super(BulkUpdate, self).__init__(query)
         self.query._no_select_modifiers("update")
         self.values = values
+        self.mapper = self.query._mapper_zero_or_none()
 
     @classmethod
     def factory(cls, query, synchronize_session, values):
@@ -1121,9 +1122,40 @@ class BulkUpdate(BulkUD):
             False: BulkUpdate
         }, synchronize_session, query, values)
 
+    def _resolve_string_to_expr(self, key):
+        if self.mapper and isinstance(key, util.string_types):
+            attr = _entity_descriptor(self.mapper, key)
+            return attr.__clause_element__()
+        else:
+            return key
+
+    def _resolve_key_to_attrname(self, key):
+        if self.mapper and isinstance(key, util.string_types):
+            attr = _entity_descriptor(self.mapper, key)
+            return attr.property.key
+        elif isinstance(key, attributes.InstrumentedAttribute):
+            return key.key
+        elif hasattr(key, '__clause_element__'):
+            key = key.__clause_element__()
+
+        if self.mapper and isinstance(key, expression.ColumnElement):
+            try:
+                attr = self.mapper._columntoproperty[key]
+            except orm_exc.UnmappedColumnError:
+                return None
+            else:
+                return attr.key
+        else:
+            raise sa_exc.InvalidRequestError(
+                "Invalid expression type: %r" % key)
+
     def _do_exec(self):
+        values = dict(
+            (self._resolve_string_to_expr(k), v)
+            for k, v in self.values.items()
+        )
         update_stmt = sql.update(self.primary_table,
-                                 self.context.whereclause, self.values)
+                                 self.context.whereclause, values)
 
         self.result = self.query.session.execute(
             update_stmt, params=self.query._params)
@@ -1169,9 +1201,10 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
     def _additional_evaluators(self, evaluator_compiler):
         self.value_evaluators = {}
         for key, value in self.values.items():
-            key = _attr_as_key(key)
-            self.value_evaluators[key] = evaluator_compiler.process(
-                expression._literal_as_binds(value))
+            key = self._resolve_key_to_attrname(key)
+            if key is not None:
+                self.value_evaluators[key] = evaluator_compiler.process(
+                    expression._literal_as_binds(value))
 
     def _do_post_synchronize(self):
         session = self.query.session

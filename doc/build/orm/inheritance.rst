@@ -45,6 +45,12 @@ this column is to act as the **discriminator**, and stores a value
 which indicates the type of object represented within the row. The column may
 be of any datatype, though string and integer are the most common.
 
+.. warning::
+
+   Currently, **only one discriminator column may be set**, typically
+   on the base-most class in the hierarchy. "Cascading" polymorphic columns
+   are not yet supported.
+
 The discriminator column is only needed if polymorphic loading is
 desired, as is usually the case.   It is not strictly necessary that
 it be present directly on the base mapped table, and can instead be defined on a

@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.dialects.sqlite import base, pysqlite
+from sqlalchemy.dialects.sqlite import base, pysqlite, pysqlcipher
 
 # default dialect
 base.dialect = pysqlite.dialect

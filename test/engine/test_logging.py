@@ -56,7 +56,8 @@ class LogParamsTest(fixtures.TestBase):
     def test_error_large_dict(self):
         assert_raises_message(
             tsa.exc.DBAPIError,
-            r".*'INSERT INTO nonexistent \(data\) values \(:data\)' "
+            r".*'INSERT INTO nonexistent \(data\) values \(:data\)'\] "
+            "\[parameters: "
             "\[{'data': '0'}, {'data': '1'}, {'data': '2'}, "
             "{'data': '3'}, {'data': '4'}, {'data': '5'}, "
             "{'data': '6'}, {'data': '7'}  ... displaying 10 of "
@@ -71,8 +72,9 @@ class LogParamsTest(fixtures.TestBase):
         assert_raises_message(
             tsa.exc.DBAPIError,
             r".*INSERT INTO nonexistent \(data\) values "
-            "\(\?\)' \[\('0',\), \('1',\), \('2',\), \('3',\), "
-            "\('4',\), \('5',\), \('6',\), \('7',\)  ... displaying "
+            "\(\?\)'\] \[parameters: \[\('0',\), \('1',\), \('2',\), \('3',\), "
+            "\('4',\), \('5',\), \('6',\), \('7',\)  "
+            "... displaying "
             "10 of 100 total bound parameter sets ...  "
             "\('98',\), \('99',\)\]",
             lambda: self.eng.execute(

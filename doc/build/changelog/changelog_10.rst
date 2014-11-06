@@ -22,6 +22,350 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sql
+        :pullreq: github:146
+
+        Fixed the name of the :paramref:`.PoolEvents.reset.dbapi_connection`
+        parameter as passed to this event; in particular this affects
+        usage of the "named" argument style for this event.  Pull request
+        courtesy Jason Goldberger.
+
+    .. change::
+        :tags: feature, sql
+        :pullreq: github:139
+
+        Added a new parameter :paramref:`.Table.tometadata.name` to
+        the :meth:`.Table.tometadata` method.  Similar to
+        :paramref:`.Table.tometadata.schema`, this argument causes the newly
+        copied :class:`.Table` to take on the new name instead of
+        the existing one.  An interesting capability this adds is that of
+        copying a :class:`.Table` object to the *same* :class:`.MetaData`
+        target with a new name.  Pull request courtesy n.d. parker.
+
+    .. change::
+        :tags: bug, orm
+        :pullreq: github:137
+
+        Repaired support of the ``copy.deepcopy()`` call when used by the
+        :class:`.orm.util.CascadeOptions` argument, which occurs
+        if ``copy.deepcopy()`` is being used with :func:`.relationship`
+        (not an officially supported use case).  Pull request courtesy
+        duesenfranz.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3170
+
+        Reversing a change that was made in 0.9, the "singleton" nature
+        of the "constants" :func:`.null`, :func:`.true`, and :func:`.false`
+        has been reverted.   These functions returning a "singleton" object
+        had the effect that different instances would be treated as the
+        same regardless of lexical use, which in particular would impact
+        the rendering of the columns clause of a SELECT statement.
+
+        .. seealso::
+
+            :ref:`bug_3170`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3139
+
+        Fixed bug where :meth:`.Session.expunge` would not fully detach
+        the given object if the object had been subject to a delete
+        operation that was flushed, but not committed.  This would also
+        affect related operations like :func:`.make_transient`.
+
+        .. seealso::
+
+            :ref:`bug_3139`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3230
+
+        A warning is emitted in the case of multiple relationships that
+        ultimately will populate a foreign key column in conflict with
+        another, where the relationships are attempting to copy values
+        from different source columns.  This occurs in the case where
+        composite foreign keys with overlapping columns are mapped to
+        relationships that each refer to a different referenced column.
+        A new documentation section illustrates the example as well as how
+        to overcome the issue by specifying "foreign" columns specifically
+        on a per-relationship basis.
+
+        .. seealso::
+
+            :ref:`relationship_overlapping_foreignkeys`
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3172
+
+        Exception messages have been spiffed up a bit.  The SQL statement
+        and parameters are not displayed if None, reducing confusion for
+        error messages that weren't related to a statement.  The full
+        module and classname for the DBAPI-level exception is displayed,
+        making it clear that this is a wrapped DBAPI exception.  The
+        statement and parameters themselves are bounded within a bracketed
+        sections to better isolate them from the error message and from
+        each other.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3228
+
+        The :meth:`.Query.update` method will now convert string key
+        names in the given dictionary of values into mapped attribute names
+        against the mapped class being updated.  Previously, string names
+        were taken in directly and passed to the core update statement without
+        any means to resolve against the mapped entity.  Support for synonyms
+        and hybrid attributes as the subject attributes of
+        :meth:`.Query.update` are also supported.
+
+        .. seealso::
+
+            :ref:`bug_3228`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3035
+
+        Improvements to the mechanism used by :class:`.Session` to locate
+        "binds" (e.g. engines to use), such engines can be associated with
+        mixin classes, concrete subclasses, as well as a wider variety
+        of table metadata such as joined inheritance tables.
+
+        .. seealso::
+
+            :ref:`bug_3035`
+
+    .. change::
+        :tags: bug, general
+        :tickets: 3218
+
+        The ``__module__`` attribute is now set for all those SQL and
+        ORM functions that are derived as "public factory" symbols, which
+        should assist with documentation tools being able to report on the
+        target module.
+
+    .. change::
+        :tags: feature, sql
+
+        :meth:`.Insert.from_select` now includes Python and SQL-expression
+        defaults if otherwise unspecified; the limitation where non-
+        server column defaults aren't included in an INSERT FROM
+        SELECT is now lifted and these expressions are rendered as
+        constants into the SELECT statement.
+
+        .. seealso::
+
+            :ref:`feature_insert_from_select_defaults`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3233
+
+        Fixed bug in single table inheritance where a chain of joins
+        that included the same single inh entity more than once
+        (normally this should raise an error) could, in some cases
+        depending on what was being joined "from", implicitly alias the
+        second case of the single inh entity, producing
+        a query that "worked".   But as this implicit aliasing is not
+        intended in the case of single table inheritance, it didn't
+        really "work" fully and was very misleading, since it wouldn't
+        always appear.
+
+        .. seealso::
+
+            :ref:`bug_3233`
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3222
+
+        The ON clause rendered when using :meth:`.Query.join`,
+        :meth:`.Query.outerjoin`, or the standalone :func:`.orm.join` /
+        :func:`.orm.outerjoin` functions to a single-inheritance subclass will
+        now include the "single table criteria" in the ON clause even
+        if the ON clause is otherwise hand-rolled; it is now added to the
+        criteria using AND, the same way as if joining to a single-table
+        target using relationship or similar.
+
+        This is sort of in-between feature and bug.
+
+        .. seealso::
+
+            :ref:`migration_3222`
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3184
+        :pullreq: bitbucket:30
+
+        The :class:`.UniqueConstraint` construct is now included when
+        reflecting a :class:`.Table` object, for databases where this
+        is applicable.  In order to achieve this
+        with sufficient accuracy, MySQL and Postgresql now contain features
+        that correct for the duplication of indexes and unique constraints
+        when reflecting tables, indexes, and constraints.
+        In the case of MySQL, there is not actually a "unique constraint"
+        concept independent of a "unique index", so for this backend
+        :class:`.UniqueConstraint` continues to remain non-present for a
+        reflected :class:`.Table`.  For Postgresql, the query used to
+        detect indexes against ``pg_index`` has been improved to check for
+        the same construct in ``pg_constraint``, and the implicitly
+        constructed unique index is not included with a
+        reflected :class:`.Table`.
+
+        In both cases, the  :meth:`.Inspector.get_indexes` and the
+        :meth:`.Inspector.get_unique_constraints` methods return both
+        constructs individually, but include a new token
+        ``duplicates_constraint`` in the case of Postgresql or
+        ``duplicates_index`` in the case
+        of MySQL to indicate when this condition is detected.
+        Pull request courtesy Johannes Erdfelt.
+
+        .. seealso::
+
+            :ref:`feature_3184`
+
+    .. change::
+        :tags: feature, postgresql
+        :pullreq: github:134
+
+        Added support for the FILTER keyword as applied to aggregate
+        functions, supported by Postgresql 9.4.   Pull request
+        courtesy Ilja Everilä.
+
+        .. seealso::
+
+            :ref:`feature_gh134`
+
+    .. change::
+        :tags: bug, sql, engine
+        :tickets: 3215
+
+        Fixed bug where a "branched" connection, that is the kind you get
+        when you call :meth:`.Connection.connect`, would not share invalidation
+        status with the parent.  The architecture of branching has been tweaked
+        a bit so that the branched connection defers to the parent for
+        all invalidation status and operations.
+
+    .. change::
+        :tags: bug, sql, engine
+        :tickets: 3190
+
+        Fixed bug where a "branched" connection, that is the kind you get
+        when you call :meth:`.Connection.connect`, would not share transaction
+        status with the parent.  The architecture of branching has been tweaked
+        a bit so that the branched connection defers to the parent for
+        all transactional status and operations.
+
+    .. change::
+        :tags: bug, declarative
+        :tickets: 2670
+
+        A relationship set up with :class:`.declared_attr` on
+        a :class:`.AbstractConcreteBase` base class will now be configured
+        on the abstract base mapping automatically, in addition to being
+        set up on descendant concrete classes as usual.
+
+        .. seealso::
+
+            :ref:`feature_3150`
+
+    .. change::
+        :tags: feature, declarative
+        :tickets: 3150
+
+        The :class:`.declared_attr` construct has newly improved
+        behaviors and features in conjunction with declarative.  The
+        decorated function will now have access to the final column
+        copies present on the local mixin when invoked, and will also
+        be invoked exactly once for each mapped class, the returned result
+        being memoized.   A new modifier :attr:`.declared_attr.cascading`
+        is added as well.
+
+        .. seealso::
+
+            :ref:`feature_3150`
+
+    .. change::
+        :tags: feature, ext
+        :tickets: 3210
+
+        The :mod:`sqlalchemy.ext.automap` extension will now set
+        ``cascade="all, delete-orphan"`` automatically on a one-to-many
+        relationship/backref where the foreign key is detected as containing
+        one or more non-nullable columns.  This argument is present in the
+        keywords passed to :func:`.automap.generate_relationship` in this
+        case and can still be overridden.  Additionally, if the
+        :class:`.ForeignKeyConstraint` specifies ``ondelete="CASCADE"``
+        for a non-nullable or ``ondelete="SET NULL"`` for a nullable set
+        of columns, the argument ``passive_deletes=True`` is also added to the
+        relationship.  Note that not all backends support reflection of
+        ondelete, but backends that do include Postgresql and MySQL.
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3206
+
+        Added new method :meth:`.Select.with_statement_hint` and ORM
+        method :meth:`.Query.with_statement_hint` to support statement-level
+        hints that are not specific to a table.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 3203
+        :pullreq: bitbucket:31
+
+        SQLite now supports reflection of unique constraints from
+        temp tables; previously, this would fail with a TypeError.
+        Pull request courtesy Johannes Erdfelt.
+
+        .. seealso::
+
+            :ref:`change_3204` - changes regarding SQLite temporary
+            table and view reflection.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 3204
+
+        Added :meth:`.Inspector.get_temp_table_names` and
+        :meth:`.Inspector.get_temp_view_names`; currently, only the
+        SQLite and Oracle dialects support these methods.  The return of
+        temporary table and view names has been **removed** from SQLite and
+        Oracle's version of :meth:`.Inspector.get_table_names` and
+        :meth:`.Inspector.get_view_names`; other database backends cannot
+        support this information (such as MySQL), and the scope of operation
+        is different in that the tables can be local to a session and
+        typically aren't supported in remote schemas.
+
+        .. seealso::
+
+            :ref:`change_3204`
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 2891
+        :pullreq: github:128
+
+        Support has been added for reflection of materialized views
+        and foreign tables, as well as support for materialized views
+        within :meth:`.Inspector.get_view_names`, and a new method
+        :meth:`.PGInspector.get_foreign_table_names` available on the
+        Postgresql version of :class:`.Inspector`.  Pull request courtesy
+        Rodrigo Menezes.
+
+        .. seealso::
+
+            :ref:`feature_2891`
+
+
+    .. change::
         :tags: feature, orm
 
         Added new event handlers :meth:`.AttributeEvents.init_collection`
@@ -266,6 +610,11 @@
         when those columns were the targets of a "fetch and populate"
         operation, such as an autoincremented primary key, a Python side
         default, or a server-side default "eagerly" fetched via RETURNING.
+
+    .. change::
+        :tags: feature, oracle
+
+        Added support for the Oracle table option ON COMMIT.
 
     .. change::
         :tags: feature, postgresql

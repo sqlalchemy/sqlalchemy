@@ -162,6 +162,7 @@ class DefaultEngineStrategy(EngineStrategy):
             def first_connect(dbapi_connection, connection_record):
                 c = base.Connection(engine, connection=dbapi_connection,
                                     _has_events=False)
+                c._execution_options = util.immutabledict()
                 dialect.initialize(c)
             event.listen(pool, 'first_connect', first_connect, once=True)
 

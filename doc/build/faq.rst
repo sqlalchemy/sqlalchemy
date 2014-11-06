@@ -603,6 +603,108 @@ The same idea applies to all the other arguments, such as ``foreign_keys``::
 
         foo = relationship(Dest, foreign_keys=[foo_id, bar_id])
 
+.. _faq_subqueryload_limit_sort:
+
+Why is ``ORDER BY`` required with ``LIMIT`` (especially with ``subqueryload()``)?
+---------------------------------------------------------------------------------
+
+A relational database can return rows in any
+arbitrary order, when an explicit ordering is not set.
+While this ordering very often corresponds to the natural
+order of rows within a table, this is not the case for all databases and
+all queries.   The consequence of this is that any query that limits rows
+using ``LIMIT`` or ``OFFSET`` should **always** specify an ``ORDER BY``.
+Otherwise, it is not deterministic which rows will actually be returned.
+
+When we use a SQLAlchemy method like :meth:`.Query.first`, we are in fact
+applying a ``LIMIT`` of one to the query, so without an explicit ordering
+it is not deterministic what row we actually get back.
+While we may not notice this for simple queries on databases that usually
+returns rows in their natural
+order, it becomes much more of an issue if we also use :func:`.orm.subqueryload`
+to load related collections, and we may not be loading the collections
+as intended.
+
+SQLAlchemy implements :func:`.orm.subqueryload` by issuing a separate query,
+the results of which are matched up to the results from the first query.
+We see two queries emitted like this:
+
+.. sourcecode:: python+sql
+
+    >>> session.query(User).options(subqueryload(User.addresses)).all()
+    {opensql}-- the "main" query
+    SELECT users.id AS users_id
+    FROM users
+    {stop}
+    {opensql}-- the "load" query issued by subqueryload
+    SELECT addresses.id AS addresses_id,
+           addresses.user_id AS addresses_user_id,
+           anon_1.users_id AS anon_1_users_id
+    FROM (SELECT users.id AS users_id FROM users) AS anon_1
+    JOIN addresses ON anon_1.users_id = addresses.user_id
+    ORDER BY anon_1.users_id
+
+The second query embeds the first query as a source of rows.
+When the inner query uses ``OFFSET`` and/or ``LIMIT`` without ordering,
+the two queries may not see the same results:
+
+.. sourcecode:: python+sql
+
+    >>> user = session.query(User).options(subqueryload(User.addresses)).first()
+    {opensql}-- the "main" query
+    SELECT users.id AS users_id
+    FROM users
+     LIMIT 1
+    {stop}
+    {opensql}-- the "load" query issued by subqueryload
+    SELECT addresses.id AS addresses_id,
+           addresses.user_id AS addresses_user_id,
+           anon_1.users_id AS anon_1_users_id
+    FROM (SELECT users.id AS users_id FROM users LIMIT 1) AS anon_1
+    JOIN addresses ON anon_1.users_id = addresses.user_id
+    ORDER BY anon_1.users_id
+
+Depending on database specifics, there is
+a chance we may get the a result like the following for the two queries::
+
+    -- query #1
+    +--------+
+    |users_id|
+    +--------+
+    |       1|
+    +--------+
+
+    -- query #2
+    +------------+-----------------+---------------+
+    |addresses_id|addresses_user_id|anon_1_users_id|
+    +------------+-----------------+---------------+
+    |           3|                2|              2|
+    +------------+-----------------+---------------+
+    |           4|                2|              2|
+    +------------+-----------------+---------------+
+
+Above, we receive two ``addresses`` rows for ``user.id`` of 2, and none for
+1.  We've wasted two rows and failed to actually load the collection.  This
+is an insidious error because without looking at the SQL and the results, the
+ORM will not show that there's any issue; if we access the ``addresses``
+for the ``User`` we have, it will emit a lazy load for the collection and we
+won't see that anything actually went wrong.
+
+The solution to this problem is to always specify a deterministic sort order,
+so that the main query always returns the same set of rows. This generally
+means that you should :meth:`.Query.order_by` on a unique column on the table.
+The primary key is a good choice for this::
+
+    session.query(User).options(subqueryload(User.addresses)).order_by(User.id).first()
+
+Note that :func:`.joinedload` does not suffer from the same problem because
+only one query is ever issued, so the load query cannot be different from the
+main query.
+
+.. seealso::
+
+    :ref:`subqueryload_ordering`
+
 Performance
 ===========
 

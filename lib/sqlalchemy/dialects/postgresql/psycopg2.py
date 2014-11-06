@@ -32,10 +32,25 @@ psycopg2-specific keyword arguments which are accepted by
   way of enabling this mode on a per-execution basis.
 * ``use_native_unicode``: Enable the usage of Psycopg2 "native unicode" mode
   per connection.  True by default.
+
+  .. seealso::
+
+    :ref:`psycopg2_disable_native_unicode`
+
 * ``isolation_level``: This option, available for all PostgreSQL dialects,
   includes the ``AUTOCOMMIT`` isolation level when using the psycopg2
-  dialect.  See :ref:`psycopg2_isolation_level`.
+  dialect.
 
+  .. seealso::
+
+    :ref:`psycopg2_isolation_level`
+
+* ``client_encoding``: sets the client encoding in a libpq-agnostic way,
+  using psycopg2's ``set_client_encoding()`` method.
+
+  .. seealso::
+
+    :ref:`psycopg2_unicode`
 
 Unix Domain Connections
 ------------------------
@@ -75,8 +90,10 @@ The following DBAPI-specific options are respected when used with
   If ``None`` or not set, the ``server_side_cursors`` option of the
   :class:`.Engine` is used.
 
-Unicode
--------
+.. _psycopg2_unicode:
+
+Unicode with Psycopg2
+----------------------
 
 By default, the psycopg2 driver uses the ``psycopg2.extensions.UNICODE``
 extension, such that the DBAPI receives and returns all strings as Python
@@ -84,27 +101,51 @@ Unicode objects directly - SQLAlchemy passes these values through without
 change.   Psycopg2 here will encode/decode string values based on the
 current "client encoding" setting; by default this is the value in
 the ``postgresql.conf`` file, which often defaults to ``SQL_ASCII``.
-Typically, this can be changed to ``utf-8``, as a more useful default::
+Typically, this can be changed to ``utf8``, as a more useful default::
 
-    #client_encoding = sql_ascii # actually, defaults to database
+    # postgresql.conf file
+
+    # client_encoding = sql_ascii # actually, defaults to database
                                  # encoding
     client_encoding = utf8
 
 A second way to affect the client encoding is to set it within Psycopg2
-locally.   SQLAlchemy will call psycopg2's ``set_client_encoding()``
-method (see:
-http://initd.org/psycopg/docs/connection.html#connection.set_client_encoding)
+locally.   SQLAlchemy will call psycopg2's
+:meth:`psycopg2:connection.set_client_encoding` method
 on all new connections based on the value passed to
 :func:`.create_engine` using the ``client_encoding`` parameter::
 
+    # set_client_encoding() setting;
+    # works for *all* Postgresql versions
     engine = create_engine("postgresql://user:pass@host/dbname",
                            client_encoding='utf8')
 
 This overrides the encoding specified in the Postgresql client configuration.
+When using the parameter in this way, the psycopg2 driver emits
+``SET client_encoding TO 'utf8'`` on the connection explicitly, and works
+in all Postgresql versions.
 
-.. versionadded:: 0.7.3
-    The psycopg2-specific ``client_encoding`` parameter to
-    :func:`.create_engine`.
+Note that the ``client_encoding`` setting as passed to :func:`.create_engine`
+is **not the same** as the more recently added ``client_encoding`` parameter
+now supported by libpq directly.   This is enabled when ``client_encoding``
+is passed directly to ``psycopg2.connect()``, and from SQLAlchemy is passed
+using the :paramref:`.create_engine.connect_args` parameter::
+
+    # libpq direct parameter setting;
+    # only works for Postgresql **9.1 and above**
+    engine = create_engine("postgresql://user:pass@host/dbname",
+                           connect_args={'client_encoding': 'utf8'})
+
+    # using the query string is equivalent
+    engine = create_engine("postgresql://user:pass@host/dbname?client_encoding=utf8")
+
+The above parameter was only added to libpq as of version 9.1 of Postgresql,
+so using the previous method is better for cross-version support.
+
+.. _psycopg2_disable_native_unicode:
+
+Disabling Native Unicode
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 SQLAlchemy can also be instructed to skip the usage of the psycopg2
 ``UNICODE`` extension and to instead utilize its own unicode encode/decode
@@ -116,8 +157,7 @@ in and coerce from bytes on the way back,
 using the value of the :func:`.create_engine` ``encoding`` parameter, which
 defaults to ``utf-8``.
 SQLAlchemy's own unicode encode/decode functionality is steadily becoming
-obsolete as more DBAPIs support unicode fully along with the approach of
-Python 3; in modern usage psycopg2 should be relied upon to handle unicode.
+obsolete as most DBAPIs now support unicode fully.
 
 Transactions
 ------------
@@ -512,12 +552,14 @@ class PGDialect_psycopg2(PGDialect):
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
             # check the "closed" flag.  this might not be
-            # present on old psycopg2 versions
+            # present on old psycopg2 versions.   Also,
+            # this flag doesn't actually help in a lot of disconnect
+            # situations, so don't rely on it.
             if getattr(connection, 'closed', False):
                 return True
 
-            # legacy checks based on strings.  the "closed" check
-            # above most likely obviates the need for any of these.
+            # checks based on strings.  in the case that .closed
+            # didn't cut it, fall back onto these.
             str_e = str(e).partition("\n")[0]
             for msg in [
                 # these error messages from libpq: interfaces/libpq/fe-misc.c
@@ -534,8 +576,10 @@ class PGDialect_psycopg2(PGDialect):
                 # not sure where this path is originally from, it may
                 # be obsolete.   It really says "losed", not "closed".
                 'losed the connection unexpectedly',
-                # this can occur in newer SSL
-                'connection has been closed unexpectedly'
+                # these can occur in newer SSL
+                'connection has been closed unexpectedly',
+                'SSL SYSCALL error: Bad file descriptor',
+                'SSL SYSCALL error: EOF detected',
             ]:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:

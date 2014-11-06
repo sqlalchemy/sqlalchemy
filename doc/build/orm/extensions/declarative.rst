@@ -13,6 +13,7 @@ API Reference
 .. autofunction:: as_declarative
 
 .. autoclass:: declared_attr
+	:members:
 
 .. autofunction:: sqlalchemy.ext.declarative.api._declarative_constructor
 

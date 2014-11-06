@@ -401,6 +401,29 @@ The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
+
+.. _postgresql_index_reflection:
+
+Postgresql Index Reflection
+---------------------------
+
+The Postgresql database creates a UNIQUE INDEX implicitly whenever the
+UNIQUE CONSTRAINT construct is used.   When inspecting a table using
+:class:`.Inspector`, the :meth:`.Inspector.get_indexes`
+and the :meth:`.Inspector.get_unique_constraints` will report on these
+two constructs distinctly; in the case of the index, the key
+``duplicates_constraint`` will be present in the index entry if it is
+detected as mirroring a constraint.   When performing reflection using
+``Table(..., autoload=True)``, the UNIQUE INDEX is **not** returned
+in :attr:`.Table.indexes` when it is detected as mirroring a
+:class:`.UniqueConstraint` in the :attr:`.Table.constraints` collection.
+
+.. versionchanged:: 1.0.0 - :class:`.Table` reflection now includes
+   :class:`.UniqueConstraint` objects present in the :attr:`.Table.constraints`
+   collection; the Postgresql backend will no longer include a "mirrored"
+   :class:`.Index` construct in :attr:`.Table.indexes` if it is detected
+   as corresponding to a unique constraint.
+
 Special Reflection Options
 --------------------------
 
@@ -1679,6 +1702,19 @@ class PGInspector(reflection.Inspector):
         schema = schema or self.default_schema_name
         return self.dialect._load_enums(self.bind, schema)
 
+    def get_foreign_table_names(self, schema=None):
+        """Return a list of FOREIGN TABLE names.
+
+        Behavior is similar to that of :meth:`.Inspector.get_table_names`,
+        except that the list is limited to those tables tha report a
+        ``relkind`` value of ``f``.
+
+        .. versionadded:: 1.0.0
+
+        """
+        schema = schema or self.default_schema_name
+        return self.dialect._get_foreign_table_names(self.bind, schema)
+
 
 class CreateEnumType(schema._CreateDropBase):
     __visit_name__ = "create_enum_type"
@@ -2024,7 +2060,7 @@ class PGDialect(default.DefaultDialect):
             FROM pg_catalog.pg_class c
             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             WHERE (%s)
-            AND c.relname = :table_name AND c.relkind in ('r','v')
+            AND c.relname = :table_name AND c.relkind in ('r', 'v', 'm', 'f')
         """ % schema_where_clause
         # Since we're binding to unicode, table_name and schema_name must be
         # unicode.
@@ -2078,6 +2114,24 @@ class PGDialect(default.DefaultDialect):
         return [row[0] for row in result]
 
     @reflection.cache
+    def _get_foreign_table_names(self, connection, schema=None, **kw):
+        if schema is not None:
+            current_schema = schema
+        else:
+            current_schema = self.default_schema_name
+
+        result = connection.execute(
+            sql.text("SELECT relname FROM pg_class c "
+                     "WHERE relkind = 'f' "
+                     "AND '%s' = (select nspname from pg_namespace n "
+                     "where n.oid = c.relnamespace) " %
+                     current_schema,
+                     typemap={'relname': sqltypes.Unicode}
+                     )
+        )
+        return [row[0] for row in result]
+
+    @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
         if schema is not None:
             current_schema = schema
@@ -2086,7 +2140,7 @@ class PGDialect(default.DefaultDialect):
         s = """
         SELECT relname
         FROM pg_class c
-        WHERE relkind = 'v'
+        WHERE relkind IN ('m', 'v')
           AND '%(schema)s' = (select nspname from pg_namespace n
           where n.oid = c.relnamespace)
         """ % dict(schema=current_schema)
@@ -2439,16 +2493,21 @@ class PGDialect(default.DefaultDialect):
           SELECT
               i.relname as relname,
               ix.indisunique, ix.indexprs, ix.indpred,
-              a.attname, a.attnum, ix.indkey%s
+              a.attname, a.attnum, c.conrelid, ix.indkey%s
           FROM
               pg_class t
                     join pg_index ix on t.oid = ix.indrelid
-                    join pg_class i on i.oid=ix.indexrelid
+                    join pg_class i on i.oid = ix.indexrelid
                     left outer join
                         pg_attribute a
-                        on t.oid=a.attrelid and %s
+                        on t.oid = a.attrelid and %s
+                    left outer join
+                        pg_constraint c
+                        on (ix.indrelid = c.conrelid and
+                            ix.indexrelid = c.conindid and
+                            c.contype in ('p', 'u', 'x'))
           WHERE
-              t.relkind = 'r'
+              t.relkind IN ('r', 'v', 'f', 'm')
               and t.oid = :table_oid
               and ix.indisprimary = 'f'
           ORDER BY
@@ -2469,7 +2528,7 @@ class PGDialect(default.DefaultDialect):
 
         sv_idx_name = None
         for row in c.fetchall():
-            idx_name, unique, expr, prd, col, col_num, idx_key = row
+            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key = row
 
             if expr:
                 if idx_name != sv_idx_name:
@@ -2486,18 +2545,27 @@ class PGDialect(default.DefaultDialect):
                     % idx_name)
                 sv_idx_name = idx_name
 
+            has_idx = idx_name in indexes
             index = indexes[idx_name]
             if col is not None:
                 index['cols'][col_num] = col
-            index['key'] = [int(k.strip()) for k in idx_key.split()]
-            index['unique'] = unique
+            if not has_idx:
+                index['key'] = [int(k.strip()) for k in idx_key.split()]
+                index['unique'] = unique
+                if conrelid is not None:
+                    index['duplicates_constraint'] = idx_name
 
-        return [
-            {'name': name,
-             'unique': idx['unique'],
-             'column_names': [idx['cols'][i] for i in idx['key']]}
-            for name, idx in indexes.items()
-        ]
+        result = []
+        for name, idx in indexes.items():
+            entry = {
+                'name': name,
+                'unique': idx['unique'],
+                'column_names': [idx['cols'][i] for i in idx['key']]
+            }
+            if 'duplicates_constraint' in idx:
+                entry['duplicates_constraint'] = idx['duplicates_constraint']
+            result.append(entry)
+        return result
 
     @reflection.cache
     def get_unique_constraints(self, connection, table_name,
