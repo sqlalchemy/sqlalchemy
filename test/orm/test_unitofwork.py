@@ -2479,7 +2479,8 @@ class PartialNullPKTest(fixtures.MappedTest):
         t1.col2 = 5
         assert_raises_message(
             orm_exc.FlushError,
-            "Can't update table using NULL for primary key value",
+            "Can't update table t1 using NULL for primary "
+            "key value on column t1.col2",
             s.commit
         )
 
@@ -2492,7 +2493,8 @@ class PartialNullPKTest(fixtures.MappedTest):
         t1.col3 = 'hi'
         assert_raises_message(
             orm_exc.FlushError,
-            "Can't update table using NULL for primary key value",
+            "Can't update table t1 using NULL for primary "
+            "key value on column t1.col2",
             s.commit
         )
 

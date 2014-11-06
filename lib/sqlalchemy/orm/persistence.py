@@ -375,12 +375,12 @@ def _collect_update_commands(uowtransaction, table, states_to_update):
                     params[col.key] = history.added[0]
             else:
                 pk_params[col._label] = history.unchanged[0]
+            if pk_params[col._label] is None:
+                raise orm_exc.FlushError(
+                    "Can't update table %s using NULL for primary "
+                    "key value on column %s" % (table, col))
 
         if params or value_params:
-            if None in pk_params.values():
-                raise orm_exc.FlushError(
-                    "Can't update table using NULL for primary "
-                    "key value")
             params.update(pk_params)
             yield (
                 state, state_dict, params, mapper,
