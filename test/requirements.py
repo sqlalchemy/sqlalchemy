@@ -756,6 +756,10 @@ class DefaultRequirements(SuiteRequirements):
                     "+psycopg2", None, None,
                     "psycopg2 2.4 no longer accepts percent "
                     "sign in bind placeholders"),
+                (
+                    "+psycopg2cffi", None, None,
+                    "psycopg2cffi does not accept percent signs in "
+                    "bind placeholders"),
                 ("mysql", None, None, "executemany() doesn't work here")
             ]
         )

@@ -379,10 +379,11 @@ class NumericInterpretationTest(fixtures.TestBase):
     __backend__ = True
 
     def test_numeric_codes(self):
-        from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
+        from sqlalchemy.dialects.postgresql import psycopg2cffi, pg8000, \
+            psycopg2, base
 
-        for dialect in (pg8000.dialect(), psycopg2.dialect()):
-
+        dialects = pg8000.dialect(), psycopg2.dialect(), psycopg2cffi.dialect()
+        for dialect in dialects:
             typ = Numeric().dialect_impl(dialect)
             for code in base._INT_TYPES + base._FLOAT_TYPES + \
                     base._DECIMAL_TYPES:

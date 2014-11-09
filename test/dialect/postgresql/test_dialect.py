@@ -118,7 +118,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         eq_(c.connection.connection.encoding, test_encoding)
 
     @testing.only_on(
-        ['postgresql+psycopg2', 'postgresql+pg8000'],
+        ['postgresql+psycopg2', 'postgresql+pg8000', 'postgresql+psycopg2cffi'],
         'psycopg2 / pg8000 - specific feature')
     @engines.close_open_connections
     def test_autocommit_isolation_level(self):

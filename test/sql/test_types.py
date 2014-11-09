@@ -952,6 +952,7 @@ class UnicodeTest(fixtures.TestBase):
             expected = (testing.db.name, testing.db.driver) in \
                 (
                     ('postgresql', 'psycopg2'),
+                    ('postgresql', 'psycopg2cffi'),
                     ('postgresql', 'pypostgresql'),
                     ('postgresql', 'pg8000'),
                     ('postgresql', 'zxjdbc'),
