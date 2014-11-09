@@ -382,7 +382,8 @@ class NumericInterpretationTest(fixtures.TestBase):
         from sqlalchemy.dialects.postgresql import psycopg2cffi, pg8000, \
             psycopg2, base
 
-        dialects = pg8000.dialect(), psycopg2.dialect(), psycopg2cffi.dialect()
+        dialects = (pg8000.dialect(), psycopg2.dialect(),
+                    psycopg2cffi.dialect())
         for dialect in dialects:
             typ = Numeric().dialect_impl(dialect)
             for code in base._INT_TYPES + base._FLOAT_TYPES + \
