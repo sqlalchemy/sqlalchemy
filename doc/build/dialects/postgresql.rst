@@ -202,3 +202,8 @@ zxjdbc
 --------------
 
 .. automodule:: sqlalchemy.dialects.postgresql.zxjdbc
+
+psycopg2cffi
+--------------
+
+.. automodule:: sqlalchemy.dialects.postgresql.psycopg2cffi
