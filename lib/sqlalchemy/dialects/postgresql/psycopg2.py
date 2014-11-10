@@ -159,6 +159,55 @@ defaults to ``utf-8``.
 SQLAlchemy's own unicode encode/decode functionality is steadily becoming
 obsolete as most DBAPIs now support unicode fully.
 
+Bound Parameter Styles
+----------------------
+
+The default parameter style for the psycopg2 dialect is "pyformat", where
+SQL is rendered using ``%(paramname)s`` style.   This format has the limitation
+that it does not accommodate the unusual case of parameter names that
+actually contain percent or parenthesis symbols; as SQLAlchemy in many cases
+generates bound parameter names based on the name of a column, the presence
+of these characters in a column name can lead to problems.
+
+There are two solutions to the issue of a :class:`.schema.Column` that contains
+one of these characters in its name.  One is to specify the
+:paramref:`.schema.Column.key` for columns that have such names::
+
+    measurement = Table('measurement', metadata,
+        Column('Size (meters)', Integer, key='size_meters')
+    )
+
+Above, an INSERT statement such as ``measurement.insert()`` will use
+``size_meters`` as the parameter name, and a SQL expression such as
+``measurement.c.size_meters > 10`` will derive the bound parameter name
+from the ``size_meters`` key as well.
+
+.. versionchanged:: 1.0.0 - SQL expressions will use :attr:`.Column.key`
+   as the source of naming when anonymous bound parameters are created
+   in SQL expressions; previously, this behavior only applied to
+   :meth:`.Table.insert` and :meth:`.Table.update` parameter names.
+
+The other solution is to use a positional format; psycopg2 allows use of the
+"format" paramstyle, which can be passed to
+:paramref:`.create_engine.paramstyle`::
+
+    engine = create_engine(
+        'postgresql://scott:tiger@localhost:5432/test', paramstyle='format')
+
+With the above engine, instead of a statement like::
+
+    INSERT INTO measurement ("Size (meters)") VALUES (%(Size (meters))s)
+    {'Size (meters)': 1}
+
+we instead see::
+
+    INSERT INTO measurement ("Size (meters)") VALUES (%s)
+    (1, )
+
+Where above, the dictionary style is converted into a tuple with positional
+style.
+
+
 Transactions
 ------------
 
