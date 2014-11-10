@@ -169,25 +169,9 @@ actually contain percent or parenthesis symbols; as SQLAlchemy in many cases
 generates bound parameter names based on the name of a column, the presence
 of these characters in a column name can lead to problems.
 
-There are two solutions to the issue of a :class:`.schema.Column` that contains
-one of these characters in its name.  One is to specify the
-:paramref:`.schema.Column.key` for columns that have such names::
-
-    measurement = Table('measurement', metadata,
-        Column('Size (meters)', Integer, key='size_meters')
-    )
-
-Above, an INSERT statement such as ``measurement.insert()`` will use
-``size_meters`` as the parameter name, and a SQL expression such as
-``measurement.c.size_meters > 10`` will derive the bound parameter name
-from the ``size_meters`` key as well.
-
-.. versionchanged:: 1.0.0 - SQL expressions will use :attr:`.Column.key`
-   as the source of naming when anonymous bound parameters are created
-   in SQL expressions; previously, this behavior only applied to
-   :meth:`.Table.insert` and :meth:`.Table.update` parameter names.
-
-The other solution is to use a positional format; psycopg2 allows use of the
+The best solution in SQLAlchemy 0.9 and earlier to the issue of a
+:class:`.schema.Column`  that contains one of these characters in its
+name is to use a positional format for the engine; psycopg2 allows use of the
 "format" paramstyle, which can be passed to
 :paramref:`.create_engine.paramstyle`::
 
@@ -206,6 +190,9 @@ we instead see::
 
 Where above, the dictionary style is converted into a tuple with positional
 style.
+
+SQLAlchemy 1.0 will also allow the per-column :attr:`.Column.key` setting to
+be usable in producing an appropriate parameter name.
 
 
 Transactions
