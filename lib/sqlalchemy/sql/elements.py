@@ -1092,7 +1092,7 @@ class BindParameter(ColumnElement):
         """
         if isinstance(key, ColumnClause):
             type_ = key.type
-            key = key.name
+            key = key.key
         if required is NO_ARG:
             required = (value is NO_ARG and callable_ is None)
         if value is NO_ARG:
@@ -3335,7 +3335,7 @@ class ColumnClause(Immutable, ColumnElement):
             return name
 
     def _bind_param(self, operator, obj):
-        return BindParameter(self.name, obj,
+        return BindParameter(self.key, obj,
                              _compared_to_operator=operator,
                              _compared_to_type=self.type,
                              unique=True)

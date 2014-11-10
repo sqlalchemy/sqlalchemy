@@ -23,6 +23,19 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3245
+
+        The :attr:`.Column.key` attribute is now used as the source of
+        anonymous bound parameter names within expressions, to match the
+        existing use of this value as the key when rendered in an INSERT
+        or UPDATE statement.   This allows :attr:`.Column.key` to be used
+        as a "substitute" string to work around a difficult column name
+        that doesn't translate well into a bound parameter name.   Note that
+        the paramstyle is configurable on :func:`.create_engine` in any case,
+        and most DBAPIs today support a named and positional style.
+
+    .. change::
+        :tags: bug, sql
         :pullreq: github:146
 
         Fixed the name of the :paramref:`.PoolEvents.reset.dbapi_connection`

@@ -435,6 +435,19 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=default.DefaultDialect(paramstyle='pyformat')
         )
 
+    def test_anon_param_name_on_keys(self):
+        self.assert_compile(
+            keyed.insert(),
+            "INSERT INTO keyed (x, y, z) VALUES (%(colx)s, %(coly)s, %(z)s)",
+            dialect=default.DefaultDialect(paramstyle='pyformat')
+        )
+        self.assert_compile(
+            keyed.c.coly == 5,
+            "keyed.y = %(coly_1)s",
+            checkparams={'coly_1': 5},
+            dialect=default.DefaultDialect(paramstyle='pyformat')
+        )
+
     def test_dupe_columns(self):
         """test that deduping is performed against clause
         element identity, not rendered result."""
