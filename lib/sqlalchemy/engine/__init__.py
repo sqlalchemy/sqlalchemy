@@ -292,6 +292,17 @@ def create_engine(*args, **kwargs):
         be used instead. Can be used for testing of DBAPIs as well as to
         inject "mock" DBAPI implementations into the :class:`.Engine`.
 
+    :param paramstyle=None: The `paramstyle <http://legacy.python.org/dev/peps/pep-0249/#paramstyle>`_
+        to use when rendering bound parameters.  This style defaults to the
+        one recommended by the DBAPI itself, which is retrieved from the
+        ``.paramstyle`` attribute of the DBAPI.  However, most DBAPIs accept
+        more than one paramstyle, and in particular it may be desirable
+        to change a "named" paramstyle into a "positional" one, or vice versa.
+        When this attribute is passed, it should be one of the values
+        ``"qmark"``, ``"numeric"``, ``"named"``, ``"format"`` or
+        ``"pyformat"``, and should correspond to a parameter style known
+        to be supported by the DBAPI in use.
+
     :param pool=None: an already-constructed instance of
         :class:`~sqlalchemy.pool.Pool`, such as a
         :class:`~sqlalchemy.pool.QueuePool` instance. If non-None, this
