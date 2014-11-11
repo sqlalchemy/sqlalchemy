@@ -14,6 +14,18 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3248
+
+        Fixed issue where the columns from a SELECT embedded in an
+        INSERT, either through the values clause or as a "from select",
+        would pollute the column types used in the result set produced by
+        the RETURNING clause when columns from both statements shared the
+        same name, leading to potential errors or mis-adaptation when
+        retrieving the returning rows.
+
+    .. change::
         :tags: bug, orm, sqlite
         :versions: 1.0.0
         :tickets: 3241
