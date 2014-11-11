@@ -3314,3 +3314,32 @@ class ResultMapTest(fixtures.TestBase):
         is_(
             comp.result_map['t1_a'][1][2], t1.c.a
         )
+
+    def test_insert_with_select_values(self):
+        astring = Column('a', String)
+        aint = Column('a', Integer)
+        m = MetaData()
+        Table('t1', m, astring)
+        t2 = Table('t2', m, aint)
+
+        stmt = t2.insert().values(a=select([astring])).returning(aint)
+        comp = stmt.compile(dialect=postgresql.dialect())
+        eq_(
+            comp.result_map,
+            {'a': ('a', (aint, 'a', 'a'), aint.type)}
+        )
+
+    def test_insert_from_select(self):
+        astring = Column('a', String)
+        aint = Column('a', Integer)
+        m = MetaData()
+        Table('t1', m, astring)
+        t2 = Table('t2', m, aint)
+
+        stmt = t2.insert().from_select(['a'], select([astring])).\
+            returning(aint)
+        comp = stmt.compile(dialect=postgresql.dialect())
+        eq_(
+            comp.result_map,
+            {'a': ('a', (aint, 'a', 'a'), aint.type)}
+        )

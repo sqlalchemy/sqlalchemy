@@ -153,6 +153,39 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result2.fetchall(), [(2, False), ])
 
 
+class CompositeStatementTest(fixtures.TestBase):
+    __requires__ = 'returning',
+    __backend__ = True
+
+    @testing.provide_metadata
+    def test_select_doesnt_pollute_result(self):
+        class MyType(TypeDecorator):
+            impl = Integer
+
+            def process_result_value(self, value, dialect):
+                raise Exception("I have not been selected")
+
+        t1 = Table(
+            't1', self.metadata,
+            Column('x', MyType())
+        )
+
+        t2 = Table(
+            't2', self.metadata,
+            Column('x', Integer)
+        )
+
+        self.metadata.create_all(testing.db)
+        with testing.db.connect() as conn:
+            conn.execute(t1.insert().values(x=5))
+
+            stmt = t2.insert().values(
+                x=select([t1.c.x]).as_scalar()).returning(t2.c.x)
+
+            result = conn.execute(stmt)
+            eq_(result.scalar(), 5)
+
+
 class SequenceReturningTest(fixtures.TestBase):
     __requires__ = 'returning', 'sequences'
     __backend__ = True

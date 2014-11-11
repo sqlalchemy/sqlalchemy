@@ -1669,6 +1669,12 @@ class SQLCompiler(Compiled):
         )
 
     def visit_insert(self, insert_stmt, **kw):
+        self.stack.append(
+            {'correlate_froms': set(),
+             "iswrapper": False,
+             "asfrom_froms": set(),
+             "selectable": insert_stmt})
+
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt, **kw)
 
@@ -1751,6 +1757,8 @@ class SQLCompiler(Compiled):
 
         if self.returning and not self.returning_precedes_values:
             text += " " + returning_clause
+
+        self.stack.pop(-1)
 
         return text
 
