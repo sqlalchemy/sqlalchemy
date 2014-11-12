@@ -1173,7 +1173,7 @@ class SQLiteDialect(default.DefaultDialect):
             return []
         table_data = row[0]
 
-        UNIQUE_PATTERN = 'CONSTRAINT (\w+) UNIQUE \(([^\)]+)\)'
+        UNIQUE_PATTERN = '(?:CONSTRAINT (\w+) )?UNIQUE \(([^\)]+)\)'
         return [
             {'name': name,
              'column_names': [col.strip(' "') for col in cols.split(',')]}
