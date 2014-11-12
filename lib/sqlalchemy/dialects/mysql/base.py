@@ -2593,7 +2593,7 @@ class MySQLDialect(default.DefaultDialect):
                 pass
             else:
                 self.logger.info(
-                    "Converting unknown KEY type %s to a plain KEY" % flavor)
+                    "Converting unknown KEY type %s to a plain KEY", flavor)
                 pass
             index_d = {}
             index_d['name'] = spec['name']

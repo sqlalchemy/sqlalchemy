@@ -373,7 +373,7 @@ class LazyLoader(AbstractRelationshipLoader):
                         self._equated_columns[c] = self._equated_columns[col]
 
             self.logger.info("%s will use query.get() to "
-                             "optimize instance loads" % self)
+                             "optimize instance loads", self)
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
