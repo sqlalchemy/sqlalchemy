@@ -14,6 +14,18 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, orm
+        :versions: 1.0.0
+        :tickets: 3251
+
+        Fixed a leak which would occur in the unsupported and highly
+        non-recommended use case of replacing a relationship on a fixed
+        mapped class many times, referring to an arbitrarily growing number of
+        target mappers.  A warning is emitted when the old relationship is
+        replaced, however if the mapping were already used for querying, the
+        old relationship would still be referenced within some registries.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :tickets: 3248

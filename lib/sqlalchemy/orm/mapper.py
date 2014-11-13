@@ -1584,6 +1584,8 @@ class Mapper(_InspectionAttr):
                           self,
                           prop,
                       ))
+            oldprop = self._props[key]
+            self._path_registry.pop(oldprop, None)
 
         self._props[key] = prop
 
