@@ -115,7 +115,11 @@ class ProfileStatsFile(object):
         per_fn = self.data[test_key]
         per_platform = per_fn[self.platform_key]
         counts = per_platform['counts']
-        counts[-1] = callcount
+        current_count = per_platform['current_count']
+        if current_count < len(counts):
+            counts[current_count - 1] = callcount
+        else:
+            counts[-1] = callcount
         if self.write:
             self._write()
 
