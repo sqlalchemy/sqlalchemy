@@ -603,6 +603,24 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(inspector.get_unique_constraints('bar'),
             [{'column_names': [u'b'], 'name': u'bar_b'}])
 
+    def test_get_unnamed_unique_constraints(self):
+        meta = MetaData(testing.db)
+        t1 = Table('foo', meta, Column('f', Integer),
+                   UniqueConstraint('f'))
+        t2 = Table('bar', meta, Column('b', Integer),
+                   UniqueConstraint('b'),
+                   prefixes=['TEMPORARY'])
+        meta.create_all()
+        from sqlalchemy.engine.reflection import Inspector
+        try:
+            inspector = Inspector(testing.db)
+            eq_(inspector.get_unique_constraints('foo'),
+                [{'column_names': [u'f'], 'name': u''}])
+            eq_(inspector.get_unique_constraints('bar'),
+                [{'column_names': [u'b'], 'name': u''}])
+        finally:
+            meta.drop_all()
+
 
 class AttachedMemoryDBTest(fixtures.TestBase):
     __only_on__ = 'sqlite'
