@@ -30,7 +30,7 @@ def exclude(db, op, spec, description=None):
 class DefaultRequirements(SuiteRequirements):
     @property
     def deferrable_or_no_constraints(self):
-        """Target database must support derferable constraints."""
+        """Target database must support deferrable constraints."""
 
         return skip_if([
             no_support('firebird', 'not supported by database'),
