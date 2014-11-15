@@ -60,6 +60,15 @@
         old relationship would still be referenced within some registries.
 
     .. change::
+        :tags: bug, sqlite
+        :versions: 1.0.0
+        :tickets: 3244
+
+        Fixed issue where un-named UNIQUE constraints were not being
+        reflected in SQLite. Now un-named UNIQUE constraints are returned
+        with a name of u''.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :tickets: 3248
