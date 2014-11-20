@@ -3732,7 +3732,8 @@ def _literal_as_text(element, warn=False):
         return _const_expr(element)
     else:
         raise exc.ArgumentError(
-            "SQL expression object or string expected."
+            "SQL expression object or string expected, got object of type %r "
+            "instead" % type(element)
         )
 
 

@@ -368,7 +368,8 @@ class DefaultTest(fixtures.TestBase):
         ):
             assert_raises_message(
                 sa.exc.ArgumentError,
-                "SQL expression object or string expected.",
+                "SQL expression object or string expected, got object of type "
+                "<type 'list'> instead",
                 t.select, [const]
             )
             assert_raises_message(
