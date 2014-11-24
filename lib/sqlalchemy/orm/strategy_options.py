@@ -176,6 +176,9 @@ class Load(Generative, MapperOption):
             path = path.entity_path
         return path
 
+    def __str__(self):
+        return "Load(strategy=%r)" % self.strategy
+
     def _coerce_strat(self, strategy):
         if strategy is not None:
             strategy = tuple(sorted(strategy.items()))
