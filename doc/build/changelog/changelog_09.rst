@@ -14,6 +14,15 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, examples
+        :versions: 1.0.0
+
+        Fixed a bug in the examples/generic_assocaitions/discriminator_on_association.py
+        example, where the subclasses of AddressAssociation were not being
+        mapped as "single table inheritance", leading to problems when trying
+        to use the mappings further.
+
+    .. change::
         :tags: bug, orm
         :versions: 1.0.0
         :tickets: 3251
