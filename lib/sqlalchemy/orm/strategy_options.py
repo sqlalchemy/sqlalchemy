@@ -161,11 +161,14 @@ class Load(Generative, MapperOption):
                 ext_info = inspect(ac)
 
                 path_element = ext_info.mapper
+                existing = path.entity_path[prop].get(
+                    self.context, "path_with_polymorphic")
                 if not ext_info.is_aliased_class:
                     ac = orm_util.with_polymorphic(
                         ext_info.mapper.base_mapper,
                         ext_info.mapper, aliased=True,
-                        _use_mapper_path=True)
+                        _use_mapper_path=True,
+                        _existing_alias=existing)
                 path.entity_path[prop].set(
                     self.context, "path_with_polymorphic", inspect(ac))
                 path = path[prop][path_element]

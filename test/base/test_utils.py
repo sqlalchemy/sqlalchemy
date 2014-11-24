@@ -8,6 +8,7 @@ from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
 from sqlalchemy.util import langhelpers
 
+
 class _KeyedTupleTest(object):
 
     def _fixture(self, values, labels):
@@ -282,6 +283,35 @@ class MemoizedAttrTest(fixtures.TestBase):
         eq_(f1.bar(), 20)
         eq_(val[0], 21)
 
+
+class ToListTest(fixtures.TestBase):
+    def test_from_string(self):
+        eq_(
+            util.to_list("xyz"),
+            ["xyz"]
+        )
+
+    def test_from_set(self):
+        spec = util.to_list(set([1, 2, 3]))
+        assert isinstance(spec, list)
+        eq_(
+            sorted(spec),
+            [1, 2, 3]
+        )
+
+    def test_from_dict(self):
+        spec = util.to_list({1: "a", 2: "b", 3: "c"})
+        assert isinstance(spec, list)
+        eq_(
+            sorted(spec),
+            [1, 2, 3]
+        )
+
+    def test_from_tuple(self):
+        eq_(
+            util.to_list((1, 2, 3)),
+            [1, 2, 3]
+        )
 
 class ColumnCollectionTest(fixtures.TestBase):
 

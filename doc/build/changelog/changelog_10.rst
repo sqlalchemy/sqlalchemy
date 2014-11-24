@@ -22,6 +22,28 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3256
+
+        The :meth:`.PropComparator.of_type` modifier has been
+        improved in conjunction with loader directives such as
+        :func:`.joinedload` and :func:`.contains_eager` such that if
+        two :meth:`.PropComparator.of_type` modifiers of the same
+        base type/path are encountered, they will be joined together
+        into a single "polymorphic" entity, rather than replacing
+        the entity of type A with the one of type B.  E.g.
+        a joinedload of ``A.b.of_type(BSub1)->BSub1.c`` combined with
+        joinedload of ``A.b.of_type(BSub2)->BSub2.c`` will create a
+        single joinedload of ``A.b.of_type((BSub1, BSub2)) -> BSub1.c, BSub2.c``,
+        without the need for the ``with_polymorphic`` to be explicit
+        in the query.
+
+        .. seealso::
+
+            :ref:`eagerloading_polymorphic_subtypes` - contains an updated
+            example illustrating the new format.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3245
 
