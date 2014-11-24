@@ -84,6 +84,7 @@ class HasAddresses(object):
                         "%sAddressAssociation" % name,
                         (AddressAssociation, ),
                         dict(
+                            __tablename__=None,
                             __mapper_args__={
                                 "polymorphic_identity": discriminator
                             }
