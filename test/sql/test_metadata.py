@@ -227,6 +227,50 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         fk1 = ForeignKeyConstraint(('foo', ), ('bar', ), table=t1)
         assert fk1 in t1.constraints
 
+    def test_fk_constraint_col_collection_w_table(self):
+        c1 = Column('foo', Integer)
+        c2 = Column('bar', Integer)
+        m = MetaData()
+        t1 = Table('t', m, c1, c2)
+        fk1 = ForeignKeyConstraint(('foo', ), ('bar', ), table=t1)
+        eq_(dict(fk1.columns), {"foo": c1})
+
+    def test_fk_constraint_col_collection_no_table(self):
+        fk1 = ForeignKeyConstraint(('foo', 'bat'), ('bar', 'hoho'))
+        eq_(dict(fk1.columns), {})
+        eq_(fk1.column_keys, ['foo', 'bat'])
+        eq_(fk1._col_description, 'foo, bat')
+        eq_(fk1._elements, {"foo": fk1.elements[0], "bat": fk1.elements[1]})
+
+    def test_fk_constraint_col_collection_no_table_real_cols(self):
+        c1 = Column('foo', Integer)
+        c2 = Column('bar', Integer)
+        fk1 = ForeignKeyConstraint((c1, ), (c2, ))
+        eq_(dict(fk1.columns), {})
+        eq_(fk1.column_keys, ['foo'])
+        eq_(fk1._col_description, 'foo')
+        eq_(fk1._elements, {"foo": fk1.elements[0]})
+
+    def test_fk_constraint_col_collection_added_to_table(self):
+        c1 = Column('foo', Integer)
+        m = MetaData()
+        fk1 = ForeignKeyConstraint(('foo', ), ('bar', ))
+        Table('t', m, c1, fk1)
+        eq_(dict(fk1.columns), {"foo": c1})
+        eq_(fk1._elements, {"foo": fk1.elements[0]})
+
+    def test_fk_constraint_col_collection_via_fk(self):
+        fk = ForeignKey('bar')
+        c1 = Column('foo', Integer, fk)
+        m = MetaData()
+        t1 = Table('t', m, c1)
+        fk1 = fk.constraint
+        eq_(fk1.column_keys, ['foo'])
+        assert fk1 in t1.constraints
+        eq_(fk1.column_keys, ['foo'])
+        eq_(dict(fk1.columns), {"foo": c1})
+        eq_(fk1._elements, {"foo": fk})
+
     def test_fk_no_such_parent_col_error(self):
         meta = MetaData()
         a = Table('a', meta, Column('a', Integer))

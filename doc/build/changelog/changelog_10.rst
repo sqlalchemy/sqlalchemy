@@ -22,6 +22,20 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3243
+
+        The behavioral contract of the :attr:`.ForeignKeyConstraint.columns`
+        collection has been made consistent; this attribute is now a
+        :class:`.ColumnCollection` like that of all other constraints and
+        is initialized at the point when the constraint is associated with
+        a :class:`.Table`.
+
+        .. seealso::
+
+            :ref:`change_3243`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3256
 

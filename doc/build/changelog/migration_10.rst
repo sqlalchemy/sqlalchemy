@@ -1427,7 +1427,21 @@ A :class:`.Table` can be set up for reflection by passing
 
 :ticket:`3027`
 
+.. _change_3243:
 
+ForeignKeyConstraint.columns is now a ColumnCollection
+------------------------------------------------------
+
+:attr:`.ForeignKeyConstraint.columns` was previously a plain list
+containing either strings or :class:`.Column` objects, depending on
+how the :class:`.ForeignKeyConstraint` was constructed and whether it was
+associated with a table.  The collection is now a :class:`.ColumnCollection`,
+and is only initialized after the :class:`.ForeignKeyConstraint` is
+associated with a :class:`.Table`.  A new accessor
+:attr:`.ForeignKeyConstraint.column_keys`
+is added to unconditionally return string keys for the local set of
+columns regardless of how the object was constructed or its current
+state.
 
 Dialect Changes
 ===============

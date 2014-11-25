@@ -2286,14 +2286,14 @@ class DDLCompiler(Compiled):
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        remote_table = list(constraint._elements.values())[0].column.table
+        remote_table = list(constraint.elements)[0].column.table
         text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name)
-                      for f in constraint._elements.values()),
+                      for f in constraint.elements),
             self.define_constraint_remote_table(
                 constraint, remote_table, preparer),
             ', '.join(preparer.quote(f.column.name)
-                      for f in constraint._elements.values())
+                      for f in constraint.elements)
         )
         text += self.define_constraint_match(constraint)
         text += self.define_constraint_cascades(constraint)
