@@ -1,4 +1,5 @@
-"""Unit tests illustrating usage of the ``history_meta.py`` module functions."""
+"""Unit tests illustrating usage of the ``history_meta.py``
+module functions."""
 
 from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base
@@ -11,9 +12,11 @@ from sqlalchemy.orm import exc as orm_exc
 
 engine = None
 
+
 def setup_module():
     global engine
     engine = create_engine('sqlite://', echo=True)
+
 
 class TestVersioning(TestCase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -52,14 +55,16 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         SomeClassHistory = SomeClass.__history_mapper__.class_
 
         eq_(
-            sess.query(SomeClassHistory).filter(SomeClassHistory.version == 1).all(),
+            sess.query(SomeClassHistory).filter(
+                SomeClassHistory.version == 1).all(),
             [SomeClassHistory(version=1, name='sc1')]
         )
 
         sc.name = 'sc1modified2'
 
         eq_(
-            sess.query(SomeClassHistory).order_by(SomeClassHistory.version).all(),
+            sess.query(SomeClassHistory).order_by(
+                SomeClassHistory.version).all(),
             [
                 SomeClassHistory(version=1, name='sc1'),
                 SomeClassHistory(version=2, name='sc1modified')
@@ -76,7 +81,8 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         sess.commit()
 
         eq_(
-            sess.query(SomeClassHistory).order_by(SomeClassHistory.version).all(),
+            sess.query(SomeClassHistory).order_by(
+                SomeClassHistory.version).all(),
             [
                 SomeClassHistory(version=1, name='sc1'),
                 SomeClassHistory(version=2, name='sc1modified')
@@ -87,7 +93,8 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         sess.commit()
 
         eq_(
-            sess.query(SomeClassHistory).order_by(SomeClassHistory.version).all(),
+            sess.query(SomeClassHistory).order_by(
+                SomeClassHistory.version).all(),
             [
                 SomeClassHistory(version=1, name='sc1'),
                 SomeClassHistory(version=2, name='sc1modified'),
@@ -164,12 +171,12 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         SomeClassHistory = SomeClass.__history_mapper__.class_
 
         eq_(
-            sess.query(SomeClassHistory.boole).order_by(SomeClassHistory.id).all(),
+            sess.query(SomeClassHistory.boole).order_by(
+                SomeClassHistory.id).all(),
             [(True, ), (None, )]
         )
 
         eq_(sc.version, 3)
-
 
     def test_deferred(self):
         """test versioning of unloaded, deferred columns."""
@@ -199,10 +206,10 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         SomeClassHistory = SomeClass.__history_mapper__.class_
 
         eq_(
-            sess.query(SomeClassHistory).filter(SomeClassHistory.version == 1).all(),
+            sess.query(SomeClassHistory).filter(
+                SomeClassHistory.version == 1).all(),
             [SomeClassHistory(version=1, name='sc1', data='somedata')]
         )
-
 
     def test_joined_inheritance(self):
         class BaseClass(Versioned, self.Base, ComparableEntity):
@@ -212,7 +219,9 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             name = Column(String(50))
             type = Column(String(20))
 
-            __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': 'base'}
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'polymorphic_identity': 'base'}
 
         class SubClassSeparatePk(BaseClass):
             __tablename__ = 'subtable1'
@@ -246,38 +255,50 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         sess.commit()
 
         BaseClassHistory = BaseClass.__history_mapper__.class_
-        SubClassSeparatePkHistory = SubClassSeparatePk.__history_mapper__.class_
+        SubClassSeparatePkHistory = \
+            SubClassSeparatePk.__history_mapper__.class_
         SubClassSamePkHistory = SubClassSamePk.__history_mapper__.class_
         eq_(
             sess.query(BaseClassHistory).order_by(BaseClassHistory.id).all(),
             [
-                SubClassSeparatePkHistory(id=1, name='sep1', type='sep', version=1),
+                SubClassSeparatePkHistory(
+                    id=1, name='sep1', type='sep', version=1),
                 BaseClassHistory(id=2, name='base1', type='base', version=1),
-                SubClassSamePkHistory(id=3, name='same1', type='same', version=1)
+                SubClassSamePkHistory(
+                    id=3, name='same1', type='same', version=1)
             ]
         )
 
         same1.subdata2 = 'same1subdatamod2'
 
         eq_(
-            sess.query(BaseClassHistory).order_by(BaseClassHistory.id, BaseClassHistory.version).all(),
+            sess.query(BaseClassHistory).order_by(
+                BaseClassHistory.id, BaseClassHistory.version).all(),
             [
-                SubClassSeparatePkHistory(id=1, name='sep1', type='sep', version=1),
+                SubClassSeparatePkHistory(
+                    id=1, name='sep1', type='sep', version=1),
                 BaseClassHistory(id=2, name='base1', type='base', version=1),
-                SubClassSamePkHistory(id=3, name='same1', type='same', version=1),
-                SubClassSamePkHistory(id=3, name='same1', type='same', version=2)
+                SubClassSamePkHistory(
+                    id=3, name='same1', type='same', version=1),
+                SubClassSamePkHistory(
+                    id=3, name='same1', type='same', version=2)
             ]
         )
 
         base1.name = 'base1mod2'
         eq_(
-            sess.query(BaseClassHistory).order_by(BaseClassHistory.id, BaseClassHistory.version).all(),
+            sess.query(BaseClassHistory).order_by(
+                BaseClassHistory.id, BaseClassHistory.version).all(),
             [
-                SubClassSeparatePkHistory(id=1, name='sep1', type='sep', version=1),
+                SubClassSeparatePkHistory(
+                    id=1, name='sep1', type='sep', version=1),
                 BaseClassHistory(id=2, name='base1', type='base', version=1),
-                BaseClassHistory(id=2, name='base1mod', type='base', version=2),
-                SubClassSamePkHistory(id=3, name='same1', type='same', version=1),
-                SubClassSamePkHistory(id=3, name='same1', type='same', version=2)
+                BaseClassHistory(
+                    id=2, name='base1mod', type='base', version=2),
+                SubClassSamePkHistory(
+                    id=3, name='same1', type='same', version=1),
+                SubClassSamePkHistory(
+                    id=3, name='same1', type='same', version=2)
             ]
         )
 
@@ -289,8 +310,9 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             name = Column(String(50))
             type = Column(String(20))
 
-            __mapper_args__ = {'polymorphic_on': type,
-                                'polymorphic_identity': 'base'}
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'polymorphic_identity': 'base'}
 
         class SubClass(BaseClass):
             __tablename__ = 'subtable'
@@ -342,7 +364,8 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             "ON basetable_history.id = subtable_history.base_id "
             "AND basetable_history.version = subtable_history.version "
             "JOIN subsubtable_history ON subtable_history.id = "
-            "subsubtable_history.id AND subtable_history.version = subsubtable_history.version"
+            "subsubtable_history.id AND subtable_history.version = "
+            "subsubtable_history.version"
         )
 
         ssc = SubSubClass(name='ss1', subdata1='sd1', subdata2='sd2')
@@ -360,8 +383,9 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             [SubSubHistory(name='ss1', subdata1='sd1',
                                 subdata2='sd2', type='subsub', version=1)]
         )
-        eq_(ssc, SubSubClass(name='ss1', subdata1='sd11',
-                    subdata2='sd22', version=2))
+        eq_(ssc, SubSubClass(
+            name='ss1', subdata1='sd11',
+            subdata2='sd22', version=2))
 
 
 
@@ -372,8 +396,9 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             type = Column(String(50))
-            __mapper_args__ = {'polymorphic_on': type,
-                                'polymorphic_identity': 'base'}
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'polymorphic_identity': 'base'}
 
         class SubClass(BaseClass):
 
@@ -396,8 +421,8 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         SubClassHistory = SubClass.__history_mapper__.class_
 
         eq_(
-            sess.query(BaseClassHistory).order_by(BaseClassHistory.id,
-                                        BaseClassHistory.version).all(),
+            sess.query(BaseClassHistory).order_by(
+                BaseClassHistory.id, BaseClassHistory.version).all(),
             [BaseClassHistory(id=1, name='b1', type='base', version=1)]
         )
 
@@ -405,11 +430,12 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         b1.name = 'b1modified2'
 
         eq_(
-            sess.query(BaseClassHistory).order_by(BaseClassHistory.id,
-                            BaseClassHistory.version).all(),
+            sess.query(BaseClassHistory).order_by(
+                BaseClassHistory.id, BaseClassHistory.version).all(),
             [
                 BaseClassHistory(id=1, name='b1', type='base', version=1),
-                BaseClassHistory(id=1, name='b1modified', type='base', version=2),
+                BaseClassHistory(
+                    id=1, name='b1modified', type='base', version=2),
                 SubClassHistory(id=2, name='s1', type='sub', version=1)
             ]
         )
@@ -475,14 +501,16 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         assert sc.version == 2
 
         eq_(
-            sess.query(SomeClassHistory).filter(SomeClassHistory.version == 1).all(),
+            sess.query(SomeClassHistory).filter(
+                SomeClassHistory.version == 1).all(),
             [SomeClassHistory(version=1, name='sc1', related_id=None)]
         )
 
         sc.related = None
 
         eq_(
-            sess.query(SomeClassHistory).order_by(SomeClassHistory.version).all(),
+            sess.query(SomeClassHistory).order_by(
+                SomeClassHistory.version).all(),
             [
                 SomeClassHistory(version=1, name='sc1', related_id=None),
                 SomeClassHistory(version=2, name='sc1', related_id=sr1.id)
