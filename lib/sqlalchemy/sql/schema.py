@@ -2647,7 +2647,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         .. versionadded:: 1.0.0
 
         """
-        if hasattr(self, 'table'):
+        if hasattr(self, "parent"):
             return self.columns.keys()
         else:
             return [
