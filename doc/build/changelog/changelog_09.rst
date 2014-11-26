@@ -17,6 +17,19 @@
         :tags: bug, examples
         :versions: 1.0.0
 
+        Updated the :ref:`examples_versioned_history` example such that
+        mapped columns are re-mapped to
+        match column names as well as grouping of columns; in particular,
+        this allows columns that are explicitly grouped in a same-column-named
+        joined inheritance scenario to be mapped in the same way in the
+        history mappings, avoiding warnings added in the 0.9 series
+        regarding this pattern and allowing the same view of attribute
+        keys.
+
+    .. change::
+        :tags: bug, examples
+        :versions: 1.0.0
+
         Fixed a bug in the examples/generic_assocaitions/discriminator_on_association.py
         example, where the subclasses of AddressAssociation were not being
         mapped as "single table inheritance", leading to problems when trying

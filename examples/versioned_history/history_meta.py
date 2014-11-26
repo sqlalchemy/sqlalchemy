@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import mapper, attributes, object_mapper
 from sqlalchemy.orm.exc import UnmappedColumnError
 from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer, DateTime
-from sqlalchemy import event
+from sqlalchemy import event, util
 import datetime
 from sqlalchemy.orm.properties import RelationshipProperty
 
@@ -36,14 +36,20 @@ def _history_mapper(local_mapper):
     super_fks = []
 
     def _col_copy(col):
+        orig = col
         col = col.copy()
+        orig.info['history_copy'] = col
         col.unique = False
         col.default = col.server_default = None
         return col
 
+    properties = util.OrderedDict()
     if not super_mapper or \
             local_mapper.local_table is not super_mapper.local_table:
         cols = []
+        version_meta = {"version_meta": True}  # add column.info to identify
+                                               # columns specific to versioning
+
         for column in local_mapper.local_table.c:
             if _is_versioning_col(column):
                 continue
@@ -64,15 +70,19 @@ def _history_mapper(local_mapper):
             if column is local_mapper.polymorphic_on:
                 polymorphic_on = col
 
+            orig_prop = local_mapper.get_property_by_column(column)
+            # carry over column re-mappings
+            if len(orig_prop.columns) > 1 or \
+                    orig_prop.columns[0].key != orig_prop.key:
+                properties[orig_prop.key] = tuple(
+                    col.info['history_copy'] for col in orig_prop.columns)
+
         if super_mapper:
             super_fks.append(
                 (
                     'version', super_history_mapper.local_table.c.version
                 )
             )
-
-        version_meta = {"version_meta": True}  # add column.info to identify
-                                               # columns specific to versioning
 
         # "version" stores the integer version id.  This column is
         # required.
@@ -84,9 +94,10 @@ def _history_mapper(local_mapper):
         # "changed" column stores the UTC timestamp of when the
         # history row was created.
         # This column is optional and can be omitted.
-        cols.append(Column('changed', DateTime,
-                            default=datetime.datetime.utcnow,
-                            info=version_meta))
+        cols.append(Column(
+            'changed', DateTime,
+            default=datetime.datetime.utcnow,
+            info=version_meta))
 
         if super_fks:
             cols.append(ForeignKeyConstraint(*zip(*super_fks)))
@@ -108,17 +119,25 @@ def _history_mapper(local_mapper):
 
     if super_history_mapper:
         bases = (super_history_mapper.class_,)
+
+        if table is not None:
+            properties['changed'] = (
+                (table.c.changed, ) +
+                tuple(super_history_mapper.attrs.changed.columns)
+            )
+
     else:
         bases = local_mapper.base_mapper.class_.__bases__
     versioned_cls = type.__new__(type, "%sHistory" % cls.__name__, bases, {})
 
     m = mapper(
-            versioned_cls,
-            table,
-            inherits=super_history_mapper,
-            polymorphic_on=polymorphic_on,
-            polymorphic_identity=local_mapper.polymorphic_identity
-            )
+        versioned_cls,
+        table,
+        inherits=super_history_mapper,
+        polymorphic_on=polymorphic_on,
+        polymorphic_identity=local_mapper.polymorphic_identity,
+        properties=properties
+    )
     cls.__history_mapper__ = m
 
     if not super_history_mapper:

@@ -79,6 +79,8 @@ XML Persistence
 Versioning Objects
 ------------------------
 
+.. _examples_versioned_history:
+
 Versioning with a History Table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

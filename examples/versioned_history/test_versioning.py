@@ -4,11 +4,16 @@ module functions."""
 from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base
 from .history_meta import Versioned, versioned_session
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Boolean
-from sqlalchemy.orm import clear_mappers, Session, deferred, relationship
+from sqlalchemy import create_engine, Column, Integer, String, \
+    ForeignKey, Boolean, select
+from sqlalchemy.orm import clear_mappers, Session, deferred, relationship, \
+    column_property
 from sqlalchemy.testing import AssertsCompiledSQL, eq_, assert_raises
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.orm import exc as orm_exc
+import warnings
+
+warnings.simplefilter("error")
 
 engine = None
 
@@ -226,7 +231,10 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         class SubClassSeparatePk(BaseClass):
             __tablename__ = 'subtable1'
 
-            id = Column(Integer, primary_key=True)
+            id = column_property(
+                Column(Integer, primary_key=True),
+                BaseClass.id
+            )
             base_id = Column(Integer, ForeignKey('basetable.id'))
             subdata1 = Column(String(50))
 
@@ -235,7 +243,8 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         class SubClassSamePk(BaseClass):
             __tablename__ = 'subtable2'
 
-            id = Column(Integer, ForeignKey('basetable.id'), primary_key=True)
+            id = Column(
+                Integer, ForeignKey('basetable.id'), primary_key=True)
             subdata2 = Column(String(50))
 
             __mapper_args__ = {'polymorphic_identity': 'same'}
@@ -317,7 +326,10 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         class SubClass(BaseClass):
             __tablename__ = 'subtable'
 
-            id = Column(Integer, primary_key=True)
+            id = column_property(
+                Column(Integer, primary_key=True),
+                BaseClass.id
+            )
             base_id = Column(Integer, ForeignKey('basetable.id'))
             subdata1 = Column(String(50))
 
@@ -338,11 +350,17 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         q = sess.query(SubSubHistory)
         self.assert_compile(
             q,
+
+
             "SELECT "
 
             "subsubtable_history.id AS subsubtable_history_id, "
             "subtable_history.id AS subtable_history_id, "
             "basetable_history.id AS basetable_history_id, "
+
+            "subsubtable_history.changed AS subsubtable_history_changed, "
+            "subtable_history.changed AS subtable_history_changed, "
+            "basetable_history.changed AS basetable_history_changed, "
 
             "basetable_history.name AS basetable_history_name, "
 
@@ -352,9 +370,6 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             "subtable_history.version AS subtable_history_version, "
             "basetable_history.version AS basetable_history_version, "
 
-            "subsubtable_history.changed AS subsubtable_history_changed, "
-            "subtable_history.changed AS subtable_history_changed, "
-            "basetable_history.changed AS basetable_history_changed, "
 
             "subtable_history.base_id AS subtable_history_base_id, "
             "subtable_history.subdata1 AS subtable_history_subdata1, "
@@ -387,7 +402,49 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             name='ss1', subdata1='sd11',
             subdata2='sd22', version=2))
 
+    def test_joined_inheritance_changed(self):
+        class BaseClass(Versioned, self.Base, ComparableEntity):
+            __tablename__ = 'basetable'
 
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            type = Column(String(20))
+
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'polymorphic_identity': 'base'
+            }
+
+        class SubClass(BaseClass):
+            __tablename__ = 'subtable'
+
+            id = Column(Integer, ForeignKey('basetable.id'), primary_key=True)
+
+            __mapper_args__ = {'polymorphic_identity': 'sep'}
+
+        self.create_tables()
+
+        BaseClassHistory = BaseClass.__history_mapper__.class_
+        SubClassHistory = SubClass.__history_mapper__.class_
+        sess = self.session
+        s1 = SubClass(name='s1')
+        sess.add(s1)
+        sess.commit()
+
+        s1.name = 's2'
+        sess.commit()
+
+        actual_changed_base = sess.scalar(
+            select([BaseClass.__history_mapper__.local_table.c.changed]))
+        actual_changed_sub = sess.scalar(
+            select([SubClass.__history_mapper__.local_table.c.changed]))
+        h1 = sess.query(BaseClassHistory).first()
+        eq_(h1.changed, actual_changed_base)
+        eq_(h1.changed, actual_changed_sub)
+
+        h1 = sess.query(SubClassHistory).first()
+        eq_(h1.changed, actual_changed_base)
+        eq_(h1.changed, actual_changed_sub)
 
     def test_single_inheritance(self):
         class BaseClass(Versioned, self.Base, ComparableEntity):
