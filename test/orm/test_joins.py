@@ -362,6 +362,8 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     @classmethod
     def setup_mappers(cls):
         User = cls.classes.User
