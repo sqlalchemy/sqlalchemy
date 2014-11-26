@@ -93,7 +93,10 @@ def setup_options(make_option):
                 help="Exclude tests with tag <tag>")
     make_option("--write-profiles", action="store_true",
                 dest="write_profiles", default=False,
-                help="Write/update profiling data.")
+                help="Write/update failing profiling data.")
+    make_option("--force-write-profiles", action="store_true",
+                dest="force_write_profiles", default=False,
+                help="Unconditionally write/update profiling data.")
 
 
 def configure_follower(follower_ident):

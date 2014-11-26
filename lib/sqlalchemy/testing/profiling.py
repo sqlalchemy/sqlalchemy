@@ -42,7 +42,11 @@ class ProfileStatsFile(object):
     """
 
     def __init__(self, filename):
-        self.write = (
+        self.force_write = (
+            config.options is not None and
+            config.options.force_write_profiles
+        )
+        self.write = self.force_write or (
             config.options is not None and
             config.options.write_profiles
         )
@@ -239,7 +243,7 @@ def count_functions(variance=0.05):
         deviance = int(callcount * variance)
         failed = abs(callcount - expected_count) > deviance
 
-        if failed:
+        if failed or _profile_stats.force_write:
             if _profile_stats.write:
                 _profile_stats.replace(callcount)
             else:
