@@ -360,9 +360,9 @@ test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.4_postgresql_psyco
 
 # TEST: test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation
 
-test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_cextensions 6098,399,6666,18183,1118,2606
-test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_nocextensions 6169,404,6898,19614,1226,2671
-test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_cextensions 6008,386,6716,18339,1091,2630
-test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_nocextensions 6093,391,6820,19366,1177,2659
-test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_cextensions 6007,386,6716,18339,1091,2630
-test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_nocextensions 6087,391,6820,19366,1177,2659
+test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_cextensions 6389,407,6826,18499,1134,2661
+test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_nocextensions 6480,412,7058,19930,1242,2726
+test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_cextensions 6268,394,6860,18613,1107,2679
+test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_nocextensions 6361,399,6964,19640,1193,2708
+test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_cextensions 6275,394,6860,18613,1107,2679
+test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_nocextensions 6360,399,6964,19640,1193,2708
