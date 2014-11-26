@@ -1741,7 +1741,13 @@ class Query(object):
          and similar will adapt the incoming criterion to the target
          alias, until :meth:`~.Query.reset_joinpoint` is called.
         :param isouter=False: If True, the join used will be a left outer join,
-         just as if the ``outerjoin()`` method were called.
+         just as if the :meth:`.Query.outerjoin` method were called.  This
+         flag is here to maintain consistency with the same flag as accepted
+         by :meth:`.FromClause.join` and other Core constructs.
+
+
+         .. versionadded:: 1.0.0
+
         :param from_joinpoint=False: When using ``aliased=True``, a setting
          of True here will cause the join to be from the most recent
          joined target, rather than starting back from the original

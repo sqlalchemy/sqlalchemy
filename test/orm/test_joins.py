@@ -430,6 +430,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(literal_column('x'), User).join, Address
         )
 
+    def test_isouter_flag(self):
+        User = self.classes.User
+
+        self.assert_compile(
+            create_session().query(User).join('orders', isouter=True),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users LEFT OUTER JOIN orders ON users.id = orders.user_id"
+        )
+
+
     def test_multi_tuple_form(self):
         """test the 'tuple' form of join, now superseded
         by the two-element join() form.
@@ -722,13 +732,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         result = create_session().query(User).outerjoin('orders', 'items').\
                 filter_by(id=3).outerjoin('orders','address').filter_by(id=1).all()
-        assert [User(id=7, name='jack')] == result
-
-    def test_overlapping_paths_join_isouter(self):
-        User = self.classes.User
-
-        result = create_session().query(User).join('orders', 'items', isouter=True).\
-                filter_by(id=3).join('orders','address', isouter=True).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
 
     def test_from_joinpoint(self):

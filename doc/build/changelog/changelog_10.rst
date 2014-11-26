@@ -22,6 +22,15 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3217
+
+        Added a parameter :paramref:`.Query.join.isouter` which is synonymous
+        with calling :meth:`.Query.outerjoin`; this flag is to provide a more
+        consistent interface compared to Core :meth:`.FromClause.join`.
+        Pull request courtesy Jonathan Vanasco.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3243
 
