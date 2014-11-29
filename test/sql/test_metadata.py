@@ -1473,6 +1473,46 @@ class SchemaTypeTest(fixtures.TestBase):
 
         m1.create_all(testing.db)
 
+    def test_boolean_constraint_type_doesnt_double(self):
+        m1 = MetaData()
+
+        t1 = Table('x', m1, Column("flag", Boolean()))
+        eq_(
+            len([
+                c for c in t1.constraints
+                if isinstance(c, CheckConstraint)]),
+            1
+        )
+        m2 = MetaData()
+        t2 = t1.tometadata(m2)
+
+        eq_(
+            len([
+                c for c in t2.constraints
+                if isinstance(c, CheckConstraint)]),
+            1
+        )
+
+    def test_enum_constraint_type_doesnt_double(self):
+        m1 = MetaData()
+
+        t1 = Table('x', m1, Column("flag", Enum('a', 'b', 'c')))
+        eq_(
+            len([
+                c for c in t1.constraints
+                if isinstance(c, CheckConstraint)]),
+            1
+        )
+        m2 = MetaData()
+        t2 = t1.tometadata(m2)
+
+        eq_(
+            len([
+                c for c in t2.constraints
+                if isinstance(c, CheckConstraint)]),
+            1
+        )
+
 
 class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 

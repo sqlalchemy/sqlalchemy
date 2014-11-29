@@ -998,13 +998,11 @@ class SchemaType(SchemaEventTarget):
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
 
-        # don't associate with MetaData as the hosting type
+        # don't associate with self.metadata as the hosting type
         # is already associated with it, avoid creating event
         # listeners
-        metadata = kw.pop('metadata', None)
         return impltype(name=self.name,
                         schema=schema,
-                        metadata=metadata,
                         inherit_schema=self.inherit_schema,
                         **kw)
 
@@ -1165,7 +1163,8 @@ class Enum(String, SchemaType):
             type_coerce(column, self).in_(self.enums),
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
-                self._should_create_constraint)
+                self._should_create_constraint),
+            _type_bound=True
         )
         assert e.table is table
 
@@ -1303,7 +1302,8 @@ class Boolean(TypeEngine, SchemaType):
             type_coerce(column, self).in_([0, 1]),
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
-                self._should_create_constraint)
+                self._should_create_constraint),
+            _type_bound=True
         )
         assert e.table is table
 

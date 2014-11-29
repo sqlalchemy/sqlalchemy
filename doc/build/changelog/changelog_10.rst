@@ -22,6 +22,16 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3260
+
+        Fixed bug in :meth:`.Table.tometadata` method where the
+        :class:`.CheckConstraint` associated with a :class:`.Boolean`
+        or :class:`.Enum` type object would be doubled in the target table.
+        The copy process now tracks the production of this constraint object
+        as local to a type object.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3217
 

@@ -824,7 +824,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table.append_constraint(
                     c.copy(schema=fk_constraint_schema, target_table=table))
 
-            else:
+            elif not c._type_bound:
                 table.append_constraint(
                     c.copy(schema=schema, target_table=table))
         for index in self.indexes:
@@ -1295,7 +1295,7 @@ class Column(SchemaItem, ColumnClause):
 
         # Constraint objects plus non-constraint-bound ForeignKey objects
         args = \
-            [c.copy(**kw) for c in self.constraints] + \
+            [c.copy(**kw) for c in self.constraints if not c._type_bound] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
         type_ = self.type
@@ -2254,7 +2254,7 @@ class Constraint(DialectKWArgs, SchemaItem):
     __visit_name__ = 'constraint'
 
     def __init__(self, name=None, deferrable=None, initially=None,
-                 _create_rule=None, info=None,
+                 _create_rule=None, info=None, _type_bound=False,
                  **dialect_kw):
         """Create a SQL constraint.
 
@@ -2304,6 +2304,7 @@ class Constraint(DialectKWArgs, SchemaItem):
         if info:
             self.info = info
         self._create_rule = _create_rule
+        self._type_bound = _type_bound
         util.set_creation_order(self)
         self._validate_dialect_kwargs(dialect_kw)
 
@@ -2420,7 +2421,7 @@ class CheckConstraint(Constraint):
 
     def __init__(self, sqltext, name=None, deferrable=None,
                  initially=None, table=None, info=None, _create_rule=None,
-                 _autoattach=True):
+                 _autoattach=True, _type_bound=False):
         """Construct a CHECK constraint.
 
         :param sqltext:
@@ -2450,7 +2451,9 @@ class CheckConstraint(Constraint):
         """
 
         super(CheckConstraint, self).\
-            __init__(name, deferrable, initially, _create_rule, info=info)
+            __init__(
+                name, deferrable, initially, _create_rule, info=info,
+                _type_bound=_type_bound)
         self.sqltext = _literal_as_text(sqltext, warn=False)
         if table is not None:
             self._set_parent_with_dispatch(table)
@@ -2485,7 +2488,8 @@ class CheckConstraint(Constraint):
                             deferrable=self.deferrable,
                             _create_rule=self._create_rule,
                             table=target_table,
-                            _autoattach=False)
+                            _autoattach=False,
+                            _type_bound=self._type_bound)
         return self._schema_item_copy(c)
 
 
