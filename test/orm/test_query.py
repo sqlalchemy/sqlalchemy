@@ -1569,6 +1569,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         assert [] == sess.query(User).order_by(User.id)[3:3]
         assert [] == sess.query(User).order_by(User.id)[0:0]
 
+    @testing.requires.bound_limit_offset
     def test_select_with_bindparam_offset_limit(self):
         """Does a query allow bindparam for the limit?"""
         User = self.classes.User

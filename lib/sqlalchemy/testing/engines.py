@@ -280,10 +280,10 @@ class DBAPIProxyCursor(object):
 
     """
 
-    def __init__(self, engine, conn):
+    def __init__(self, engine, conn, *args, **kwargs):
         self.engine = engine
         self.connection = conn
-        self.cursor = conn.cursor()
+        self.cursor = conn.cursor(*args, **kwargs)
 
     def execute(self, stmt, parameters=None, **kw):
         if parameters:
@@ -311,8 +311,8 @@ class DBAPIProxyConnection(object):
         self.engine = engine
         self.cursor_cls = cursor_cls
 
-    def cursor(self):
-        return self.cursor_cls(self.engine, self.conn)
+    def cursor(self, *args, **kwargs):
+        return self.cursor_cls(self.engine, self.conn, *args, **kwargs)
 
     def close(self):
         self.conn.close()

@@ -39,6 +39,12 @@ class DefaultRequirements(SuiteRequirements):
             ])
 
     @property
+    def check_constraints(self):
+        """Target database must support check constraints."""
+
+        return exclusions.open()
+
+    @property
     def named_constraints(self):
         """target database must support names for constraints."""
 
@@ -119,6 +125,11 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["firebird", "oracle", "postgresql", "sybase"],
                 "not supported by database"
             )
+
+    @property
+    def temporary_table(self):
+        """Target database must support CREATE TEMPORARY TABLE"""
+        return exclusions.open()
 
     @property
     def reflectable_autoincrement(self):
