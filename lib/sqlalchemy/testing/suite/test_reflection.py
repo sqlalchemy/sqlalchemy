@@ -128,6 +128,10 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 DDL("create temporary view user_tmp_v as "
                     "select * from user_tmp")
             )
+            event.listen(
+                user_tmp, "before_drop",
+                DDL("drop view user_tmp_v")
+            )
 
     @classmethod
     def define_index(cls, metadata, users):

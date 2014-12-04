@@ -22,6 +22,23 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3264
+
+        The :meth:`.PGDialect.has_table` method will now query against
+        ``pg_catalog.pg_table_is_visible(c.oid)``, rather than testing
+        for an exact schema match, when the schema name is None; this
+        so that the method will also illustrate that temporary tables
+        are present.  Note that this is a behavioral change, as Postgresql
+        allows a non-temporary table to silently overwrite an existing
+        temporary table of the same name, so this changes the behavior
+        of ``checkfirst`` in that unusual scenario.
+
+        .. seealso::
+
+            :ref:`change_3264`
+
+    .. change::
         :tags: bug, sql
         :tickets: 3260
 

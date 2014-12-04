@@ -276,6 +276,64 @@ running 0.9 in production.
 
 :ticket:`2891`
 
+.. _change_3264:
+
+Postgresql ``has_table()`` now works for temporary tables
+---------------------------------------------------------
+
+This is a simple fix such that "has table" for temporary tables now works,
+so that code like the following may proceed::
+
+    from sqlalchemy import *
+
+    metadata = MetaData()
+    user_tmp = Table(
+        "user_tmp", metadata,
+        Column("id", INT, primary_key=True),
+        Column('name', VARCHAR(50)),
+        prefixes=['TEMPORARY']
+    )
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo='debug')
+    with e.begin() as conn:
+        user_tmp.create(conn, checkfirst=True)
+
+        # checkfirst will succeed
+        user_tmp.create(conn, checkfirst=True)
+
+The very unlikely case that this behavior will cause a non-failing application
+to behave differently, is because Postgresql allows a non-temporary table
+to silently overwrite a temporary table.  So code like the following will
+now act completely differently, no longer creating the real table following
+the temporary table::
+
+    from sqlalchemy import *
+
+    metadata = MetaData()
+    user_tmp = Table(
+        "user_tmp", metadata,
+        Column("id", INT, primary_key=True),
+        Column('name', VARCHAR(50)),
+        prefixes=['TEMPORARY']
+    )
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo='debug')
+    with e.begin() as conn:
+        user_tmp.create(conn, checkfirst=True)
+
+        m2 = MetaData()
+        user = Table(
+            "user_tmp", m2,
+            Column("id", INT, primary_key=True),
+            Column('name', VARCHAR(50)),
+        )
+
+        # in 0.9, *will create* the new table, overwriting the old one.
+        # in 1.0, *will not create* the new table
+        user.create(conn, checkfirst=True)
+
+:ticket:`3264`
+
 .. _feature_gh134:
 
 Postgresql FILTER keyword
