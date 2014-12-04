@@ -68,7 +68,11 @@ class _DefaultColumnComparator(operators.ColumnOperators):
 
     def _boolean_compare(self, expr, op, obj, negate=None, reverse=False,
                          _python_is_types=(util.NoneType, bool),
+                         result_type = None,
                          **kwargs):
+
+        if result_type is None:
+            result_type = type_api.BOOLEANTYPE
 
         if isinstance(obj, _python_is_types + (Null, True_, False_)):
 
@@ -80,7 +84,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
                 return BinaryExpression(expr,
                                         _literal_as_text(obj),
                                         op,
-                                        type_=type_api.BOOLEANTYPE,
+                                        type_=result_type,
                                         negate=negate, modifiers=kwargs)
             else:
                 # all other None/True/False uses IS, IS NOT
@@ -103,13 +107,13 @@ class _DefaultColumnComparator(operators.ColumnOperators):
             return BinaryExpression(obj,
                                     expr,
                                     op,
-                                    type_=type_api.BOOLEANTYPE,
+                                    type_=result_type,
                                     negate=negate, modifiers=kwargs)
         else:
             return BinaryExpression(expr,
                                     obj,
                                     op,
-                                    type_=type_api.BOOLEANTYPE,
+                                    type_=result_type,
                                     negate=negate, modifiers=kwargs)
 
     def _binary_operate(self, expr, op, obj, reverse=False, result_type=None,
@@ -125,7 +129,8 @@ class _DefaultColumnComparator(operators.ColumnOperators):
             op, result_type = left.comparator._adapt_expression(
                 op, right.comparator)
 
-        return BinaryExpression(left, right, op, type_=result_type)
+        return BinaryExpression(
+            left, right, op, type_=result_type, modifiers=kw)
 
     def _conjunction_operate(self, expr, op, other, **kw):
         if op is operators.and_:
@@ -216,11 +221,16 @@ class _DefaultColumnComparator(operators.ColumnOperators):
 
     def _match_impl(self, expr, op, other, **kw):
         """See :meth:`.ColumnOperators.match`."""
+
         return self._boolean_compare(
             expr, operators.match_op,
             self._check_literal(
                 expr, operators.match_op, other),
-            **kw)
+            result_type=type_api.MATCHTYPE,
+            negate=operators.notmatch_op
+            if op is operators.match_op else operators.match_op,
+            **kw
+        )
 
     def _distinct_impl(self, expr, op, **kw):
         """See :meth:`.ColumnOperators.distinct`."""
@@ -282,6 +292,7 @@ class _DefaultColumnComparator(operators.ColumnOperators):
         "isnot": (_boolean_compare, operators.isnot),
         "collate": (_collate_impl,),
         "match_op": (_match_impl,),
+        "notmatch_op": (_match_impl,),
         "distinct_op": (_distinct_impl,),
         "between_op": (_between_impl, ),
         "notbetween_op": (_between_impl, ),

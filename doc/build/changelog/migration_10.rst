@@ -1547,6 +1547,37 @@ again works on MySQL.
 
 :ticket:`3186`
 
+.. _change_3263:
+
+The match() operator now returns an agnostic MatchType compatible with MySQL's floating point return value
+----------------------------------------------------------------------------------------------------------
+
+The return type of a :meth:`.Operators.match` expression is now a new type
+called :class:`.MatchType`.  This is a subclass of :class:`.Boolean`,
+that can be intercepted by the dialect in order to produce a different
+result type at SQL execution time.
+
+Code like the following will now function correctly and return floating points
+on MySQL::
+
+    >>> connection.execute(
+    ...    select([
+    ...        matchtable.c.title.match('Agile Ruby Programming').label('ruby'),
+    ...        matchtable.c.title.match('Dive Python').label('python'),
+    ...        matchtable.c.title
+    ...    ]).order_by(matchtable.c.id)
+    ... )
+    [
+        (2.0, 0.0, 'Agile Web Development with Ruby On Rails'),
+        (0.0, 2.0, 'Dive Into Python'),
+        (2.0, 0.0, "Programming Matz's Ruby"),
+        (0.0, 0.0, 'The Definitive Guide to Django'),
+        (0.0, 1.0, 'Python in a Nutshell')
+    ]
+
+
+:ticket:`3263`
+
 .. _change_3182:
 
 PyODBC driver name is required with hostname-based SQL Server connections

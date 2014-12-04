@@ -1,3 +1,4 @@
+
 ==============
 1.0 Changelog
 ==============
@@ -20,6 +21,28 @@
     described here are also present in the 0.9 and sometimes the 0.8
     series as well.  For changes that are specific to 1.0 with an emphasis
     on compatibility concerns, see :doc:`/changelog/migration_10`.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 3263
+
+        The :meth:`.Operators.match` operator is now handled such that the
+        return type is not strictly assumed to be boolean; it now
+        returns a :class:`.Boolean` subclass called :class:`.MatchType`.
+        The type will still produce boolean behavior when used in Python
+        expressions, however the dialect can override its behavior at
+        result time.  In the case of MySQL, while the MATCH operator
+        is typically used in a boolean context within an expression,
+        if one actually queries for the value of a match expression, a
+        floating point value is returned; this value is not compatible
+        with SQLAlchemy's C-based boolean processor, so MySQL's result-set
+        behavior now follows that of the :class:`.Float` type.
+        A new operator object ``notmatch_op`` is also added to better allow
+        dialects to define the negation of a match operation.
+
+        .. seealso::
+
+            :ref:`change_3263`
 
     .. change::
         :tags: bug, postgresql

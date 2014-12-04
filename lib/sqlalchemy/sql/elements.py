@@ -2763,7 +2763,7 @@ class BinaryExpression(ColumnElement):
                 self.right,
                 self.negate,
                 negate=self.operator,
-                type_=type_api.BOOLEANTYPE,
+                type_=self.type,
                 modifiers=self.modifiers)
         else:
             return super(BinaryExpression, self)._negate()

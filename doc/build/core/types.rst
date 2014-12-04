@@ -67,6 +67,9 @@ Standard Types`_ and the other sections of this chapter.
 .. autoclass:: LargeBinary
   :members:
 
+.. autoclass:: MatchType
+  :members:
+
 .. autoclass:: Numeric
   :members:
 

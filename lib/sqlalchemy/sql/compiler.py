@@ -82,6 +82,7 @@ OPERATORS = {
     operators.eq: ' = ',
     operators.concat_op: ' || ',
     operators.match_op: ' MATCH ',
+    operators.notmatch_op: ' NOT MATCH ',
     operators.in_op: ' IN ',
     operators.notin_op: ' NOT IN ',
     operators.comma_op: ', ',
@@ -862,14 +863,18 @@ class SQLCompiler(Compiled):
         else:
             return "%s = 0" % self.process(element.element, **kw)
 
-    def visit_binary(self, binary, **kw):
+    def visit_notmatch_op_binary(self, binary, operator, **kw):
+        return "NOT %s" % self.visit_binary(
+            binary, override_operator=operators.match_op)
+
+    def visit_binary(self, binary, override_operator=None, **kw):
         # don't allow "? = ?" to render
         if self.ansi_bind_rules and \
                 isinstance(binary.left, elements.BindParameter) and \
                 isinstance(binary.right, elements.BindParameter):
             kw['literal_binds'] = True
 
-        operator_ = binary.operator
+        operator_ = override_operator or binary.operator
         disp = getattr(self, "visit_%s_binary" % operator_.__name__, None)
         if disp:
             return disp(binary, operator_, **kw)

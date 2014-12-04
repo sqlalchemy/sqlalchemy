@@ -12,7 +12,8 @@ from sqlalchemy import exc
 from sqlalchemy.engine import default
 from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
-from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, Boolean
+from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
+    Boolean, NullType, MatchType
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -1618,6 +1619,31 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(self.table1.c.myid.match('somstr'),
                             "CONTAINS (mytable.myid, :myid_1)",
                             dialect=oracle.dialect())
+
+    def test_match_is_now_matchtype(self):
+        expr = self.table1.c.myid.match('somstr')
+        assert expr.type._type_affinity is MatchType()._type_affinity
+        assert isinstance(expr.type, MatchType)
+
+    def test_boolean_inversion_postgresql(self):
+        self.assert_compile(
+            ~self.table1.c.myid.match('somstr'),
+            "NOT mytable.myid @@ to_tsquery(%(myid_1)s)",
+            dialect=postgresql.dialect())
+
+    def test_boolean_inversion_mysql(self):
+        # because mysql doesnt have native boolean
+        self.assert_compile(
+            ~self.table1.c.myid.match('somstr'),
+            "NOT MATCH (mytable.myid) AGAINST (%s IN BOOLEAN MODE)",
+            dialect=mysql.dialect())
+
+    def test_boolean_inversion_mssql(self):
+        # because mssql doesnt have native boolean
+        self.assert_compile(
+            ~self.table1.c.myid.match('somstr'),
+            "NOT CONTAINS (mytable.myid, :myid_1)",
+            dialect=mssql.dialect())
 
 
 class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):

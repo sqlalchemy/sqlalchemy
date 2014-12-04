@@ -602,6 +602,14 @@ class _StringType(sqltypes.String):
                                  to_inspect=[_StringType, sqltypes.String])
 
 
+class _MatchType(sqltypes.Float, sqltypes.MatchType):
+    def __init__(self, **kw):
+        # TODO: float arguments?
+        sqltypes.Float.__init__(self)
+        sqltypes.MatchType.__init__(self)
+
+
+
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
 
@@ -1544,6 +1552,7 @@ colspecs = {
     sqltypes.Float: FLOAT,
     sqltypes.Time: TIME,
     sqltypes.Enum: ENUM,
+    sqltypes.MatchType: _MatchType
 }
 
 # Everything 3.23 through 5.1 excepting OpenGIS types.

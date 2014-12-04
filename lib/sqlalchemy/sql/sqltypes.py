@@ -1654,10 +1654,26 @@ class NullType(TypeEngine):
     comparator_factory = Comparator
 
 
+class MatchType(Boolean):
+    """Refers to the return type of the MATCH operator.
+
+    As the :meth:`.Operators.match` is probably the most open-ended
+    operator in generic SQLAlchemy Core, we can't assume the return type
+    at SQL evaluation time, as MySQL returns a floating point, not a boolean,
+    and other backends might do something different.    So this type
+    acts as a placeholder, currently subclassing :class:`.Boolean`.
+    The type allows dialects to inject result-processing functionality
+    if needed, and on MySQL will return floating-point values.
+
+    .. versionadded:: 1.0.0
+
+    """
+
 NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 INTEGERTYPE = Integer()
+MATCHTYPE = MatchType()
 
 _type_map = {
     int: Integer(),
@@ -1685,6 +1701,7 @@ type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
+type_api.MATCHTYPE = MATCHTYPE
 type_api._type_map = _type_map
 
 # this one, there's all kinds of ways to play it, but at the EOD

@@ -19,7 +19,7 @@ BOOLEANTYPE = None
 INTEGERTYPE = None
 NULLTYPE = None
 STRINGTYPE = None
-
+MATCHTYPE = None
 
 class TypeEngine(Visitable):
     """The ultimate base class for all SQL datatypes.
