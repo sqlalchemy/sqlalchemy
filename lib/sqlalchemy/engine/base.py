@@ -814,11 +814,11 @@ class Connection(Connectable):
                     fn(self, default, multiparams, params)
 
         try:
-            try:
-                conn = self.__connection
-            except AttributeError:
-                conn = self._revalidate_connection()
+            conn = self.__connection
+        except AttributeError:
+            conn = self._revalidate_connection()
 
+        try:
             dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
                 dialect, self, conn)
@@ -952,11 +952,11 @@ class Connection(Connectable):
         a :class:`.ResultProxy`."""
 
         try:
-            try:
-                conn = self.__connection
-            except AttributeError:
-                conn = self._revalidate_connection()
+            conn = self.__connection
+        except AttributeError:
+            conn = self._revalidate_connection()
 
+        try:
             context = constructor(dialect, self, conn, *args)
         except Exception as e:
             self._handle_dbapi_exception(e,
@@ -1246,6 +1246,7 @@ class Connection(Connectable):
     @classmethod
     def _handle_dbapi_exception_noconnection(
             cls, e, dialect, engine, connection):
+
         exc_info = sys.exc_info()
 
         is_disconnect = dialect.is_disconnect(e, None, None)

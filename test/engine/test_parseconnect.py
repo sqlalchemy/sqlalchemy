@@ -7,6 +7,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing.mock import Mock, MagicMock
 from sqlalchemy import event
+from sqlalchemy import select
 
 dialect = None
 
@@ -279,7 +280,7 @@ class CreateEngineTest(fixtures.TestBase):
         )
 
     @testing.requires.sqlite
-    def test_handle_error_event_reconnect(self):
+    def test_handle_error_event_revalidate(self):
         e = create_engine('sqlite://')
         dbapi = MockDBAPI()
         sqlite3 = e.dialect.dbapi
@@ -295,6 +296,7 @@ class CreateEngineTest(fixtures.TestBase):
         def handle_error(ctx):
             assert ctx.engine is eng
             assert ctx.connection is conn
+            assert isinstance(ctx.sqlalchemy_exception, exc.ProgrammingError)
             raise MySpecialException("failed operation")
 
         conn = eng.connect()
@@ -306,6 +308,37 @@ class CreateEngineTest(fixtures.TestBase):
         assert_raises(
             MySpecialException,
             conn._revalidate_connection
+        )
+
+    @testing.requires.sqlite
+    def test_handle_error_event_implicit_revalidate(self):
+        e = create_engine('sqlite://')
+        dbapi = MockDBAPI()
+        sqlite3 = e.dialect.dbapi
+        dbapi.Error = sqlite3.Error,
+        dbapi.ProgrammingError = sqlite3.ProgrammingError
+
+        class MySpecialException(Exception):
+            pass
+
+        eng = create_engine('sqlite://', module=dbapi, _initialize=False)
+
+        @event.listens_for(eng, "handle_error")
+        def handle_error(ctx):
+            assert ctx.engine is eng
+            assert ctx.connection is conn
+            assert isinstance(ctx.sqlalchemy_exception, exc.ProgrammingError)
+            raise MySpecialException("failed operation")
+
+        conn = eng.connect()
+        conn.invalidate()
+
+        dbapi.connect = Mock(
+            side_effect=sqlite3.ProgrammingError("random error"))
+
+        assert_raises(
+            MySpecialException,
+            conn.execute, select([1])
         )
 
     @testing.requires.sqlite
