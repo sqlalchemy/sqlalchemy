@@ -23,6 +23,19 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, oracle
+        :tickets: 3220
+
+        Added support for CTEs under Oracle.  This includes some tweaks
+        to the aliasing syntax, as well as a new CTE feature
+        :meth:`.CTE.suffix_with`, which is useful for adding in special
+        Oracle-specific directives to the CTE.
+
+        .. seealso::
+
+            :ref:`change_3220`
+
+    .. change::
         :tags: feature, mysql
         :tickets: 3121
 

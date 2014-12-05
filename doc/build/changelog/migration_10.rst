@@ -1616,6 +1616,24 @@ reflection from temp tables as well, which is :ticket:`3203`.
 
 :ticket:`3204`
 
+.. _change_3220:
+
+Improved support for CTEs in Oracle
+-----------------------------------
+
+CTE support has been fixed up for Oracle, and there is also a new feature
+:meth:`.CTE.with_suffixes` that can assist with Oracle's special directives::
+
+    included_parts = select([
+        part.c.sub_part, part.c.part, part.c.quantity
+    ]).where(part.c.part == "p1").\
+        cte(name="included_parts", recursive=True).\
+        suffix_with(
+            "search depth first by part set ord1",
+            "cycle part set y_cycle to 1 default 0", dialect='oracle')
+
+:ticket:`3220`
+
 .. _change_2984:
 
 Drizzle Dialect is now an External Dialect

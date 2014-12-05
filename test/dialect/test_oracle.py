@@ -180,6 +180,51 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update().values(plain=5), 'UPDATE s SET "plain"=:"plain"'
         )
 
+    def test_cte(self):
+        part = table(
+            'part',
+            column('part'),
+            column('sub_part'),
+            column('quantity')
+        )
+
+        included_parts = select([
+            part.c.sub_part, part.c.part, part.c.quantity
+        ]).where(part.c.part == "p1").\
+            cte(name="included_parts", recursive=True).\
+            suffix_with(
+                "search depth first by part set ord1",
+                "cycle part set y_cycle to 1 default 0", dialect='oracle')
+
+        incl_alias = included_parts.alias("pr1")
+        parts_alias = part.alias("p")
+        included_parts = included_parts.union_all(
+            select([
+                parts_alias.c.sub_part,
+                parts_alias.c.part, parts_alias.c.quantity
+            ]).where(parts_alias.c.part == incl_alias.c.sub_part)
+        )
+
+        q = select([
+            included_parts.c.sub_part,
+            func.sum(included_parts.c.quantity).label('total_quantity')]).\
+            group_by(included_parts.c.sub_part)
+
+        self.assert_compile(
+            q,
+            "WITH included_parts(sub_part, part, quantity) AS "
+            "(SELECT part.sub_part AS sub_part, part.part AS part, "
+            "part.quantity AS quantity FROM part WHERE part.part = :part_1 "
+            "UNION ALL SELECT p.sub_part AS sub_part, p.part AS part, "
+            "p.quantity AS quantity FROM part p, included_parts pr1 "
+            "WHERE p.part = pr1.sub_part) "
+            "search depth first by part set ord1 cycle part set "
+            "y_cycle to 1 default 0  "
+            "SELECT included_parts.sub_part, sum(included_parts.quantity) "
+            "AS total_quantity FROM included_parts "
+            "GROUP BY included_parts.sub_part"
+        )
+
     def test_limit(self):
         t = table('sometable', column('col1'), column('col2'))
         s = select([t])

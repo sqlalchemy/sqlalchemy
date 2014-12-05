@@ -75,6 +75,7 @@ class Query(object):
     _having = None
     _distinct = False
     _prefixes = None
+    _suffixes = None
     _offset = None
     _limit = None
     _for_update_arg = None
@@ -1003,7 +1004,7 @@ class Query(object):
                 '_limit', '_offset',
                 '_joinpath', '_joinpoint',
                 '_distinct', '_having',
-                '_prefixes',
+                '_prefixes', '_suffixes'
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from([fromclause], True)
@@ -2359,11 +2360,37 @@ class Query(object):
 
         .. versionadded:: 0.7.7
 
+        .. seealso::
+
+            :meth:`.HasPrefixes.prefix_with`
+
         """
         if self._prefixes:
             self._prefixes += prefixes
         else:
             self._prefixes = prefixes
+
+    @_generative()
+    def suffix_with(self, *suffixes):
+        """Apply the suffix to the query and return the newly resulting
+        ``Query``.
+
+        :param \*suffixes: optional suffixes, typically strings,
+         not using any commas.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Query.prefix_with`
+
+            :meth:`.HasSuffixes.suffix_with`
+
+        """
+        if self._suffixes:
+            self._suffixes += suffixes
+        else:
+            self._suffixes = suffixes
 
     def all(self):
         """Return the results represented by this ``Query`` as a list.
@@ -2601,6 +2628,7 @@ class Query(object):
             'offset': self._offset,
             'distinct': self._distinct,
             'prefixes': self._prefixes,
+            'suffixes': self._suffixes,
             'group_by': self._group_by or None,
             'having': self._having
         }

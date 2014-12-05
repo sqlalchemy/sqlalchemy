@@ -1193,12 +1193,16 @@ class SQLCompiler(Compiled):
                     self, asfrom=True, **kwargs
                 )
 
+            if cte._suffixes:
+                text += " " + self._generate_prefixes(
+                    cte, cte._suffixes, **kwargs)
+
             self.ctes[cte] = text
 
         if asfrom:
             if cte_alias_name:
                 text = self.preparer.format_alias(cte, cte_alias_name)
-                text += " AS " + cte_name
+                text += self.get_render_as_alias_suffix(cte_name)
             else:
                 return self.preparer.format_alias(cte, cte_name)
             return text
@@ -1217,8 +1221,8 @@ class SQLCompiler(Compiled):
         elif asfrom:
             ret = alias.original._compiler_dispatch(self,
                                                     asfrom=True, **kwargs) + \
-                " AS " + \
-                self.preparer.format_alias(alias, alias_name)
+                self.get_render_as_alias_suffix(
+                    self.preparer.format_alias(alias, alias_name))
 
             if fromhints and alias in fromhints:
                 ret = self.format_from_hint_text(ret, alias,
@@ -1227,6 +1231,9 @@ class SQLCompiler(Compiled):
             return ret
         else:
             return alias.original._compiler_dispatch(self, **kwargs)
+
+    def get_render_as_alias_suffix(self, alias_name_text):
+        return " AS " + alias_name_text
 
     def _add_to_result_map(self, keyname, name, objects, type_):
         if not self.dialect.case_sensitive:
@@ -1553,6 +1560,10 @@ class SQLCompiler(Compiled):
         if self.ctes and \
                 compound_index == 0 and toplevel:
             text = self._render_cte_clause() + text
+
+        if select._suffixes:
+            text += " " + self._generate_prefixes(
+                select, select._suffixes, **kwargs)
 
         self.stack.pop(-1)
 

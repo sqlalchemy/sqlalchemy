@@ -549,6 +549,9 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_false(self, expr, **kw):
         return '0'
 
+    def get_cte_preamble(self, recursive):
+        return "WITH"
+
     def get_select_hint_text(self, byfroms):
         return " ".join(
             "/*+ %s */" % text for table, text in byfroms.items()
@@ -619,22 +622,10 @@ class OracleCompiler(compiler.SQLCompiler):
         return (self.dialect.identifier_preparer.format_sequence(seq) +
                 ".nextval")
 
-    def visit_alias(self, alias, asfrom=False, ashint=False, **kwargs):
-        """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard
-        SQL??
-        """
+    def get_render_as_alias_suffix(self, alias_name_text):
+        """Oracle doesn't like ``FROM table AS alias``"""
 
-        if asfrom or ashint:
-            alias_name = isinstance(alias.name, expression._truncated_label) and \
-                self._truncated_identifier("alias", alias.name) or alias.name
-
-        if ashint:
-            return alias_name
-        elif asfrom:
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + \
-                " " + self.preparer.format_alias(alias, alias_name)
-        else:
-            return self.process(alias.original, **kwargs)
+        return " " + alias_name_text
 
     def returning_clause(self, stmt, returning_cols):
         columns = []
