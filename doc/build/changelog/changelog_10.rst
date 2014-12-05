@@ -23,6 +23,21 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3266
+
+        The engine-level error handling and wrapping routines will now
+        take effect in all engine connection use cases, including
+        when user-custom connect routines are used via the
+        :paramref:`.create_engine.creator` parameter, as well as when
+        the :class:`.Connection` encounters a connection error on
+        revalidation.
+
+        .. seealso::
+
+            :ref:`change_3266`
+
+    .. change::
         :tags: feature, oracle
 
         New Oracle DDL features for tables, indexes: COMPRESS, BITMAP.

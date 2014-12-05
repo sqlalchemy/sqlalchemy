@@ -739,6 +739,12 @@ class ConnectionEvents(event.Events):
         .. versionadded:: 0.9.7 Added the
             :meth:`.ConnectionEvents.handle_error` hook.
 
+        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
+           invoked when an :class:`.Engine` fails during the initial
+           call to :meth:`.Engine.connect`, as well as when a
+           :class:`.Connection` object encounters an error during a
+           reconnect operation.
+
         .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is
            not fired off when a dialect makes use of the
            ``skip_user_error_events`` execution option.   This is used

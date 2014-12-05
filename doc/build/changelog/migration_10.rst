@@ -872,6 +872,29 @@ labeled uniquely.
 
 :ticket:`3170`
 
+.. _change_3266:
+
+DBAPI exception wrapping and handle_error() event improvements
+--------------------------------------------------------------
+
+SQLAlchemy's wrapping of DBAPI exceptions was not taking place in the
+case where a :class:`.Connection` object was invalidated, and then tried
+to reconnect and encountered an error; this has been resolved.
+
+Additionally, the recently added :meth:`.ConnectionEvents.handle_error`
+event is now invoked for errors that occur upon initial connect, upon
+reconnect, and when :func:`.create_engine` is used given a custom connection
+function via :paramref:`.create_engine.creator`.
+
+The :class:`.ExceptionContext` object has a new datamember
+:attr:`.ExceptionContext.engine` that will always refer to the :class:`.Engine`
+in use, in those cases when the :class:`.Connection` object is not available
+(e.g. on initial connect).
+
+
+:ticket:`3266`
+
+
 .. _behavioral_changes_orm_10:
 
 Behavioral Changes - ORM

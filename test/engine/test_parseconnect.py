@@ -6,6 +6,7 @@ import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing.mock import Mock, MagicMock
+from sqlalchemy import event
 
 dialect = None
 
@@ -240,7 +241,6 @@ class CreateEngineTest(fixtures.TestBase):
     def test_wraps_connect_in_dbapi(self):
         e = create_engine('sqlite://')
         sqlite3 = e.dialect.dbapi
-
         dbapi = MockDBAPI()
         dbapi.Error = sqlite3.Error,
         dbapi.ProgrammingError = sqlite3.ProgrammingError
@@ -248,6 +248,117 @@ class CreateEngineTest(fixtures.TestBase):
             side_effect=sqlite3.ProgrammingError("random error"))
         try:
             create_engine('sqlite://', module=dbapi).connect()
+            assert False
+        except tsa.exc.DBAPIError as de:
+            assert not de.connection_invalidated
+
+    @testing.requires.sqlite
+    def test_handle_error_event_connect(self):
+        e = create_engine('sqlite://')
+        dbapi = MockDBAPI()
+        sqlite3 = e.dialect.dbapi
+        dbapi.Error = sqlite3.Error,
+        dbapi.ProgrammingError = sqlite3.ProgrammingError
+        dbapi.connect = Mock(
+            side_effect=sqlite3.ProgrammingError("random error"))
+
+        class MySpecialException(Exception):
+            pass
+
+        eng = create_engine('sqlite://', module=dbapi)
+
+        @event.listens_for(eng, "handle_error")
+        def handle_error(ctx):
+            assert ctx.engine is eng
+            assert ctx.connection is None
+            raise MySpecialException("failed operation")
+
+        assert_raises(
+            MySpecialException,
+            eng.connect
+        )
+
+    @testing.requires.sqlite
+    def test_handle_error_event_reconnect(self):
+        e = create_engine('sqlite://')
+        dbapi = MockDBAPI()
+        sqlite3 = e.dialect.dbapi
+        dbapi.Error = sqlite3.Error,
+        dbapi.ProgrammingError = sqlite3.ProgrammingError
+
+        class MySpecialException(Exception):
+            pass
+
+        eng = create_engine('sqlite://', module=dbapi, _initialize=False)
+
+        @event.listens_for(eng, "handle_error")
+        def handle_error(ctx):
+            assert ctx.engine is eng
+            assert ctx.connection is conn
+            raise MySpecialException("failed operation")
+
+        conn = eng.connect()
+        conn.invalidate()
+
+        dbapi.connect = Mock(
+            side_effect=sqlite3.ProgrammingError("random error"))
+
+        assert_raises(
+            MySpecialException,
+            conn._revalidate_connection
+        )
+
+    @testing.requires.sqlite
+    def test_handle_error_custom_connect(self):
+        e = create_engine('sqlite://')
+
+        dbapi = MockDBAPI()
+        sqlite3 = e.dialect.dbapi
+        dbapi.Error = sqlite3.Error,
+        dbapi.ProgrammingError = sqlite3.ProgrammingError
+
+        class MySpecialException(Exception):
+            pass
+
+        def custom_connect():
+            raise sqlite3.ProgrammingError("random error")
+
+        eng = create_engine('sqlite://', module=dbapi, creator=custom_connect)
+
+        @event.listens_for(eng, "handle_error")
+        def handle_error(ctx):
+            assert ctx.engine is eng
+            assert ctx.connection is None
+            raise MySpecialException("failed operation")
+
+        assert_raises(
+            MySpecialException,
+            eng.connect
+        )
+
+    @testing.requires.sqlite
+    def test_handle_error_event_connect_invalidate_flag(self):
+        e = create_engine('sqlite://')
+        dbapi = MockDBAPI()
+        sqlite3 = e.dialect.dbapi
+        dbapi.Error = sqlite3.Error,
+        dbapi.ProgrammingError = sqlite3.ProgrammingError
+        dbapi.connect = Mock(
+            side_effect=sqlite3.ProgrammingError(
+                "Cannot operate on a closed database."))
+
+        class MySpecialException(Exception):
+            pass
+
+        eng = create_engine('sqlite://', module=dbapi)
+
+        @event.listens_for(eng, "handle_error")
+        def handle_error(ctx):
+            assert ctx.is_disconnect
+            ctx.is_disconnect = False
+
+        try:
+            eng.connect()
             assert False
         except tsa.exc.DBAPIError as de:
             assert not de.connection_invalidated
