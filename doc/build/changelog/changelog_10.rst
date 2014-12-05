@@ -23,6 +23,13 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, oracle
+
+        An alias name will be properly quoted when referred to using the
+        ``%(name)s`` token inside the :meth:`.Select.with_hint` method.
+        Previously, the Oracle backend hadn't implemented this quoting.
+
+    .. change::
         :tags: feature, oracle
         :tickets: 3220
 
