@@ -515,6 +515,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_temp_table_indexes(self):
         insp = inspect(self.metadata.bind)
         indexes = insp.get_indexes('user_tmp')
+        for ind in indexes:
+            ind.pop('dialect_options', None)
         eq_(
             # TODO: we need to add better filtering for indexes/uq constraints
             # that are doubled up

@@ -395,7 +395,10 @@ class Inspector(object):
           boolean
 
         dialect_options
-          dict of dialect-specific index options
+          dict of dialect-specific index options.  May not be present
+          for all dialects.
+
+          .. versionadded:: 1.0.0
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
