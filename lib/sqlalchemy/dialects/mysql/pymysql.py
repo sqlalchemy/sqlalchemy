@@ -31,8 +31,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
-    if py3k:
-        supports_unicode_statements = True
+    supports_unicode_statements = True
 
     @classmethod
     def dbapi(cls):

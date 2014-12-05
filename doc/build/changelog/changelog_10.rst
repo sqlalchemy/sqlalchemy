@@ -23,6 +23,17 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, mysql
+        :tickets: 3121
+
+        Updated the "supports_unicode_statements" flag to True for MySQLdb
+        and Pymysql under Python 2.   This refers to the SQL statements
+        themselves, not the parameters, and affects issues such as table
+        and column names using non-ASCII characters.   These drivers both
+        appear to support Python 2 Unicode objects without issue in modern
+        versions.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 3263
 
