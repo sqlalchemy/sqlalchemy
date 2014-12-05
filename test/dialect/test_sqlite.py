@@ -7,8 +7,8 @@ import datetime
 from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, is_
 from sqlalchemy import Table, select, bindparam, Column,\
-    MetaData, func, extract, ForeignKey, text, DefaultClause, and_, create_engine,\
-    UniqueConstraint
+    MetaData, func, extract, ForeignKey, text, DefaultClause, and_, \
+    create_engine, UniqueConstraint
 from sqlalchemy.types import Integer, String, Boolean, DateTime, Date, Time
 from sqlalchemy import types as sqltypes
 from sqlalchemy import event, inspect
@@ -21,6 +21,8 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
     AssertsExecutionResults, engines
 from sqlalchemy import testing
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.engine.reflection import Inspector
+
 
 class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
@@ -32,9 +34,10 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         """
 
         meta = MetaData(testing.db)
-        t = Table('bool_table', meta, Column('id', Integer,
-                  primary_key=True), Column('boo',
-                  Boolean(create_constraint=False)))
+        t = Table(
+            'bool_table', meta,
+            Column('id', Integer, primary_key=True),
+            Column('boo', Boolean(create_constraint=False)))
         try:
             meta.create_all()
             testing.db.execute("INSERT INTO bool_table (id, boo) "
@@ -69,28 +72,31 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
                 ValueError,
                 "Couldn't parse %s string." % disp,
                 lambda: testing.db.execute(
-                    text("select 'ASDF' as value", typemap={"value":typ})
+                    text("select 'ASDF' as value", typemap={"value": typ})
                 ).scalar()
             )
 
     def test_native_datetime(self):
         dbapi = testing.db.dialect.dbapi
-        connect_args = {'detect_types': dbapi.PARSE_DECLTYPES \
-                        | dbapi.PARSE_COLNAMES}
-        engine = engines.testing_engine(options={'connect_args'
-                : connect_args, 'native_datetime': True})
-        t = Table('datetest', MetaData(),
-                    Column('id', Integer, primary_key=True),
-                    Column('d1', Date), Column('d2', sqltypes.TIMESTAMP))
+        connect_args = {
+            'detect_types': dbapi.PARSE_DECLTYPES | dbapi.PARSE_COLNAMES}
+        engine = engines.testing_engine(
+            options={'connect_args': connect_args, 'native_datetime': True})
+        t = Table(
+            'datetest', MetaData(),
+            Column('id', Integer, primary_key=True),
+            Column('d1', Date), Column('d2', sqltypes.TIMESTAMP))
         t.create(engine)
         try:
-            engine.execute(t.insert(), {'d1': datetime.date(2010, 5,
-                           10),
-                          'd2': datetime.datetime( 2010, 5, 10, 12, 15, 25,
-                          )})
+            engine.execute(t.insert(), {
+                'd1': datetime.date(2010, 5, 10),
+                'd2': datetime.datetime(2010, 5, 10, 12, 15, 25)
+            })
             row = engine.execute(t.select()).first()
-            eq_(row, (1, datetime.date(2010, 5, 10),
-            datetime.datetime( 2010, 5, 10, 12, 15, 25, )))
+            eq_(
+                row,
+                (1, datetime.date(2010, 5, 10),
+                    datetime.datetime(2010, 5, 10, 12, 15, 25)))
             r = engine.execute(func.current_date()).scalar()
             assert isinstance(r, util.string_types)
         finally:
@@ -100,15 +106,16 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
     @testing.provide_metadata
     def test_custom_datetime(self):
         sqlite_date = sqlite.DATETIME(
-                # 2004-05-21T00:00:00
-                storage_format="%(year)04d-%(month)02d-%(day)02d"
-                    "T%(hour)02d:%(minute)02d:%(second)02d",
-                regexp=r"(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)",
-            )
+            # 2004-05-21T00:00:00
+            storage_format="%(year)04d-%(month)02d-%(day)02d"
+            "T%(hour)02d:%(minute)02d:%(second)02d",
+            regexp=r"(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)",
+        )
         t = Table('t', self.metadata, Column('d', sqlite_date))
         self.metadata.create_all(testing.db)
-        testing.db.execute(t.insert().
-                        values(d=datetime.datetime(2010, 10, 15, 12, 37, 0)))
+        testing.db.execute(
+            t.insert().
+            values(d=datetime.datetime(2010, 10, 15, 12, 37, 0)))
         testing.db.execute("insert into t (d) values ('2004-05-21T00:00:00')")
         eq_(
             testing.db.execute("select * from t order by d").fetchall(),
@@ -116,21 +123,23 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         eq_(
             testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
-            [(datetime.datetime(2004, 5, 21, 0, 0),),
-            (datetime.datetime(2010, 10, 15, 12, 37),)]
+            [
+                (datetime.datetime(2004, 5, 21, 0, 0),),
+                (datetime.datetime(2010, 10, 15, 12, 37),)]
         )
 
     @testing.provide_metadata
     def test_custom_date(self):
         sqlite_date = sqlite.DATE(
-                # 2004-05-21T00:00:00
-                storage_format="%(year)04d|%(month)02d|%(day)02d",
-                regexp=r"(\d+)\|(\d+)\|(\d+)",
-            )
+            # 2004-05-21T00:00:00
+            storage_format="%(year)04d|%(month)02d|%(day)02d",
+            regexp=r"(\d+)\|(\d+)\|(\d+)",
+        )
         t = Table('t', self.metadata, Column('d', sqlite_date))
         self.metadata.create_all(testing.db)
-        testing.db.execute(t.insert().
-                        values(d=datetime.date(2010, 10, 15)))
+        testing.db.execute(
+            t.insert().
+            values(d=datetime.date(2010, 10, 15)))
         testing.db.execute("insert into t (d) values ('2004|05|21')")
         eq_(
             testing.db.execute("select * from t order by d").fetchall(),
@@ -138,10 +147,10 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         eq_(
             testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
-            [(datetime.date(2004, 5, 21),),
-            (datetime.date(2010, 10, 15),)]
+            [
+                (datetime.date(2004, 5, 21),),
+                (datetime.date(2010, 10, 15),)]
         )
-
 
     def test_no_convert_unicode(self):
         """test no utf-8 encoding occurs"""
@@ -156,7 +165,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             sqltypes.CHAR(convert_unicode=True),
             sqltypes.Unicode(),
             sqltypes.UnicodeText(),
-            ):
+        ):
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)
             assert not bindproc or \
                 isinstance(bindproc(util.u('some string')), util.text_type)
@@ -198,6 +207,7 @@ class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
         rp = sldt.result_processor(None, None)
         eq_(rp(bp(dt)), dt)
 
+
 class DateTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_default(self):
@@ -220,6 +230,7 @@ class DateTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(bp(dt), '06/27/2008')
         rp = sldt.result_processor(None, None)
         eq_(rp(bp(dt)), dt)
+
 
 class TimeTest(fixtures.TestBase, AssertsCompiledSQL):
 
@@ -333,8 +344,9 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_boolean_default(self):
-        t = Table("t", self.metadata,
-                Column("x", Boolean, server_default=sql.false()))
+        t = Table(
+            "t", self.metadata,
+            Column("x", Boolean, server_default=sql.false()))
         t.create(testing.db)
         testing.db.execute(t.insert())
         testing.db.execute(t.insert().values(x=True))
@@ -349,7 +361,6 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = sqlite.dialect()
         info = dialect._get_column_info("foo", "INTEGER", False, 3, False)
         eq_(info['default'], '3')
-
 
 
 class DialectTest(fixtures.TestBase, AssertsExecutionResults):
@@ -372,7 +383,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             Column('true', Integer),
             Column('false', Integer),
             Column('column', Integer),
-            )
+        )
         try:
             meta.create_all()
             t.insert().execute(safe=1)
@@ -403,8 +414,8 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         table1 = Table('django_admin_log', metadata, autoload=True)
         table2 = Table('django_content_type', metadata, autoload=True)
         j = table1.join(table2)
-        assert j.onclause.compare(table1.c.content_type_id
-                == table2.c.id)
+        assert j.onclause.compare(
+            table1.c.content_type_id == table2.c.id)
 
     @testing.provide_metadata
     def test_quoted_identifiers_functional_two(self):
@@ -426,8 +437,8 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
 
         # unfortunately, still can't do this; sqlite quadruples
         # up the quotes on the table name here for pragma foreign_key_list
-        #testing.db.execute(r'''
-        #CREATE TABLE """b""" (
+        # testing.db.execute(r'''
+        # CREATE TABLE """b""" (
         #    """id""" integer NOT NULL PRIMARY KEY,
         #    """aid""" integer NULL
         #           REFERENCES """a""" ("""id""")
@@ -439,13 +450,12 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
 
         #table2 = Table(r'"b"', metadata, autoload=True)
         #j = table1.join(table2)
-        #assert j.onclause.compare(table1.c['"id"']
+        # assert j.onclause.compare(table1.c['"id"']
         #        == table2.c['"aid"'])
 
     def test_legacy_quoted_identifiers_unit(self):
         dialect = sqlite.dialect()
         dialect._broken_fk_pragma_quotes = True
-
 
         for row in [
             (0, 'target', 'tid', 'id'),
@@ -457,7 +467,9 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             fks = {}
             fkeys = []
             dialect._parse_fk(fks, fkeys, *row)
-            eq_(fkeys, [{
+            eq_(
+                fkeys,
+                [{
                     'referred_table': 'target',
                     'referred_columns': ['id'],
                     'referred_schema': None,
@@ -470,16 +482,16 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         # amazingly, pysqlite seems to still deliver cursor.description
         # as encoded bytes in py2k
 
-        t = Table('x', self.metadata,
-                Column(u('méil'), Integer, primary_key=True),
-                Column(ue('\u6e2c\u8a66'), Integer),
-            )
+        t = Table(
+            'x', self.metadata,
+            Column(u('méil'), Integer, primary_key=True),
+            Column(ue('\u6e2c\u8a66'), Integer),
+        )
         self.metadata.create_all(testing.db)
 
         result = testing.db.execute(t.select())
         assert u('méil') in result.keys()
         assert ue('\u6e2c\u8a66') in result.keys()
-
 
     @testing.exclude('sqlite', '<', (2, 6), 'no database support')
     def test_temp_table_reflection(self):
@@ -515,30 +527,34 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         e = create_engine('sqlite+pysqlite:///foo.db')
         assert e.pool.__class__ is pool.NullPool
 
+    @testing.provide_metadata
     def test_dont_reflect_autoindex(self):
-        meta = MetaData(testing.db)
-        t = Table('foo', meta, Column('bar', String, primary_key=True))
+        meta = self.metadata
+        Table('foo', meta, Column('bar', String, primary_key=True))
         meta.create_all()
-        from sqlalchemy.engine.reflection import Inspector
-        try:
-            inspector = Inspector(testing.db)
-            eq_(inspector.get_indexes('foo'), [])
-            eq_(inspector.get_indexes('foo',
-                include_auto_indexes=True), [{'unique': 1, 'name'
-                : 'sqlite_autoindex_foo_1', 'column_names': ['bar']}])
-        finally:
-            meta.drop_all()
+        inspector = Inspector(testing.db)
+        eq_(inspector.get_indexes('foo'), [])
+        eq_(
+            inspector.get_indexes('foo', include_auto_indexes=True),
+            [{
+                'unique': 1,
+                'name': 'sqlite_autoindex_foo_1',
+                'column_names': ['bar']}])
 
+    @testing.provide_metadata
     def test_create_index_with_schema(self):
         """Test creation of index with explicit schema"""
 
-        meta = MetaData(testing.db)
-        t = Table('foo', meta, Column('bar', String, index=True),
-                  schema='main')
-        try:
-            meta.create_all()
-        finally:
-            meta.drop_all()
+        meta = self.metadata
+        Table(
+            'foo', meta, Column('bar', String, index=True),
+            schema='main')
+        meta.create_all()
+        inspector = Inspector(testing.db)
+        eq_(
+            inspector.get_indexes('foo', schema='main'),
+            [{'unique': 0, 'name': u'ix_main_foo_bar',
+              'column_names': [u'bar']}])
 
 
 class AttachedMemoryDBTest(fixtures.TestBase):
@@ -661,7 +677,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'epoch': '%s',
             'dow': '%w',
             'week': '%W',
-            }
+        }
         for field, subst in mapping.items():
             self.assert_compile(select([extract(field, t.c.col1)]),
                                 "SELECT CAST(STRFTIME('%s', t.col1) AS "
@@ -684,53 +700,57 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_constraints_with_schemas(self):
         metadata = MetaData()
-        t1 = Table('t1', metadata,
-                        Column('id', Integer, primary_key=True),
-                        schema='master')
-        t2 = Table('t2', metadata,
-                        Column('id', Integer, primary_key=True),
-                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
-                        schema='master'
-                    )
-        t3 = Table('t3', metadata,
-                        Column('id', Integer, primary_key=True),
-                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
-                        schema='alternate'
-                    )
-        t4 = Table('t4', metadata,
-                        Column('id', Integer, primary_key=True),
-                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
-                    )
+        Table(
+            't1', metadata,
+            Column('id', Integer, primary_key=True),
+            schema='master')
+        t2 = Table(
+            't2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1_id', Integer, ForeignKey('master.t1.id')),
+            schema='master'
+        )
+        t3 = Table(
+            't3', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1_id', Integer, ForeignKey('master.t1.id')),
+            schema='alternate'
+        )
+        t4 = Table(
+            't4', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1_id', Integer, ForeignKey('master.t1.id')),
+        )
 
         # schema->schema, generate REFERENCES with no schema name
         self.assert_compile(
             schema.CreateTable(t2),
-                "CREATE TABLE master.t2 ("
-                "id INTEGER NOT NULL, "
-                "t1_id INTEGER, "
-                "PRIMARY KEY (id), "
-                "FOREIGN KEY(t1_id) REFERENCES t1 (id)"
-                ")"
+            "CREATE TABLE master.t2 ("
+            "id INTEGER NOT NULL, "
+            "t1_id INTEGER, "
+            "PRIMARY KEY (id), "
+            "FOREIGN KEY(t1_id) REFERENCES t1 (id)"
+            ")"
         )
 
         # schema->different schema, don't generate REFERENCES
         self.assert_compile(
             schema.CreateTable(t3),
-                "CREATE TABLE alternate.t3 ("
-                "id INTEGER NOT NULL, "
-                "t1_id INTEGER, "
-                "PRIMARY KEY (id)"
-                ")"
+            "CREATE TABLE alternate.t3 ("
+            "id INTEGER NOT NULL, "
+            "t1_id INTEGER, "
+            "PRIMARY KEY (id)"
+            ")"
         )
 
         # same for local schema
         self.assert_compile(
             schema.CreateTable(t4),
-                "CREATE TABLE t4 ("
-                "id INTEGER NOT NULL, "
-                "t1_id INTEGER, "
-                "PRIMARY KEY (id)"
-                ")"
+            "CREATE TABLE t4 ("
+            "id INTEGER NOT NULL, "
+            "t1_id INTEGER, "
+            "PRIMARY KEY (id)"
+            ")"
         )
 
 
@@ -755,30 +775,37 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk1(self):
-        self._test_empty_insert(Table('a', MetaData(testing.db),
-                                Column('id', Integer,
-                                primary_key=True)))
+        self._test_empty_insert(
+            Table(
+                'a', MetaData(testing.db),
+                Column('id', Integer, primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk2(self):
-        assert_raises(exc.DBAPIError, self._test_empty_insert, Table('b'
-                      , MetaData(testing.db), Column('x', Integer,
-                      primary_key=True), Column('y', Integer,
-                      primary_key=True)))
+        assert_raises(
+            exc.DBAPIError, self._test_empty_insert,
+            Table(
+                'b', MetaData(testing.db),
+                Column('x', Integer, primary_key=True),
+                Column('y', Integer, primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk3(self):
-        assert_raises(exc.DBAPIError, self._test_empty_insert, Table('c'
-                      , MetaData(testing.db), Column('x', Integer,
-                      primary_key=True), Column('y', Integer,
-                      DefaultClause('123'), primary_key=True)))
+        assert_raises(
+            exc.DBAPIError, self._test_empty_insert,
+            Table(
+                'c', MetaData(testing.db),
+                Column('x', Integer, primary_key=True),
+                Column('y', Integer, DefaultClause('123'), primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk4(self):
-        self._test_empty_insert(Table('d', MetaData(testing.db),
-                                Column('x', Integer, primary_key=True),
-                                Column('y', Integer, DefaultClause('123'
-                                ))))
+        self._test_empty_insert(
+            Table(
+                'd', MetaData(testing.db),
+                Column('x', Integer, primary_key=True),
+                Column('y', Integer, DefaultClause('123'))
+            ))
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_nopk1(self):
@@ -787,9 +814,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_nopk2(self):
-        self._test_empty_insert(Table('f', MetaData(testing.db),
-                                Column('x', Integer), Column('y',
-                                Integer)))
+        self._test_empty_insert(
+            Table(
+                'f', MetaData(testing.db),
+                Column('x', Integer), Column('y', Integer)))
 
     def test_inserts_with_spaces(self):
         tbl = Table('tbl', MetaData('sqlite:///'), Column('with space',
@@ -799,8 +827,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             tbl.insert().execute({'without': 123})
             assert list(tbl.select().execute()) == [(None, 123)]
             tbl.insert().execute({'with space': 456})
-            assert list(tbl.select().execute()) == [(None, 123), (456,
-                    None)]
+            assert list(tbl.select().execute()) == [
+                (None, 123), (456, None)]
         finally:
             tbl.drop()
 
@@ -815,6 +843,8 @@ def full_text_search_missing():
         return False
     except:
         return True
+
+metadata = cattable = matchtable = None
 
 
 class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -844,19 +874,20 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
         """)
         matchtable = Table('matchtable', metadata, autoload=True)
         metadata.create_all()
-        cattable.insert().execute([{'id': 1, 'description': 'Python'},
-                                  {'id': 2, 'description': 'Ruby'}])
-        matchtable.insert().execute([{'id': 1, 'title'
-                                    : 'Agile Web Development with Rails'
-                                    , 'category_id': 2}, {'id': 2,
-                                    'title': 'Dive Into Python',
-                                    'category_id': 1}, {'id': 3, 'title'
-                                    : "Programming Matz's Ruby",
-                                    'category_id': 2}, {'id': 4, 'title'
-                                    : 'The Definitive Guide to Django',
-                                    'category_id': 1}, {'id': 5, 'title'
-                                    : 'Python in a Nutshell',
-                                    'category_id': 1}])
+        cattable.insert().execute(
+            [{'id': 1, 'description': 'Python'},
+             {'id': 2, 'description': 'Ruby'}])
+        matchtable.insert().execute(
+            [
+                {'id': 1, 'title': 'Agile Web Development with Rails',
+                 'category_id': 2},
+                {'id': 2, 'title': 'Dive Into Python', 'category_id': 1},
+                {'id': 3, 'title': "Programming Matz's Ruby",
+                 'category_id': 2},
+                {'id': 4, 'title': 'The Definitive Guide to Django',
+                 'category_id': 1},
+                {'id': 5, 'title': 'Python in a Nutshell', 'category_id': 1}
+            ])
 
     @classmethod
     def teardown_class(cls):
@@ -868,35 +899,38 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_simple_match(self):
         results = \
-            matchtable.select().where(matchtable.c.title.match('python'
-                )).order_by(matchtable.c.id).execute().fetchall()
+            matchtable.select().where(
+                matchtable.c.title.match('python')).\
+            order_by(matchtable.c.id).execute().fetchall()
         eq_([2, 5], [r.id for r in results])
 
     def test_simple_prefix_match(self):
         results = \
-            matchtable.select().where(matchtable.c.title.match('nut*'
-                )).execute().fetchall()
+            matchtable.select().where(
+                matchtable.c.title.match('nut*')).execute().fetchall()
         eq_([5], [r.id for r in results])
 
     def test_or_match(self):
         results2 = \
             matchtable.select().where(
-                matchtable.c.title.match('nutshell OR ruby'
-                )).order_by(matchtable.c.id).execute().fetchall()
+                matchtable.c.title.match('nutshell OR ruby')).\
+            order_by(matchtable.c.id).execute().fetchall()
         eq_([3, 5], [r.id for r in results2])
 
     def test_and_match(self):
         results2 = \
             matchtable.select().where(
-                matchtable.c.title.match('python nutshell'
-                )).execute().fetchall()
+                matchtable.c.title.match('python nutshell')
+            ).execute().fetchall()
         eq_([5], [r.id for r in results2])
 
     def test_match_across_joins(self):
-        results = matchtable.select().where(and_(cattable.c.id
-                == matchtable.c.category_id,
-                cattable.c.description.match('Ruby'
-                ))).order_by(matchtable.c.id).execute().fetchall()
+        results = matchtable.select().where(
+            and_(
+                cattable.c.id == matchtable.c.category_id,
+                cattable.c.description.match('Ruby')
+            )
+        ).order_by(matchtable.c.id).execute().fetchall()
         eq_([1, 3], [r.id for r in results])
 
 
@@ -906,10 +940,11 @@ class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
         table = Table('autoinctable', MetaData(), Column('id', Integer,
                       primary_key=True), Column('x', Integer,
                       default=None), sqlite_autoincrement=True)
-        self.assert_compile(schema.CreateTable(table),
-                            'CREATE TABLE autoinctable (id INTEGER NOT '
-                            'NULL PRIMARY KEY AUTOINCREMENT, x INTEGER)'
-                            , dialect=sqlite.dialect())
+        self.assert_compile(
+            schema.CreateTable(table),
+            'CREATE TABLE autoinctable (id INTEGER NOT '
+            'NULL PRIMARY KEY AUTOINCREMENT, x INTEGER)',
+            dialect=sqlite.dialect())
 
     def test_sqlite_autoincrement_constraint(self):
         table = Table(
@@ -919,7 +954,7 @@ class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
             Column('x', Integer, default=None),
             UniqueConstraint('x'),
             sqlite_autoincrement=True,
-            )
+        )
         self.assert_compile(schema.CreateTable(table),
                             'CREATE TABLE autoinctable (id INTEGER NOT '
                             'NULL PRIMARY KEY AUTOINCREMENT, x '
@@ -943,7 +978,7 @@ class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
             MetaData(),
             Column('id', MyInteger, primary_key=True),
             sqlite_autoincrement=True,
-            )
+        )
         self.assert_compile(schema.CreateTable(table),
                             'CREATE TABLE autoinctable (id INTEGER NOT '
                             'NULL PRIMARY KEY AUTOINCREMENT)',
@@ -957,7 +992,8 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
         testing.db.execute("CREATE TABLE a (id INTEGER PRIMARY KEY)")
         # this syntax actually works on other DBs perhaps we'd want to add
         # tests to test_reflection
-        testing.db.execute("CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)")
+        testing.db.execute(
+            "CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)")
 
     def teardown(self):
         testing.db.execute("drop table b")
@@ -970,21 +1006,24 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
 
         assert b.c.id.references(a.c.id)
 
+
 class ReflectFKConstraintTest(fixtures.TestBase):
     __only_on__ = 'sqlite'
 
     def setup(self):
         testing.db.execute("CREATE TABLE a1 (id INTEGER PRIMARY KEY)")
         testing.db.execute("CREATE TABLE a2 (id INTEGER PRIMARY KEY)")
-        testing.db.execute("CREATE TABLE b (id INTEGER PRIMARY KEY, "
-                            "FOREIGN KEY(id) REFERENCES a1(id),"
-                            "FOREIGN KEY(id) REFERENCES a2(id)"
-                            ")")
-        testing.db.execute("CREATE TABLE c (id INTEGER, "
-                            "CONSTRAINT bar PRIMARY KEY(id),"
-                            "CONSTRAINT foo1 FOREIGN KEY(id) REFERENCES a1(id),"
-                            "CONSTRAINT foo2 FOREIGN KEY(id) REFERENCES a2(id)"
-                            ")")
+        testing.db.execute(
+            "CREATE TABLE b (id INTEGER PRIMARY KEY, "
+            "FOREIGN KEY(id) REFERENCES a1(id),"
+            "FOREIGN KEY(id) REFERENCES a2(id)"
+            ")")
+        testing.db.execute(
+            "CREATE TABLE c (id INTEGER, "
+            "CONSTRAINT bar PRIMARY KEY(id),"
+            "CONSTRAINT foo1 FOREIGN KEY(id) REFERENCES a1(id),"
+            "CONSTRAINT foo2 FOREIGN KEY(id) REFERENCES a2(id)"
+            ")")
 
     def teardown(self):
         testing.db.execute("drop table c")
@@ -1004,7 +1043,8 @@ class ReflectFKConstraintTest(fixtures.TestBase):
     def test_name_not_none(self):
         # we don't have names for PK constraints,
         # it appears we get back None in the pragma for
-        # FKs also (also it doesn't even appear to be documented on sqlite's docs
+        # FKs also (also it doesn't even appear to be documented on
+        # sqlite's docs
         # at http://www.sqlite.org/pragma.html#pragma_foreign_key_list
         # how did we ever know that's the "name" field ??)
 
@@ -1017,6 +1057,7 @@ class ReflectFKConstraintTest(fixtures.TestBase):
 
 
 class SavepointTest(fixtures.TablesTest):
+
     """test that savepoints work when we use the correct event setup"""
     __only_on__ = 'sqlite'
 
@@ -1080,7 +1121,7 @@ class SavepointTest(fixtures.TablesTest):
         connection = self.bind.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
-        trans2 = connection.begin_nested()
+        connection.begin_nested()
         connection.execute(users.insert(), user_id=2, user_name='user2')
         trans3 = connection.begin()
         connection.execute(users.insert(), user_id=3, user_name='user3')
@@ -1168,8 +1209,8 @@ class TypeReflectionTest(fixtures.TestBase):
             if warnings:
                 def go():
                     return dialect._resolve_type_affinity(from_)
-                final_type = testing.assert_warnings(go,
-                                ["Could not instantiate"], regex=True)
+                final_type = testing.assert_warnings(
+                    go, ["Could not instantiate"], regex=True)
             else:
                 final_type = dialect._resolve_type_affinity(from_)
             expected_type = type(to_)
@@ -1185,8 +1226,8 @@ class TypeReflectionTest(fixtures.TestBase):
                 if warnings:
                     def go():
                         return inspector.get_columns("foo")[0]
-                    col_info = testing.assert_warnings(go,
-                                    ["Could not instantiate"], regex=True)
+                    col_info = testing.assert_warnings(
+                        go, ["Could not instantiate"], regex=True)
                 else:
                     col_info = inspector.get_columns("foo")[0]
                 expected_type = type(to_)
@@ -1206,7 +1247,8 @@ class TypeReflectionTest(fixtures.TestBase):
         self._test_lookup_direct(self._fixed_lookup_fixture())
 
     def test_lookup_direct_unsupported_args(self):
-        self._test_lookup_direct(self._unsupported_args_fixture(), warnings=True)
+        self._test_lookup_direct(
+            self._unsupported_args_fixture(), warnings=True)
 
     def test_lookup_direct_type_affinity(self):
         self._test_lookup_direct(self._type_affinity_fixture())
@@ -1215,8 +1257,8 @@ class TypeReflectionTest(fixtures.TestBase):
         self._test_round_trip(self._fixed_lookup_fixture())
 
     def test_round_trip_direct_unsupported_args(self):
-        self._test_round_trip(self._unsupported_args_fixture(), warnings=True)
+        self._test_round_trip(
+            self._unsupported_args_fixture(), warnings=True)
 
     def test_round_trip_direct_type_affinity(self):
         self._test_round_trip(self._type_affinity_fixture())
-
