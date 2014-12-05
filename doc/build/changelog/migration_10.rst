@@ -1634,6 +1634,15 @@ CTE support has been fixed up for Oracle, and there is also a new feature
 
 :ticket:`3220`
 
+New Oracle Keywords for DDL
+-----------------------------
+
+Keywords such as COMPRESS, ON COMMIT, BITMAP:
+
+:ref:`oracle_table_options`
+
+:ref:`oracle_index_options`
+
 .. _change_2984:
 
 Drizzle Dialect is now an External Dialect

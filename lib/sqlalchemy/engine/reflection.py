@@ -394,6 +394,9 @@ class Inspector(object):
         unique
           boolean
 
+        dialect_options
+          dict of dialect-specific index options
+
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
 
@@ -642,6 +645,8 @@ class Inspector(object):
             columns = index_d['column_names']
             unique = index_d['unique']
             flavor = index_d.get('type', 'index')
+            dialect_options = index_d.get('dialect_options', {})
+
             duplicates = index_d.get('duplicates_constraint')
             if include_columns and \
                     not set(columns).issubset(include_columns):
@@ -667,7 +672,10 @@ class Inspector(object):
                 else:
                     idx_cols.append(idx_col)
 
-            sa_schema.Index(name, *idx_cols, **dict(unique=unique))
+            sa_schema.Index(
+                name, *idx_cols,
+                **dict(list(dialect_options.items()) + [('unique', unique)])
+            )
 
     def _reflect_unique_constraints(
         self, table_name, schema, table, cols_by_orig_name,

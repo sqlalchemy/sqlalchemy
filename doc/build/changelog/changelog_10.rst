@@ -23,6 +23,12 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, oracle
+
+        New Oracle DDL features for tables, indexes: COMPRESS, BITMAP.
+        Patch courtesy Gabor Gombas.
+
+    .. change::
         :tags: bug, oracle
 
         An alias name will be properly quoted when referred to using the
