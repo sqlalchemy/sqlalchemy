@@ -23,6 +23,24 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3257
+
+        The SQLite dialect, when using the :class:`.sqlite.DATE`,
+        :class:`.sqlite.TIME`,
+        or :class:`.sqlite.DATETIME` types, and given a ``storage_format`` that
+        only renders numbers, will render the types in DDL as
+        ``DATE_CHAR``, ``TIME_CHAR``, and ``DATETIME_CHAR``, so that despite the
+        lack of alpha characters in the values, the column will still
+        deliver the "text affinity".  Normally this is not needed, as the
+        textual values within the default storage formats already
+        imply text.
+
+        .. seealso::
+
+            :ref:`sqlite_datetime`
+
+    .. change::
         :tags: bug, engine
         :tickets: 3266
 

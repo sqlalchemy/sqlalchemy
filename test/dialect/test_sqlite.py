@@ -129,6 +129,53 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
 
     @testing.provide_metadata
+    def test_custom_datetime_text_affinity(self):
+        sqlite_date = sqlite.DATETIME(
+            storage_format="%(year)04d%(month)02d%(day)02d"
+            "%(hour)02d%(minute)02d%(second)02d",
+            regexp=r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})",
+        )
+        t = Table('t', self.metadata, Column('d', sqlite_date))
+        self.metadata.create_all(testing.db)
+        testing.db.execute(
+            t.insert().
+            values(d=datetime.datetime(2010, 10, 15, 12, 37, 0)))
+        testing.db.execute("insert into t (d) values ('20040521000000')")
+        eq_(
+            testing.db.execute("select * from t order by d").fetchall(),
+            [('20040521000000',), ('20101015123700',)]
+        )
+        eq_(
+            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            [
+                (datetime.datetime(2004, 5, 21, 0, 0),),
+                (datetime.datetime(2010, 10, 15, 12, 37),)]
+        )
+
+    @testing.provide_metadata
+    def test_custom_date_text_affinity(self):
+        sqlite_date = sqlite.DATE(
+            storage_format="%(year)04d%(month)02d%(day)02d",
+            regexp=r"(\d{4})(\d{2})(\d{2})",
+        )
+        t = Table('t', self.metadata, Column('d', sqlite_date))
+        self.metadata.create_all(testing.db)
+        testing.db.execute(
+            t.insert().
+            values(d=datetime.date(2010, 10, 15)))
+        testing.db.execute("insert into t (d) values ('20040521')")
+        eq_(
+            testing.db.execute("select * from t order by d").fetchall(),
+            [('20040521',), ('20101015',)]
+        )
+        eq_(
+            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            [
+                (datetime.date(2004, 5, 21),),
+                (datetime.date(2010, 10, 15),)]
+        )
+
+    @testing.provide_metadata
     def test_custom_date(self):
         sqlite_date = sqlite.DATE(
             # 2004-05-21T00:00:00
@@ -1167,6 +1214,16 @@ class TypeReflectionTest(fixtures.TestBase):
             (sqltypes.Time, sqltypes.TIME()),
             (sqltypes.BOOLEAN, sqltypes.BOOLEAN()),
             (sqltypes.Boolean, sqltypes.BOOLEAN()),
+            (sqlite.DATE(
+                storage_format="%(year)04d%(month)02d%(day)02d",
+            ), sqltypes.DATE()),
+            (sqlite.TIME(
+                storage_format="%(hour)02d%(minute)02d%(second)02d",
+            ), sqltypes.TIME()),
+            (sqlite.DATETIME(
+                storage_format="%(year)04d%(month)02d%(day)02d"
+                "%(hour)02d%(minute)02d%(second)02d",
+            ), sqltypes.DATETIME()),
         ]
 
     def _unsupported_args_fixture(self):
