@@ -307,7 +307,7 @@ class CreateEngineTest(fixtures.TestBase):
 
         assert_raises(
             MySpecialException,
-            conn._revalidate_connection
+            getattr, conn, 'connection'
         )
 
     @testing.requires.sqlite

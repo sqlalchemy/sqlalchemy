@@ -265,18 +265,18 @@ class Connection(Connectable):
         try:
             return self.__connection
         except AttributeError:
-            return self._revalidate_connection()
+            return self._revalidate_connection(_wrap=True)
 
-    def _revalidate_connection(self):
+    def _revalidate_connection(self, _wrap):
         if self.__branch_from:
-            return self.__branch_from._revalidate_connection()
-
+            return self.__branch_from._revalidate_connection(_wrap=_wrap)
         if self.__can_reconnect and self.__invalid:
             if self.__transaction is not None:
                 raise exc.InvalidRequestError(
                     "Can't reconnect until invalid "
                     "transaction is rolled back")
-            self.__connection = self.engine.raw_connection(self)
+            self.__connection = self.engine.raw_connection(
+                _connection=self, _wrap=_wrap)
             self.__invalid = False
             return self.__connection
         raise exc.ResourceClosedError("This Connection is closed")
@@ -814,11 +814,11 @@ class Connection(Connectable):
                     fn(self, default, multiparams, params)
 
         try:
-            conn = self.__connection
-        except AttributeError:
-            conn = self._revalidate_connection()
+            try:
+                conn = self.__connection
+            except AttributeError:
+                conn = self._revalidate_connection(_wrap=False)
 
-        try:
             dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
                 dialect, self, conn)
@@ -952,16 +952,17 @@ class Connection(Connectable):
         a :class:`.ResultProxy`."""
 
         try:
-            conn = self.__connection
-        except AttributeError:
-            conn = self._revalidate_connection()
+            try:
+                conn = self.__connection
+            except AttributeError:
+                conn = self._revalidate_connection(_wrap=False)
 
-        try:
             context = constructor(dialect, self, conn, *args)
         except Exception as e:
-            self._handle_dbapi_exception(e,
-                                         util.text_type(statement), parameters,
-                                         None, None)
+            self._handle_dbapi_exception(
+                e,
+                util.text_type(statement), parameters,
+                None, None)
 
         if context.compiled:
             context.pre_exec()
@@ -1149,7 +1150,10 @@ class Connection(Connectable):
             self._is_disconnect =  \
                 isinstance(e, self.dialect.dbapi.Error) and \
                 not self.closed and \
-                self.dialect.is_disconnect(e, self.__connection, cursor)
+                self.dialect.is_disconnect(
+                    e,
+                    self.__connection if not self.invalidated else None,
+                    cursor)
             if context:
                 context.is_disconnect = self._is_disconnect
 
@@ -1953,7 +1957,9 @@ class Engine(Connectable, log.Identified):
         """
         return self.run_callable(self.dialect.has_table, table_name, schema)
 
-    def _wrap_pool_connect(self, fn, connection=None):
+    def _wrap_pool_connect(self, fn, connection, wrap=True):
+        if not wrap:
+            return fn()
         dialect = self.dialect
         try:
             return fn()
@@ -1961,7 +1967,7 @@ class Engine(Connectable, log.Identified):
             Connection._handle_dbapi_exception_noconnection(
                 e, dialect, self, connection)
 
-    def raw_connection(self, _connection=None):
+    def raw_connection(self, _connection=None, _wrap=True):
         """Return a "raw" DBAPI connection from the connection pool.
 
         The returned object is a proxied version of the DBAPI
@@ -1978,7 +1984,7 @@ class Engine(Connectable, log.Identified):
 
         """
         return self._wrap_pool_connect(
-            self.pool.unique_connection, _connection)
+            self.pool.unique_connection, _connection, _wrap)
 
 
 class OptionEngine(Engine):
