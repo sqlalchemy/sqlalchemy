@@ -4,7 +4,8 @@ import datetime
 import os
 from sqlalchemy import Table, Column, MetaData, Float, \
     Integer, String, Boolean, TIMESTAMP, Sequence, Numeric, select, \
-    Date, Time, DateTime, DefaultClause, PickleType, text
+    Date, Time, DateTime, DefaultClause, PickleType, text, Text, \
+    UnicodeText, LargeBinary
 from sqlalchemy import types, schema
 from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql.base import TIME
@@ -171,6 +172,44 @@ class TypeDDLTest(fixtures.TestBase):
                 gen.get_column_specification(col),
                 "%s %s" % (col.name, columns[index][3]))
             self.assert_(repr(col))
+
+    def test_large_type_deprecation(self):
+        d1 = mssql.dialect(deprecate_large_types=True)
+        d2 = mssql.dialect(deprecate_large_types=False)
+        d3 = mssql.dialect()
+        d3.server_version_info = (11, 0)
+        d3._setup_version_attributes()
+        d4 = mssql.dialect()
+        d4.server_version_info = (10, 0)
+        d4._setup_version_attributes()
+
+        for dialect in (d1, d3):
+            eq_(
+                str(Text().compile(dialect=dialect)),
+                "VARCHAR(max)"
+            )
+            eq_(
+                str(UnicodeText().compile(dialect=dialect)),
+                "NVARCHAR(max)"
+            )
+            eq_(
+                str(LargeBinary().compile(dialect=dialect)),
+                "VARBINARY(max)"
+            )
+
+        for dialect in (d2, d4):
+            eq_(
+                str(Text().compile(dialect=dialect)),
+                "TEXT"
+            )
+            eq_(
+                str(UnicodeText().compile(dialect=dialect)),
+                "NTEXT"
+            )
+            eq_(
+                str(LargeBinary().compile(dialect=dialect)),
+                "IMAGE"
+            )
 
     def test_timestamp(self):
         """Exercise TIMESTAMP column."""
@@ -485,18 +524,18 @@ class TypeRoundTripTest(
 
     @emits_warning_on('mssql+mxodbc', r'.*does not have any indexes.*')
     @testing.provide_metadata
-    def test_binary_reflection(self):
+    def _test_binary_reflection(self, deprecate_large_types):
         "Exercise type specification for binary types."
 
         columns = [
-            # column type, args, kwargs, expected ddl
+            # column type, args, kwargs, expected ddl from reflected
             (mssql.MSBinary, [], {},
-             'BINARY'),
+             'BINARY(1)'),
             (mssql.MSBinary, [10], {},
              'BINARY(10)'),
 
             (types.BINARY, [], {},
-             'BINARY'),
+             'BINARY(1)'),
             (types.BINARY, [10], {},
              'BINARY(10)'),
 
@@ -517,10 +556,12 @@ class TypeRoundTripTest(
              'IMAGE'),
 
             (types.LargeBinary, [], {},
-             'IMAGE'),
+             'IMAGE' if not deprecate_large_types else 'VARBINARY(max)'),
         ]
 
         metadata = self.metadata
+        metadata.bind = engines.testing_engine(
+            options={"deprecate_large_types": deprecate_large_types})
         table_args = ['test_mssql_binary', metadata]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
@@ -530,16 +571,28 @@ class TypeRoundTripTest(
         metadata.create_all()
         reflected_binary = Table('test_mssql_binary',
                                  MetaData(testing.db), autoload=True)
-        for col in reflected_binary.c:
+        for col, spec in zip(reflected_binary.c, columns):
+            eq_(
+                str(col.type), spec[3],
+                "column %s %s != %s" % (col.key, str(col.type), spec[3])
+            )
             c1 = testing.db.dialect.type_descriptor(col.type).__class__
             c2 = \
                 testing.db.dialect.type_descriptor(
                     binary_table.c[col.name].type).__class__
-            assert issubclass(c1, c2), '%r is not a subclass of %r' \
-                % (c1, c2)
+            assert issubclass(c1, c2), \
+                'column %s: %r is not a subclass of %r' \
+                % (col.key, c1, c2)
             if binary_table.c[col.name].type.length:
                 testing.eq_(col.type.length,
                             binary_table.c[col.name].type.length)
+
+    def test_binary_reflection_legacy_large_types(self):
+        self._test_binary_reflection(False)
+
+    @testing.only_on('mssql >= 11')
+    def test_binary_reflection_sql2012_large_types(self):
+        self._test_binary_reflection(True)
 
     def test_autoincrement(self):
         Table(

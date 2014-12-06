@@ -1619,6 +1619,14 @@ when using ODBC to avoid this issue entirely.
 
 :ticket:`3182`
 
+SQL Server 2012 large text / binary types render as VARCHAR, NVARCHAR, VARBINARY
+--------------------------------------------------------------------------------
+
+The rendering of the :class:`.Text`, :class:`.UnicodeText`, and :class:`.LargeBinary`
+types has been changed for SQL Server 2012 and greater, with options
+to control the behavior completely, based on deprecation guidelines from
+Microsoft.  See :ref:`mssql_large_type_deprecation` for details.
+
 .. _change_3204:
 
 SQLite/Oracle have distinct methods for temporary table/view name reporting

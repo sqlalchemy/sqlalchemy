@@ -460,6 +460,7 @@ class DefaultRequirements(SuiteRequirements):
         )
 
 
+
     @property
     def emulated_lastrowid(self):
         """"target dialect retrieves cursor.lastrowid or an equivalent
@@ -777,6 +778,17 @@ class DefaultRequirements(SuiteRequirements):
                 "Not supported on MySQL + Windows"
             )
 
+    @property
+    def mssql_freetds(self):
+        return only_on(
+            LambdaPredicate(
+                lambda config: (
+                    (against(config, 'mssql+pyodbc') and
+                     config.db.dialect.freetds)
+                    or against(config, 'mssql+pymssql')
+                )
+            )
+        )
 
     @property
     def selectone(self):

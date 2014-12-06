@@ -894,7 +894,7 @@ class LargeBinary(_Binary):
 
         :param length: optional, a length for the column for use in
           DDL statements, for those BLOB types that accept a length
-          (i.e. MySQL).  It does *not* produce a small BINARY/VARBINARY
+          (i.e. MySQL).  It does *not* produce a *lengthed* BINARY/VARBINARY
           type - use the BINARY/VARBINARY types specifically for those.
           May be safely omitted if no ``CREATE
           TABLE`` will be issued.  Certain databases may require a

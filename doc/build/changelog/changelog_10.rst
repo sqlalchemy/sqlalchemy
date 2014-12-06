@@ -23,6 +23,19 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, mssql
+        :tickets: 3039
+
+        SQL Server 2012 now recommends VARCHAR(max), NVARCHAR(max),
+        VARBINARY(max) for large text/binary types.  The MSSQL dialect will
+        now respect this based on version detection, as well as the new
+        ``deprecate_large_types`` flag.
+
+        .. seealso::
+
+            :ref:`mssql_large_type_deprecation`
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 3257
 
