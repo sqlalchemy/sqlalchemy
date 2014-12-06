@@ -127,9 +127,15 @@ class DefaultRequirements(SuiteRequirements):
             )
 
     @property
-    def temporary_table(self):
-        """Target database must support CREATE TEMPORARY TABLE"""
-        return exclusions.open()
+    def temporary_tables(self):
+        """target database supports temporary tables"""
+        return skip_if(
+                    ["mssql"], "sql server has some other syntax?"
+                )
+
+    @property
+    def temp_table_reflection(self):
+        return self.temporary_tables
 
     @property
     def reflectable_autoincrement(self):

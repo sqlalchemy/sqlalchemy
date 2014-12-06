@@ -1160,9 +1160,10 @@ class InfoTest(fixtures.TestBase):
         t = Table('x', MetaData(), info={'foo': 'bar'})
         eq_(t.info, {'foo': 'bar'})
 
+
 class TableTest(fixtures.TestBase, AssertsCompiledSQL):
 
-    @testing.requires.temporary_table
+    @testing.requires.temporary_tables
     @testing.skip_if('mssql', 'different col format')
     def test_prefixes(self):
         from sqlalchemy import Table

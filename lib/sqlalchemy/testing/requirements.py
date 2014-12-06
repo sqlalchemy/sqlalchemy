@@ -323,6 +323,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def temporary_tables(self):
+        """target database supports temporary tables"""
+        return exclusions.open()
+
+    @property
     def temporary_views(self):
         """target database supports temporary views"""
         return exclusions.closed()
