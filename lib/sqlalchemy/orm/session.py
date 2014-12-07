@@ -2056,7 +2056,8 @@ class Session(_SessionClassMethods):
                 mapper, states, isupdate, True, return_defaults)
 
     def bulk_insert_mappings(self, mapper, mappings, return_defaults=False):
-        self._bulk_save_mappings(mapper, mappings, False, False, return_defaults)
+        self._bulk_save_mappings(
+            mapper, mappings, False, False, return_defaults)
 
     def bulk_update_mappings(self, mapper, mappings):
         self._bulk_save_mappings(mapper, mappings, True, False, False)
