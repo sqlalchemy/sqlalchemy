@@ -1942,7 +1942,8 @@ class PGDialect(default.DefaultDialect):
             cursor = connection.execute(
                 sql.text(
                     "select relname from pg_class c join pg_namespace n on "
-                    "n.oid=c.relnamespace where n.nspname=current_schema() "
+                    "n.oid=c.relnamespace where "
+                    "pg_catalog.pg_table_is_visible(c.oid) "
                     "and relname=:name",
                     bindparams=[
                         sql.bindparam('name', util.text_type(table_name),

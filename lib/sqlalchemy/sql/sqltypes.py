@@ -894,7 +894,7 @@ class LargeBinary(_Binary):
 
         :param length: optional, a length for the column for use in
           DDL statements, for those BLOB types that accept a length
-          (i.e. MySQL).  It does *not* produce a small BINARY/VARBINARY
+          (i.e. MySQL).  It does *not* produce a *lengthed* BINARY/VARBINARY
           type - use the BINARY/VARBINARY types specifically for those.
           May be safely omitted if no ``CREATE
           TABLE`` will be issued.  Certain databases may require a
@@ -998,13 +998,11 @@ class SchemaType(SchemaEventTarget):
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
 
-        # don't associate with MetaData as the hosting type
+        # don't associate with self.metadata as the hosting type
         # is already associated with it, avoid creating event
         # listeners
-        metadata = kw.pop('metadata', None)
         return impltype(name=self.name,
                         schema=schema,
-                        metadata=metadata,
                         inherit_schema=self.inherit_schema,
                         **kw)
 
@@ -1165,7 +1163,8 @@ class Enum(String, SchemaType):
             type_coerce(column, self).in_(self.enums),
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
-                self._should_create_constraint)
+                self._should_create_constraint),
+            _type_bound=True
         )
         assert e.table is table
 
@@ -1303,7 +1302,8 @@ class Boolean(TypeEngine, SchemaType):
             type_coerce(column, self).in_([0, 1]),
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
-                self._should_create_constraint)
+                self._should_create_constraint),
+            _type_bound=True
         )
         assert e.table is table
 
@@ -1654,10 +1654,26 @@ class NullType(TypeEngine):
     comparator_factory = Comparator
 
 
+class MatchType(Boolean):
+    """Refers to the return type of the MATCH operator.
+
+    As the :meth:`.Operators.match` is probably the most open-ended
+    operator in generic SQLAlchemy Core, we can't assume the return type
+    at SQL evaluation time, as MySQL returns a floating point, not a boolean,
+    and other backends might do something different.    So this type
+    acts as a placeholder, currently subclassing :class:`.Boolean`.
+    The type allows dialects to inject result-processing functionality
+    if needed, and on MySQL will return floating-point values.
+
+    .. versionadded:: 1.0.0
+
+    """
+
 NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 INTEGERTYPE = Integer()
+MATCHTYPE = MatchType()
 
 _type_map = {
     int: Integer(),
@@ -1685,6 +1701,7 @@ type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
+type_api.MATCHTYPE = MATCHTYPE
 type_api._type_map = _type_map
 
 # this one, there's all kinds of ways to play it, but at the EOD

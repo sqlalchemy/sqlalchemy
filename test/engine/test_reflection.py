@@ -799,6 +799,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
 
     @testing.crashes('oracle', 'FIXME: unknown, confirm not fails_on')
+    @testing.requires.check_constraints
     @testing.provide_metadata
     def test_reserved(self):
 

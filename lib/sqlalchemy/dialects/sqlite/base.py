@@ -9,6 +9,7 @@
 .. dialect:: sqlite
     :name: SQLite
 
+.. _sqlite_datetime:
 
 Date and Time Types
 -------------------
@@ -22,6 +23,20 @@ and parsing functionality when SQlite is used. The implementation classes are
 These types represent dates and times as ISO formatted strings, which also
 nicely support ordering. There's no reliance on typical "libc" internals for
 these functions so historical dates are fully supported.
+
+Ensuring Text affinity
+^^^^^^^^^^^^^^^^^^^^^^
+
+The DDL rendered for these types is the standard ``DATE``, ``TIME``
+and ``DATETIME`` indicators.    However, custom storage formats can also be
+applied to these types.   When the
+storage format is detected as containing no alpha characters, the DDL for
+these types is rendered as ``DATE_CHAR``, ``TIME_CHAR``, and ``DATETIME_CHAR``,
+so that the column continues to have textual affinity.
+
+.. seealso::
+
+    `Type Affinity <http://www.sqlite.org/datatype3.html#affinity>`_ - in the SQLite documentation
 
 .. _sqlite_autoincrement:
 
@@ -255,7 +270,7 @@ from ... import util
 from ...engine import default, reflection
 from ...sql import compiler
 
-from ...types import (BLOB, BOOLEAN, CHAR, DATE, DECIMAL, FLOAT,
+from ...types import (BLOB, BOOLEAN, CHAR, DECIMAL, FLOAT,
                       INTEGER, REAL, NUMERIC, SMALLINT, TEXT,
                       TIMESTAMP, VARCHAR)
 
@@ -270,6 +285,25 @@ class _DateTimeMixin(object):
             self._reg = re.compile(regexp)
         if storage_format is not None:
             self._storage_format = storage_format
+
+    @property
+    def format_is_text_affinity(self):
+        """return True if the storage format will automatically imply
+        a TEXT affinity.
+
+        If the storage format contains no non-numeric characters,
+        it will imply a NUMERIC storage format on SQLite; in this case,
+        the type will generate its DDL as DATE_CHAR, DATETIME_CHAR,
+        TIME_CHAR.
+
+        .. versionadded:: 1.0.0
+
+        """
+        spec = self._storage_format % {
+            "year": 0, "month": 0, "day": 0, "hour": 0,
+            "minute": 0, "second": 0, "microsecond": 0
+        }
+        return bool(re.search(r'[^0-9]', spec))
 
     def adapt(self, cls, **kw):
         if issubclass(cls, _DateTimeMixin):
@@ -526,7 +560,9 @@ ischema_names = {
     'BOOLEAN': sqltypes.BOOLEAN,
     'CHAR': sqltypes.CHAR,
     'DATE': sqltypes.DATE,
+    'DATE_CHAR': sqltypes.DATE,
     'DATETIME': sqltypes.DATETIME,
+    'DATETIME_CHAR': sqltypes.DATETIME,
     'DOUBLE': sqltypes.FLOAT,
     'DECIMAL': sqltypes.DECIMAL,
     'FLOAT': sqltypes.FLOAT,
@@ -537,6 +573,7 @@ ischema_names = {
     'SMALLINT': sqltypes.SMALLINT,
     'TEXT': sqltypes.TEXT,
     'TIME': sqltypes.TIME,
+    'TIME_CHAR': sqltypes.TIME,
     'TIMESTAMP': sqltypes.TIMESTAMP,
     'VARCHAR': sqltypes.VARCHAR,
     'NVARCHAR': sqltypes.NVARCHAR,
@@ -646,8 +683,8 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
     def visit_foreign_key_constraint(self, constraint):
 
-        local_table = list(constraint._elements.values())[0].parent.table
-        remote_table = list(constraint._elements.values())[0].column.table
+        local_table = constraint.elements[0].parent.table
+        remote_table = constraint.elements[0].column.table
 
         if local_table.schema != remote_table.schema:
             return None
@@ -669,6 +706,27 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
     def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
+
+    def visit_DATETIME(self, type_):
+        if not isinstance(type_, _DateTimeMixin) or \
+                type_.format_is_text_affinity:
+            return super(SQLiteTypeCompiler, self).visit_DATETIME(type_)
+        else:
+            return "DATETIME_CHAR"
+
+    def visit_DATE(self, type_):
+        if not isinstance(type_, _DateTimeMixin) or \
+                type_.format_is_text_affinity:
+            return super(SQLiteTypeCompiler, self).visit_DATE(type_)
+        else:
+            return "DATE_CHAR"
+
+    def visit_TIME(self, type_):
+        if not isinstance(type_, _DateTimeMixin) or \
+                type_.format_is_text_affinity:
+            return super(SQLiteTypeCompiler, self).visit_TIME(type_)
+        else:
+            return "TIME_CHAR"
 
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):

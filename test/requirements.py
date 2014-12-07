@@ -30,13 +30,19 @@ def exclude(db, op, spec, description=None):
 class DefaultRequirements(SuiteRequirements):
     @property
     def deferrable_or_no_constraints(self):
-        """Target database must support derferable constraints."""
+        """Target database must support deferrable constraints."""
 
         return skip_if([
             no_support('firebird', 'not supported by database'),
             no_support('mysql', 'not supported by database'),
             no_support('mssql', 'not supported by database'),
             ])
+
+    @property
+    def check_constraints(self):
+        """Target database must support check constraints."""
+
+        return exclusions.open()
 
     @property
     def named_constraints(self):
@@ -119,6 +125,17 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["firebird", "oracle", "postgresql", "sybase"],
                 "not supported by database"
             )
+
+    @property
+    def temporary_tables(self):
+        """target database supports temporary tables"""
+        return skip_if(
+                    ["mssql"], "sql server has some other syntax?"
+                )
+
+    @property
+    def temp_table_reflection(self):
+        return self.temporary_tables
 
     @property
     def reflectable_autoincrement(self):
@@ -443,6 +460,7 @@ class DefaultRequirements(SuiteRequirements):
         )
 
 
+
     @property
     def emulated_lastrowid(self):
         """"target dialect retrieves cursor.lastrowid or an equivalent
@@ -760,6 +778,17 @@ class DefaultRequirements(SuiteRequirements):
                 "Not supported on MySQL + Windows"
             )
 
+    @property
+    def mssql_freetds(self):
+        return only_on(
+            LambdaPredicate(
+                lambda config: (
+                    (against(config, 'mssql+pyodbc') and
+                     config.db.dialect.freetds)
+                    or against(config, 'mssql+pymssql')
+                )
+            )
+        )
 
     @property
     def selectone(self):

@@ -543,8 +543,13 @@ class AliasedInsp(InspectionAttr):
                 mapper, self)
 
     def __repr__(self):
-        return '<AliasedInsp at 0x%x; %s>' % (
-            id(self), self.class_.__name__)
+        if self.with_polymorphic_mappers:
+            with_poly = "(%s)" % ", ".join(
+                mp.class_.__name__ for mp in self.with_polymorphic_mappers)
+        else:
+            with_poly = ""
+        return '<AliasedInsp at 0x%x; %s%s>' % (
+            id(self), self.class_.__name__, with_poly)
 
 
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
@@ -648,7 +653,8 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 def with_polymorphic(base, classes, selectable=False,
                      flat=False,
                      polymorphic_on=None, aliased=False,
-                     innerjoin=False, _use_mapper_path=False):
+                     innerjoin=False, _use_mapper_path=False,
+                     _existing_alias=None):
     """Produce an :class:`.AliasedClass` construct which specifies
     columns for descendant mappers of the given base.
 
@@ -713,6 +719,16 @@ def with_polymorphic(base, classes, selectable=False,
        only be specified if querying for one specific subtype only
     """
     primary_mapper = _class_to_mapper(base)
+    if _existing_alias:
+        assert _existing_alias.mapper is primary_mapper
+        classes = util.to_set(classes)
+        new_classes = set([
+            mp.class_ for mp in
+            _existing_alias.with_polymorphic_mappers])
+        if classes == new_classes:
+            return _existing_alias
+        else:
+            classes = classes.union(new_classes)
     mappers, selectable = primary_mapper.\
         _with_polymorphic_args(classes, selectable,
                                innerjoin=innerjoin)

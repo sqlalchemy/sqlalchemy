@@ -75,6 +75,7 @@ class Query(object):
     _having = None
     _distinct = False
     _prefixes = None
+    _suffixes = None
     _offset = None
     _limit = None
     _for_update_arg = None
@@ -1003,7 +1004,7 @@ class Query(object):
                 '_limit', '_offset',
                 '_joinpath', '_joinpoint',
                 '_distinct', '_having',
-                '_prefixes',
+                '_prefixes', '_suffixes'
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from([fromclause], True)
@@ -1740,6 +1741,14 @@ class Query(object):
          anonymously aliased.  Subsequent calls to :meth:`~.Query.filter`
          and similar will adapt the incoming criterion to the target
          alias, until :meth:`~.Query.reset_joinpoint` is called.
+        :param isouter=False: If True, the join used will be a left outer join,
+         just as if the :meth:`.Query.outerjoin` method were called.  This
+         flag is here to maintain consistency with the same flag as accepted
+         by :meth:`.FromClause.join` and other Core constructs.
+
+
+         .. versionadded:: 1.0.0
+
         :param from_joinpoint=False: When using ``aliased=True``, a setting
          of True here will cause the join to be from the most recent
          joined target, rather than starting back from the original
@@ -1757,13 +1766,15 @@ class Query(object):
             SQLAlchemy versions was the primary ORM-level joining interface.
 
         """
-        aliased, from_joinpoint = kwargs.pop('aliased', False),\
-            kwargs.pop('from_joinpoint', False)
+        aliased, from_joinpoint, isouter = kwargs.pop('aliased', False),\
+            kwargs.pop('from_joinpoint', False),\
+            kwargs.pop('isouter', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
                             ','.join(kwargs.keys))
+        isouter = isouter
         return self._join(props,
-                          outerjoin=False, create_aliases=aliased,
+                          outerjoin=isouter, create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
 
     def outerjoin(self, *props, **kwargs):
@@ -2349,11 +2360,37 @@ class Query(object):
 
         .. versionadded:: 0.7.7
 
+        .. seealso::
+
+            :meth:`.HasPrefixes.prefix_with`
+
         """
         if self._prefixes:
             self._prefixes += prefixes
         else:
             self._prefixes = prefixes
+
+    @_generative()
+    def suffix_with(self, *suffixes):
+        """Apply the suffix to the query and return the newly resulting
+        ``Query``.
+
+        :param \*suffixes: optional suffixes, typically strings,
+         not using any commas.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Query.prefix_with`
+
+            :meth:`.HasSuffixes.suffix_with`
+
+        """
+        if self._suffixes:
+            self._suffixes += suffixes
+        else:
+            self._suffixes = suffixes
 
     def all(self):
         """Return the results represented by this ``Query`` as a list.
@@ -2591,6 +2628,7 @@ class Query(object):
             'offset': self._offset,
             'distinct': self._distinct,
             'prefixes': self._prefixes,
+            'suffixes': self._suffixes,
             'group_by': self._group_by or None,
             'having': self._having
         }
@@ -3395,7 +3433,6 @@ class _BundleEntity(_QueryEntity):
         self.filter_fn = lambda item: item
 
         self.supports_single_entity = self.bundle.single_entity
-
 
     @property
     def entity_zero(self):

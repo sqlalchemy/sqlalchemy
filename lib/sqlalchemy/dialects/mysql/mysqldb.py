@@ -77,7 +77,7 @@ class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
 
 class MySQLDialect_mysqldb(MySQLDialect):
     driver = 'mysqldb'
-    supports_unicode_statements = False
+    supports_unicode_statements = True
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 

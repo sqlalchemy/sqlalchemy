@@ -824,7 +824,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table.append_constraint(
                     c.copy(schema=fk_constraint_schema, target_table=table))
 
-            else:
+            elif not c._type_bound:
                 table.append_constraint(
                     c.copy(schema=schema, target_table=table))
         for index in self.indexes:
@@ -1295,7 +1295,7 @@ class Column(SchemaItem, ColumnClause):
 
         # Constraint objects plus non-constraint-bound ForeignKey objects
         args = \
-            [c.copy(**kw) for c in self.constraints] + \
+            [c.copy(**kw) for c in self.constraints if not c._type_bound] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
         type_ = self.type
@@ -1804,7 +1804,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 match=self.match,
                 **self._unvalidated_dialect_kw
             )
-            self.constraint._elements[self.parent] = self
+            self.constraint._append_element(column, self)
             self.constraint._set_parent_with_dispatch(table)
         table.foreign_keys.add(self)
 
@@ -2254,7 +2254,7 @@ class Constraint(DialectKWArgs, SchemaItem):
     __visit_name__ = 'constraint'
 
     def __init__(self, name=None, deferrable=None, initially=None,
-                 _create_rule=None, info=None,
+                 _create_rule=None, info=None, _type_bound=False,
                  **dialect_kw):
         """Create a SQL constraint.
 
@@ -2304,6 +2304,7 @@ class Constraint(DialectKWArgs, SchemaItem):
         if info:
             self.info = info
         self._create_rule = _create_rule
+        self._type_bound = _type_bound
         util.set_creation_order(self)
         self._validate_dialect_kwargs(dialect_kw)
 
@@ -2420,7 +2421,7 @@ class CheckConstraint(Constraint):
 
     def __init__(self, sqltext, name=None, deferrable=None,
                  initially=None, table=None, info=None, _create_rule=None,
-                 _autoattach=True):
+                 _autoattach=True, _type_bound=False):
         """Construct a CHECK constraint.
 
         :param sqltext:
@@ -2450,7 +2451,9 @@ class CheckConstraint(Constraint):
         """
 
         super(CheckConstraint, self).\
-            __init__(name, deferrable, initially, _create_rule, info=info)
+            __init__(
+                name, deferrable, initially, _create_rule, info=info,
+                _type_bound=_type_bound)
         self.sqltext = _literal_as_text(sqltext, warn=False)
         if table is not None:
             self._set_parent_with_dispatch(table)
@@ -2485,11 +2488,12 @@ class CheckConstraint(Constraint):
                             deferrable=self.deferrable,
                             _create_rule=self._create_rule,
                             table=target_table,
-                            _autoattach=False)
+                            _autoattach=False,
+                            _type_bound=self._type_bound)
         return self._schema_item_copy(c)
 
 
-class ForeignKeyConstraint(Constraint):
+class ForeignKeyConstraint(ColumnCollectionConstraint):
     """A table-level FOREIGN KEY constraint.
 
     Defines a single column or composite FOREIGN KEY ... REFERENCES
@@ -2564,9 +2568,10 @@ class ForeignKeyConstraint(Constraint):
             .. versionadded:: 0.9.2
 
         """
-        super(ForeignKeyConstraint, self).\
-            __init__(name, deferrable, initially, info=info, **dialect_kw)
 
+        Constraint.__init__(
+            self, name=name, deferrable=deferrable, initially=initially,
+            info=info, **dialect_kw)
         self.onupdate = onupdate
         self.ondelete = ondelete
         self.link_to_name = link_to_name
@@ -2575,14 +2580,12 @@ class ForeignKeyConstraint(Constraint):
         self.use_alter = use_alter
         self.match = match
 
-        self._elements = util.OrderedDict()
-
         # standalone ForeignKeyConstraint - create
         # associated ForeignKey objects which will be applied to hosted
         # Column objects (in col.foreign_keys), either now or when attached
         # to the Table for string-specified names
-        for col, refcol in zip(columns, refcolumns):
-            self._elements[col] = ForeignKey(
+        self.elements = [
+            ForeignKey(
                 refcol,
                 _constraint=self,
                 name=self.name,
@@ -2594,25 +2597,36 @@ class ForeignKeyConstraint(Constraint):
                 deferrable=self.deferrable,
                 initially=self.initially,
                 **self.dialect_kwargs
-            )
+            ) for refcol in refcolumns
+        ]
 
+        ColumnCollectionMixin.__init__(self, *columns)
         if table is not None:
+            if hasattr(self, "parent"):
+                assert table is self.parent
             self._set_parent_with_dispatch(table)
-        elif columns and \
-            isinstance(columns[0], Column) and \
-                columns[0].table is not None:
-            self._set_parent_with_dispatch(columns[0].table)
+
+    def _append_element(self, column, fk):
+        self.columns.add(column)
+        self.elements.append(fk)
+
+    @property
+    def _elements(self):
+        # legacy - provide a dictionary view of (column_key, fk)
+        return util.OrderedDict(
+            zip(self.column_keys, self.elements)
+        )
 
     @property
     def _referred_schema(self):
-        for elem in self._elements.values():
+        for elem in self.elements:
             return elem._referred_schema
         else:
             return None
 
     def _validate_dest_table(self, table):
         table_keys = set([elem._table_key()
-                          for elem in self._elements.values()])
+                          for elem in self.elements])
         if None not in table_keys and len(table_keys) > 1:
             elem0, elem1 = sorted(table_keys)[0:2]
             raise exc.ArgumentError(
@@ -2625,37 +2639,47 @@ class ForeignKeyConstraint(Constraint):
                 ))
 
     @property
+    def column_keys(self):
+        """Return a list of string keys representing the local
+        columns in this :class:`.ForeignKeyConstraint`.
+
+        This list is either the original string arguments sent
+        to the constructor of the :class:`.ForeignKeyConstraint`,
+        or if the constraint has been initialized with :class:`.Column`
+        objects, is the string .key of each element.
+
+        .. versionadded:: 1.0.0
+
+        """
+        if hasattr(self, "parent"):
+            return self.columns.keys()
+        else:
+            return [
+                col.key if isinstance(col, ColumnElement)
+                else str(col) for col in self._pending_colargs
+            ]
+
+    @property
     def _col_description(self):
-        return ", ".join(self._elements)
-
-    @property
-    def columns(self):
-        return list(self._elements)
-
-    @property
-    def elements(self):
-        return list(self._elements.values())
+        return ", ".join(self.column_keys)
 
     def _set_parent(self, table):
-        super(ForeignKeyConstraint, self)._set_parent(table)
+        Constraint._set_parent(self, table)
 
-        self._validate_dest_table(table)
+        try:
+            ColumnCollectionConstraint._set_parent(self, table)
+        except KeyError as ke:
+            raise exc.ArgumentError(
+                "Can't create ForeignKeyConstraint "
+                "on table '%s': no column "
+                "named '%s' is present." % (table.description, ke.args[0]))
 
-        for col, fk in self._elements.items():
-            # string-specified column names now get
-            # resolved to Column objects
-            if isinstance(col, util.string_types):
-                try:
-                    col = table.c[col]
-                except KeyError:
-                    raise exc.ArgumentError(
-                        "Can't create ForeignKeyConstraint "
-                        "on table '%s': no column "
-                        "named '%s' is present." % (table.description, col))
-
+        for col, fk in zip(self.columns, self.elements):
             if not hasattr(fk, 'parent') or \
                     fk.parent is not col:
                 fk._set_parent_with_dispatch(col)
+
+        self._validate_dest_table(table)
 
         if self.use_alter:
             def supports_alter(ddl, event, schema_item, bind, **kw):
@@ -2669,14 +2693,14 @@ class ForeignKeyConstraint(Constraint):
 
     def copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(
-            [x.parent.key for x in self._elements.values()],
+            [x.parent.key for x in self.elements],
             [x._get_colspec(
                 schema=schema,
                 table_name=target_table.name
                 if target_table is not None
                 and x._table_key() == x.parent.table.key
                 else None)
-             for x in self._elements.values()],
+             for x in self.elements],
             name=self.name,
             onupdate=self.onupdate,
             ondelete=self.ondelete,
@@ -2687,8 +2711,8 @@ class ForeignKeyConstraint(Constraint):
             match=self.match
         )
         for self_fk, other_fk in zip(
-                self._elements.values(),
-                fkc._elements.values()):
+                self.elements,
+                fkc.elements):
             self_fk._schema_item_copy(other_fk)
         return self._schema_item_copy(fkc)
 

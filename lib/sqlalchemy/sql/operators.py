@@ -767,6 +767,10 @@ def match_op(a, b, **kw):
     return a.match(b, **kw)
 
 
+def notmatch_op(a, b, **kw):
+    return a.notmatch(b, **kw)
+
+
 def comma_op(a, b):
     raise NotImplementedError()
 
@@ -834,6 +838,7 @@ _PRECEDENCE = {
 
     concat_op: 6,
     match_op: 6,
+    notmatch_op: 6,
 
     ilike_op: 6,
     notilike_op: 6,

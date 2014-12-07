@@ -13,6 +13,9 @@ from .. import util
 from .. import exc
 from itertools import chain
 from .base import class_mapper
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def _unreduce_path(path):
@@ -54,9 +57,11 @@ class PathRegistry(object):
             self.path == other.path
 
     def set(self, attributes, key, value):
+        log.debug("set '%s' on path '%s' to '%s'", key, self, value)
         attributes[(key, self.path)] = value
 
     def setdefault(self, attributes, key, value):
+        log.debug("setdefault '%s' on path '%s' to '%s'", key, self, value)
         attributes.setdefault((key, self.path), value)
 
     def get(self, attributes, key, value=None):
@@ -183,6 +188,11 @@ class PropRegistry(PathRegistry):
         self.prop = prop
         self.parent = parent
         self.path = parent.path + (prop,)
+
+    def __str__(self):
+        return " -> ".join(
+            str(elem) for elem in self.path
+        )
 
     @util.memoized_property
     def has_entity(self):

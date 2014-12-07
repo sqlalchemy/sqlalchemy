@@ -462,3 +462,33 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'FROM "order" JOIN regional_sales AS anon_1 '
             'ON anon_1."order" = "order"."order"'
         )
+
+    def test_suffixes(self):
+        orders = table('order', column('order'))
+        s = select([orders.c.order]).cte("regional_sales")
+        s = s.suffix_with("pg suffix", dialect='postgresql')
+        s = s.suffix_with('oracle suffix', dialect='oracle')
+        stmt = select([orders]).where(orders.c.order > s.c.order)
+
+        self.assert_compile(
+            stmt,
+            'WITH regional_sales AS (SELECT "order"."order" AS "order" '
+            'FROM "order")  SELECT "order"."order" FROM "order", '
+            'regional_sales WHERE "order"."order" > regional_sales."order"'
+        )
+
+        self.assert_compile(
+            stmt,
+            'WITH regional_sales AS (SELECT "order"."order" AS "order" '
+            'FROM "order") oracle suffix  SELECT "order"."order" FROM "order", '
+            'regional_sales WHERE "order"."order" > regional_sales."order"',
+            dialect='oracle'
+        )
+
+        self.assert_compile(
+            stmt,
+            'WITH regional_sales AS (SELECT "order"."order" AS "order" '
+            'FROM "order") pg suffix  SELECT "order"."order" FROM "order", '
+            'regional_sales WHERE "order"."order" > regional_sales."order"',
+            dialect='postgresql'
+        )

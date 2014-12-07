@@ -14,6 +14,52 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, examples
+        :versions: 1.0.0
+
+        Updated the :ref:`examples_versioned_history` example such that
+        mapped columns are re-mapped to
+        match column names as well as grouping of columns; in particular,
+        this allows columns that are explicitly grouped in a same-column-named
+        joined inheritance scenario to be mapped in the same way in the
+        history mappings, avoiding warnings added in the 0.9 series
+        regarding this pattern and allowing the same view of attribute
+        keys.
+
+    .. change::
+        :tags: bug, examples
+        :versions: 1.0.0
+
+        Fixed a bug in the examples/generic_assocaitions/discriminator_on_association.py
+        example, where the subclasses of AddressAssociation were not being
+        mapped as "single table inheritance", leading to problems when trying
+        to use the mappings further.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 1.0.0
+        :tickets: 3251
+
+        Fixed a leak which would occur in the unsupported and highly
+        non-recommended use case of replacing a relationship on a fixed
+        mapped class many times, referring to an arbitrarily growing number of
+        target mappers.  A warning is emitted when the old relationship is
+        replaced, however if the mapping were already used for querying, the
+        old relationship would still be referenced within some registries.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3248
+
+        Fixed issue where the columns from a SELECT embedded in an
+        INSERT, either through the values clause or as a "from select",
+        would pollute the column types used in the result set produced by
+        the RETURNING clause when columns from both statements shared the
+        same name, leading to potential errors or mis-adaptation when
+        retrieving the returning rows.
+
+    .. change::
         :tags: bug, orm, sqlite
         :versions: 1.0.0
         :tickets: 3241

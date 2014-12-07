@@ -171,6 +171,79 @@ class Selectable(ClauseElement):
         return self
 
 
+class HasPrefixes(object):
+    _prefixes = ()
+
+    @_generative
+    def prefix_with(self, *expr, **kw):
+        """Add one or more expressions following the statement keyword, i.e.
+        SELECT, INSERT, UPDATE, or DELETE. Generative.
+
+        This is used to support backend-specific prefix keywords such as those
+        provided by MySQL.
+
+        E.g.::
+
+            stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
+
+        Multiple prefixes can be specified by multiple calls
+        to :meth:`.prefix_with`.
+
+        :param \*expr: textual or :class:`.ClauseElement` construct which
+         will be rendered following the INSERT, UPDATE, or DELETE
+         keyword.
+        :param \**kw: A single keyword 'dialect' is accepted.  This is an
+         optional string dialect name which will
+         limit rendering of this prefix to only that dialect.
+
+        """
+        dialect = kw.pop('dialect', None)
+        if kw:
+            raise exc.ArgumentError("Unsupported argument(s): %s" %
+                                    ",".join(kw))
+        self._setup_prefixes(expr, dialect)
+
+    def _setup_prefixes(self, prefixes, dialect=None):
+        self._prefixes = self._prefixes + tuple(
+            [(_literal_as_text(p, warn=False), dialect) for p in prefixes])
+
+
+class HasSuffixes(object):
+    _suffixes = ()
+
+    @_generative
+    def suffix_with(self, *expr, **kw):
+        """Add one or more expressions following the statement as a whole.
+
+        This is used to support backend-specific suffix keywords on
+        certain constructs.
+
+        E.g.::
+
+            stmt = select([col1, col2]).cte().suffix_with(
+                "cycle empno set y_cycle to 1 default 0", dialect="oracle")
+
+        Multiple prefixes can be specified by multiple calls
+        to :meth:`.suffix_with`.
+
+        :param \*expr: textual or :class:`.ClauseElement` construct which
+         will be rendered following the target clause.
+        :param \**kw: A single keyword 'dialect' is accepted.  This is an
+         optional string dialect name which will
+         limit rendering of this suffix to only that dialect.
+
+        """
+        dialect = kw.pop('dialect', None)
+        if kw:
+            raise exc.ArgumentError("Unsupported argument(s): %s" %
+                                    ",".join(kw))
+        self._setup_suffixes(expr, dialect)
+
+    def _setup_suffixes(self, suffixes, dialect=None):
+        self._suffixes = self._suffixes + tuple(
+            [(_literal_as_text(p, warn=False), dialect) for p in suffixes])
+
+
 class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
@@ -1088,7 +1161,7 @@ class Alias(FromClause):
         return self.element.bind
 
 
-class CTE(Alias):
+class CTE(Generative, HasSuffixes, Alias):
     """Represent a Common Table Expression.
 
     The :class:`.CTE` object is obtained using the
@@ -1104,10 +1177,13 @@ class CTE(Alias):
                  name=None,
                  recursive=False,
                  _cte_alias=None,
-                 _restates=frozenset()):
+                 _restates=frozenset(),
+                 _suffixes=None):
         self.recursive = recursive
         self._cte_alias = _cte_alias
         self._restates = _restates
+        if _suffixes:
+            self._suffixes = _suffixes
         super(CTE, self).__init__(selectable, name=name)
 
     def alias(self, name=None, flat=False):
@@ -1116,6 +1192,7 @@ class CTE(Alias):
             name=name,
             recursive=self.recursive,
             _cte_alias=self,
+            _suffixes=self._suffixes
         )
 
     def union(self, other):
@@ -1123,7 +1200,8 @@ class CTE(Alias):
             self.original.union(other),
             name=self.name,
             recursive=self.recursive,
-            _restates=self._restates.union([self])
+            _restates=self._restates.union([self]),
+            _suffixes=self._suffixes
         )
 
     def union_all(self, other):
@@ -1131,7 +1209,8 @@ class CTE(Alias):
             self.original.union_all(other),
             name=self.name,
             recursive=self.recursive,
-            _restates=self._restates.union([self])
+            _restates=self._restates.union([self]),
+            _suffixes=self._suffixes
         )
 
 
@@ -2118,44 +2197,7 @@ class CompoundSelect(GenerativeSelect):
     bind = property(bind, _set_bind)
 
 
-class HasPrefixes(object):
-    _prefixes = ()
-
-    @_generative
-    def prefix_with(self, *expr, **kw):
-        """Add one or more expressions following the statement keyword, i.e.
-        SELECT, INSERT, UPDATE, or DELETE. Generative.
-
-        This is used to support backend-specific prefix keywords such as those
-        provided by MySQL.
-
-        E.g.::
-
-            stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
-
-        Multiple prefixes can be specified by multiple calls
-        to :meth:`.prefix_with`.
-
-        :param \*expr: textual or :class:`.ClauseElement` construct which
-         will be rendered following the INSERT, UPDATE, or DELETE
-         keyword.
-        :param \**kw: A single keyword 'dialect' is accepted.  This is an
-         optional string dialect name which will
-         limit rendering of this prefix to only that dialect.
-
-        """
-        dialect = kw.pop('dialect', None)
-        if kw:
-            raise exc.ArgumentError("Unsupported argument(s): %s" %
-                                    ",".join(kw))
-        self._setup_prefixes(expr, dialect)
-
-    def _setup_prefixes(self, prefixes, dialect=None):
-        self._prefixes = self._prefixes + tuple(
-            [(_literal_as_text(p, warn=False), dialect) for p in prefixes])
-
-
-class Select(HasPrefixes, GenerativeSelect):
+class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     """Represents a ``SELECT`` statement.
 
     """
@@ -2163,6 +2205,7 @@ class Select(HasPrefixes, GenerativeSelect):
     __visit_name__ = 'select'
 
     _prefixes = ()
+    _suffixes = ()
     _hints = util.immutabledict()
     _statement_hints = ()
     _distinct = False
@@ -2180,6 +2223,7 @@ class Select(HasPrefixes, GenerativeSelect):
                  having=None,
                  correlate=True,
                  prefixes=None,
+                 suffixes=None,
                  **kwargs):
         """Construct a new :class:`.Select`.
 
@@ -2424,6 +2468,9 @@ class Select(HasPrefixes, GenerativeSelect):
 
         if prefixes:
             self._setup_prefixes(prefixes)
+
+        if suffixes:
+            self._setup_suffixes(suffixes)
 
         GenerativeSelect.__init__(self, **kwargs)
 

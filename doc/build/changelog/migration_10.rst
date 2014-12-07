@@ -276,6 +276,64 @@ running 0.9 in production.
 
 :ticket:`2891`
 
+.. _change_3264:
+
+Postgresql ``has_table()`` now works for temporary tables
+---------------------------------------------------------
+
+This is a simple fix such that "has table" for temporary tables now works,
+so that code like the following may proceed::
+
+    from sqlalchemy import *
+
+    metadata = MetaData()
+    user_tmp = Table(
+        "user_tmp", metadata,
+        Column("id", INT, primary_key=True),
+        Column('name', VARCHAR(50)),
+        prefixes=['TEMPORARY']
+    )
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo='debug')
+    with e.begin() as conn:
+        user_tmp.create(conn, checkfirst=True)
+
+        # checkfirst will succeed
+        user_tmp.create(conn, checkfirst=True)
+
+The very unlikely case that this behavior will cause a non-failing application
+to behave differently, is because Postgresql allows a non-temporary table
+to silently overwrite a temporary table.  So code like the following will
+now act completely differently, no longer creating the real table following
+the temporary table::
+
+    from sqlalchemy import *
+
+    metadata = MetaData()
+    user_tmp = Table(
+        "user_tmp", metadata,
+        Column("id", INT, primary_key=True),
+        Column('name', VARCHAR(50)),
+        prefixes=['TEMPORARY']
+    )
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo='debug')
+    with e.begin() as conn:
+        user_tmp.create(conn, checkfirst=True)
+
+        m2 = MetaData()
+        user = Table(
+            "user_tmp", m2,
+            Column("id", INT, primary_key=True),
+            Column('name', VARCHAR(50)),
+        )
+
+        # in 0.9, *will create* the new table, overwriting the old one.
+        # in 1.0, *will not create* the new table
+        user.create(conn, checkfirst=True)
+
+:ticket:`3264`
+
 .. _feature_gh134:
 
 Postgresql FILTER keyword
@@ -813,6 +871,29 @@ an unnamed construct needs to stay lexically unique so that it gets
 labeled uniquely.
 
 :ticket:`3170`
+
+.. _change_3266:
+
+DBAPI exception wrapping and handle_error() event improvements
+--------------------------------------------------------------
+
+SQLAlchemy's wrapping of DBAPI exceptions was not taking place in the
+case where a :class:`.Connection` object was invalidated, and then tried
+to reconnect and encountered an error; this has been resolved.
+
+Additionally, the recently added :meth:`.ConnectionEvents.handle_error`
+event is now invoked for errors that occur upon initial connect, upon
+reconnect, and when :func:`.create_engine` is used given a custom connection
+function via :paramref:`.create_engine.creator`.
+
+The :class:`.ExceptionContext` object has a new datamember
+:attr:`.ExceptionContext.engine` that will always refer to the :class:`.Engine`
+in use, in those cases when the :class:`.Connection` object is not available
+(e.g. on initial connect).
+
+
+:ticket:`3266`
+
 
 .. _behavioral_changes_orm_10:
 
@@ -1427,7 +1508,21 @@ A :class:`.Table` can be set up for reflection by passing
 
 :ticket:`3027`
 
+.. _change_3243:
 
+ForeignKeyConstraint.columns is now a ColumnCollection
+------------------------------------------------------
+
+:attr:`.ForeignKeyConstraint.columns` was previously a plain list
+containing either strings or :class:`.Column` objects, depending on
+how the :class:`.ForeignKeyConstraint` was constructed and whether it was
+associated with a table.  The collection is now a :class:`.ColumnCollection`,
+and is only initialized after the :class:`.ForeignKeyConstraint` is
+associated with a :class:`.Table`.  A new accessor
+:attr:`.ForeignKeyConstraint.column_keys`
+is added to unconditionally return string keys for the local set of
+columns regardless of how the object was constructed or its current
+state.
 
 Dialect Changes
 ===============
@@ -1475,6 +1570,37 @@ again works on MySQL.
 
 :ticket:`3186`
 
+.. _change_3263:
+
+The match() operator now returns an agnostic MatchType compatible with MySQL's floating point return value
+----------------------------------------------------------------------------------------------------------
+
+The return type of a :meth:`.Operators.match` expression is now a new type
+called :class:`.MatchType`.  This is a subclass of :class:`.Boolean`,
+that can be intercepted by the dialect in order to produce a different
+result type at SQL execution time.
+
+Code like the following will now function correctly and return floating points
+on MySQL::
+
+    >>> connection.execute(
+    ...    select([
+    ...        matchtable.c.title.match('Agile Ruby Programming').label('ruby'),
+    ...        matchtable.c.title.match('Dive Python').label('python'),
+    ...        matchtable.c.title
+    ...    ]).order_by(matchtable.c.id)
+    ... )
+    [
+        (2.0, 0.0, 'Agile Web Development with Ruby On Rails'),
+        (0.0, 2.0, 'Dive Into Python'),
+        (2.0, 0.0, "Programming Matz's Ruby"),
+        (0.0, 0.0, 'The Definitive Guide to Django'),
+        (0.0, 1.0, 'Python in a Nutshell')
+    ]
+
+
+:ticket:`3263`
+
 .. _change_3182:
 
 PyODBC driver name is required with hostname-based SQL Server connections
@@ -1492,6 +1618,14 @@ based on operation system/driver detection.   Using a DSN is always preferred
 when using ODBC to avoid this issue entirely.
 
 :ticket:`3182`
+
+SQL Server 2012 large text / binary types render as VARCHAR, NVARCHAR, VARBINARY
+--------------------------------------------------------------------------------
+
+The rendering of the :class:`.Text`, :class:`.UnicodeText`, and :class:`.LargeBinary`
+types has been changed for SQL Server 2012 and greater, with options
+to control the behavior completely, based on deprecation guidelines from
+Microsoft.  See :ref:`mssql_large_type_deprecation` for details.
 
 .. _change_3204:
 
@@ -1512,6 +1646,33 @@ dialects.   For SQLite specifically, there is a bug fix for UNIQUE constraint
 reflection from temp tables as well, which is :ticket:`3203`.
 
 :ticket:`3204`
+
+.. _change_3220:
+
+Improved support for CTEs in Oracle
+-----------------------------------
+
+CTE support has been fixed up for Oracle, and there is also a new feature
+:meth:`.CTE.with_suffixes` that can assist with Oracle's special directives::
+
+    included_parts = select([
+        part.c.sub_part, part.c.part, part.c.quantity
+    ]).where(part.c.part == "p1").\
+        cte(name="included_parts", recursive=True).\
+        suffix_with(
+            "search depth first by part set ord1",
+            "cycle part set y_cycle to 1 default 0", dialect='oracle')
+
+:ticket:`3220`
+
+New Oracle Keywords for DDL
+-----------------------------
+
+Keywords such as COMPRESS, ON COMMIT, BITMAP:
+
+:ref:`oracle_table_options`
+
+:ref:`oracle_index_options`
 
 .. _change_2984:
 

@@ -420,6 +420,12 @@ class ConnectionEvents(event.Events):
                                             context, executemany):
                 log.info("Received statement: %s" % statement)
 
+    When the methods are called with a `statement` parameter, such as in
+    :meth:`.after_cursor_execute`, :meth:`.before_cursor_execute` and
+    :meth:`.dbapi_error`, the statement is the exact SQL string that was
+    prepared for transmission to the DBAPI ``cursor`` in the connection's
+    :class:`.Dialect`.
+
     The :meth:`.before_execute` and :meth:`.before_cursor_execute`
     events can also be established with the ``retval=True`` flag, which
     allows modification of the statement and parameters to be sent
@@ -549,9 +555,8 @@ class ConnectionEvents(event.Events):
     def before_cursor_execute(self, conn, cursor, statement,
                               parameters, context, executemany):
         """Intercept low-level cursor execute() events before execution,
-        receiving the string
-        SQL statement and DBAPI-specific parameter list to be invoked
-        against a cursor.
+        receiving the string SQL statement and DBAPI-specific parameter list to
+        be invoked against a cursor.
 
         This event is a good choice for logging as well as late modifications
         to the SQL string.  It's less ideal for parameter modifications except
@@ -571,7 +576,7 @@ class ConnectionEvents(event.Events):
 
         :param conn: :class:`.Connection` object
         :param cursor: DBAPI cursor object
-        :param statement: string SQL statement
+        :param statement: string SQL statement, as to be passed to the DBAPI
         :param parameters: Dictionary, tuple, or list of parameters being
          passed to the ``execute()`` or ``executemany()`` method of the
          DBAPI ``cursor``.  In some cases may be ``None``.
@@ -596,7 +601,7 @@ class ConnectionEvents(event.Events):
         :param cursor: DBAPI cursor object.  Will have results pending
          if the statement was a SELECT, but these should not be consumed
          as they will be needed by the :class:`.ResultProxy`.
-        :param statement: string SQL statement
+        :param statement: string SQL statement, as passed to the DBAPI
         :param parameters: Dictionary, tuple, or list of parameters being
          passed to the ``execute()`` or ``executemany()`` method of the
          DBAPI ``cursor``.  In some cases may be ``None``.
@@ -640,7 +645,7 @@ class ConnectionEvents(event.Events):
 
         :param conn: :class:`.Connection` object
         :param cursor: DBAPI cursor object
-        :param statement: string SQL statement
+        :param statement: string SQL statement, as passed to the DBAPI
         :param parameters: Dictionary, tuple, or list of parameters being
          passed to the ``execute()`` or ``executemany()`` method of the
          DBAPI ``cursor``.  In some cases may be ``None``.
@@ -733,6 +738,12 @@ class ConnectionEvents(event.Events):
 
         .. versionadded:: 0.9.7 Added the
             :meth:`.ConnectionEvents.handle_error` hook.
+
+        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
+           invoked when an :class:`.Engine` fails during the initial
+           call to :meth:`.Engine.connect`, as well as when a
+           :class:`.Connection` object encounters an error during a
+           reconnect operation.
 
         .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is
            not fired off when a dialect makes use of the

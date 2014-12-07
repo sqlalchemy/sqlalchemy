@@ -517,7 +517,7 @@ class RealReconnectTest(fixtures.TestBase):
             assert c1.invalidated
             assert c1_branch.invalidated
 
-            c1_branch._revalidate_connection()
+            c1_branch._revalidate_connection(_wrap=True)
             assert not c1.invalidated
             assert not c1_branch.invalidated
 
@@ -535,7 +535,7 @@ class RealReconnectTest(fixtures.TestBase):
         assert c1.invalidated
         assert c1_branch.invalidated
 
-        c1._revalidate_connection()
+        c1._revalidate_connection(_wrap=True)
         assert not c1.invalidated
         assert not c1_branch.invalidated
 

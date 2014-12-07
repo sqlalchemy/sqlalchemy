@@ -10,9 +10,10 @@
 from __future__ import absolute_import
 import weakref
 import operator
-from .compat import threading, itertools_filterfalse
+from .compat import threading, itertools_filterfalse, string_types
 from . import py2k
 import types
+import collections
 
 EMPTY_SET = frozenset()
 
@@ -779,10 +780,12 @@ def coerce_generator_arg(arg):
 def to_list(x, default=None):
     if x is None:
         return default
-    if not isinstance(x, (list, tuple)):
+    if not isinstance(x, collections.Iterable) or isinstance(x, string_types):
         return [x]
-    else:
+    elif isinstance(x, list):
         return x
+    else:
+        return list(x)
 
 
 def to_set(x):

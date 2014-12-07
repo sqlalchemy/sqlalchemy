@@ -130,6 +130,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             *assertions
         )
 
+    @testing.requires.check_constraints
     @testing.provide_metadata
     def test_check_constraint_create(self):
         metadata = self.metadata

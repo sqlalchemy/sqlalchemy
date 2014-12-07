@@ -703,6 +703,12 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
             matchtable.c.id).execute().fetchall()
         eq_([2, 5], [r.id for r in results])
 
+    def test_not_match(self):
+        results = matchtable.select().where(
+            ~matchtable.c.title.match('python')).order_by(
+            matchtable.c.id).execute().fetchall()
+        eq_([1, 3, 4], [r.id for r in results])
+
     def test_simple_match_with_apostrophe(self):
         results = matchtable.select().where(
             matchtable.c.title.match("Matz's")).execute().fetchall()

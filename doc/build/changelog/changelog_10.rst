@@ -1,3 +1,4 @@
+
 ==============
 1.0 Changelog
 ==============
@@ -20,6 +21,196 @@
     described here are also present in the 0.9 and sometimes the 0.8
     series as well.  For changes that are specific to 1.0 with an emphasis
     on compatibility concerns, see :doc:`/changelog/migration_10`.
+
+    .. change::
+        :tags: feature, mssql
+        :tickets: 3039
+
+        SQL Server 2012 now recommends VARCHAR(max), NVARCHAR(max),
+        VARBINARY(max) for large text/binary types.  The MSSQL dialect will
+        now respect this based on version detection, as well as the new
+        ``deprecate_large_types`` flag.
+
+        .. seealso::
+
+            :ref:`mssql_large_type_deprecation`
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 3257
+
+        The SQLite dialect, when using the :class:`.sqlite.DATE`,
+        :class:`.sqlite.TIME`,
+        or :class:`.sqlite.DATETIME` types, and given a ``storage_format`` that
+        only renders numbers, will render the types in DDL as
+        ``DATE_CHAR``, ``TIME_CHAR``, and ``DATETIME_CHAR``, so that despite the
+        lack of alpha characters in the values, the column will still
+        deliver the "text affinity".  Normally this is not needed, as the
+        textual values within the default storage formats already
+        imply text.
+
+        .. seealso::
+
+            :ref:`sqlite_datetime`
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3266
+
+        The engine-level error handling and wrapping routines will now
+        take effect in all engine connection use cases, including
+        when user-custom connect routines are used via the
+        :paramref:`.create_engine.creator` parameter, as well as when
+        the :class:`.Connection` encounters a connection error on
+        revalidation.
+
+        .. seealso::
+
+            :ref:`change_3266`
+
+    .. change::
+        :tags: feature, oracle
+
+        New Oracle DDL features for tables, indexes: COMPRESS, BITMAP.
+        Patch courtesy Gabor Gombas.
+
+    .. change::
+        :tags: bug, oracle
+
+        An alias name will be properly quoted when referred to using the
+        ``%(name)s`` token inside the :meth:`.Select.with_hint` method.
+        Previously, the Oracle backend hadn't implemented this quoting.
+
+    .. change::
+        :tags: feature, oracle
+        :tickets: 3220
+
+        Added support for CTEs under Oracle.  This includes some tweaks
+        to the aliasing syntax, as well as a new CTE feature
+        :meth:`.CTE.suffix_with`, which is useful for adding in special
+        Oracle-specific directives to the CTE.
+
+        .. seealso::
+
+            :ref:`change_3220`
+
+    .. change::
+        :tags: feature, mysql
+        :tickets: 3121
+
+        Updated the "supports_unicode_statements" flag to True for MySQLdb
+        and Pymysql under Python 2.   This refers to the SQL statements
+        themselves, not the parameters, and affects issues such as table
+        and column names using non-ASCII characters.   These drivers both
+        appear to support Python 2 Unicode objects without issue in modern
+        versions.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 3263
+
+        The :meth:`.Operators.match` operator is now handled such that the
+        return type is not strictly assumed to be boolean; it now
+        returns a :class:`.Boolean` subclass called :class:`.MatchType`.
+        The type will still produce boolean behavior when used in Python
+        expressions, however the dialect can override its behavior at
+        result time.  In the case of MySQL, while the MATCH operator
+        is typically used in a boolean context within an expression,
+        if one actually queries for the value of a match expression, a
+        floating point value is returned; this value is not compatible
+        with SQLAlchemy's C-based boolean processor, so MySQL's result-set
+        behavior now follows that of the :class:`.Float` type.
+        A new operator object ``notmatch_op`` is also added to better allow
+        dialects to define the negation of a match operation.
+
+        .. seealso::
+
+            :ref:`change_3263`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 3264
+
+        The :meth:`.PGDialect.has_table` method will now query against
+        ``pg_catalog.pg_table_is_visible(c.oid)``, rather than testing
+        for an exact schema match, when the schema name is None; this
+        so that the method will also illustrate that temporary tables
+        are present.  Note that this is a behavioral change, as Postgresql
+        allows a non-temporary table to silently overwrite an existing
+        temporary table of the same name, so this changes the behavior
+        of ``checkfirst`` in that unusual scenario.
+
+        .. seealso::
+
+            :ref:`change_3264`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3260
+
+        Fixed bug in :meth:`.Table.tometadata` method where the
+        :class:`.CheckConstraint` associated with a :class:`.Boolean`
+        or :class:`.Enum` type object would be doubled in the target table.
+        The copy process now tracks the production of this constraint object
+        as local to a type object.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3217
+
+        Added a parameter :paramref:`.Query.join.isouter` which is synonymous
+        with calling :meth:`.Query.outerjoin`; this flag is to provide a more
+        consistent interface compared to Core :meth:`.FromClause.join`.
+        Pull request courtesy Jonathan Vanasco.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3243
+
+        The behavioral contract of the :attr:`.ForeignKeyConstraint.columns`
+        collection has been made consistent; this attribute is now a
+        :class:`.ColumnCollection` like that of all other constraints and
+        is initialized at the point when the constraint is associated with
+        a :class:`.Table`.
+
+        .. seealso::
+
+            :ref:`change_3243`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3256
+
+        The :meth:`.PropComparator.of_type` modifier has been
+        improved in conjunction with loader directives such as
+        :func:`.joinedload` and :func:`.contains_eager` such that if
+        two :meth:`.PropComparator.of_type` modifiers of the same
+        base type/path are encountered, they will be joined together
+        into a single "polymorphic" entity, rather than replacing
+        the entity of type A with the one of type B.  E.g.
+        a joinedload of ``A.b.of_type(BSub1)->BSub1.c`` combined with
+        joinedload of ``A.b.of_type(BSub2)->BSub2.c`` will create a
+        single joinedload of ``A.b.of_type((BSub1, BSub2)) -> BSub1.c, BSub2.c``,
+        without the need for the ``with_polymorphic`` to be explicit
+        in the query.
+
+        .. seealso::
+
+            :ref:`eagerloading_polymorphic_subtypes` - contains an updated
+            example illustrating the new format.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3245
+
+        The :attr:`.Column.key` attribute is now used as the source of
+        anonymous bound parameter names within expressions, to match the
+        existing use of this value as the key when rendered in an INSERT
+        or UPDATE statement.   This allows :attr:`.Column.key` to be used
+        as a "substitute" string to work around a difficult column name
+        that doesn't translate well into a bound parameter name.   Note that
+        the paramstyle is configurable on :func:`.create_engine` in any case,
+        and most DBAPIs today support a named and positional style.
 
     .. change::
         :tags: bug, sql

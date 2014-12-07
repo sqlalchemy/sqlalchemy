@@ -917,7 +917,23 @@ class ExceptionContext(object):
     connection = None
     """The :class:`.Connection` in use during the exception.
 
-    This member is always present.
+    This member is present, except in the case of a failure when
+    first connecting.
+
+    .. seealso::
+
+        :attr:`.ExceptionContext.engine`
+
+
+    """
+
+    engine = None
+    """The :class:`.Engine` in use during the exception.
+
+    This member should always be present, even in the case of a failure
+    when first connecting.
+
+    .. versionadded:: 1.0.0
 
     """
 
