@@ -405,13 +405,16 @@ class AssertsExecutionResults(object):
                         cls.__name__, repr(expected_item)))
         return True
 
+    def sql_execution_asserter(self, db=None):
+        if db is None:
+            from . import db as db
+
+        return assertsql.assert_engine(db)
+
     def assert_sql_execution(self, db, callable_, *rules):
-        assertsql.asserter.add_rules(rules)
-        try:
+        with self.sql_execution_asserter(db) as asserter:
             callable_()
-            assertsql.asserter.statement_complete()
-        finally:
-            assertsql.asserter.clear_rules()
+        asserter.assert_(*rules)
 
     def assert_sql(self, db, callable_, list_, with_sequences=None):
         if (with_sequences is not None and
