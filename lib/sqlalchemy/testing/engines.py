@@ -215,6 +215,9 @@ def testing_engine(url=None, options=None):
         options = config.db_opts
 
     engine = create_engine(url, **options)
+    engine._has_events = True   # enable event blocks, helps with
+                                # profiling
+
     if isinstance(engine.pool, pool.QueuePool):
         engine.pool._timeout = 0
         engine.pool._max_overflow = 0
