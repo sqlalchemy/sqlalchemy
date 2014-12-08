@@ -2061,17 +2061,22 @@ class Session(_SessionClassMethods):
 
         The objects as given are not added to the session and no additional
         state is established on them, unless the ``return_defaults`` flag
-        is also set.
+        is also set, in which case primary key attributes and server-side
+        default values will be populated.
+
+        .. versionadded:: 1.0.0
 
         .. warning::
 
             The bulk save feature allows for a lower-latency INSERT/UPDATE
-            of rows at the expense of a lack of features.   Features such
-            as object management, relationship handling, and SQL clause
-            support are bypassed in favor of raw INSERT/UPDATES of records.
+            of rows at the expense of most other unit-of-work features.
+            Features such as object management, relationship handling,
+            and SQL clause support are **silently omitted** in favor of raw
+            INSERT/UPDATES of records.
 
-            **Please read the list of caveats at :ref:`bulk_operations`
-              before using this method.**
+            **Please read the list of caveats at** :ref:`bulk_operations`
+            **before using this method, and fully test and confirm the
+            functionality of all code developed using these systems.**
 
         :param objects: a list of mapped object instances.  The mapped
          objects are persisted as is, and are **not** associated with the
@@ -2098,8 +2103,8 @@ class Session(_SessionClassMethods):
          is available.  In particular this will allow joined-inheritance
          and other multi-table mappings to insert correctly without the need
          to provide primary key values ahead of time; however,
-         return_defaults mode greatly reduces the performance gains of the
-         method overall.
+         :paramref:`.Session.bulk_save_objects.return_defaults` **greatly
+         reduces the performance gains** of the method overall.
 
         :param update_changed_only: when True, UPDATE statements are rendered
          based on those attributes in each state that have logged changes.
@@ -2138,15 +2143,19 @@ class Session(_SessionClassMethods):
         organizing the values within them across the tables to which
         the given mapper is mapped.
 
+        .. versionadded:: 1.0.0
+
         .. warning::
 
             The bulk insert feature allows for a lower-latency INSERT
-            of rows at the expense of a lack of features.   Features such
-            as relationship handling and SQL clause support are bypassed
-            in favor of a raw INSERT of records.
+            of rows at the expense of most other unit-of-work features.
+            Features such as object management, relationship handling,
+            and SQL clause support are **silently omitted** in favor of raw
+            INSERT of records.
 
-            **Please read the list of caveats at :ref:`bulk_operations`
-              before using this method.**
+            **Please read the list of caveats at** :ref:`bulk_operations`
+            **before using this method, and fully test and confirm the
+            functionality of all code developed using these systems.**
 
         :param mapper: a mapped class, or the actual :class:`.Mapper` object,
          representing the single kind of object represented within the mapping
@@ -2164,8 +2173,10 @@ class Session(_SessionClassMethods):
          is available.  In particular this will allow joined-inheritance
          and other multi-table mappings to insert correctly without the need
          to provide primary
-         key values ahead of time; however, return_defaults mode greatly
-         reduces the performance gains of the method overall.   If the rows
+         key values ahead of time; however,
+         :paramref:`.Session.bulk_insert_mappings.return_defaults`
+         **greatly reduces the performance gains** of the method overall.
+         If the rows
          to be inserted only refer to a single table, then there is no
          reason this flag should be set as the returned default information
          is not used.
@@ -2181,7 +2192,7 @@ class Session(_SessionClassMethods):
 
         """
         self._bulk_save_mappings(
-            mapper, mappings, False, False, return_defaults)
+            mapper, mappings, False, False, return_defaults, False)
 
     def bulk_update_mappings(self, mapper, mappings):
         """Perform a bulk update of the given list of mapping dictionaries.
@@ -2193,15 +2204,19 @@ class Session(_SessionClassMethods):
         state management features in use, reducing latency when updating
         large numbers of simple rows.
 
+        .. versionadded:: 1.0.0
+
         .. warning::
 
             The bulk update feature allows for a lower-latency UPDATE
-            of rows at the expense of a lack of features.   Features such
-            as relationship handling and SQL clause support are bypassed
-            in favor of a raw UPDATE of records.
+            of rows at the expense of most other unit-of-work features.
+            Features such as object management, relationship handling,
+            and SQL clause support are **silently omitted** in favor of raw
+            UPDATES of records.
 
-            **Please read the list of caveats at :ref:`bulk_operations`
-              before using this method.**
+            **Please read the list of caveats at** :ref:`bulk_operations`
+            **before using this method, and fully test and confirm the
+            functionality of all code developed using these systems.**
 
         :param mapper: a mapped class, or the actual :class:`.Mapper` object,
          representing the single kind of object represented within the mapping

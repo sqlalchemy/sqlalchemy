@@ -48,6 +48,15 @@ Or with options::
         --dburl mysql+mysqldb://scott:tiger@localhost/test \\
         --profile --num 1000
 
+.. seealso::
+
+    :ref:`faq_how_to_profile`
+
+File Listing
+-------------
+
+.. autosource::
+
 
 Running all tests with time
 ---------------------------

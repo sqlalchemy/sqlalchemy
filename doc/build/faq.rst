@@ -705,8 +705,12 @@ main query.
 
     :ref:`subqueryload_ordering`
 
+.. _faq_performance:
+
 Performance
 ===========
+
+.. _faq_how_to_profile:
 
 How can I profile a SQLAlchemy powered application?
 ---------------------------------------------------
@@ -961,18 +965,10 @@ Common strategies to mitigate this include:
 The output of a profile can be a little daunting but after some
 practice they are very easy to read.
 
-If you're feeling ambitious, there's also a more involved example of
-SQLAlchemy profiling within the SQLAlchemy unit tests in the
-``tests/aaa_profiling`` section.  Tests in this area
-use decorators that assert a
-maximum number of method calls being used for particular operations,
-so that if something inefficient gets checked in, the tests will
-reveal it (it is important to note that in cPython, function calls have
-the highest overhead of any operation, and the count of calls is more
-often than not nearly proportional to time spent).   Of note are the
-the "zoomark" tests which use a fancy "SQL capturing" scheme which
-cuts out the overhead of the DBAPI from the equation - although that
-technique isn't really necessary for garden-variety profiling.
+.. seealso::
+
+    :ref:`examples_performance` - a suite of performance demonstrations
+    with bundled profiling capabilities.
 
 I'm inserting 400,000 rows with the ORM and it's really slow!
 --------------------------------------------------------------
@@ -1001,10 +997,15 @@ ORM as a first-class component.
 
 For the use case of fast bulk inserts, the
 SQL generation and execution system that the ORM builds on top of
-is part of the Core.  Using this system directly, we can produce an INSERT that
+is part of the :doc:`Core <core/tutorial>`.  Using this system directly, we can produce an INSERT that
 is competitive with using the raw database API directly.
 
-The example below illustrates time-based tests for four different
+Alternatively, the SQLAlchemy ORM offers the :ref:`bulk_operations`
+suite of methods, which provide hooks into subsections of the unit of
+work process in order to emit Core-level INSERT and UPDATE constructs with
+a small degree of ORM-based automation.
+
+The example below illustrates time-based tests for several different
 methods of inserting rows, going from the most automated to the least.
 With cPython 2.7, runtimes observed::
 

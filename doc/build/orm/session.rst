@@ -1944,6 +1944,8 @@ transactions set the flag ``twophase=True`` on the session::
     # before committing both transactions
     session.commit()
 
+.. _session_sql_expressions:
+
 Embedding SQL Insert/Update Expressions into a Flush
 =====================================================
 
@@ -2459,7 +2461,7 @@ See the "sharding" example: :ref:`examples_sharding`.
 .. _bulk_operations:
 
 Bulk Operations
----------------
+===============
 
 .. note::  Bulk Operations mode is a new series of operations made available
    on the :class:`.Session` object for the purpose of invoking INSERT and
@@ -2480,7 +2482,7 @@ to this approach is strictly one of reduced Python overhead:
 
 * The flush() process, including the survey of all objects, their state,
   their cascade status, the status of all objects associated with them
-  via :meth:`.relationship`, and the topological sort of all operations to
+  via :func:`.relationship`, and the topological sort of all operations to
   be performed is completely bypassed.  This reduces a great amount of
   Python overhead.
 
@@ -2489,7 +2491,7 @@ to this approach is strictly one of reduced Python overhead:
   overhead in attaching them or managing their state in terms of the identity
   map or session.
 
-* The :meth:`.Session.bulk_insert_mappings`, and :meth:`.Session.bulk_update_mappings`
+* The :meth:`.Session.bulk_insert_mappings` and :meth:`.Session.bulk_update_mappings`
   methods accept lists of plain Python dictionaries, not objects; this further
   reduces a large amount of overhead associated with instantiating mapped
   objects and assigning state to them, which normally is also subject to
@@ -2508,6 +2510,90 @@ The performance behavior of the bulk routines should be studied using the
 :ref:`examples_performance` example suite.  This is a series of example
 scripts which illustrate Python call-counts across a variety of scenarios,
 including bulk insert and update scenarios.
+
+.. seealso::
+
+  :ref:`examples_performance` - includes detailed examples of bulk operations
+  contrasted against traditional Core and ORM methods, including performance
+  metrics.
+
+Usage
+-----
+
+The methods each work in the context of the :class:`.Session` object's
+transaction, like any other::
+
+    s = Session()
+    objects = [
+        User(name="u1"),
+        User(name="u2"),
+        User(name="u3")
+    ]
+    s.bulk_save_objects(objects)
+
+For :meth:`.Session.bulk_insert_mappings`, and :meth:`.Session.bulk_update_mappings`,
+dictionaries are passed::
+
+    s.bulk_insert_mappings(User,
+      [dict(name="u1"), dict(name="u2"), dict(name="u3")]
+    )
+
+.. seealso::
+
+    :meth:`.Session.bulk_save_objects`
+
+    :meth:`.Session.bulk_insert_mappings`
+
+    :meth:`.Session.bulk_update_mappings`
+
+
+Comparison to Core Insert / Update Constructs
+---------------------------------------------
+
+The bulk methods offer performance that under particular circumstances
+can be close to that of using the core :class:`.Insert` and
+:class:`.Update` constructs in an "executemany" context (for a description
+of "executemany", see :ref:`execute_multiple` in the Core tutorial).
+In order to achieve this, the
+:paramref:`.Session.bulk_insert_mappings.return_defaults`
+flag should be disabled so that rows can be batched together.   The example
+suite in :ref:`examples_performance` should be carefully studied in order
+to gain familiarity with how fast bulk performance can be achieved.
+
+ORM Compatibility
+-----------------
+
+The bulk insert / update methods lose a significant amount of functionality
+versus traditional ORM use.   The following is a listing of features that
+are **not available** when using these methods:
+
+* persistence along :meth:`.relationship` linkages
+
+* sorting of rows within order of dependency; rows are inserted or updated
+  directly in the order in which they are passed to the methods
+
+* Session-management on the given objects, including attachment to the
+  session, identity map management.
+
+* Functionality related to primary key mutation, ON UPDATE cascade
+
+* SQL expression inserts / updates (e.g. :ref:`session_sql_expressions`)
+
+* ORM events such as :meth:`.MapperEvents.before_insert`, etc.  The bulk
+  session methods have no event support.
+
+Features that **are available** include::
+
+* INSERTs and UPDATEs of mapped objects
+
+* Version identifier support
+
+* Multi-table mappings, such as joined-inheritance - however, an object
+  to be inserted across multiple tables either needs to have primary key
+  identifiers fully populated ahead of time, else the
+  :paramref:`.Session.bulk_save_objects.return_defaults` flag must be used,
+  which will greatly reduce the performance benefits
+
 
 
 

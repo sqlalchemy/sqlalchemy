@@ -23,6 +23,35 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, examples
+
+        A new suite of examples dedicated to providing a detailed study
+        into performance of SQLAlchemy ORM and Core, as well as the DBAPI,
+        from multiple perspectives.  The suite runs within a container
+        that provides built in profiling displays both through console
+        output as well as graphically via the RunSnake tool.
+
+        .. seealso::
+
+            :ref:`examples_performance`
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3100
+
+        A new series of :class:`.Session` methods which provide hooks
+        directly into the unit of work's facility for emitting INSERT
+        and UPDATE statements has been created.  When used correctly,
+        this expert-oriented system can allow ORM-mappings to be used
+        to generate bulk insert and update statements batched into
+        executemany groups, allowing the statements to proceed at
+        speeds that rival direct use of the Core.
+
+        .. seealso::
+
+            :ref:`bulk_operations`
+
+    .. change::
         :tags: feature, mssql
         :tickets: 3039
 

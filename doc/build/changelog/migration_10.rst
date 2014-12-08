@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: October 23, 2014
+    Document last updated: December 8, 2014
 
 Introduction
 ============
@@ -229,6 +229,39 @@ the :class:`.Table` construct.
     :ref:`postgresql_table_options`
 
 :ticket:`2051`
+
+New Session Bulk INSERT/UPDATE API
+----------------------------------
+
+A new series of :class:`.Session` methods which provide hooks directly
+into the unit of work's facility for emitting INSERT and UPDATE
+statements has been created.  When used correctly, this expert-oriented system
+can allow ORM-mappings to be used to generate bulk insert and update
+statements batched into executemany groups, allowing the statements
+to proceed at speeds that rival direct use of the Core.
+
+.. seealso::
+
+    :ref:`bulk_operations` - introduction and full documentation
+
+:ticket:`3100`
+
+New Performance Example Suite
+------------------------------
+
+Inspired by the benchmarking done for the :ref:`bulk_operations` feature
+as well as for the :ref:`faq_how_to_profile` section of the FAQ, a new
+example section has been added which features several scripts designed
+to illustrate the relative performance profile of various Core and ORM
+techniques.  The scripts are organized into use cases, and are packaged
+under a single console interface such that any combination of demonstrations
+can be run, dumping out timings, Python profile results and/or RunSnake profile
+displays.
+
+.. seealso::
+
+    :ref:`examples_performance`
+
 
 .. _feature_get_enums:
 

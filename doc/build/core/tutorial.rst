@@ -307,6 +307,8 @@ them is different across different databases; each database's
 determine the correct value (or values; note that ``inserted_primary_key``
 returns a list so that it supports composite primary keys).
 
+.. _execute_multiple:
+
 Executing Multiple Statements
 ==============================
 
