@@ -2456,6 +2456,61 @@ tables) across multiple databases.
 
 See the "sharding" example: :ref:`examples_sharding`.
 
+.. _bulk_operations:
+
+Bulk Operations
+---------------
+
+.. note::  Bulk Operations mode is a new series of operations made available
+   on the :class:`.Session` object for the purpose of invoking INSERT and
+   UPDATE statements with greatly reduced Python overhead, at the expense
+   of much less functionality, automation, and error checking.
+   As of SQLAlchemy 1.0, these features should be considered as "beta", and
+   additionally are intended for advanced users.
+
+.. versionadded:: 1.0.0
+
+Bulk operations on the :class:`.Session` include :meth:`.Session.bulk_save_objects`,
+:meth:`.Session.bulk_insert_mappings`, and :meth:`.Session.bulk_update_mappings`.
+The purpose of these methods is to directly expose internal elements of the unit of work system,
+such that facilities for emitting INSERT and UPDATE statements given dictionaries
+or object states can be utilized alone, bypassing the normal unit of work
+mechanics of state, relationship and attribute management.   The advantages
+to this approach is strictly one of reduced Python overhead:
+
+* The flush() process, including the survey of all objects, their state,
+  their cascade status, the status of all objects associated with them
+  via :meth:`.relationship`, and the topological sort of all operations to
+  be performed is completely bypassed.  This reduces a great amount of
+  Python overhead.
+
+* The objects as given have no defined relationship to the target
+  :class:`.Session`, even when the operation is complete, meaning there's no
+  overhead in attaching them or managing their state in terms of the identity
+  map or session.
+
+* The :meth:`.Session.bulk_insert_mappings`, and :meth:`.Session.bulk_update_mappings`
+  methods accept lists of plain Python dictionaries, not objects; this further
+  reduces a large amount of overhead associated with instantiating mapped
+  objects and assigning state to them, which normally is also subject to
+  expensive tracking of history on a per-attribute basis.
+
+* The process of fetching primary keys after an INSERT also is disabled by
+  default.   When performed correctly, INSERT statements can now more readily
+  be batched by the unit of work process into ``executemany()`` blocks, which
+  perform vastly better than individual statement invocations.
+
+* UPDATE statements can similarly be tailored such that all attributes
+  are subject to the SET clase unconditionally, again making it much more
+  likely that ``executemany()`` blocks can be used.
+
+The performance behavior of the bulk routines should be studied using the
+:ref:`examples_performance` example suite.  This is a series of example
+scripts which illustrate Python call-counts across a variety of scenarios,
+including bulk insert and update scenarios.
+
+
+
 Sessions API
 ============
 
