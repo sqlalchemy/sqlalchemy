@@ -10,6 +10,7 @@ from test.orm import _fixtures
 
 class BulkTest(testing.AssertsExecutionResults):
     run_inserts = None
+    run_define_tables = 'each'
 
 
 class BulkInsertTest(BulkTest, _fixtures.FixtureTest):
@@ -75,7 +76,7 @@ class BulkInsertTest(BulkTest, _fixtures.FixtureTest):
         assert 'id' not in objects[0].__dict__
 
 
-class BulkInheritanceTest(fixtures.MappedTest, BulkTest):
+class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -197,11 +198,14 @@ class BulkInheritanceTest(fixtures.MappedTest, BulkTest):
 
             ),
             CompiledSQL(
-                "INSERT INTO boss (golf_swing) VALUES (:golf_swing)",
-                [{'golf_swing': 'g1'}]
+                "INSERT INTO boss (boss_id, golf_swing) VALUES "
+                "(:boss_id, :golf_swing)",
+                [{'boss_id': 4, 'golf_swing': 'g1'}]
             )
         )
         eq_(objects[0].__dict__['person_id'], 1)
+        eq_(objects[3].__dict__['person_id'], 4)
+        eq_(objects[3].__dict__['boss_id'], 4)
 
     def test_bulk_save_joined_inh_no_defaults(self):
         Person, Engineer, Manager, Boss = \
@@ -220,7 +224,7 @@ class BulkInheritanceTest(fixtures.MappedTest, BulkTest):
                     person_id=3,
                     name='e2', status='s3', primary_language='l2'),
                 Boss(
-                    person_id=4,
+                    person_id=4, boss_id=4,
                     name='b1', status='s3', manager_name='mn2',
                     golf_swing='g1')
             ],
@@ -264,8 +268,9 @@ class BulkInheritanceTest(fixtures.MappedTest, BulkTest):
                 [{'status': 's3', 'person_id': 4, 'manager_name': 'mn2'}]
             ),
             CompiledSQL(
-                "INSERT INTO boss (golf_swing) VALUES (:golf_swing)",
-                [{'golf_swing': 'g1'}]
+                "INSERT INTO boss (boss_id, golf_swing) VALUES "
+                "(:boss_id, :golf_swing)",
+                [{'boss_id': 4, 'golf_swing': 'g1'}]
             )
         )
 
@@ -290,28 +295,35 @@ class BulkInheritanceTest(fixtures.MappedTest, BulkTest):
                         name='b3', status='s3', manager_name='mn3',
                         golf_swing='g3'
                     ),
-                ]
+                ], return_defaults=True
             )
 
-        # the only difference here is that common classes are grouped together.
-        # at the moment it doesn't lump all the "people" tables from
-        # different classes together.
         asserter.assert_(
             CompiledSQL(
                 "INSERT INTO people (name) VALUES (:name)",
-                [{'name': 'b1'}, {'name': 'b2'}, {'name': 'b3'}]
+                [{'name': 'b1'}]
             ),
             CompiledSQL(
-                "INSERT INTO managers (status, manager_name) VALUES "
-                "(:status, :manager_name)",
-                [{'status': 's1', 'manager_name': 'mn1'},
-                 {'status': 's2', 'manager_name': 'mn2'},
-                 {'status': 's3', 'manager_name': 'mn3'}]
+                "INSERT INTO people (name) VALUES (:name)",
+                [{'name': 'b2'}]
+            ),
+            CompiledSQL(
+                "INSERT INTO people (name) VALUES (:name)",
+                [{'name': 'b3'}]
+            ),
+            CompiledSQL(
+                "INSERT INTO managers (person_id, status, manager_name) "
+                "VALUES (:person_id, :status, :manager_name)",
+                [{'person_id': 1, 'status': 's1', 'manager_name': 'mn1'},
+                 {'person_id': 2, 'status': 's2', 'manager_name': 'mn2'},
+                 {'person_id': 3, 'status': 's3', 'manager_name': 'mn3'}]
 
             ),
             CompiledSQL(
-                "INSERT INTO boss (golf_swing) VALUES (:golf_swing)",
-                [{'golf_swing': 'g1'},
-                 {'golf_swing': 'g2'}, {'golf_swing': 'g3'}]
+                "INSERT INTO boss (boss_id, golf_swing) VALUES "
+                "(:boss_id, :golf_swing)",
+                [{'golf_swing': 'g1', 'boss_id': 1},
+                 {'golf_swing': 'g2', 'boss_id': 2},
+                 {'golf_swing': 'g3', 'boss_id': 3}]
             )
         )

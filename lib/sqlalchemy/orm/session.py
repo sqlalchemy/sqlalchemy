@@ -2048,6 +2048,66 @@ class Session(_SessionClassMethods):
                 transaction.rollback(_capture_exception=True)
 
     def bulk_save_objects(self, objects, return_defaults=False):
+        """Perform a bulk save of the given list of objects.
+
+        The bulk save feature allows mapped objects to be used as the
+        source of simple INSERT and UPDATE operations which can be more easily
+        grouped together into higher performing "executemany"
+        operations; the extraction of data from the objects is also performed
+        using a lower-latency process that ignores whether or not attributes
+        have actually been modified in the case of UPDATEs, and also ignores
+        SQL expressions.
+
+        The objects as given are not added to the session and no additional
+        state is established on them, unless the ``return_defaults`` flag
+        is also set.
+
+        .. warning::
+
+            The bulk save feature allows for a lower-latency INSERT/UPDATE
+            of rows at the expense of a lack of features.   Features such
+            as object management, relationship handling, and SQL clause
+            support are bypassed in favor of raw INSERT/UPDATES of records.
+
+            **Please read the list of caveats at :ref:`bulk_operations`
+              before using this method.**
+
+        :param objects: a list of mapped object instances.  The mapped
+         objects are persisted as is, and are **not** associated with the
+         :class:`.Session` afterwards.
+
+         For each object, whether the object is sent as an INSERT or an
+         UPDATE is dependent on the same rules used by the :class:`.Session`
+         in traditional operation; if the object has the
+         :attr:`.InstanceState.key`
+         attribute set, then the object is assumed to be "detached" and
+         will result in an UPDATE.  Otherwise, an INSERT is used.
+
+         In the case of an UPDATE, **all** those attributes which are present
+         and are not part of the primary key are applied to the SET clause
+         of the UPDATE statement, regardless of whether any change in state
+         was logged on each attribute; there is no checking of per-attribute
+         history.  The primary key attributes, which are required,
+         are applied to the WHERE clause.
+
+        :param return_defaults: when True, rows that are missing values which
+         generate defaults, namely integer primary key defaults and sequences,
+         will be inserted **one at a time**, so that the primary key value
+         is available.  In particular this will allow joined-inheritance
+         and other multi-table mappings to insert correctly without the need
+         to provide primary key values ahead of time; however,
+         return_defaults mode greatly reduces the performance gains of the
+         method overall.
+
+        .. seealso::
+
+            :ref:`bulk_operations`
+
+            :meth:`.Session.bulk_insert_mappings`
+
+            :meth:`.Session.bulk_update_mappings`
+
+        """
         for (mapper, isupdate), states in itertools.groupby(
             (attributes.instance_state(obj) for obj in objects),
             lambda state: (state.mapper, state.key is not None)
@@ -2056,10 +2116,108 @@ class Session(_SessionClassMethods):
                 mapper, states, isupdate, True, return_defaults)
 
     def bulk_insert_mappings(self, mapper, mappings, return_defaults=False):
+        """Perform a bulk insert of the given list of mapping dictionaries.
+
+        The bulk insert feature allows plain Python dictionaries to be used as
+        the source of simple INSERT operations which can be more easily
+        grouped together into higher performing "executemany"
+        operations.  Using dictionaries, there is no "history" or session
+        state management features in use, reducing latency when inserting
+        large numbers of simple rows.
+
+        The values within the dictionaries as given are typically passed
+        without modification into Core :meth:`.Insert` constructs, after
+        organizing the values within them across the tables to which
+        the given mapper is mapped.
+
+        .. warning::
+
+            The bulk insert feature allows for a lower-latency INSERT
+            of rows at the expense of a lack of features.   Features such
+            as relationship handling and SQL clause support are bypassed
+            in favor of a raw INSERT of records.
+
+            **Please read the list of caveats at :ref:`bulk_operations`
+              before using this method.**
+
+        :param mapper: a mapped class, or the actual :class:`.Mapper` object,
+         representing the single kind of object represented within the mapping
+         list.
+
+        :param mappings: a list of dictionaries, each one containing the state
+         of the mapped row to be inserted, in terms of the attribute names
+         on the mapped class.   If the mapping refers to multiple tables,
+         such as a joined-inheritance mapping, each dictionary must contain
+         all keys to be populated into all tables.
+
+        :param return_defaults: when True, rows that are missing values which
+         generate defaults, namely integer primary key defaults and sequences,
+         will be inserted **one at a time**, so that the primary key value
+         is available.  In particular this will allow joined-inheritance
+         and other multi-table mappings to insert correctly without the need
+         to provide primary
+         key values ahead of time; however, return_defaults mode greatly
+         reduces the performance gains of the method overall.   If the rows
+         to be inserted only refer to a single table, then there is no
+         reason this flag should be set as the returned default information
+         is not used.
+
+
+        .. seealso::
+
+            :ref:`bulk_operations`
+
+            :meth:`.Session.bulk_save_objects`
+
+            :meth:`.Session.bulk_update_mappings`
+
+        """
         self._bulk_save_mappings(
             mapper, mappings, False, False, return_defaults)
 
     def bulk_update_mappings(self, mapper, mappings):
+        """Perform a bulk update of the given list of mapping dictionaries.
+
+        The bulk update feature allows plain Python dictionaries to be used as
+        the source of simple UPDATE operations which can be more easily
+        grouped together into higher performing "executemany"
+        operations.  Using dictionaries, there is no "history" or session
+        state management features in use, reducing latency when updating
+        large numbers of simple rows.
+
+        .. warning::
+
+            The bulk update feature allows for a lower-latency UPDATE
+            of rows at the expense of a lack of features.   Features such
+            as relationship handling and SQL clause support are bypassed
+            in favor of a raw UPDATE of records.
+
+            **Please read the list of caveats at :ref:`bulk_operations`
+              before using this method.**
+
+        :param mapper: a mapped class, or the actual :class:`.Mapper` object,
+         representing the single kind of object represented within the mapping
+         list.
+
+        :param mappings: a list of dictionaries, each one containing the state
+         of the mapped row to be updated, in terms of the attribute names
+         on the mapped class.   If the mapping refers to multiple tables,
+         such as a joined-inheritance mapping, each dictionary may contain
+         keys corresponding to all tables.   All those keys which are present
+         and are not part of the primary key are applied to the SET clause
+         of the UPDATE statement; the primary key values, which are required,
+         are applied to the WHERE clause.
+
+
+        .. seealso::
+
+            :ref:`bulk_operations`
+
+            :meth:`.Session.bulk_insert_mappings`
+
+            :meth:`.Session.bulk_save_objects`
+
+        """
         self._bulk_save_mappings(mapper, mappings, True, False, False)
 
     def _bulk_save_mappings(

@@ -49,7 +49,7 @@ def _bulk_insert(
             continue
 
         records = (
-            (None, state_dict, params, super_mapper,
+            (None, state_dict, params, mapper,
                 connection, value_params, has_all_pks, has_all_defaults)
             for
             state, state_dict, params, mp,
@@ -918,7 +918,7 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
 
 def _postfetch(mapper, uowtransaction, table,
-               state, dict_, result, params, value_params):
+               state, dict_, result, params, value_params, bulk=False):
     """Expire attributes in need of newly persisted database state,
     after an INSERT or UPDATE statement has proceeded for that
     state."""
@@ -954,10 +954,13 @@ def _postfetch(mapper, uowtransaction, table,
     # TODO: this still goes a little too often.  would be nice to
     # have definitive list of "columns that changed" here
     for m, equated_pairs in mapper._table_to_equated[table]:
-        sync.populate(state, m, state, m,
-                      equated_pairs,
-                      uowtransaction,
-                      mapper.passive_updates)
+        if state is None:
+            sync.bulk_populate_inherit_keys(dict_, m, equated_pairs)
+        else:
+            sync.populate(state, m, state, m,
+                          equated_pairs,
+                          uowtransaction,
+                          mapper.passive_updates)
 
 
 def _connections_for_states(base_mapper, uowtransaction, states):
