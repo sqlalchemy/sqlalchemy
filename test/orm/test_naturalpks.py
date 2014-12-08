@@ -1228,7 +1228,9 @@ class JoinedInheritancePKOnFKTest(fixtures.MappedTest):
 
         Table(
             'engineer', metadata,
-            Column('id', Integer, primary_key=True),
+            Column(
+                'id', Integer,
+                primary_key=True, test_needs_autoincrement=True),
             Column(
                 'person_name', String(50),
                 ForeignKey('person.name', **fk_args)),
