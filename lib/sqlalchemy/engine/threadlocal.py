@@ -61,7 +61,7 @@ class TLEngine(base.Engine):
             connection = self._tl_connection_cls(
                 self,
                 self._wrap_pool_connect(
-                    self.pool.connect, connection, wrap=True),
+                    self.pool.connect, connection),
                 **kw)
             self._connections.conn = weakref.ref(connection)
 

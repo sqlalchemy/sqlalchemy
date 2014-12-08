@@ -265,18 +265,20 @@ class Connection(Connectable):
         try:
             return self.__connection
         except AttributeError:
-            return self._revalidate_connection(_wrap=True)
+            try:
+                return self._revalidate_connection()
+            except Exception as e:
+                self._handle_dbapi_exception(e, None, None, None, None)
 
-    def _revalidate_connection(self, _wrap):
+    def _revalidate_connection(self):
         if self.__branch_from:
-            return self.__branch_from._revalidate_connection(_wrap=_wrap)
+            return self.__branch_from._revalidate_connection()
         if self.__can_reconnect and self.__invalid:
             if self.__transaction is not None:
                 raise exc.InvalidRequestError(
                     "Can't reconnect until invalid "
                     "transaction is rolled back")
-            self.__connection = self.engine.raw_connection(
-                _connection=self, _wrap=_wrap)
+            self.__connection = self.engine.raw_connection(_connection=self)
             self.__invalid = False
             return self.__connection
         raise exc.ResourceClosedError("This Connection is closed")
@@ -817,7 +819,7 @@ class Connection(Connectable):
             try:
                 conn = self.__connection
             except AttributeError:
-                conn = self._revalidate_connection(_wrap=False)
+                conn = self._revalidate_connection()
 
             dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
@@ -955,7 +957,7 @@ class Connection(Connectable):
             try:
                 conn = self.__connection
             except AttributeError:
-                conn = self._revalidate_connection(_wrap=False)
+                conn = self._revalidate_connection()
 
             context = constructor(dialect, self, conn, *args)
         except Exception as e:
@@ -1248,8 +1250,7 @@ class Connection(Connectable):
                 self.close()
 
     @classmethod
-    def _handle_dbapi_exception_noconnection(
-            cls, e, dialect, engine, connection):
+    def _handle_dbapi_exception_noconnection(cls, e, dialect, engine):
 
         exc_info = sys.exc_info()
 
@@ -1271,7 +1272,7 @@ class Connection(Connectable):
 
         if engine._has_events:
             ctx = ExceptionContextImpl(
-                e, sqlalchemy_exception, engine, connection, None, None,
+                e, sqlalchemy_exception, engine, None, None, None,
                 None, None, is_disconnect)
             for fn in engine.dispatch.handle_error:
                 try:
@@ -1957,17 +1958,18 @@ class Engine(Connectable, log.Identified):
         """
         return self.run_callable(self.dialect.has_table, table_name, schema)
 
-    def _wrap_pool_connect(self, fn, connection, wrap=True):
-        if not wrap:
-            return fn()
+    def _wrap_pool_connect(self, fn, connection):
         dialect = self.dialect
         try:
             return fn()
         except dialect.dbapi.Error as e:
-            Connection._handle_dbapi_exception_noconnection(
-                e, dialect, self, connection)
+            if connection is None:
+                Connection._handle_dbapi_exception_noconnection(
+                    e, dialect, self)
+            else:
+                util.reraise(*sys.exc_info())
 
-    def raw_connection(self, _connection=None, _wrap=True):
+    def raw_connection(self, _connection=None):
         """Return a "raw" DBAPI connection from the connection pool.
 
         The returned object is a proxied version of the DBAPI
@@ -1984,7 +1986,7 @@ class Engine(Connectable, log.Identified):
 
         """
         return self._wrap_pool_connect(
-            self.pool.unique_connection, _connection, _wrap)
+            self.pool.unique_connection, _connection)
 
 
 class OptionEngine(Engine):
