@@ -75,7 +75,8 @@ def _bulk_insert(
             )
 
 
-def _bulk_update(mapper, mappings, session_transaction, isstates):
+def _bulk_update(mapper, mappings, session_transaction,
+                 isstates, update_changed_only):
     base_mapper = mapper.base_mapper
 
     cached_connections = _cached_connection_dict(base_mapper)
@@ -88,7 +89,10 @@ def _bulk_update(mapper, mappings, session_transaction, isstates):
         )
 
     if isstates:
-        mappings = [_changed_dict(mapper, state) for state in mappings]
+        if update_changed_only:
+            mappings = [_changed_dict(mapper, state) for state in mappings]
+        else:
+            mappings = [state.dict for state in mappings]
     else:
         mappings = list(mappings)
 
@@ -612,6 +616,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
 
         rows = 0
         records = list(records)
+
         if hasvalue:
             for state, state_dict, params, mapper, \
                     connection, value_params in records:

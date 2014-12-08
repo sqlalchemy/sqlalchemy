@@ -2047,7 +2047,8 @@ class Session(_SessionClassMethods):
             with util.safe_reraise():
                 transaction.rollback(_capture_exception=True)
 
-    def bulk_save_objects(self, objects, return_defaults=False):
+    def bulk_save_objects(
+            self, objects, return_defaults=False, update_changed_only=True):
         """Perform a bulk save of the given list of objects.
 
         The bulk save feature allows mapped objects to be used as the
@@ -2083,12 +2084,13 @@ class Session(_SessionClassMethods):
          attribute set, then the object is assumed to be "detached" and
          will result in an UPDATE.  Otherwise, an INSERT is used.
 
-         In the case of an UPDATE, **all** those attributes which are present
-         and are not part of the primary key are applied to the SET clause
-         of the UPDATE statement, regardless of whether any change in state
-         was logged on each attribute; there is no checking of per-attribute
-         history.  The primary key attributes, which are required,
-         are applied to the WHERE clause.
+         In the case of an UPDATE, statements are grouped based on which
+         attributes have changed, and are thus to be the subject of each
+         SET clause.  If ``update_changed_only`` is False, then all
+         attributes present within each object are applied to the UPDATE
+         statement, which may help in allowing the statements to be grouped
+         together into a larger executemany(), and will also reduce the
+         overhead of checking history on attributes.
 
         :param return_defaults: when True, rows that are missing values which
          generate defaults, namely integer primary key defaults and sequences,
@@ -2098,6 +2100,11 @@ class Session(_SessionClassMethods):
          to provide primary key values ahead of time; however,
          return_defaults mode greatly reduces the performance gains of the
          method overall.
+
+        :param update_changed_only: when True, UPDATE statements are rendered
+         based on those attributes in each state that have logged changes.
+         When False, all attributes present are rendered into the SET clause
+         with the exception of primary key attributes.
 
         .. seealso::
 
@@ -2113,7 +2120,8 @@ class Session(_SessionClassMethods):
             lambda state: (state.mapper, state.key is not None)
         ):
             self._bulk_save_mappings(
-                mapper, states, isupdate, True, return_defaults)
+                mapper, states, isupdate, True,
+                return_defaults, update_changed_only)
 
     def bulk_insert_mappings(self, mapper, mappings, return_defaults=False):
         """Perform a bulk insert of the given list of mapping dictionaries.
@@ -2218,10 +2226,11 @@ class Session(_SessionClassMethods):
             :meth:`.Session.bulk_save_objects`
 
         """
-        self._bulk_save_mappings(mapper, mappings, True, False, False)
+        self._bulk_save_mappings(mapper, mappings, True, False, False, False)
 
     def _bulk_save_mappings(
-            self, mapper, mappings, isupdate, isstates, return_defaults):
+            self, mapper, mappings, isupdate, isstates,
+            return_defaults, update_changed_only):
         mapper = _class_to_mapper(mapper)
         self._flushing = True
 
@@ -2230,7 +2239,8 @@ class Session(_SessionClassMethods):
         try:
             if isupdate:
                 persistence._bulk_update(
-                    mapper, mappings, transaction, isstates)
+                    mapper, mappings, transaction,
+                    isstates, update_changed_only)
             else:
                 persistence._bulk_insert(
                     mapper, mappings, transaction, isstates, return_defaults)

@@ -13,7 +13,7 @@ class BulkTest(testing.AssertsExecutionResults):
     run_define_tables = 'each'
 
 
-class BulkInsertTest(BulkTest, _fixtures.FixtureTest):
+class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
@@ -74,6 +74,35 @@ class BulkInsertTest(BulkTest, _fixtures.FixtureTest):
             ),
         )
         assert 'id' not in objects[0].__dict__
+
+    def test_bulk_save_updated_include_unchanged(self):
+        User, = self.classes("User",)
+
+        s = Session(expire_on_commit=False)
+        objects = [
+            User(name="u1"),
+            User(name="u2"),
+            User(name="u3")
+        ]
+        s.add_all(objects)
+        s.commit()
+
+        objects[0].name = 'u1new'
+        objects[2].name = 'u3new'
+
+        s = Session()
+        with self.sql_execution_asserter() as asserter:
+            s.bulk_save_objects(objects, update_changed_only=False)
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE users SET id=:id, name=:name WHERE "
+                "users.id = :users_id",
+                [{'users_id': 1, 'id': 1, 'name': 'u1new'},
+                 {'users_id': 2, 'id': 2, 'name': 'u2'},
+                 {'users_id': 3, 'id': 3, 'name': 'u3new'}]
+            )
+        )
 
 
 class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
