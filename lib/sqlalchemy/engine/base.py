@@ -1243,9 +1243,10 @@ class Connection(Connectable):
             del self._reentrant_error
             if self._is_disconnect:
                 del self._is_disconnect
-                dbapi_conn_wrapper = self.connection
-                self.engine.pool._invalidate(dbapi_conn_wrapper, e)
-                self.invalidate(e)
+                if not self.invalidated:
+                    dbapi_conn_wrapper = self.__connection
+                    self.engine.pool._invalidate(dbapi_conn_wrapper, e)
+                    self.invalidate(e)
             if self.should_close_with_result:
                 self.close()
 
