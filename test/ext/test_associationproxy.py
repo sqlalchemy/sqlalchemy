@@ -912,6 +912,22 @@ class LazyLoadTest(fixtures.TestBase):
         self.assert_('_children' in p.__dict__)
         self.assert_(len(p._children) == 3)
 
+    def test_slicing_list(self):
+        Parent, Child = self.Parent, self.Child
+
+        mapper(Parent, self.table, properties={
+            '_children': relationship(Child, lazy='select',
+                                  collection_class=list)})
+
+        p = Parent('p')
+        p.children = ['a', 'b', 'c']
+
+        p = self.roundtrip(p)
+
+        self.assert_(len(p._children) == 3)
+        eq_('b', p.children[1])
+        eq_(['b', 'c'], p.children[-2:])
+
     def test_lazy_scalar(self):
         Parent, Child = self.Parent, self.Child
 

@@ -527,7 +527,10 @@ class _AssociationList(_AssociationCollection):
         return self.setter(object, value)
 
     def __getitem__(self, index):
-        return self._get(self.col[index])
+        if not isinstance(index, slice):
+            return self._get(self.col[index])
+        else:
+            return [self._get(member) for member in self.col[index]]
 
     def __setitem__(self, index, value):
         if not isinstance(index, slice):
