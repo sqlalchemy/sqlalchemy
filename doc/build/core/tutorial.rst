@@ -370,7 +370,7 @@ Selecting
 ==========
 
 We began with inserts just so that our test database had some data in it. The
-more interesting part of the data is selecting it ! We'll cover UPDATE and
+more interesting part of the data is selecting it! We'll cover UPDATE and
 DELETE statements later. The primary construct used to generate SELECT
 statements is the :func:`.select` function:
 
