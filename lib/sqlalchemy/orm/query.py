@@ -2725,6 +2725,18 @@ class Query(object):
 
         Deletes rows matched by this query from the database.
 
+        E.g.::
+
+            sess.query(User).filter(User.age == 25).\\
+                delete(synchronize_session=False)
+
+            sess.query(User).filter(User.age == 25).\\
+                delete(synchronize_session='evaluate')
+
+        .. warning:: The :meth:`.Query.delete` method is a "bulk" operation,
+           which bypasses ORM unit-of-work automation in favor of greater
+           performance.  **Please read all caveats and warnings below.**
+
         :param synchronize_session: chooses the strategy for the removal of
             matched objects from the session. Valid values are:
 
@@ -2743,8 +2755,7 @@ class Query(object):
 
             ``'evaluate'`` - Evaluate the query's criteria in Python straight
             on the objects in the session. If evaluation of the criteria isn't
-            implemented, an error is raised.  In that case you probably
-            want to use the 'fetch' strategy as a fallback.
+            implemented, an error is raised.
 
             The expression evaluator currently doesn't account for differing
             string collations between the database and Python.
@@ -2752,29 +2763,42 @@ class Query(object):
         :return: the count of rows matched as returned by the database's
           "row count" feature.
 
-        This method has several key caveats:
+        .. warning:: **Additional Caveats for bulk query deletes**
 
-        * The method does **not** offer in-Python cascading of relationships
-          - it is assumed that ON DELETE CASCADE/SET NULL/etc. is configured
-          for any foreign key references which require it, otherwise the
-          database may emit an integrity violation if foreign key references
-          are being enforced.
+            * The method does **not** offer in-Python cascading of
+              relationships - it is assumed that ON DELETE CASCADE/SET
+              NULL/etc. is configured for any foreign key references
+              which require it, otherwise the database may emit an
+              integrity violation if foreign key references are being
+              enforced.
 
-          After the DELETE, dependent objects in the :class:`.Session` which
-          were impacted by an ON DELETE may not contain the current
-          state, or may have been deleted. This issue is resolved once the
-          :class:`.Session` is expired,
-          which normally occurs upon :meth:`.Session.commit` or can be forced
-          by using :meth:`.Session.expire_all`.  Accessing an expired object
-          whose row has been deleted will invoke a SELECT to locate the
-          row; when the row is not found, an
-          :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is raised.
+              After the DELETE, dependent objects in the
+              :class:`.Session` which were impacted by an ON DELETE
+              may not contain the current state, or may have been
+              deleted. This issue is resolved once the
+              :class:`.Session` is expired, which normally occurs upon
+              :meth:`.Session.commit` or can be forced by using
+              :meth:`.Session.expire_all`.  Accessing an expired
+              object whose row has been deleted will invoke a SELECT
+              to locate the row; when the row is not found, an
+              :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is
+              raised.
 
-        * The :meth:`.MapperEvents.before_delete` and
-          :meth:`.MapperEvents.after_delete`
-          events are **not** invoked from this method.  Instead, the
-          :meth:`.SessionEvents.after_bulk_delete` method is provided to act
-          upon a mass DELETE of entity rows.
+            * The ``'fetch'`` strategy results in an additional
+              SELECT statement emitted and will significantly reduce
+              performance.
+
+            * The ``'evaulate'`` strategy performs a scan of
+              all matching objects within the :class:`.Session`; if the
+              contents of the :class:`.Session` are expired, such as
+              via a proceeding :meth:`.Session.commit` call, **this will
+              result in SELECT queries emitted for every matching object**.
+
+            * The :meth:`.MapperEvents.before_delete` and
+              :meth:`.MapperEvents.after_delete`
+              events **are not invoked** from this method.  Instead, the
+              :meth:`.SessionEvents.after_bulk_delete` method is provided to
+              act upon a mass DELETE of entity rows.
 
         .. seealso::
 
@@ -2797,17 +2821,21 @@ class Query(object):
 
         E.g.::
 
-            sess.query(User).filter(User.age == 25).\
-                update({User.age: User.age - 10}, synchronize_session='fetch')
+            sess.query(User).filter(User.age == 25).\\
+                update({User.age: User.age - 10}, synchronize_session=False)
 
-
-            sess.query(User).filter(User.age == 25).\
+            sess.query(User).filter(User.age == 25).\\
                 update({"age": User.age - 10}, synchronize_session='evaluate')
 
 
+        .. warning:: The :meth:`.Query.update` method is a "bulk" operation,
+           which bypasses ORM unit-of-work automation in favor of greater
+           performance.  **Please read all caveats and warnings below.**
+
+
         :param values: a dictionary with attributes names, or alternatively
-          mapped attributes or SQL expressions, as keys, and literal
-          values or sql expressions as values.
+         mapped attributes or SQL expressions, as keys, and literal
+         values or sql expressions as values.
 
           .. versionchanged:: 1.0.0 - string names in the values dictionary
              are now resolved against the mapped entity; previously, these
@@ -2815,7 +2843,7 @@ class Query(object):
              translation.
 
         :param synchronize_session: chooses the strategy to update the
-            attributes on objects in the session. Valid values are:
+         attributes on objects in the session. Valid values are:
 
             ``False`` - don't synchronize the session. This option is the most
             efficient and is reliable once the session is expired, which
@@ -2836,43 +2864,56 @@ class Query(object):
             string collations between the database and Python.
 
         :return: the count of rows matched as returned by the database's
-          "row count" feature.
+         "row count" feature.
 
-        This method has several key caveats:
+        .. warning:: **Additional Caveats for bulk query updates**
 
-        * The method does **not** offer in-Python cascading of relationships
-          - it is assumed that ON UPDATE CASCADE is configured for any foreign
-          key references which require it, otherwise the database may emit an
-          integrity violation if foreign key references are being enforced.
+            * The method does **not** offer in-Python cascading of
+              relationships - it is assumed that ON UPDATE CASCADE is
+              configured for any foreign key references which require
+              it, otherwise the database may emit an integrity
+              violation if foreign key references are being enforced.
 
-          After the UPDATE, dependent objects in the :class:`.Session` which
-          were impacted by an ON UPDATE CASCADE may not contain the current
-          state; this issue is resolved once the :class:`.Session` is expired,
-          which normally occurs upon :meth:`.Session.commit` or can be forced
-          by using :meth:`.Session.expire_all`.
+              After the UPDATE, dependent objects in the
+              :class:`.Session` which were impacted by an ON UPDATE
+              CASCADE may not contain the current state; this issue is
+              resolved once the :class:`.Session` is expired, which
+              normally occurs upon :meth:`.Session.commit` or can be
+              forced by using :meth:`.Session.expire_all`.
 
-        * The method supports multiple table updates, as
-          detailed in :ref:`multi_table_updates`, and this behavior does
-          extend to support updates of joined-inheritance and other multiple
-          table mappings.  However, the **join condition of an inheritance
-          mapper is currently not automatically rendered**.
-          Care must be taken in any multiple-table update to explicitly
-          include the joining condition between those tables, even in mappings
-          where this is normally automatic.
-          E.g. if a class ``Engineer`` subclasses ``Employee``, an UPDATE of
-          the ``Engineer`` local table using criteria against the ``Employee``
-          local table might look like::
+            * The ``'fetch'`` strategy results in an additional
+              SELECT statement emitted and will significantly reduce
+              performance.
 
-                session.query(Engineer).\\
-                    filter(Engineer.id == Employee.id).\\
-                    filter(Employee.name == 'dilbert').\\
-                    update({"engineer_type": "programmer"})
+            * The ``'evaulate'`` strategy performs a scan of
+              all matching objects within the :class:`.Session`; if the
+              contents of the :class:`.Session` are expired, such as
+              via a proceeding :meth:`.Session.commit` call, **this will
+              result in SELECT queries emitted for every matching object**.
 
-        * The :meth:`.MapperEvents.before_update` and
-          :meth:`.MapperEvents.after_update`
-          events are **not** invoked from this method.  Instead, the
-          :meth:`.SessionEvents.after_bulk_update` method is provided to act
-          upon a mass UPDATE of entity rows.
+            * The method supports multiple table updates, as detailed
+              in :ref:`multi_table_updates`, and this behavior does
+              extend to support updates of joined-inheritance and
+              other multiple table mappings.  However, the **join
+              condition of an inheritance mapper is not
+              automatically rendered**. Care must be taken in any
+              multiple-table update to explicitly include the joining
+              condition between those tables, even in mappings where
+              this is normally automatic. E.g. if a class ``Engineer``
+              subclasses ``Employee``, an UPDATE of the ``Engineer``
+              local table using criteria against the ``Employee``
+              local table might look like::
+
+                    session.query(Engineer).\\
+                        filter(Engineer.id == Employee.id).\\
+                        filter(Employee.name == 'dilbert').\\
+                        update({"engineer_type": "programmer"})
+
+            * The :meth:`.MapperEvents.before_update` and
+              :meth:`.MapperEvents.after_update`
+              events **are not invoked from this method**.  Instead, the
+              :meth:`.SessionEvents.after_bulk_update` method is provided to
+              act upon a mass UPDATE of entity rows.
 
         .. seealso::
 
