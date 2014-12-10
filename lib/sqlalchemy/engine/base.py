@@ -1926,10 +1926,11 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        return self._connection_cls(self,
-                                    self.pool.connect(),
-                                    close_with_result=close_with_result,
-                                    **kwargs)
+        return self._connection_cls(
+            self,
+            self._wrap_pool_connect(self.pool.connect, None),
+            close_with_result=close_with_result,
+            **kwargs)
 
     def table_names(self, schema=None, connection=None):
         """Return a list of all table names available in the database.
