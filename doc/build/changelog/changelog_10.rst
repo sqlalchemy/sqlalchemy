@@ -23,6 +23,15 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3244, 3261
+
+        UNIQUE and FOREIGN KEY constraints are now fully reflected on
+        SQLite both with and without names.  Previously, foreign key
+        names were ignored and unnamed unique constraints were skipped.
+        Thanks to Jon Nelson for assistance with this.
+
+    .. change::
         :tags: feature, examples
 
         A new suite of examples dedicated to providing a detailed study

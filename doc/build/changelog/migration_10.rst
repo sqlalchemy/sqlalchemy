@@ -1680,6 +1680,25 @@ reflection from temp tables as well, which is :ticket:`3203`.
 
 :ticket:`3204`
 
+SQLite named and unnamed UNIQUE and FOREIGN KEY constraints will inspect and reflect
+-------------------------------------------------------------------------------------
+
+UNIQUE and FOREIGN KEY constraints are now fully reflected on
+SQLite both with and without names.  Previously, foreign key
+names were ignored and unnamed unique constraints were skipped.   In particular
+this will help with Alembic's new SQLite migration features.
+
+To achieve this, for both foreign keys and unique constraints, the result
+of PRAGMA foreign_keys, index_list, and index_info is combined with regular
+expression parsing of the CREATE TABLE statement overall to form a complete
+picture of the names of constraints, as well as differentiating UNIQUE
+constraints that were created as UNIQUE vs. unnamed INDEXes.
+
+:ticket:`3244`
+
+:ticket:`3261`
+
+
 .. _change_3220:
 
 Improved support for CTEs in Oracle
