@@ -14,6 +14,18 @@
     :version: 0.9.9
 
     .. change::
+        :tags: enhancement, orm
+        :versions: 1.0.0
+
+        Added new method :meth:`.Session.invalidate`, functions similarly
+        to :meth:`.Session.close`, except also calls
+        :meth:`.Connection.invalidate`
+        on all connections, guaranteeing that they will not be returned to
+        the connection pool.  This is useful in situations e.g. dealing
+        with gevent timeouts when it is not safe to use the connection further,
+        even for rollbacks.
+
+    .. change::
         :tags: bug, examples
         :versions: 1.0.0
 

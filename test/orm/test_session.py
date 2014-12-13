@@ -1364,6 +1364,9 @@ class DisposedStates(fixtures.MappedTest):
     def test_close(self):
         self._test_session().close()
 
+    def test_invalidate(self):
+        self._test_session().invalidate()
+
     def test_expunge_all(self):
         self._test_session().expunge_all()
 

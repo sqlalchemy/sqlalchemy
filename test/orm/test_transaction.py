@@ -184,6 +184,23 @@ class SessionTransactionTest(FixtureTest):
         assert users.count().scalar() == 1
         assert addresses.count().scalar() == 1
 
+    @testing.requires.independent_connections
+    def test_invalidate(self):
+        User, users = self.classes.User, self.tables.users
+        mapper(User, users)
+        sess = Session()
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        c1 = sess.connection(User)
+
+        sess.invalidate()
+        assert c1.invalidated
+
+        eq_(sess.query(User).all(), [])
+        c2 = sess.connection(User)
+        assert not c2.invalidated
+
     def test_subtransaction_on_noautocommit(self):
         User, users = self.classes.User, self.tables.users
 

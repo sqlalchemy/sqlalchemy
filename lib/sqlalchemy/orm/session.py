@@ -435,11 +435,13 @@ class SessionTransaction(object):
 
         self.session.dispatch.after_rollback(self.session)
 
-    def close(self):
+    def close(self, invalidate=False):
         self.session.transaction = self._parent
         if self._parent is None:
             for connection, transaction, autoclose in \
                     set(self._connections.values()):
+                if invalidate:
+                    connection.invalidate()
                 if autoclose:
                     connection.close()
                 else:
@@ -1000,10 +1002,46 @@ class Session(_SessionClassMethods):
         not use any connection resources until they are first needed.
 
         """
+        self._close_impl(invalidate=False)
+
+    def invalidate(self):
+        """Close this Session, using connection invalidation.
+
+        This is a variant of :meth:`.Session.close` that will additionally
+        ensure that the :meth:`.Connection.invalidate` method will be called
+        on all :class:`.Connection` objects.  This can be called when
+        the database is known to be in a state where the connections are
+        no longer safe to be used.
+
+        E.g.::
+
+            try:
+                sess = Session()
+                sess.add(User())
+                sess.commit()
+            except gevent.Timeout:
+                sess.invalidate()
+                raise
+            except:
+                sess.rollback()
+                raise
+
+        This clears all items and ends any transaction in progress.
+
+        If this session were created with ``autocommit=False``, a new
+        transaction is immediately begun.  Note that this new transaction does
+        not use any connection resources until they are first needed.
+
+        .. versionadded:: 0.9.9
+
+        """
+        self._close_impl(invalidate=True)
+
+    def _close_impl(self, invalidate):
         self.expunge_all()
         if self.transaction is not None:
             for transaction in self.transaction._iterate_parents():
-                transaction.close()
+                transaction.close(invalidate)
 
     def expunge_all(self):
         """Remove all object instances from this ``Session``.
