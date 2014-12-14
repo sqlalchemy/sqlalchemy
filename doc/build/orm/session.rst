@@ -1944,7 +1944,7 @@ transactions set the flag ``twophase=True`` on the session::
     # before committing both transactions
     session.commit()
 
-.. _session_sql_expressions:
+.. _flush_embedded_sql_expressions:
 
 Embedding SQL Insert/Update Expressions into a Flush
 =====================================================
@@ -2567,7 +2567,7 @@ The bulk insert / update methods lose a significant amount of functionality
 versus traditional ORM use.   The following is a listing of features that
 are **not available** when using these methods:
 
-* persistence along :meth:`.relationship` linkages
+* persistence along :func:`.relationship` linkages
 
 * sorting of rows within order of dependency; rows are inserted or updated
   directly in the order in which they are passed to the methods
@@ -2577,12 +2577,12 @@ are **not available** when using these methods:
 
 * Functionality related to primary key mutation, ON UPDATE cascade
 
-* SQL expression inserts / updates (e.g. :ref:`session_sql_expressions`)
+* SQL expression inserts / updates (e.g. :ref:`flush_embedded_sql_expressions`)
 
 * ORM events such as :meth:`.MapperEvents.before_insert`, etc.  The bulk
   session methods have no event support.
 
-Features that **are available** include::
+Features that **are available** include:
 
 * INSERTs and UPDATEs of mapped objects
 
