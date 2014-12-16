@@ -14,6 +14,14 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, mysql
+        :versions: 1.0.0
+        :tickets: 3274
+
+        Added a version check to the MySQLdb dialect surrounding the
+        check for 'utf8_bin' collation, as this fails on MySQL server < 5.0.
+
+    .. change::
         :tags: enhancement, orm
         :versions: 1.0.0
 
