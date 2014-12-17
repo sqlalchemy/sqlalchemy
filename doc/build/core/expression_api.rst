@@ -16,5 +16,5 @@ see :ref:`sqlexpression_toplevel`.
     selectable
     dml
     functions
-    types
-
+    compiler
+    serializer

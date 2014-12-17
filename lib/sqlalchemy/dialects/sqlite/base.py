@@ -93,7 +93,7 @@ file-based architecture and additionally will usually require workarounds to
 work when using the pysqlite driver.
 
 Transaction Isolation Level
-===========================
+----------------------------
 
 SQLite supports "transaction isolation" in a non-standard way, along two
 axes.  One is that of the `PRAGMA read_uncommitted <http://www.sqlite.org/pragma.html#pragma_read_uncommitted>`_
@@ -126,7 +126,7 @@ by *not even emitting BEGIN* until the first write operation.
     for techniques to work around this behavior.
 
 SAVEPOINT Support
-=================
+----------------------------
 
 SQLite supports SAVEPOINTs, which only function once a transaction is
 begun.   SQLAlchemy's SAVEPOINT support is available using the
@@ -142,7 +142,7 @@ won't work at all with pysqlite unless workarounds are taken.
     for techniques to work around this behavior.
 
 Transactional DDL
-=================
+----------------------------
 
 The SQLite database supports transactional :term:`DDL` as well.
 In this case, the pysqlite driver is not only failing to start transactions,
