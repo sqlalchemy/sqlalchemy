@@ -516,6 +516,82 @@ to a string SQL statement::
                 "from users left outer join addresses on users.user_id=addresses.user_id").\
         options(contains_eager(User.addresses, alias=eager_columns))
 
+Creating Custom Load Rules
+---------------------------
+
+.. warning::  This is an advanced technique!   Great care and testing
+   should be applied.
+
+The ORM has various edge cases where the value of an attribute is locally
+available, however the ORM itself doesn't have awareness of this.   There
+are also cases when a user-defined system of loading attributes is desirable.
+To support the use case of user-defined loading systems, a key function
+:func:`.attributes.set_committed_value` is provided.   This function is
+basically equivalent to Python's own ``setattr()`` function, except that
+when applied to a target object, SQLAlchemy's "attribute history" system
+which is used to determine flush-time changes is bypassed; the attribute
+is assigned in the same way as if the ORM loaded it that way from the database.
+
+The use of :func:`.attributes.set_committed_value` can be combined with another
+key event known as :meth:`.InstanceEvents.load` to produce attribute-population
+behaviors when an object is loaded.   One such example is the bi-directional
+"one-to-one" case, where loading the "many-to-one" side of a one-to-one
+should also imply the value of the "one-to-many" side.  The SQLAlchemy ORM
+does not consider backrefs when loading related objects, and it views a
+"one-to-one" as just another "one-to-many", that just happens to be one
+row.
+
+Given the following mapping::
+
+    from sqlalchemy import Integer, ForeignKey, Column
+    from sqlalchemy.orm import relationship, backref
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        b_id = Column(ForeignKey('b.id'))
+        b = relationship("B", backref=backref("a", uselist=False), lazy='joined')
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+
+
+If we query for an ``A`` row, and then ask it for ``a.b.a``, we will get
+an extra SELECT::
+
+    >>> a1.b.a
+    SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a
+    WHERE ? = a.b_id
+
+This SELECT is redundant becasue ``b.a`` is the same value as ``a1``.  We
+can create an on-load rule to populate this for us::
+
+    from sqlalchemy import event
+    from sqlalchemy.orm import attributes
+
+    @event.listens_for(A, "load")
+    def load_b(target, context):
+        if 'b' in target.__dict__:
+            attributes.set_committed_value(target.b, 'a', target)
+
+Now when we query for ``A``, we will get ``A.b`` from the joined eager load,
+and ``A.b.a`` from our event:
+
+.. sourcecode:: pycon+sql
+
+    {sql}a1 = s.query(A).first()
+    SELECT a.id AS a_id, a.b_id AS a_b_id, b_1.id AS b_1_id
+    FROM a LEFT OUTER JOIN b AS b_1 ON b_1.id = a.b_id
+     LIMIT ? OFFSET ?
+    (1, 0)
+    {stop}assert a1.b.a is a1
 
 
 Relationship Loader API
