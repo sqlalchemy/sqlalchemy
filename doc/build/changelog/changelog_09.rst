@@ -14,6 +14,17 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3278
+
+        Fixed bug where using a :class:`.TypeDecorator` that implemented
+        a type that was also a :class:`.TypeDecorator` would fail with
+        Python's "Cannot create a consistent method resolution order (MRO)"
+        error, when any kind of SQL comparison expression were used against
+        an object using this type.
+
+    .. change::
         :tags: bug, mysql
         :versions: 1.0.0
         :tickets: 3274

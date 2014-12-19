@@ -630,9 +630,13 @@ class TypeDecorator(TypeEngine):
 
     @property
     def comparator_factory(self):
-        return type("TDComparator",
-                    (TypeDecorator.Comparator, self.impl.comparator_factory),
-                    {})
+        if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:
+            return self.impl.comparator_factory
+        else:
+            return type("TDComparator",
+                        (TypeDecorator.Comparator,
+                         self.impl.comparator_factory),
+                        {})
 
     def _gen_dialect_impl(self, dialect):
         """

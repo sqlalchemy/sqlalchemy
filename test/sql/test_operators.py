@@ -393,6 +393,31 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
         return MyInteger
 
 
+class TypeDecoratorTypeDecoratorComparatorTest(
+        _CustomComparatorTests, fixtures.TestBase):
+
+    def _add_override_factory(self):
+
+        class MyIntegerOne(TypeDecorator):
+            impl = Integer
+
+            class comparator_factory(TypeDecorator.Comparator):
+
+                def __init__(self, expr):
+                    self.expr = expr
+
+                def __add__(self, other):
+                    return self.expr.op("goofy")(other)
+
+                def __and__(self, other):
+                    return self.expr.op("goofy_and")(other)
+
+        class MyIntegerTwo(TypeDecorator):
+            impl = MyIntegerOne
+
+        return MyIntegerTwo
+
+
 class TypeDecoratorWVariantComparatorTest(
         _CustomComparatorTests,
         fixtures.TestBase):
