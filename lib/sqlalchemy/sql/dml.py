@@ -387,7 +387,7 @@ class ValuesBase(UpdateBase):
         :func:`.mapper`.
 
         :param cols: optional list of column key names or :class:`.Column`
-         objects.  If omitted, all column expressions evaulated on the server
+         objects.  If omitted, all column expressions evaluated on the server
          are added to the returning list.
 
         .. versionadded:: 0.9.0

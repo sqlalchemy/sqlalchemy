@@ -2788,7 +2788,7 @@ class Query(object):
               SELECT statement emitted and will significantly reduce
               performance.
 
-            * The ``'evaulate'`` strategy performs a scan of
+            * The ``'evaluate'`` strategy performs a scan of
               all matching objects within the :class:`.Session`; if the
               contents of the :class:`.Session` are expired, such as
               via a proceeding :meth:`.Session.commit` call, **this will
@@ -2885,7 +2885,7 @@ class Query(object):
               SELECT statement emitted and will significantly reduce
               performance.
 
-            * The ``'evaulate'`` strategy performs a scan of
+            * The ``'evaluate'`` strategy performs a scan of
               all matching objects within the :class:`.Session`; if the
               contents of the :class:`.Session` are expired, such as
               via a proceeding :meth:`.Session.commit` call, **this will

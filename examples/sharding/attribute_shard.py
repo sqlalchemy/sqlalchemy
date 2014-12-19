@@ -168,7 +168,7 @@ def _get_query_comparisons(query):
         elif bind.callable:
             # some ORM functions (lazy loading)
             # place the bind's value as a
-            # callable for deferred evaulation.
+            # callable for deferred evaluation.
             value = bind.callable()
         else:
             # just use .value

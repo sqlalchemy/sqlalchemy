@@ -278,7 +278,7 @@ class _MapperConfig(object):
             elif not isinstance(value, (Column, MapperProperty)):
                 # using @declared_attr for some object that
                 # isn't Column/MapperProperty; remove from the dict_
-                # and place the evaulated value onto the class.
+                # and place the evaluated value onto the class.
                 if not k.startswith('__'):
                     dict_.pop(k)
                     setattr(cls, k, value)

@@ -959,7 +959,7 @@
         :tags: bug, orm
         :tickets: 3117
 
-        The "evaulator" for query.update()/delete() won't work with multi-table
+        The "evaluator" for query.update()/delete() won't work with multi-table
         updates, and needs to be set to `synchronize_session=False` or
         `synchronize_session='fetch'`; this now raises an exception, with a
         message to change the synchronize setting.

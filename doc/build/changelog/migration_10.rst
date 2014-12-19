@@ -1010,7 +1010,7 @@ join into a subquery as a join target on SQLite.
 query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
 -----------------------------------------------------------------------------------
 
-The "evaulator" for :meth:`.Query.update` won't work with multi-table
+The "evaluator" for :meth:`.Query.update` won't work with multi-table
 updates, and needs to be set to ``synchronize_session=False`` or
 ``synchronize_session='fetch'`` when multiple tables are present.
 The new behavior is that an explicit exception is now raised, with a message
