@@ -17,6 +17,10 @@ developers-guide
 
     .. versionadded:: 0.7.8
 
+    .. deprecated:: 1.0 Cloud SQL now recommends creating connections via the
+        mysql dialect using the URL format
+        `mysql://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>`
+
 
 Pooling
 -------
@@ -33,6 +37,14 @@ import os
 from .mysqldb import MySQLDialect_mysqldb
 from ...pool import NullPool
 import re
+from sqlalchemy.util import warn_deprecated
+
+
+warn_deprecated(
+    "Google Cloud SQL now recommends creating connections via the "
+    "mysql dialect using the URL format "
+    "mysql://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>"
+)
 
 
 def _is_dev_environment():
