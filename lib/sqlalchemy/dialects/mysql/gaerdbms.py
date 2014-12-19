@@ -43,13 +43,6 @@ import re
 from sqlalchemy.util import warn_deprecated
 
 
-warn_deprecated(
-    "Google Cloud SQL now recommends creating connections via the "
-    "MySQLdb dialect directly, using the URL format "
-    "mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>"
-)
-
-
 def _is_dev_environment():
     return os.environ.get('SERVER_SOFTWARE', '').startswith('Development/')
 
@@ -58,6 +51,14 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
 
     @classmethod
     def dbapi(cls):
+
+        warn_deprecated(
+            "Google Cloud SQL now recommends creating connections via the "
+            "MySQLdb dialect directly, using the URL format "
+            "mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/"
+            "<projectid>:<instancename>"
+        )
+
         # from django:
         # http://code.google.com/p/googleappengine/source/
         #     browse/trunk/python/google/storage/speckle/
