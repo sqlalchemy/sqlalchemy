@@ -39,6 +39,14 @@ MySQL-python version 1.2.2 has a serious memory leak related
 to unicode conversion, a feature which is disabled via ``use_unicode=0``.
 It is strongly advised to use the latest version of MySQL-Python.
 
+Using MySQLdb with Google Cloud SQL
+-----------------------------------
+
+Google Cloud SQL now recommends use of the MySQLdb dialect.  Connect
+using a URL like the following::
+
+    mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>
+
 """
 
 from .base import (MySQLDialect, MySQLExecutionContext,

@@ -14,6 +14,15 @@
     :version: 0.9.9
 
     .. change::
+        :tags: change, mysql
+        :versions: 1.0.0
+        :tickets: 3275
+
+        The ``gaerdbms`` dialect is no longer necessary, and emits a
+        deprecation warning.  Google now recommends using the MySQLdb
+        dialect directly.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :tickets: 3278
