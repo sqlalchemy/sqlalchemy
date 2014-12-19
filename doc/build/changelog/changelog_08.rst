@@ -2214,7 +2214,7 @@
         expr1 = mycolumn > 2
         bool(expr1 == expr1)
 
-      Would evaulate as ``False``, even though this is an identity
+      Would evaluate as ``False``, even though this is an identity
       comparison, because ``mycolumn > 2`` would be "grouped" before
       being placed into the :class:`.BinaryExpression`, thus changing
       its identity.   :class:`.BinaryExpression` now keeps track

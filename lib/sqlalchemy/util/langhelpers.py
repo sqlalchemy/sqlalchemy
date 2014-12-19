@@ -932,7 +932,7 @@ def asbool(obj):
 
 
 def bool_or_str(*text):
-    """Return a callable that will evaulate a string as
+    """Return a callable that will evaluate a string as
     boolean, or one of a set of "alternate" string values.
 
     """

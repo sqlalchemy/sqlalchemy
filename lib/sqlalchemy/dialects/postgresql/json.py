@@ -77,7 +77,7 @@ class JSONElement(elements.BinaryExpression):
 
     def cast(self, type_):
         """Convert this :class:`.JSONElement` to apply both the 'astext' operator
-        as well as an explicit type cast when evaulated.
+        as well as an explicit type cast when evaluated.
 
         E.g.::
 

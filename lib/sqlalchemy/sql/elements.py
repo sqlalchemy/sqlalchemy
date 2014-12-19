@@ -2075,7 +2075,7 @@ class Case(ColumnElement):
           result of the ``CASE`` construct if all expressions within
           :paramref:`.case.whens` evaluate to false.  When omitted, most
           databases will produce a result of NULL if none of the "when"
-          expressions evaulate to true.
+          expressions evaluate to true.
 
 
         """

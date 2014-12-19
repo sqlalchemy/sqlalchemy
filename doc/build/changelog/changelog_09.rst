@@ -548,7 +548,7 @@
         :tags: bug, orm
         :tickets: 3117
 
-        The "evaulator" for query.update()/delete() won't work with multi-table
+        The "evaluator" for query.update()/delete() won't work with multi-table
         updates, and needs to be set to `synchronize_session=False` or
         `synchronize_session='fetch'`; a warning is now emitted.  In
         1.0 this will be promoted to a full exception.
@@ -2915,7 +2915,7 @@
         in an ``ORDER BY`` clause, if that label is also referred to
         in the columns clause of the select, instead of rewriting the
         full expression.  This gives the database a better chance to
-        optimize the evaulation of the same expression in two different
+        optimize the evaluation of the same expression in two different
         contexts.
 
         .. seealso::
