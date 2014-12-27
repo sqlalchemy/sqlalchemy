@@ -252,7 +252,7 @@ class TypeEngine(Visitable):
         The construction of :meth:`.TypeEngine.with_variant` is always
         from the "fallback" type to that which is dialect specific.
         The returned type is an instance of :class:`.Variant`, which
-        itself provides a :meth:`~sqlalchemy.types.Variant.with_variant`
+        itself provides a :meth:`.Variant.with_variant`
         that can be called repeatedly.
 
         :param type_: a :class:`.TypeEngine` that will be selected

@@ -559,6 +559,9 @@ The above will respond to ``create_engine("mysql+foodialect://")`` and load the
 Connection / Engine API
 =======================
 
+.. autoclass:: BaseRowProxy
+    :members:
+
 .. autoclass:: Connection
    :members:
 
@@ -568,16 +571,16 @@ Connection / Engine API
 .. autoclass:: Engine
    :members:
 
-.. autoclass:: sqlalchemy.engine.ExceptionContext
+.. autoclass:: ExceptionContext
    :members:
 
 .. autoclass:: NestedTransaction
     :members:
 
-.. autoclass:: sqlalchemy.engine.ResultProxy
+.. autoclass:: ResultProxy
     :members:
 
-.. autoclass:: sqlalchemy.engine.RowProxy
+.. autoclass:: RowProxy
     :members:
 
 .. autoclass:: Transaction

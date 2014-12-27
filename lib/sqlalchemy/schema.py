@@ -35,6 +35,7 @@ from .sql.schema import (
     UniqueConstraint,
     _get_table_key,
     ColumnCollectionConstraint,
+    ColumnCollectionMixin
     )
 
 

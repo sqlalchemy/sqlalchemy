@@ -266,7 +266,7 @@ will emit to the database::
 
 The Postgresql text search functions such as ``to_tsquery()``
 and ``to_tsvector()`` are available
-explicitly using the standard :attr:`.func` construct.  For example::
+explicitly using the standard :data:`.func` construct.  For example::
 
     select([
         func.to_tsvector('fat cats ate rats').match('cat & rat')

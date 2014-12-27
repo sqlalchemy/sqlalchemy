@@ -32,10 +32,11 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.attributes.Event
     :members:
 
-
 .. autoclass:: sqlalchemy.orm.interfaces._InspectionAttr
     :members:
 
+.. autoclass:: sqlalchemy.orm.identity.IdentityMap
+    :members:
 
 .. autoclass:: sqlalchemy.orm.state.InstanceState
     :members:

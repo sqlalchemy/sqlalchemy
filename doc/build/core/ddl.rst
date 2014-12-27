@@ -223,65 +223,72 @@ DDL Expression Constructs API
 .. autoclass:: DDLElement
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: DDL
     :members:
     :undoc-members:
-     
+
+
+.. autoclass:: _DDLCompiles
+    :members:
+
+
+.. autoclass:: _CreateDropBase
+    :members:
 
 .. autoclass:: CreateTable
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: DropTable
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: CreateColumn
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: CreateSequence
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: DropSequence
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: CreateIndex
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: DropIndex
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: AddConstraint
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: DropConstraint
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: CreateSchema
     :members:
     :undoc-members:
-     
+
 
 .. autoclass:: DropSchema
     :members:
     :undoc-members:
-     
+
 
