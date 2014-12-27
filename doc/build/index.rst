@@ -31,7 +31,7 @@ of Python objects, proceed first to the tutorial.
 
 * **ORM Configuration:**
   :doc:`Mapper Configuration <orm/mapper_config>` |
-  :doc:`Relationship Configuration <orm/relationships>` |
+  :doc:`Relationship Configuration <orm/relationships>`
 
 * **Configuration Extensions:**
   :doc:`Declarative Extension <orm/extensions/declarative/index>` |
