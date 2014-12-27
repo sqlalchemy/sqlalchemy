@@ -1,3 +1,5 @@
+.. module:: sqlalchemy.types
+
 .. _types_custom:
 
 Custom Types

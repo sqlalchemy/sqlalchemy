@@ -66,12 +66,13 @@ in ``/tmp``, or whatever socket directory was specified when PostgreSQL
 was built.  This value can be overridden by passing a pathname to psycopg2,
 using ``host`` as an additional keyword argument::
 
-    create_engine("postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql")
+    create_engine("postgresql+psycopg2://user:password@/dbname?\
+host=/var/lib/postgresql")
 
 See also:
 
-`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static\
-/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/\
+libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 Per-Statement/Connection Execution Options
 -------------------------------------------
@@ -237,7 +238,7 @@ The psycopg2 dialect supports these constants for isolation level:
 * ``AUTOCOMMIT``
 
 .. versionadded:: 0.8.2 support for AUTOCOMMIT isolation level when using
-   psycopg2.
+    psycopg2.
 
 .. seealso::
 

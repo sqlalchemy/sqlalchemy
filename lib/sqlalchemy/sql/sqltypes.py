@@ -1657,7 +1657,7 @@ class NullType(TypeEngine):
 class MatchType(Boolean):
     """Refers to the return type of the MATCH operator.
 
-    As the :meth:`.Operators.match` is probably the most open-ended
+    As the :meth:`.ColumnOperators.match` is probably the most open-ended
     operator in generic SQLAlchemy Core, we can't assume the return type
     at SQL evaluation time, as MySQL returns a floating point, not a boolean,
     and other backends might do something different.    So this type

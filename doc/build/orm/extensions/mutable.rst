@@ -21,7 +21,7 @@ API Reference
 
 .. autoclass:: MutableDict
 	:members:
-
+	:undoc-members:
 
 
 

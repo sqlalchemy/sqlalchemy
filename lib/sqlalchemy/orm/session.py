@@ -596,8 +596,8 @@ class Session(_SessionClassMethods):
            .. versionadded:: 0.9.0
 
         :param query_cls:  Class which should be used to create new Query
-        objects, as returned by the :meth:`~.Session.query` method.
-        Defaults to :class:`.Query`.
+          objects, as returned by the :meth:`~.Session.query` method.
+          Defaults to :class:`.Query`.
 
         :param twophase:  When ``True``, all transactions will be started as
             a "two phase" transaction, i.e. using the "two phase" semantics

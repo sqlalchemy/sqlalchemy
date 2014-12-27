@@ -1,3 +1,5 @@
+.. module:: sqlalchemy.orm
+
 .. _mapping_constructors:
 
 Constructors and Object Initialization

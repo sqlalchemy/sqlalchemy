@@ -37,6 +37,7 @@ extensions = [
                 'zzzeeksphinx',
                 'changelog',
                 'sphinx_paramlinks',
+                'corrections'
             ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -341,3 +342,5 @@ intersphinx_mapping = {
     'alembic': ('http://alembic.readthedocs.org/en/latest/', None),
     'psycopg2': ('http://pythonhosted.org/psycopg2', None),
 }
+
+

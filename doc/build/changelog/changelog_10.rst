@@ -147,7 +147,7 @@
         :tags: bug, mysql
         :tickets: 3263
 
-        The :meth:`.Operators.match` operator is now handled such that the
+        The :meth:`.ColumnOperators.match` operator is now handled such that the
         return type is not strictly assumed to be boolean; it now
         returns a :class:`.Boolean` subclass called :class:`.MatchType`.
         The type will still produce boolean behavior when used in Python
@@ -861,7 +861,7 @@
     .. change::
         :tags: bug, orm, py3k
 
-        The :class:`.IdentityMap` exposed from :class:`.Session.identity`
+        The :class:`.IdentityMap` exposed from :class:`.Session.identity_map`
         now returns lists for ``items()`` and ``values()`` in Py3K.
         Early porting to Py3K here had these returning iterators, when
         they technically should be "iterable views"..for now, lists are OK.
@@ -911,7 +911,7 @@
         :tags: orm, feature
         :tickets: 2971
 
-        The :meth:`.InspectionAttr.info` collection is now moved down to
+        The :attr:`.InspectionAttr.info` collection is now moved down to
         :class:`.InspectionAttr`, where in addition to being available
         on all :class:`.MapperProperty` objects, it is also now available
         on hybrid properties, association proxies, when accessed via

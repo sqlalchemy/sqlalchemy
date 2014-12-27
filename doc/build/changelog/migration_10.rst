@@ -905,7 +905,7 @@ as all the subclasses normally refer to the same table::
 
 
 
-.. _migration_migration_deprecated_orm_events:
+.. _migration_deprecated_orm_events:
 
 Deprecated ORM Event Hooks Removed
 ----------------------------------
@@ -1624,7 +1624,7 @@ again works on MySQL.
 The match() operator now returns an agnostic MatchType compatible with MySQL's floating point return value
 ----------------------------------------------------------------------------------------------------------
 
-The return type of a :meth:`.Operators.match` expression is now a new type
+The return type of a :meth:`.ColumnOperators.match` expression is now a new type
 called :class:`.MatchType`.  This is a subclass of :class:`.Boolean`,
 that can be intercepted by the dialect in order to produce a different
 result type at SQL execution time.
@@ -1668,8 +1668,6 @@ on polishing it.
 
 Dialect Improvements and Changes - SQLite
 =============================================
-
-.. _change_2984:
 
 SQLite named and unnamed UNIQUE and FOREIGN KEY constraints will inspect and reflect
 -------------------------------------------------------------------------------------
