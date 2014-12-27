@@ -559,9 +559,6 @@ The above will respond to ``create_engine("mysql+foodialect://")`` and load the
 Connection / Engine API
 =======================
 
-.. autoclass:: BaseRowProxy
-    :members:
-
 .. autoclass:: Connection
    :members:
 

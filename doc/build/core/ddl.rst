@@ -230,13 +230,6 @@ DDL Expression Constructs API
     :undoc-members:
 
 
-.. autoclass:: _DDLCompiles
-    :members:
-
-
-.. autoclass:: _CreateDropBase
-    :members:
-
 .. autoclass:: CreateTable
     :members:
     :undoc-members:

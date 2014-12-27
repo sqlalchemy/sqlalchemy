@@ -439,13 +439,9 @@ Constraints API
     :members:
     :inherited-members:
 
-.. autoclass:: ColumnCollectionConstraint
-    :members:
-
 .. autoclass:: ForeignKey
     :members:
     :inherited-members:
-
 
 .. autoclass:: ForeignKeyConstraint
     :members:
