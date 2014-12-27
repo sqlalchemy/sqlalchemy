@@ -1207,7 +1207,7 @@ class TextClause(Executable, ClauseElement):
 
         E.g.::
 
-            fom sqlalchemy import text
+            from sqlalchemy import text
 
             t = text("SELECT * FROM users")
             result = connection.execute(t)
