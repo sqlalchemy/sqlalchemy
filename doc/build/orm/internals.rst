@@ -33,6 +33,9 @@ sections, are listed here.
     :members:
 
 
+.. autoclass:: sqlalchemy.orm.identity.IdentityMap
+    :members:
+
 .. autoclass:: sqlalchemy.orm.base.InspectionAttr
     :members:
 

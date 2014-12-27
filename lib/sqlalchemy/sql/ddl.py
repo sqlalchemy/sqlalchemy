@@ -370,7 +370,7 @@ class DDL(DDLElement):
 
             :class:`.DDLEvents`
 
-            :mod:`sqlalchemy.event`
+            :ref:`event_toplevel`
 
         """
 

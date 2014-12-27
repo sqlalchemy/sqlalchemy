@@ -861,7 +861,7 @@
     .. change::
         :tags: bug, orm, py3k
 
-        The :class:`.IdentityMap` exposed from :class:`.Session.identity_map`
+        The :class:`.IdentityMap` exposed from :attr:`.Session.identity_map`
         now returns lists for ``items()`` and ``values()`` in Py3K.
         Early porting to Py3K here had these returning iterators, when
         they technically should be "iterable views"..for now, lists are OK.

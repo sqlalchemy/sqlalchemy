@@ -7,6 +7,9 @@ Some key internal constructs are listed here.
 
 .. currentmodule: sqlalchemy
 
+.. autoclass:: sqlalchemy.schema.ColumnCollectionMixin
+    :members:
+
 .. autoclass:: sqlalchemy.engine.interfaces.Compiled
     :members:
 
@@ -26,6 +29,10 @@ Some key internal constructs are listed here.
 
 
 .. autoclass:: sqlalchemy.engine.interfaces.ExecutionContext
+    :members:
+
+
+.. autoclass:: sqlalchemy.log.Identified
     :members:
 
 

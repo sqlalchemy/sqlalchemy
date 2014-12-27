@@ -37,7 +37,7 @@ extensions = [
                 'zzzeeksphinx',
                 'changelog',
                 'sphinx_paramlinks',
-                'corrections'
+                #'corrections'
             ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -79,7 +79,9 @@ autodocmods_convert_modname = {
     "sqlalchemy.sql.selectable": "sqlalchemy.sql.expression",
     "sqlalchemy.sql.dml": "sqlalchemy.sql.expression",
     "sqlalchemy.sql.ddl": "sqlalchemy.schema",
-    "sqlalchemy.sql.base": "sqlalchemy.sql.expression"
+    "sqlalchemy.sql.base": "sqlalchemy.sql.expression",
+    "sqlalchemy.engine.base": "sqlalchemy.engine",
+    "sqlalchemy.engine.result": "sqlalchemy.engine",
 }
 
 autodocmods_convert_modname_w_class = {
@@ -192,7 +194,7 @@ html_title = "%s %s Documentation" % (project, version)
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['static']
+html_static_path = []
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

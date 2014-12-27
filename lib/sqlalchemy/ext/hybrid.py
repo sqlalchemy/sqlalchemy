@@ -145,7 +145,7 @@ usage of the absolute value function::
             return func.abs(cls.length) / 2
 
 Above the Python function ``abs()`` is used for instance-level
-operations, the SQL function ``ABS()`` is used via the :attr:`.func`
+operations, the SQL function ``ABS()`` is used via the :data:`.func`
 object for class-level expressions::
 
     >>> i1.radius

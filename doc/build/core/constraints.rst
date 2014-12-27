@@ -7,10 +7,10 @@
 Defining Constraints and Indexes
 =================================
 
-.. _metadata_foreignkeys:
-
 This section will discuss SQL :term:`constraints` and indexes.  In SQLAlchemy
 the key classes include :class:`.ForeignKeyConstraint` and :class:`.Index`.
+
+.. _metadata_foreignkeys:
 
 Defining Foreign Keys
 ---------------------

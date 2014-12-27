@@ -743,7 +743,7 @@ class Connection(Connectable):
            a subclass of :class:`.Executable`, such as a
            :func:`~.expression.select` construct
          * a :class:`.FunctionElement`, such as that generated
-           by :attr:`.func`, will be automatically wrapped in
+           by :data:`.func`, will be automatically wrapped in
            a SELECT statement, which is then executed.
          * a :class:`.DDLElement` object
          * a :class:`.DefaultGenerator` object

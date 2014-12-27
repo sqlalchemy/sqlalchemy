@@ -72,6 +72,7 @@ from .base import (
 )
 
 from .result import (
+    BaseRowProxy,
     BufferedColumnResultProxy,
     BufferedColumnRow,
     BufferedRowResultProxy,
