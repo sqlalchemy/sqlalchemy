@@ -1,3 +1,4 @@
+
 ==============
 0.9 Changelog
 ==============
@@ -314,7 +315,7 @@
         :versions: 1.0.0
         :pullrequest: bitbucket:28
 
-        Fixed bug where :ref:`ext.mutable.MutableDict`
+        Fixed bug where :class:`.ext.mutable.MutableDict`
         failed to implement the ``update()`` dictionary method, thus
         not catching changes. Pull request courtesy Matt Chisholm.
 
@@ -323,9 +324,9 @@
         :versions: 1.0.0
         :pullrequest: bitbucket:27
 
-        Fixed bug where a custom subclass of :ref:`ext.mutable.MutableDict`
+        Fixed bug where a custom subclass of :class:`.ext.mutable.MutableDict`
         would not show up in a "coerce" operation, and would instead
-        return a plain :ref:`ext.mutable.MutableDict`.  Pull request
+        return a plain :class:`.ext.mutable.MutableDict`.  Pull request
         courtesy Matt Chisholm.
 
     .. change::
@@ -577,7 +578,7 @@
         :tickets: 3078
 
         Added kw argument ``postgresql_regconfig`` to the
-        :meth:`.Operators.match` operator, allows the "reg config" argument
+        :meth:`.ColumnOperators.match` operator, allows the "reg config" argument
         to be specified to the ``to_tsquery()`` function emitted.
         Pull request courtesy Jonathan Vanasco.
 
@@ -866,7 +867,7 @@
         translated through some kind of SQL function or expression.  This
         is kind of experimental, but the first proof of concept is a
         "materialized path" join condition where a path string is compared
-        to itself using "like".   The :meth:`.Operators.like` operator has
+        to itself using "like".   The :meth:`.ColumnOperators.like` operator has
         also been added to the list of valid operators to use in a primaryjoin
         condition.
 
@@ -1939,8 +1940,8 @@
         Fixed an issue where the C extensions in Py3K are using the wrong API
         to specify the top-level module function, which breaks
         in Python 3.4b2.  Py3.4b2 changes PyMODINIT_FUNC to return
-        "void" instead of "PyObject *", so we now make sure to use
-        "PyMODINIT_FUNC" instead of "PyObject *" directly.  Pull request
+        "void" instead of ``PyObject *``, so we now make sure to use
+        "PyMODINIT_FUNC" instead of ``PyObject *`` directly.  Pull request
         courtesy cgohlke.
 
     .. change::

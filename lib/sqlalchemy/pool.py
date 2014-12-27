@@ -921,9 +921,9 @@ class QueuePool(Pool):
           on returning a connection. Defaults to 30.
 
         :param \**kw: Other keyword arguments including
-        :paramref:`.Pool.recycle`, :paramref:`.Pool.echo`,
-        :paramref:`.Pool.reset_on_return` and others are passed to the
-        :class:`.Pool` constructor.
+          :paramref:`.Pool.recycle`, :paramref:`.Pool.echo`,
+          :paramref:`.Pool.reset_on_return` and others are passed to the
+          :class:`.Pool` constructor.
 
         """
         Pool.__init__(self, creator, **kw)

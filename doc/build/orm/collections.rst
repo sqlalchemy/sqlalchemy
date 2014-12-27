@@ -573,7 +573,7 @@ Various internal methods.
 
 .. autoclass:: collection
 
-.. autofunction:: collection_adapter
+.. autodata:: collection_adapter
 
 .. autoclass:: CollectionAdapter
 

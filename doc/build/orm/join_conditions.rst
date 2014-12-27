@@ -339,7 +339,7 @@ we seek for a load of ``Element.descendants`` to look like::
 
 .. versionadded:: 0.9.5 Support has been added to allow a single-column
    comparison to itself within a primaryjoin condition, as well as for
-   primaryjoin conditions that use :meth:`.Operators.like` as the comparison
+   primaryjoin conditions that use :meth:`.ColumnOperators.like` as the comparison
    operator.
 
 .. _self_referential_many_to_many:

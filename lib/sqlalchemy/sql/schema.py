@@ -2301,6 +2301,14 @@ def _to_schema_column_or_string(element):
 
 
 class ColumnCollectionMixin(object):
+    columns = None
+    """A :class:`.ColumnCollection` of :class:`.Column` objects.
+
+    This collection represents the columns which are referred to by
+    this object.
+
+    """
+
     def __init__(self, *columns):
         self.columns = ColumnCollection()
         self._pending_colargs = [_to_schema_column_or_string(c)

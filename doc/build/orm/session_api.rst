@@ -1,3 +1,5 @@
+.. module:: sqlalchemy.orm.session
+
 Session API
 ============
 

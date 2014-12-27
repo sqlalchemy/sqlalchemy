@@ -299,7 +299,7 @@ not re-compute the column on demand.
 
 In order to provide for this explicit query planning, or to use different
 search strategies, the ``match`` method accepts a ``postgresql_regconfig``
-keyword argument.
+keyword argument::
 
     select([mytable.c.id]).where(
         mytable.c.title.match('somestring', postgresql_regconfig='english')
@@ -311,7 +311,7 @@ Emits the equivalent of::
     WHERE mytable.title @@ to_tsquery('english', 'somestring')
 
 One can also specifically pass in a `'regconfig'` value to the
-``to_tsvector()`` command as the initial argument.
+``to_tsvector()`` command as the initial argument::
 
     select([mytable.c.id]).where(
             func.to_tsvector('english', mytable.c.title )\

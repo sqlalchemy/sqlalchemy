@@ -11,6 +11,9 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.state.AttributeState
     :members:
 
+.. autoclass:: sqlalchemy.orm.util.CascadeOptions
+    :members:
+
 .. autoclass:: sqlalchemy.orm.instrumentation.ClassManager
     :members:
     :inherited-members:
@@ -18,6 +21,9 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.properties.ColumnProperty
     :members:
     :inherited-members:
+
+.. autoclass:: sqlalchemy.orm.properties.ComparableProperty
+    :members:
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
     :members:
