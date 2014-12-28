@@ -528,7 +528,7 @@ class RelationshipProperty(StrategizedProperty):
 
           .. seealso::
 
-            :doc:`/orm/loading` - Full documentation on relationship loader
+            :doc:`/orm/loading_relationships` - Full documentation on relationship loader
             configuration.
 
             :ref:`dynamic_relationship` - detail on the ``dynamic`` option.
