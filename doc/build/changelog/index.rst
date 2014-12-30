@@ -10,15 +10,15 @@ Current Migration Guide
 ------------------------
 
 .. toctree::
-	:maxdepth: 1
+   :titlesonly:
 
-	migration_09
+   migration_09
 
 Change logs
 -----------
 
 .. toctree::
-   :maxdepth: 2
+   :titlesonly:
 
    changelog_09
    changelog_08
@@ -35,7 +35,7 @@ Older Migration Guides
 ----------------------
 
 .. toctree::
-   :maxdepth: 1
+   :titlesonly:
 
    migration_08
    migration_07
