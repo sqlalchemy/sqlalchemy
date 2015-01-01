@@ -1196,6 +1196,30 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             t.info['bar'] = 'zip'
             assert t.info['bar'] == 'zip'
 
+    def test_foreign_key_constraints_collection(self):
+        metadata = MetaData()
+        t1 = Table('foo', metadata, Column('a', Integer))
+        eq_(t1.foreign_key_constraints, set())
+
+        fk1 = ForeignKey('q.id')
+        fk2 = ForeignKey('j.id')
+        fk3 = ForeignKeyConstraint(['b', 'c'], ['r.x', 'r.y'])
+
+        t1.append_column(Column('b', Integer, fk1))
+        eq_(
+            t1.foreign_key_constraints,
+            set([fk1.constraint]))
+
+        t1.append_column(Column('c', Integer, fk2))
+        eq_(
+            t1.foreign_key_constraints,
+            set([fk1.constraint, fk2.constraint]))
+
+        t1.append_constraint(fk3)
+        eq_(
+            t1.foreign_key_constraints,
+            set([fk1.constraint, fk2.constraint, fk3]))
+
     def test_c_immutable(self):
         m = MetaData()
         t1 = Table('t', m, Column('x', Integer), Column('y', Integer))
@@ -1946,6 +1970,22 @@ class ConstraintTest(fixtures.TestBase):
         s1 = tsa.select([tsa.select([t2]).alias()])
         assert s1.c.a.references(t1.c.a)
         assert not s1.c.a.references(t1.c.b)
+
+    def test_referred_table_accessor(self):
+        t1, t2, t3 = self._single_fixture()
+        fkc = list(t2.foreign_key_constraints)[0]
+        is_(fkc.referred_table, t1)
+
+    def test_referred_table_accessor_not_available(self):
+        t1 = Table('t', MetaData(), Column('x', ForeignKey('q.id')))
+        fkc = list(t1.foreign_key_constraints)[0]
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Foreign key associated with column 't.x' could not find "
+            "table 'q' with which to generate a foreign key to target "
+            "column 'id'",
+            getattr, fkc, "referred_table"
+        )
 
     def test_related_column_not_present_atfirst_ok(self):
         m = MetaData()

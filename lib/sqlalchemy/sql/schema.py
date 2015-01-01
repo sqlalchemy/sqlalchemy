@@ -516,6 +516,19 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         """
         return sorted(self.constraints, key=lambda c: c._creation_order)
 
+    @property
+    def foreign_key_constraints(self):
+        """:class:`.ForeignKeyConstraint` objects referred to by this
+        :class:`.Table`.
+
+        This list is produced from the collection of :class:`.ForeignKey`
+        objects currently associated.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return set(fkc.constraint for fkc in self.foreign_keys)
+
     def _init_existing(self, *args, **kwargs):
         autoload_with = kwargs.pop('autoload_with', None)
         autoload = kwargs.pop('autoload', autoload_with is not None)
@@ -2631,6 +2644,20 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             return elem._referred_schema
         else:
             return None
+
+    @property
+    def referred_table(self):
+        """The :class:`.Table` object to which this
+        :class:`.ForeignKeyConstraint references.
+
+        This is a dynamically calculated attribute which may not be available
+        if the constraint and/or parent table is not yet associated with
+        a metadata collection that contains the referred table.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return self.elements[0].column.table
 
     def _validate_dest_table(self, table):
         table_keys = set([elem._table_key()

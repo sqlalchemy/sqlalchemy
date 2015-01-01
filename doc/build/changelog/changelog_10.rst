@@ -23,6 +23,13 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, schema
+
+        Added a new accessor :attr:`.Table.foreign_key_constraints`
+        to complement the :attr:`.Table.foreign_keys` collection,
+        as well as :attr:`.ForeignKeyConstraint.referred_table`.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 3244, 3261
 
