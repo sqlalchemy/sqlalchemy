@@ -325,19 +325,11 @@ def _prep_testing_database(options, file_config):
                                          schema="test_schema")
                         ))
 
-            for tname in reversed(inspector.get_table_names(
-                    order_by="foreign_key")):
-                e.execute(schema.DropTable(
-                    schema.Table(tname, schema.MetaData())
-                ))
+            util.drop_all_tables(e, inspector)
 
             if config.requirements.schemas.enabled_for_config(cfg):
-                for tname in reversed(inspector.get_table_names(
-                        order_by="foreign_key", schema="test_schema")):
-                    e.execute(schema.DropTable(
-                        schema.Table(tname, schema.MetaData(),
-                                     schema="test_schema")
-                    ))
+                util.drop_all_tables(e, inspector, schema=cfg.test_schema)
+                util.drop_all_tables(e, inspector, schema=cfg.test_schema_2)
 
             if against(cfg, "postgresql"):
                 from sqlalchemy.dialects import postgresql

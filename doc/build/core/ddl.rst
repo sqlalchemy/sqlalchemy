@@ -220,6 +220,10 @@ details.
 DDL Expression Constructs API
 -----------------------------
 
+.. autofunction:: sort_tables
+
+.. autofunction:: sort_tables_and_constraints
+
 .. autoclass:: DDLElement
     :members:
     :undoc-members:

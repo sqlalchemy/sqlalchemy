@@ -1476,7 +1476,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         :param use_alter: passed to the underlying
             :class:`.ForeignKeyConstraint` to indicate the constraint should
             be generated/dropped externally from the CREATE TABLE/ DROP TABLE
-            statement. See that classes' constructor for details.
+            statement.  See :paramref:`.ForeignKeyConstraint.use_alter`
+            for further description.
+
+            .. seealso::
+
+                :paramref:`.ForeignKeyConstraint.use_alter`
+
+                :ref:`use_alter`
 
         :param match: Optional string. If set, emit MATCH <value> when issuing
             DDL for this constraint. Typical values include SIMPLE, PARTIAL
@@ -2566,11 +2573,23 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
           part of the CREATE TABLE definition. Instead, generate it via an
           ALTER TABLE statement issued after the full collection of tables
           have been created, and drop it via an ALTER TABLE statement before
-          the full collection of tables are dropped. This is shorthand for the
-          usage of :class:`.AddConstraint` and :class:`.DropConstraint`
-          applied as "after-create" and "before-drop" events on the MetaData
-          object.  This is normally used to generate/drop constraints on
-          objects that are mutually dependent on each other.
+          the full collection of tables are dropped.
+
+          The use of :paramref:`.ForeignKeyConstraint.use_alter` is
+          particularly geared towards the case where two or more tables
+          are established within a mutually-dependent foreign key constraint
+          relationship; however, the :meth:`.MetaData.create_all` and
+          :meth:`.MetaData.drop_all` methods will perform this resolution
+          automatically, so the flag is normally not needed.
+
+          .. versionchanged:: 1.0.0  Automatic resolution of foreign key
+             cycles has been added, removing the need to use the
+             :paramref:`.ForeignKeyConstraint.use_alter` in typical use
+             cases.
+
+          .. seealso::
+
+                :ref:`use_alter`
 
         :param match: Optional string. If set, emit MATCH <value> when issuing
           DDL for this constraint. Typical values include SIMPLE, PARTIAL
@@ -2596,8 +2615,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         self.onupdate = onupdate
         self.ondelete = ondelete
         self.link_to_name = link_to_name
-        if self.name is None and use_alter:
-            raise exc.ArgumentError("Alterable Constraint requires a name")
         self.use_alter = use_alter
         self.match = match
 
@@ -2648,7 +2665,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     @property
     def referred_table(self):
         """The :class:`.Table` object to which this
-        :class:`.ForeignKeyConstraint references.
+        :class:`.ForeignKeyConstraint` references.
 
         This is a dynamically calculated attribute which may not be available
         if the constraint and/or parent table is not yet associated with
@@ -2716,15 +2733,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
         self._validate_dest_table(table)
 
-        if self.use_alter:
-            def supports_alter(ddl, event, schema_item, bind, **kw):
-                return table in set(kw['tables']) and \
-                    bind.dialect.supports_alter
-
-            event.listen(table.metadata, "after_create",
-                         ddl.AddConstraint(self, on=supports_alter))
-            event.listen(table.metadata, "before_drop",
-                         ddl.DropConstraint(self, on=supports_alter))
 
     def copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(
@@ -3368,11 +3376,29 @@ class MetaData(SchemaItem):
         order in which they can be created.   To get the order in which
         the tables would be dropped, use the ``reversed()`` Python built-in.
 
+        .. warning::
+
+            The :attr:`.sorted_tables` accessor cannot by itself accommodate
+            automatic resolution of dependency cycles between tables, which
+            are usually caused by mutually dependent foreign key constraints.
+            To resolve these cycles, either the
+            :paramref:`.ForeignKeyConstraint.use_alter` parameter may be appled
+            to those constraints, or use the
+            :func:`.schema.sort_tables_and_constraints` function which will break
+            out foreign key constraints involved in cycles separately.
+
         .. seealso::
+
+            :func:`.schema.sort_tables`
+
+            :func:`.schema.sort_tables_and_constraints`
 
             :attr:`.MetaData.tables`
 
             :meth:`.Inspector.get_table_names`
+
+            :meth:`.Inspector.get_sorted_table_and_fkc_names`
+
 
         """
         return ddl.sort_tables(self.tables.values())

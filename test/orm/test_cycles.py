@@ -284,7 +284,7 @@ class InheritTestTwo(fixtures.MappedTest):
         Table('c', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('aid', Integer,
-                   ForeignKey('a.id', use_alter=True, name="foo")))
+                   ForeignKey('a.id', name="foo")))
 
     @classmethod
     def setup_classes(cls):
@@ -334,7 +334,7 @@ class BiDirectionalManyToOneTest(fixtures.MappedTest):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('t1id', Integer,
-                   ForeignKey('t1.id', use_alter=True, name="foo_fk")))
+                   ForeignKey('t1.id', name="foo_fk")))
         Table('t3', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
@@ -436,7 +436,7 @@ class BiDirectionalOneToManyTest(fixtures.MappedTest):
         Table('t2', metadata,
               Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('c2', Integer,
-                     ForeignKey('t1.c1', use_alter=True, name='t1c1_fk')))
+                     ForeignKey('t1.c1', name='t1c1_fk')))
 
     @classmethod
     def setup_classes(cls):
@@ -491,7 +491,7 @@ class BiDirectionalOneToManyTest2(fixtures.MappedTest):
         Table('t2', metadata,
               Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('c2', Integer,
-                     ForeignKey('t1.c1', use_alter=True, name='t1c1_fq')),
+                     ForeignKey('t1.c1', name='t1c1_fq')),
               test_needs_autoincrement=True)
 
         Table('t1_data', metadata,
@@ -572,7 +572,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         Table('ball', metadata,
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('person_id', Integer,
-                     ForeignKey('person.id', use_alter=True, name='fk_person_id')),
+                     ForeignKey('person.id', name='fk_person_id')),
               Column('data', String(30)))
 
         Table('person', metadata,
@@ -1024,7 +1024,7 @@ class SelfReferentialPostUpdateTest3(fixtures.MappedTest):
                      test_needs_autoincrement=True),
               Column('name', String(50), nullable=False),
               Column('child_id', Integer,
-                     ForeignKey('child.id', use_alter=True, name='c1'), nullable=True))
+                     ForeignKey('child.id', name='c1'), nullable=True))
 
         Table('child', metadata,
            Column('id', Integer, primary_key=True,
@@ -1094,11 +1094,11 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
                      test_needs_autoincrement=True),
               Column('name', String(50), nullable=False),
               Column('c1_id', Integer,
-                     ForeignKey('child1.id', use_alter=True, name='c1'), nullable=True),
+                     ForeignKey('child1.id', name='c1'), nullable=True),
               Column('c2_id', Integer,
-                    ForeignKey('child2.id', use_alter=True, name='c2'), nullable=True),
+                    ForeignKey('child2.id', name='c2'), nullable=True),
               Column('c3_id', Integer,
-                       ForeignKey('child3.id', use_alter=True, name='c3'), nullable=True)
+                       ForeignKey('child3.id', name='c3'), nullable=True)
             )
 
         Table('child1', metadata,

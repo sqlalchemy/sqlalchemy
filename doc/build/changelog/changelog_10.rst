@@ -24,6 +24,23 @@
 
     .. change::
         :tags: feature, schema
+        :tickets: 3282
+
+        The DDL generation system of :meth:`.MetaData.create_all`
+        and :meth:`.MetaData.drop_all` has been enhanced to in most
+        cases automatically handle the case of mutually dependent
+        foreign key constraints; the need for the
+        :paramref:`.ForeignKeyConstraint.use_alter` flag is greatly
+        reduced.  The system also works for constraints which aren't given
+        a name up front; only in the case of DROP is a name required for
+        at least one of the constraints involved in the cycle.
+
+        .. seealso::
+
+            :ref:`feature_3282`
+
+    .. change::
+        :tags: feature, schema
 
         Added a new accessor :attr:`.Table.foreign_key_constraints`
         to complement the :attr:`.Table.foreign_keys` collection,

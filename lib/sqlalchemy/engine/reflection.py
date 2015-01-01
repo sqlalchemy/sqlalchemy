@@ -173,7 +173,14 @@ class Inspector(object):
          passed as ``None``.  For special quoting, use :class:`.quoted_name`.
 
         :param order_by: Optional, may be the string "foreign_key" to sort
-         the result on foreign key dependencies.
+         the result on foreign key dependencies.  Does not automatically
+         resolve cycles, and will raise :class:`.CircularDependencyError`
+         if cycles exist.
+
+         .. deprecated:: 1.0.0 - see
+            :meth:`.Inspector.get_sorted_table_and_fkc_names` for a version
+            of this which resolves foreign key cycles between tables
+            automatically.
 
          .. versionchanged:: 0.8 the "foreign_key" sorting sorts tables
             in order of dependee to dependent; that is, in creation
@@ -182,6 +189,8 @@ class Inspector(object):
             :attr:`.MetaData.sorted_tables` and :func:`.util.sort_tables`.
 
         .. seealso::
+
+            :meth:`.Inspector.get_sorted_table_and_fkc_names`
 
             :attr:`.MetaData.sorted_tables`
 
@@ -200,6 +209,64 @@ class Inspector(object):
                         tuples.append((fkey['referred_table'], tname))
             tnames = list(topological.sort(tuples, tnames))
         return tnames
+
+    def get_sorted_table_and_fkc_names(self, schema=None):
+        """Return dependency-sorted table and foreign key constraint names in
+        referred to within a particular schema.
+
+        This will yield 2-tuples of
+        ``(tablename, [(tname, fkname), (tname, fkname), ...])``
+        consisting of table names in CREATE order grouped with the foreign key
+        constraint names that are not detected as belonging to a cycle.
+        The final element
+        will be ``(None, [(tname, fkname), (tname, fkname), ..])``
+        which will consist of remaining
+        foreign key constraint names that would require a separate CREATE
+        step after-the-fact, based on dependencies between tables.
+
+        .. versionadded:: 1.0.-
+
+        .. seealso::
+
+            :meth:`.Inspector.get_table_names`
+
+            :func:`.sort_tables_and_constraints` - similar method which works
+             with an already-given :class:`.MetaData`.
+
+        """
+        if hasattr(self.dialect, 'get_table_names'):
+            tnames = self.dialect.get_table_names(
+                self.bind, schema, info_cache=self.info_cache)
+        else:
+            tnames = self.engine.table_names(schema)
+
+        tuples = set()
+        remaining_fkcs = set()
+
+        fknames_for_table = {}
+        for tname in tnames:
+            fkeys = self.get_foreign_keys(tname, schema)
+            fknames_for_table[tname] = set(
+                [fk['name'] for fk in fkeys]
+            )
+            for fkey in fkeys:
+                if tname != fkey['referred_table']:
+                    tuples.add((fkey['referred_table'], tname))
+        try:
+            candidate_sort = list(topological.sort(tuples, tnames))
+        except exc.CircularDependencyError as err:
+            for edge in err.edges:
+                tuples.remove(edge)
+                remaining_fkcs.update(
+                    (edge[1], fkc)
+                    for fkc in fknames_for_table[edge[1]]
+                )
+
+            candidate_sort = list(topological.sort(tuples, tnames))
+        return [
+            (tname, fknames_for_table[tname].difference(remaining_fkcs))
+            for tname in candidate_sort
+        ] + [(None, list(remaining_fkcs))]
 
     def get_temp_table_names(self):
         """return a list of temporary table names for the current bind.

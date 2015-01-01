@@ -488,6 +488,35 @@ wishes to support the new feature should now call upon the ``._limit_clause``
 and ``._offset_clause`` attributes to receive the full SQL expression, rather
 than the integer value.
 
+.. _feature_3282:
+
+The ``use_alter`` flag on ``ForeignKeyConstraint`` is no longer needed
+----------------------------------------------------------------------
+
+The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` methods will
+now make use of a system that automatically renders an ALTER statement
+for foreign key constraints that are involved in mutually-dependent cycles
+between tables, without the
+need to specify :paramref:`.ForeignKeyConstraint.use_alter`.   Additionally,
+the foreign key constraints no longer need to have a name in order to be
+created via ALTER; only the DROP operation requires a name.   In the case
+of a DROP, the feature will ensure that only constraints which have
+explicit names are actually included as ALTER statements.  In the
+case of an unresolvable cycle within a DROP, the system emits
+a succinct and clear error message now if the DROP cannot proceed.
+
+The :paramref:`.ForeignKeyConstraint.use_alter` and
+:paramref:`.ForeignKey.use_alter` flags remain in place, and continue to have
+the same effect of establishing those constraints for which ALTER is
+required during a CREATE/DROP scenario.
+
+.. seealso::
+
+    :ref:`use_alter` - full description of the new behavior.
+
+
+:ticket:`3282`
+
 .. _change_2051:
 
 .. _feature_insert_from_select_defaults:

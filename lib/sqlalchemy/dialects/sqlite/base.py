@@ -201,12 +201,24 @@ new connections through the usage of events::
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 
+.. warning::
+
+    When SQLite foreign keys are enabled, it is **not possible**
+    to emit CREATE or DROP statements for tables that contain
+    mutually-dependent foreign key constraints;
+    to emit the DDL for these tables requires that ALTER TABLE be used to
+    create or drop these constraints separately, for which SQLite has
+    no support.
+
 .. seealso::
 
     `SQLite Foreign Key Support <http://www.sqlite.org/foreignkeys.html>`_
     - on the SQLite web site.
 
     :ref:`event_toplevel` - SQLAlchemy event API.
+
+    :ref:`use_alter` - more information on SQLAlchemy's facilities for handling
+     mutually-dependent foreign key constraints.
 
 .. _sqlite_type_reflection:
 

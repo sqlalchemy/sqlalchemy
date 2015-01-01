@@ -2102,7 +2102,9 @@ class DDLCompiler(Compiled):
                         (table.description, column.name, ce.args[0])
                     ))
 
-        const = self.create_table_constraints(table)
+        const = self.create_table_constraints(
+            table, _include_foreign_key_constraints=
+            create.include_foreign_key_constraints)
         if const:
             text += ", \n\t" + const
 
@@ -2126,7 +2128,9 @@ class DDLCompiler(Compiled):
 
         return text
 
-    def create_table_constraints(self, table):
+    def create_table_constraints(
+        self, table,
+            _include_foreign_key_constraints=None):
 
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
@@ -2134,8 +2138,15 @@ class DDLCompiler(Compiled):
         if table.primary_key:
             constraints.append(table.primary_key)
 
+        all_fkcs = table.foreign_key_constraints
+        if _include_foreign_key_constraints is not None:
+            omit_fkcs = all_fkcs.difference(_include_foreign_key_constraints)
+        else:
+            omit_fkcs = set()
+
         constraints.extend([c for c in table._sorted_constraints
-                            if c is not table.primary_key])
+                            if c is not table.primary_key and
+                            c not in omit_fkcs])
 
         return ", \n\t".join(
             p for p in
@@ -2230,9 +2241,19 @@ class DDLCompiler(Compiled):
             self.preparer.format_sequence(drop.element)
 
     def visit_drop_constraint(self, drop):
+        constraint = drop.element
+        if constraint.name is not None:
+            formatted_name = self.preparer.format_constraint(constraint)
+        else:
+            formatted_name = None
+
+        if formatted_name is None:
+            raise exc.CompileError(
+                "Can't emit DROP CONSTRAINT for constraint %r; "
+                "it has no name" % drop.element)
         return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (
             self.preparer.format_table(drop.element.table),
-            self.preparer.format_constraint(drop.element),
+            formatted_name,
             drop.cascade and " CASCADE" or ""
         )
 

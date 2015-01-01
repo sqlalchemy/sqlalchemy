@@ -1767,10 +1767,10 @@ class MySQLCompiler(compiler.SQLCompiler):
 #       creation of foreign key constraints fails."
 
 class MySQLDDLCompiler(compiler.DDLCompiler):
-    def create_table_constraints(self, table):
+    def create_table_constraints(self, table, **kw):
         """Get table constraints."""
         constraint_string = super(
-            MySQLDDLCompiler, self).create_table_constraints(table)
+            MySQLDDLCompiler, self).create_table_constraints(table, **kw)
 
         # why self.dialect.name and not 'mysql'?  because of drizzle
         is_innodb = 'engine' in table.dialect_options[self.dialect.name] and \

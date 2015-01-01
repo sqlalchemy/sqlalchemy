@@ -95,39 +95,178 @@ foreign key referencing two columns.
 Creating/Dropping Foreign Key Constraints via ALTER
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In all the above examples, the :class:`~sqlalchemy.schema.ForeignKey` object
-causes the "REFERENCES" keyword to be added inline to a column definition
-within a "CREATE TABLE" statement when
-:func:`~sqlalchemy.schema.MetaData.create_all` is issued, and
-:class:`~sqlalchemy.schema.ForeignKeyConstraint` invokes the "CONSTRAINT"
-keyword inline with "CREATE TABLE". There are some cases where this is
-undesirable, particularly when two tables reference each other mutually, each
-with a foreign key referencing the other. In such a situation at least one of
-the foreign key constraints must be generated after both tables have been
-built. To support such a scheme, :class:`~sqlalchemy.schema.ForeignKey` and
-:class:`~sqlalchemy.schema.ForeignKeyConstraint` offer the flag
-``use_alter=True``. When using this flag, the constraint will be generated
-using a definition similar to "ALTER TABLE <tablename> ADD CONSTRAINT <name>
-...". Since a name is required, the ``name`` attribute must also be specified.
-For example::
+The behavior we've seen in tutorials and elsewhere involving
+foreign keys with DDL illustrates that the constraints are typically
+rendered "inline" within the CREATE TABLE statement, such as:
 
-    node = Table('node', meta,
+.. sourcecode:: sql
+
+    CREATE TABLE addresses (
+        id INTEGER NOT NULL,
+        user_id INTEGER,
+        email_address VARCHAR NOT NULL,
+        PRIMARY KEY (id),
+        CONSTRAINT user_id_fk FOREIGN KEY(user_id) REFERENCES users (id)
+    )
+
+The ``CONSTRAINT .. FOREIGN KEY`` directive is used to create the constraint
+in an "inline" fashion within the CREATE TABLE definition.   The
+:meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` methods do
+this by default, using a topological sort of all the :class:`.Table` objects
+involved such that tables are created and dropped in order of their foreign
+key dependency (this sort is also available via the
+:attr:`.MetaData.sorted_tables` accessor).
+
+This approach can't work when two or more foreign key constraints are
+involved in a "dependency cycle", where a set of tables
+are mutually dependent on each other, assuming the backend enforces foreign
+keys (always the case except on SQLite, MySQL/MyISAM).   The methods will
+therefore break out constraints in such a cycle into separate ALTER
+statements, on all backends other than SQLite which does not support
+most forms of ALTER.  Given a schema like::
+
+    node = Table(
+        'node', metadata,
         Column('node_id', Integer, primary_key=True),
-        Column('primary_element', Integer,
-            ForeignKey('element.element_id', use_alter=True, name='fk_node_element_id')
+        Column(
+            'primary_element', Integer,
+            ForeignKey('element.element_id')
         )
     )
 
-    element = Table('element', meta,
+    element = Table(
+        'element', metadata,
         Column('element_id', Integer, primary_key=True),
         Column('parent_node_id', Integer),
         ForeignKeyConstraint(
-            ['parent_node_id'],
-            ['node.node_id'],
-            use_alter=True,
+            ['parent_node_id'], ['node.node_id'],
             name='fk_element_parent_node_id'
         )
     )
+
+When we call upon :meth:`.MetaData.create_all` on a backend such as the
+Postgresql backend, the cycle between these two tables is resolved and the
+constraints are created separately:
+
+.. sourcecode:: pycon+sql
+
+    >>> with engine.connect() as conn:
+    ...    metadata.create_all(conn, checkfirst=False)
+    {opensql}CREATE TABLE element (
+        element_id SERIAL NOT NULL,
+        parent_node_id INTEGER,
+        PRIMARY KEY (element_id)
+    )
+
+    CREATE TABLE node (
+        node_id SERIAL NOT NULL,
+        primary_element INTEGER,
+        PRIMARY KEY (node_id)
+    )
+
+    ALTER TABLE element ADD CONSTRAINT fk_element_parent_node_id
+        FOREIGN KEY(parent_node_id) REFERENCES node (node_id)
+    ALTER TABLE node ADD FOREIGN KEY(primary_element)
+        REFERENCES element (element_id)
+    {stop}
+
+In order to emit DROP for these tables, the same logic applies, however
+note here that in SQL, to emit DROP CONSTRAINT requires that the constraint
+has a name.  In the case of the ``'node'`` table above, we haven't named
+this constraint; the system will therefore attempt to emit DROP for only
+those constraints that are named:
+
+.. NOTE: the parser is doing something wrong with the DROP here,
+   if the "DROP TABLE element" is second, the "t" is being chopped off;
+   it is specific to the letter "t".    Look into this at some point
+
+.. sourcecode:: pycon+sql
+
+    >>> with engine.connect() as conn:
+    ...    metadata.drop_all(conn, checkfirst=False)
+    {opensql}ALTER TABLE element DROP CONSTRAINT fk_element_parent_node_id
+    DROP TABLE element
+    DROP TABLE node
+    {stop}
+
+
+In the case where the cycle cannot be resolved, such as if we hadn't applied
+a name to either constraint here, we will receive the following error::
+
+    sqlalchemy.exc.CircularDependencyError: Can't sort tables for DROP;
+    an unresolvable foreign key dependency exists between tables:
+    element, node.  Please ensure that the ForeignKey and ForeignKeyConstraint
+    objects involved in the cycle have names so that they can be dropped
+    using DROP CONSTRAINT.
+
+This error only applies to the DROP case as we can emit "ADD CONSTRAINT"
+in the CREATE case without a name; the database typically assigns one
+automatically.
+
+The :paramref:`.ForeignKeyConstraint.use_alter` and
+:paramref:`.ForeignKey.use_alter` keyword arguments can be used
+to manually resolve dependency cycles.  We can add this flag only to
+the ``'element'`` table as follows::
+
+    element = Table(
+        'element', metadata,
+        Column('element_id', Integer, primary_key=True),
+        Column('parent_node_id', Integer),
+        ForeignKeyConstraint(
+            ['parent_node_id'], ['node.node_id'],
+            use_alter=True, name='fk_element_parent_node_id'
+        )
+    )
+
+in our CREATE DDL we will see the ALTER statement only for this constraint,
+and not the other one:
+
+.. sourcecode:: pycon+sql
+
+    >>> with engine.connect() as conn:
+    ...    metadata.create_all(conn, checkfirst=False)
+    {opensql}CREATE TABLE element (
+        element_id SERIAL NOT NULL,
+        parent_node_id INTEGER,
+        PRIMARY KEY (element_id)
+    )
+
+    CREATE TABLE node (
+        node_id SERIAL NOT NULL,
+        primary_element INTEGER,
+        PRIMARY KEY (node_id),
+        FOREIGN KEY(primary_element) REFERENCES element (element_id)
+    )
+
+    ALTER TABLE element ADD CONSTRAINT fk_element_parent_node_id
+    FOREIGN KEY(parent_node_id) REFERENCES node (node_id)
+    {stop}
+
+:paramref:`.ForeignKeyConstraint.use_alter` and
+:paramref:`.ForeignKey.use_alter`, when used in conjunction with a drop
+operation, will require that the constraint is named, else an error
+like the following is generated::
+
+    sqlalchemy.exc.CompileError: Can't emit DROP CONSTRAINT for constraint
+    ForeignKeyConstraint(...); it has no name
+
+.. versionchanged:: 1.0.0 - The DDL system invoked by
+   :meth:`.MetaData.create_all`
+   and :meth:`.MetaData.drop_all` will now automatically resolve mutually
+   depdendent foreign keys between tables declared by
+   :class:`.ForeignKeyConstraint` and :class:`.ForeignKey` objects, without
+   the need to explicitly set the :paramref:`.ForeignKeyConstraint.use_alter`
+   flag.
+
+.. versionchanged:: 1.0.0 - The :paramref:`.ForeignKeyConstraint.use_alter`
+   flag can be used with an un-named constraint; only the DROP operation
+   will emit a specific error when actually called upon.
+
+.. seealso::
+
+    :ref:`constraint_naming_conventions`
+
+    :func:`.sort_tables_and_constraints`
 
 .. _on_update_on_delete:
 
