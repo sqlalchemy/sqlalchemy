@@ -809,7 +809,7 @@ class SchemaDropper(DDLBase):
         except exc.CircularDependencyError as err2:
             util.raise_from_cause(
                 exc.CircularDependencyError(
-                    err2.message,
+                    err2.args[0],
                     err2.cycles, err2.edges,
                     msg="Can't sort tables for DROP; an "
                     "unresolvable foreign key "

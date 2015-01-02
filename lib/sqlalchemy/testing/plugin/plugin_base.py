@@ -329,7 +329,6 @@ def _prep_testing_database(options, file_config):
 
             if config.requirements.schemas.enabled_for_config(cfg):
                 util.drop_all_tables(e, inspector, schema=cfg.test_schema)
-                util.drop_all_tables(e, inspector, schema=cfg.test_schema_2)
 
             if against(cfg, "postgresql"):
                 from sqlalchemy.dialects import postgresql
