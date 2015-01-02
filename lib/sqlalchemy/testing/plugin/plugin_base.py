@@ -294,7 +294,7 @@ def _setup_requirements(argument):
 
 @post
 def _prep_testing_database(options, file_config):
-    from sqlalchemy.testing import config
+    from sqlalchemy.testing import config, util
     from sqlalchemy.testing.exclusions import against
     from sqlalchemy import schema, inspect
 
