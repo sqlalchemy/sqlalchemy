@@ -176,17 +176,13 @@ has a name.  In the case of the ``'node'`` table above, we haven't named
 this constraint; the system will therefore attempt to emit DROP for only
 those constraints that are named:
 
-.. NOTE: the parser is doing something wrong with the DROP here,
-   if the "DROP TABLE element" is second, the "t" is being chopped off;
-   it is specific to the letter "t".    Look into this at some point
-
 .. sourcecode:: pycon+sql
 
     >>> with engine.connect() as conn:
     ...    metadata.drop_all(conn, checkfirst=False)
     {opensql}ALTER TABLE element DROP CONSTRAINT fk_element_parent_node_id
-    DROP TABLE element
     DROP TABLE node
+    DROP TABLE element
     {stop}
 
 
