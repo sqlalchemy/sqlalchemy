@@ -72,6 +72,7 @@ from .base import (
     PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext,
     _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES)
 import re
+from sqlalchemy.dialects.postgresql.json import JSON
 
 
 class _PGNumeric(sqltypes.Numeric):
@@ -100,6 +101,15 @@ class _PGNumeric(sqltypes.Numeric):
 class _PGNumericNoBind(_PGNumeric):
     def bind_processor(self, dialect):
         return None
+
+
+class _PGJSON(JSON):
+
+    def result_processor(self, dialect, coltype):
+        if dialect._dbapi_version > (1, 10, 1):
+            return None  # Has native JSON
+        else:
+            return super(_PGJSON, self).result_processor(dialect, coltype)
 
 
 class PGExecutionContext_pg8000(PGExecutionContext):
@@ -143,7 +153,8 @@ class PGDialect_pg8000(PGDialect):
         PGDialect.colspecs,
         {
             sqltypes.Numeric: _PGNumericNoBind,
-            sqltypes.Float: _PGNumeric
+            sqltypes.Float: _PGNumeric,
+            JSON: _PGJSON,
         }
     )
 
