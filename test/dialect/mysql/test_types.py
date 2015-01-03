@@ -550,12 +550,12 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             eq_(colspec(table.c.y5), 'y5 YEAR(4)')
 
 
-class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class EnumSetTest(
+        fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'mysql'
     __dialect__ = mysql.dialect()
     __backend__ = True
-
 
     @testing.provide_metadata
     def test_enum(self):
@@ -566,7 +566,8 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
             e3 = mysql.ENUM("'a'", "'b'", strict=True)
             e4 = mysql.ENUM("'a'", "'b'", strict=True)
 
-        enum_table = Table('mysql_enum', self.metadata,
+        enum_table = Table(
+            'mysql_enum', self.metadata,
             Column('e1', e1),
             Column('e2', e2, nullable=False),
             Column('e2generic', Enum("a", "b"), nullable=False),
@@ -576,32 +577,43 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
             Column('e5', mysql.ENUM("a", "b")),
             Column('e5generic', Enum("a", "b")),
             Column('e6', mysql.ENUM("'a'", "b")),
-            )
+        )
 
-        eq_(colspec(enum_table.c.e1),
-                       "e1 ENUM('a','b')")
-        eq_(colspec(enum_table.c.e2),
-                       "e2 ENUM('a','b') NOT NULL")
-        eq_(colspec(enum_table.c.e2generic),
-                      "e2generic ENUM('a','b') NOT NULL")
-        eq_(colspec(enum_table.c.e3),
-                       "e3 ENUM('a','b')")
-        eq_(colspec(enum_table.c.e4),
-                       "e4 ENUM('a','b') NOT NULL")
-        eq_(colspec(enum_table.c.e5),
-                       "e5 ENUM('a','b')")
-        eq_(colspec(enum_table.c.e5generic),
-                      "e5generic ENUM('a','b')")
-        eq_(colspec(enum_table.c.e6),
-                       "e6 ENUM('''a''','b')")
+        eq_(
+            colspec(enum_table.c.e1),
+            "e1 ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e2),
+            "e2 ENUM('a','b') NOT NULL")
+        eq_(
+            colspec(enum_table.c.e2generic),
+            "e2generic ENUM('a','b') NOT NULL")
+        eq_(
+            colspec(enum_table.c.e3),
+            "e3 ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e4),
+            "e4 ENUM('a','b') NOT NULL")
+        eq_(
+            colspec(enum_table.c.e5),
+            "e5 ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e5generic),
+            "e5generic ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e6),
+            "e6 ENUM('''a''','b')")
         enum_table.create()
 
-        assert_raises(exc.DBAPIError, enum_table.insert().execute,
-                        e1=None, e2=None, e3=None, e4=None)
+        assert_raises(
+            exc.DBAPIError, enum_table.insert().execute,
+            e1=None, e2=None, e3=None, e4=None)
 
-        assert_raises(exc.StatementError, enum_table.insert().execute,
-                                        e1='c', e2='c', e2generic='c', e3='c',
-                                        e4='c', e5='c', e5generic='c', e6='c')
+        assert_raises(
+            exc.StatementError,
+            enum_table.insert().execute,
+            e1='c', e2='c', e2generic='c', e3='c',
+            e4='c', e5='c', e5generic='c', e6='c')
 
         enum_table.insert().execute()
         enum_table.insert().execute(e1='a', e2='a', e2generic='a', e3='a',
@@ -617,67 +629,89 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 
         eq_(res, expected)
 
-    @testing.provide_metadata
-    def test_set(self):
-
+    def _set_fixture_one(self):
         with testing.expect_deprecated('Manually quoting SET value literals'):
             e1, e2 = mysql.SET("'a'", "'b'"), mysql.SET("'a'", "'b'")
             e4 = mysql.SET("'a'", "b")
             e5 = mysql.SET("'a'", "'b'", quoting="quoted")
-        set_table = Table('mysql_set', self.metadata,
+
+        set_table = Table(
+            'mysql_set', self.metadata,
             Column('e1', e1),
             Column('e2', e2, nullable=False),
             Column('e3', mysql.SET("a", "b")),
             Column('e4', e4),
             Column('e5', e5)
-            )
+        )
+        return set_table
 
-        eq_(colspec(set_table.c.e1),
-                       "e1 SET('a','b')")
-        eq_(colspec(set_table.c.e2),
-                       "e2 SET('a','b') NOT NULL")
-        eq_(colspec(set_table.c.e3),
-                       "e3 SET('a','b')")
-        eq_(colspec(set_table.c.e4),
-                       "e4 SET('''a''','b')")
-        eq_(colspec(set_table.c.e5),
-                       "e5 SET('a','b')")
+    def test_set_colspec(self):
+        self.metadata = MetaData()
+        set_table = self._set_fixture_one()
+        eq_(
+            colspec(set_table.c.e1),
+            "e1 SET('a','b')")
+        eq_(colspec(
+            set_table.c.e2),
+            "e2 SET('a','b') NOT NULL")
+        eq_(
+            colspec(set_table.c.e3),
+            "e3 SET('a','b')")
+        eq_(
+            colspec(set_table.c.e4),
+            "e4 SET('''a''','b')")
+        eq_(
+            colspec(set_table.c.e5),
+            "e5 SET('a','b')")
+
+    @testing.provide_metadata
+    def test_no_null(self):
+        set_table = self._set_fixture_one()
         set_table.create()
+        assert_raises(
+            exc.DBAPIError, set_table.insert().execute,
+            e1=None, e2=None, e3=None, e4=None)
 
-        assert_raises(exc.DBAPIError, set_table.insert().execute,
-                        e1=None, e2=None, e3=None, e4=None)
+    @testing.only_on('+oursql')
+    @testing.provide_metadata
+    def test_oursql_error_one(self):
+        set_table = self._set_fixture_one()
+        set_table.create()
+        assert_raises(
+            exc.StatementError, set_table.insert().execute,
+            e1='c', e2='c', e3='c', e4='c')
 
-        if testing.against("+oursql"):
-            assert_raises(exc.StatementError, set_table.insert().execute,
-                                        e1='c', e2='c', e3='c', e4='c')
+    @testing.provide_metadata
+    def test_string_roundtrip(self):
+        set_table = self._set_fixture_one()
+        set_table.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                set_table.insert(),
+                dict(e1='a', e2='a', e3='a', e4="'a'", e5="a,b"))
+            conn.execute(
+                set_table.insert(),
+                dict(e1='b', e2='b', e3='b', e4='b', e5="a,b"))
 
-        set_table.insert().execute(e1='a', e2='a', e3='a', e4="'a'", e5="a,b")
-        set_table.insert().execute(e1='b', e2='b', e3='b', e4='b', e5="a,b")
-
-        res = set_table.select().execute().fetchall()
-
-        if not testing.against("+oursql"):
-            # oursql receives this for first row:
-            # (set(['']), set(['']), set(['']), set(['']), None),
-            # but based on ...OS?  MySQL version?  not clear.
-            # not worth testing.
-
-            expected = []
-
-            expected.extend([
-                (set(['a']), set(['a']), set(['a']), set(["'a'"]), set(['a', 'b'])),
-                (set(['b']), set(['b']), set(['b']), set(['b']), set(['a', 'b']))
-            ])
+            expected = [
+                (set(['a']), set(['a']), set(['a']),
+                 set(["'a'"]), set(['a', 'b'])),
+                (set(['b']), set(['b']), set(['b']),
+                 set(['b']), set(['a', 'b']))
+            ]
+            res = conn.execute(
+                set_table.select()
+            ).fetchall()
 
             eq_(res, expected)
 
     @testing.provide_metadata
     def test_set_roundtrip_plus_reflection(self):
-        set_table = Table('mysql_set', self.metadata,
-                        Column('s1',
-                          mysql.SET("dq", "sq")),
-                            Column('s2', mysql.SET("a")),
-                            Column('s3', mysql.SET("5", "7", "9")))
+        set_table = Table(
+            'mysql_set', self.metadata,
+            Column('s1', mysql.SET("dq", "sq")),
+            Column('s2', mysql.SET("a")),
+            Column('s3', mysql.SET("5", "7", "9")))
 
         eq_(colspec(set_table.c.s1), "s1 SET('dq','sq')")
         eq_(colspec(set_table.c.s2), "s2 SET('a')")
@@ -699,29 +733,26 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
             roundtrip([set(['dq']), set(['a']), set(['5'])])
             roundtrip(['dq', 'a', '5'], [set(['dq']), set(['a']),
                       set(['5'])])
-            roundtrip([1, 1, 1], [set(['dq']), set(['a']), set(['5'
-                      ])])
-            roundtrip([set(['dq', 'sq']), None, set(['9', '5', '7'
-                      ])])
-        set_table.insert().execute({'s3': set(['5'])},
-                {'s3': set(['5', '7'])}, {'s3': set(['5', '7', '9'])},
-                {'s3': set(['7', '9'])})
+            roundtrip([1, 1, 1], [set(['dq']), set(['a']), set(['5'])])
+            roundtrip([set(['dq', 'sq']), None, set(['9', '5', '7'])])
+        set_table.insert().execute(
+            {'s3': set(['5'])},
+            {'s3': set(['5', '7'])},
+            {'s3': set(['5', '7', '9'])},
+            {'s3': set(['7', '9'])})
 
-        # NOTE: the string sent to MySQL here is sensitive to ordering.
-        # for some reason the set ordering is always "5, 7" when we test on
-        # MySQLdb but in Py3K this is not guaranteed.   So basically our
-        # SET type doesn't do ordering correctly (not sure how it can,
-        # as we don't know how the SET was configured in the first place.)
-        rows = select([set_table.c.s3],
-                    set_table.c.s3.in_([set(['5']), ['5', '7']])
-                        ).execute().fetchall()
+        rows = select(
+            [set_table.c.s3],
+            set_table.c.s3.in_([set(['5']), ['5', '7']])
+        ).execute().fetchall()
         found = set([frozenset(row[0]) for row in rows])
         eq_(found, set([frozenset(['5']), frozenset(['5', '7'])]))
 
     @testing.provide_metadata
     def test_unicode_enum(self):
         metadata = self.metadata
-        t1 = Table('table', metadata,
+        t1 = Table(
+            'table', metadata,
             Column('id', Integer, primary_key=True),
             Column('value', Enum(u('réveillé'), u('drôle'), u('S’il'))),
             Column('value2', mysql.ENUM(u('réveillé'), u('drôle'), u('S’il')))
@@ -731,9 +762,11 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
         t1.insert().execute(value=u('réveillé'), value2=u('réveillé'))
         t1.insert().execute(value=u('S’il'), value2=u('S’il'))
         eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
-            [(1, u('drôle'), u('drôle')), (2, u('réveillé'), u('réveillé')),
-                        (3, u('S’il'), u('S’il'))]
-        )
+            [
+                (1, u('drôle'), u('drôle')),
+                (2, u('réveillé'), u('réveillé')),
+                (3, u('S’il'), u('S’il'))
+            ])
 
         # test reflection of the enum labels
 
@@ -743,11 +776,15 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
         # TODO: what's wrong with the last element ?  is there
         # latin-1 stuff forcing its way in ?
 
-        assert t2.c.value.type.enums[0:2] == \
-                (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        eq_(
+            t2.c.value.type.enums[0:2],
+            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        )
 
-        assert t2.c.value2.type.enums[0:2] == \
-                (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        eq_(
+            t2.c.value2.type.enums[0:2],
+            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        )
 
     def test_enum_compile(self):
         e1 = Enum('x', 'y', 'z', name='somename')
@@ -767,7 +804,8 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
     def test_enum_parse(self):
 
         with testing.expect_deprecated('Manually quoting ENUM value literals'):
-            enum_table = Table('mysql_enum', self.metadata,
+            enum_table = Table(
+                'mysql_enum', self.metadata,
                 Column('e1', mysql.ENUM("'a'")),
                 Column('e2', mysql.ENUM("''")),
                 Column('e3', mysql.ENUM('a')),
@@ -795,7 +833,8 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
     @testing.exclude('mysql', '<', (5,))
     def test_set_parse(self):
         with testing.expect_deprecated('Manually quoting SET value literals'):
-            set_table = Table('mysql_set', self.metadata,
+            set_table = Table(
+                'mysql_set', self.metadata,
                 Column('e1', mysql.SET("'a'")),
                 Column('e2', mysql.SET("''")),
                 Column('e3', mysql.SET('a')),
@@ -821,7 +860,8 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
             eq_(t.c.e6.type.values, ("", "a"))
             eq_(t.c.e7.type.values, ("", "'a'", "b'b", "'"))
 
+
 def colspec(c):
     return testing.db.dialect.ddl_compiler(
-                    testing.db.dialect, None).get_column_specification(c)
+        testing.db.dialect, None).get_column_specification(c)
 
