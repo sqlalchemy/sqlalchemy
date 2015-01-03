@@ -3542,26 +3542,26 @@ class _ColumnEntity(_QueryEntity):
         )):
             self._label_name = column.key
             column = column._query_clause_element()
-        else:
-            self._label_name = getattr(column, 'key', None)
-
-        if not isinstance(column, expression.ColumnElement) and \
-                hasattr(column, '_select_iterable'):
-            for c in column._select_iterable:
-                if c is column:
-                    break
-                _ColumnEntity(query, c, namespace=column)
-            else:
+            if isinstance(column, Bundle):
+                _BundleEntity(query, column)
                 return
-        elif isinstance(column, Bundle):
-            _BundleEntity(query, column)
-            return
+        elif not isinstance(column, sql.ColumnElement):
+            if hasattr(column, '_select_iterable'):
+                # break out an object like Table into
+                # individual columns
+                for c in column._select_iterable:
+                    if c is column:
+                        break
+                    _ColumnEntity(query, c, namespace=column)
+                else:
+                    return
 
-        if not isinstance(column, sql.ColumnElement):
             raise sa_exc.InvalidRequestError(
                 "SQL expression, column, or mapped entity "
                 "expected - got '%r'" % (column, )
             )
+        else:
+            self._label_name = getattr(column, 'key', None)
 
         self.type = type_ = column.type
         if type_.hashable:
