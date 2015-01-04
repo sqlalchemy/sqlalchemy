@@ -560,6 +560,8 @@ class LoaderStrategy(object):
 
     """
 
+    __slots__ = 'parent_property', 'is_class_level', 'parent', 'key'
+
     def __init__(self, parent):
         self.parent_property = parent
         self.is_class_level = False

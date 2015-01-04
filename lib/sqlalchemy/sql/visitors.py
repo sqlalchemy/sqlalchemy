@@ -51,6 +51,7 @@ class VisitableType(type):
 
     Classes having no __visit_name__ attribute will remain unaffected.
     """
+
     def __init__(cls, clsname, bases, clsdict):
         if clsname != 'Visitable' and \
                 hasattr(cls, '__visit_name__'):

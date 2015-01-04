@@ -105,6 +105,8 @@ class UninstrumentedColumnLoader(LoaderStrategy):
     if the argument is against the with_polymorphic selectable.
 
     """
+    __slots__ = 'columns',
+
     def __init__(self, parent):
         super(UninstrumentedColumnLoader, self).__init__(parent)
         self.columns = self.parent_property.columns
@@ -127,6 +129,8 @@ class UninstrumentedColumnLoader(LoaderStrategy):
 @properties.ColumnProperty.strategy_for(instrument=True, deferred=False)
 class ColumnLoader(LoaderStrategy):
     """Provide loading behavior for a :class:`.ColumnProperty`."""
+
+    __slots__ = 'columns', 'is_composite'
 
     def __init__(self, parent):
         super(ColumnLoader, self).__init__(parent)
@@ -175,6 +179,8 @@ class ColumnLoader(LoaderStrategy):
 @properties.ColumnProperty.strategy_for(deferred=True, instrument=True)
 class DeferredColumnLoader(LoaderStrategy):
     """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
+
+    __slots__ = 'columns', 'group'
 
     def __init__(self, parent):
         super(DeferredColumnLoader, self).__init__(parent)
@@ -300,6 +306,8 @@ class LoadDeferredColumns(object):
 class AbstractRelationshipLoader(LoaderStrategy):
     """LoaderStratgies which deal with related objects."""
 
+    __slots__ = 'mapper', 'target', 'uselist'
+
     def __init__(self, parent):
         super(AbstractRelationshipLoader, self).__init__(parent)
         self.mapper = self.parent_property.mapper
@@ -315,6 +323,8 @@ class NoLoader(AbstractRelationshipLoader):
     with "lazy=None".
 
     """
+
+    __slots__ = ()
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -342,6 +352,10 @@ class LazyLoader(AbstractRelationshipLoader):
     with "lazy=True", that is loads when first accessed.
 
     """
+
+    __slots__ = (
+        '_lazywhere', '_rev_lazywhere', 'use_get', '_bind_to_col',
+        '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns')
 
     def __init__(self, parent):
         super(LazyLoader, self).__init__(parent)
@@ -647,6 +661,8 @@ class LazyLoader(AbstractRelationshipLoader):
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
 
+    __slots__ = 'key',
+
     def __init__(self, key):
         self.key = key
 
@@ -661,6 +677,8 @@ class LoadLazyAttribute(object):
 
 @properties.RelationshipProperty.strategy_for(lazy="immediate")
 class ImmediateLoader(AbstractRelationshipLoader):
+    __slots__ = ()
+
     def init_class_attribute(self, mapper):
         self.parent_property.\
             _get_strategy_by_cls(LazyLoader).\
@@ -684,6 +702,8 @@ class ImmediateLoader(AbstractRelationshipLoader):
 @log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy="subquery")
 class SubqueryLoader(AbstractRelationshipLoader):
+    __slots__ = 'join_depth',
+
     def __init__(self, parent):
         super(SubqueryLoader, self).__init__(parent)
         self.join_depth = self.parent_property.join_depth
@@ -1069,6 +1089,9 @@ class JoinedLoader(AbstractRelationshipLoader):
     using joined eager loading.
 
     """
+
+    __slots__ = 'join_depth',
+
     def __init__(self, parent):
         super(JoinedLoader, self).__init__(parent)
         self.join_depth = self.parent_property.join_depth
