@@ -92,6 +92,15 @@ def _unique_symbols(used, *bases):
             raise NameError("exhausted namespace for symbol base %s" % base)
 
 
+def map_bits(fn, n):
+    """Call the given function given each nonzero bit from n."""
+
+    while n:
+        b = n & (~n + 1)
+        yield fn(b)
+        n ^= b
+
+
 def decorator(target):
     """A signature-matching decorator factory."""
 

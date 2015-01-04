@@ -1496,6 +1496,10 @@ class SET(_EnumeratedValues):
                 (value, 2 ** idx)
                 for idx, value in enumerate(self.values)
             )
+            self._bitmap.update(
+                (2 ** idx, value)
+                for idx, value in enumerate(self.values)
+            )
         kw.setdefault('length', length)
         super(SET, self).__init__(**kw)
 
@@ -1510,12 +1514,9 @@ class SET(_EnumeratedValues):
             def process(value):
                 if value is not None:
                     value = int(value)
+
                     return set(
-                        [
-                            elem
-                            for idx, elem in enumerate(self.values)
-                            if value & (2 ** idx)
-                        ]
+                        util.map_bits(self._bitmap.__getitem__, value)
                     )
                 else:
                     return None
