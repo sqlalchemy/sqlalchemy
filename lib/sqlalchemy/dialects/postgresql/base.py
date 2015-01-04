@@ -483,7 +483,7 @@ import re
 
 from ... import sql, schema, exc, util
 from ...engine import default, reflection
-from ...sql import compiler, expression, operators
+from ...sql import compiler, expression, operators, default_comparator
 from ... import types as sqltypes
 
 try:
@@ -680,10 +680,10 @@ class _Slice(expression.ColumnElement):
     type = sqltypes.NULLTYPE
 
     def __init__(self, slice_, source_comparator):
-        self.start = source_comparator._check_literal(
+        self.start = default_comparator._check_literal(
             source_comparator.expr,
             operators.getitem, slice_.start)
-        self.stop = source_comparator._check_literal(
+        self.stop = default_comparator._check_literal(
             source_comparator.expr,
             operators.getitem, slice_.stop)
 
@@ -876,8 +876,9 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
                 index += shift_indexes
                 return_type = self.type.item_type
 
-            return self._binary_operate(self.expr, operators.getitem, index,
-                                        result_type=return_type)
+            return default_comparator._binary_operate(
+                self.expr, operators.getitem, index,
+                result_type=return_type)
 
         def any(self, other, operator=operators.eq):
             """Return ``other operator ANY (array)`` clause.

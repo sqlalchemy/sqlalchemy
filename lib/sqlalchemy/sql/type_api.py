@@ -48,21 +48,21 @@ class TypeEngine(Visitable):
         """
         __slots__ = 'expr', 'type'
 
+        default_comparator = None
+
         def __init__(self, expr):
             self.expr = expr
             self.type = expr.type
 
         @util.dependencies('sqlalchemy.sql.default_comparator')
         def operate(self, default_comparator, op, *other, **kwargs):
-            comp = default_comparator.the_comparator
-            o = comp.operators[op.__name__]
-            return o[0](comp, self.expr, op, *(other + o[1:]), **kwargs)
+            o = default_comparator.operator_lookup[op.__name__]
+            return o[0](self.expr, op, *(other + o[1:]), **kwargs)
 
         @util.dependencies('sqlalchemy.sql.default_comparator')
         def reverse_operate(self, default_comparator, op, other, **kwargs):
-            comp = default_comparator.the_comparator
-            o = comp.operators[op.__name__]
-            return o[0](comp, self.expr, op, other,
+            o = default_comparator.operator_lookup[op.__name__]
+            return o[0](self.expr, op, other,
                         reverse=True, *o[1:], **kwargs)
 
         def _adapt_expression(self, op, other_comparator):
