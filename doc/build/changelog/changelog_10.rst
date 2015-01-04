@@ -23,6 +23,27 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 3283
+
+        The :class:`.mysql.SET` type has been overhauled to no longer
+        assume that the empty string, or a set with a single empty string
+        value, is in fact a set with a single empty string; instead, this
+        is by default treated as the empty set.  In order to handle persistence
+        of a :class:`.mysql.SET` that actually wants to include the blank
+        value ``''`` as a legitimate value, a new bitwise operational mode
+        is added which is enabled by the
+        :paramref:`.mysql.SET.retrieve_as_bitwise` flag, which will persist
+        and retrieve values unambiguously using their bitflag positioning.
+        Storage and retrieval of unicode values for driver configurations
+        that aren't converting unicode natively is also repaired.
+
+        .. seealso::
+
+            :ref:`change_3283`
+
+
+    .. change::
         :tags: feature, schema
         :tickets: 3282
 

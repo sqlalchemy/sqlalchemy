@@ -1428,32 +1428,28 @@ class SET(_EnumeratedValues):
 
           Column('myset', SET("foo", "bar", "baz"))
 
-        :param values: The range of valid values for this SET.  Values will be
-          quoted when generating the schema according to the quoting flag (see
-          below).
 
-          .. versionchanged:: 0.9.0 quoting is applied automatically to
-             :class:`.mysql.SET` in the same way as for :class:`.mysql.ENUM`.
+        The list of potential values is required in the case that this
+        set will be used to generate DDL for a table, or if the
+        :paramref:`.SET.retrieve_as_bitwise` flag is set to True.
 
-        :param charset: Optional, a column-level character set for this string
-          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
+        :param values: The range of valid values for this SET.
 
-        :param collation: Optional, a column-level collation for this string
-          value.  Takes precedence to 'binary' short-hand.
+        :param convert_unicode: Same flag as that of
+         :paramref:`.String.convert_unicode`.
 
-        :param ascii: Defaults to False: short-hand for the ``latin1``
-          character set, generates ASCII in schema.
+        :param collation: same as that of :paramref:`.String.collation`
 
-        :param unicode: Defaults to False: short-hand for the ``ucs2``
-          character set, generates UNICODE in schema.
+        :param charset: same as that of :paramref:`.VARCHAR.charset`.
 
-        :param binary: Defaults to False: short-hand, pick the binary
-          collation type that matches the column's character set.  Generates
-          BINARY in schema.  This does not affect the type of data stored,
-          only the collation of character data.
+        :param ascii: same as that of :paramref:`.VARCHAR.ascii`.
 
-        :param quoting: Defaults to 'auto': automatically determine enum value
-          quoting.  If all enum values are surrounded by the same quoting
+        :param unicode: same as that of :paramref:`.VARCHAR.unicode`.
+
+        :param binary: same as that of :paramref:`.VARCHAR.binary`.
+
+        :param quoting: Defaults to 'auto': automatically determine set value
+          quoting.  If all values are surrounded by the same quoting
           character, then use 'quoted' mode.  Otherwise, use 'unquoted' mode.
 
           'quoted': values in enums are already quoted, they will be used
@@ -1468,49 +1464,115 @@ class SET(_EnumeratedValues):
 
           .. versionadded:: 0.9.0
 
+        :param retrieve_as_bitwise: if True, the data for the set type will be
+          persisted and selected using an integer value, where a set is coerced
+          into a bitwise mask for persistence.  MySQL allows this mode which
+          has the advantage of being able to store values unambiguously,
+          such as the blank string ``''``.   The datatype will appear
+          as the expression ``col + 0`` in a SELECT statement, so that the
+          value is coerced into an integer value in result sets.
+          This flag is required if one wishes
+          to persist a set that can store the blank string ``''`` as a value.
+
+          .. warning::
+
+            When using :paramref:`.mysql.SET.retrieve_as_bitwise`, it is
+            essential that the list of set values is expressed in the
+            **exact same order** as exists on the MySQL database.
+
+          .. versionadded:: 1.0.0
+
+
         """
+        self.retrieve_as_bitwise = kw.pop('retrieve_as_bitwise', False)
         values, length = self._init_values(values, kw)
         self.values = tuple(values)
-
+        if not self.retrieve_as_bitwise and '' in values:
+            raise exc.ArgumentError(
+                "Can't use the blank value '' in a SET without "
+                "setting retrieve_as_bitwise=True")
+        if self.retrieve_as_bitwise:
+            self._bitmap = dict(
+                (value, 2 ** idx)
+                for idx, value in enumerate(self.values)
+            )
         kw.setdefault('length', length)
         super(SET, self).__init__(**kw)
 
+    def column_expression(self, colexpr):
+        if self.retrieve_as_bitwise:
+            return colexpr + 0
+        else:
+            return colexpr
+
     def result_processor(self, dialect, coltype):
-        def process(value):
-            # The good news:
-            #   No ',' quoting issues- commas aren't allowed in SET values
-            # The bad news:
-            #   Plenty of driver inconsistencies here.
-            if isinstance(value, set):
-                # ..some versions convert '' to an empty set
-                if not value:
-                    value.add('')
-                return value
-            # ...and some versions return strings
-            if value is not None:
-                return set(value.split(','))
-            else:
-                return value
+        if self.retrieve_as_bitwise:
+            def process(value):
+                if value is not None:
+                    value = int(value)
+                    return set(
+                        [
+                            elem
+                            for idx, elem in enumerate(self.values)
+                            if value & (2 ** idx)
+                        ]
+                    )
+                else:
+                    return None
+        else:
+            super_convert = super(SET, self).result_processor(dialect, coltype)
+
+            def process(value):
+                if isinstance(value, util.string_types):
+                    # MySQLdb returns a string, let's parse
+                    if super_convert:
+                        value = super_convert(value)
+                    return set(re.findall(r'[^,]+', value))
+                else:
+                    # mysql-connector-python does a naive
+                    # split(",") which throws in an empty string
+                    if value is not None:
+                        value.discard('')
+                    return value
         return process
 
     def bind_processor(self, dialect):
         super_convert = super(SET, self).bind_processor(dialect)
+        if self.retrieve_as_bitwise:
+            def process(value):
+                if value is None:
+                    return None
+                elif isinstance(value, util.int_types + util.string_types):
+                    if super_convert:
+                        return super_convert(value)
+                    else:
+                        return value
+                else:
+                    int_value = 0
+                    for v in value:
+                        int_value |= self._bitmap[v]
+                    return int_value
+        else:
 
-        def process(value):
-            if value is None or isinstance(
-                    value, util.int_types + util.string_types):
-                pass
-            else:
-                if None in value:
-                    value = set(value)
-                    value.remove(None)
-                    value.add('')
-                value = ','.join(value)
-            if super_convert:
-                return super_convert(value)
-            else:
-                return value
+            def process(value):
+                # accept strings and int (actually bitflag) values directly
+                if value is not None and not isinstance(
+                        value, util.int_types + util.string_types):
+                    value = ",".join(value)
+
+                if super_convert:
+                    return super_convert(value)
+                else:
+                    return value
         return process
+
+    def adapt(self, impltype, **kw):
+        kw['retrieve_as_bitwise'] = self.retrieve_as_bitwise
+        return util.constructor_copy(
+            self, impltype,
+            *self.values,
+            **kw
+        )
 
 # old names
 MSTime = TIME
@@ -2971,6 +3033,9 @@ class MySQLTableDefinitionParser(object):
 
         if issubclass(col_type, _EnumeratedValues):
             type_args = _EnumeratedValues._strip_values(type_args)
+
+            if issubclass(col_type, SET) and '' in type_args:
+                type_kw['retrieve_as_bitwise'] = True
 
         type_instance = col_type(*type_args, **type_kw)
 

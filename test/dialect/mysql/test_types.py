@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, assert_raises
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema
 from sqlalchemy.util import u
@@ -681,6 +681,67 @@ class EnumSetTest(
             exc.StatementError, set_table.insert().execute,
             e1='c', e2='c', e3='c', e4='c')
 
+    @testing.fails_on("+oursql", "oursql raises on the truncate warning")
+    @testing.provide_metadata
+    def test_empty_set_no_empty_string(self):
+        t = Table(
+            't', self.metadata,
+            Column('id', Integer),
+            Column('data', mysql.SET("a", "b"))
+        )
+        t.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                t.insert(),
+                {'id': 1, 'data': set()},
+                {'id': 2, 'data': set([''])},
+                {'id': 3, 'data': set(['a', ''])},
+                {'id': 4, 'data': set(['b'])},
+            )
+            eq_(
+                conn.execute(t.select().order_by(t.c.id)).fetchall(),
+                [
+                    (1, set()),
+                    (2, set()),
+                    (3, set(['a'])),
+                    (4, set(['b'])),
+                ]
+            )
+
+    def test_bitwise_required_for_empty(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            "Can't use the blank value '' in a SET without setting "
+            "retrieve_as_bitwise=True",
+            mysql.SET, "a", "b", ''
+        )
+
+    @testing.provide_metadata
+    def test_empty_set_empty_string(self):
+        t = Table(
+            't', self.metadata,
+            Column('id', Integer),
+            Column('data', mysql.SET("a", "b", '', retrieve_as_bitwise=True))
+        )
+        t.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                t.insert(),
+                {'id': 1, 'data': set()},
+                {'id': 2, 'data': set([''])},
+                {'id': 3, 'data': set(['a', ''])},
+                {'id': 4, 'data': set(['b'])},
+            )
+            eq_(
+                conn.execute(t.select().order_by(t.c.id)).fetchall(),
+                [
+                    (1, set()),
+                    (2, set([''])),
+                    (3, set(['a', ''])),
+                    (4, set(['b'])),
+                ]
+            )
+
     @testing.provide_metadata
     def test_string_roundtrip(self):
         set_table = self._set_fixture_one()
@@ -706,6 +767,47 @@ class EnumSetTest(
             eq_(res, expected)
 
     @testing.provide_metadata
+    def test_unicode_roundtrip(self):
+        set_table = Table(
+            't', self.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', mysql.SET(
+                u('réveillé'), u('drôle'), u('S’il'), convert_unicode=True)),
+        )
+
+        set_table.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                set_table.insert(),
+                {"data": set([u('réveillé'), u('drôle')])})
+
+            row = conn.execute(
+                set_table.select()
+            ).first()
+
+            eq_(
+                row,
+                (1, set([u('réveillé'), u('drôle')]))
+            )
+
+    @testing.provide_metadata
+    def test_int_roundtrip(self):
+        set_table = self._set_fixture_one()
+        set_table.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                set_table.insert(),
+                dict(e1=1, e2=2, e3=3, e4=3, e5=0)
+            )
+            res = conn.execute(set_table.select()).first()
+            eq_(
+                res,
+                (
+                    set(['a']), set(['b']), set(['a', 'b']),
+                    set(["'a'", 'b']), set([]))
+            )
+
+    @testing.provide_metadata
     def test_set_roundtrip_plus_reflection(self):
         set_table = Table(
             'mysql_set', self.metadata,
@@ -725,11 +827,11 @@ class EnumSetTest(
                 expected = expected or store
                 table.insert(store).execute()
                 row = table.select().execute().first()
-                self.assert_(list(row) == expected)
+                eq_(row, tuple(expected))
                 table.delete().execute()
 
             roundtrip([None, None, None], [None] * 3)
-            roundtrip(['', '', ''], [set([''])] * 3)
+            roundtrip(['', '', ''], [set([])] * 3)
             roundtrip([set(['dq']), set(['a']), set(['5'])])
             roundtrip(['dq', 'a', '5'], [set(['dq']), set(['a']),
                       set(['5'])])
@@ -836,12 +938,14 @@ class EnumSetTest(
             set_table = Table(
                 'mysql_set', self.metadata,
                 Column('e1', mysql.SET("'a'")),
-                Column('e2', mysql.SET("''")),
+                Column('e2', mysql.SET("''", retrieve_as_bitwise=True)),
                 Column('e3', mysql.SET('a')),
-                Column('e4', mysql.SET('')),
-                Column('e5', mysql.SET("'a'", "''")),
-                Column('e6', mysql.SET("''", "'a'")),
-                Column('e7', mysql.SET("''", "'''a'''", "'b''b'", "''''")))
+                Column('e4', mysql.SET('', retrieve_as_bitwise=True)),
+                Column('e5', mysql.SET("'a'", "''", retrieve_as_bitwise=True)),
+                Column('e6', mysql.SET("''", "'a'", retrieve_as_bitwise=True)),
+                Column('e7', mysql.SET(
+                    "''", "'''a'''", "'b''b'", "''''",
+                    retrieve_as_bitwise=True)))
 
         for col in set_table.c:
             self.assert_(repr(col))

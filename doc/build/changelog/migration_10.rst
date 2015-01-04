@@ -1606,6 +1606,52 @@ by Postgresql as of 9.4.  SQLAlchemy allows this using
 Dialect Improvements and Changes - MySQL
 =============================================
 
+.. _change_3283:
+
+MySQL SET Type Overhauled to support empty sets, unicode, blank value handling
+-------------------------------------------------------------------------------
+
+The :class:`.mysql.SET` type historically not included a system of handling
+blank sets and empty values separately; as different drivers had different
+behaviors for treatment of empty strings and empty-string-set representations,
+the SET type tried only to hedge between these behaviors, opting to treat the
+empty set as ``set([''])`` as is still the current behavior for the
+MySQL-Connector-Python DBAPI.
+Part of the rationale here was that it was otherwise impossible to actually
+store a blank string within a MySQL SET, as the driver gives us back strings
+with no way to discern between ``set([''])`` and ``set()``.  It was left
+to the user to determine if ``set([''])`` actually meant "empty set" or not.
+
+The new behavior moves the use case for the blank string, which is an unusual
+case that isn't even documented in MySQL's documentation, into a special
+case, and the default behavior of :class:`.mysql.SET` is now:
+
+* to treat the empty string ``''`` as returned by MySQL-python into the empty
+  set ``set()``;
+
+* to convert the single-blank value set ``set([''])`` returned by
+  MySQL-Connector-Python into the empty set ``set()``;
+
+* To handle the case of a set type that actually wishes includes the blank
+  value ``''`` in its list of possible values,
+  a new feature (required in this use case) is implemented whereby the set
+  value is persisted and loaded as a bitwise integer value; the
+  flag :paramref:`.mysql.SET.retrieve_as_bitwise` is added in order to
+  enable this.
+
+Using the :paramref:`.mysql.SET.retrieve_as_bitwise` flag allows the set
+to be persisted and retrieved with no ambiguity of values.   Theoretically
+this flag can be turned on in all cases, as long as the given list of
+values to the type matches the ordering exactly as declared in the
+database; it only makes the SQL echo output a bit more unusual.
+
+The default behavior of :class:`.mysql.SET` otherwise remains the same,
+roundtripping values using strings.   The string-based behavior now
+supports unicode fully including MySQL-python with use_unicode=0.
+
+:ticket:`3283`
+
+
 MySQL internal "no such table" exceptions not passed to event handlers
 ----------------------------------------------------------------------
 
