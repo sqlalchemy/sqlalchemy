@@ -195,6 +195,8 @@ class Events(util.with_metaclass(_EventMeta, object)):
 class _JoinedDispatcher(object):
     """Represent a connection between two _Dispatch objects."""
 
+    __slots__ = 'local', 'parent', '_parent_cls'
+
     def __init__(self, local, parent):
         self.local = local
         self.parent = parent

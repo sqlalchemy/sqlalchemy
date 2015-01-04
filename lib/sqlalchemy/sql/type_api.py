@@ -21,6 +21,7 @@ NULLTYPE = None
 STRINGTYPE = None
 MATCHTYPE = None
 
+
 class TypeEngine(Visitable):
     """The ultimate base class for all SQL datatypes.
 
@@ -45,9 +46,51 @@ class TypeEngine(Visitable):
 
 
         """
+        __slots__ = 'expr', 'type'
 
         def __init__(self, expr):
             self.expr = expr
+            self.type = expr.type
+
+        @util.dependencies('sqlalchemy.sql.default_comparator')
+        def operate(self, default_comparator, op, *other, **kwargs):
+            comp = default_comparator.the_comparator
+            o = comp.operators[op.__name__]
+            return o[0](comp, self.expr, op, *(other + o[1:]), **kwargs)
+
+        @util.dependencies('sqlalchemy.sql.default_comparator')
+        def reverse_operate(self, default_comparator, op, other, **kwargs):
+            comp = default_comparator.the_comparator
+            o = comp.operators[op.__name__]
+            return o[0](comp, self.expr, op, other,
+                        reverse=True, *o[1:], **kwargs)
+
+        def _adapt_expression(self, op, other_comparator):
+            """evaluate the return type of <self> <op> <othertype>,
+            and apply any adaptations to the given operator.
+
+            This method determines the type of a resulting binary expression
+            given two source types and an operator.   For example, two
+            :class:`.Column` objects, both of the type :class:`.Integer`, will
+            produce a :class:`.BinaryExpression` that also has the type
+            :class:`.Integer` when compared via the addition (``+``) operator.
+            However, using the addition operator with an :class:`.Integer`
+            and a :class:`.Date` object will produce a :class:`.Date`, assuming
+            "days delta" behavior by the database (in reality, most databases
+            other than Postgresql don't accept this particular operation).
+
+            The method returns a tuple of the form <operator>, <type>.
+            The resulting operator and type will be those applied to the
+            resulting :class:`.BinaryExpression` as the final operator and the
+            right-hand side of the expression.
+
+            Note that only a subset of operators make usage of
+            :meth:`._adapt_expression`,
+            including math operators and user-defined operators, but not
+            boolean comparison or special SQL keywords like MATCH or BETWEEN.
+
+            """
+            return op, other_comparator.type
 
         def __reduce__(self):
             return _reconstitute_comparator, (self.expr, )
@@ -454,6 +497,8 @@ class UserDefinedType(TypeEngine):
     __visit_name__ = "user_defined"
 
     class Comparator(TypeEngine.Comparator):
+        __slots__ = ()
+
         def _adapt_expression(self, op, other_comparator):
             if hasattr(self.type, 'adapt_operator'):
                 util.warn_deprecated(
@@ -617,6 +662,7 @@ class TypeDecorator(TypeEngine):
     """
 
     class Comparator(TypeEngine.Comparator):
+        __slots__ = ()
 
         def operate(self, op, *other, **kwargs):
             kwargs['_python_is_types'] = self.expr.type.coerce_to_is_types

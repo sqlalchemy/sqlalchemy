@@ -38,6 +38,7 @@ class Operators(object):
     :class:`.ColumnOperators`.
 
     """
+    __slots__ = ()
 
     def __and__(self, other):
         """Implement the ``&`` operator.
@@ -266,6 +267,8 @@ class ColumnOperators(Operators):
     :class:`.PropComparator`
 
     """
+
+    __slots__ = ()
 
     timetuple = None
     """Hack, allows datetime objects to be compared on the LHS."""

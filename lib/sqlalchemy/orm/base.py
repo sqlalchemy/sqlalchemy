@@ -438,6 +438,8 @@ class InspectionAttr(object):
 
     """
 
+    __slots__ = ()
+
     is_selectable = False
     """Return True if this object is an instance of :class:`.Selectable`."""
 
@@ -520,3 +522,4 @@ class _MappedAttribute(object):
     attributes.
 
     """
+    __slots__ = ()

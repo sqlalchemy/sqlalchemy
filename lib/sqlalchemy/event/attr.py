@@ -340,6 +340,8 @@ class _ListenerCollection(RefCollection, _CompoundListener):
 
 
 class _JoinedDispatchDescriptor(object):
+    __slots__ = 'name',
+
     def __init__(self, name):
         self.name = name
 
@@ -356,6 +358,8 @@ class _JoinedDispatchDescriptor(object):
 
 class _JoinedListener(_CompoundListener):
     _exec_once = False
+
+    __slots__ = 'parent', 'name', 'local', 'parent_listeners'
 
     def __init__(self, parent, name, local):
         self.parent = parent

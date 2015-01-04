@@ -224,6 +224,7 @@ class ColumnProperty(StrategizedProperty):
         :attr:`.TypeEngine.comparator_factory`
 
         """
+
         @util.memoized_instancemethod
         def __clause_element__(self):
             if self.adapter:

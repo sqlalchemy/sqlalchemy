@@ -140,6 +140,10 @@ class _EventKey(object):
     """Represent :func:`.listen` arguments.
     """
 
+    __slots__ = (
+        'target', 'identifier', 'fn', 'fn_key', 'fn_wrap', 'dispatch_target'
+    )
+
     def __init__(self, target, identifier,
                  fn, dispatch_target, _fn_wrap=None):
         self.target = target

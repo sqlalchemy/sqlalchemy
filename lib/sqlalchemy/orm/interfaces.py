@@ -303,6 +303,8 @@ class PropComparator(operators.ColumnOperators):
 
     """
 
+    __slots__ = 'prop', 'property', '_parentmapper', '_adapt_to_entity'
+
     def __init__(self, prop, parentmapper, adapt_to_entity=None):
         self.prop = self.property = prop
         self._parentmapper = parentmapper
@@ -331,7 +333,7 @@ class PropComparator(operators.ColumnOperators):
         else:
             return self._adapt_to_entity._adapt_element
 
-    @util.memoized_property
+    @property
     def info(self):
         return self.property.info
 

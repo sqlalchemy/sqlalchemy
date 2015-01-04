@@ -9,8 +9,8 @@
 """
 
 from .. import exc, util
-from . import operators
 from . import type_api
+from . import operators
 from .elements import BindParameter, True_, False_, BinaryExpression, \
     Null, _const_expr, _clause_element_as_expr, \
     ClauseList, ColumnElement, TextClause, UnaryExpression, \
@@ -18,53 +18,13 @@ from .elements import BindParameter, True_, False_, BinaryExpression, \
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 
-class _DefaultColumnComparator(operators.ColumnOperators):
+class _DefaultColumnComparator(object):
     """Defines comparison and math operations.
 
     See :class:`.ColumnOperators` and :class:`.Operators` for descriptions
     of all operations.
 
     """
-
-    @util.memoized_property
-    def type(self):
-        return self.expr.type
-
-    def operate(self, op, *other, **kwargs):
-        o = self.operators[op.__name__]
-        return o[0](self, self.expr, op, *(other + o[1:]), **kwargs)
-
-    def reverse_operate(self, op, other, **kwargs):
-        o = self.operators[op.__name__]
-        return o[0](self, self.expr, op, other,
-                    reverse=True, *o[1:], **kwargs)
-
-    def _adapt_expression(self, op, other_comparator):
-        """evaluate the return type of <self> <op> <othertype>,
-        and apply any adaptations to the given operator.
-
-        This method determines the type of a resulting binary expression
-        given two source types and an operator.   For example, two
-        :class:`.Column` objects, both of the type :class:`.Integer`, will
-        produce a :class:`.BinaryExpression` that also has the type
-        :class:`.Integer` when compared via the addition (``+``) operator.
-        However, using the addition operator with an :class:`.Integer`
-        and a :class:`.Date` object will produce a :class:`.Date`, assuming
-        "days delta" behavior by the database (in reality, most databases
-        other than Postgresql don't accept this particular operation).
-
-        The method returns a tuple of the form <operator>, <type>.
-        The resulting operator and type will be those applied to the
-        resulting :class:`.BinaryExpression` as the final operator and the
-        right-hand side of the expression.
-
-        Note that only a subset of operators make usage of
-        :meth:`._adapt_expression`,
-        including math operators and user-defined operators, but not
-        boolean comparison or special SQL keywords like MATCH or BETWEEN.
-
-        """
-        return op, other_comparator.type
 
     def _boolean_compare(self, expr, op, obj, negate=None, reverse=False,
                          _python_is_types=(util.NoneType, bool),
@@ -320,3 +280,5 @@ class _DefaultColumnComparator(operators.ColumnOperators):
             return expr._bind_param(operator, other)
         else:
             return other
+
+the_comparator = _DefaultColumnComparator()
