@@ -37,7 +37,7 @@ listener collections and the listener fn contained
 
 _collection_to_key = collections.defaultdict(dict)
 """
-Given a _ListenerCollection or _DispatchDescriptor, can locate
+Given a _ListenerCollection or _ClsLevelListener, can locate
 all the original listen() arguments and the listener fn contained
 
 ref(listenercollection) -> {
@@ -191,9 +191,9 @@ class _EventKey(object):
         target, identifier, fn = \
             self.dispatch_target, self.identifier, self._listen_fn
 
-        dispatch_descriptor = getattr(target.dispatch, identifier)
+        dispatch_collection = getattr(target.dispatch, identifier)
 
-        adjusted_fn = dispatch_descriptor._adjust_fn_spec(fn, named)
+        adjusted_fn = dispatch_collection._adjust_fn_spec(fn, named)
 
         self = self.with_wrapper(adjusted_fn)
 
@@ -230,13 +230,13 @@ class _EventKey(object):
         target, identifier, fn = \
             self.dispatch_target, self.identifier, self._listen_fn
 
-        dispatch_descriptor = getattr(target.dispatch, identifier)
+        dispatch_collection = getattr(target.dispatch, identifier)
 
         if insert:
-            dispatch_descriptor.\
+            dispatch_collection.\
                 for_modify(target.dispatch).insert(self, propagate)
         else:
-            dispatch_descriptor.\
+            dispatch_collection.\
                 for_modify(target.dispatch).append(self, propagate)
 
     @property

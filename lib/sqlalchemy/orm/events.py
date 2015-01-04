@@ -1479,8 +1479,9 @@ class AttributeEvents(event.Events):
 
     @staticmethod
     def _set_dispatch(cls, dispatch_cls):
-        event.Events._set_dispatch(cls, dispatch_cls)
+        dispatch = event.Events._set_dispatch(cls, dispatch_cls)
         dispatch_cls._active_history = False
+        return dispatch
 
     @classmethod
     def _accept_with(cls, target):

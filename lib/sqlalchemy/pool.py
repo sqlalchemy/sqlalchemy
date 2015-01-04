@@ -230,6 +230,7 @@ class Pool(log.Identified):
                 % reset_on_return)
 
         self.echo = echo
+
         if _dispatch:
             self.dispatch._update(_dispatch, only_propagate=False)
         if _dialect:

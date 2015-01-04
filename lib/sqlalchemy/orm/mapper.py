@@ -2643,7 +2643,7 @@ def configure_mappers():
             if not Mapper._new_mappers:
                 return
 
-            Mapper.dispatch(Mapper).before_configured()
+            Mapper.dispatch._for_class(Mapper).before_configured()
             # initialize properties on all mappers
             # note that _mapper_registry is unordered, which
             # may randomly conceal/reveal issues related to
@@ -2675,7 +2675,7 @@ def configure_mappers():
             _already_compiling = False
     finally:
         _CONFIGURE_MUTEX.release()
-    Mapper.dispatch(Mapper).after_configured()
+    Mapper.dispatch._for_class(Mapper).after_configured()
 
 
 def reconstructor(fn):
