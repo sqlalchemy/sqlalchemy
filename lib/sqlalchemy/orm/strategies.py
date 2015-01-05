@@ -661,8 +661,6 @@ class LazyLoader(AbstractRelationshipLoader):
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
 
-    __slots__ = 'key',
-
     def __init__(self, key):
         self.key = key
 
