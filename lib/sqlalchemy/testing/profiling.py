@@ -226,6 +226,7 @@ def count_functions(variance=0.05):
     callcount = stats.total_calls
 
     expected = _profile_stats.result(callcount)
+
     if expected is None:
         expected_count = None
     else:
@@ -249,10 +250,11 @@ def count_functions(variance=0.05):
             else:
                 raise AssertionError(
                     "Adjusted function call count %s not within %s%% "
-                    "of expected %s. Rerun with --write-profiles to "
+                    "of expected %s, platform %s. Rerun with "
+                    "--write-profiles to "
                     "regenerate this callcount."
                     % (
                         callcount, (variance * 100),
-                        expected_count))
+                        expected_count, _profile_stats.platform_key))
 
 
