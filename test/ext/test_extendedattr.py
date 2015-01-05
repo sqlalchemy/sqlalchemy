@@ -485,5 +485,5 @@ class ExtendedEventsTest(fixtures.ORMTest):
 
         register_class(A)
         manager = instrumentation.manager_of_class(A)
-        assert issubclass(manager.dispatch._parent_cls.__dict__['dispatch'].events, MyEvents)
+        assert issubclass(manager.dispatch._events, MyEvents)
 
