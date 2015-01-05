@@ -295,9 +295,6 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             self.assert_compile(type_, expected)
 
     @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
-    @testing.fails_if(
-            lambda: testing.against("mysql+oursql") and util.py3k,
-            'some round trips fail, oursql bug ?')
     @testing.provide_metadata
     def test_bit_50_roundtrip(self):
         bit_table = Table('mysql_bits', self.metadata,
