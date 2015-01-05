@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: December 14, 2014
+    Document last updated: January 4, 2015
 
 Introduction
 ============
@@ -285,6 +285,37 @@ object totally smokes both namedtuple and KeyedTuple::
 
 
 :ticket:`3176`
+
+.. _feature_slots:
+
+Significant Improvements in Structural Memory Use
+--------------------------------------------------
+
+Structural memory use has been improved via much more significant use
+of ``__slots__`` for many internal objects.  This optimization is
+particularly geared towards the base memory size of large applications
+that have lots of tables and columns, and reduces memory
+size for a variety of high-volume objects including event listening
+internals, comparator objects and parts of the ORM attribute and
+loader strategy system.
+
+A bench that makes use of heapy measure the startup size of Nova
+illustrates a difference of about 2 megs of memory, a total of 27%
+of memory taken up by SQLAlchemy's objects, associated dictionaries, as
+well as weakrefs, within a basic import of "nova.db.sqlalchemy.models"::
+
+    # reported by heapy, summation of SQLAlchemy objects +
+    # associated dicts + weakref-related objects with core of Nova imported:
+
+        Before: total count 26477 total bytes 7975712
+        After: total count 21413 total bytes 5752976
+
+    # reported for the Python module space overall with the
+    # core of Nova imported:
+
+        Before: Partition of a set of 355558 objects. Total size = 61661760 bytes.
+        After: Partition of a set of 350281 objects. Total size = 59415104 bytes.
+
 
 .. _feature_updatemany:
 

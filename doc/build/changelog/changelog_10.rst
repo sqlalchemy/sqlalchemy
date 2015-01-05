@@ -23,6 +23,21 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, general
+
+        Structural memory use has been improved via much more significant use
+        of ``__slots__`` for many internal objects.  This optimization is
+        particularly geared towards the base memory size of large applications
+        that have lots of tables and columns, and greatly reduces memory
+        size for a variety of high-volume objects including event listening
+        internals, comparator objects and parts of the ORM attribute and
+        loader strategy system.
+
+        .. seealso::
+
+            :ref:`feature_slots`
+
+    .. change::
         :tags: bug, mysql
         :tickets: 3283
 
