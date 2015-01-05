@@ -133,8 +133,8 @@ test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_postgresql_psycop
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_cextensions 19280
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 2.7_sqlite_pysqlite_nocextensions 28297
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_postgresql_psycopg2_nocextensions 29138
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_sqlite_pysqlite_cextensions 32398
-test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_sqlite_pysqlite_nocextensions 37327
+test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_sqlite_pysqlite_cextensions 20352
+test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.3_sqlite_pysqlite_nocextensions 29355
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.4_postgresql_psycopg2_cextensions 20135
 test.aaa_profiling.test_orm.DeferOptionsTest.test_baseline 3.4_postgresql_psycopg2_nocextensions 29138
 
@@ -147,7 +147,7 @@ test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_postgresql
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_sqlite_pysqlite_cextensions 27144
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 2.7_sqlite_pysqlite_nocextensions 30149
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_postgresql_psycopg2_nocextensions 29068
-test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_sqlite_pysqlite_cextensions 32197
+test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_sqlite_pysqlite_cextensions 26208
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.3_sqlite_pysqlite_nocextensions 31179
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.4_postgresql_psycopg2_cextensions 26065
 test.aaa_profiling.test_orm.DeferOptionsTest.test_defer_many_cols 3.4_postgresql_psycopg2_nocextensions 29068
@@ -214,11 +214,11 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqldb_cexte
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqldb_nocextensions 117,18
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_postgresql_psycopg2_cextensions 117,18
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_postgresql_psycopg2_nocextensions 117,18
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_cextensions 117,18
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_nocextensions 117,18
+test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_cextensions 91,18
+test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_nocextensions 91,18
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_postgresql_psycopg2_nocextensions 122,19
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_sqlite_pysqlite_cextensions 122,19
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_sqlite_pysqlite_nocextensions 122,19
+test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_sqlite_pysqlite_cextensions 94,19
+test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_sqlite_pysqlite_nocextensions 94,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_postgresql_psycopg2_cextensions 122,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_postgresql_psycopg2_nocextensions 122,19
 
@@ -351,8 +351,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.4_sqlite_pysqlite
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation
 
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_cextensions 5562,292,3697,11893,1106,1968,2433
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_nocextensions 5606,292,3929,13595,1223,2011,2692
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_cextensions 5892,292,3697,11893,1106,1968,2433
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 2.7_postgresql_psycopg2_nocextensions 5936,292,3929,13595,1223,2011,2692
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_cextensions 5497,274,3609,11647,1097,1921,2486
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_nocextensions 5519,274,3705,12819,1191,1928,2678
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_cextensions 5497,273,3577,11529,1077,1883,2439

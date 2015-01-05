@@ -67,23 +67,35 @@ class _Dispatch(object):
 
     # in one ORM edge case, an attribute is added to _Dispatch,
     # so __dict__ is used in just that case and potentially others.
-    __slots__ = '_parent', '_instance_cls', '__dict__'
+    __slots__ = '_parent', '_instance_cls', '__dict__', '_empty_listeners'
 
-    _empty_listeners = weakref.WeakKeyDictionary()
+    _empty_listener_reg = weakref.WeakKeyDictionary()
 
     def __init__(self, parent, instance_cls=None):
         self._parent = parent
         self._instance_cls = instance_cls
         if instance_cls:
             try:
-                _empty_listeners = self._empty_listeners[instance_cls]
+                self._empty_listeners = self._empty_listener_reg[instance_cls]
             except KeyError:
-                _empty_listeners = self._empty_listeners[instance_cls] = [
-                    _EmptyListener(ls, instance_cls)
-                    for ls in parent._event_descriptors
-                ]
-            for ls in _empty_listeners:
-                setattr(self, ls.name, ls)
+                self._empty_listeners = \
+                    self._empty_listener_reg[instance_cls] = dict(
+                        (ls.name, _EmptyListener(ls, instance_cls))
+                        for ls in parent._event_descriptors
+                    )
+        else:
+            self._empty_listeners = {}
+
+    def __getattr__(self, name):
+        # assign EmptyListeners as attributes on demand
+        # to reduce startup time for new dispatch objects
+        try:
+            ls = self._empty_listeners[name]
+        except KeyError:
+            raise AttributeError(name)
+        else:
+            setattr(self, ls.name, ls)
+            return ls
 
     @property
     def _event_descriptors(self):
@@ -244,9 +256,14 @@ class _JoinedDispatcher(object):
         self.local = local
         self.parent = parent
         self._instance_cls = self.local._instance_cls
-        for ls in local._event_descriptors:
-            setattr(self, ls.name, _JoinedListener(
-                parent, ls.name, ls))
+
+    def __getattr__(self, name):
+        # assign _JoinedListeners as attributes on demand
+        # to reduce startup time for new dispatch objects
+        ls = getattr(self.local, name)
+        jl = _JoinedListener(self.parent, ls.name, ls)
+        setattr(self, ls.name, jl)
+        return jl
 
     @property
     def _listen(self):
