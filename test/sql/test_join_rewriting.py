@@ -650,6 +650,7 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     def _test(self, selectable, assert_):
         result = testing.db.execute(selectable)
+        result.close()
         for col in selectable.inner_columns:
             assert col in result._metadata._keymap
 
