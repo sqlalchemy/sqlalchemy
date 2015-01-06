@@ -300,8 +300,8 @@ internals, comparator objects and parts of the ORM attribute and
 loader strategy system.
 
 A bench that makes use of heapy measure the startup size of Nova
-illustrates a difference of about 2 megs of memory, a total of 46%
-of memory taken up by SQLAlchemy's objects, associated dictionaries, as
+illustrates a difference of about 3.7 fewer megs, or 46%,
+taken up by SQLAlchemy's objects, associated dictionaries, as
 well as weakrefs, within a basic import of "nova.db.sqlalchemy.models"::
 
     # reported by heapy, summation of SQLAlchemy objects +
