@@ -42,41 +42,45 @@ def instances(query, cursor, context):
             def filter_fn(row):
                 return tuple(fn(x) for x, fn in zip(row, filter_fns))
 
-    (process, labels) = \
-        list(zip(*[
-            query_entity.row_processor(query,
-                                       context, cursor)
-            for query_entity in query._entities
-        ]))
+    try:
+        (process, labels) = \
+            list(zip(*[
+                query_entity.row_processor(query,
+                                           context, cursor)
+                for query_entity in query._entities
+            ]))
 
-    if not single_entity:
-        keyed_tuple = util.lightweight_named_tuple('result', labels)
+        if not single_entity:
+            keyed_tuple = util.lightweight_named_tuple('result', labels)
 
-    while True:
-        context.partials = {}
+        while True:
+            context.partials = {}
 
-        if query._yield_per:
-            fetch = cursor.fetchmany(query._yield_per)
-            if not fetch:
+            if query._yield_per:
+                fetch = cursor.fetchmany(query._yield_per)
+                if not fetch:
+                    break
+            else:
+                fetch = cursor.fetchall()
+
+            if single_entity:
+                proc = process[0]
+                rows = [proc(row) for row in fetch]
+            else:
+                rows = [keyed_tuple([proc(row) for proc in process])
+                        for row in fetch]
+
+            if filtered:
+                rows = util.unique_list(rows, filter_fn)
+
+            for row in rows:
+                yield row
+
+            if not query._yield_per:
                 break
-        else:
-            fetch = cursor.fetchall()
-
-        if single_entity:
-            proc = process[0]
-            rows = [proc(row) for row in fetch]
-        else:
-            rows = [keyed_tuple([proc(row) for proc in process])
-                    for row in fetch]
-
-        if filtered:
-            rows = util.unique_list(rows, filter_fn)
-
-        for row in rows:
-            yield row
-
-        if not query._yield_per:
-            break
+    except Exception as err:
+        cursor.close()
+        util.raise_from_cause(err)
 
 
 @util.dependencies("sqlalchemy.orm.query")
