@@ -50,10 +50,7 @@ __all__ = (
 
 
 class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
-    """Manage the relationship of a ``Mapper`` to a single class
-    attribute, as well as that attribute as it appears on individual
-    instances of the class, including attribute instrumentation,
-    attribute access, loading behavior, and dependency calculations.
+    """Represent a particular class attribute mapped by :class:`.Mapper`.
 
     The most common occurrences of :class:`.MapperProperty` are the
     mapped :class:`.Column`, which is represented in a mapping as
@@ -96,9 +93,10 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
         .. versionadded:: 0.8  Added support for .info to all
            :class:`.MapperProperty` subclasses.
 
-        .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
-           from :class:`.MapperProperty` so that it can apply to a wider
-           variety of ORM and extension constructs.
+        .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also
+           available on extension types via the
+           :attr:`.InspectionAttrInfo.info` attribute, so that it can apply
+           to a wider variety of ORM and extension constructs.
 
         .. seealso::
 
@@ -108,7 +106,6 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
 
         """
         return {}
-
 
     def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
