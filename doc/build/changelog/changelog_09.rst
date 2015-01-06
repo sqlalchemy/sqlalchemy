@@ -15,6 +15,19 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, orm, pypy
+        :versions: 1.0.0
+        :tickets: 3285
+
+        Fixed bug where if an exception were thrown at the start of a
+        :class:`.Query` before it fetched results, particularly when
+        row processors can't be formed, the cursor would stay open with
+        results pending and not actually be closed.  This is typically only
+        an issue on an interpreter like Pypy where the cursor isn't
+        immediately GC'ed, and can in some circumstances lead to transactions/
+        locks being open longer than is desirable.
+
+    .. change::
         :tags: change, mysql
         :versions: 1.0.0
         :tickets: 3275
