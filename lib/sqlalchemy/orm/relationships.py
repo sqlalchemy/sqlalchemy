@@ -775,6 +775,7 @@ class RelationshipProperty(StrategizedProperty):
 
 
         """
+        super(RelationshipProperty, self).__init__()
 
         self.uselist = uselist
         self.argument = argument

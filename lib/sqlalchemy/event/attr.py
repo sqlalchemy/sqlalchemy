@@ -40,14 +40,18 @@ import weakref
 import collections
 
 
-class RefCollection(object):
-    @util.memoized_property
-    def ref(self):
+class RefCollection(util.MemoizedSlots):
+    __slots__ = 'ref',
+
+    def _memoized_attr_ref(self):
         return weakref.ref(self, registry._collection_gced)
 
 
 class _ClsLevelDispatch(RefCollection):
     """Class-level events on :class:`._Dispatch` classes."""
+
+    __slots__ = ('name', 'arg_names', 'has_kw',
+                 'legacy_signatures', '_clslevel')
 
     def __init__(self, parent_dispatch_cls, fn):
         self.name = fn.__name__
@@ -60,8 +64,7 @@ class _ClsLevelDispatch(RefCollection):
                 key=lambda s: s[0]
             )
         ))
-        self.__doc__ = fn.__doc__ = legacy._augment_fn_docs(
-            self, parent_dispatch_cls, fn)
+        fn.__doc__ = legacy._augment_fn_docs(self, parent_dispatch_cls, fn)
 
         self._clslevel = weakref.WeakKeyDictionary()
 
@@ -158,7 +161,7 @@ class _ClsLevelDispatch(RefCollection):
         return self
 
 
-class _InstanceLevelDispatch(object):
+class _InstanceLevelDispatch(RefCollection):
     __slots__ = ()
 
     def _adjust_fn_spec(self, fn, named):
@@ -229,10 +232,9 @@ class _EmptyListener(_InstanceLevelDispatch):
 class _CompoundListener(_InstanceLevelDispatch):
     _exec_once = False
 
-    __slots__ = ()
+    __slots__ = '_exec_once_mutex',
 
-    @util.memoized_property
-    def _exec_once_mutex(self):
+    def _memoized_attr__exec_once_mutex(self):
         return threading.Lock()
 
     def exec_once(self, *args, **kw):
@@ -267,7 +269,7 @@ class _CompoundListener(_InstanceLevelDispatch):
     __nonzero__ = __bool__
 
 
-class _ListenerCollection(RefCollection, _CompoundListener):
+class _ListenerCollection(_CompoundListener):
     """Instance-level attributes on instances of :class:`._Dispatch`.
 
     Represents a collection of listeners.
@@ -277,8 +279,7 @@ class _ListenerCollection(RefCollection, _CompoundListener):
 
     """
 
-    # RefCollection has a @memoized_property, so can't do
-    # __slots__ here
+    __slots__ = 'parent_listeners', 'parent', 'name', 'listeners', 'propagate'
 
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:

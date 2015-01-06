@@ -300,7 +300,7 @@ internals, comparator objects and parts of the ORM attribute and
 loader strategy system.
 
 A bench that makes use of heapy measure the startup size of Nova
-illustrates a difference of about 2 megs of memory, a total of 27%
+illustrates a difference of about 2 megs of memory, a total of 46%
 of memory taken up by SQLAlchemy's objects, associated dictionaries, as
 well as weakrefs, within a basic import of "nova.db.sqlalchemy.models"::
 
@@ -308,13 +308,13 @@ well as weakrefs, within a basic import of "nova.db.sqlalchemy.models"::
     # associated dicts + weakref-related objects with core of Nova imported:
 
         Before: total count 26477 total bytes 7975712
-        After: total count 21413 total bytes 5752976
+        After: total count 18181 total bytes 4236456
 
     # reported for the Python module space overall with the
     # core of Nova imported:
 
         Before: Partition of a set of 355558 objects. Total size = 61661760 bytes.
-        After: Partition of a set of 350281 objects. Total size = 59415104 bytes.
+        After: Partition of a set of 346034 objects. Total size = 57808016 bytes.
 
 
 .. _feature_updatemany:

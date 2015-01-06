@@ -437,7 +437,6 @@ class InspectionAttr(object):
     here intact for forwards-compatibility.
 
     """
-
     __slots__ = ()
 
     is_selectable = False
@@ -487,6 +486,12 @@ class InspectionAttr(object):
         :data:`.HYBRID_PROPERTY`
 
         :data:`.ASSOCIATION_PROXY`
+
+    """
+
+
+class InspectionAttrInfo(InspectionAttr):
+    """Adds the ``.info`` attribute to :class:`.Inspectionattr`.
 
     """
 

@@ -660,7 +660,7 @@ HYBRID_PROPERTY = util.symbol('HYBRID_PROPERTY')
 """
 
 
-class hybrid_method(interfaces.InspectionAttr):
+class hybrid_method(interfaces.InspectionAttrInfo):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
 
@@ -703,7 +703,7 @@ class hybrid_method(interfaces.InspectionAttr):
         return self
 
 
-class hybrid_property(interfaces.InspectionAttr):
+class hybrid_property(interfaces.InspectionAttrInfo):
     """A decorator which allows definition of a Python descriptor with both
     instance-level and class-level behavior.
 

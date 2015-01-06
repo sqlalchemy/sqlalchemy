@@ -2787,6 +2787,8 @@ def _event_on_init(state, args, kwargs):
 class _ColumnMapping(dict):
     """Error reporting helper for mapper._columntoproperty."""
 
+    __slots__ = 'mapper',
+
     def __init__(self, mapper):
         self.mapper = mapper
 
