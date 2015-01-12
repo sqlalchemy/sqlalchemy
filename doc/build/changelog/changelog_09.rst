@@ -15,6 +15,15 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :pullreq: bitbucket:41
+
+        Added the ``native_enum`` flag to the ``__repr__()`` output
+        of :class:`.Enum`, which is mostly important when using it with
+        Alembic autogenerate.  Pull request courtesy Dimitris Theodorou.
+
+    .. change::
         :tags: bug, orm, pypy
         :versions: 1.0.0
         :tickets: 3285
