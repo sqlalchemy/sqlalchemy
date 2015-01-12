@@ -1155,12 +1155,15 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         assert "('x'," in e.print_sql()
 
     def test_repr(self):
-        e = Enum("x", "y", name="somename", convert_unicode=True,
-                 quote=True, inherit_schema=True)
+        e = Enum(
+            "x", "y", name="somename", convert_unicode=True, quote=True,
+            inherit_schema=True, native_enum=False)
         eq_(
             repr(e),
-            "Enum('x', 'y', name='somename', inherit_schema=True)"
-        )
+            "Enum('x', 'y', name='somename', "
+            "inherit_schema=True, native_enum=False)")
+
+binary_table = MyPickleType = metadata = None
 
 
 class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
