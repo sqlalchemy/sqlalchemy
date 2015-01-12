@@ -1146,6 +1146,7 @@ class Enum(String, SchemaType):
 
     def __repr__(self):
         return util.generic_repr(self,
+                                 additional_kw=[('native_enum', True)],
                                  to_inspect=[Enum, SchemaType],
                                  )
 

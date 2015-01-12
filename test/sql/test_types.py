@@ -1157,8 +1157,8 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_repr(self):
         e = Enum(
             "x", "y", name="somename", convert_unicode=True, quote=True,
-            inherit_schema=True)
-        eq_(repr(e), "Enum('x', 'y', name='somename', inherit_schema=True)")
+            inherit_schema=True, native_enum=False)
+        eq_(repr(e), "Enum('x', 'y', name='somename', inherit_schema=True, native_enum=False)")
 
 binary_table = MyPickleType = metadata = None
 
