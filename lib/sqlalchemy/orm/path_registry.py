@@ -49,6 +49,9 @@ class PathRegistry(object):
 
     """
 
+    is_token = False
+    is_root = False
+
     def __eq__(self, other):
         return other is not None and \
             self.path == other.path
@@ -148,6 +151,8 @@ class RootRegistry(PathRegistry):
     """
     path = ()
     has_entity = False
+    is_aliased_class = False
+    is_root = True
 
     def __getitem__(self, entity):
         return entity._path_registry
@@ -162,6 +167,15 @@ class TokenRegistry(PathRegistry):
         self.path = parent.path + (token,)
 
     has_entity = False
+
+    is_token = True
+
+    def generate_for_superclasses(self):
+        if not self.parent.is_aliased_class and not self.parent.is_root:
+            for ent in self.parent.mapper.iterate_to_root():
+                yield TokenRegistry(self.parent.parent[ent], self.token)
+        else:
+            yield self
 
     def __getitem__(self, entity):
         raise NotImplementedError()

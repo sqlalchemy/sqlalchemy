@@ -359,6 +359,7 @@ class _UnboundLoad(Load):
             return None
 
         token = start_path[0]
+
         if isinstance(token, util.string_types):
             entity = self._find_entity_basestring(query, token, raiseerr)
         elif isinstance(token, PropComparator):
@@ -402,10 +403,18 @@ class _UnboundLoad(Load):
         # prioritize "first class" options over those
         # that were "links in the chain", e.g. "x" and "y" in
         # someload("x.y.z") versus someload("x") / someload("x.y")
-        if self._is_chain_link:
-            effective_path.setdefault(context, "loader", loader)
+
+        if effective_path.is_token:
+            for path in effective_path.generate_for_superclasses():
+                if self._is_chain_link:
+                    path.setdefault(context, "loader", loader)
+                else:
+                    path.set(context, "loader", loader)
         else:
-            effective_path.set(context, "loader", loader)
+            if self._is_chain_link:
+                effective_path.setdefault(context, "loader", loader)
+            else:
+                effective_path.set(context, "loader", loader)
 
     def _find_entity_prop_comparator(self, query, token, mapper, raiseerr):
         if _is_aliased_class(mapper):

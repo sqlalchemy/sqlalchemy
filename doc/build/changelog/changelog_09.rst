@@ -15,6 +15,21 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, orm
+        :versions: 1.0.0
+        :tickets: 3287
+
+        The "wildcard" loader options, in particular the one set up by
+        the :func:`.orm.load_only` option to cover all attributes not
+        explicitly mentioned, now takes into account the superclasses
+        of a given entity, if that entity is mapped with inheritance mapping,
+        so that attribute names within the superclasses are also omitted
+        from the load.  Additionally, the polymorphic discriminator column
+        is unconditionally included in the list, just in the same way that
+        primary key columns are, so that even with load_only() set up,
+        polymorphic loading of subtypes continues to function correctly.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.0.0
         :pullreq: bitbucket:41

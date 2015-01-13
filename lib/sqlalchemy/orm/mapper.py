@@ -2320,6 +2320,13 @@ class Mapper(_InspectionAttr):
             for col in self.primary_key
         ]
 
+    @_memoized_configured_property
+    def _should_undefer_in_wildcard(self):
+        cols = set(self.primary_key)
+        if self.polymorphic_on is not None:
+            cols.add(self.polymorphic_on)
+        return cols
+
     def _get_state_attr_by_column(self, state, dict_, column,
                                   passive=attributes.PASSIVE_OFF):
         prop = self._columntoproperty[column]
