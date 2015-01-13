@@ -117,12 +117,11 @@ def _get_crud_params(compiler, stmt, **kw):
 
 def _create_bind_param(
         compiler, col, value, process=True,
-        required=False, name=None, unique=False):
+        required=False, name=None):
     if name is None:
         name = col.key
     bindparam = elements.BindParameter(
-        name, value,
-        type_=col.type, required=required, unique=unique)
+        name, value, type_=col.type, required=required)
     bindparam._is_crud = True
     if process:
         bindparam = bindparam._compiler_dispatch(compiler)
@@ -301,16 +300,18 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
             )
             compiler.returning.append(c)
         else:
-            _create_prefetch_bind_param(compiler, c, values)
+            values.append(
+                (c, _create_prefetch_bind_param(compiler, c))
+            )
+
     else:
         compiler.returning.append(c)
 
 
-def _create_prefetch_bind_param(compiler, c, values, process=True, name=None):
-    values.append(
-        (c, _create_bind_param(compiler, c, None, process=process, name=name))
-    )
+def _create_prefetch_bind_param(compiler, c, process=True, name=None):
+    param = _create_bind_param(compiler, c, None, process=process, name=name)
     compiler.prefetch.append(c)
+    return param
 
 
 class _multiparam_column(elements.ColumnElement):
@@ -325,8 +326,7 @@ class _multiparam_column(elements.ColumnElement):
             other.original == self.original
 
 
-def _process_multiparam_default_bind(
-        compiler, c, index, kw):
+def _process_multiparam_default_bind(compiler, c, index, kw):
 
     if not c.default:
         raise exc.CompileError(
@@ -337,11 +337,7 @@ def _process_multiparam_default_bind(
         return compiler.process(c.default.arg.self_group(), **kw)
     else:
         col = _multiparam_column(c, index)
-        bind = _create_bind_param(
-            compiler, col, None
-        )
-        compiler.prefetch.append(col)
-        return bind
+        return _create_prefetch_bind_param(compiler, col)
 
 
 def _append_param_insert_pk(compiler, stmt, c, values, kw):
@@ -354,7 +350,9 @@ def _append_param_insert_pk(compiler, stmt, c, values, kw):
              compiler.dialect.
              preexecute_autoincrement_sequences)
     ):
-        _create_prefetch_bind_param(compiler, c, values)
+        values.append(
+            (c, _create_prefetch_bind_param(compiler, c))
+        )
 
 
 def _append_param_insert_hasdefault(
@@ -382,7 +380,9 @@ def _append_param_insert_hasdefault(
             # don't add primary key column to postfetch
             compiler.postfetch.append(c)
     else:
-        _create_prefetch_bind_param(compiler, c, values)
+        values.append(
+            (c, _create_prefetch_bind_param(compiler, c))
+        )
 
 
 def _append_param_insert_select_hasdefault(
@@ -398,7 +398,9 @@ def _append_param_insert_select_hasdefault(
         proc = c.default.arg.self_group()
         values.append((c, proc))
     else:
-        _create_prefetch_bind_param(compiler, c, values, process=False)
+        values.append(
+            (c, _create_prefetch_bind_param(compiler, c, process=False))
+        )
 
 
 def _append_param_update(
@@ -416,7 +418,9 @@ def _append_param_update(
             else:
                 compiler.postfetch.append(c)
         else:
-            _create_prefetch_bind_param(compiler, c, values)
+            values.append(
+                (c, _create_prefetch_bind_param(compiler, c))
+            )
     elif c.server_onupdate is not None:
         if implicit_return_defaults and \
                 c in implicit_return_defaults:
@@ -468,7 +472,10 @@ def _get_multitable_params(
                     )
                     compiler.postfetch.append(c)
                 else:
-                    _create_prefetch_bind_param(compiler, c, values, name=_col_bind_name(c))
+                    values.append(
+                        (c, _create_prefetch_bind_param(
+                            compiler, c, name=_col_bind_name(c)))
+                    )
             elif c.server_onupdate is not None:
                 compiler.postfetch.append(c)
 
