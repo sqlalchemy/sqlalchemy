@@ -2388,6 +2388,13 @@ class Mapper(InspectionAttr):
         return collection
 
     @_memoized_configured_property
+    def _should_undefer_in_wildcard(self):
+        cols = set(self.primary_key)
+        if self.polymorphic_on is not None:
+            cols.add(self.polymorphic_on)
+        return cols
+
+    @_memoized_configured_property
     def _primary_key_propkeys(self):
         return set([prop.key for prop in self._all_pk_props])
 
