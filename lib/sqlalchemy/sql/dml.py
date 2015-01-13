@@ -277,6 +277,12 @@ class ValuesBase(UpdateBase):
            deals with an arbitrary number of rows, so the
            :attr:`.ResultProxy.inserted_primary_key` accessor does not apply.
 
+        .. versionchanged:: 1.0.0 A multiple-VALUES INSERT now supports
+           columns with Python side default values and callables in the
+           same way as that of an "executemany" style of invocation; the
+           callable is invoked for each row.   See :ref:`bug_3288`
+           for other details.
+
         .. seealso::
 
             :ref:`inserts_and_updates` - SQL Expression

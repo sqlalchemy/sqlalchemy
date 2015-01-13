@@ -229,6 +229,7 @@ class AssertsCompiledSQL(object):
     def assert_compile(self, clause, result, params=None,
                        checkparams=None, dialect=None,
                        checkpositional=None,
+                       check_prefetch=None,
                        use_default_dialect=False,
                        allow_dialect_select=False,
                        literal_binds=False):
@@ -289,6 +290,8 @@ class AssertsCompiledSQL(object):
         if checkpositional is not None:
             p = c.construct_params(params)
             eq_(tuple([p[x] for x in c.positiontup]), checkpositional)
+        if check_prefetch is not None:
+            eq_(c.prefetch, check_prefetch)
 
 
 class ComparesTables(object):

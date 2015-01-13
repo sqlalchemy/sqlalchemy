@@ -956,22 +956,23 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def _process_executesingle_defaults(self):
         key_getter = self.compiled._key_getters_for_crud_column[2]
-
         prefetch = self.compiled.prefetch
         self.current_parameters = compiled_parameters = \
             self.compiled_parameters[0]
 
         for c in prefetch:
             if self.isinsert:
-                val = self.get_insert_default(c)
+                if c.default and \
+                        not c.default.is_sequence and c.default.is_scalar:
+                    val = c.default.arg
+                else:
+                    val = self.get_insert_default(c)
             else:
                 val = self.get_update_default(c)
 
             if val is not None:
                 compiled_parameters[key_getter(c)] = val
         del self.current_parameters
-
-
 
 
 DefaultDialect.execution_ctx_cls = DefaultExecutionContext

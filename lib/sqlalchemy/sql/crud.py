@@ -116,11 +116,13 @@ def _get_crud_params(compiler, stmt, **kw):
 
 
 def _create_bind_param(
-        compiler, col, value, process=True, required=False, name=None):
+        compiler, col, value, process=True,
+        required=False, name=None, unique=False):
     if name is None:
         name = col.key
-    bindparam = elements.BindParameter(name, value,
-                                       type_=col.type, required=required)
+    bindparam = elements.BindParameter(
+        name, value,
+        type_=col.type, required=required, unique=unique)
     bindparam._is_crud = True
     if process:
         bindparam = bindparam._compiler_dispatch(compiler)
@@ -299,12 +301,47 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
             )
             compiler.returning.append(c)
         else:
-            values.append(
-                (c, _create_bind_param(compiler, c, None))
-            )
-            compiler.prefetch.append(c)
+            _create_prefetch_bind_param(compiler, c, values)
     else:
         compiler.returning.append(c)
+
+
+def _create_prefetch_bind_param(compiler, c, values, process=True, name=None):
+    values.append(
+        (c, _create_bind_param(compiler, c, None, process=process, name=name))
+    )
+    compiler.prefetch.append(c)
+
+
+class _multiparam_column(elements.ColumnElement):
+    def __init__(self, original, index):
+        self.key = "%s_%d" % (original.key, index + 1)
+        self.original = original
+        self.default = original.default
+
+    def __eq__(self, other):
+        return isinstance(other, _multiparam_column) and \
+            other.key == self.key and \
+            other.original == self.original
+
+
+def _process_multiparam_default_bind(
+        compiler, c, index, kw):
+
+    if not c.default:
+        raise exc.CompileError(
+            "INSERT value for column %s is explicitly rendered as a bound"
+            "parameter in the VALUES clause; "
+            "a Python-side value or SQL expression is required" % c)
+    elif c.default.is_clause_element:
+        return compiler.process(c.default.arg.self_group(), **kw)
+    else:
+        col = _multiparam_column(c, index)
+        bind = _create_bind_param(
+            compiler, col, None
+        )
+        compiler.prefetch.append(col)
+        return bind
 
 
 def _append_param_insert_pk(compiler, stmt, c, values, kw):
@@ -317,11 +354,7 @@ def _append_param_insert_pk(compiler, stmt, c, values, kw):
              compiler.dialect.
              preexecute_autoincrement_sequences)
     ):
-        values.append(
-            (c, _create_bind_param(compiler, c, None))
-        )
-
-        compiler.prefetch.append(c)
+        _create_prefetch_bind_param(compiler, c, values)
 
 
 def _append_param_insert_hasdefault(
@@ -349,10 +382,7 @@ def _append_param_insert_hasdefault(
             # don't add primary key column to postfetch
             compiler.postfetch.append(c)
     else:
-        values.append(
-            (c, _create_bind_param(compiler, c, None))
-        )
-        compiler.prefetch.append(c)
+        _create_prefetch_bind_param(compiler, c, values)
 
 
 def _append_param_insert_select_hasdefault(
@@ -368,10 +398,7 @@ def _append_param_insert_select_hasdefault(
         proc = c.default.arg.self_group()
         values.append((c, proc))
     else:
-        values.append(
-            (c, _create_bind_param(compiler, c, None, process=False))
-        )
-        compiler.prefetch.append(c)
+        _create_prefetch_bind_param(compiler, c, values, process=False)
 
 
 def _append_param_update(
@@ -389,10 +416,7 @@ def _append_param_update(
             else:
                 compiler.postfetch.append(c)
         else:
-            values.append(
-                (c, _create_bind_param(compiler, c, None))
-            )
-            compiler.prefetch.append(c)
+            _create_prefetch_bind_param(compiler, c, values)
     elif c.server_onupdate is not None:
         if implicit_return_defaults and \
                 c in implicit_return_defaults:
@@ -444,13 +468,7 @@ def _get_multitable_params(
                     )
                     compiler.postfetch.append(c)
                 else:
-                    values.append(
-                        (c, _create_bind_param(
-                            compiler, c, None, name=_col_bind_name(c)
-                        )
-                        )
-                    )
-                    compiler.prefetch.append(c)
+                    _create_prefetch_bind_param(compiler, c, values, name=_col_bind_name(c))
             elif c.server_onupdate is not None:
                 compiler.postfetch.append(c)
 
@@ -469,7 +487,8 @@ def _extend_values_for_multiparams(compiler, stmt, values, kw):
                 ) if elements._is_literal(row[c.key])
                     else compiler.process(
                         row[c.key].self_group(), **kw))
-                if c.key in row else param
+                if c.key in row else
+                _process_multiparam_default_bind(compiler, c, i, kw)
             )
             for (c, param) in values_0
         ]

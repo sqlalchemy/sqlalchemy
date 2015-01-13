@@ -23,6 +23,25 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3288
+
+        The multi-values version of :meth:`.Insert.values` has been
+        repaired to work more usefully with tables that have Python-
+        side default values and/or functions, as well as server-side
+        defaults. The feature will now work with a dialect that uses
+        "positional" parameters; a Python callable will also be
+        invoked individually for each row just as is the case with an
+        "executemany" style invocation; a server- side default column
+        will no longer implicitly receive the value explicitly
+        specified for the first row, instead refusing to invoke
+        without an explicit value.
+
+        .. seealso::
+
+            :ref:`bug_3288`
+
+    .. change::
         :tags: feature, general
 
         Structural memory use has been improved via much more significant use

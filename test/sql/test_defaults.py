@@ -336,14 +336,24 @@ class DefaultTest(fixtures.TestBase):
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, None, 'hi')])
 
-    @testing.fails_on('firebird', 'Data type unknown')
     def test_insertmany(self):
-        # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql+mysqldb') and
-                testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
-            return
-
         t.insert().execute({}, {}, {})
+
+        ctexec = currenttime.scalar()
+        l = t.select().execute()
+        today = datetime.date.today()
+        eq_(l.fetchall(),
+            [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
+              12, today, 'py', 'hi'),
+             (52, 'imthedefault', f, ts, ts, ctexec, True, False,
+              12, today, 'py', 'hi'),
+             (53, 'imthedefault', f, ts, ts, ctexec, True, False,
+              12, today, 'py', 'hi')])
+
+    @testing.requires.multivalues_inserts
+    def test_insert_multivalues(self):
+
+        t.insert().values([{}, {}, {}]).execute()
 
         ctexec = currenttime.scalar()
         l = t.select().execute()

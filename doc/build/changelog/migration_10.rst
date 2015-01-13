@@ -1362,6 +1362,89 @@ be qualified with :func:`.text` or similar.
 
 :ticket:`2992`
 
+.. _bug_3288:
+
+Python-side defaults invoked for each row invidually when using a multivalued insert
+------------------------------------------------------------------------------------
+
+Support for Python-side column defaults when using the multi-valued
+version of :meth:`.Insert.values` were essentially not implemented, and
+would only work "by accident" in specific situations, when the dialect in
+use was using a non-positional (e.g. named) style of bound parameter, and
+when it was not necessary that a Python-side callable be invoked for each
+row.
+
+The feature has been overhauled so that it works more similarly to
+that of an "executemany" style of invocation::
+
+    import itertools
+
+    counter = itertools.count(1)
+    t = Table(
+        'my_table', metadata,
+        Column('id', Integer, default=lambda: next(counter)),
+        Column('data', String)
+    )
+
+    conn.execute(t.insert().values([
+        {"data": "d1"},
+        {"data": "d2"},
+        {"data": "d3"},
+    ]))
+
+The above example will invoke ``next(counter)`` for each row individually
+as would be expected::
+
+    INSERT INTO my_table (id, data) VALUES (?, ?), (?, ?), (?, ?)
+    (1, 'd1', 2, 'd2', 3, 'd3')
+
+Previously, a positional dialect would fail as a bind would not be generated
+for additional positions::
+
+    Incorrect number of bindings supplied. The current statement uses 6,
+    and there are 4 supplied.
+    [SQL: u'INSERT INTO my_table (id, data) VALUES (?, ?), (?, ?), (?, ?)']
+    [parameters: (1, 'd1', 'd2', 'd3')]
+
+And with a "named" dialect, the same value for "id" would be re-used in
+each row (hence this change is backwards-incompatible with a system that
+relied on this)::
+
+    INSERT INTO my_table (id, data) VALUES (:id, :data_0), (:id, :data_1), (:id, :data_2)
+    {u'data_2': 'd3', u'data_1': 'd2', u'data_0': 'd1', 'id': 1}
+
+The system will also refuse to invoke a "server side" default as inline-rendered
+SQL, since it cannot be guaranteed that a server side default is compatible
+with this.  If the VALUES clause renders for a specific column, then a Python-side
+value is required; if an omitted value only refers to a server-side default,
+an exception is raised::
+
+    t = Table(
+        'my_table', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', String, server_default='some default')
+    )
+
+    conn.execute(t.insert().values([
+        {"data": "d1"},
+        {"data": "d2"},
+        {},
+    ]))
+
+will raise::
+
+    sqlalchemy.exc.CompileError: INSERT value for column my_table.data is
+    explicitly rendered as a boundparameter in the VALUES clause; a
+    Python-side value or SQL expression is required
+
+Previously, the value "d1" would be copied into that of the third
+row (but again, only with named format!)::
+
+    INSERT INTO my_table (data) VALUES (:data_0), (:data_1), (:data_0)
+    {u'data_1': 'd2', u'data_0': 'd1'}
+
+:ticket:`3288`
+
 .. _change_3163:
 
 Event listeners can not be added or removed from within that event's runner
