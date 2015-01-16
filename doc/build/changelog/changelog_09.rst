@@ -15,6 +15,17 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, postgresql
+        :versions: 1.0.0
+        :tickets: 3174
+
+        Fixed bug where Postgresql dialect would fail to render an
+        expression in an :class:`.Index` that did not correspond directly
+        to a table-bound column; typically when a :func:`.text` construct
+        was one of the expressions within the index; or could misinterpret the
+        list of expressions if one or more of them were such an expression.
+
+    .. change::
         :tags: bug, orm
         :versions: 1.0.0
         :tickets: 3287
