@@ -1477,8 +1477,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
                             if not isinstance(expr, expression.ColumnClause)
                             else expr,
                             include_table=False, literal_binds=True) +
-                        (c.key in ops and (' ' + ops[c.key]) or '')
-                        for expr, c in zip(index.expressions, index.columns)])
+                        (
+                            (' ' + ops[expr.key])
+                            if hasattr(expr, 'key')
+                            and expr.key in ops else ''
+                        )
+                        for expr in index.expressions
+                    ])
                 )
 
         whereclause = index.dialect_options["postgresql"]["where"]
