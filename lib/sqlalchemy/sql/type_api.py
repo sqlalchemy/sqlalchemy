@@ -12,7 +12,7 @@
 
 from .. import exc, util
 from . import operators
-from .visitors import Visitable
+from .visitors import Visitable, VisitableType
 
 # these are back-assigned by sqltypes.
 BOOLEANTYPE = None
@@ -460,7 +460,11 @@ class TypeEngine(Visitable):
         return util.generic_repr(self)
 
 
-class UserDefinedType(TypeEngine):
+class VisitableCheckKWArg(util.EnsureKWArgType, VisitableType):
+    pass
+
+
+class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
     """Base for user defined types.
 
     This should be the base of new types.  Note that
@@ -473,7 +477,7 @@ class UserDefinedType(TypeEngine):
           def __init__(self, precision = 8):
               self.precision = precision
 
-          def get_col_spec(self):
+          def get_col_spec(self, **kw):
               return "MYTYPE(%s)" % self.precision
 
           def bind_processor(self, dialect):
@@ -493,8 +497,22 @@ class UserDefinedType(TypeEngine):
           Column('data', MyType(16))
           )
 
+    The ``get_col_spec()`` method will in most cases receive a keyword
+    argument ``type_expression`` which refers to the owning expression
+    of the type as being compiled, such as a :class:`.Column` or
+    :func:`.cast` construct.  This keyword is only sent if the method
+    accepts keyword arguments (e.g. ``**kw``) in its argument signature;
+    introspection is used to check for this in order to support legacy
+    forms of this function.
+
+    .. versionadded:: 1.0.0 the owning expression is passed to
+       the ``get_col_spec()`` method via the keyword argument
+       ``type_expression``, if it receives ``**kw`` in its signature.
+
     """
     __visit_name__ = "user_defined"
+
+    ensure_kwarg = 'get_col_spec'
 
     class Comparator(TypeEngine.Comparator):
         __slots__ = ()

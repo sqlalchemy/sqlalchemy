@@ -1425,7 +1425,8 @@ class PGDDLCompiler(compiler.DDLCompiler):
             else:
                 colspec += " SERIAL"
         else:
-            colspec += " " + self.dialect.type_compiler.process(column.type)
+            colspec += " " + self.dialect.type_compiler.process(column.type,
+                                                    type_expression=column)
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default
@@ -1545,94 +1546,93 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
-
-    def visit_TSVECTOR(self, type):
+    def visit_TSVECTOR(self, type, **kw):
         return "TSVECTOR"
 
-    def visit_INET(self, type_):
+    def visit_INET(self, type_, **kw):
         return "INET"
 
-    def visit_CIDR(self, type_):
+    def visit_CIDR(self, type_, **kw):
         return "CIDR"
 
-    def visit_MACADDR(self, type_):
+    def visit_MACADDR(self, type_, **kw):
         return "MACADDR"
 
-    def visit_OID(self, type_):
+    def visit_OID(self, type_, **kw):
         return "OID"
 
-    def visit_FLOAT(self, type_):
+    def visit_FLOAT(self, type_, **kw):
         if not type_.precision:
             return "FLOAT"
         else:
             return "FLOAT(%(precision)s)" % {'precision': type_.precision}
 
-    def visit_DOUBLE_PRECISION(self, type_):
+    def visit_DOUBLE_PRECISION(self, type_, **kw):
         return "DOUBLE PRECISION"
 
-    def visit_BIGINT(self, type_):
+    def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
 
-    def visit_HSTORE(self, type_):
+    def visit_HSTORE(self, type_, **kw):
         return "HSTORE"
 
-    def visit_JSON(self, type_):
+    def visit_JSON(self, type_, **kw):
         return "JSON"
 
-    def visit_JSONB(self, type_):
+    def visit_JSONB(self, type_, **kw):
         return "JSONB"
 
-    def visit_INT4RANGE(self, type_):
+    def visit_INT4RANGE(self, type_, **kw):
         return "INT4RANGE"
 
-    def visit_INT8RANGE(self, type_):
+    def visit_INT8RANGE(self, type_, **kw):
         return "INT8RANGE"
 
-    def visit_NUMRANGE(self, type_):
+    def visit_NUMRANGE(self, type_, **kw):
         return "NUMRANGE"
 
-    def visit_DATERANGE(self, type_):
+    def visit_DATERANGE(self, type_, **kw):
         return "DATERANGE"
 
-    def visit_TSRANGE(self, type_):
+    def visit_TSRANGE(self, type_, **kw):
         return "TSRANGE"
 
-    def visit_TSTZRANGE(self, type_):
+    def visit_TSTZRANGE(self, type_, **kw):
         return "TSTZRANGE"
 
-    def visit_datetime(self, type_):
-        return self.visit_TIMESTAMP(type_)
+    def visit_datetime(self, type_, **kw):
+        return self.visit_TIMESTAMP(type_, **kw)
 
-    def visit_enum(self, type_):
+    def visit_enum(self, type_, **kw):
         if not type_.native_enum or not self.dialect.supports_native_enum:
-            return super(PGTypeCompiler, self).visit_enum(type_)
+            return super(PGTypeCompiler, self).visit_enum(type_, **kw)
         else:
-            return self.visit_ENUM(type_)
+            return self.visit_ENUM(type_, **kw)
 
-    def visit_ENUM(self, type_):
+    def visit_ENUM(self, type_, **kw):
         return self.dialect.identifier_preparer.format_type(type_)
 
-    def visit_TIMESTAMP(self, type_):
+    def visit_TIMESTAMP(self, type_, **kw):
         return "TIMESTAMP%s %s" % (
             getattr(type_, 'precision', None) and "(%d)" %
             type_.precision or "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
         )
 
-    def visit_TIME(self, type_):
+    def visit_TIME(self, type_, **kw):
         return "TIME%s %s" % (
             getattr(type_, 'precision', None) and "(%d)" %
             type_.precision or "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
         )
 
-    def visit_INTERVAL(self, type_):
+    def visit_INTERVAL(self, type_, **kw):
         if type_.precision is not None:
             return "INTERVAL(%d)" % type_.precision
         else:
             return "INTERVAL"
 
-    def visit_BIT(self, type_):
+    def visit_BIT(self, type_, **kw):
         if type_.varying:
             compiled = "BIT VARYING"
             if type_.length is not None:
@@ -1641,16 +1641,16 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             compiled = "BIT(%d)" % type_.length
         return compiled
 
-    def visit_UUID(self, type_):
+    def visit_UUID(self, type_, **kw):
         return "UUID"
 
-    def visit_large_binary(self, type_):
-        return self.visit_BYTEA(type_)
+    def visit_large_binary(self, type_, **kw):
+        return self.visit_BYTEA(type_, **kw)
 
-    def visit_BYTEA(self, type_):
+    def visit_BYTEA(self, type_, **kw):
         return "BYTEA"
 
-    def visit_ARRAY(self, type_):
+    def visit_ARRAY(self, type_, **kw):
         return self.process(type_.item_type) + ('[]' * (type_.dimensions
                                                         if type_.dimensions
                                                         is not None else 1))

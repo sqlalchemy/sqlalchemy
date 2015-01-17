@@ -10,6 +10,8 @@ from sqlalchemy import (
     type_coerce, VARCHAR, Time, DateTime, BigInteger, SmallInteger, BOOLEAN,
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
     INTEGER, DECIMAL, NUMERIC, FLOAT, REAL)
+from sqlalchemy.sql import ddl
+
 from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
@@ -307,6 +309,24 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             "SELECT 'HI->test<-THERE' AS anon_1",
             dialect='default',
             literal_binds=True
+        )
+
+    def test_kw_colspec(self):
+        class MyType(types.UserDefinedType):
+            def get_col_spec(self, **kw):
+                return "FOOB %s" % kw['type_expression'].name
+
+        class MyOtherType(types.UserDefinedType):
+            def get_col_spec(self):
+                return "BAR"
+
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', MyType)),
+            "bar FOOB bar"
+        )
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', MyOtherType)),
+            "bar BAR"
         )
 
     def test_typedecorator_literal_render_fallback_bound(self):
@@ -1641,6 +1661,49 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_decimal_scale(self):
         self.assert_compile(types.DECIMAL(2, 4), 'DECIMAL(2, 4)')
+
+    def test_kwarg_legacy_typecompiler(self):
+        from sqlalchemy.sql import compiler
+
+        class SomeTypeCompiler(compiler.GenericTypeCompiler):
+            # transparently decorated w/ kw decorator
+            def visit_VARCHAR(self, type_):
+                return "MYVARCHAR"
+
+            # not affected
+            def visit_INTEGER(self, type_, **kw):
+                return "MYINTEGER %s" % kw['type_expression'].name
+
+        dialect = default.DefaultDialect()
+        dialect.type_compiler = SomeTypeCompiler(dialect)
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', VARCHAR(50))),
+            "bar MYVARCHAR",
+            dialect=dialect
+        )
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', INTEGER)),
+            "bar MYINTEGER bar",
+            dialect=dialect
+        )
+
+
+class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):
+    __backend__ = True
+
+    def test_user_defined(self):
+        """test that dialects pass the column through on DDL."""
+
+        class MyType(types.UserDefinedType):
+            def get_col_spec(self, **kw):
+                return "FOOB %s" % kw['type_expression'].name
+
+        m = MetaData()
+        t = Table('t', m, Column('bar', MyType))
+        self.assert_compile(
+            ddl.CreateColumn(t.c.bar),
+            "bar FOOB bar"
+        )
 
 
 class NumericRawSQLTest(fixtures.TestBase):

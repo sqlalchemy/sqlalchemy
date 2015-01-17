@@ -23,6 +23,22 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: enhancement, sql
+        :tickets: 3074
+
+        Custom dialects that implement :class:`.GenericTypeCompiler` can
+        now be constructed such that the visit methods receive an indication
+        of the owning expression object, if any.  Any visit method that
+        accepts keyword arguments (e.g. ``**kw``) will in most cases
+        receive a keyword argument ``type_expression``, referring to the
+        expression object that the type is contained within.  For columns
+        in DDL, the dialect's compiler class may need to alter its
+        ``get_column_specification()`` method to support this as well.
+        The ``UserDefinedType.get_col_spec()`` method will also receive
+        ``type_expression`` if it provides ``**kw`` in its argument
+        signature.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3288
 

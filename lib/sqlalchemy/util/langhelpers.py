@@ -1348,6 +1348,7 @@ def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
 
 NoneType = type(None)
 
+
 def attrsetter(attrname):
     code = \
         "def set(obj, value):"\
@@ -1355,3 +1356,29 @@ def attrsetter(attrname):
     env = locals().copy()
     exec(code, env)
     return env['set']
+
+
+class EnsureKWArgType(type):
+    """Apply translation of functions to accept **kw arguments if they
+    don't already.
+
+    """
+    def __init__(cls, clsname, bases, clsdict):
+        fn_reg = cls.ensure_kwarg
+        if fn_reg:
+            for key in clsdict:
+                m = re.match(fn_reg, key)
+                if m:
+                    fn = clsdict[key]
+                    spec = inspect.getargspec(fn)
+                    if not spec.keywords:
+                        clsdict[key] = wrapped = cls._wrap_w_kw(fn)
+                        setattr(cls, key, wrapped)
+        super(EnsureKWArgType, cls).__init__(clsname, bases, clsdict)
+
+    def _wrap_w_kw(self, fn):
+
+        def wrap(*arg, **kw):
+            return fn(*arg)
+        return update_wrapper(wrap, fn)
+

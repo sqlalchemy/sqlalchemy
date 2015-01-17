@@ -660,7 +660,8 @@ class SQLiteCompiler(compiler.SQLCompiler):
 class SQLiteDDLCompiler(compiler.DDLCompiler):
 
     def get_column_specification(self, column, **kwargs):
-        coltype = self.dialect.type_compiler.process(column.type)
+        coltype = self.dialect.type_compiler.process(
+            column.type, type_expression=column)
         colspec = self.preparer.format_column(column) + " " + coltype
         default = self.get_column_default_string(column)
         if default is not None:
@@ -716,24 +717,24 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
-    def visit_large_binary(self, type_):
+    def visit_large_binary(self, type_, **kw):
         return self.visit_BLOB(type_)
 
-    def visit_DATETIME(self, type_):
+    def visit_DATETIME(self, type_, **kw):
         if not isinstance(type_, _DateTimeMixin) or \
                 type_.format_is_text_affinity:
             return super(SQLiteTypeCompiler, self).visit_DATETIME(type_)
         else:
             return "DATETIME_CHAR"
 
-    def visit_DATE(self, type_):
+    def visit_DATE(self, type_, **kw):
         if not isinstance(type_, _DateTimeMixin) or \
                 type_.format_is_text_affinity:
             return super(SQLiteTypeCompiler, self).visit_DATE(type_)
         else:
             return "DATE_CHAR"
 
-    def visit_TIME(self, type_):
+    def visit_TIME(self, type_, **kw):
         if not isinstance(type_, _DateTimeMixin) or \
                 type_.format_is_text_affinity:
             return super(SQLiteTypeCompiler, self).visit_TIME(type_)
