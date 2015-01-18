@@ -3,13 +3,13 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing.schema import Table, Column
 from test.orm import _fixtures
-from sqlalchemy import exc
-from sqlalchemy.testing import fixtures
+from sqlalchemy import exc, util
+from sqlalchemy.testing import fixtures, config
 from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.orm import mapper, relationship, backref, \
     create_session, unitofwork, attributes,\
     Session, exc as orm_exc
-from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import Mock, patch
 from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 from sqlalchemy import event
 
@@ -1473,6 +1473,67 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             sess.flush
         )
 
+    def test_update_single_missing_broken_multi_rowcount(self):
+        @util.memoized_property
+        def rowcount(self):
+            if len(self.context.compiled_parameters) > 1:
+                return -1
+            else:
+                return self.context.rowcount
+
+        with patch.object(
+                config.db.dialect, "supports_sane_multi_rowcount", False):
+            with patch(
+                    "sqlalchemy.engine.result.ResultProxy.rowcount",
+                    rowcount):
+                Parent, Child = self._fixture()
+                sess = Session()
+                p1 = Parent(id=1, data=2)
+                sess.add(p1)
+                sess.flush()
+
+                sess.execute(self.tables.parent.delete())
+
+                p1.data = 3
+                assert_raises_message(
+                    orm_exc.StaleDataError,
+                    "UPDATE statement on table 'parent' expected to "
+                    "update 1 row\(s\); 0 were matched.",
+                    sess.flush
+                )
+
+    def test_update_multi_missing_broken_multi_rowcount(self):
+        @util.memoized_property
+        def rowcount(self):
+            if len(self.context.compiled_parameters) > 1:
+                return -1
+            else:
+                return self.context.rowcount
+
+        with patch.object(
+                config.db.dialect, "supports_sane_multi_rowcount", False):
+            with patch(
+                    "sqlalchemy.engine.result.ResultProxy.rowcount",
+                    rowcount):
+                Parent, Child = self._fixture()
+                sess = Session()
+                p1 = Parent(id=1, data=2)
+                p2 = Parent(id=2, data=3)
+                sess.add_all([p1, p2])
+                sess.flush()
+
+                sess.execute(self.tables.parent.delete().where(Parent.id == 1))
+
+                p1.data = 3
+                p2.data = 4
+                sess.flush()  # no exception
+
+                # update occurred for remaining row
+                eq_(
+                    sess.query(Parent.id, Parent.data).all(),
+                    [(2, 4)]
+                )
+
     @testing.requires.sane_multi_rowcount
     def test_delete_multi_missing_warning(self):
         Parent, Child = self._fixture()
@@ -1544,6 +1605,7 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             T(id=10, data='t10', def_='def3'),
             T(id=11, data='t11'),
         ])
+
         self.assert_sql_execution(
             testing.db,
             sess.flush,

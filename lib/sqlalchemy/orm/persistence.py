@@ -617,6 +617,14 @@ def _emit_update_statements(base_mapper, uowtransaction,
         rows = 0
         records = list(records)
 
+        # TODO: would be super-nice to not have to determine this boolean
+        # inside the loop here, in the 99.9999% of the time there's only
+        # one connection in use
+        assert_singlerow = connection.dialect.supports_sane_rowcount
+        assert_multirow = assert_singlerow and \
+            connection.dialect.supports_sane_multi_rowcount
+        allow_multirow = not needs_version_id or assert_multirow
+
         if hasvalue:
             for state, state_dict, params, mapper, \
                     connection, value_params in records:
@@ -635,9 +643,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         value_params)
                 rows += c.rowcount
         else:
-            if needs_version_id and \
-                not connection.dialect.supports_sane_multi_rowcount and \
-                    connection.dialect.supports_sane_rowcount:
+            if not allow_multirow:
                 for state, state_dict, params, mapper, \
                         connection, value_params in records:
                     c = cached_connections[connection].\
@@ -654,6 +660,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
                     rows += c.rowcount
             else:
                 multiparams = [rec[2] for rec in records]
+
                 c = cached_connections[connection].\
                     execute(statement, multiparams)
 
@@ -670,7 +677,8 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         c.context.compiled_parameters[0],
                         value_params)
 
-        if connection.dialect.supports_sane_rowcount:
+        if assert_multirow or assert_singlerow and \
+                len(multiparams) == 1:
             if rows != len(records):
                 raise orm_exc.StaleDataError(
                     "UPDATE statement on table '%s' expected to "
