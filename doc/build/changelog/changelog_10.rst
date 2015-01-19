@@ -23,6 +23,23 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3227, 3242, 1326
+
+        The primary :class:`.Mapper` of a :class:`.Query` is now passed to the
+        :meth:`.Session.get_bind` method when calling upon
+        :meth:`.Query.count`, :meth:`.Query.update`, :meth:`.Query.delete`,
+        as well as queries against mapped columns,
+        :obj:`.column_property` objects, and SQL functions and expressions
+        derived from mapped columns.   This allows sessions that rely upon
+        either customized :meth:`.Session.get_bind` schemes or "bound" metadata
+        to work in all relevant cases.
+
+        .. seealso::
+
+            :ref:`bug_3227`
+
+    .. change::
         :tags: enhancement, sql
         :tickets: 3074
 

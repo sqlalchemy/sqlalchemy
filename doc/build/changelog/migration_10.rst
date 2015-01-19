@@ -381,6 +381,59 @@ of inheritance-oriented scenarios, including:
 
 :ticket:`3035`
 
+
+.. _bug_3227:
+
+Session.get_bind() will receive the Mapper in all relevant Query cases
+-----------------------------------------------------------------------
+
+A series of issues were repaired where the :meth:`.Session.get_bind`
+would not receive the primary :class:`.Mapper` of the :class:`.Query`,
+even though this mapper was readily available (the primary mapper is the
+single mapper, or alternatively the first mapper, that is associated with
+a :class:`.Query` object).
+
+The :class:`.Mapper` object, when passed to :meth:`.Session.get_bind`,
+is typically used by sessions that make use of the
+:paramref:`.Session.binds` parameter to associate mappers with a
+series of engines (although in this use case, things frequently
+"worked" in most cases anyway as the bind would be located via the
+mapped table object), or more specifically implement a user-defined
+:meth:`.Session.get_bind` method that provies some pattern of
+selecting engines based on mappers, such as horizontal sharding or a
+so-called "routing" session that routes queries to different backends.
+
+These scenarios include:
+
+* :meth:`.Query.count`::
+
+        session.query(User).count()
+
+* :meth:`.Query.update` and :meth:`.Query.delete`, both for the UPDATE/DELETE
+  statement as well as for the SELECT used by the "fetch" strategy::
+
+        session.query(User).filter(User.id == 15).update(
+                {"name": "foob"}, synchronize_session='fetch')
+
+        session.query(User).filter(User.id == 15).delete(
+                synchronize_session='fetch')
+
+* Queries against individual columns::
+
+        session.query(User.id, User.name).all()
+
+* SQL functions and other expressions against indirect mappings such as
+  :obj:`.column_property`::
+
+        class User(Base):
+            # ...
+
+            score = column_property(func.coalesce(self.tables.users.c.name, None)))
+
+        session.query(func.max(User.score)).scalar()
+
+:ticket:`3227` :ticket:`3242` :ticket:`1326`
+
 .. _feature_2963:
 
 .info dictionary improvements
