@@ -677,8 +677,9 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         c.context.compiled_parameters[0],
                         value_params)
 
-        if hasvalue or assert_multirow or assert_singlerow and \
-                len(multiparams) == 1:
+        if hasvalue or assert_multirow or (
+                assert_singlerow and
+                len(multiparams)) == 1:
             if rows != len(records):
                 raise orm_exc.StaleDataError(
                     "UPDATE statement on table '%s' expected to "
