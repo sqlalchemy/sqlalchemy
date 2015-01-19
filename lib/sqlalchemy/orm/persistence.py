@@ -1030,7 +1030,6 @@ class BulkUD(object):
 
     def __init__(self, query):
         self.query = query.enable_eagerloads(False)
-        self.mapper = self.query._bind_mapper()
 
     @property
     def session(self):
@@ -1125,7 +1124,6 @@ class BulkFetch(BulkUD):
             self.primary_table.primary_key)
         self.matched_rows = session.execute(
             select_stmt,
-            mapper=self.mapper,
             params=query._params).fetchall()
 
 
@@ -1136,6 +1134,7 @@ class BulkUpdate(BulkUD):
         super(BulkUpdate, self).__init__(query)
         self.query._no_select_modifiers("update")
         self.values = values
+        self.mapper = self.query._mapper_zero_or_none()
 
     @classmethod
     def factory(cls, query, synchronize_session, values):
@@ -1181,8 +1180,7 @@ class BulkUpdate(BulkUD):
                                  self.context.whereclause, values)
 
         self.result = self.query.session.execute(
-            update_stmt, params=self.query._params,
-            mapper=self.mapper)
+            update_stmt, params=self.query._params)
         self.rowcount = self.result.rowcount
 
     def _do_post(self):
@@ -1209,10 +1207,8 @@ class BulkDelete(BulkUD):
         delete_stmt = sql.delete(self.primary_table,
                                  self.context.whereclause)
 
-        self.result = self.query.session.execute(
-            delete_stmt,
-            params=self.query._params,
-            mapper=self.mapper)
+        self.result = self.query.session.execute(delete_stmt,
+                                                 params=self.query._params)
         self.rowcount = self.result.rowcount
 
     def _do_post(self):
