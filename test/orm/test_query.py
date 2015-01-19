@@ -3224,8 +3224,9 @@ class SessionBindTest(QueryTest):
         get_bind = mock.Mock(side_effect=session.get_bind)
         with mock.patch.object(session, "get_bind", get_bind):
             yield
-        is_(get_bind.mock_calls[0][1][0], inspect(self.classes.User))
-        is_not_(get_bind.mock_calls[0][2]['clause'], None)
+        for call_ in get_bind.mock_calls:
+            is_(call_[1][0], inspect(self.classes.User))
+            is_not_(call_[2]['clause'], None)
 
     def test_single_entity_q(self):
         User = self.classes.User
@@ -3251,19 +3252,33 @@ class SessionBindTest(QueryTest):
         with self._assert_bind_args(session):
             session.query(func.max(User.name)).all()
 
-    def test_bulk_update(self):
+    def test_bulk_update_no_sync(self):
         User = self.classes.User
         session = Session()
         with self._assert_bind_args(session):
             session.query(User).filter(User.id == 15).update(
                 {"name": "foob"}, synchronize_session=False)
 
-    def test_bulk_delete(self):
+    def test_bulk_delete_no_sync(self):
         User = self.classes.User
         session = Session()
         with self._assert_bind_args(session):
             session.query(User).filter(User.id == 15).delete(
                 synchronize_session=False)
+
+    def test_bulk_update_fetch_sync(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(User).filter(User.id == 15).update(
+                {"name": "foob"}, synchronize_session='fetch')
+
+    def test_bulk_delete_fetch_sync(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(User).filter(User.id == 15).delete(
+                synchronize_session='fetch')
 
     def test_column_property(self):
         User = self.classes.User
@@ -3275,3 +3290,21 @@ class SessionBindTest(QueryTest):
         session = Session()
         with self._assert_bind_args(session):
             session.query(func.max(User.score)).scalar()
+
+    def test_column_property_select(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        mapper = inspect(User)
+        mapper.add_property(
+            "score",
+            column_property(
+                select([func.sum(Address.id)]).
+                where(Address.user_id == User.id).as_scalar()
+            )
+        )
+        session = Session()
+
+        with self._assert_bind_args(session):
+            session.query(func.max(User.score)).scalar()
+
