@@ -17,6 +17,9 @@ from sqlalchemy.testing.assertions import (
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, assert_warnings
 from test.orm import _fixtures
 from sqlalchemy.orm.util import join, with_parent
+import contextlib
+from sqlalchemy.testing import mock, is_, is_not_
+from sqlalchemy import inspect
 
 
 class QueryTest(_fixtures.FixtureTest):
@@ -3212,3 +3215,63 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT x HAVING x = 1",
             dialect=self._dialect(False)
         )
+
+
+class SessionBindTest(QueryTest):
+
+    @contextlib.contextmanager
+    def _assert_bind_args(self, session):
+        get_bind = mock.Mock(side_effect=session.get_bind)
+        with mock.patch.object(session, "get_bind", get_bind):
+            yield
+        is_(get_bind.mock_calls[0][1][0], inspect(self.classes.User))
+        is_not_(get_bind.mock_calls[0][2]['clause'], None)
+
+    def test_single_entity_q(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(User).all()
+
+    def test_sql_expr_entity_q(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(User.id).all()
+
+    def test_count(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(User).count()
+
+    def test_aggregate_fn(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(func.max(User.name)).all()
+
+    def test_bulk_update(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(User).filter(User.id == 15).update(
+                {"name": "foob"}, synchronize_session=False)
+
+    def test_bulk_delete(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(User).filter(User.id == 15).delete(
+                synchronize_session=False)
+
+    def test_column_property(self):
+        User = self.classes.User
+
+        mapper = inspect(User)
+        mapper.add_property(
+            "score",
+            column_property(func.coalesce(self.tables.users.c.name, None)))
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(func.max(User.score)).scalar()
