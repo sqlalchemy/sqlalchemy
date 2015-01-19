@@ -5,7 +5,7 @@ from sqlalchemy.testing.schema import Table, Column
 from test.orm import _fixtures
 from sqlalchemy import exc, util
 from sqlalchemy.testing import fixtures, config
-from sqlalchemy import Integer, String, ForeignKey, func
+from sqlalchemy import Integer, String, ForeignKey, func, literal
 from sqlalchemy.orm import mapper, relationship, backref, \
     create_session, unitofwork, attributes,\
     Session, exc as orm_exc
@@ -1532,6 +1532,35 @@ class BasicStaleChecksTest(fixtures.MappedTest):
                 eq_(
                     sess.query(Parent.id, Parent.data).all(),
                     [(2, 4)]
+                )
+
+    def test_update_value_missing_broken_multi_rowcount(self):
+        @util.memoized_property
+        def rowcount(self):
+            if len(self.context.compiled_parameters) > 1:
+                return -1
+            else:
+                return self.context.rowcount
+
+        with patch.object(
+                config.db.dialect, "supports_sane_multi_rowcount", False):
+            with patch(
+                    "sqlalchemy.engine.result.ResultProxy.rowcount",
+                    rowcount):
+                Parent, Child = self._fixture()
+                sess = Session()
+                p1 = Parent(id=1, data=1)
+                sess.add(p1)
+                sess.flush()
+
+                sess.execute(self.tables.parent.delete())
+
+                p1.data = literal(1)
+                assert_raises_message(
+                    orm_exc.StaleDataError,
+                    "UPDATE statement on table 'parent' expected to "
+                    "update 1 row\(s\); 0 were matched.",
+                    sess.flush
                 )
 
     @testing.requires.sane_multi_rowcount
