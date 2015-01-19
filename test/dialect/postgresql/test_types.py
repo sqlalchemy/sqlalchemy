@@ -189,7 +189,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         try:
             self.assert_sql(
-                testing.db, go, [], with_sequences=[
+                testing.db, go, [
                     ("CREATE TABLE foo (\tbar "
                      "VARCHAR(5), \tCONSTRAINT myenum CHECK "
                      "(bar IN ('one', 'two', 'three')))", {})])
@@ -259,9 +259,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         try:
             self.assert_sql(
-                engine, go, [], with_sequences=[
-                    ("CREATE TABLE foo (\tbar "
-                     "VARCHAR(5), \tCONSTRAINT myenum CHECK "
+                engine, go, [
+                    ("CREATE TABLE foo (bar "
+                     "VARCHAR(5), CONSTRAINT myenum CHECK "
                      "(bar IN ('one', 'two', 'three')))", {})])
         finally:
             metadata.drop_all(engine)

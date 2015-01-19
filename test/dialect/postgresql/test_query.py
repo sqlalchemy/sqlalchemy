@@ -6,6 +6,7 @@ from sqlalchemy import Table, Column, MetaData, Integer, String, bindparam, \
     Sequence, ForeignKey, text, select, func, extract, literal_column, \
     tuple_, DateTime, Time, literal, and_, Date, or_
 from sqlalchemy.testing import engines, fixtures
+from sqlalchemy.testing.assertsql import DialectSQL, CursorSQL
 from sqlalchemy import testing
 from sqlalchemy import exc
 from sqlalchemy.dialects import postgresql
@@ -170,7 +171,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             engines.testing_engine(options={'implicit_returning': False})
         metadata.bind = self.engine
 
-        def go():
+        with self.sql_execution_asserter(self.engine) as asserter:
 
             # execute with explicit id
 
@@ -199,32 +200,41 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
             table.insert(inline=True).execute({'data': 'd8'})
 
-        # note that the test framework doesn't capture the "preexecute"
-        # of a seqeuence or default.  we just see it in the bind params.
+        asserter.assert_(
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                {'id': 30, 'data': 'd1'}),
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                {'id': 1, 'data': 'd2'}),
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
+            DialectSQL(
+                'INSERT INTO testtable (data) VALUES (:data)',
+                [{'data': 'd5'}, {'data': 'd6'}]),
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                [{'id': 33, 'data': 'd7'}]),
+            DialectSQL(
+                'INSERT INTO testtable (data) VALUES (:data)',
+                [{'data': 'd8'}]),
+        )
 
-        self.assert_sql(self.engine, go, [], with_sequences=[
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 30, 'data': 'd1'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 1, 'data': 'd2'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)',
-             [{'data': 'd5'}, {'data': 'd6'}]),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 33, 'data': 'd7'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)', [{'data': 'd8'}]),
-        ])
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (1, 'd2'),
-            (31, 'd3'),
-            (32, 'd4'),
-            (2, 'd5'),
-            (3, 'd6'),
-            (33, 'd7'),
-            (4, 'd8'),
-        ]
+        eq_(
+            table.select().execute().fetchall(),
+            [
+                (30, 'd1'),
+                (1, 'd2'),
+                (31, 'd3'),
+                (32, 'd4'),
+                (2, 'd5'),
+                (3, 'd6'),
+                (33, 'd7'),
+                (4, 'd8'),
+            ]
+        )
+
         table.delete().execute()
 
         # test the same series of events using a reflected version of
@@ -233,7 +243,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         m2 = MetaData(self.engine)
         table = Table(table.name, m2, autoload=True)
 
-        def go():
+        with self.sql_execution_asserter(self.engine) as asserter:
             table.insert().execute({'id': 30, 'data': 'd1'})
             r = table.insert().execute({'data': 'd2'})
             assert r.inserted_primary_key == [5]
@@ -243,29 +253,39 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
             table.insert(inline=True).execute({'data': 'd8'})
 
-        self.assert_sql(self.engine, go, [], with_sequences=[
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 30, 'data': 'd1'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 5, 'data': 'd2'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)',
-             [{'data': 'd5'}, {'data': 'd6'}]),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 33, 'data': 'd7'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)', [{'data': 'd8'}]),
-        ])
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (5, 'd2'),
-            (31, 'd3'),
-            (32, 'd4'),
-            (6, 'd5'),
-            (7, 'd6'),
-            (33, 'd7'),
-            (8, 'd8'),
-        ]
+        asserter.assert_(
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                {'id': 30, 'data': 'd1'}),
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                {'id': 5, 'data': 'd2'}),
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
+            DialectSQL(
+                'INSERT INTO testtable (data) VALUES (:data)',
+                [{'data': 'd5'}, {'data': 'd6'}]),
+            DialectSQL(
+                'INSERT INTO testtable (id, data) VALUES (:id, :data)',
+                [{'id': 33, 'data': 'd7'}]),
+            DialectSQL(
+                'INSERT INTO testtable (data) VALUES (:data)',
+                [{'data': 'd8'}]),
+        )
+        eq_(
+            table.select().execute().fetchall(),
+            [
+                (30, 'd1'),
+                (5, 'd2'),
+                (31, 'd3'),
+                (32, 'd4'),
+                (6, 'd5'),
+                (7, 'd6'),
+                (33, 'd7'),
+                (8, 'd8'),
+            ]
+        )
         table.delete().execute()
 
     def _assert_data_autoincrement_returning(self, table):
@@ -273,7 +293,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             engines.testing_engine(options={'implicit_returning': True})
         metadata.bind = self.engine
 
-        def go():
+        with self.sql_execution_asserter(self.engine) as asserter:
 
             # execute with explicit id
 
@@ -302,29 +322,34 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
             table.insert(inline=True).execute({'data': 'd8'})
 
-        self.assert_sql(self.engine, go, [], with_sequences=[
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+        asserter.assert_(
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              {'id': 30, 'data': 'd1'}),
-            ('INSERT INTO testtable (data) VALUES (:data) RETURNING '
+            DialectSQL('INSERT INTO testtable (data) VALUES (:data) RETURNING '
              'testtable.id', {'data': 'd2'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)',
+            DialectSQL('INSERT INTO testtable (data) VALUES (:data)',
              [{'data': 'd5'}, {'data': 'd6'}]),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 33, 'data': 'd7'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)', [{'data': 'd8'}]),
-        ])
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (1, 'd2'),
-            (31, 'd3'),
-            (32, 'd4'),
-            (2, 'd5'),
-            (3, 'd6'),
-            (33, 'd7'),
-            (4, 'd8'),
-        ]
+            DialectSQL('INSERT INTO testtable (data) VALUES (:data)',
+                [{'data': 'd8'}]),
+        )
+
+        eq_(
+            table.select().execute().fetchall(),
+            [
+                (30, 'd1'),
+                (1, 'd2'),
+                (31, 'd3'),
+                (32, 'd4'),
+                (2, 'd5'),
+                (3, 'd6'),
+                (33, 'd7'),
+                (4, 'd8'),
+            ]
+        )
         table.delete().execute()
 
         # test the same series of events using a reflected version of
@@ -333,7 +358,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         m2 = MetaData(self.engine)
         table = Table(table.name, m2, autoload=True)
 
-        def go():
+        with self.sql_execution_asserter(self.engine) as asserter:
             table.insert().execute({'id': 30, 'data': 'd1'})
             r = table.insert().execute({'data': 'd2'})
             assert r.inserted_primary_key == [5]
@@ -343,29 +368,32 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
             table.insert(inline=True).execute({'data': 'd8'})
 
-        self.assert_sql(self.engine, go, [], with_sequences=[
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+        asserter.assert_(
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              {'id': 30, 'data': 'd1'}),
-            ('INSERT INTO testtable (data) VALUES (:data) RETURNING '
+            DialectSQL('INSERT INTO testtable (data) VALUES (:data) RETURNING '
              'testtable.id', {'data': 'd2'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)',
+            DialectSQL('INSERT INTO testtable (data) VALUES (:data)',
              [{'data': 'd5'}, {'data': 'd6'}]),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 33, 'data': 'd7'}]),
-            ('INSERT INTO testtable (data) VALUES (:data)', [{'data': 'd8'}]),
-        ])
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (5, 'd2'),
-            (31, 'd3'),
-            (32, 'd4'),
-            (6, 'd5'),
-            (7, 'd6'),
-            (33, 'd7'),
-            (8, 'd8'),
-        ]
+            DialectSQL('INSERT INTO testtable (data) VALUES (:data)', [{'data': 'd8'}]),
+        )
+        eq_(
+            table.select().execute().fetchall(),
+            [
+                (30, 'd1'),
+                (5, 'd2'),
+                (31, 'd3'),
+                (32, 'd4'),
+                (6, 'd5'),
+                (7, 'd6'),
+                (33, 'd7'),
+                (8, 'd8'),
+            ]
+        )
         table.delete().execute()
 
     def _assert_data_with_sequence(self, table, seqname):
@@ -373,7 +401,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             engines.testing_engine(options={'implicit_returning': False})
         metadata.bind = self.engine
 
-        def go():
+        with self.sql_execution_asserter(self.engine) as asserter:
             table.insert().execute({'id': 30, 'data': 'd1'})
             table.insert().execute({'data': 'd2'})
             table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
@@ -382,30 +410,34 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
             table.insert(inline=True).execute({'data': 'd8'})
 
-        self.assert_sql(self.engine, go, [], with_sequences=[
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+        asserter.assert_(
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              {'id': 30, 'data': 'd1'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            CursorSQL("select nextval('my_seq')"),
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              {'id': 1, 'data': 'd2'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            ("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
              ":data)" % seqname, [{'data': 'd5'}, {'data': 'd6'}]),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 33, 'data': 'd7'}]),
-            ("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
              ":data)" % seqname, [{'data': 'd8'}]),
-        ])
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (1, 'd2'),
-            (31, 'd3'),
-            (32, 'd4'),
-            (2, 'd5'),
-            (3, 'd6'),
-            (33, 'd7'),
-            (4, 'd8'),
-        ]
+        )
+        eq_(
+            table.select().execute().fetchall(),
+            [
+                (30, 'd1'),
+                (1, 'd2'),
+                (31, 'd3'),
+                (32, 'd4'),
+                (2, 'd5'),
+                (3, 'd6'),
+                (33, 'd7'),
+                (4, 'd8'),
+            ]
+        )
 
         # cant test reflection here since the Sequence must be
         # explicitly specified
@@ -415,7 +447,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             engines.testing_engine(options={'implicit_returning': True})
         metadata.bind = self.engine
 
-        def go():
+        with self.sql_execution_asserter(self.engine) as asserter:
             table.insert().execute({'id': 30, 'data': 'd1'})
             table.insert().execute({'data': 'd2'})
             table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
@@ -424,31 +456,35 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
             table.insert(inline=True).execute({'data': 'd8'})
 
-        self.assert_sql(self.engine, go, [], with_sequences=[
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+        asserter.assert_(
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              {'id': 30, 'data': 'd1'}),
-            ("INSERT INTO testtable (id, data) VALUES "
+            DialectSQL("INSERT INTO testtable (id, data) VALUES "
              "(nextval('my_seq'), :data) RETURNING testtable.id",
              {'data': 'd2'}),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            ("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
              ":data)" % seqname, [{'data': 'd5'}, {'data': 'd6'}]),
-            ('INSERT INTO testtable (id, data) VALUES (:id, :data)',
+            DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
              [{'id': 33, 'data': 'd7'}]),
-            ("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
              ":data)" % seqname, [{'data': 'd8'}]),
-        ])
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (1, 'd2'),
-            (31, 'd3'),
-            (32, 'd4'),
-            (2, 'd5'),
-            (3, 'd6'),
-            (33, 'd7'),
-            (4, 'd8'),
-        ]
+        )
+
+        eq_(
+            table.select().execute().fetchall(),
+            [
+                (30, 'd1'),
+                (1, 'd2'),
+                (31, 'd3'),
+                (32, 'd4'),
+                (2, 'd5'),
+                (3, 'd6'),
+                (33, 'd7'),
+                (4, 'd8'),
+            ]
+        )
 
         # cant test reflection here since the Sequence must be
         # explicitly specified

@@ -9,7 +9,7 @@ from sqlalchemy import testing
 from sqlalchemy.engine import default
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
+from sqlalchemy.testing.assertsql import AllOf, RegexSQL, CompiledSQL
 from sqlalchemy.sql import table, column
 
 
@@ -417,13 +417,13 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             lambda: events.create(testing.db),
             RegexSQL("^CREATE TABLE events"),
             AllOf(
-                ExactSQL('CREATE UNIQUE INDEX ix_events_name ON events '
+                CompiledSQL('CREATE UNIQUE INDEX ix_events_name ON events '
                          '(name)'),
-                ExactSQL('CREATE INDEX ix_events_location ON events '
+                CompiledSQL('CREATE INDEX ix_events_location ON events '
                          '(location)'),
-                ExactSQL('CREATE UNIQUE INDEX sport_announcer ON events '
+                CompiledSQL('CREATE UNIQUE INDEX sport_announcer ON events '
                          '(sport, announcer)'),
-                ExactSQL('CREATE INDEX idx_winners ON events (winner)')
+                CompiledSQL('CREATE INDEX idx_winners ON events (winner)'),
             )
         )
 
@@ -441,7 +441,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             lambda: t.create(testing.db),
             CompiledSQL('CREATE TABLE sometable (id INTEGER NOT NULL, '
                         'data VARCHAR(50), PRIMARY KEY (id))'),
-            ExactSQL('CREATE INDEX myindex ON sometable (data DESC)')
+            CompiledSQL('CREATE INDEX myindex ON sometable (data DESC)')
         )
 
 

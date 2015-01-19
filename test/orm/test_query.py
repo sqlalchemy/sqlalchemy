@@ -1484,7 +1484,6 @@ class SliceTest(QueryTest):
         assert create_session().query(User).filter(User.id == 27). \
             first() is None
 
-    @testing.only_on('sqlite', 'testing execution but db-specific syntax')
     def test_limit_offset_applies(self):
         """Test that the expected LIMIT/OFFSET is applied for slices.
 
@@ -1510,15 +1509,15 @@ class SliceTest(QueryTest):
             testing.db, lambda: q[:20], [
                 (
                     "SELECT users.id AS users_id, users.name "
-                    "AS users_name FROM users LIMIT :param_1 OFFSET :param_2",
-                    {'param_1': 20, 'param_2': 0})])
+                    "AS users_name FROM users LIMIT :param_1",
+                    {'param_1': 20})])
 
         self.assert_sql(
             testing.db, lambda: q[5:], [
                 (
                     "SELECT users.id AS users_id, users.name "
-                    "AS users_name FROM users LIMIT :param_1 OFFSET :param_2",
-                    {'param_1': -1, 'param_2': 5})])
+                    "AS users_name FROM users LIMIT -1 OFFSET :param_1",
+                    {'param_1': 5})])
 
         self.assert_sql(testing.db, lambda: q[2:2], [])
 

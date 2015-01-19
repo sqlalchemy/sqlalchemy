@@ -11,7 +11,7 @@ from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, sessionmaker
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
+from sqlalchemy.testing.assertsql import RegexSQL, CompiledSQL, AllOf
 from sqlalchemy.testing import fixtures
 
 
@@ -656,7 +656,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             RegexSQL("^INSERT INTO ball", lambda c: {'person_id':p.id, 'data':'some data'}),
             RegexSQL("^INSERT INTO ball", lambda c: {'person_id':p.id, 'data':'some data'}),
             RegexSQL("^INSERT INTO ball", lambda c: {'person_id':p.id, 'data':'some data'}),
-            ExactSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
+            CompiledSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
                         "WHERE person.id = :person_id",
                         lambda ctx:{'favorite_ball_id':p.favorite.id, 'person_id':p.id}
              ),
@@ -667,11 +667,11 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            ExactSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
+            CompiledSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
                 "WHERE person.id = :person_id",
                 lambda ctx: {'person_id': p.id, 'favorite_ball_id': None}),
-            ExactSQL("DELETE FROM ball WHERE ball.id = :id", None), # lambda ctx:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}])
-            ExactSQL("DELETE FROM person WHERE person.id = :id", lambda ctx:[{'id': p.id}])
+            CompiledSQL("DELETE FROM ball WHERE ball.id = :id", None), # lambda ctx:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}])
+            CompiledSQL("DELETE FROM person WHERE person.id = :id", lambda ctx:[{'id': p.id}])
         )
 
     def test_post_update_backref(self):

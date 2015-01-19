@@ -419,21 +419,16 @@ class AssertsExecutionResults(object):
             callable_()
         asserter.assert_(*rules)
 
-    def assert_sql(self, db, callable_, list_, with_sequences=None):
-        if (with_sequences is not None and
-                config.db.dialect.supports_sequences):
-            rules = with_sequences
-        else:
-            rules = list_
+    def assert_sql(self, db, callable_, rules):
 
         newrules = []
         for rule in rules:
             if isinstance(rule, dict):
                 newrule = assertsql.AllOf(*[
-                    assertsql.ExactSQL(k, v) for k, v in rule.items()
+                    assertsql.CompiledSQL(k, v) for k, v in rule.items()
                 ])
             else:
-                newrule = assertsql.ExactSQL(*rule)
+                newrule = assertsql.CompiledSQL(*rule)
             newrules.append(newrule)
 
         self.assert_sql_execution(db, callable_, *newrules)
