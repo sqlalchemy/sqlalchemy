@@ -1,7 +1,8 @@
 import datetime
 import sqlalchemy as sa
-from sqlalchemy.testing import engines
+from sqlalchemy.testing import engines, config
 from sqlalchemy import testing
+from sqlalchemy.testing.mock import patch
 from sqlalchemy import (
     Integer, String, Date, ForeignKey, orm, exc, select, TypeDecorator)
 from sqlalchemy.testing.schema import Table, Column
@@ -12,6 +13,7 @@ from sqlalchemy.testing import (
     eq_, assert_raises, assert_raises_message, fixtures)
 from sqlalchemy.testing.assertsql import CompiledSQL
 import uuid
+from sqlalchemy import util
 
 
 def make_uuid():
@@ -222,6 +224,30 @@ class VersioningTest(fixtures.MappedTest):
         s2.commit()
         s1.refresh(f1s1, lockmode='update_nowait')
         assert f1s1.version_id == f1s2.version_id
+
+    def test_update_multi_missing_broken_multi_rowcount(self):
+        @util.memoized_property
+        def rowcount(self):
+            if len(self.context.compiled_parameters) > 1:
+                return -1
+            else:
+                return self.context.rowcount
+
+        with patch.object(
+                config.db.dialect, "supports_sane_multi_rowcount", False):
+            with patch(
+                    "sqlalchemy.engine.result.ResultProxy.rowcount",
+                    rowcount):
+
+                Foo = self.classes.Foo
+                s1 = self._fixture()
+                f1s1 = Foo(value='f1 value')
+                s1.add(f1s1)
+                s1.commit()
+
+                f1s1.value = 'f2 value'
+                s1.flush()
+                eq_(f1s1.version_id, 2)
 
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections

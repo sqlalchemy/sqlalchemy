@@ -642,8 +642,10 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         c.context.compiled_parameters[0],
                         value_params)
                 rows += c.rowcount
+                check_rowcount = True
         else:
             if not allow_multirow:
+                check_rowcount = assert_singlerow
                 for state, state_dict, params, mapper, \
                         connection, value_params in records:
                     c = cached_connections[connection].\
@@ -661,6 +663,11 @@ def _emit_update_statements(base_mapper, uowtransaction,
             else:
                 multiparams = [rec[2] for rec in records]
 
+                check_rowcount = assert_multirow or (
+                    assert_singlerow and
+                    len(multiparams) == 1
+                )
+
                 c = cached_connections[connection].\
                     execute(statement, multiparams)
 
@@ -677,9 +684,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         c.context.compiled_parameters[0],
                         value_params)
 
-        if hasvalue or assert_multirow or (
-                assert_singlerow and
-                len(multiparams)) == 1:
+        if check_rowcount:
             if rows != len(records):
                 raise orm_exc.StaleDataError(
                     "UPDATE statement on table '%s' expected to "
