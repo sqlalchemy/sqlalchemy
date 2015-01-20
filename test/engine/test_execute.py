@@ -1853,6 +1853,27 @@ class HandleErrorTest(fixtures.TestBase):
         self._test_alter_disconnect(True, False)
         self._test_alter_disconnect(False, False)
 
+    def test_handle_error_event_connect_isolation_level(self):
+        engine = engines.testing_engine()
+
+        class MySpecialException(Exception):
+            pass
+
+        @event.listens_for(engine, "handle_error")
+        def handle_error(ctx):
+            raise MySpecialException("failed operation")
+
+        ProgrammingError = engine.dialect.dbapi.ProgrammingError
+        with engine.connect() as conn:
+            with patch.object(
+                conn.dialect, "get_isolation_level",
+                Mock(side_effect=ProgrammingError("random error"))
+            ):
+                assert_raises(
+                    MySpecialException,
+                    conn.get_isolation_level
+                )
+
 
 class ProxyConnectionTest(fixtures.TestBase):
 

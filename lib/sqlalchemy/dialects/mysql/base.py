@@ -106,7 +106,7 @@ to be used.
 Transaction Isolation Level
 ---------------------------
 
-:func:`.create_engine` accepts an ``isolation_level``
+:func:`.create_engine` accepts an :paramref:`.create_engine.isolation_level`
 parameter which results in the command ``SET SESSION
 TRANSACTION ISOLATION LEVEL <level>`` being invoked for
 every new connection. Valid values for this parameter are

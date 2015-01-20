@@ -169,14 +169,19 @@ class Connection(Connectable):
           used by the ORM internally supersedes a cache dictionary
           specified here.
 
-        :param isolation_level: Available on: Connection.
+        :param isolation_level: Available on: :class:`.Connection`.
           Set the transaction isolation level for
-          the lifespan of this connection.   Valid values include
-          those string values accepted by the ``isolation_level``
-          parameter passed to :func:`.create_engine`, and are
-          database specific, including those for :ref:`sqlite_toplevel`,
-          :ref:`postgresql_toplevel` - see those dialect's documentation
-          for further info.
+          the lifespan of this :class:`.Connection` object (*not* the
+          underyling DBAPI connection, for which the level is reset
+          to its original setting upon termination of this
+          :class:`.Connection` object).
+
+          Valid values include
+          those string values accepted by the
+          :paramref:`.create_engine.isolation_level`
+          parameter passed to :func:`.create_engine`.  These levels are
+          semi-database specific; see individual dialect documentation for
+          valid levels.
 
           Note that this option necessarily affects the underlying
           DBAPI connection for the lifespan of the originating
@@ -184,6 +189,20 @@ class Connection(Connectable):
           setting is not removed until the underlying DBAPI connection
           is returned to the connection pool, i.e.
           the :meth:`.Connection.close` method is called.
+
+          .. seealso::
+
+                :paramref:`.create_engine.isolation_level`
+                - set per :class:`.Engine` isolation level
+
+                :meth:`.Connection.get_isolation_level` - view current level
+
+                :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
+
+                :ref:`Postgresql Transaction Isolation <postgresql_isolation_level>`
+
+                :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
+
 
         :param no_parameters: When ``True``, if the final parameter
           list or dictionary is totally empty, will invoke the
@@ -228,12 +247,84 @@ class Connection(Connectable):
 
     @property
     def connection(self):
-        "The underlying DB-API connection managed by this Connection."
+        """The underlying DB-API connection managed by this Connection.
+
+        .. seealso::
+
+
+            :ref:`dbapi_connections`
+
+        """
 
         try:
             return self.__connection
         except AttributeError:
             return self._revalidate_connection()
+
+    def get_isolation_level(self):
+        """Return the current isolation level assigned to this
+        :class:`.Connection`.
+
+        This will typically be the default isolation level as determined
+        by the dialect, unless if the
+        :paramref:`.Connection.execution_options.isolation_level`
+        feature has been used to alter the isolation level on a
+        per-:class:`.Connection` basis.
+
+        This attribute will typically perform a live SQL operation in order
+        to procure the current isolation level, so the value returned is the
+        actual level on the underlying DBAPI connection regardless of how
+        this state was set.  Compare to the
+        :attr:`.Connection.default_isolation_level` accessor
+        which returns the dialect-level setting without performing a SQL
+        query.
+
+        .. versionadded:: 0.9.9
+
+        .. seealso::
+
+            :attr:`.Connection.default_isolation_level` - view default level
+
+            :paramref:`.create_engine.isolation_level`
+            - set per :class:`.Engine` isolation level
+
+            :paramref:`.Connection.execution_options.isolation_level`
+            - set per :class:`.Connection` isolation level
+
+        """
+        try:
+            return self.dialect.get_isolation_level(self.connection)
+        except Exception as e:
+            self._handle_dbapi_exception(e, None, None, None, None)
+
+    @property
+    def default_isolation_level(self):
+        """The default isolation level assigned to this :class:`.Connection`.
+
+        This is the isolation level setting that the :class:`.Connection`
+        has when first procured via the :meth:`.Engine.connect` method.
+        This level stays in place until the
+        :paramref:`.Connection.execution_options.isolation_level` is used
+        to change the setting on a per-:class:`.Connection` basis.
+
+        Unlike :meth:`.Connection.get_isolation_level`, this attribute is set
+        ahead of time from the first connection procured by the dialect,
+        so SQL query is not invoked when this accessor is called.
+
+        .. versionadded:: 0.9.9
+
+        .. seealso::
+
+            :meth:`.Connection.get_isolation_level` - view current level
+
+            :paramref:`.create_engine.isolation_level`
+            - set per :class:`.Engine` isolation level
+
+            :paramref:`.Connection.execution_options.isolation_level`
+            - set per :class:`.Connection` isolation level
+
+        """
+        return self.dialect.default_isolation_level
 
     def _revalidate_connection(self):
         if self.__can_reconnect and self.__invalid:
@@ -1838,9 +1929,14 @@ class Engine(Connectable, log.Identified):
         for real.
 
         This method provides direct DBAPI connection access for
-        special situations.  In most situations, the :class:`.Connection`
-        object should be used, which is procured using the
-        :meth:`.Engine.connect` method.
+        special situations when the API provided by :class:`.Connection`
+        is not needed.   When a :class:`.Connection` object is already
+        present, the DBAPI connection is available using
+        the :attr:`.Connection.connection` accessor.
+
+        .. seealso::
+
+            :ref:`dbapi_connections`
 
         """
 
