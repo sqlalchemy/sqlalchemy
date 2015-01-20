@@ -1240,7 +1240,7 @@ class IsolationLevelTest(fixtures.TestBase):
 
         eng = testing_engine()
         isolation_level = eng.dialect.get_isolation_level(
-                                eng.connect().connection)
+            eng.connect().connection)
         level = self._non_default_isolation_level()
 
         ne_(isolation_level, level)
@@ -1248,7 +1248,7 @@ class IsolationLevelTest(fixtures.TestBase):
         eng = testing_engine(options=dict(isolation_level=level))
         eq_(
             eng.dialect.get_isolation_level(
-                                eng.connect().connection),
+                eng.connect().connection),
             level
         )
 
@@ -1270,7 +1270,7 @@ class IsolationLevelTest(fixtures.TestBase):
     def test_default_level(self):
         eng = testing_engine(options=dict())
         isolation_level = eng.dialect.get_isolation_level(
-                                        eng.connect().connection)
+            eng.connect().connection)
         eq_(isolation_level, self._default_isolation_level())
 
     def test_reset_level(self):
@@ -1282,8 +1282,8 @@ class IsolationLevelTest(fixtures.TestBase):
         )
 
         eng.dialect.set_isolation_level(
-                conn.connection, self._non_default_isolation_level()
-            )
+            conn.connection, self._non_default_isolation_level()
+        )
         eq_(
             eng.dialect.get_isolation_level(conn.connection),
             self._non_default_isolation_level()
@@ -1298,14 +1298,15 @@ class IsolationLevelTest(fixtures.TestBase):
         conn.close()
 
     def test_reset_level_with_setting(self):
-        eng = testing_engine(options=dict(
-                            isolation_level=
-                                self._non_default_isolation_level()))
+        eng = testing_engine(
+            options=dict(
+                isolation_level=self._non_default_isolation_level()))
         conn = eng.connect()
         eq_(eng.dialect.get_isolation_level(conn.connection),
             self._non_default_isolation_level())
-        eng.dialect.set_isolation_level(conn.connection,
-                self._default_isolation_level())
+        eng.dialect.set_isolation_level(
+            conn.connection,
+            self._default_isolation_level())
         eq_(eng.dialect.get_isolation_level(conn.connection),
             self._default_isolation_level())
         eng.dialect.reset_isolation_level(conn.connection)
@@ -1317,22 +1318,24 @@ class IsolationLevelTest(fixtures.TestBase):
         eng = testing_engine(options=dict(isolation_level='FOO'))
         assert_raises_message(
             exc.ArgumentError,
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s" %
-                ("FOO", eng.dialect.name,
-                ", ".join(eng.dialect._isolation_lookup)),
-            eng.connect)
+            "Invalid value '%s' for isolation_level. "
+            "Valid isolation levels for %s are %s" %
+            ("FOO",
+             eng.dialect.name, ", ".join(eng.dialect._isolation_lookup)),
+            eng.connect
+        )
 
     def test_per_connection(self):
         from sqlalchemy.pool import QueuePool
-        eng = testing_engine(options=dict(
-                                poolclass=QueuePool,
-                                pool_size=2, max_overflow=0))
+        eng = testing_engine(
+            options=dict(
+                poolclass=QueuePool,
+                pool_size=2, max_overflow=0))
 
         c1 = eng.connect()
         c1 = c1.execution_options(
-                    isolation_level=self._non_default_isolation_level()
-                )
+            isolation_level=self._non_default_isolation_level()
+        )
         c2 = eng.connect()
         eq_(
             eng.dialect.get_isolation_level(c1.connection),
@@ -1366,17 +1369,17 @@ class IsolationLevelTest(fixtures.TestBase):
             r"per-engine using the isolation_level "
             r"argument to create_engine\(\).",
             select([1]).execution_options,
-                    isolation_level=self._non_default_isolation_level()
+            isolation_level=self._non_default_isolation_level()
         )
-
 
     def test_per_engine(self):
         # new in 0.9
-        eng = create_engine(testing.db.url,
-                            execution_options={
-                                'isolation_level':
-                                    self._non_default_isolation_level()}
-                        )
+        eng = create_engine(
+            testing.db.url,
+            execution_options={
+                'isolation_level':
+                    self._non_default_isolation_level()}
+        )
         conn = eng.connect()
         eq_(
             eng.dialect.get_isolation_level(conn.connection),
