@@ -107,6 +107,8 @@ The following subsections introduce areas that are impacted by SQLite's
 file-based architecture and additionally will usually require workarounds to
 work when using the pysqlite driver.
 
+.. _sqlite_isolation_level:
+
 Transaction Isolation Level
 ----------------------------
 

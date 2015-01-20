@@ -1385,3 +1385,25 @@ class IsolationLevelTest(fixtures.TestBase):
             eng.dialect.get_isolation_level(conn.connection),
             self._non_default_isolation_level()
         )
+
+    def test_isolation_level_accessors_connection_default(self):
+        eng = create_engine(
+            testing.db.url
+        )
+        with eng.connect() as conn:
+            eq_(conn.default_isolation_level, self._default_isolation_level())
+        with eng.connect() as conn:
+            eq_(conn.get_isolation_level(), self._default_isolation_level())
+
+    def test_isolation_level_accessors_connection_option_modified(self):
+        eng = create_engine(
+            testing.db.url
+        )
+        with eng.connect() as conn:
+            c2 = conn.execution_options(
+                isolation_level=self._non_default_isolation_level())
+            eq_(conn.default_isolation_level, self._default_isolation_level())
+            eq_(conn.get_isolation_level(),
+                self._non_default_isolation_level())
+            eq_(c2.get_isolation_level(), self._non_default_isolation_level())
+

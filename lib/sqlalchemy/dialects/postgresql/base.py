@@ -48,7 +48,7 @@ Transaction Isolation Level
 ---------------------------
 
 All Postgresql dialects support setting of transaction isolation level
-both via a dialect-specific parameter ``isolation_level``
+both via a dialect-specific parameter :paramref:`.create_engine.isolation_level`
 accepted by :func:`.create_engine`,
 as well as the ``isolation_level`` argument as passed to
 :meth:`.Connection.execution_options`.  When using a non-psycopg2 dialect,

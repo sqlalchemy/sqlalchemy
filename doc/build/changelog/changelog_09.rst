@@ -15,6 +15,14 @@
     :version: 0.9.9
 
     .. change::
+        :tags: feature, engine
+        :versions: 1.0.0
+
+        Added new user-space accessors for viewing transaction isolation
+        levels; :meth:`.Connection.get_isolation_level`,
+        :attr:`.Connection.default_isolation_level`.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.0.0
         :tickets: 3174
