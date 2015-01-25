@@ -1132,31 +1132,12 @@ class Connection(Connectable):
         if context.compiled:
             context.post_exec()
 
-            if context.isinsert and not context.executemany:
-                context.post_insert()
-
-        # create a resultproxy, get rowcount/implicit RETURNING
-        # rows, close cursor if no further results pending
-        result = context.get_result_proxy()
-        if context.isinsert:
-            if context._is_implicit_returning:
-                context._fetch_implicit_returning(result)
+        if context.is_crud:
+            result = context._setup_crud_result_proxy()
+        else:
+            result = context.get_result_proxy()
+            if result._metadata is None:
                 result.close(_autoclose_connection=False)
-                result._metadata = None
-            elif not context._is_explicit_returning:
-                result.close(_autoclose_connection=False)
-                result._metadata = None
-        elif context.isupdate and context._is_implicit_returning:
-            context._fetch_implicit_update_returning(result)
-            result.close(_autoclose_connection=False)
-            result._metadata = None
-
-        elif result._metadata is None:
-            # no results, get rowcount
-            # (which requires open cursor on some drivers
-            # such as kintersbasdb, mxodbc),
-            result.rowcount
-            result.close(_autoclose_connection=False)
 
         if context.should_autocommit and self._root.__transaction is None:
             self._root._commit_impl(autocommit=True)

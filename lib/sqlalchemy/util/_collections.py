@@ -165,8 +165,13 @@ class immutabledict(ImmutableContainer, dict):
         return immutabledict, (dict(self), )
 
     def union(self, d):
-        if not self:
-            return immutabledict(d)
+        if not d:
+            return self
+        elif not self:
+            if isinstance(d, immutabledict):
+                return d
+            else:
+                return immutabledict(d)
         else:
             d2 = immutabledict(self)
             dict.update(d2, d)
