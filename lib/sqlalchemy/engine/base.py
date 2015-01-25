@@ -1079,36 +1079,39 @@ class Connection(Connectable):
                 "%r",
                 sql_util._repr_params(parameters, batches=10)
             )
+
+        evt_handled = False
         try:
             if context.executemany:
-                for fn in () if not self.dialect._has_events \
-                        else self.dialect.dispatch.do_executemany:
-                    if fn(cursor, statement, parameters, context):
-                        break
-                else:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(cursor, statement, parameters, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
                     self.dialect.do_executemany(
                         cursor,
                         statement,
                         parameters,
                         context)
-
             elif not parameters and context.no_parameters:
-                for fn in () if not self.dialect._has_events \
-                        else self.dialect.dispatch.do_execute_no_params:
-                    if fn(cursor, statement, context):
-                        break
-                else:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
                     self.dialect.do_execute_no_params(
                         cursor,
                         statement,
                         context)
-
             else:
-                for fn in () if not self.dialect._has_events \
-                        else self.dialect.dispatch.do_execute:
-                    if fn(cursor, statement, parameters, context):
-                        break
-                else:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(cursor, statement, parameters, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
                     self.dialect.do_execute(
                         cursor,
                         statement,
