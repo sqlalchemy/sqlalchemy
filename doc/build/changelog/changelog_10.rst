@@ -23,6 +23,17 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3262
+        :pullreq: bitbucket:38
+
+        A warning is emitted when the same polymorphic identity is assigned
+        to two different mappers in the same hierarchy.  This is typically a
+        user error and means that the two different mapping types cannot be
+        correctly distinguished at load time.  Pull request courtesy
+        Sebastian Bank.
+
+    .. change::
         :tags: feature, sql
         :pullreq: github:150
 
