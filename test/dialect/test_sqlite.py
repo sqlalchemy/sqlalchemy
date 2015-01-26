@@ -8,7 +8,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, is_
 from sqlalchemy import Table, select, bindparam, Column,\
     MetaData, func, extract, ForeignKey, text, DefaultClause, and_, \
-    create_engine, UniqueConstraint
+    create_engine, UniqueConstraint, Index
 from sqlalchemy.types import Integer, String, Boolean, DateTime, Date, Time
 from sqlalchemy import types as sqltypes
 from sqlalchemy import event, inspect
@@ -752,6 +752,27 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "PRIMARY KEY (id)"
             ")"
         )
+
+    def test_create_partial_index(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', Integer))
+        idx = Index('test_idx1', tbl.c.data,
+                    sqlite_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+
+        # test quoting and all that
+
+        idx2 = Index('test_idx2', tbl.c.data,
+                     sqlite_where=and_(tbl.c.data > 'a', tbl.c.data
+                                           < "b's"))
+        self.assert_compile(schema.CreateIndex(idx),
+                            'CREATE INDEX test_idx1 ON testtbl (data) '
+                            'WHERE data > 5 AND data < 10',
+                            dialect=sqlite.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+                            "CREATE INDEX test_idx2 ON testtbl (data) "
+                            "WHERE data > 'a' AND data < 'b''s'",
+                            dialect=sqlite.dialect())
+
 
 
 class InsertTest(fixtures.TestBase, AssertsExecutionResults):
