@@ -716,6 +716,19 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             m3.identity_key_from_instance(AddressUser())
         )
 
+    def test_reassign_polymorphic_identity_warns(self):
+        User = self.classes.User
+        users = self.tables.users
+        class MyUser(User):
+            pass
+        m1 = mapper(User, users, polymorphic_on=users.c.name,
+                    polymorphic_identity='user')
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Reassigning polymorphic association for identity 'user'",
+            mapper,
+            MyUser, users, inherits=User, polymorphic_identity='user'
+        )
 
 
     def test_illegal_non_primary(self):

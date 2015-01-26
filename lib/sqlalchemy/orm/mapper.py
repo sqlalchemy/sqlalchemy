@@ -974,6 +974,15 @@ class Mapper(InspectionAttr):
             self._all_tables = self.inherits._all_tables
 
             if self.polymorphic_identity is not None:
+                if self.polymorphic_identity in self.polymorphic_map:
+                    util.warn(
+                        "Reassigning polymorphic association for identity %r "
+                        "from %r to %r: Check for duplicate use of %r as "
+                        "value for polymorphic_identity." %
+                        (self.polymorphic_identity,
+                         self.polymorphic_map[self.polymorphic_identity],
+                         self, self.polymorphic_identity)
+                )
                 self.polymorphic_map[self.polymorphic_identity] = self
 
         else:
