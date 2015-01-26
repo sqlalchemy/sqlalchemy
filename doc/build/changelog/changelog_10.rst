@@ -23,6 +23,14 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+        :pullreq: github:150
+
+        The type of expression is reported when an object passed to a
+        SQL expression unit can't be interpreted as a SQL fragment;
+        pull request courtesy Ryan P. Kelly.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3227, 3242, 1326
 
