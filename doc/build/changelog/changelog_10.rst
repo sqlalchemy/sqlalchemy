@@ -23,6 +23,18 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, postgresql, pypy
+        :tickets: 3052
+        :pullreq: bitbucket:34
+
+        Added support for the psycopg2cffi DBAPI on pypy.   Pull request
+        courtesy shauns.
+
+        .. seealso::
+
+            :mod:`sqlalchemy.dialects.postgresql.psycopg2cffi`
+
+    .. change::
         :tags: feature, orm
         :tickets: 3262
         :pullreq: bitbucket:38

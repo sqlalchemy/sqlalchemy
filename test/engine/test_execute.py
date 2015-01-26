@@ -639,21 +639,21 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
 
     def test_transaction_connection_ctx_commit(self):
         fn = self._trans_fn(True)
-        conn = testing.db.connect()
-        ctx = conn.begin()
-        testing.run_as_contextmanager(ctx, fn, 5, value=8)
-        self._assert_fn(5, value=8)
+        with testing.db.connect() as conn:
+            ctx = conn.begin()
+            testing.run_as_contextmanager(ctx, fn, 5, value=8)
+            self._assert_fn(5, value=8)
 
     def test_transaction_connection_ctx_rollback(self):
         fn = self._trans_rollback_fn(True)
-        conn = testing.db.connect()
-        ctx = conn.begin()
-        assert_raises_message(
-            Exception,
-            "breakage",
-            testing.run_as_contextmanager, ctx, fn, 5, value=8
-        )
-        self._assert_no_data()
+        with testing.db.connect() as conn:
+            ctx = conn.begin()
+            assert_raises_message(
+                Exception,
+                "breakage",
+                testing.run_as_contextmanager, ctx, fn, 5, value=8
+            )
+            self._assert_no_data()
 
     def test_connection_as_ctx(self):
         fn = self._trans_fn()
@@ -666,10 +666,12 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
     def test_connect_as_ctx_noautocommit(self):
         fn = self._trans_fn()
         self._assert_no_data()
-        ctx = testing.db.connect().execution_options(autocommit=False)
-        testing.run_as_contextmanager(ctx, fn, 5, value=8)
-        # autocommit is off
-        self._assert_no_data()
+
+        with testing.db.connect() as conn:
+            ctx = conn.execution_options(autocommit=False)
+            testing.run_as_contextmanager(ctx, fn, 5, value=8)
+            # autocommit is off
+            self._assert_no_data()
 
     def test_transaction_engine_fn_commit(self):
         fn = self._trans_fn()
@@ -687,17 +689,17 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
 
     def test_transaction_connection_fn_commit(self):
         fn = self._trans_fn()
-        conn = testing.db.connect()
-        conn.transaction(fn, 5, value=8)
-        self._assert_fn(5, value=8)
+        with testing.db.connect() as conn:
+            conn.transaction(fn, 5, value=8)
+            self._assert_fn(5, value=8)
 
     def test_transaction_connection_fn_rollback(self):
         fn = self._trans_rollback_fn()
-        conn = testing.db.connect()
-        assert_raises(
-            Exception,
-            conn.transaction, fn, 5, value=8
-        )
+        with testing.db.connect() as conn:
+            assert_raises(
+                Exception,
+                conn.transaction, fn, 5, value=8
+            )
         self._assert_no_data()
 
 

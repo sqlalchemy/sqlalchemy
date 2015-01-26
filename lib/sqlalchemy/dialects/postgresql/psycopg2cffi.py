@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,9 +13,11 @@ postgresql+psycopg2cffi://user:password@host:port/dbname\
 [?key=value&key=value...]
     :url: http://pypi.python.org/pypi/psycopg2cffi/
 
-`psycopg2cffi` is an adaptation of `psycopg2`, using CFFI for the C
+``psycopg2cffi`` is an adaptation of ``psycopg2``, using CFFI for the C
 layer. This makes it suitable for use in e.g. PyPy. Documentation
-is as per `psycopg2`.
+is as per ``psycopg2``.
+
+.. versionadded:: 1.0.0
 
 .. seealso::
 
@@ -27,6 +29,7 @@ from .psycopg2 import PGDialect_psycopg2
 
 class PGDialect_psycopg2cffi(PGDialect_psycopg2):
     driver = 'psycopg2cffi'
+    supports_unicode_statements = True
 
     @classmethod
     def dbapi(cls):

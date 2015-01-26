@@ -147,6 +147,10 @@ def run_as_contextmanager(ctx, fn, *arg, **kw):
     simulating the behavior of 'with' to support older
     Python versions.
 
+    This is not necessary anymore as we have placed 2.6
+    as minimum Python version, however some tests are still using
+    this structure.
+
     """
 
     obj = ctx.__enter__()

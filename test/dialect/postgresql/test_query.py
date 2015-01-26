@@ -856,21 +856,23 @@ class ExtractTest(fixtures.TablesTest):
             def utcoffset(self, dt):
                 return datetime.timedelta(hours=4)
 
-        conn = testing.db.connect()
+        with testing.db.connect() as conn:
 
-        # we aren't resetting this at the moment but we don't have
-        # any other tests that are TZ specific
-        conn.execute("SET SESSION TIME ZONE 0")
-        conn.execute(
-            cls.tables.t.insert(),
-            {
-                'dtme': datetime.datetime(2012, 5, 10, 12, 15, 25),
-                'dt': datetime.date(2012, 5, 10),
-                'tm': datetime.time(12, 15, 25),
-                'intv': datetime.timedelta(seconds=570),
-                'dttz': datetime.datetime(2012, 5, 10, 12, 15, 25, tzinfo=TZ())
-            },
-        )
+            # we aren't resetting this at the moment but we don't have
+            # any other tests that are TZ specific
+            conn.execute("SET SESSION TIME ZONE 0")
+            conn.execute(
+                cls.tables.t.insert(),
+                {
+                    'dtme': datetime.datetime(2012, 5, 10, 12, 15, 25),
+                    'dt': datetime.date(2012, 5, 10),
+                    'tm': datetime.time(12, 15, 25),
+                    'intv': datetime.timedelta(seconds=570),
+                    'dttz':
+                            datetime.datetime(2012, 5, 10, 12, 15, 25,
+                            tzinfo=TZ())
+                },
+            )
 
     def _test(self, expr, field="all", overrides=None):
         t = self.tables.t

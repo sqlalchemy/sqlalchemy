@@ -656,6 +656,10 @@ class DefaultRequirements(SuiteRequirements):
                         'postgresql+pg8000', None, None,
                         'postgresql+pg8000 has FP inaccuracy even with '
                         'only four decimal places '),
+                    (
+                        'postgresql+psycopg2cffi', None, None,
+                        'postgresql+psycopg2cffi has FP inaccuracy even with '
+                        'only four decimal places '),
                 ])
 
     @property

@@ -1769,6 +1769,14 @@ by Postgresql as of 9.4.  SQLAlchemy allows this using
 
     :class:`.FunctionFilter`
 
+Support for psycopg2cffi Dialect on Pypy
+----------------------------------------
+
+Support for the pypy psycopg2cffi dialect is added.
+
+.. seealso::
+
+    :mod:`sqlalchemy.dialects.postgresql.psycopg2cffi`
 
 Dialect Improvements and Changes - MySQL
 =============================================

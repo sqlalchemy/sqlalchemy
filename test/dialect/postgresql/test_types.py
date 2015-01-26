@@ -1399,7 +1399,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
                     use_native_hstore=False))
         else:
             engine = testing.db
-        engine.connect()
+        engine.connect().close()
         return engine
 
     def test_reflect(self):
@@ -2031,7 +2031,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
             engine = engines.testing_engine(options=options)
         else:
             engine = testing.db
-        engine.connect()
+        engine.connect().close()
         return engine
 
     def test_reflect(self):
