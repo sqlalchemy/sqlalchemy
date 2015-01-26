@@ -664,8 +664,19 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return preparer.format_table(table, use_schema=False)
 
     def visit_create_index(self, create):
-        return super(SQLiteDDLCompiler, self).visit_create_index(
+        index = create.element
+
+        text = super(SQLiteDDLCompiler, self).visit_create_index(
             create, include_table_schema=False)
+
+        whereclause = index.dialect_options["sqlite"]["where"]
+        if whereclause is not None:
+            where_compiled = self.sql_compiler.process(
+                whereclause, include_table=False,
+                literal_binds=True)
+            text += " WHERE " + where_compiled
+
+        return text
 
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
@@ -752,7 +763,10 @@ class SQLiteDialect(default.DefaultDialect):
     construct_arguments = [
         (sa_schema.Table, {
             "autoincrement": False
-        })
+        }),
+        (sa_schema.Index, {
+            "where": None,
+        }),
     ]
 
     _broken_fk_pragma_quotes = False
