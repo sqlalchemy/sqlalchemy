@@ -123,30 +123,46 @@ key.
 Multiple Mappers for One Class
 ==============================
 
-In modern SQLAlchemy, a particular class is only mapped by one :func:`.mapper`
-at a time.  The rationale here is that the :func:`.mapper` modifies the class itself, not only
-persisting it towards a particular :class:`.Table`, but also *instrumenting*
+In modern SQLAlchemy, a particular class is mapped by only one so-called
+**primary** mapper at a time.   This mapper is involved in three main
+areas of functionality: querying, persistence, and instrumentation of the
+mapped class.   The rationale of the primary mapper relates to the fact
+that the :func:`.mapper` modifies the class itself, not only
+persisting it towards a particular :class:`.Table`, but also :term:`instrumenting`
 attributes upon the class which are structured specifically according to the
-table metadata.
+table metadata.   It's not possible for more than one mapper
+to be associated with a class in equal measure, since only one mapper can
+actually instrument the class.
 
-One potential use case for another mapper to exist at the same time is if we
-wanted to load instances of our class not just from the immediate :class:`.Table`
-to which it is mapped, but from another selectable that is a derivation of that
-:class:`.Table`.   To create a second mapper that only handles querying
-when used explicitly, we can use the :paramref:`.mapper.non_primary` argument.
-In practice, this approach is usually not needed, as we
-can do this sort of thing at query time using methods such as
-:meth:`.Query.select_from`, however it is useful in the rare case that we
-wish to build a :func:`.relationship` to such a mapper.  An example of this is
-at :ref:`relationship_non_primary_mapper`.
+However, there is a class of mapper known as the **non primary** mapper
+with allows additional mappers to be associated with a class, but with
+a limited scope of use.   This scope typically applies to
+being able to load rows from an alternate table or selectable unit, but
+still producing classes which are ultimately persisted using the primary
+mapping.    The non-primary mapper is created using the classical style
+of mapping against a class that is already mapped with a primary mapper,
+and involves the use of the :paramref:`~sqlalchemy.orm.mapper.non_primary`
+flag.
 
-Another potential use is if we genuinely want instances of our class to
-be persisted into different tables at different times; certain kinds of
-data sharding configurations may persist a particular class into tables
-that are identical in structure except for their name.   For this kind of
-pattern, Python offers a better approach than the complexity of mapping
-the same class multiple times, which is to instead create new mapped classes
-for each target table.    SQLAlchemy refers to this as the "entity name"
-pattern, which is described as a recipe at `Entity Name
+The non primary mapper is of very limited use in modern SQLAlchemy, as the
+task of being able to load classes from subqueries or other compound statements
+can be now accomplished using the :class:`.Query` object directly.
+
+There is really only one use case for the non-primary mapper, which is that
+we wish to build a :func:`.relationship` to such a mapper; this is useful
+in the rare and advanced case that our relationship is attempting to join two
+classes together using many tables and/or joins in between.  An example of this
+pattern is at :ref:`relationship_non_primary_mapper`.
+
+As far as the use case of a class that can actually be fully persisted
+to different tables under different scenarios, very early versions of
+SQLAlchemy offered a feature for this adapted from Hibernate, known
+as the "entity name" feature.  However, this use case became infeasable
+within SQLAlchemy once the mapped class itself became the source of SQL
+expression construction; that is, the class' attributes themselves link
+directly to mapped table columns.   The feature was removed and replaced
+with a simple recipe-oriented approach to accomplishing this task
+without any ambiguity of instrumentation - to create new subclasses, each
+mapped individually.  This pattern is now available as a recipe at `Entity Name
 <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
 
