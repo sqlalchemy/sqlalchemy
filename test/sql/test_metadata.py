@@ -1716,6 +1716,37 @@ class ConstraintTest(fixtures.TestBase):
         assert fk.column is base_table.c.q
         assert isinstance(derived_table.c.id.type, Integer)
 
+    def test_related_column_not_present_atfirst_ok_onname(self):
+        m = MetaData()
+        base_table = Table("base", m,
+                           Column("id", Integer, primary_key=True)
+                           )
+        fk = ForeignKey('base.q', link_to_name=True)
+        derived_table = Table("derived", m,
+                              Column("id", None, fk,
+                                     primary_key=True),
+                              )
+
+        base_table.append_column(Column('q', Integer, key='zz'))
+        assert fk.column is base_table.c.zz
+        assert isinstance(derived_table.c.id.type, Integer)
+
+    def test_related_column_not_present_atfirst_ok_linktoname_conflict(self):
+        m = MetaData()
+        base_table = Table("base", m,
+                           Column("id", Integer, primary_key=True)
+                           )
+        fk = ForeignKey('base.q', link_to_name=True)
+        derived_table = Table("derived", m,
+                              Column("id", None, fk,
+                                     primary_key=True),
+                              )
+
+        base_table.append_column(Column('zz', Integer, key='q'))
+        base_table.append_column(Column('q', Integer, key='zz'))
+        assert fk.column is base_table.c.zz
+        assert isinstance(derived_table.c.id.type, Integer)
+
     def test_invalid_composite_fk_check_strings(self):
         m = MetaData()
 
@@ -1872,6 +1903,67 @@ class ConstraintTest(fixtures.TestBase):
             Column('key1', Integer, primary_key=True))
 
         assert isinstance(b.c.a_key1.type, Integer)
+        assert isinstance(c.c.b_key1.type, Integer)
+
+    def test_type_propagate_chained_string_source_last_onname(self):
+        metadata = MetaData()
+
+        b = Table('b', metadata,
+                  Column(
+                      'a_key1', None,
+                      ForeignKey("a.key1", link_to_name=True), key="ak1"),
+                  )
+
+        c = Table('c', metadata,
+                  Column(
+                      'b_key1', None,
+                      ForeignKey("b.a_key1", link_to_name=True), key="bk1"),
+                  )
+
+        Table(
+            'a', metadata,
+            Column('key1', Integer, primary_key=True, key='ak1'))
+
+        assert isinstance(b.c.ak1.type, Integer)
+        assert isinstance(c.c.bk1.type, Integer)
+
+    def test_type_propagate_chained_string_source_last_onname_conflict(self):
+        metadata = MetaData()
+
+        b = Table('b', metadata,
+                  # b.c.key1 -> a.c.key1 -> String
+                  Column(
+                      'ak1', None,
+                      ForeignKey("a.key1", link_to_name=False), key="key1"),
+                  # b.c.ak1 -> a.c.ak1 -> Integer
+                  Column(
+                      'a_key1', None,
+                      ForeignKey("a.key1", link_to_name=True), key="ak1"),
+                  )
+
+        c = Table('c', metadata,
+                  # c.c.b_key1 -> b.c.ak1 -> Integer
+                  Column(
+                      'b_key1', None,
+                      ForeignKey("b.ak1", link_to_name=False)),
+                  # c.c.b_ak1 -> b.c.ak1
+                  Column(
+                      'b_ak1', None,
+                      ForeignKey("b.ak1", link_to_name=True)),
+                  )
+
+        Table(
+            'a', metadata,
+            # a.c.key1
+            Column('ak1', String, key="key1"),
+            # a.c.ak1
+            Column('key1', Integer, primary_key=True, key='ak1'),
+        )
+
+        assert isinstance(b.c.key1.type, String)
+        assert isinstance(b.c.ak1.type, Integer)
+
+        assert isinstance(c.c.b_ak1.type, String)
         assert isinstance(c.c.b_key1.type, Integer)
 
     def test_type_propagate_chained_col_orig_first(self):

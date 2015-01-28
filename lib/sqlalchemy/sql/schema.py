@@ -1256,10 +1256,18 @@ class Column(SchemaItem, ColumnClause):
                     "Index object external to the Table.")
             table.append_constraint(UniqueConstraint(self.key))
 
-        fk_key = (table.key, self.key)
-        if fk_key in self.table.metadata._fk_memos:
-            for fk in self.table.metadata._fk_memos[fk_key]:
-                fk._set_remote_table(table)
+        self._setup_on_memoized_fks(lambda fk: fk._set_remote_table(table))
+
+    def _setup_on_memoized_fks(self, fn):
+        fk_keys = [
+            ((self.table.key, self.key), False),
+            ((self.table.key, self.name), True),
+        ]
+        for fk_key, link_to_name in fk_keys:
+            if fk_key in self.table.metadata._fk_memos:
+                for fk in self.table.metadata._fk_memos[fk_key]:
+                    if fk.link_to_name is link_to_name:
+                        fn(fk)
 
     def _on_table_attach(self, fn):
         if self.table is not None:
@@ -1684,11 +1692,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         # super-edgy case, if other FKs point to our column,
         # they'd get the type propagated out also.
         if isinstance(self.parent.table, Table):
-            fk_key = (self.parent.table.key, self.parent.key)
-            if fk_key in self.parent.table.metadata._fk_memos:
-                for fk in self.parent.table.metadata._fk_memos[fk_key]:
-                    if fk.parent.type._isnull:
-                        fk.parent.type = column.type
+
+            def set_type(fk):
+                if fk.parent.type._isnull:
+                    fk.parent.type = column.type
+            self.parent._setup_on_memoized_fks(set_type)
 
         self.column = column
 

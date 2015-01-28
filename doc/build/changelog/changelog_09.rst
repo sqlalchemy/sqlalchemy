@@ -15,6 +15,22 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, schema
+        :tickets: 3298, 1765
+
+        Fixed bug in 0.9's foreign key setup system, such that
+        the logic used to link a :class:`.ForeignKey` to its parent could fail
+        when the foreign key used "link_to_name=True" in conjunction with
+        a target :class:`.Table` that would not receive its parent column until
+        later, such as within a reflection + "useexisting" scenario,
+        if the target column in fact had a key value different from its name,
+        as would occur in reflection if column reflect events were used to
+        alter the .key of reflected :class:`.Column` objects so that the
+        link_to_name becomes significant.  Also repaired support for column
+        type via FK transmission in a similar way when target columns had a
+        different key and were referenced using link_to_name.
+
+    .. change::
         :tags: feature, engine
         :versions: 1.0.0
 
