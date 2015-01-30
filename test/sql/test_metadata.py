@@ -3441,6 +3441,27 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             ")"
         )
 
+    def test_schematype_ck_name_boolean_not_on_name(self):
+        m1 = MetaData(naming_convention={
+            "ck": "ck_%(table_name)s_%(column_0_name)s"})
+
+        u1 = Table('user', m1,
+                   Column('x', Boolean())
+                   )
+        # constraint is not hit
+        eq_(
+            [c for c in u1.constraints
+                if isinstance(c, CheckConstraint)][0].name, "_unnamed_"
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x BOOLEAN, "
+            "CONSTRAINT ck_user_x CHECK (x IN (0, 1))"
+            ")"
+        )
+
     def test_schematype_ck_name_enum(self):
         m1 = MetaData(naming_convention={
             "ck": "ck_%(table_name)s_%(constraint_name)s"})

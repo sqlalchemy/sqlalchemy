@@ -565,6 +565,142 @@ name as follows::
 
 .. versionadded:: 0.9.2 Added the :paramref:`.MetaData.naming_convention` argument.
 
+.. _naming_check_constraints:
+
+Naming CHECK Constraints
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`.CheckConstraint` object is configured against an arbitrary
+SQL expression, which can have any number of columns present, and additionally
+is often configured using a raw SQL string.  Therefore a common convention
+to use with :class:`.CheckConstraint` is one where we expect the object
+to have a name already, and we then enhance it with other convention elements.
+A typical convention is ``"ck_%(table_name)s_%(constraint_name)s"``::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
+    )
+
+    Table('foo', metadata,
+        Column('value', Integer),
+        CheckConstraint('value > 5', name='value_gt_5')
+    )
+
+The above table will produce the name ``ck_foo_value_gt_5``::
+
+    CREATE TABLE foo (
+        value INTEGER,
+        CONSTRAINT ck_foo_value_gt_5 CHECK (value > 5)
+    )
+
+:class:`.CheckConstraint` also supports the ``%(columns_0_name)s``
+token; we can make use of this by ensuring we use a :class:`.Column` or
+:func:`.sql.expression.column` element within the constraint's expression,
+either by declaring the constraint separate from the table::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
+    )
+
+    foo = Table('foo', metadata,
+        Column('value', Integer)
+    )
+
+    CheckConstraint(foo.c.value > 5)
+
+or by using a :func:`.sql.expression.column` inline::
+
+    from sqlalchemy import column
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
+    )
+
+    foo = Table('foo', metadata,
+        Column('value', Integer),
+        CheckConstraint(column('value') > 5)
+    )
+
+Both will produce the name ``ck_foo_value``::
+
+    CREATE TABLE foo (
+        value INTEGER,
+        CONSTRAINT ck_foo_value CHECK (value > 5)
+    )
+
+The determination of the name of "column zero" is performed by scanning
+the given expression for column objects.  If the expression has more than
+one column present, the scan does use a deterministic search, however the
+structure of the expression will determine which column is noted as
+"column zero".
+
+.. versionadded:: 1.0.0 The :class:`.CheckConstraint` object now supports
+   the ``column_0_name`` naming convention token.
+
+.. _naming_schematypes:
+
+Configuring Naming for Boolean, Enum, and other schema types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`.SchemaType` class refers to type objects such as :class:`.Boolean`
+and :class:`.Enum` which generate a CHECK constraint accompanying the type.
+The name for the constraint here is most directly set up by sending
+the "name" parameter, e.g. :paramref:`.Boolean.name`::
+
+    Table('foo', metadata,
+        Column('flag', Boolean(name='ck_foo_flag'))
+    )
+
+The naming convention feature may be combined with these types as well,
+normally by using a convention which includes ``%(constraint_name)s``
+and then applying a name to the type::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
+    )
+
+    Table('foo', metadata,
+        Column('flag', Boolean(name='flag_bool'))
+    )
+
+The above table will produce the constraint name ``ck_foo_flag_bool``::
+
+    CREATE TABLE foo (
+        flag BOOL,
+        CONSTRAINT ck_foo_flag_bool CHECK (flag IN (0, 1))
+    )
+
+The :class:`.SchemaType` classes use special internal symbols so that
+the naming convention is only determined at DDL compile time.  On Postgresql,
+there's a native BOOLEAN type, so the CHECK constraint of :class:`.Boolean`
+is not needed; we are safe to set up a :class:`.Boolean` type without a
+name, even though a naming convention is in place for check constraints.
+This convention will only be consulted for the CHECK constraint if we
+run against a database without a native BOOLEAN type like SQLite or
+MySQL.
+
+The CHECK constraint may also make use of the ``column_0_name`` token,
+which works nicely with :class:`.SchemaType` since these constraints have
+only one column::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
+    )
+
+    Table('foo', metadata,
+        Column('flag', Boolean())
+    )
+
+The above schema will produce::
+
+    CREATE TABLE foo (
+        flag BOOL,
+        CONSTRAINT ck_foo_flag CHECK (flag IN (0, 1))
+    )
+
+.. versionchanged:: 1.0 Constraint naming conventions that don't include
+   ``%(constraint_name)s`` again work with :class:`.SchemaType` constraints.
+
 Constraints API
 ---------------
 .. autoclass:: Constraint

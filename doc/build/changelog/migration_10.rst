@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: January 4, 2015
+    Document last updated: January 30, 2015
 
 Introduction
 ============
@@ -598,8 +598,44 @@ required during a CREATE/DROP scenario.
 
     :ref:`use_alter` - full description of the new behavior.
 
-
 :ticket:`3282`
+
+
+CHECK Constraints now support the ``%(column_0_name)s`` token in naming conventions
+-----------------------------------------------------------------------------------
+
+The ``%(column_0_name)s`` will derive from the first column found in the
+expression of a :class:`.CheckConstraint`::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
+    )
+
+    foo = Table('foo', metadata,
+        Column('value', Integer),
+    )
+
+    CheckConstraint(foo.c.value > 5)
+
+Will render::
+
+    CREATE TABLE foo (
+        flag BOOL,
+        CONSTRAINT ck_foo_flag CHECK (flag IN (0, 1))
+    )
+
+The combination of naming conventions with the constraint produced by a
+:class:`.SchemaType` such as :class:`.Boolean` or :class:`.Enum` will also
+now make use of all CHECK constraint conventions.
+
+.. seealso::
+
+    :ref:`naming_check_constraints`
+
+    :ref:`naming_schematypes`
+
+:ticket:`3299`
+
 
 .. _change_2051:
 

@@ -2381,14 +2381,32 @@ class ColumnCollectionMixin(object):
 
     """
 
-    def __init__(self, *columns):
+    _allow_multiple_tables = False
+
+    def __init__(self, *columns, **kw):
+        _autoattach = kw.pop('_autoattach', True)
         self.columns = ColumnCollection()
         self._pending_colargs = [_to_schema_column_or_string(c)
                                  for c in columns]
-        if self._pending_colargs and \
-                isinstance(self._pending_colargs[0], Column) and \
-                isinstance(self._pending_colargs[0].table, Table):
-            self._set_parent_with_dispatch(self._pending_colargs[0].table)
+        if _autoattach and self._pending_colargs:
+            columns = [
+                c for c in self._pending_colargs
+                if isinstance(c, Column) and
+                isinstance(c.table, Table)
+            ]
+
+            tables = set([c.table for c in columns])
+            if len(tables) == 1:
+                self._set_parent_with_dispatch(tables.pop())
+            elif len(tables) > 1 and not self._allow_multiple_tables:
+                table = columns[0].table
+                others = [c for c in columns[1:] if c.table is not table]
+                if others:
+                    raise exc.ArgumentError(
+                        "Column(s) %s are not part of table '%s'." %
+                        (", ".join("'%s'" % c for c in others),
+                            table.description)
+                    )
 
     def _set_parent(self, table):
         for col in self._pending_colargs:
@@ -2420,8 +2438,9 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
           arguments are propagated to the :class:`.Constraint` superclass.
 
         """
+        _autoattach = kw.pop('_autoattach', True)
         Constraint.__init__(self, **kw)
-        ColumnCollectionMixin.__init__(self, *columns)
+        ColumnCollectionMixin.__init__(self, *columns, _autoattach=_autoattach)
 
     def _set_parent(self, table):
         Constraint._set_parent(self, table)
@@ -2449,11 +2468,13 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         return len(self.columns._data)
 
 
-class CheckConstraint(Constraint):
+class CheckConstraint(ColumnCollectionConstraint):
     """A table- or column-level CHECK constraint.
 
     Can be included in the definition of a Table or Column.
     """
+
+    _allow_multiple_tables = True
 
     def __init__(self, sqltext, name=None, deferrable=None,
                  initially=None, table=None, info=None, _create_rule=None,
@@ -2486,20 +2507,19 @@ class CheckConstraint(Constraint):
 
         """
 
+        self.sqltext = _literal_as_text(sqltext, warn=False)
+
+        columns = []
+        visitors.traverse(self.sqltext, {}, {'column': columns.append})
+
         super(CheckConstraint, self).\
             __init__(
-                name, deferrable, initially, _create_rule, info=info,
-                _type_bound=_type_bound)
-        self.sqltext = _literal_as_text(sqltext, warn=False)
+                name=name, deferrable=deferrable,
+                initially=initially, _create_rule=_create_rule, info=info,
+                _type_bound=_type_bound, _autoattach=_autoattach,
+                *columns)
         if table is not None:
             self._set_parent_with_dispatch(table)
-        elif _autoattach:
-            cols = _find_columns(self.sqltext)
-            tables = set([c.table for c in cols
-                          if isinstance(c.table, Table)])
-            if len(tables) == 1:
-                self._set_parent_with_dispatch(
-                    tables.pop())
 
     def __visit_name__(self):
         if isinstance(self.parent, Table):
@@ -2740,7 +2760,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                 fk._set_parent_with_dispatch(col)
 
         self._validate_dest_table(table)
-
 
     def copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(
@@ -3064,12 +3083,6 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
                 )
             )
         self.table = table
-        for c in self.columns:
-            if c.table != self.table:
-                raise exc.ArgumentError(
-                    "Column '%s' is not part of table '%s'." %
-                    (c, self.table.description)
-                )
         table.indexes.add(self)
 
         self.expressions = [

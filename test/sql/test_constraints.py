@@ -1063,7 +1063,7 @@ class ConstraintAPITest(fixtures.TestBase):
                    )
         assert_raises_message(
             exc.ArgumentError,
-            "Column 't2.y' is not part of table 't1'.",
+            r"Column\(s\) 't2.y' are not part of table 't1'.",
             Index,
             "bar", t1.c.x, t2.c.y
         )

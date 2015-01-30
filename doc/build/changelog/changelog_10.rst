@@ -23,6 +23,25 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, schema
+        :tickets: 3299, 3067
+
+        The :class:`.CheckConstraint` construct now supports naming
+        conventions that include the token ``%(column_0_name)s``; the
+        constraint expression is scanned for columns.  Additionally,
+        naming conventions for check constraints that don't include the
+        ``%(constraint_name)s`` token will now work for :class:`.SchemaType`-
+        generated constraints, such as those of :class:`.Boolean` and
+        :class:`.Enum`; this stopped working in 0.9.7 due to :ticket:`3067`.
+
+        .. seealso::
+
+            :ref:`naming_check_constraints`
+
+            :ref:`naming_schematypes`
+
+
+    .. change::
         :tags: feature, postgresql, pypy
         :tickets: 3052
         :pullreq: bitbucket:34
