@@ -311,7 +311,7 @@ from .base import PGDialect, PGCompiler, \
     ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
     _INT_TYPES
 from .hstore import HSTORE
-from .json import JSON
+from .json import JSON, JSONB
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -375,6 +375,15 @@ class _PGJSON(JSON):
             return None
         else:
             return super(_PGJSON, self).result_processor(dialect, coltype)
+
+
+class _PGJSONB(JSONB):
+
+    def result_processor(self, dialect, coltype):
+        if dialect._has_native_jsonb:
+            return None
+        else:
+            return super(_PGJSONB, self).result_processor(dialect, coltype)
 
 # When we're handed literal SQL, ensure it's a SELECT query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
@@ -466,6 +475,7 @@ class PGDialect_psycopg2(PGDialect):
 
     _has_native_hstore = False
     _has_native_json = False
+    _has_native_jsonb = False
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -474,7 +484,8 @@ class PGDialect_psycopg2(PGDialect):
             ENUM: _PGEnum,  # needs force_unicode
             sqltypes.Enum: _PGEnum,  # needs force_unicode
             HSTORE: _PGHStore,
-            JSON: _PGJSON
+            JSON: _PGJSON,
+            JSONB: _PGJSONB
         }
     )
 
@@ -503,6 +514,7 @@ class PGDialect_psycopg2(PGDialect):
             self._hstore_oids(connection.connection) \
             is not None
         self._has_native_json = self.psycopg2_version >= (2, 5)
+        self._has_native_jsonb = self.psycopg2_version >= (2, 5, 4)
 
         # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
         self.supports_sane_multi_rowcount = self.psycopg2_version >= (2, 0, 9)
