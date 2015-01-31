@@ -2387,6 +2387,14 @@ class MySQLDialect(default.DefaultDialect):
 
     def set_isolation_level(self, connection, level):
         level = level.replace('_', ' ')
+
+        # adjust for ConnectionFairy being present
+        if hasattr(connection, 'connection'):
+            connection = connection.connection
+
+        self._set_isolation_level(connection, level)
+
+    def _set_isolation_level(self, connection, level):
         if level not in self._isolation_lookup:
             raise exc.ArgumentError(
                 "Invalid value '%s' for isolation_level. "

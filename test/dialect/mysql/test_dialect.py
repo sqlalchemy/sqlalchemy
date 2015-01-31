@@ -148,3 +148,27 @@ class ExecutionTest(fixtures.TestBase):
     def test_sysdate(self):
         d = testing.db.scalar(func.sysdate())
         assert isinstance(d, datetime.datetime)
+
+    @testing.only_on(['mysql+mysqldb',
+                      'mysql+mysqlconnector',
+                      'mysql+pymysql',
+                      'mysql+cymysql'])
+    def test_autocommit_isolation_level(self):
+        c = testing.db.connect().execution_options(
+            isolation_level='AUTOCOMMIT'
+        )
+        assert c.execute('SELECT @@autocommit;').scalar()
+
+    def test_isolation_level(self):
+        values = {
+            # sqlalchemy -> mysql
+            'READ UNCOMMITTED': 'READ-UNCOMMITTED',
+            'READ COMMITTED': 'READ-COMMITTED',
+            'REPEATABLE READ': 'REPEATABLE-READ',
+            'SERIALIZABLE': 'SERIALIZABLE'
+        }
+        for sa_value, mysql_value in values.items():
+            c = testing.db.connect().execution_options(
+                isolation_level=sa_value
+            )
+            assert c.execute('SELECT @@tx_isolation;').scalar() == mysql_value
