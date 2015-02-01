@@ -1948,13 +1948,15 @@ class JSONRoundTripTest(fixtures.TablesTest):
     __only_on__ = ('postgresql >= 9.3',)
     __backend__ = True
 
+    test_type = JSON
+
     @classmethod
     def define_tables(cls, metadata):
         Table('data_table', metadata,
               Column('id', Integer, primary_key=True),
               Column('name', String(30), nullable=False),
-              Column('data', JSON),
-              Column('nulldata', JSON(none_as_null=True))
+              Column('data', cls.test_type),
+              Column('nulldata', cls.test_type(none_as_null=True))
               )
 
     def _fixture_data(self, engine):
@@ -2016,7 +2018,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
         else:
             options = {}
 
-        if testing.against("postgresql+psycopg2"):
+        if testing.against("postgresql+psycopg2") and \
+                testing.db.dialect.psycopg2_version >= (2, 5):
             from psycopg2.extras import register_default_json
             engine = engines.testing_engine(options=options)
 
@@ -2037,7 +2040,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
     def test_reflect(self):
         insp = inspect(testing.db)
         cols = insp.get_columns('data_table')
-        assert isinstance(cols[2]['type'], JSON)
+        assert isinstance(cols[2]['type'], self.test_type)
 
     @testing.only_on("postgresql+psycopg2")
     def test_insert_native(self):
@@ -2096,7 +2099,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     "key": "value",
                     "x": "q"
                 },
-                JSON
+                self.test_type
             )
         ])
         eq_(
@@ -2172,7 +2175,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     "key": "value",
                     "key2": {"k1": "v1", "k2": "v2"}
                 },
-                JSON
+                self.test_type
             )
         ])
         eq_(
@@ -2199,7 +2202,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     util.u('réveillé'): util.u('réveillé'),
                     "data": {"k1": util.u('drôle')}
                 },
-                JSON
+                self.test_type
             )
         ])
         eq_(
@@ -2266,3 +2269,13 @@ class JSONBTest(JSONTest):
 
 class JSONBRoundTripTest(JSONRoundTripTest):
     __only_on__ = ('postgresql >= 9.4',)
+
+    test_type = JSONB
+
+    @testing.requires.postgresql_utf8_server_encoding
+    def test_unicode_round_trip_python(self):
+        super(JSONBRoundTripTest, self).test_unicode_round_trip_python()
+
+    @testing.requires.postgresql_utf8_server_encoding
+    def test_unicode_round_trip_native(self):
+        super(JSONBRoundTripTest, self).test_unicode_round_trip_native()

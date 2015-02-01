@@ -263,14 +263,17 @@ HSTORE type
 
 The ``psycopg2`` DBAPI includes an extension to natively handle marshalling of
 the HSTORE type.   The SQLAlchemy psycopg2 dialect will enable this extension
-by default when it is detected that the target database has the HSTORE
-type set up for use.   In other words, when the dialect makes the first
+by default when psycopg2 version 2.4 or greater is used, and
+it is detected that the target database has the HSTORE type set up for use.
+In other words, when the dialect makes the first
 connection, a sequence like the following is performed:
 
 1. Request the available HSTORE oids using
    ``psycopg2.extras.HstoreAdapter.get_oids()``.
    If this function returns a list of HSTORE identifiers, we then determine
    that the ``HSTORE`` extension is present.
+   This function is **skipped** if the version of psycopg2 installed is
+   less than version 2.4.
 
 2. If the ``use_native_hstore`` flag is at its default of ``True``, and
    we've detected that ``HSTORE`` oids are available, the
@@ -583,19 +586,22 @@ class PGDialect_psycopg2(PGDialect):
                 hstore_oids = self._hstore_oids(conn)
                 if hstore_oids is not None:
                     oid, array_oid = hstore_oids
+                    kw = {'oid': oid}
                     if util.py2k:
-                        extras.register_hstore(conn, oid=oid,
-                                               array_oid=array_oid,
-                                               unicode=True)
-                    else:
-                        extras.register_hstore(conn, oid=oid,
-                                               array_oid=array_oid)
+                        kw['unicode'] = True
+                    if self.psycopg2_version >= (2, 4, 3):
+                        kw['array_oid'] = array_oid
+                    extras.register_hstore(conn, **kw)
             fns.append(on_connect)
 
         if self.dbapi and self._json_deserializer:
             def on_connect(conn):
-                extras.register_default_json(
-                    conn, loads=self._json_deserializer)
+                if self._has_native_json:
+                    extras.register_default_json(
+                        conn, loads=self._json_deserializer)
+                if self._has_native_jsonb:
+                    extras.register_default_jsonb(
+                        conn, loads=self._json_deserializer)
             fns.append(on_connect)
 
         if fns:
