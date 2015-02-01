@@ -15,6 +15,29 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, postgresql
+        :pullreq: github:145
+
+        Added support for the :class:`postgresql.JSONB` datatype when
+        using psycopg2 2.5.4 or greater, which features native conversion
+        of JSONB data so that SQLAlchemy's converters must be disabled;
+        additionally, the newly added psycopg2 extension
+        ``extras.register_default_jsonb`` is used to establish a JSON
+        deserializer passed to the dialect via the ``json_deserializer``
+        argument.  Also repaired the Postgresql integration tests which
+        weren't actually round-tripping the JSONB type as opposed to the
+        JSON type.  Pull request courtesy Mateusz Susik.
+
+    .. change::
+        :tags: bug, postgresql
+
+        Repaired the use of the "array_oid" flag when registering the
+        HSTORE type with older psycopg2 versions < 2.4.3, which does not
+        support this flag, as well as use of the native json serializer
+        hook "register_default_json" with user-defined ``json_deserializer``
+        on psycopg2 versions < 2.5, which does not include native json.
+
+    .. change::
         :tags: bug, schema
         :tickets: 3298, 1765
 

@@ -198,6 +198,18 @@ expect them to be present will fail.
 
 Additional steps specific to individual databases are as follows::
 
+    POSTGRESQL: To enable unicode testing with JSONB, create the
+    database with UTF8 encoding::
+
+        postgres=# create database test with owner=scott encoding='utf8' template=template0;
+
+    To include tests for HSTORE, create the HSTORE type engine::
+
+        postgres=# \c test;
+        You are now connected to database "test" as user "postgresql".
+        test=# create extension hstore;
+        CREATE EXTENSION
+
     MYSQL: Default storage engine should be "MyISAM".   Tests that require
     "InnoDB" as the engine will specify this explicitly.
 

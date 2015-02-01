@@ -781,3 +781,9 @@ class DefaultRequirements(SuiteRequirements):
         return against(config, 'mysql') and \
                 config.db.dialect._detect_casing(config.db) == 0
 
+    @property
+    def postgresql_utf8_server_encoding(self):
+        return only_if(
+            lambda config: against(config, 'postgresql') and
+            config.db.scalar("show server_encoding").lower() == "utf8"
+        )
