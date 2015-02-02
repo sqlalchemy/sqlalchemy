@@ -1034,7 +1034,7 @@ class UUIDTest(fixtures.TestBase):
         import uuid
         self._test_round_trip(
             Table('utable', MetaData(),
-                  Column('data', postgresql.UUID())
+                  Column('data', postgresql.UUID(as_uuid=False))
                   ),
             str(uuid.uuid4()),
             str(uuid.uuid4())
@@ -1056,13 +1056,32 @@ class UUIDTest(fixtures.TestBase):
         )
 
     @testing.fails_on('postgresql+zxjdbc',
-                      'column "data" is of type uuid[] but expression is of type character varying')
+                      'column "data" is of type uuid[] but '
+                      'expression is of type character varying')
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_array(self):
         import uuid
         self._test_round_trip(
-            Table('utable', MetaData(),
-                Column('data', postgresql.ARRAY(postgresql.UUID()))
+            Table(
+                'utable', MetaData(),
+                Column('data', postgresql.ARRAY(postgresql.UUID(as_uuid=True)))
+            ),
+            [uuid.uuid4(), uuid.uuid4()],
+            [uuid.uuid4(), uuid.uuid4()],
+        )
+
+    @testing.fails_on('postgresql+zxjdbc',
+                      'column "data" is of type uuid[] but '
+                      'expression is of type character varying')
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    def test_uuid_string_array(self):
+        import uuid
+        self._test_round_trip(
+            Table(
+                'utable', MetaData(),
+                Column(
+                    'data',
+                    postgresql.ARRAY(postgresql.UUID(as_uuid=False)))
             ),
             [str(uuid.uuid4()), str(uuid.uuid4())],
             [str(uuid.uuid4()), str(uuid.uuid4())],
@@ -1087,7 +1106,7 @@ class UUIDTest(fixtures.TestBase):
     def teardown(self):
         self.conn.close()
 
-    def _test_round_trip(self, utable, value1, value2):
+    def _test_round_trip(self, utable, value1, value2, exp_value2=None):
         utable.create(self.conn)
         self.conn.execute(utable.insert(), {'data': value1})
         self.conn.execute(utable.insert(), {'data': value2})
@@ -1095,7 +1114,10 @@ class UUIDTest(fixtures.TestBase):
             select([utable.c.data]).
             where(utable.c.data != value1)
         )
-        eq_(r.fetchone()[0], value2)
+        if exp_value2:
+            eq_(r.fetchone()[0], exp_value2)
+        else:
+            eq_(r.fetchone()[0], value2)
         eq_(r.fetchone(), None)
 
 

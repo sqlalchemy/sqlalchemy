@@ -299,9 +299,14 @@ from ... import types as sqltypes
 from .base import PGDialect, PGCompiler, \
     PGIdentifierPreparer, PGExecutionContext, \
     ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
-    _INT_TYPES
+    _INT_TYPES, UUID
 from .hstore import HSTORE
 from .json import JSON, JSONB
+
+try:
+    from uuid import UUID as _python_UUID
+except ImportError:
+    _python_UUID = None
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -374,6 +379,26 @@ class _PGJSONB(JSONB):
             return None
         else:
             return super(_PGJSONB, self).result_processor(dialect, coltype)
+
+
+class _PGUUID(UUID):
+    def bind_processor(self, dialect):
+        if not self.as_uuid and dialect.use_native_uuid:
+            nonetype = type(None)
+
+            def process(value):
+                if value is not None:
+                    value = _python_UUID(value)
+                return value
+            return process
+
+    def result_processor(self, dialect, coltype):
+        if not self.as_uuid and dialect.use_native_uuid:
+            def process(value):
+                if value is not None:
+                    value = str(value)
+                return value
+            return process
 
 # When we're handed literal SQL, ensure it's a SELECT query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
@@ -475,18 +500,20 @@ class PGDialect_psycopg2(PGDialect):
             sqltypes.Enum: _PGEnum,  # needs force_unicode
             HSTORE: _PGHStore,
             JSON: _PGJSON,
-            JSONB: _PGJSONB
+            JSONB: _PGJSONB,
+            UUID: _PGUUID
         }
     )
 
     def __init__(self, server_side_cursors=False, use_native_unicode=True,
                  client_encoding=None,
-                 use_native_hstore=True,
+                 use_native_hstore=True, use_native_uuid=True,
                  **kwargs):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
         self.use_native_hstore = use_native_hstore
+        self.use_native_uuid = use_native_uuid
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
         if self.dbapi and hasattr(self.dbapi, '__version__'):
@@ -549,6 +576,11 @@ class PGDialect_psycopg2(PGDialect):
         if self.isolation_level is not None:
             def on_connect(conn):
                 self.set_isolation_level(conn, self.isolation_level)
+            fns.append(on_connect)
+
+        if self.dbapi and self.use_native_uuid:
+            def on_connect(conn):
+                extras.register_uuid(None, conn)
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_unicode:
