@@ -16,6 +16,18 @@
 
     .. change::
         :tags: bug, postgresql
+        :tickets: 2940
+
+        Repaired support for Postgresql UUID types in conjunction with
+        the ARRAY type when using psycopg2.  The psycopg2 dialect now
+        employs use of the psycopg2.extras.register_uuid() hook
+        so that UUID values are always passed to/from the DBAPI as
+        UUID() objects.   The :paramref:`.UUID.as_uuid` flag is still
+        honored, except with psycopg2 we need to convert returned
+        UUID objects back into strings when this is disabled.
+
+    .. change::
+        :tags: bug, postgresql
         :pullreq: github:145
 
         Added support for the :class:`postgresql.JSONB` datatype when
