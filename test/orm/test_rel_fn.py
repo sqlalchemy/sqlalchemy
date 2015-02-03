@@ -490,6 +490,19 @@ class _JoinFixtures(object):
                         )
                 )
 
+    def _join_fixture_remote_local_multiple_ref(self, **kw):
+        fn = lambda a, b: ((a == b) | (b == a))
+        return relationships.JoinCondition(
+            self.selfref, self.selfref,
+            self.selfref, self.selfref,
+            support_sync=False,
+            primaryjoin=fn(
+                # we're putting a do-nothing annotation on
+                # "a" so that the left/right is preserved;
+                # annotation vs. non seems to affect __eq__ behavior
+                self.selfref.c.sid._annotate({"foo": "bar"}),
+                foreign(remote(self.selfref.c.sid)))
+        )
 
     def _assert_non_simple_warning(self, fn):
         assert_raises_message(
@@ -1174,4 +1187,14 @@ class LazyClauseTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
             lazywhere,
             "lft.id = :param_1 AND lft.x = :x_1",
             checkparams= {'param_1': None, 'x_1': 5}
+        )
+
+    def test_lazy_clause_remote_local_multiple_ref(self):
+        joincond = self._join_fixture_remote_local_multiple_ref()
+        lazywhere, bind_to_col, equated_columns = joincond.create_lazy_clause()
+
+        self.assert_compile(
+            lazywhere,
+            ":param_1 = selfref.sid OR selfref.sid = :param_1",
+            checkparams={'param_1': None}
         )

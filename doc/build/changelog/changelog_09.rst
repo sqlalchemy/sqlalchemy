@@ -15,6 +15,16 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3300
+
+        Fixed bug in lazy loading SQL construction whereby a complex
+        primaryjoin that referred to the same "local" column multiple
+        times in the "column that points to itself" style of self-referential
+        join would not be substituted in all cases.   The logic to determine
+        substitutions here has been reworked to be more open-ended.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2940
 
