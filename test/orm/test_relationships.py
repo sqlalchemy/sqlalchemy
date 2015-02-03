@@ -436,6 +436,33 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         ])
         return sess
 
+    def test_descendants_lazyload_clause(self):
+        self._descendants_fixture(data=False)
+        Entity = self.classes.Entity
+        self.assert_compile(
+            Entity.descendants.property.strategy._lazywhere,
+            "entity.path LIKE (:param_1 || :path_1)"
+        )
+
+        self.assert_compile(
+            Entity.descendants.property.strategy._rev_lazywhere,
+            ":param_1 LIKE (entity.path || :path_1)"
+        )
+
+    def test_ancestors_lazyload_clause(self):
+        self._anscestors_fixture(data=False)
+        Entity = self.classes.Entity
+        # :param_1 LIKE (:param_1 || :path_1)
+        self.assert_compile(
+            Entity.anscestors.property.strategy._lazywhere,
+            ":param_1 LIKE (entity.path || :path_1)"
+        )
+
+        self.assert_compile(
+            Entity.anscestors.property.strategy._rev_lazywhere,
+            "entity.path LIKE (:param_1 || :path_1)"
+        )
+
     def test_descendants_lazyload(self):
         sess = self._descendants_fixture()
         Entity = self.classes.Entity
@@ -500,7 +527,7 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 
-class CompositeSelfRefFKTest(fixtures.MappedTest):
+class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     """Tests a composite FK where, in
     the relationship(), one col points
@@ -522,6 +549,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
     both on reports_to_id, *and on company_id to itself*.
 
     """
+
+    __dialect__ = 'default'
 
     @classmethod
     def define_tables(cls, metadata):
@@ -670,6 +699,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
             )
         })
 
+        self._assert_lazy_clauses()
         self._test()
 
     def test_overlapping_warning(self):
@@ -718,6 +748,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
             )
         })
 
+        self._assert_lazy_clauses()
         self._test_no_warning()
 
     def _test_no_overwrite(self, sess, expect_failure):
@@ -749,6 +780,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         self._test_no_warning(overwrites=True)
 
     def _test_no_warning(self, overwrites=False):
+        configure_mappers()
         self._test_relationships()
         sess = Session()
         self._setup_data(sess)
@@ -756,8 +788,23 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         self._test_join_aliasing(sess)
         self._test_no_overwrite(sess, expect_failure=overwrites)
 
-    def _test_relationships(self):
+    @testing.emits_warning("relationship .* will copy column ")
+    def _assert_lazy_clauses(self):
         configure_mappers()
+        Employee = self.classes.Employee
+        self.assert_compile(
+            Employee.employees.property.strategy._lazywhere,
+            ":param_1 = employee_t.reports_to_id AND "
+            ":param_2 = employee_t.company_id"
+        )
+
+        self.assert_compile(
+            Employee.employees.property.strategy._rev_lazywhere,
+            "employee_t.emp_id = :param_1 AND "
+            "employee_t.company_id = :param_2"
+        )
+
+    def _test_relationships(self):
         Employee = self.classes.Employee
         employee_t = self.tables.employee_t
         eq_(
@@ -765,7 +812,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
             set([
                 (employee_t.c.company_id, employee_t.c.company_id),
                 (employee_t.c.emp_id, employee_t.c.reports_to_id),
-                ])
+            ])
         )
         eq_(
             Employee.employees.property.remote_side,

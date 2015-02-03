@@ -2692,27 +2692,31 @@ class JoinCondition(object):
 
     def create_lazy_clause(self, reverse_direction=False):
         binds = util.column_dict()
-        lookup = collections.defaultdict(list)
         equated_columns = util.column_dict()
 
-        if reverse_direction and self.secondaryjoin is None:
-            for l, r in self.local_remote_pairs:
-                lookup[r].append((r, l))
-                equated_columns[l] = r
-        else:
-            # replace all "local side" columns, which is
-            # anything that isn't marked "remote"
+        has_secondary = self.secondaryjoin is not None
+
+        if has_secondary:
+            lookup = collections.defaultdict(list)
             for l, r in self.local_remote_pairs:
                 lookup[l].append((l, r))
                 equated_columns[r] = l
+        elif not reverse_direction:
+            for l, r in self.local_remote_pairs:
+                equated_columns[r] = l
+        else:
+            for l, r in self.local_remote_pairs:
+                equated_columns[l] = r
 
         def col_to_bind(col):
-            if (reverse_direction and col in lookup) or \
-                    (not reverse_direction and "local" in col._annotations):
-                if col in lookup:
-                    for tobind, equated in lookup[col]:
-                        if equated in binds:
-                            return None
+
+            if (
+                (not reverse_direction and 'local' in col._annotations) or
+                reverse_direction and (
+                    (has_secondary and col in lookup) or
+                    (not has_secondary and 'remote' in col._annotations)
+                )
+            ):
                 if col not in binds:
                     binds[col] = sql.bindparam(
                         None, None, type_=col.type, unique=True)
