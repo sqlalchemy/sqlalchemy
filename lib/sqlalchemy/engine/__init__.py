@@ -275,6 +275,8 @@ def create_engine(*args, **kwargs):
 
             :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
 
+            :ref:`session_transaction_isolation` - for the ORM
+
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many
         characters. If less than 6, labels are generated as

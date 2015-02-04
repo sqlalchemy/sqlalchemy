@@ -1,8 +1,6 @@
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, ne_
+    assert_raises_message, ne_, expect_warnings
 import sys
-import time
-import threading
 from sqlalchemy import event
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, \
@@ -1360,6 +1358,30 @@ class IsolationLevelTest(fixtures.TestBase):
 
         c3.close()
         c4.close()
+
+    def test_warning_in_transaction(self):
+        eng = testing_engine()
+        c1 = eng.connect()
+        with expect_warnings(
+            "Connection is already established with a Transaction; "
+            "setting isolation_level may implicitly rollback or commit "
+            "the existing transaction, or have no effect until next "
+            "transaction"
+        ):
+            with c1.begin():
+                c1 = c1.execution_options(
+                    isolation_level=self._non_default_isolation_level()
+                )
+
+                eq_(
+                    eng.dialect.get_isolation_level(c1.connection),
+                    self._non_default_isolation_level()
+                )
+        # stays outside of transaction
+        eq_(
+            eng.dialect.get_isolation_level(c1.connection),
+            self._non_default_isolation_level()
+        )
 
     def test_per_statement_bzzt(self):
         assert_raises_message(

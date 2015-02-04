@@ -395,6 +395,12 @@ class DefaultDialect(interfaces.Dialect):
             self._set_connection_isolation(connection, opts['isolation_level'])
 
     def _set_connection_isolation(self, connection, level):
+        if connection.in_transaction():
+            util.warn(
+                "Connection is already established with a Transaction; "
+                "setting isolation_level may implicitly rollback or commit "
+                "the existing transaction, or have no effect until "
+                "next transaction")
         self.set_isolation_level(connection.connection, level)
         connection.connection._connection_record.\
             finalize_callback.append(self.reset_isolation_level)

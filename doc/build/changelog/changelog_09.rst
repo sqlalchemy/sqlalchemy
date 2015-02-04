@@ -15,6 +15,32 @@
     :version: 0.9.9
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3296
+
+        Added new parameter :paramref:`.Session.connection.execution_options`
+        which may be used to set up execution options on a :class:`.Connection`
+        when it is first checked out, before the transaction has begun.
+        This is used to set up options such as isolation level on the
+        connection before the transaction starts.
+
+        .. seealso::
+
+            :ref:`session_transaction_isolation` - new documentation section
+            detailing best practices for setting transaction isolation with
+            sessions.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3296
+
+        A warning is emitted if the ``isolation_level`` parameter is used
+        with :meth:`.Connection.execution_options` when a :class:`.Transaction`
+        is in play; DBAPIs and/or SQLAlchemy dialects such as psycopg2,
+        MySQLdb may implicitly rollback or commit the transaction, or
+        not change the setting til next transaction, so this is never safe.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3300
 
