@@ -226,10 +226,10 @@ class SessionTransaction(object):
     def _is_transaction_boundary(self):
         return self.nested or not self._parent
 
-    def connection(self, bindkey, **kwargs):
+    def connection(self, bindkey, execution_options=None, **kwargs):
         self._assert_active()
         bind = self.session.get_bind(bindkey, **kwargs)
-        return self._connection_for_bind(bind)
+        return self._connection_for_bind(bind, execution_options)
 
     def _begin(self, nested=False):
         self._assert_active()
@@ -301,14 +301,18 @@ class SessionTransaction(object):
             self._parent._deleted.update(self._deleted)
             self._parent._key_switches.update(self._key_switches)
 
-    def _connection_for_bind(self, bind):
+    def _connection_for_bind(self, bind, execution_options):
         self._assert_active()
 
         if bind in self._connections:
+            if execution_options:
+                util.warn(
+                    "Connection is already established for the "
+                    "given bind; execution_options ignored")
             return self._connections[bind][0]
 
         if self._parent:
-            conn = self._parent._connection_for_bind(bind)
+            conn = self._parent._connection_for_bind(bind, execution_options)
             if not self.nested:
                 return conn
         else:
@@ -320,6 +324,9 @@ class SessionTransaction(object):
                         "given Connection's Engine")
             else:
                 conn = bind.contextual_connect()
+
+        if execution_options:
+            conn = conn.execution_options(**execution_options)
 
         if self.session.twophase and self._parent is None:
             transaction = conn.begin_twophase()
@@ -799,6 +806,7 @@ class Session(_SessionClassMethods):
     def connection(self, mapper=None, clause=None,
                    bind=None,
                    close_with_result=False,
+                   execution_options=None,
                    **kw):
         """Return a :class:`.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
@@ -843,6 +851,18 @@ class Session(_SessionClassMethods):
           configured with ``autocommit=True`` and does not already have a
           transaction in progress.
 
+        :param execution_options: a dictionary of execution options that will
+         be passed to :meth:`.Connection.execution_options`, **when the
+         connection is first procured only**.   If the connection is already
+         present within the :class:`.Session`, a warning is emitted and
+         the arguments are ignored.
+
+         .. versionadded:: 0.9.9
+
+         .. seealso::
+
+            :ref:`session_transaction_isolation`
+
         :param \**kw:
           Additional keyword arguments are sent to :meth:`get_bind()`,
           allowing additional arguments to be passed to custom
@@ -853,13 +873,18 @@ class Session(_SessionClassMethods):
             bind = self.get_bind(mapper, clause=clause, **kw)
 
         return self._connection_for_bind(bind,
-                                         close_with_result=close_with_result)
+                                         close_with_result=close_with_result,
+                                         execution_options=execution_options)
 
-    def _connection_for_bind(self, engine, **kwargs):
+    def _connection_for_bind(self, engine, execution_options=None, **kw):
         if self.transaction is not None:
-            return self.transaction._connection_for_bind(engine)
+            return self.transaction._connection_for_bind(
+                engine, execution_options)
         else:
-            return engine.contextual_connect(**kwargs)
+            conn = engine.contextual_connect(**kw)
+            if execution_options:
+                conn = conn.execution_options(**execution_options)
+            return conn
 
     def execute(self, clause, params=None, mapper=None, bind=None, **kw):
         """Execute a SQL expression construct or string statement within

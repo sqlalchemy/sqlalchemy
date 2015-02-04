@@ -190,6 +190,19 @@ class Connection(Connectable):
           is returned to the connection pool, i.e.
           the :meth:`.Connection.close` method is called.
 
+          .. warning::  The ``isolation_level`` execution option should
+             **not** be used when a transaction is already established, that
+             is, the :meth:`.Connection.begin` method or similar has been
+             called.  A database cannot change the isolation level on a
+             transaction in progress, and different DBAPIs and/or
+             SQLAlchemy dialects may implicitly roll back or commit
+             the transaction, or not affect the connection at all.
+
+             .. versionchanged:: 0.9.9 A warning is emitted when the
+                ``isolation_level`` execution option is used after a
+                transaction has been started with :meth:`.Connection.begin`
+                or similar.
+
           .. seealso::
 
                 :paramref:`.create_engine.isolation_level`
@@ -203,6 +216,7 @@ class Connection(Connectable):
 
                 :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
 
+                :ref:`session_transaction_isolation` - for the ORM
 
         :param no_parameters: When ``True``, if the final parameter
           list or dictionary is totally empty, will invoke the
