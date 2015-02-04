@@ -1237,6 +1237,18 @@ class IsolationLevelTest(fixtures.TestBase):
             eng.connect
         )
 
+    def test_connection_invalidated(self):
+        eng = testing_engine()
+        conn = eng.connect()
+        c2 = conn.execution_options(
+            isolation_level=self._non_default_isolation_level())
+        c2.invalidate()
+        c2.connection
+
+        # TODO: do we want to rebuild the previous isolation?
+        # for now, this is current behavior so we will leave it.
+        eq_(c2.get_isolation_level(), self._default_isolation_level())
+
     def test_per_connection(self):
         from sqlalchemy.pool import QueuePool
         eng = testing_engine(

@@ -530,6 +530,7 @@ class _ConnectionRecord(object):
         return self.connection
 
     def __close(self):
+        self.finalize_callback.clear()
         self.__pool._close_connection(self.connection)
 
     def __connect(self):
