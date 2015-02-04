@@ -15,6 +15,17 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3302
+
+        Fixed bug in :class:`.Connection` and pool where the
+        :meth:`.Connection.invalidate` method, or an invalidation due
+        to a database disconnect, would fail if the
+        ``isolation_level`` parameter had been used with
+        :meth:`.Connection.execution_options`; the "finalizer" that resets
+        the isolation level would be called on the no longer opened connection.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3296
 

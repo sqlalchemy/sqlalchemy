@@ -235,6 +235,13 @@ class Connection(Connectable):
                 transaction has been started with :meth:`.Connection.begin`
                 or similar.
 
+          .. note:: The ``isolation_level`` execution option is implicitly
+             reset if the :class:`.Connection` is invalidated, e.g. via
+             the :meth:`.Connection.invalidate` method, or if a
+             disconnection error occurs.  The new connection produced after
+             the invalidation will not have the isolation level re-applied
+             to it automatically.
+
           .. seealso::
 
                 :paramref:`.create_engine.isolation_level`
