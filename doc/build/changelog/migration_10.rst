@@ -1817,6 +1817,29 @@ Support for the pypy psycopg2cffi dialect is added.
 Dialect Improvements and Changes - MySQL
 =============================================
 
+.. _change_3155:
+
+MySQL TIMESTAMP Type now renders NULL / NOT NULL in all cases
+--------------------------------------------------------------
+
+The MySQL dialect has always worked around MySQL's implicit NOT NULL
+default associated with TIMESTAMP columns by emitting NULL for
+such a type, if the column is set up with ``nullable=True``.   However,
+MySQL 5.6.6 and above features a new flag
+`explicit_defaults_for_timestamp <http://dev.mysql.com/doc/refman/
+5.6/en/server-system-variables.html
+#sysvar_explicit_defaults_for_timestamp>`_ which repairs MySQL's non-standard
+behavior to make it behave like any other type; to accommodate this,
+SQLAlchemy now emits NULL/NOT NULL unconditionally for all TIMESTAMP
+columns.
+
+.. seealso::
+
+    :ref:`mysql_timestamp_null`
+
+:ticket:`3155`
+
+
 .. _change_3283:
 
 MySQL SET Type Overhauled to support empty sets, unicode, blank value handling

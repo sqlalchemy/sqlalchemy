@@ -11,6 +11,7 @@ from sqlalchemy import testing
 import datetime
 import decimal
 
+
 class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
 
@@ -416,29 +417,66 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         """Exercise funky TIMESTAMP default syntax when used in columns."""
 
         columns = [
-            ([TIMESTAMP],
+            ([TIMESTAMP], {},
              'TIMESTAMP NULL'),
-            ([mysql.MSTimeStamp],
+
+            ([mysql.MSTimeStamp], {},
              'TIMESTAMP NULL'),
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text('CURRENT_TIMESTAMP'))],
+             {},
+             "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"),
+
             ([mysql.MSTimeStamp,
               DefaultClause(sql.text('CURRENT_TIMESTAMP'))],
-             "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"),
+
             ([mysql.MSTimeStamp,
               DefaultClause(sql.text("'1999-09-09 09:09:09'"))],
-             "TIMESTAMP DEFAULT '1999-09-09 09:09:09'"),
-            ([mysql.MSTimeStamp,
-              DefaultClause(sql.text("'1999-09-09 09:09:09' "
-                                      "ON UPDATE CURRENT_TIMESTAMP"))],
-             "TIMESTAMP DEFAULT '1999-09-09 09:09:09' "
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09'"),
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text("'1999-09-09 09:09:09'"))],
+             {},
+             "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09'"),
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text(
+                  "'1999-09-09 09:09:09' "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {},
+             "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09' "
              "ON UPDATE CURRENT_TIMESTAMP"),
+
             ([mysql.MSTimeStamp,
-              DefaultClause(sql.text("CURRENT_TIMESTAMP "
-                                      "ON UPDATE CURRENT_TIMESTAMP"))],
-             "TIMESTAMP DEFAULT CURRENT_TIMESTAMP "
+              DefaultClause(sql.text(
+                  "'1999-09-09 09:09:09' "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09' "
              "ON UPDATE CURRENT_TIMESTAMP"),
-            ]
-        for spec, expected in columns:
-            c = Column('t', *spec)
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text(
+                  "CURRENT_TIMESTAMP "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {},
+             "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP "
+             "ON UPDATE CURRENT_TIMESTAMP"),
+
+            ([mysql.MSTimeStamp,
+              DefaultClause(sql.text(
+                  "CURRENT_TIMESTAMP "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP "
+             "ON UPDATE CURRENT_TIMESTAMP"),
+        ]
+        for spec, kw, expected in columns:
+            c = Column('t', *spec, **kw)
             Table('t', MetaData(), c)
             self.assert_compile(
                 schema.CreateColumn(c),
@@ -448,19 +486,20 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_timestamp_nullable(self):
-        ts_table = Table('mysql_timestamp', self.metadata,
-                            Column('t1', TIMESTAMP),
-                            Column('t2', TIMESTAMP, nullable=False),
-                    )
+        ts_table = Table(
+            'mysql_timestamp', self.metadata,
+            Column('t1', TIMESTAMP),
+            Column('t2', TIMESTAMP, nullable=False),
+            mysql_engine='InnoDB'
+        )
         self.metadata.create_all()
-
-        now = testing.db.execute("select now()").scalar()
 
         # TIMESTAMP without NULL inserts current time when passed
         # NULL.  when not passed, generates 0000-00-00 quite
         # annoyingly.
-        ts_table.insert().execute({'t1': now, 't2': None})
-        ts_table.insert().execute({'t1': None, 't2': None})
+        # the flag http://dev.mysql.com/doc/refman/5.6/en/\
+        # server-system-variables.html#sysvar_explicit_defaults_for_timestamp
+        # changes this for 5.6 if set.
 
         # normalize dates that are over the second boundary
         def normalize(dt):
@@ -470,11 +509,27 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 return now
             else:
                 return dt
-        eq_(
-            [tuple([normalize(dt) for dt in row])
-            for row in ts_table.select().execute()],
-            [(now, now), (None, now)]
-        )
+
+        with testing.db.begin() as conn:
+            now = conn.scalar("select now()")
+
+            conn.execute(
+                ts_table.insert(), {'t1': now, 't2': None})
+            conn.execute(
+                ts_table.insert(), {'t1': None, 't2': None})
+            conn.execute(
+                ts_table.insert(), {'t2': None})
+
+            eq_(
+                [tuple([normalize(dt) for dt in row])
+                 for row in conn.execute(ts_table.select())],
+                [
+                    (now, now),
+                    (None, now),
+                    (None, now)
+                ]
+            )
+
 
     def test_datetime_generic(self):
         self.assert_compile(

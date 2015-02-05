@@ -1,4 +1,5 @@
 
+
 ==============
 1.0 Changelog
 ==============
@@ -21,6 +22,24 @@
     described here are also present in the 0.9 and sometimes the 0.8
     series as well.  For changes that are specific to 1.0 with an emphasis
     on compatibility concerns, see :doc:`/changelog/migration_10`.
+
+    .. change::
+        :tags: feature, mysql
+        :tickets: 3155
+
+        The MySQL dialect now renders TIMESTAMP with NULL / NOT NULL in
+        all cases, so that MySQL 5.6.6 with the
+        ``explicit_defaults_for_timestamp`` flag enabled will
+        will allow TIMESTAMP to continue to work as expected when
+        ``nullable=False``.  Existing applications are unaffected as
+        SQLAlchemy has always emitted NULL for a TIMESTAMP column that
+        is ``nullable=True``.
+
+        .. seealso::
+
+            :ref:`change_3155`
+
+            :ref:`mysql_timestamp_null`
 
     .. change::
         :tags: bug, schema

@@ -370,10 +370,11 @@ collection.
 TIMESTAMP Columns and NULL
 --------------------------
 
-MySQL enforces that a column which specifies the TIMESTAMP datatype implicitly
-includes a default value of CURRENT_TIMESTAMP, even though this is not
-stated, and additionally sets the column as NOT NULL, the opposite behavior
-vs. that of all other datatypes::
+MySQL historically enforces that a column which specifies the
+TIMESTAMP datatype implicitly includes a default value of
+CURRENT_TIMESTAMP, even though this is not stated, and additionally
+sets the column as NOT NULL, the opposite behavior vs. that of all
+other datatypes::
 
     mysql> CREATE TABLE ts_test (
         -> a INTEGER,
@@ -400,22 +401,29 @@ with NOT NULL.   But when the column is of type TIMESTAMP, an implicit
 default of CURRENT_TIMESTAMP is generated which also coerces the column
 to be a NOT NULL, even though we did not specify it as such.
 
-Therefore, the usual "NOT NULL" clause *does not apply* to a TIMESTAMP
-column; MySQL selects this implicitly.   SQLAlchemy therefore does not render
-NOT NULL for a TIMESTAMP column on MySQL.   However, it *does* render
-NULL when we specify nullable=True, or if we leave nullable absent, as it
-also defaults to True.  This is to accommodate the essentially
-reverse behavior of the NULL flag for TIMESTAMP::
+This behavior of MySQL can be changed on the MySQL side using the
+`explicit_defaults_for_timestamp
+<http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html
+#sysvar_explicit_defaults_for_timestamp>`_ configuration flag introduced in
+MySQL 5.6.  With this server setting enabled, TIMESTAMP columns behave like
+any other datatype on the MySQL side with regards to defaults and nullability.
 
-    from sqlalchemy import MetaData, TIMESTAMP, Integer, Table, Column, text
+However, to accommodate the vast majority of MySQL databases that do not
+specify this new flag, SQLAlchemy emits the "NULL" specifier explicitly with
+any TIMESTAMP column that does not specify ``nullable=False``.   In order
+to accommodate newer databases that specify ``explicit_defaults_for_timestamp``,
+SQLAlchemy also emits NOT NULL for TIMESTAMP columns that do specify
+``nullable=False``.   The following example illustrates::
+
+    from sqlalchemy import MetaData, Integer, Table, Column, text
+    from sqlalchemy.dialects.mysql import TIMESTAMP
 
     m = MetaData()
     t = Table('ts_test', m,
             Column('a', Integer),
             Column('b', Integer, nullable=False),
             Column('c', TIMESTAMP),
-            Column('d', TIMESTAMP, nullable=False),
-            Column('e', TIMESTAMP, nullable=True)
+            Column('d', TIMESTAMP, nullable=False)
         )
 
 
@@ -423,35 +431,19 @@ reverse behavior of the NULL flag for TIMESTAMP::
     e = create_engine("mysql://scott:tiger@localhost/test", echo=True)
     m.create_all(e)
 
-In the output, we can see that the TIMESTAMP column receives a different
-treatment for NULL / NOT NULL vs. that of the INTEGER::
+output::
 
     CREATE TABLE ts_test (
         a INTEGER,
         b INTEGER NOT NULL,
         c TIMESTAMP NULL,
-        d TIMESTAMP,
-        e TIMESTAMP NULL
+        d TIMESTAMP NOT NULL
     )
 
-MySQL above receives the NULL/NOT NULL constraint as is stated in our
-original :class:`.Table`::
-
-    mysql> SHOW CREATE TABLE ts_test;
-    +---------+---------------------------
-    | Table   | Create Table
-    +---------+---------------------------
-    | ts_test | CREATE TABLE `ts_test` (
-      `a` int(11) DEFAULT NULL,
-      `b` int(11) NOT NULL,
-      `c` timestamp NULL DEFAULT NULL,
-      `d` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
-      `e` timestamp NULL DEFAULT NULL
-    ) ENGINE=MyISAM DEFAULT CHARSET=latin1
-
-Be sure to always favor the ``SHOW CREATE TABLE`` output over the
-SQLAlchemy-emitted DDL when checking table definitions, as MySQL's
-rules can be hard to predict.
+.. versionchanged:: 1.0.0 - SQLAlchemy now renders NULL or NOT NULL in all
+   cases for TIMESTAMP columns, to accommodate
+   ``explicit_defaults_for_timestamp``.  Prior to this version, it will
+   not render "NOT NULL" for a TIMESTAMP column that is ``nullable=False``.
 
 """
 
@@ -1865,18 +1857,19 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 column.type, type_expression=column)
         ]
 
-        default = self.get_column_default_string(column)
-        if default is not None:
-            colspec.append('DEFAULT ' + default)
-
         is_timestamp = isinstance(column.type, sqltypes.TIMESTAMP)
-        if not column.nullable and not is_timestamp:
+
+        if not column.nullable:
             colspec.append('NOT NULL')
 
         # see: http://docs.sqlalchemy.org/en/latest/dialects/
         #   mysql.html#mysql_timestamp_null
-        elif column.nullable and is_timestamp and default is None:
+        elif column.nullable and is_timestamp:
             colspec.append('NULL')
+
+        default = self.get_column_default_string(column)
+        if default is not None:
+            colspec.append('DEFAULT ' + default)
 
         if column is column.table._autoincrement_column and \
                 column.server_default is None:
@@ -3007,8 +3000,7 @@ class MySQLTableDefinitionParser(object):
         if not spec['full']:
             util.warn("Incomplete reflection of column definition %r" % line)
 
-        name, type_, args, notnull = \
-            spec['name'], spec['coltype'], spec['arg'], spec['notnull']
+        name, type_, args = spec['name'], spec['coltype'], spec['arg']
 
         try:
             col_type = self.dialect.ischema_names[type_]
@@ -3033,7 +3025,6 @@ class MySQLTableDefinitionParser(object):
         for kw in ('charset', 'collate'):
             if spec.get(kw, False):
                 type_kw[kw] = spec[kw]
-
         if issubclass(col_type, _EnumeratedValues):
             type_args = _EnumeratedValues._strip_values(type_args)
 
@@ -3042,11 +3033,12 @@ class MySQLTableDefinitionParser(object):
 
         type_instance = col_type(*type_args, **type_kw)
 
-        col_args, col_kw = [], {}
+        col_kw = {}
 
         # NOT NULL
         col_kw['nullable'] = True
-        if spec.get('notnull', False):
+        # this can be "NULL" in the case of TIMESTAMP
+        if spec.get('notnull', False) == 'NOT NULL':
             col_kw['nullable'] = False
 
         # AUTO_INCREMENT
@@ -3165,7 +3157,7 @@ class MySQLTableDefinitionParser(object):
             r'(?: +(?P<zerofill>ZEROFILL))?'
             r'(?: +CHARACTER SET +(?P<charset>[\w_]+))?'
             r'(?: +COLLATE +(?P<collate>[\w_]+))?'
-            r'(?: +(?P<notnull>NOT NULL))?'
+            r'(?: +(?P<notnull>(?:NOT )?NULL))?'
             r'(?: +DEFAULT +(?P<default>'
             r'(?:NULL|\x27(?:\x27\x27|[^\x27])*\x27|\w+'
             r'(?: +ON UPDATE \w+)?)'
@@ -3185,7 +3177,7 @@ class MySQLTableDefinitionParser(object):
             r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
             r'(?P<coltype>\w+)'
             r'(?:\((?P<arg>(?:\d+|\d+,\d+|\x27(?:\x27\x27|[^\x27])+\x27))\))?'
-            r'.*?(?P<notnull>NOT NULL)?'
+            r'.*?(?P<notnull>(?:NOT )NULL)?'
             % quotes
         )
 
