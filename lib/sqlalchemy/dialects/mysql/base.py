@@ -873,7 +873,9 @@ class BIT(sqltypes.TypeEngine):
         def process(value):
             if value is not None:
                 v = 0
-                for i in map(ord, value):
+                for i in value:
+                    if not isinstance(i, int):
+                        i = ord(i)  # convert byte to int on Python 2
                     v = v << 8 | i
                 return v
             return value
