@@ -293,36 +293,39 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
         # this is ideally one table, but older MySQL versions choke
         # on the multiple TIMESTAMP columns
-        Table('nn_t1', meta)  # to allow DROP
-        Table('nn_t2', meta)
-        Table('nn_t3', meta)
 
-        testing.db.execute("""
-            CREATE TABLE nn_t1 (
-                x INTEGER NULL,
-                y INTEGER NOT NULL,
-                z INTEGER,
-                q TIMESTAMP NULL,
-                p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP)""")
+        reflected = []
+        for idx, cols in enumerate([
+            [
+                "x INTEGER NULL",
+                "y INTEGER NOT NULL",
+                "z INTEGER",
+                "q TIMESTAMP NULL"
+            ],
 
-        testing.db.execute("""
-            CREATE TABLE nn_t2 (
-                r TIMESTAMP NOT NULL,
-                s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
+            ["r TIMESTAMP NOT NULL"],
+            ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
+            ["t TIMESTAMP"],
+            ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"]
+        ]):
+            Table("nn_t%d" % idx, meta) # to allow DROP
 
-        testing.db.execute("""
-            CREATE TABLE nn_t3 (
-                t TIMESTAMP,
-                u TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )""")
+            testing.db.execute("""
+                CREATE TABLE nn_t%d (
+                    %s
+                )
+            """ % (idx, ", \n".join(cols)))
+
+            reflected.extend(
+                {
+                    "name": d['name'], "nullable": d['nullable'],
+                    "default": d['default']}
+                for d in inspect(testing.db).get_columns("nn_t%d" % idx)
+            )
 
         eq_(
-            [
-                {"name": d['name'], "nullable": d['nullable'],
-                 "default": d['default']}
-                for d in sum([inspect(testing.db).get_columns(t)
-                             for t in ('nn_t1', 'nn_t2', 'nn_t3')], [])
-            ],
+            reflected,
             [
                 {'name': 'x', 'nullable': True, 'default': None},
                 {'name': 'y', 'nullable': False, 'default': None},
