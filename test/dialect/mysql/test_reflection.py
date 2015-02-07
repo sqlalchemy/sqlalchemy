@@ -290,29 +290,38 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
         """
         meta = self.metadata
-        Table('nn_t', meta)
+
+        # this is ideally one table, but older MySQL versions choke
+        # on the multiple TIMESTAMP columns
+        Table('nn_t1', meta)  # to allow DROP
+        Table('nn_t2', meta)
+        Table('nn_t3', meta)
+
         testing.db.execute("""
-            CREATE TABLE nn_t (
+            CREATE TABLE nn_t1 (
                 x INTEGER NULL,
                 y INTEGER NOT NULL,
                 z INTEGER,
                 q TIMESTAMP NULL,
-                p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP)""")
+
+        testing.db.execute("""
+            CREATE TABLE nn_t2 (
                 r TIMESTAMP NOT NULL,
-                s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+
+        testing.db.execute("""
+            CREATE TABLE nn_t3 (
                 t TIMESTAMP,
                 u TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+            )""")
+
         eq_(
             [
-                {
-                    "name": d['name'],
-                    "nullable": d['nullable'],
-                    "default": d['default'],
-                }
-                for d in
-                inspect(testing.db).get_columns('nn_t')
+                {"name": d['name'], "nullable": d['nullable'],
+                 "default": d['default']}
+                for d in sum([inspect(testing.db).get_columns(t)
+                             for t in ('nn_t1', 'nn_t2', 'nn_t3')], [])
             ],
             [
                 {'name': 'x', 'nullable': True, 'default': None},
@@ -322,11 +331,11 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 {'name': 'p', 'nullable': True,
                  'default': 'CURRENT_TIMESTAMP'},
                 {'name': 'r', 'nullable': False,
-                 'default': "'0000-00-00 00:00:00'"},
+                 'default': "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"},
                 {'name': 's', 'nullable': False,
                  'default': 'CURRENT_TIMESTAMP'},
                 {'name': 't', 'nullable': False,
-                 'default': "'0000-00-00 00:00:00'"},
+                 'default': "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"},
                 {'name': 'u', 'nullable': False,
                  'default': 'CURRENT_TIMESTAMP'},
             ]
