@@ -1710,10 +1710,17 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_cast(self, cast, **kwargs):
         # No cast until 4, no decimals until 5.
         if not self.dialect._supports_cast:
+            util.warn(
+                "Current MySQL version does not support "
+                "CAST; the CAST will be skipped.")
             return self.process(cast.clause.self_group())
 
         type_ = self.process(cast.typeclause)
         if type_ is None:
+            util.warn(
+                "Datatype %s does not support CAST on MySQL; "
+                "the CAST will be skipped." %
+                self.dialect.type_compiler.process(cast.typeclause.type))
             return self.process(cast.clause.self_group())
 
         return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)

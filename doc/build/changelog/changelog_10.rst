@@ -24,6 +24,19 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 3237
+
+        A warning is emitted when :func:`.cast` is used with the MySQL
+        dialect on a type where MySQL does not support CAST; MySQL only
+        supports CAST on a subset of datatypes.   SQLAlchemy has for a long
+        time just omitted the CAST for unsupported types in the case of
+        MySQL.  While we don't want to change this now, we emit a warning
+        to show that it's taken place.   A warning is also emitted when
+        a CAST is used with an older MySQL version (< 4) that doesn't support
+        CAST at all, it's skipped in this case as well.
+
+    .. change::
         :tags: feature, sql
         :tickets: 3087
 

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises_message, expect_warnings
 from sqlalchemy import sql, exc, schema, types as sqltypes
 from sqlalchemy import Table, MetaData, Column, select, String, \
     Index, Integer, ForeignKey, PrimaryKeyConstraint, extract, \
@@ -13,7 +13,7 @@ from sqlalchemy import Table, MetaData, Column, select, String, \
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy.sql import table, column
-
+import re
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
@@ -339,7 +339,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             (m.MSBigInteger(unsigned=False), "CAST(t.col AS SIGNED INTEGER)"),
             (m.MSBigInteger(unsigned=True),
              "CAST(t.col AS UNSIGNED INTEGER)"),
-            (m.MSBit, "t.col"),
 
             # this is kind of sucky.  thank you default arguments!
             (NUMERIC, "CAST(t.col AS DECIMAL)"),
@@ -347,12 +346,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             (Numeric, "CAST(t.col AS DECIMAL)"),
             (m.MSNumeric, "CAST(t.col AS DECIMAL)"),
             (m.MSDecimal, "CAST(t.col AS DECIMAL)"),
-
-            (FLOAT, "t.col"),
-            (Float, "t.col"),
-            (m.MSFloat, "t.col"),
-            (m.MSDouble, "t.col"),
-            (m.MSReal, "t.col"),
 
             (TIMESTAMP, "CAST(t.col AS DATETIME)"),
             (DATETIME, "CAST(t.col AS DATETIME)"),
@@ -365,9 +358,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             (Date, "CAST(t.col AS DATE)"),
             (m.MSTime, "CAST(t.col AS TIME)"),
             (m.MSTimeStamp, "CAST(t.col AS DATETIME)"),
-            (m.MSYear, "t.col"),
-            (m.MSYear(2), "t.col"),
-            (Interval, "t.col"),
 
             (String, "CAST(t.col AS CHAR)"),
             (Unicode, "CAST(t.col AS CHAR)"),
@@ -402,8 +392,29 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             (m.MSVarBinary, "CAST(t.col AS BINARY)"),
             (m.MSVarBinary(32), "CAST(t.col AS BINARY)"),
 
-            # maybe this could be changed to something more DWIM, needs
-            # testing
+        ]
+
+        for type_, expected in specs:
+            self.assert_compile(cast(t.c.col, type_), expected)
+
+    def test_unsupported_casts(self):
+
+        t = sql.table('t', sql.column('col'))
+        m = mysql
+
+        specs = [
+            (m.MSBit, "t.col"),
+
+            (FLOAT, "t.col"),
+            (Float, "t.col"),
+            (m.MSFloat, "t.col"),
+            (m.MSDouble, "t.col"),
+            (m.MSReal, "t.col"),
+
+            (m.MSYear, "t.col"),
+            (m.MSYear(2), "t.col"),
+            (Interval, "t.col"),
+
             (Boolean, "t.col"),
             (BOOLEAN, "t.col"),
 
@@ -414,7 +425,10 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         ]
 
         for type_, expected in specs:
-            self.assert_compile(cast(t.c.col, type_), expected)
+            with expect_warnings(
+                "Datatype .* does not support CAST on MySQL;"
+            ):
+                self.assert_compile(cast(t.c.col, type_), expected)
 
     def test_no_cast_pre_4(self):
         self.assert_compile(
@@ -423,26 +437,29 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         dialect = mysql.dialect()
         dialect.server_version_info = (3, 2, 3)
-        self.assert_compile(
-            cast(Column('foo', Integer), String),
-            "foo",
-            dialect=dialect
-        )
+        with expect_warnings("Current MySQL version does not support CAST;"):
+            self.assert_compile(
+                cast(Column('foo', Integer), String),
+                "foo",
+                dialect=dialect
+            )
 
     def test_cast_grouped_expression_non_castable(self):
-        self.assert_compile(
-            cast(sql.column('x') + sql.column('y'), Float),
-            "(x + y)"
-        )
+        with expect_warnings("Datatype FLOAT does not support CAST on MySQL;"):
+            self.assert_compile(
+                cast(sql.column('x') + sql.column('y'), Float),
+                "(x + y)"
+            )
 
     def test_cast_grouped_expression_pre_4(self):
         dialect = mysql.dialect()
         dialect.server_version_info = (3, 2, 3)
-        self.assert_compile(
-            cast(sql.column('x') + sql.column('y'), Integer),
-            "(x + y)",
-            dialect=dialect
-        )
+        with expect_warnings("Current MySQL version does not support CAST;"):
+            self.assert_compile(
+                cast(sql.column('x') + sql.column('y'), Integer),
+                "(x + y)",
+                dialect=dialect
+            )
 
     def test_extract(self):
         t = sql.table('t', sql.column('col1'))
