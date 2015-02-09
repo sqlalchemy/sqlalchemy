@@ -67,6 +67,8 @@ on the URL, or as keyword arguments to :func:`.create_engine()` are:
   E.g. ``oracle+cx_oracle://scott:tiger@host:1521/?service_name=hr``
   is a valid url. This value is only available as a URL query string argument.
 
+  .. versionadded:: 1.0.0
+
 .. _cx_oracle_unicode:
 
 Unicode
