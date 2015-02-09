@@ -396,6 +396,20 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON addresses.id = orders.address_id"
         )
 
+    def test_invalid_kwarg_join(self):
+        User = self.classes.User
+        sess = create_session()
+        assert_raises_message(
+            TypeError,
+            "unknown arguments: bar, foob",
+            sess.query(User).join, "address", foob="bar", bar="bat"
+        )
+        assert_raises_message(
+            TypeError,
+            "unknown arguments: bar, foob",
+            sess.query(User).outerjoin, "address", foob="bar", bar="bat"
+        )
+
     def test_left_is_none(self):
         User = self.classes.User
         Address = self.classes.Address

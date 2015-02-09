@@ -15,6 +15,14 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, orm
+        :pullreq: github:147
+
+        Fixed bug where TypeError raised when :meth:`.Query.join` called
+        with unknown kw arguments would raise its own TypeError due
+        to broken formatting.  Pull request courtesy Malthe Borch.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3302
 
