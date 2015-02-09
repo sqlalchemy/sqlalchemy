@@ -669,6 +669,41 @@ Will render::
 The feature can be disabled using
 :paramref:`.Insert.from_select.include_defaults`.
 
+.. _change_3087:
+
+Column server defaults now render literal values
+------------------------------------------------
+
+The "literal binds" compiler flag is switched on when a
+:class:`.DefaultClause`, set up by :paramref:`.Column.server_default`
+is present as a SQL expression to be compiled.  This allows literals
+embedded in SQL to render correctly, such as::
+
+    from sqlalchemy import Table, Column, MetaData, Text
+    from sqlalchemy.schema import CreateTable
+    from sqlalchemy.dialects.postgresql import ARRAY, array
+    from sqlalchemy.dialects import postgresql
+
+    metadata = MetaData()
+
+    tbl = Table("derp", metadata,
+        Column("arr", ARRAY(Text),
+                    server_default=array(["foo", "bar", "baz"])),
+    )
+
+    print(CreateTable(tbl).compile(dialect=postgresql.dialect()))
+
+Now renders::
+
+    CREATE TABLE derp (
+        arr TEXT[] DEFAULT ARRAY['foo', 'bar', 'baz']
+    )
+
+Previously, the literal values ``"foo", "bar", "baz"`` would render as
+bound parameters, which are useless in DDL.
+
+:ticket:`3087`
+
 .. _feature_3184:
 
 UniqueConstraint is now part of the Table reflection process

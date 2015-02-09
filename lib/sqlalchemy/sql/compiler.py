@@ -2279,7 +2279,8 @@ class DDLCompiler(Compiled):
             if isinstance(column.server_default.arg, util.string_types):
                 return "'%s'" % column.server_default.arg
             else:
-                return self.sql_compiler.process(column.server_default.arg)
+                return self.sql_compiler.process(
+                    column.server_default.arg, literal_binds=True)
         else:
             return None
 

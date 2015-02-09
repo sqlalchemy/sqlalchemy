@@ -24,11 +24,24 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3087
+
+        Literal values within a :class:`.DefaultClause`, which is invoked
+        when using the :paramref:`.Column.server_default` parameter, will
+        now be rendered using the "inline" compiler, so that they are rendered
+        as-is, rather than as bound parameters.
+
+        .. seealso::
+
+            :ref:`change_3087`
+
+    .. change::
         :tags: feature, oracle
         :pullreq: github:152
 
-        Added support for cx_oracle connections to a specific service 
-        name, as opposed to a tns name, by passing ``?service_name=<name>`` 
+        Added support for cx_oracle connections to a specific service
+        name, as opposed to a tns name, by passing ``?service_name=<name>``
         to the URL.  Pull request courtesy Sławomir Ehlert.
 
     .. change::
