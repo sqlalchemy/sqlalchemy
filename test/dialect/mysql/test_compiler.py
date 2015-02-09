@@ -1,12 +1,19 @@
 # coding: utf-8
 
 from sqlalchemy.testing import eq_, assert_raises_message
-from sqlalchemy import *
 from sqlalchemy import sql, exc, schema, types as sqltypes
+from sqlalchemy import Table, MetaData, Column, select, String, \
+    Index, Integer, ForeignKey, PrimaryKeyConstraint, extract, \
+    VARCHAR, NVARCHAR, Unicode, UnicodeText, \
+    NUMERIC, DECIMAL, Numeric, Float, FLOAT, TIMESTAMP, DATE, \
+    DATETIME, TIME, \
+    DateTime, Time, Date, Interval, NCHAR, CHAR, CLOB, TEXT, Boolean, \
+    BOOLEAN, LargeBinary, BLOB, SmallInteger, INT, func, cast
+
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
-from sqlalchemy import testing
 from sqlalchemy.sql import table, column
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
@@ -14,11 +21,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_reserved_words(self):
         table = Table("mysql_table", MetaData(),
-            Column("col1", Integer),
-            Column("master_ssl_verify_server_cert", Integer))
+                      Column("col1", Integer),
+                      Column("master_ssl_verify_server_cert", Integer))
         x = select([table.c.col1, table.c.master_ssl_verify_server_cert])
 
-        self.assert_compile(x,
+        self.assert_compile(
+            x,
             "SELECT mysql_table.col1, "
             "mysql_table.`master_ssl_verify_server_cert` FROM mysql_table")
 
@@ -28,7 +36,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx = Index('test_idx1', tbl.c.data)
 
         self.assert_compile(schema.CreateIndex(idx),
-            'CREATE INDEX test_idx1 ON testtbl (data)')
+                            'CREATE INDEX test_idx1 ON testtbl (data)')
 
     def test_create_index_with_length(self):
         m = MetaData()
@@ -37,17 +45,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx2 = Index('test_idx2', tbl.c.data, mysql_length=5)
 
         self.assert_compile(schema.CreateIndex(idx1),
-            'CREATE INDEX test_idx1 ON testtbl (data(10))')
+                            'CREATE INDEX test_idx1 ON testtbl (data(10))')
         self.assert_compile(schema.CreateIndex(idx2),
-            'CREATE INDEX test_idx2 ON testtbl (data(5))')
+                            'CREATE INDEX test_idx2 ON testtbl (data(5))')
 
     def test_create_index_with_length_quoted(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('some quoted data',
-                                String(255), key='s'))
+                                         String(255), key='s'))
         idx1 = Index('test_idx1', tbl.c.s, mysql_length=10)
 
-        self.assert_compile(schema.CreateIndex(idx1),
+        self.assert_compile(
+            schema.CreateIndex(idx1),
             'CREATE INDEX test_idx1 ON testtbl (`some quoted data`(10))')
 
     def test_create_composite_index_with_length_quoted(self):
@@ -56,23 +65,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     Column('some Quoted a', String(255), key='a'),
                     Column('some Quoted b', String(255), key='b'))
         idx1 = Index('test_idx1', tbl.c.a, tbl.c.b,
-                mysql_length={'some Quoted a': 10, 'some Quoted b': 20})
+                     mysql_length={'some Quoted a': 10, 'some Quoted b': 20})
 
         self.assert_compile(schema.CreateIndex(idx1),
-            'CREATE INDEX test_idx1 ON testtbl '
-            '(`some Quoted a`(10), `some Quoted b`(20))')
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(`some Quoted a`(10), `some Quoted b`(20))')
 
     def test_create_composite_index_with_length_quoted_3085_workaround(self):
         m = MetaData()
         tbl = Table('testtbl', m,
                     Column('some quoted a', String(255), key='a'),
                     Column('some quoted b', String(255), key='b'))
-        idx1 = Index('test_idx1', tbl.c.a, tbl.c.b,
-                mysql_length={'`some quoted a`': 10, '`some quoted b`': 20})
+        idx1 = Index(
+            'test_idx1', tbl.c.a, tbl.c.b,
+            mysql_length={'`some quoted a`': 10, '`some quoted b`': 20}
+        )
 
         self.assert_compile(schema.CreateIndex(idx1),
-            'CREATE INDEX test_idx1 ON testtbl '
-            '(`some quoted a`(10), `some quoted b`(20))')
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(`some quoted a`(10), `some quoted b`(20))')
 
     def test_create_composite_index_with_length(self):
         m = MetaData()
@@ -106,33 +117,38 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx1 = Index('test_idx1', tbl.c.data, mysql_using='btree')
         idx2 = Index('test_idx2', tbl.c.data, mysql_using='hash')
 
-        self.assert_compile(schema.CreateIndex(idx1),
+        self.assert_compile(
+            schema.CreateIndex(idx1),
             'CREATE INDEX test_idx1 ON testtbl (data) USING btree')
-        self.assert_compile(schema.CreateIndex(idx2),
+        self.assert_compile(
+            schema.CreateIndex(idx2),
             'CREATE INDEX test_idx2 ON testtbl (data) USING hash')
 
     def test_create_pk_plain(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String(255)),
-            PrimaryKeyConstraint('data'))
+                    PrimaryKeyConstraint('data'))
 
-        self.assert_compile(schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, PRIMARY KEY (data))")
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
+            "PRIMARY KEY (data))")
 
     def test_create_pk_with_using(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String(255)),
-            PrimaryKeyConstraint('data', mysql_using='btree'))
+                    PrimaryKeyConstraint('data', mysql_using='btree'))
 
-        self.assert_compile(schema.CreateTable(tbl),
+        self.assert_compile(
+            schema.CreateTable(tbl),
             "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
             "PRIMARY KEY (data) USING btree)")
 
     def test_create_index_expr(self):
         m = MetaData()
         t1 = Table('foo', m,
-                Column('x', Integer)
-            )
+                   Column('x', Integer)
+                   )
         self.assert_compile(
             schema.CreateIndex(Index("bar", t1.c.x > 5)),
             "CREATE INDEX bar ON foo (x > 5)"
@@ -140,23 +156,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_deferrable_initially_kw_not_ignored(self):
         m = MetaData()
-        t1 = Table('t1', m, Column('id', Integer, primary_key=True))
-        t2 = Table('t2', m, Column('id', Integer,
-                        ForeignKey('t1.id', deferrable=True, initially="XYZ"),
-                            primary_key=True))
+        Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table(
+            't2', m, Column(
+                'id', Integer,
+                ForeignKey('t1.id', deferrable=True, initially="XYZ"),
+                primary_key=True))
 
         self.assert_compile(
             schema.CreateTable(t2),
             "CREATE TABLE t2 (id INTEGER NOT NULL, "
-            "PRIMARY KEY (id), FOREIGN KEY(id) REFERENCES t1 (id) DEFERRABLE INITIALLY XYZ)"
+            "PRIMARY KEY (id), FOREIGN KEY(id) REFERENCES t1 (id) "
+            "DEFERRABLE INITIALLY XYZ)"
         )
 
     def test_match_kw_raises(self):
         m = MetaData()
-        t1 = Table('t1', m, Column('id', Integer, primary_key=True))
+        Table('t1', m, Column('id', Integer, primary_key=True))
         t2 = Table('t2', m, Column('id', Integer,
-                        ForeignKey('t1.id', match="XYZ"),
-                            primary_key=True))
+                                   ForeignKey('t1.id', match="XYZ"),
+                                   primary_key=True))
 
         assert_raises_message(
             exc.CompileError,
@@ -167,7 +186,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update(self):
         table1 = table('mytable',
-                    column('myid'), column('name'), column('description'))
+                       column('myid'), column('name'), column('description'))
 
         self.assert_compile(
             table1.select(table1.c.myid == 7).with_for_update(),
@@ -179,7 +198,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s LOCK IN SHARE MODE")
 
+
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
+
     """Tests MySQL-dialect specific compilation."""
 
     __dialect__ = mysql.dialect()
@@ -200,7 +221,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         eq_(gen(prefixes=['ALL']), 'SELECT ALL q')
         eq_(gen(prefixes=['DISTINCTROW']),
-                'SELECT DISTINCTROW q')
+            'SELECT DISTINCTROW q')
 
         # Interaction with MySQL prefix extensions
         eq_(
@@ -213,7 +234,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             gen(True, ['high_priority', sql.text('sql_cache')]),
             'SELECT high_priority sql_cache DISTINCT q')
 
-
     def test_backslash_escaping(self):
         self.assert_compile(
             sql.column('foo').like('bar', escape='\\'),
@@ -221,7 +241,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         dialect = mysql.dialect()
-        dialect._backslash_escapes=False
+        dialect._backslash_escapes = False
         self.assert_compile(
             sql.column('foo').like('bar', escape='\\'),
             "foo LIKE %s ESCAPE '\\'",
@@ -234,18 +254,18 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([t]).limit(10).offset(20),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s, %s",
-            {'param_1':20, 'param_2':10}
-            )
+            {'param_1': 20, 'param_2': 10}
+        )
         self.assert_compile(
             select([t]).limit(10),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s",
-            {'param_1':10})
+            {'param_1': 10})
 
         self.assert_compile(
             select([t]).offset(10),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s, 18446744073709551615",
-            {'param_1':10}
-            )
+            {'param_1': 10}
+        )
 
     def test_varchar_raise(self):
         for type_ in (
@@ -266,8 +286,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
             t1 = Table('sometable', MetaData(),
-                Column('somecolumn', type_)
-            )
+                       Column('somecolumn', type_)
+                       )
             assert_raises_message(
                 exc.CompileError,
                 r"\(in table 'sometable', column 'somecolumn'\)\: "
@@ -280,21 +300,21 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
 
         self.assert_compile(
-            t.update(values={'col1':123}),
+            t.update(values={'col1': 123}),
             "UPDATE t SET col1=%s"
-            )
+        )
         self.assert_compile(
-            t.update(values={'col1':123}, mysql_limit=5),
+            t.update(values={'col1': 123}, mysql_limit=5),
             "UPDATE t SET col1=%s LIMIT 5"
-            )
+        )
         self.assert_compile(
-            t.update(values={'col1':123}, mysql_limit=None),
+            t.update(values={'col1': 123}, mysql_limit=None),
             "UPDATE t SET col1=%s"
-            )
+        )
         self.assert_compile(
-            t.update(t.c.col2==456, values={'col1':123}, mysql_limit=1),
+            t.update(t.c.col2 == 456, values={'col1': 123}, mysql_limit=1),
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1"
-            )
+        )
 
     def test_utc_timestamp(self):
         self.assert_compile(func.utc_timestamp(), "UTC_TIMESTAMP")
@@ -318,7 +338,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             (m.MSBigInteger, "CAST(t.col AS SIGNED INTEGER)"),
             (m.MSBigInteger(unsigned=False), "CAST(t.col AS SIGNED INTEGER)"),
             (m.MSBigInteger(unsigned=True),
-                            "CAST(t.col AS UNSIGNED INTEGER)"),
+             "CAST(t.col AS UNSIGNED INTEGER)"),
             (m.MSBit, "t.col"),
 
             # this is kind of sucky.  thank you default arguments!
@@ -391,23 +411,23 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             (m.MSEnum("1", "2"), "t.col"),
             (m.MSSet, "t.col"),
             (m.MSSet("1", "2"), "t.col"),
-            ]
+        ]
 
         for type_, expected in specs:
             self.assert_compile(cast(t.c.col, type_), expected)
 
     def test_no_cast_pre_4(self):
         self.assert_compile(
-                    cast(Column('foo', Integer), String),
-                    "CAST(foo AS CHAR)",
-            )
+            cast(Column('foo', Integer), String),
+            "CAST(foo AS CHAR)",
+        )
         dialect = mysql.dialect()
         dialect.server_version_info = (3, 2, 3)
         self.assert_compile(
-                    cast(Column('foo', Integer), String),
-                    "foo",
-                    dialect=dialect
-            )
+            cast(Column('foo', Integer), String),
+            "foo",
+            dialect=dialect
+        )
 
     def test_cast_grouped_expression_non_castable(self):
         self.assert_compile(
@@ -443,8 +463,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         cname = 'zyrenian_zyme_zyzzogeton_zo'
 
         t1 = Table(tname, MetaData(),
-                    Column(cname, Integer, index=True),
-                )
+                   Column(cname, Integer, index=True),
+                   )
         ix1 = list(t1.indexes)[0]
 
         self.assert_compile(
@@ -454,10 +474,13 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_innodb_autoincrement(self):
-        t1 = Table('sometable', MetaData(), Column('assigned_id',
-                   Integer(), primary_key=True, autoincrement=False),
-                   Column('id', Integer(), primary_key=True,
-                   autoincrement=True), mysql_engine='InnoDB')
+        t1 = Table(
+            'sometable', MetaData(),
+            Column(
+                'assigned_id', Integer(), primary_key=True,
+                autoincrement=False),
+            Column('id', Integer(), primary_key=True, autoincrement=True),
+            mysql_engine='InnoDB')
         self.assert_compile(schema.CreateTable(t1),
                             'CREATE TABLE sometable (assigned_id '
                             'INTEGER NOT NULL, id INTEGER NOT NULL '
@@ -465,10 +488,11 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                             'id), KEY idx_autoinc_id (id))ENGINE=Inn'
                             'oDB')
 
-        t1 = Table('sometable', MetaData(), Column('assigned_id',
-                   Integer(), primary_key=True, autoincrement=True),
+        t1 = Table('sometable', MetaData(),
+                   Column('assigned_id', Integer(), primary_key=True,
+                          autoincrement=True),
                    Column('id', Integer(), primary_key=True,
-                   autoincrement=False), mysql_engine='InnoDB')
+                          autoincrement=False), mysql_engine='InnoDB')
         self.assert_compile(schema.CreateTable(t1),
                             'CREATE TABLE sometable (assigned_id '
                             'INTEGER NOT NULL AUTO_INCREMENT, id '
@@ -494,7 +518,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table(
             'testtable', MetaData(),
             Column('id', Integer(), primary_key=True, autoincrement=True),
-            Column('other_id', Integer(), primary_key=True, autoincrement=False),
+            Column('other_id', Integer(), primary_key=True,
+                   autoincrement=False),
             mysql_partitions='2', mysql_partition_by='KEY(other_id)')
         self.assert_compile(
             schema.CreateTable(t1),
@@ -509,7 +534,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table(
             'testtable', MetaData(),
             Column('id', Integer(), primary_key=True, autoincrement=True),
-            Column('other_id', Integer(), primary_key=True, autoincrement=False),
+            Column('other_id', Integer(), primary_key=True,
+                   autoincrement=False),
             mysql_partitions='2', mysql_partition_by='HASH(other_id)')
         self.assert_compile(
             schema.CreateTable(t1),
@@ -519,4 +545,3 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'PRIMARY KEY (id, other_id)'
             ')PARTITION BY HASH(other_id) PARTITIONS 2'
         )
-
