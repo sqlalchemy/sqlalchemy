@@ -1776,7 +1776,6 @@ class Query(object):
         if kwargs:
             raise TypeError("unknown arguments: %s" %
                             ', '.join(sorted(kwargs)))
-        isouter = isouter
         return self._join(props,
                           outerjoin=isouter, create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
