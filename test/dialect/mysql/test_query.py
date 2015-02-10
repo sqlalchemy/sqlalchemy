@@ -10,6 +10,7 @@ class IdiosyncrasyTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mysql'
     __backend__ = True
 
+    @testing.emits_warning()
     def test_is_boolean_symbols_despite_no_native(self):
         is_(
             testing.db.scalar(select([cast(true().is_(true()), Boolean)])),
