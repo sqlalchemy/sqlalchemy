@@ -25,6 +25,12 @@
 
     .. change::
         :tags: bug, mysql
+
+        The MySQL dialect now supports CAST on types that are constructed
+        as :class:`.TypeDecorator` objects.
+
+    .. change::
+        :tags: bug, mysql
         :tickets: 3237
 
         A warning is emitted when :func:`.cast` is used with the MySQL

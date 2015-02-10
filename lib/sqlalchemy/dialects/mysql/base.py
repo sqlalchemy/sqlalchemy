@@ -1683,9 +1683,12 @@ class MySQLCompiler(compiler.SQLCompiler):
     def get_from_hint_text(self, table, text):
         return text
 
-    def visit_typeclause(self, typeclause):
-        type_ = typeclause.type.dialect_impl(self.dialect)
-        if isinstance(type_, sqltypes.Integer):
+    def visit_typeclause(self, typeclause, type_=None):
+        if type_ is None:
+            type_ = typeclause.type.dialect_impl(self.dialect)
+        if isinstance(type_, sqltypes.TypeDecorator):
+            return self.visit_typeclause(typeclause, type_.impl)
+        elif isinstance(type_, sqltypes.Integer):
             if getattr(type_, 'unsigned', False):
                 return 'UNSIGNED INTEGER'
             else:

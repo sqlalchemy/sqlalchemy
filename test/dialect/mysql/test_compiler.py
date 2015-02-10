@@ -392,10 +392,21 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             (m.MSVarBinary, "CAST(t.col AS BINARY)"),
             (m.MSVarBinary(32), "CAST(t.col AS BINARY)"),
 
+            (Interval, "CAST(t.col AS DATETIME)"),
+
         ]
 
         for type_, expected in specs:
             self.assert_compile(cast(t.c.col, type_), expected)
+
+    def test_cast_type_decorator(self):
+        class MyInteger(sqltypes.TypeDecorator):
+            impl = Integer
+
+        type_ = MyInteger()
+        t = sql.table('t', sql.column('col'))
+        self.assert_compile(
+            cast(t.c.col, type_), "CAST(t.col AS SIGNED INTEGER)")
 
     def test_unsupported_casts(self):
 
@@ -413,7 +424,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
             (m.MSYear, "t.col"),
             (m.MSYear(2), "t.col"),
-            (Interval, "t.col"),
 
             (Boolean, "t.col"),
             (BOOLEAN, "t.col"),
