@@ -1878,7 +1878,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if default is not None:
             colspec.append('DEFAULT ' + default)
 
-        if column is column.table._autoincrement_column and \
+        if column.table is not None \
+            and column is column.table._autoincrement_column and \
                 column.server_default is None:
             colspec.append('AUTO_INCREMENT')
 
