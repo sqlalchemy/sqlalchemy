@@ -592,6 +592,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_insert_round_trip_cast(self):
         self._test_insert_round_trip(cast)
 
@@ -612,6 +614,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
     @testing.fails_on(
         "oracle", "ORA-00906: missing left parenthesis - "
         "seems to be CAST(:param AS type)")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_coerce_from_nulltype_cast(self):
         self._test_coerce_from_nulltype(cast)
 
@@ -639,6 +643,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_cast(self):
         self._test_vs_non_coerced(cast)
 
@@ -659,6 +665,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_alias_cast(self):
         self._test_vs_non_coerced_alias(cast)
 
@@ -679,6 +687,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_where_cast(self):
         self._test_vs_non_coerced_where(cast)
 
@@ -707,6 +717,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_coerce_none_cast(self):
         self._test_coerce_none(cast)
 
@@ -733,6 +745,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_resolve_clause_element_cast(self):
         self._test_resolve_clause_element(cast)
 
@@ -760,6 +774,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
     @testing.fails_on(
         "oracle", "ORA-00906: missing left parenthesis - "
         "seems to be CAST(:param AS type)")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_cast_existing_typed(self):
         MyType = self.MyType
         coerce_fn = cast
