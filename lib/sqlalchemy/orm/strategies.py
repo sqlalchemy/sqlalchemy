@@ -206,9 +206,10 @@ class DeferredColumnLoader(LoaderStrategy):
                     adapter, populators)
 
         elif not self.is_class_level:
-            set_deferred_for_local_state = InstanceState._row_processor(
-                mapper.class_manager,
-                LoadDeferredColumns(self.key), self.key)
+            set_deferred_for_local_state = \
+                InstanceState._instance_level_callable_processor(
+                    mapper.class_manager,
+                    LoadDeferredColumns(self.key), self.key)
             populators["new"].append((self.key, set_deferred_for_local_state))
         else:
             populators["expire"].append((self.key, False))
@@ -639,7 +640,7 @@ class LazyLoader(AbstractRelationshipLoader):
             # "lazyload" option on a "no load"
             # attribute - "eager" attributes always have a
             # class-level lazyloader installed.
-            set_lazy_callable = InstanceState._row_processor(
+            set_lazy_callable = InstanceState._instance_level_callable_processor(
                 mapper.class_manager,
                 LoadLazyAttribute(key), key)
 

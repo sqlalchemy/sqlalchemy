@@ -18,9 +18,9 @@ MyTest = None
 MyTest2 = None
 
 
-
 def _set_callable(state, dict_, key, callable_):
-    fn = InstanceState._row_processor(state.manager, callable_, key)
+    fn = InstanceState._instance_level_callable_processor(
+        state.manager, callable_, key)
     fn(state, dict_, None)
 
 
@@ -1818,7 +1818,7 @@ class HistoryTest(fixtures.TestBase):
         # populators.expire.append((self.key, True))
         # does in loading.py
         state.dict.pop('someattr', None)
-        state.callables['someattr'] = state
+        state.expired_attributes.add('someattr')
 
         def scalar_loader(state, toload):
             state.dict['someattr'] = 'one'

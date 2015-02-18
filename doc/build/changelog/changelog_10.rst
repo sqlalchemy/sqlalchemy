@@ -24,6 +24,16 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3307
+
+        Mapped state internals have been reworked to allow for a 50% reduction
+        in callcounts specific to the "expiration" of objects, as in
+        the "auto expire" feature of :meth:`.Session.commit` and
+        for :meth:`.Session.expire_all`, as well as in the "cleanup" step
+        which occurs when object states are garbage collected.
+
+    .. change::
         :tags: bug, mysql
 
         The MySQL dialect now supports CAST on types that are constructed

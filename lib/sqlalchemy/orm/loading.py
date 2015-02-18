@@ -146,7 +146,7 @@ def get_from_identity(session, key, passive):
                 # expired state will be checked soon enough, if necessary
                 return instance
             try:
-                state(state, passive)
+                state._load_expired(state, passive)
             except orm_exc.ObjectDeletedError:
                 session._remove_newly_deleted([state])
                 return None
@@ -411,11 +411,11 @@ def _populate_full(
             for key, set_callable in populators["expire"]:
                 dict_.pop(key, None)
                 if set_callable:
-                    state.callables[key] = state
+                    state.expired_attributes.add(key)
         else:
             for key, set_callable in populators["expire"]:
                 if set_callable:
-                    state.callables[key] = state
+                    state.expired_attributes.add(key)
         for key, populator in populators["new"]:
             populator(state, dict_, row)
         for key, populator in populators["delayed"]:
@@ -445,7 +445,7 @@ def _populate_partial(
             if key in to_load:
                 dict_.pop(key, None)
                 if set_callable:
-                    state.callables[key] = state
+                    state.expired_attributes.add(key)
         for key, populator in populators["new"]:
             if key in to_load:
                 populator(state, dict_, row)

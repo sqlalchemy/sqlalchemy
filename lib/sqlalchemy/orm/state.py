@@ -60,12 +60,33 @@ class InstanceState(interfaces.InspectionAttr):
     _load_pending = False
     is_instance = True
 
+    callables = ()
+    """A namespace where a per-state loader callable can be associated.
+
+    In SQLAlchemy 1.0, this is only used for lazy loaders / deferred
+    loaders that were set up via query option.
+
+    Previously, callables was used also to indicate expired attributes
+    by storing a link to the InstanceState itself in this dictionary.
+    This role is now handled by the expired_attributes set.
+
+    """
+
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
         self.obj = weakref.ref(obj, self._cleanup)
         self.committed_state = {}
-        self.callables = {}
+        self.expired_attributes = set()
+
+    expired_attributes = None
+    """The set of keys which are 'expired' to be loaded by
+       the manager's deferred scalar loader, assuming no pending
+       changes.
+
+       see also the ``unmodified`` collection which is intersected
+       against this set when a refresh operation occurs."""
+
 
     @util.memoized_property
     def attrs(self):
@@ -228,11 +249,25 @@ class InstanceState(interfaces.InspectionAttr):
         del self.obj
 
     def _cleanup(self, ref):
+        """Weakref callback cleanup.
+
+        This callable cleans out the state when it is being garbage
+        collected.
+
+        this _cleanup **assumes** that there are no strong refs to us!
+        Will not work otherwise!
+
+        """
         instance_dict = self._instance_dict()
         if instance_dict is not None:
-            instance_dict.discard(self)
+            instance_dict._fast_discard(self)
+            del self._instance_dict
 
-        self.callables.clear()
+            # we can't possibly be in instance_dict._modified
+            # b.c. this is weakref cleanup only, that set
+            # is strong referencing!
+            # assert self not in instance_dict._modified
+
         self.session_id = self._strong_obj = None
         del self.obj
 
@@ -287,7 +322,7 @@ class InstanceState(interfaces.InspectionAttr):
             (k, self.__dict__[k]) for k in (
                 'committed_state', '_pending_mutations', 'modified',
                 'expired', 'callables', 'key', 'parents', 'load_options',
-                'class_',
+                'class_', 'expired_attributes'
             ) if k in self.__dict__
         )
         if self.load_path:
@@ -314,7 +349,18 @@ class InstanceState(interfaces.InspectionAttr):
         self.parents = state_dict.get('parents', {})
         self.modified = state_dict.get('modified', False)
         self.expired = state_dict.get('expired', False)
-        self.callables = state_dict.get('callables', {})
+        if 'callables' in state_dict:
+            self.callables = state_dict['callables']
+
+        try:
+            self.expired_attributes = state_dict['expired_attributes']
+        except KeyError:
+            self.expired_attributes = set()
+            # 0.9 and earlier compat
+            for k in list(self.callables):
+                if self.callables[k] is self:
+                    self.expired_attributes.add(k)
+                    del self.callables[k]
 
         self.__dict__.update([
             (k, state_dict[k]) for k in (
@@ -341,57 +387,73 @@ class InstanceState(interfaces.InspectionAttr):
         old = dict_.pop(key, None)
         if old is not None and self.manager[key].impl.collection:
             self.manager[key].impl._invalidate_collection(old)
-        self.callables.pop(key, None)
+        self.expired_attributes.discard(key)
+        if self.callables:
+            self.callables.pop(key, None)
 
     @classmethod
-    def _row_processor(cls, manager, fn, key):
+    def _instance_level_callable_processor(cls, manager, fn, key):
         impl = manager[key].impl
         if impl.collection:
             def _set_callable(state, dict_, row):
+                if 'callables' not in state.__dict__:
+                    state.callables = {}
                 old = dict_.pop(key, None)
                 if old is not None:
                     impl._invalidate_collection(old)
                 state.callables[key] = fn
         else:
             def _set_callable(state, dict_, row):
+                if 'callables' not in state.__dict__:
+                    state.callables = {}
                 state.callables[key] = fn
         return _set_callable
 
     def _expire(self, dict_, modified_set):
         self.expired = True
+
         if self.modified:
             modified_set.discard(self)
+            self.committed_state.clear()
+            self.modified = False
 
-        self.modified = False
         self._strong_obj = None
 
-        self.committed_state.clear()
+        if '_pending_mutations' in self.__dict__:
+            del self.__dict__['_pending_mutations']
 
-        InstanceState._pending_mutations._reset(self)
+        if 'parents' in self.__dict__:
+            del self.__dict__['parents']
 
-        # clear out 'parents' collection.  not
-        # entirely clear how we can best determine
-        # which to remove, or not.
-        InstanceState.parents._reset(self)
+        self.expired_attributes.update(
+            [impl.key for impl in self.manager._scalar_loader_impls
+             if impl.expire_missing or impl.key in dict_]
+        )
 
-        for key in self.manager:
-            impl = self.manager[key].impl
-            if impl.accepts_scalar_loader and \
-                    (impl.expire_missing or key in dict_):
-                self.callables[key] = self
-            old = dict_.pop(key, None)
-            if impl.collection and old is not None:
-                impl._invalidate_collection(old)
+        if self.callables:
+            for k in self.expired_attributes.intersection(self.callables):
+                del self.callables[k]
+
+        for k in self.manager._collection_impl_keys.intersection(dict_):
+            collection = dict_.pop(k)
+            collection._sa_adapter.invalidated = True
+
+        for key in self.manager._all_key_set.intersection(dict_):
+            del dict_[key]
 
         self.manager.dispatch.expire(self, None)
 
     def _expire_attributes(self, dict_, attribute_names):
         pending = self.__dict__.get('_pending_mutations', None)
 
+        callables = self.callables
+
         for key in attribute_names:
             impl = self.manager[key].impl
             if impl.accepts_scalar_loader:
-                self.callables[key] = self
+                self.expired_attributes.add(key)
+                if callables and key in callables:
+                    del callables[key]
             old = dict_.pop(key, None)
             if impl.collection and old is not None:
                 impl._invalidate_collection(old)
@@ -402,7 +464,7 @@ class InstanceState(interfaces.InspectionAttr):
 
         self.manager.dispatch.expire(self, attribute_names)
 
-    def __call__(self, state, passive):
+    def _load_expired(self, state, passive):
         """__call__ allows the InstanceState to act as a deferred
         callable for loading expired attributes, which is also
         serializable (picklable).
@@ -421,8 +483,7 @@ class InstanceState(interfaces.InspectionAttr):
         # instance state didn't have an identity,
         # the attributes still might be in the callables
         # dict.  ensure they are removed.
-        for k in toload.intersection(self.callables):
-            del self.callables[k]
+        self.expired_attributes.clear()
 
         return ATTR_WAS_SET
 
@@ -457,18 +518,6 @@ class InstanceState(interfaces.InspectionAttr):
             if self.manager[attr].impl.accepts_scalar_loader
         )
 
-    @property
-    def expired_attributes(self):
-        """Return the set of keys which are 'expired' to be loaded by
-           the manager's deferred scalar loader, assuming no pending
-           changes.
-
-           see also the ``unmodified`` collection which is intersected
-           against this set when a refresh operation occurs.
-
-        """
-        return set([k for k, v in self.callables.items() if v is self])
-
     def _instance_dict(self):
         return None
 
@@ -491,6 +540,7 @@ class InstanceState(interfaces.InspectionAttr):
 
         if (self.session_id and self._strong_obj is None) \
                 or not self.modified:
+            self.modified = True
             instance_dict = self._instance_dict()
             if instance_dict:
                 instance_dict._modified.add(self)
@@ -511,7 +561,6 @@ class InstanceState(interfaces.InspectionAttr):
                         self.manager[attr.key],
                         base.state_class_str(self)
                     ))
-            self.modified = True
 
     def _commit(self, dict_, keys):
         """Commit attributes.
@@ -528,10 +577,18 @@ class InstanceState(interfaces.InspectionAttr):
 
         self.expired = False
 
-        for key in set(self.callables).\
+        self.expired_attributes.difference_update(
+            set(keys).intersection(dict_))
+
+        # the per-keys commit removes object-level callables,
+        # while that of commit_all does not.  it's not clear
+        # if this behavior has a clear rationale, however tests do
+        # ensure this is what it does.
+        if self.callables:
+            for key in set(self.callables).\
                 intersection(keys).\
-                intersection(dict_):
-            del self.callables[key]
+                    intersection(dict_):
+                    del self.callables[key]
 
     def _commit_all(self, dict_, instance_dict=None):
         """commit all attributes unconditionally.
@@ -542,7 +599,8 @@ class InstanceState(interfaces.InspectionAttr):
          - all attributes are marked as "committed"
          - the "strong dirty reference" is removed
          - the "modified" flag is set to False
-         - any "expired" markers/callables for attributes loaded are removed.
+         - any "expired" markers for scalar attributes loaded are removed.
+         - lazy load callables for objects / collections *stay*
 
         Attributes marked as "expired" can potentially remain
         "expired" after this step if a value was not populated in state.dict.
@@ -562,10 +620,7 @@ class InstanceState(interfaces.InspectionAttr):
             if '_pending_mutations' in state_dict:
                 del state_dict['_pending_mutations']
 
-            callables = state.callables
-            for key in list(callables):
-                if key in dict_ and callables[key] is state:
-                    del callables[key]
+            state.expired_attributes.difference_update(dict_)
 
             if instance_dict and state.modified:
                 instance_dict._modified.discard(state)

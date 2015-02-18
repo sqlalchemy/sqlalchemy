@@ -2691,9 +2691,13 @@ def make_transient(instance):
     if s:
         s._expunge_state(state)
 
-    # remove expired state and
-    # deferred callables
-    state.callables.clear()
+    # remove expired state
+    state.expired_attributes.clear()
+
+    # remove deferred callables
+    if state.callables:
+        del state.callables
+
     if state.key:
         del state.key
     if state.deleted:

@@ -527,23 +527,6 @@ class AttributeImpl(object):
 
             state.parents[id_] = False
 
-    def set_callable(self, state, callable_):
-        """Set a callable function for this attribute on the given object.
-
-        This callable will be executed when the attribute is next
-        accessed, and is assumed to construct part of the instances
-        previously stored state. When its value or values are loaded,
-        they will be established as part of the instance's *committed
-        state*.  While *trackparent* information will be assembled for
-        these instances, attribute-level event handlers will not be
-        fired.
-
-        The callable overrides the class level callable set in the
-        ``InstrumentedAttribute`` constructor.
-
-        """
-        state.callables[self.key] = callable_
-
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         raise NotImplementedError()
 
@@ -586,7 +569,9 @@ class AttributeImpl(object):
                 if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
 
-                if key in state.callables:
+                if key in state.expired_attributes:
+                    value = state._load_expired(state, passive)
+                elif key in state.callables:
                     callable_ = state.callables[key]
                     value = callable_(state, passive)
                 elif self.callable_:
