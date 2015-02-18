@@ -231,6 +231,23 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_sqlite_pysqlite_noc
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_postgresql_psycopg2_cextensions 94,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_postgresql_psycopg2_nocextensions 94,19
 
+# TEST: test.aaa_profiling.test_orm.SessionTest.test_expire_lots
+
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_mysql_mysqldb_cextensions 2481
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_mysql_mysqldb_nocextensions 2481
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_postgresql_psycopg2_cextensions 2481
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_postgresql_psycopg2_nocextensions 2481
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_sqlite_pysqlite_cextensions 2481
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_sqlite_pysqlite_nocextensions 2481
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_postgresql_psycopg2_cextensions 2482
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_postgresql_psycopg2_nocextensions 2482
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_sqlite_pysqlite_cextensions 2482
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_sqlite_pysqlite_nocextensions 2482
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2_cextensions 2482
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2_nocextensions 2482
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_cextensions 2482
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_nocextensions 2482
+
 # TEST: test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect
 
 test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect 2.7_mysql_mysqldb_cextensions 91
