@@ -1,15 +1,15 @@
 # /Users/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and 
+# For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received. 
+# If a callcount does exist, it is compared to what we received.
 # assertions are raised if the counts do not match.
-# 
-# To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles 
+#
+# To add a new callcount test, apply the function_call_count
+# decorator and re-run the tests using the --write-profiles
 # option - this file will be rewritten including the new count.
-# 
+#
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -266,22 +266,6 @@ test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2
 test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_cextensions 1249
 test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_nocextensions 1231
 
-# TEST: test.aaa_profiling.test_orm.SessionTest.test_expire_lots
-
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_mysql_mysqldb_cextensions 2481
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_mysql_mysqldb_nocextensions 2481
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_postgresql_psycopg2_cextensions 2481
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_postgresql_psycopg2_nocextensions 2481
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_sqlite_pysqlite_cextensions 2481
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 2.7_sqlite_pysqlite_nocextensions 2481
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_postgresql_psycopg2_cextensions 2482
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_postgresql_psycopg2_nocextensions 2482
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_sqlite_pysqlite_cextensions 2482
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_sqlite_pysqlite_nocextensions 2482
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2_cextensions 2482
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2_nocextensions 2482
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_cextensions 2482
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_nocextensions 2482
 
 # TEST: test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect
 
