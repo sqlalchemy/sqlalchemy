@@ -1291,8 +1291,9 @@ class RelationshipProperty(StrategizedProperty):
             """
             if isinstance(other, (util.NoneType, expression.Null)):
                 if self.property.direction == MANYTOONE:
-                    return sql.or_(*[x != None for x in
-                                     self.property._calculated_foreign_keys])
+                    return _orm_annotate(~self.property._optimized_compare(
+                        None, adapt_source=self.adapter))
+
                 else:
                     return self._criterion_exists()
             elif self.property.uselist:
@@ -1301,7 +1302,7 @@ class RelationshipProperty(StrategizedProperty):
                     " to an object or collection; use "
                     "contains() to test for membership.")
             else:
-                return self.__negated_contains_or_equals(other)
+                return _orm_annotate(self.__negated_contains_or_equals(other))
 
         @util.memoized_property
         def property(self):

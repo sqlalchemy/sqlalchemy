@@ -16,6 +16,18 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3310
+
+        Fixed bugs in ORM object comparisons where comparison of
+        many-to-one ``!= None`` would fail if the source were an aliased
+        class, or if the query needed to apply special aliasing to the
+        expression due to aliased joins or polymorphic querying; also fixed
+        bug in the case where comparing a many-to-one to an object state
+        would fail if the query needed to apply special aliasing
+        due to aliased joins or polymorphic querying.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3309
 
         Fixed bug where internal assertion would fail in the case where
