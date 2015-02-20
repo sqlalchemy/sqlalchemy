@@ -237,14 +237,21 @@ class SessionTransaction(object):
             self.session, self, nested=nested)
 
     def _iterate_parents(self, upto=None):
-        if self._parent is upto:
-            return (self,)
-        else:
-            if self._parent is None:
+
+        current = self
+        result = ()
+        while current:
+            result += (current, )
+            if current._parent is upto:
+                break
+            elif current._parent is None:
                 raise sa_exc.InvalidRequestError(
                     "Transaction %s is not on the active transaction list" % (
                         upto))
-            return (self,) + self._parent._iterate_parents(upto)
+            else:
+                current = current._parent
+
+        return result
 
     def _take_snapshot(self):
         if not self._is_transaction_boundary:
