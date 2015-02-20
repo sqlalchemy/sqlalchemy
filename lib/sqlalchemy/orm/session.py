@@ -404,26 +404,29 @@ class SessionTransaction(object):
             for subtransaction in stx._iterate_parents(upto=self):
                 subtransaction.close()
 
+        boundary = self
         if self._state in (ACTIVE, PREPARED):
             for transaction in self._iterate_parents():
                 if transaction._parent is None or transaction.nested:
                     transaction._rollback_impl()
                     transaction._state = DEACTIVE
+                    boundary = transaction
                     break
                 else:
                     transaction._state = DEACTIVE
 
         sess = self.session
 
-        if self.session._enable_transaction_accounting and \
+        if sess._enable_transaction_accounting and \
                 not sess._is_clean():
+
             # if items were added, deleted, or mutated
             # here, we need to re-restore the snapshot
             util.warn(
                 "Session's state has been changed on "
                 "a non-active transaction - this state "
                 "will be discarded.")
-            self._restore_snapshot(dirty_only=self.nested)
+            boundary._restore_snapshot(dirty_only=boundary.nested)
 
         self.close()
         if self._parent and _capture_exception:

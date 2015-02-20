@@ -16,6 +16,16 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3309
+
+        Fixed bug where internal assertion would fail in the case where
+        an ``after_rollback()`` handler for a :class:`.Session` incorrectly
+        adds state to that :class:`.Session` within the handler, and the task
+        to warn and remove this state (established by :ticket:`2389`) attempts
+        to proceed.
+
+    .. change::
+        :tags: bug, orm
         :pullreq: github:147
 
         Fixed bug where TypeError raised when :meth:`.Query.join` called

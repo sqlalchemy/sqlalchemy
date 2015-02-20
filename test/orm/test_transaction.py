@@ -571,6 +571,35 @@ class SessionTransactionTest(FixtureTest):
         assert u1 in sess
         assert u1 not in sess.deleted
 
+    def test_warning_on_using_inactive_session_rollback_evt(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(id=1, name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        u3 = User(name='u3')
+
+        @event.listens_for(sess, "after_rollback")
+        def evt(s):
+            sess.add(u3)
+
+        sess.add(User(id=1, name='u2'))
+
+        def go():
+            assert_raises(
+                orm_exc.FlushError, sess.flush
+            )
+
+        assert_warnings(go,
+                        ["Session's state has been changed on a "
+                         "non-active transaction - this state "
+                         "will be discarded."],
+                        )
+        assert u3 not in sess
+
     def test_preserve_flush_error(self):
         User = self.classes.User
 
