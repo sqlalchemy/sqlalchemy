@@ -1432,6 +1432,59 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         eq_(counter.mock_calls, [mock.call(A), mock.call(B)])
 
+    def test_col_prop_attrs_associated_w_class_for_mapper_args(self):
+        from sqlalchemy import Column
+        import collections
+
+        asserted = collections.defaultdict(set)
+
+        class Mixin(object):
+            @declared_attr.cascading
+            def my_attr(cls):
+                if decl.has_inherited_table(cls):
+                    id = Column(ForeignKey('a.my_attr'), primary_key=True)
+                    asserted['b'].add(id)
+                else:
+                    id = Column(Integer, primary_key=True)
+                    asserted['a'].add(id)
+                return id
+
+        class A(Base, Mixin):
+            __tablename__ = 'a'
+
+            @declared_attr
+            def __mapper_args__(cls):
+                asserted['a'].add(cls.my_attr)
+                return {}
+
+        # here:
+        # 1. A is mapped.  so A.my_attr is now the InstrumentedAttribute.
+        # 2. B wants to call my_attr also.  Due to .cascading, it has been
+        # invoked specific to B, and is present in the dict_ that will
+        # be used when we map the class.  But except for the
+        # special setattr() we do in _scan_attributes() in this case, would
+        # otherwise not been set on the class as anything from this call;
+        # the usual mechanics of calling it from the descriptor also do not
+        # work because A is fully mapped and because A set it up, is currently
+        # that non-expected InstrumentedAttribute and replaces the
+        # descriptor from being invoked.
+
+        class B(A):
+            __tablename__ = 'b'
+
+            @declared_attr
+            def __mapper_args__(cls):
+                asserted['b'].add(cls.my_attr)
+                return {}
+
+        eq_(
+            asserted,
+            {
+                'a': set([A.my_attr.property.columns[0]]),
+                'b': set([B.my_attr.property.columns[0]])
+            }
+        )
+
     def test_column_pre_map(self):
         counter = mock.Mock()
 
