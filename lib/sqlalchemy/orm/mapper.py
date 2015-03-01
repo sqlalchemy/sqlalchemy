@@ -1501,6 +1501,10 @@ class Mapper(InspectionAttr):
 
         return identities
 
+    @_memoized_configured_property
+    def _prop_set(self):
+        return frozenset(self._props.values())
+
     def _adapt_inherited_property(self, key, prop, init):
         if not self.concrete:
             self._configure_property(key, prop, init=False, setparent=False)

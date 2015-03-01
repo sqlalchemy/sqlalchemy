@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: January 30, 2015
+    Document last updated: March 1, 2015
 
 Introduction
 ============
@@ -1087,6 +1087,18 @@ as all the subclasses normally refer to the same table::
 
 :ticket:`3233`
 
+
+Deferred Columns No Longer Implicitly Undefer
+---------------------------------------------
+
+Mapped attributes marked as deferred without explicit undeferral
+will now remain "deferred" even if their column is otherwise
+present in the result set in some way.   This is a performance
+enhancement in that an ORM load no longer spends time searching
+for each deferred column when the result set is obtained.  However,
+for an application that has been relying upon this, an explicit
+:func:`.undefer` or similar option should now be used, in order
+to prevent a SELECT from being emitted when the attribute is accessed.
 
 
 .. _migration_deprecated_orm_events:

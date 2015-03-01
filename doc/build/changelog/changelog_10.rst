@@ -24,6 +24,17 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: change, orm
+
+        Mapped attributes marked as deferred without explicit undeferral
+        will now remain "deferred" even if their column is otherwise
+        present in the result set in some way.   This is a performance
+        enhancement in that an ORM load no longer spends time searching
+        for each deferred column when the result set is obtained.  However,
+        for an application that has been relying upon this, an explicit
+        :func:`.undefer` or similar option should now be used.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3307
 

@@ -183,6 +183,10 @@ NOT_EXTENSION = util.symbol(
 
 _none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
 
+_SET_DEFERRED_EXPIRED = util.symbol("SET_DEFERRED_EXPIRED")
+
+_DEFER_FOR_STATE = util.symbol("DEFER_FOR_STATE")
+
 
 def _generative(*assertions):
     """Mark a method as generative, e.g. method-chained."""

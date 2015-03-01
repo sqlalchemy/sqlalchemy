@@ -294,20 +294,21 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess.expunge_all()
         a = sess.query(Address).filter(Address.id == 1).all()[0]
 
+        # 1.0 change!  we don't automatically undefer user_id here.
+        # if the user wants a column undeferred, add the option.
         def go():
             eq_(a.user_id, 7)
-        # assert that the eager loader added 'user_id' to the row and deferred
-        # loading of that col was disabled
-        self.assert_sql_count(testing.db, go, 0)
+        # self.assert_sql_count(testing.db, go, 0)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
         a = sess.query(Address).filter(Address.id == 1).first()
 
         def go():
             eq_(a.user_id, 7)
-        # assert that the eager loader added 'user_id' to the row and deferred
-        # loading of that col was disabled
-        self.assert_sql_count(testing.db, go, 0)
+        # same, 1.0 doesn't check these
+        # self.assert_sql_count(testing.db, go, 0)
+        self.assert_sql_count(testing.db, go, 1)
 
         # do the mapping in reverse
         # (we would have just used an "addresses" backref but the test

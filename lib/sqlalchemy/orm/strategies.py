@@ -22,6 +22,7 @@ from . import properties
 from .interfaces import (
     LoaderStrategy, StrategizedProperty
 )
+from .base import _SET_DEFERRED_EXPIRED, _DEFER_FOR_STATE
 from .session import _state_session
 import itertools
 
@@ -139,11 +140,17 @@ class ColumnLoader(LoaderStrategy):
 
     def setup_query(
             self, context, entity, path, loadopt,
-            adapter, column_collection, **kwargs):
+            adapter, column_collection, memoized_populators, **kwargs):
+
         for c in self.columns:
             if adapter:
                 c = adapter.columns[c]
             column_collection.append(c)
+
+        fetch = self.columns[0]
+        if adapter:
+            fetch = adapter.columns[fetch]
+        memoized_populators[self.parent_property] = fetch
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -193,23 +200,14 @@ class DeferredColumnLoader(LoaderStrategy):
     def create_row_processor(
             self, context, path, loadopt,
             mapper, result, adapter, populators):
-        col = self.columns[0]
-        if adapter:
-            col = adapter.columns[col]
 
-        # TODO: put a result-level contains here
-        getter = result._getter(col)
-        if getter:
-            self.parent_property._get_strategy_by_cls(ColumnLoader).\
-                create_row_processor(
-                    context, path, loadopt, mapper, result,
-                    adapter, populators)
-
-        elif not self.is_class_level:
+        # this path currently does not check the result
+        # for the column; this is because in most cases we are
+        # working just with the setup_query() directive which does
+        # not support this, and the behavior here should be consistent.
+        if not self.is_class_level:
             set_deferred_for_local_state = \
-                InstanceState._instance_level_callable_processor(
-                    mapper.class_manager,
-                    LoadDeferredColumns(self.key), self.key)
+                self.parent_property._deferred_column_loader
             populators["new"].append((self.key, set_deferred_for_local_state))
         else:
             populators["expire"].append((self.key, False))
@@ -225,8 +223,9 @@ class DeferredColumnLoader(LoaderStrategy):
         )
 
     def setup_query(
-            self, context, entity, path, loadopt, adapter,
-            only_load_props=None, **kwargs):
+            self, context, entity, path, loadopt,
+            adapter, column_collection, memoized_populators,
+            only_load_props=None, **kw):
 
         if (
             (
@@ -248,7 +247,12 @@ class DeferredColumnLoader(LoaderStrategy):
         ):
             self.parent_property._get_strategy_by_cls(ColumnLoader).\
                 setup_query(context, entity,
-                            path, loadopt, adapter, **kwargs)
+                            path, loadopt, adapter,
+                            column_collection, memoized_populators, **kw)
+        elif self.is_class_level:
+            memoized_populators[self.parent_property] = _SET_DEFERRED_EXPIRED
+        else:
+            memoized_populators[self.parent_property] = _DEFER_FOR_STATE
 
     def _load_for_state(self, state, passive):
         if not state.key:
@@ -1153,16 +1157,12 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         path = path[self.mapper]
 
-        for value in self.mapper._iterate_polymorphic_properties(
-                mappers=with_polymorphic):
-            value.setup(
-                context,
-                entity,
-                path,
-                clauses,
-                parentmapper=self.mapper,
-                column_collection=add_to_collection,
-                chained_from_outerjoin=chained_from_outerjoin)
+        loading._setup_entity_query(
+            context, self.mapper, entity,
+            path, clauses, add_to_collection,
+            with_polymorphic=with_polymorphic,
+            parentmapper=self.mapper,
+            chained_from_outerjoin=chained_from_outerjoin)
 
         if with_poly_info is not None and \
                 None in set(context.secondary_columns):
@@ -1454,7 +1454,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         if eager_adapter is not False:
             key = self.key
 
-            _instance = loading.instance_processor(
+            _instance = loading._instance_processor(
                 self.mapper,
                 context,
                 result,

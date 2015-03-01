@@ -341,7 +341,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             )
 
     def test_locates_col(self):
-        """Manually adding a column to the result undefers the column."""
+        """changed in 1.0 - we don't search for deferred cols in the result
+        now.  """
 
         orders, Order = self.tables.orders, self.classes.Order
 
@@ -350,18 +351,40 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             'description': deferred(orders.c.description)})
 
         sess = create_session()
-        o1 = sess.query(Order).order_by(Order.id).first()
-        def go():
-            eq_(o1.description, 'order 1')
-        self.sql_count_(1, go)
-
-        sess = create_session()
         o1 = (sess.query(Order).
               order_by(Order.id).
               add_column(orders.c.description).first())[0]
         def go():
             eq_(o1.description, 'order 1')
-        self.sql_count_(0, go)
+        # prior to 1.0 we'd search in the result for this column
+        # self.sql_count_(0, go)
+        self.sql_count_(1, go)
+
+    def test_locates_col_rowproc_only(self):
+        """changed in 1.0 - we don't search for deferred cols in the result
+        now.
+
+        Because the loading for ORM Query and Query from a core select
+        is now split off, we test loading from a plain select()
+        separately.
+
+        """
+
+        orders, Order = self.tables.orders, self.classes.Order
+
+
+        mapper(Order, orders, properties={
+            'description': deferred(orders.c.description)})
+
+        sess = create_session()
+        stmt = sa.select([Order]).order_by(Order.id)
+        o1 = (sess.query(Order).
+              from_statement(stmt).all())[0]
+        def go():
+            eq_(o1.description, 'order 1')
+        # prior to 1.0 we'd search in the result for this column
+        # self.sql_count_(0, go)
+        self.sql_count_(1, go)
 
     def test_deep_options(self):
         users, items, order_items, Order, Item, User, orders = (self.tables.users,

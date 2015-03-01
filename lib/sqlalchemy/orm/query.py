@@ -3272,25 +3272,21 @@ class _MapperEntity(_QueryEntity):
                 self.mapper._equivalent_columns)
 
         if query._primary_entity is self:
-            _instance = loading.instance_processor(
-                self.mapper,
-                context,
-                result,
-                self.path,
-                adapter,
-                only_load_props=query._only_load_props,
-                refresh_state=context.refresh_state,
-                polymorphic_discriminator=self._polymorphic_discriminator
-            )
+            only_load_props = query._only_load_props
+            refresh_state = context.refresh_state
         else:
-            _instance = loading.instance_processor(
-                self.mapper,
-                context,
-                result,
-                self.path,
-                adapter,
-                polymorphic_discriminator=self._polymorphic_discriminator
-            )
+            only_load_props = refresh_state = None
+
+        _instance = loading._instance_processor(
+            self.mapper,
+            context,
+            result,
+            self.path,
+            adapter,
+            only_load_props=only_load_props,
+            refresh_state=refresh_state,
+            polymorphic_discriminator=self._polymorphic_discriminator
+        )
 
         return _instance, self._label_name
 
@@ -3311,34 +3307,12 @@ class _MapperEntity(_QueryEntity):
                     )
                 )
 
-        if self._with_polymorphic:
-            poly_properties = self.mapper._iterate_polymorphic_properties(
-                self._with_polymorphic)
-        else:
-            poly_properties = self.mapper._polymorphic_properties
-
-        for value in poly_properties:
-            if query._only_load_props and \
-                    value.key not in query._only_load_props:
-                continue
-            value.setup(
-                context,
-                self,
-                self.path,
-                adapter,
-                only_load_props=query._only_load_props,
-                column_collection=context.primary_columns
-            )
-
-        if self._polymorphic_discriminator is not None and \
-            self._polymorphic_discriminator \
-                is not self.mapper.polymorphic_on:
-
-            if adapter:
-                pd = adapter.columns[self._polymorphic_discriminator]
-            else:
-                pd = self._polymorphic_discriminator
-            context.primary_columns.append(pd)
+        loading._setup_entity_query(
+            context, self.mapper, self,
+            self.path, adapter, context.primary_columns,
+            with_polymorphic=self._with_polymorphic,
+            only_load_props=query._only_load_props,
+            polymorphic_discriminator=self._polymorphic_discriminator)
 
     def __str__(self):
         return str(self.mapper)

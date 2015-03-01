@@ -39,7 +39,7 @@ class ColumnProperty(StrategizedProperty):
         'instrument', 'comparator_factory', 'descriptor', 'extension',
         'active_history', 'expire_on_flush', 'info', 'doc',
         'strategy_class', '_creation_order', '_is_polymorphic_discriminator',
-        '_mapped_by_synonym')
+        '_mapped_by_synonym', '_deferred_loader')
 
     def __init__(self, *columns, **kwargs):
         """Provide a column-level property for use with a Mapper.
@@ -156,6 +156,12 @@ class ColumnProperty(StrategizedProperty):
             ("deferred", self.deferred),
             ("instrument", self.instrument)
         )
+
+    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__deferred_column_loader(self, state, strategies):
+        return state.InstanceState._instance_level_callable_processor(
+            self.parent.class_manager,
+            strategies.LoadDeferredColumns(self.key), self.key)
 
     @property
     def expression(self):

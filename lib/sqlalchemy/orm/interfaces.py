@@ -488,7 +488,8 @@ class StrategizedProperty(MapperProperty):
     def _get_strategy_by_cls(self, cls):
         return self._get_strategy(cls._strategy_keys[0])
 
-    def setup(self, context, entity, path, adapter, **kwargs):
+    def setup(
+            self, context, entity, path, adapter, **kwargs):
         loader = self._get_context_loader(context, path)
         if loader and loader.strategy:
             strat = self._get_strategy(loader.strategy)
