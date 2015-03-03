@@ -2304,6 +2304,7 @@ class JSONBTest(JSONTest):
 
 class JSONBRoundTripTest(JSONRoundTripTest):
     __only_on__ = ('postgresql >= 9.4',)
+    __requires__ = ('postgresql_jsonb', )
 
     test_type = JSONB
 
