@@ -24,6 +24,22 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: github:132
+
+        The PG8000 dialect now supports the
+        :paramref:`.create_engine.encoding` parameter, by setting up
+        the client encoding on the connection which is then intercepted
+        by pg8000.  Pull request courtesy Tony Locke.
+
+    .. change::
+        :tags: feature, postgresql
+        :pullreq: github:132
+
+        Added support for PG8000's native JSONB feature.  Pull request
+        courtesy Tony Locke.
+
+    .. change::
         :tags: change, orm
 
         Mapped attributes marked as deferred without explicit undeferral

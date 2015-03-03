@@ -1852,6 +1852,20 @@ by Postgresql as of 9.4.  SQLAlchemy allows this using
 
     :class:`.FunctionFilter`
 
+PG8000 dialect supports client side encoding
+---------------------------------------------
+
+The :paramref:`.create_engine.encoding` parameter is now honored
+by the pg8000 dialect, using on connect handler which
+emits ``SET CLIENT_ENCODING`` matching the selected encoding.
+
+PG8000 native JSONB support
+--------------------------------------
+
+Support for PG8000 versions greater than 1.10.1 has been added, where
+JSONB is supported natively.
+
+
 Support for psycopg2cffi Dialect on Pypy
 ----------------------------------------
 
