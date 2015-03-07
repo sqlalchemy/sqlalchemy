@@ -13,18 +13,20 @@ from .. import util
 __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 
 
-def sort_as_subsets(tuples, allitems):
+def sort_as_subsets(tuples, allitems, deterministic_order=False):
 
     edges = util.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)
 
-    todo = set(allitems)
+    Set = util.OrderedSet if deterministic_order else set
+
+    todo = Set(allitems)
 
     while todo:
-        output = set()
-        for node in list(todo):
-            if not todo.intersection(edges[node]):
+        output = Set()
+        for node in todo:
+            if todo.isdisjoint(edges[node]):
                 output.add(node)
 
         if not output:
@@ -38,13 +40,14 @@ def sort_as_subsets(tuples, allitems):
         yield output
 
 
-def sort(tuples, allitems):
+def sort(tuples, allitems, deterministic_order=False):
     """sort the given list of items by dependency.
 
     'tuples' is a list of tuples representing a partial ordering.
+    'deterministic_order' keeps items within a dependency tier in list order.
     """
 
-    for set_ in sort_as_subsets(tuples, allitems):
+    for set_ in sort_as_subsets(tuples, allitems, deterministic_order):
         for s in set_:
             yield s
 

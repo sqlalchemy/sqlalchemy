@@ -1031,7 +1031,8 @@ def sort_tables_and_constraints(
     try:
         candidate_sort = list(
             topological.sort(
-                fixed_dependencies.union(mutable_dependencies), tables
+                fixed_dependencies.union(mutable_dependencies), tables,
+                deterministic_order=True
             )
         )
     except exc.CircularDependencyError as err:
@@ -1048,7 +1049,8 @@ def sort_tables_and_constraints(
                         mutable_dependencies.discard((dependent_on, table))
         candidate_sort = list(
             topological.sort(
-                fixed_dependencies.union(mutable_dependencies), tables
+                fixed_dependencies.union(mutable_dependencies), tables,
+                deterministic_order=True
             )
         )
 
