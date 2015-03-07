@@ -1175,6 +1175,48 @@ class QueryTest(fixtures.TestBase):
             row[1], 1
         )
 
+    def test_fetch_partial_result_map(self):
+        users.insert().execute(user_id=7, user_name='ed')
+
+        t = text("select * from query_users").columns(
+            user_name=String()
+        )
+        eq_(
+            testing.db.execute(t).fetchall(), [(7, 'ed')]
+        )
+
+    def test_fetch_unordered_result_map(self):
+        users.insert().execute(user_id=7, user_name='ed')
+
+        class Goofy1(TypeDecorator):
+            impl = String
+
+            def process_result_value(self, value, dialect):
+                return value + "a"
+
+        class Goofy2(TypeDecorator):
+            impl = String
+
+            def process_result_value(self, value, dialect):
+                return value + "b"
+
+        class Goofy3(TypeDecorator):
+            impl = String
+
+            def process_result_value(self, value, dialect):
+                return value + "c"
+
+        t = text(
+            "select user_name as a, user_name as b, "
+            "user_name as c from query_users").columns(
+            a=Goofy1(), b=Goofy2(), c=Goofy3()
+        )
+        eq_(
+            testing.db.execute(t).fetchall(), [
+                ('eda', 'edb', 'edc')
+            ]
+        )
+
     @testing.requires.subqueries
     def test_column_label_targeting(self):
         users.insert().execute(user_id=7, user_name='ed')

@@ -187,86 +187,142 @@ class ResultMetaData(object):
     context."""
 
     def __init__(self, parent, metadata):
-        self._processors = processors = []
-
-        # We do not strictly need to store the processor in the key mapping,
-        # though it is faster in the Python version (probably because of the
-        # saved attribute lookup self._processors)
-        self._keymap = keymap = {}
-        self.keys = []
         context = parent.context
         dialect = context.dialect
         typemap = dialect.dbapi_type_map
         translate_colname = context._translate_colname
-        self.case_sensitive = dialect.case_sensitive
+        self.case_sensitive = case_sensitive = dialect.case_sensitive
 
-        # high precedence key values.
-        primary_keymap = {}
+        if context._result_columns:
+            num_ctx_cols = len(context._result_columns)
+        else:
+            num_ctx_cols = None
 
-        for i, rec in enumerate(metadata):
-            colname = rec[0]
-            coltype = rec[1]
+        if num_ctx_cols and \
+                context.compiled._ordered_columns and \
+                num_ctx_cols == len(metadata):
+            # case 1 - SQL expression statement, number of columns
+            # in result matches number of cols in compiled.  This is the
+            # vast majority case for SQL expression constructs.  In this
+            # case we don't bother trying to parse or match up to
+            # the colnames in the result description.
+            raw = [
+                (
+                    idx,
+                    key,
+                    name.lower() if not case_sensitive else name,
+                    context.get_result_processor(
+                        type_, key, metadata[idx][1]
+                    ),
+                    obj,
+                    None
+                ) for idx, (key, name, obj, type_)
+                in enumerate(context._result_columns)
+            ]
+            self.keys = [
+                elem[1] for elem in context._result_columns
+            ]
+        else:
+            # case 2 - raw string, or number of columns in result does
+            # not match number of cols in compiled.  The raw string case
+            # is very common.   The latter can happen
+            # when text() is used with only a partial typemap, or
+            # in the extremely unlikely cases where the compiled construct
+            # has a single element with multiple col expressions in it
+            # (e.g. has commas embedded) or there's some kind of statement
+            # that is adding extra columns.
+            # In all these cases we fall back to the "named" approach
+            # that SQLAlchemy has used up through 0.9.
 
-            if dialect.description_encoding:
-                colname = dialect._description_decoder(colname)
+            raw = []
+            self.keys = []
+            untranslated = None
+            for idx, rec in enumerate(metadata):
+                colname = rec[0]
+                coltype = rec[1]
 
+                if dialect.description_encoding:
+                    colname = dialect._description_decoder(colname)
+
+                if translate_colname:
+                    colname, untranslated = translate_colname(colname)
+
+                if dialect.requires_name_normalize:
+                    colname = dialect.normalize_name(colname)
+
+                self.keys.append(colname)
+                if not case_sensitive:
+                    colname = colname.lower()
+
+                if num_ctx_cols:
+                    try:
+                        ctx_rec = context.result_map[colname]
+                    except KeyError:
+                        mapped_type = typemap.get(coltype, sqltypes.NULLTYPE)
+                        obj = None
+                    else:
+                        obj = ctx_rec[1]
+                        mapped_type = ctx_rec[2]
+                else:
+                    mapped_type = typemap.get(coltype, sqltypes.NULLTYPE)
+                    obj = None
+                processor = context.get_result_processor(
+                    mapped_type, colname, coltype)
+
+                raw.append(
+                    (idx, colname, colname, processor, obj, untranslated)
+                )
+
+        # keymap indexes by integer index...
+        self._keymap = dict([
+            (elem[0], (elem[3], elem[4], elem[0]))
+            for elem in raw
+        ])
+
+        # processors in key order for certain per-row
+        # views like __iter__ and slices
+        self._processors = [elem[3] for elem in raw]
+
+        if num_ctx_cols:
+            # keymap by primary string...
+            by_key = dict([
+                (elem[2], (elem[3], elem[4], elem[0]))
+                for elem in raw
+            ])
+
+            # if by-primary-string dictionary smaller (or bigger?!) than
+            # number of columns, assume we have dupes, rewrite
+            # dupe records with "None" for index which results in
+            # ambiguous column exception when accessed.
+            if len(by_key) != num_ctx_cols:
+                seen = set()
+                for idx in range(num_ctx_cols):
+                    key = raw[idx][1]
+                    if key in seen:
+                        by_key[key] = (None, by_key[key][1], None)
+                    seen.add(key)
+
+            # update keymap with secondary "object"-based keys
+            self._keymap.update([
+                (obj_elem, by_key[elem[2]])
+                for elem in raw if elem[4]
+                for obj_elem in elem[4]
+            ])
+
+            # update keymap with primary string names taking
+            # precedence
+            self._keymap.update(by_key)
+        else:
+            self._keymap.update([
+                (elem[2], (elem[3], elem[4], elem[0]))
+                for elem in raw
+            ])
+            # update keymap with "translated" names (sqlite-only thing)
             if translate_colname:
-                colname, untranslated = translate_colname(colname)
-
-            if dialect.requires_name_normalize:
-                colname = dialect.normalize_name(colname)
-
-            if context.result_map:
-                try:
-                    name, obj, type_ = context.result_map[
-                        colname if self.case_sensitive else colname.lower()]
-                except KeyError:
-                    name, obj, type_ = \
-                        colname, None, typemap.get(coltype, sqltypes.NULLTYPE)
-            else:
-                name, obj, type_ = \
-                    colname, None, typemap.get(coltype, sqltypes.NULLTYPE)
-
-            processor = context.get_result_processor(type_, colname, coltype)
-
-            processors.append(processor)
-            rec = (processor, obj, i)
-
-            # indexes as keys. This is only needed for the Python version of
-            # RowProxy (the C version uses a faster path for integer indexes).
-            primary_keymap[i] = rec
-
-            # populate primary keymap, looking for conflicts.
-            if primary_keymap.setdefault(
-                    name if self.case_sensitive
-                    else name.lower(),
-                    rec) is not rec:
-                # place a record that doesn't have the "index" - this
-                # is interpreted later as an AmbiguousColumnError,
-                # but only when actually accessed.   Columns
-                # colliding by name is not a problem if those names
-                # aren't used; integer access is always
-                # unambiguous.
-                primary_keymap[name
-                               if self.case_sensitive
-                               else name.lower()] = rec = (None, obj, None)
-
-            self.keys.append(colname)
-            if obj:
-                for o in obj:
-                    keymap[o] = rec
-                    # technically we should be doing this but we
-                    # are saving on callcounts by not doing so.
-                    # if keymap.setdefault(o, rec) is not rec:
-                    #    keymap[o] = (None, obj, None)
-
-            if translate_colname and \
-                    untranslated:
-                keymap[untranslated] = rec
-
-        # overwrite keymap values with those of the
-        # high precedence keymap.
-        keymap.update(primary_keymap)
+                self._keymap.update([
+                    (elem[5], self._keymap[elem[2]])
+                    for elem in raw if elem[5]
+                ])
 
     @util.pending_deprecation("0.8", "sqlite dialect uses "
                               "_translate_colname() now")

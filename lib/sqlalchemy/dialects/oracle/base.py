@@ -692,8 +692,9 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.bindparam_string(self._truncate_bindparam(outparam)))
             columns.append(
                 self.process(col_expr, within_columns_clause=False))
-            self.result_map[outparam.key] = (
-                outparam.key,
+
+            self._add_to_result_map(
+                outparam.key, outparam.key,
                 (column, getattr(column, 'name', None),
                  getattr(column, 'key', None)),
                 column.type

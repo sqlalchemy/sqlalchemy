@@ -361,7 +361,12 @@ class SQLCompiler(Compiled):
         # column/label name, ColumnElement object (if any) and
         # TypeEngine. ResultProxy uses this for type processing and
         # column targeting
-        self.result_map = {}
+        self._result_columns = []
+
+        # if False, means we can't be sure the list of entries
+        # in _result_columns is actually the rendered order.   This
+        # gets flipped when we use TextAsFrom, for example.
+        self._ordered_columns = True
 
         # true if the paramstyle is positional
         self.positional = dialect.positional
@@ -387,6 +392,22 @@ class SQLCompiler(Compiled):
 
         if self.positional and dialect.paramstyle == 'numeric':
             self._apply_numbered_params()
+
+    @property
+    def result_map(self):
+        d = {}
+        for elem in self._result_columns:
+            key, rec = elem[0], elem[1:]
+            if key in d:
+                # conflicting keyname, just double up the list
+                # of objects.  this will cause an "ambiguous name"
+                # error if an attempt is made by the result set to
+                # access.
+                e_name, e_obj, e_type = d[key]
+                d[key] = e_name, e_obj + rec[1], e_type
+            else:
+                d[key] = rec
+        return d
 
     @util.memoized_instancemethod
     def _init_cte_state(self):
@@ -678,6 +699,7 @@ class SQLCompiler(Compiled):
         )
 
         if populate_result_map:
+            self._ordered_columns = False
             for c in taf.column_args:
                 self.process(c, within_columns_clause=True,
                              add_to_result_map=self._add_to_result_map)
@@ -1241,15 +1263,7 @@ class SQLCompiler(Compiled):
         if not self.dialect.case_sensitive:
             keyname = keyname.lower()
 
-        if keyname in self.result_map:
-            # conflicting keyname, just double up the list
-            # of objects.  this will cause an "ambiguous name"
-            # error if an attempt is made by the result set to
-            # access.
-            e_name, e_obj, e_type = self.result_map[keyname]
-            self.result_map[keyname] = e_name, e_obj + objects, e_type
-        else:
-            self.result_map[keyname] = name, objects, type_
+        self._result_columns.append((keyname, name, objects, type_))
 
     def _label_select_column(self, select, column,
                              populate_result_map,
@@ -1439,9 +1453,11 @@ class SQLCompiler(Compiled):
             (inner_col[c._key_label], c)
             for c in select.inner_columns
         )
-        for key, (name, objs, typ) in list(self.result_map.items()):
-            objs = tuple([d.get(col, col) for col in objs])
-            self.result_map[key] = (name, objs, typ)
+
+        self._result_columns = [
+            (key, name, tuple([d.get(col, col) for col in objs]), typ)
+            for key, name, objs, typ in self._result_columns
+        ]
 
     _default_stack_entry = util.immutabledict([
         ('iswrapper', False),

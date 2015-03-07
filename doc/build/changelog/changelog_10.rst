@@ -24,6 +24,23 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, sql
+        :tickets: 918
+
+        The SQL compiler now generates the mapping of expected columns
+        such that they are matched to the received result set positionally,
+        rather than by name.  Originally, this was seen as a way to handle
+        cases where we had columns returned with difficult-to-predict names,
+        though in modern use that issue has been overcome by anonymous
+        labeling.   In this version, the approach basically reduces function
+        call count per-result by a few dozen calls, or more for larger
+        sets of result columns.  The approach still degrades into a modern
+        version of the old approach if any discrepancy in size exists between
+        the compiled set of columns versus what was received, so there's no
+        issue for partially or fully textual compilation scenarios where these
+        lists might not line up.
+
+    .. change::
         :tags: feature, postgresql
         :pullreq: github:132
 

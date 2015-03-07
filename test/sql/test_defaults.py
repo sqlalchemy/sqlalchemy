@@ -133,7 +133,7 @@ class DefaultTest(fixtures.TestBase):
                     [
                         func.trunc(
                             func.sysdate(), sa.literal_column("'DAY'"),
-                            type_=sa.Date).label('today')]))
+                            type_=sa.Date)]))
             assert isinstance(ts, datetime.date) and not isinstance(
                 ts, datetime.datetime)
             f = sa.select([func.length('abcdef')], bind=db).scalar()
