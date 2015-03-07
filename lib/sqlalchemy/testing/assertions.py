@@ -22,7 +22,7 @@ import contextlib
 from . import mock
 
 
-def expect_warnings(*messages):
+def expect_warnings(*messages, **kw):
     """Context manager which expects one or more warnings.
 
     With no arguments, squelches all SAWarnings emitted via
@@ -30,16 +30,20 @@ def expect_warnings(*messages):
     pass string expressions that will match selected warnings via regex;
     all non-matching warnings are sent through.
 
+    The expect version **asserts** that the warnings were in fact seen.
+
     Note that the test suite sets SAWarning warnings to raise exceptions.
 
     """
-    return _expect_warnings(sa_exc.SAWarning, messages)
+    return _expect_warnings(sa_exc.SAWarning, messages, **kw)
 
 
 @contextlib.contextmanager
-def expect_warnings_on(db, *messages):
+def expect_warnings_on(db, *messages, **kw):
     """Context manager which expects one or more warnings on specific
     dialects.
+
+    The expect version **asserts** that the warnings were in fact seen.
 
     """
     spec = db_spec(db)
@@ -49,23 +53,28 @@ def expect_warnings_on(db, *messages):
     elif not _is_excluded(*db):
         yield
     else:
-        with expect_warnings(*messages):
+        with expect_warnings(*messages, **kw):
             yield
 
 
 def emits_warning(*messages):
-    """Decorator form of expect_warnings()."""
+    """Decorator form of expect_warnings().
+
+    Note that emits_warning does **not** assert that the warnings
+    were in fact seen.
+
+    """
 
     @decorator
     def decorate(fn, *args, **kw):
-        with expect_warnings(*messages):
+        with expect_warnings(assert_=False, *messages):
             return fn(*args, **kw)
 
     return decorate
 
 
-def expect_deprecated(*messages):
-    return _expect_warnings(sa_exc.SADeprecationWarning, messages)
+def expect_deprecated(*messages, **kw):
+    return _expect_warnings(sa_exc.SADeprecationWarning, messages, **kw)
 
 
 def emits_warning_on(db, *messages):
@@ -74,6 +83,10 @@ def emits_warning_on(db, *messages):
     With no arguments, squelches all SAWarning failures.  Or pass one or more
     strings; these will be matched to the root of the warning description by
     warnings.filterwarnings().
+
+    Note that emits_warning_on does **not** assert that the warnings
+    were in fact seen.
+
     """
     @decorator
     def decorate(fn, *args, **kw):
@@ -93,19 +106,28 @@ def uses_deprecated(*messages):
     As a special case, you may pass a function name prefixed with //
     and it will be re-written as needed to match the standard warning
     verbiage emitted by the sqlalchemy.util.deprecated decorator.
+
+    Note that uses_deprecated does **not** assert that the warnings
+    were in fact seen.
+
     """
 
     @decorator
     def decorate(fn, *args, **kw):
-        with expect_deprecated(*messages):
+        with expect_deprecated(*messages, assert_=False):
             return fn(*args, **kw)
     return decorate
 
 
 @contextlib.contextmanager
-def _expect_warnings(exc_cls, messages):
+def _expect_warnings(exc_cls, messages, regex=True, assert_=True):
 
-    filters = [re.compile(msg, re.I) for msg in messages]
+    if regex:
+        filters = [re.compile(msg, re.I) for msg in messages]
+    else:
+        filters = messages
+
+    seen = set(filters)
 
     real_warn = warnings.warn
 
@@ -117,13 +139,19 @@ def _expect_warnings(exc_cls, messages):
             return
 
         for filter_ in filters:
-            if filter_.match(msg):
+            if (regex and filter_.match(msg)) or \
+                    (not regex and filter_ == msg):
+                seen.discard(filter_)
                 break
         else:
             real_warn(msg, exception, *arg, **kw)
 
     with mock.patch("warnings.warn", our_warn):
         yield
+
+    if assert_:
+        assert not seen, "Warnings were not seen: %s" % \
+            ", ".join("%r" % (s.pattern if regex else s) for s in seen)
 
 
 def global_cleanup_assertions():
@@ -229,6 +257,7 @@ class AssertsCompiledSQL(object):
     def assert_compile(self, clause, result, params=None,
                        checkparams=None, dialect=None,
                        checkpositional=None,
+                       check_prefetch=None,
                        use_default_dialect=False,
                        allow_dialect_select=False,
                        literal_binds=False):
@@ -289,6 +318,8 @@ class AssertsCompiledSQL(object):
         if checkpositional is not None:
             p = c.construct_params(params)
             eq_(tuple([p[x] for x in c.positiontup]), checkpositional)
+        if check_prefetch is not None:
+            eq_(c.prefetch, check_prefetch)
 
 
 class ComparesTables(object):
@@ -405,29 +436,27 @@ class AssertsExecutionResults(object):
                         cls.__name__, repr(expected_item)))
         return True
 
-    def assert_sql_execution(self, db, callable_, *rules):
-        assertsql.asserter.add_rules(rules)
-        try:
-            callable_()
-            assertsql.asserter.statement_complete()
-        finally:
-            assertsql.asserter.clear_rules()
+    def sql_execution_asserter(self, db=None):
+        if db is None:
+            from . import db as db
 
-    def assert_sql(self, db, callable_, list_, with_sequences=None):
-        if (with_sequences is not None and
-                config.db.dialect.supports_sequences):
-            rules = with_sequences
-        else:
-            rules = list_
+        return assertsql.assert_engine(db)
+
+    def assert_sql_execution(self, db, callable_, *rules):
+        with self.sql_execution_asserter(db) as asserter:
+            callable_()
+        asserter.assert_(*rules)
+
+    def assert_sql(self, db, callable_, rules):
 
         newrules = []
         for rule in rules:
             if isinstance(rule, dict):
                 newrule = assertsql.AllOf(*[
-                    assertsql.ExactSQL(k, v) for k, v in rule.items()
+                    assertsql.CompiledSQL(k, v) for k, v in rule.items()
                 ])
             else:
-                newrule = assertsql.ExactSQL(*rule)
+                newrule = assertsql.CompiledSQL(*rule)
             newrules.append(newrule)
 
         self.assert_sql_execution(db, callable_, *newrules)

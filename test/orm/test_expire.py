@@ -885,7 +885,6 @@ class ExpireTest(_fixtures.FixtureTest):
 
         users, User = self.tables.users, self.classes.User
 
-
         mapper(User, users)
 
         sess = create_session()
@@ -894,32 +893,30 @@ class ExpireTest(_fixtures.FixtureTest):
         # callable
         u1 = sess.query(User).options(defer(User.name)).first()
         assert isinstance(
-                    attributes.instance_state(u1).callables['name'],
-                    strategies.LoadDeferredColumns
-                )
+            attributes.instance_state(u1).callables['name'],
+            strategies.LoadDeferredColumns
+        )
 
         # expire the attr, it gets the InstanceState callable
         sess.expire(u1, ['name'])
-        assert isinstance(
-                    attributes.instance_state(u1).callables['name'],
-                    state.InstanceState
-                )
+        assert 'name' in attributes.instance_state(u1).expired_attributes
+        assert 'name' not in attributes.instance_state(u1).callables
 
         # load it, callable is gone
         u1.name
+        assert 'name' not in attributes.instance_state(u1).expired_attributes
         assert 'name' not in attributes.instance_state(u1).callables
 
         # same for expire all
         sess.expunge_all()
         u1 = sess.query(User).options(defer(User.name)).first()
         sess.expire(u1)
-        assert isinstance(
-                    attributes.instance_state(u1).callables['name'],
-                    state.InstanceState
-                )
+        assert 'name' in attributes.instance_state(u1).expired_attributes
+        assert 'name' not in attributes.instance_state(u1).callables
 
         # load over it.  everything normal.
         sess.query(User).first()
+        assert 'name' not in attributes.instance_state(u1).expired_attributes
         assert 'name' not in attributes.instance_state(u1).callables
 
         sess.expunge_all()
@@ -927,15 +924,15 @@ class ExpireTest(_fixtures.FixtureTest):
         # for non present, still expires the same way
         del u1.name
         sess.expire(u1)
-        assert 'name' in attributes.instance_state(u1).callables
+        assert 'name' in attributes.instance_state(u1).expired_attributes
+        assert 'name' not in attributes.instance_state(u1).callables
 
     def test_state_deferred_to_col(self):
         """Behavioral test to verify the current activity of loader callables."""
 
         users, User = self.tables.users, self.classes.User
 
-
-        mapper(User, users, properties={'name':deferred(users.c.name)})
+        mapper(User, users, properties={'name': deferred(users.c.name)})
 
         sess = create_session()
         u1 = sess.query(User).options(undefer(User.name)).first()
@@ -944,13 +941,12 @@ class ExpireTest(_fixtures.FixtureTest):
         # mass expire, the attribute was loaded,
         # the attribute gets the callable
         sess.expire(u1)
-        assert isinstance(
-                    attributes.instance_state(u1).callables['name'],
-                    state.InstanceState
-                )
+        assert 'name' in attributes.instance_state(u1).expired_attributes
+        assert 'name' not in attributes.instance_state(u1).callables
 
-        # load it, callable is gone
+        # load it
         u1.name
+        assert 'name' not in attributes.instance_state(u1).expired_attributes
         assert 'name' not in attributes.instance_state(u1).callables
 
         # mass expire, attribute was loaded but then deleted,
@@ -960,59 +956,62 @@ class ExpireTest(_fixtures.FixtureTest):
         u1 = sess.query(User).options(undefer(User.name)).first()
         del u1.name
         sess.expire(u1)
+        assert 'name' not in attributes.instance_state(u1).expired_attributes
         assert 'name' not in attributes.instance_state(u1).callables
 
         # single attribute expire, the attribute gets the callable
         sess.expunge_all()
         u1 = sess.query(User).options(undefer(User.name)).first()
         sess.expire(u1, ['name'])
-        assert isinstance(
-                    attributes.instance_state(u1).callables['name'],
-                    state.InstanceState
-                )
+        assert 'name' in attributes.instance_state(u1).expired_attributes
+        assert 'name' not in attributes.instance_state(u1).callables
 
     def test_state_noload_to_lazy(self):
         """Behavioral test to verify the current activity of loader callables."""
 
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User)
 
-
-        mapper(User, users, properties={'addresses':relationship(Address, lazy='noload')})
+        mapper(
+            User, users,
+            properties={'addresses': relationship(Address, lazy='noload')})
         mapper(Address, addresses)
 
         sess = create_session()
         u1 = sess.query(User).options(lazyload(User.addresses)).first()
         assert isinstance(
-                    attributes.instance_state(u1).callables['addresses'],
-                    strategies.LoadLazyAttribute
-                )
+            attributes.instance_state(u1).callables['addresses'],
+            strategies.LoadLazyAttribute
+        )
         # expire, it stays
         sess.expire(u1)
+        assert 'addresses' not in attributes.instance_state(u1).expired_attributes
         assert isinstance(
-                    attributes.instance_state(u1).callables['addresses'],
-                    strategies.LoadLazyAttribute
-                )
+            attributes.instance_state(u1).callables['addresses'],
+            strategies.LoadLazyAttribute
+        )
 
         # load over it.  callable goes away.
         sess.query(User).first()
+        assert 'addresses' not in attributes.instance_state(u1).expired_attributes
         assert 'addresses' not in attributes.instance_state(u1).callables
 
         sess.expunge_all()
         u1 = sess.query(User).options(lazyload(User.addresses)).first()
         sess.expire(u1, ['addresses'])
+        assert 'addresses' not in attributes.instance_state(u1).expired_attributes
         assert isinstance(
-                    attributes.instance_state(u1).callables['addresses'],
-                    strategies.LoadLazyAttribute
-                )
+            attributes.instance_state(u1).callables['addresses'],
+            strategies.LoadLazyAttribute
+        )
 
         # load the attr, goes away
         u1.addresses
+        assert 'addresses' not in attributes.instance_state(u1).expired_attributes
         assert 'addresses' not in attributes.instance_state(u1).callables
-
-
 
 class PolymorphicExpireTest(fixtures.MappedTest):
     run_inserts = 'once'

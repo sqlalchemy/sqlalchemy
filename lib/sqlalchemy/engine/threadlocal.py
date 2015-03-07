@@ -59,7 +59,10 @@ class TLEngine(base.Engine):
             # guards against pool-level reapers, if desired.
             # or not connection.connection.is_valid:
             connection = self._tl_connection_cls(
-                self, self.pool.connect(), **kw)
+                self,
+                self._wrap_pool_connect(
+                    self.pool.connect, connection),
+                **kw)
             self._connections.conn = weakref.ref(connection)
 
         return connection._increment_connect()

@@ -75,6 +75,7 @@ class Query(object):
     _having = None
     _distinct = False
     _prefixes = None
+    _suffixes = None
     _offset = None
     _limit = None
     _for_update_arg = None
@@ -159,7 +160,6 @@ class Query(object):
 
         for from_obj in obj:
             info = inspect(from_obj)
-
             if hasattr(info, 'mapper') and \
                     (info.is_mapper or info.is_aliased_class):
                 self._select_from_entity = from_obj
@@ -285,8 +285,9 @@ class Query(object):
         return self._entities[0]
 
     def _mapper_zero(self):
-        return self._select_from_entity or \
-            self._entity_zero().entity_zero
+        return self._select_from_entity \
+            if self._select_from_entity is not None \
+            else self._entity_zero().entity_zero
 
     @property
     def _mapper_entities(self):
@@ -300,11 +301,14 @@ class Query(object):
             self._mapper_zero()
         )
 
-    def _mapper_zero_or_none(self):
-        if self._primary_entity:
-            return self._primary_entity.mapper
-        else:
-            return None
+    def _bind_mapper(self):
+        ezero = self._mapper_zero()
+        if ezero is not None:
+            insp = inspect(ezero)
+            if hasattr(insp, 'mapper'):
+                return insp.mapper
+
+        return None
 
     def _only_mapper_zero(self, rationale=None):
         if len(self._entities) > 1:
@@ -810,7 +814,7 @@ class Query(object):
         foreign-key-to-primary-key criterion, will also use an
         operation equivalent to :meth:`~.Query.get` in order to retrieve
         the target value from the local identity map
-        before querying the database.  See :doc:`/orm/loading`
+        before querying the database.  See :doc:`/orm/loading_relationships`
         for further details on relationship loading.
 
         :param ident: A scalar or tuple value representing
@@ -987,6 +991,7 @@ class Query(object):
             statement.correlate(None)
         q = self._from_selectable(fromclause)
         q._enable_single_crit = False
+        q._select_from_entity = self._mapper_zero()
         if entities:
             q._set_entities(entities)
         return q
@@ -1003,7 +1008,7 @@ class Query(object):
                 '_limit', '_offset',
                 '_joinpath', '_joinpoint',
                 '_distinct', '_having',
-                '_prefixes',
+                '_prefixes', '_suffixes'
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from([fromclause], True)
@@ -1099,7 +1104,7 @@ class Query(object):
 
         Most supplied options regard changing how column- and
         relationship-mapped attributes are loaded. See the sections
-        :ref:`deferred` and :doc:`/orm/loading` for reference
+        :ref:`deferred` and :doc:`/orm/loading_relationships` for reference
         documentation.
 
         """
@@ -1770,8 +1775,7 @@ class Query(object):
             kwargs.pop('isouter', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                            ','.join(kwargs.keys))
-        isouter = isouter
+                            ', '.join(sorted(kwargs)))
         return self._join(props,
                           outerjoin=isouter, create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
@@ -1787,7 +1791,7 @@ class Query(object):
             kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
-                            ','.join(kwargs))
+                            ', '.join(sorted(kwargs)))
         return self._join(props,
                           outerjoin=True, create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
@@ -2359,11 +2363,37 @@ class Query(object):
 
         .. versionadded:: 0.7.7
 
+        .. seealso::
+
+            :meth:`.HasPrefixes.prefix_with`
+
         """
         if self._prefixes:
             self._prefixes += prefixes
         else:
             self._prefixes = prefixes
+
+    @_generative()
+    def suffix_with(self, *suffixes):
+        """Apply the suffix to the query and return the newly resulting
+        ``Query``.
+
+        :param \*suffixes: optional suffixes, typically strings,
+         not using any commas.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.Query.prefix_with`
+
+            :meth:`.HasSuffixes.suffix_with`
+
+        """
+        if self._suffixes:
+            self._suffixes += suffixes
+        else:
+            self._suffixes = suffixes
 
     def all(self):
         """Return the results represented by this ``Query`` as a list.
@@ -2499,7 +2529,7 @@ class Query(object):
 
     def _execute_and_instances(self, querycontext):
         conn = self._connection_from_session(
-            mapper=self._mapper_zero_or_none(),
+            mapper=self._bind_mapper(),
             clause=querycontext.statement,
             close_with_result=True)
 
@@ -2601,6 +2631,7 @@ class Query(object):
             'offset': self._offset,
             'distinct': self._distinct,
             'prefixes': self._prefixes,
+            'suffixes': self._suffixes,
             'group_by': self._group_by or None,
             'having': self._having
         }
@@ -2697,6 +2728,18 @@ class Query(object):
 
         Deletes rows matched by this query from the database.
 
+        E.g.::
+
+            sess.query(User).filter(User.age == 25).\\
+                delete(synchronize_session=False)
+
+            sess.query(User).filter(User.age == 25).\\
+                delete(synchronize_session='evaluate')
+
+        .. warning:: The :meth:`.Query.delete` method is a "bulk" operation,
+           which bypasses ORM unit-of-work automation in favor of greater
+           performance.  **Please read all caveats and warnings below.**
+
         :param synchronize_session: chooses the strategy for the removal of
             matched objects from the session. Valid values are:
 
@@ -2715,8 +2758,7 @@ class Query(object):
 
             ``'evaluate'`` - Evaluate the query's criteria in Python straight
             on the objects in the session. If evaluation of the criteria isn't
-            implemented, an error is raised.  In that case you probably
-            want to use the 'fetch' strategy as a fallback.
+            implemented, an error is raised.
 
             The expression evaluator currently doesn't account for differing
             string collations between the database and Python.
@@ -2724,29 +2766,42 @@ class Query(object):
         :return: the count of rows matched as returned by the database's
           "row count" feature.
 
-        This method has several key caveats:
+        .. warning:: **Additional Caveats for bulk query deletes**
 
-        * The method does **not** offer in-Python cascading of relationships
-          - it is assumed that ON DELETE CASCADE/SET NULL/etc. is configured
-          for any foreign key references which require it, otherwise the
-          database may emit an integrity violation if foreign key references
-          are being enforced.
+            * The method does **not** offer in-Python cascading of
+              relationships - it is assumed that ON DELETE CASCADE/SET
+              NULL/etc. is configured for any foreign key references
+              which require it, otherwise the database may emit an
+              integrity violation if foreign key references are being
+              enforced.
 
-          After the DELETE, dependent objects in the :class:`.Session` which
-          were impacted by an ON DELETE may not contain the current
-          state, or may have been deleted. This issue is resolved once the
-          :class:`.Session` is expired,
-          which normally occurs upon :meth:`.Session.commit` or can be forced
-          by using :meth:`.Session.expire_all`.  Accessing an expired object
-          whose row has been deleted will invoke a SELECT to locate the
-          row; when the row is not found, an
-          :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is raised.
+              After the DELETE, dependent objects in the
+              :class:`.Session` which were impacted by an ON DELETE
+              may not contain the current state, or may have been
+              deleted. This issue is resolved once the
+              :class:`.Session` is expired, which normally occurs upon
+              :meth:`.Session.commit` or can be forced by using
+              :meth:`.Session.expire_all`.  Accessing an expired
+              object whose row has been deleted will invoke a SELECT
+              to locate the row; when the row is not found, an
+              :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is
+              raised.
 
-        * The :meth:`.MapperEvents.before_delete` and
-          :meth:`.MapperEvents.after_delete`
-          events are **not** invoked from this method.  Instead, the
-          :meth:`.SessionEvents.after_bulk_delete` method is provided to act
-          upon a mass DELETE of entity rows.
+            * The ``'fetch'`` strategy results in an additional
+              SELECT statement emitted and will significantly reduce
+              performance.
+
+            * The ``'evaluate'`` strategy performs a scan of
+              all matching objects within the :class:`.Session`; if the
+              contents of the :class:`.Session` are expired, such as
+              via a proceeding :meth:`.Session.commit` call, **this will
+              result in SELECT queries emitted for every matching object**.
+
+            * The :meth:`.MapperEvents.before_delete` and
+              :meth:`.MapperEvents.after_delete`
+              events **are not invoked** from this method.  Instead, the
+              :meth:`.SessionEvents.after_bulk_delete` method is provided to
+              act upon a mass DELETE of entity rows.
 
         .. seealso::
 
@@ -2769,17 +2824,21 @@ class Query(object):
 
         E.g.::
 
-            sess.query(User).filter(User.age == 25).\
-                update({User.age: User.age - 10}, synchronize_session='fetch')
+            sess.query(User).filter(User.age == 25).\\
+                update({User.age: User.age - 10}, synchronize_session=False)
 
-
-            sess.query(User).filter(User.age == 25).\
+            sess.query(User).filter(User.age == 25).\\
                 update({"age": User.age - 10}, synchronize_session='evaluate')
 
 
+        .. warning:: The :meth:`.Query.update` method is a "bulk" operation,
+           which bypasses ORM unit-of-work automation in favor of greater
+           performance.  **Please read all caveats and warnings below.**
+
+
         :param values: a dictionary with attributes names, or alternatively
-          mapped attributes or SQL expressions, as keys, and literal
-          values or sql expressions as values.
+         mapped attributes or SQL expressions, as keys, and literal
+         values or sql expressions as values.
 
           .. versionchanged:: 1.0.0 - string names in the values dictionary
              are now resolved against the mapped entity; previously, these
@@ -2787,7 +2846,7 @@ class Query(object):
              translation.
 
         :param synchronize_session: chooses the strategy to update the
-            attributes on objects in the session. Valid values are:
+         attributes on objects in the session. Valid values are:
 
             ``False`` - don't synchronize the session. This option is the most
             efficient and is reliable once the session is expired, which
@@ -2808,43 +2867,56 @@ class Query(object):
             string collations between the database and Python.
 
         :return: the count of rows matched as returned by the database's
-          "row count" feature.
+         "row count" feature.
 
-        This method has several key caveats:
+        .. warning:: **Additional Caveats for bulk query updates**
 
-        * The method does **not** offer in-Python cascading of relationships
-          - it is assumed that ON UPDATE CASCADE is configured for any foreign
-          key references which require it, otherwise the database may emit an
-          integrity violation if foreign key references are being enforced.
+            * The method does **not** offer in-Python cascading of
+              relationships - it is assumed that ON UPDATE CASCADE is
+              configured for any foreign key references which require
+              it, otherwise the database may emit an integrity
+              violation if foreign key references are being enforced.
 
-          After the UPDATE, dependent objects in the :class:`.Session` which
-          were impacted by an ON UPDATE CASCADE may not contain the current
-          state; this issue is resolved once the :class:`.Session` is expired,
-          which normally occurs upon :meth:`.Session.commit` or can be forced
-          by using :meth:`.Session.expire_all`.
+              After the UPDATE, dependent objects in the
+              :class:`.Session` which were impacted by an ON UPDATE
+              CASCADE may not contain the current state; this issue is
+              resolved once the :class:`.Session` is expired, which
+              normally occurs upon :meth:`.Session.commit` or can be
+              forced by using :meth:`.Session.expire_all`.
 
-        * The method supports multiple table updates, as
-          detailed in :ref:`multi_table_updates`, and this behavior does
-          extend to support updates of joined-inheritance and other multiple
-          table mappings.  However, the **join condition of an inheritance
-          mapper is currently not automatically rendered**.
-          Care must be taken in any multiple-table update to explicitly
-          include the joining condition between those tables, even in mappings
-          where this is normally automatic.
-          E.g. if a class ``Engineer`` subclasses ``Employee``, an UPDATE of
-          the ``Engineer`` local table using criteria against the ``Employee``
-          local table might look like::
+            * The ``'fetch'`` strategy results in an additional
+              SELECT statement emitted and will significantly reduce
+              performance.
 
-                session.query(Engineer).\\
-                    filter(Engineer.id == Employee.id).\\
-                    filter(Employee.name == 'dilbert').\\
-                    update({"engineer_type": "programmer"})
+            * The ``'evaluate'`` strategy performs a scan of
+              all matching objects within the :class:`.Session`; if the
+              contents of the :class:`.Session` are expired, such as
+              via a proceeding :meth:`.Session.commit` call, **this will
+              result in SELECT queries emitted for every matching object**.
 
-        * The :meth:`.MapperEvents.before_update` and
-          :meth:`.MapperEvents.after_update`
-          events are **not** invoked from this method.  Instead, the
-          :meth:`.SessionEvents.after_bulk_update` method is provided to act
-          upon a mass UPDATE of entity rows.
+            * The method supports multiple table updates, as detailed
+              in :ref:`multi_table_updates`, and this behavior does
+              extend to support updates of joined-inheritance and
+              other multiple table mappings.  However, the **join
+              condition of an inheritance mapper is not
+              automatically rendered**. Care must be taken in any
+              multiple-table update to explicitly include the joining
+              condition between those tables, even in mappings where
+              this is normally automatic. E.g. if a class ``Engineer``
+              subclasses ``Employee``, an UPDATE of the ``Engineer``
+              local table using criteria against the ``Employee``
+              local table might look like::
+
+                    session.query(Engineer).\\
+                        filter(Engineer.id == Employee.id).\\
+                        filter(Employee.name == 'dilbert').\\
+                        update({"engineer_type": "programmer"})
+
+            * The :meth:`.MapperEvents.before_update` and
+              :meth:`.MapperEvents.after_update`
+              events **are not invoked from this method**.  Instead, the
+              :meth:`.SessionEvents.after_bulk_update` method is provided to
+              act upon a mass UPDATE of entity rows.
 
         .. seealso::
 
@@ -3200,25 +3272,21 @@ class _MapperEntity(_QueryEntity):
                 self.mapper._equivalent_columns)
 
         if query._primary_entity is self:
-            _instance = loading.instance_processor(
-                self.mapper,
-                context,
-                result,
-                self.path,
-                adapter,
-                only_load_props=query._only_load_props,
-                refresh_state=context.refresh_state,
-                polymorphic_discriminator=self._polymorphic_discriminator
-            )
+            only_load_props = query._only_load_props
+            refresh_state = context.refresh_state
         else:
-            _instance = loading.instance_processor(
-                self.mapper,
-                context,
-                result,
-                self.path,
-                adapter,
-                polymorphic_discriminator=self._polymorphic_discriminator
-            )
+            only_load_props = refresh_state = None
+
+        _instance = loading._instance_processor(
+            self.mapper,
+            context,
+            result,
+            self.path,
+            adapter,
+            only_load_props=only_load_props,
+            refresh_state=refresh_state,
+            polymorphic_discriminator=self._polymorphic_discriminator
+        )
 
         return _instance, self._label_name
 
@@ -3239,34 +3307,12 @@ class _MapperEntity(_QueryEntity):
                     )
                 )
 
-        if self._with_polymorphic:
-            poly_properties = self.mapper._iterate_polymorphic_properties(
-                self._with_polymorphic)
-        else:
-            poly_properties = self.mapper._polymorphic_properties
-
-        for value in poly_properties:
-            if query._only_load_props and \
-                    value.key not in query._only_load_props:
-                continue
-            value.setup(
-                context,
-                self,
-                self.path,
-                adapter,
-                only_load_props=query._only_load_props,
-                column_collection=context.primary_columns
-            )
-
-        if self._polymorphic_discriminator is not None and \
-            self._polymorphic_discriminator \
-                is not self.mapper.polymorphic_on:
-
-            if adapter:
-                pd = adapter.columns[self._polymorphic_discriminator]
-            else:
-                pd = self._polymorphic_discriminator
-            context.primary_columns.append(pd)
+        loading._setup_entity_query(
+            context, self.mapper, self,
+            self.path, adapter, context.primary_columns,
+            with_polymorphic=self._with_polymorphic,
+            only_load_props=query._only_load_props,
+            polymorphic_discriminator=self._polymorphic_discriminator)
 
     def __str__(self):
         return str(self.mapper)
@@ -3473,26 +3519,26 @@ class _ColumnEntity(_QueryEntity):
         )):
             self._label_name = column.key
             column = column._query_clause_element()
-        else:
-            self._label_name = getattr(column, 'key', None)
-
-        if not isinstance(column, expression.ColumnElement) and \
-                hasattr(column, '_select_iterable'):
-            for c in column._select_iterable:
-                if c is column:
-                    break
-                _ColumnEntity(query, c, namespace=column)
-            else:
+            if isinstance(column, Bundle):
+                _BundleEntity(query, column)
                 return
-        elif isinstance(column, Bundle):
-            _BundleEntity(query, column)
-            return
+        elif not isinstance(column, sql.ColumnElement):
+            if hasattr(column, '_select_iterable'):
+                # break out an object like Table into
+                # individual columns
+                for c in column._select_iterable:
+                    if c is column:
+                        break
+                    _ColumnEntity(query, c, namespace=column)
+                else:
+                    return
 
-        if not isinstance(column, sql.ColumnElement):
             raise sa_exc.InvalidRequestError(
                 "SQL expression, column, or mapped entity "
                 "expected - got '%r'" % (column, )
             )
+        else:
+            self._label_name = getattr(column, 'key', None)
 
         self.type = type_ = column.type
         if type_.hashable:
@@ -3523,15 +3569,26 @@ class _ColumnEntity(_QueryEntity):
         # leaking out their entities into the main select construct
         self.actual_froms = actual_froms = set(column._from_objects)
 
-        self.entities = util.OrderedSet(
+        all_elements = [
+            elem for elem in visitors.iterate(column, {})
+            if 'parententity' in elem._annotations
+        ]
+
+        self.entities = util.unique_list(
             elem._annotations['parententity']
-            for elem in visitors.iterate(column, {})
+            for elem in all_elements
+            if 'parententity' in elem._annotations
+        )
+
+        self._from_entities = set(
+            elem._annotations['parententity']
+            for elem in all_elements
             if 'parententity' in elem._annotations
             and actual_froms.intersection(elem._from_objects)
         )
 
         if self.entities:
-            self.entity_zero = list(self.entities)[0]
+            self.entity_zero = self.entities[0]
         elif self.namespace is not None:
             self.entity_zero = self.namespace
         else:
@@ -3557,7 +3614,9 @@ class _ColumnEntity(_QueryEntity):
     def setup_entity(self, ext_info, aliased_adapter):
         if 'selectable' not in self.__dict__:
             self.selectable = ext_info.selectable
-        self.froms.add(ext_info.selectable)
+
+        if self.actual_froms.intersection(ext_info.selectable._from_objects):
+            self.froms.add(ext_info.selectable)
 
     def corresponds_to(self, entity):
         # TODO: just returning False here,

@@ -64,7 +64,7 @@ columns.   Using the mapping setup at :ref:`mapper_composite`::
     ...     filter(Vertex.start == Point(3, 4)).all()
     [(Point(x=3, y=4), Point(x=5, y=6))]
 
-This change is backwards-incompatible with code that expects the indivdual attribute
+This change is backwards-incompatible with code that expects the individual attribute
 to be expanded into individual columns.  To get that behavior, use the ``.clauses``
 accessor::
 

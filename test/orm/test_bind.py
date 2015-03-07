@@ -150,14 +150,14 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        assert transaction._connection_for_bind(testing.db) \
-            is transaction._connection_for_bind(c) is c
+        assert transaction._connection_for_bind(testing.db, None) \
+            is transaction._connection_for_bind(c, None) is c
 
         assert_raises_message(sa.exc.InvalidRequestError,
                               'Session already has a Connection '
                               'associated',
                               transaction._connection_for_bind,
-                              testing.db.connect())
+                              testing.db.connect(), None)
         transaction.rollback()
         assert len(sess.query(User).all()) == 0
         sess.close()

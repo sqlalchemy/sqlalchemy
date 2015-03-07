@@ -60,6 +60,9 @@ elements are themselves :class:`.ColumnElement` subclasses).
 .. autoclass:: HasPrefixes
    :members:
 
+.. autoclass:: HasSuffixes
+   :members:
+
 .. autoclass:: Join
    :members:
    :inherited-members:

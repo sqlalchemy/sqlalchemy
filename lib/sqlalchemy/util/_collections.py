@@ -165,8 +165,13 @@ class immutabledict(ImmutableContainer, dict):
         return immutabledict, (dict(self), )
 
     def union(self, d):
-        if not self:
-            return immutabledict(d)
+        if not d:
+            return self
+        elif not self:
+            if isinstance(d, immutabledict):
+                return d
+            else:
+                return immutabledict(d)
         else:
             d2 = immutabledict(self)
             dict.update(d2, d)
@@ -179,8 +184,10 @@ class immutabledict(ImmutableContainer, dict):
 class Properties(object):
     """Provide a __getattr__/__setattr__ interface over a dict."""
 
+    __slots__ = '_data',
+
     def __init__(self, data):
-        self.__dict__['_data'] = data
+        object.__setattr__(self, '_data', data)
 
     def __len__(self):
         return len(self._data)
@@ -200,8 +207,8 @@ class Properties(object):
     def __delitem__(self, key):
         del self._data[key]
 
-    def __setattr__(self, key, object):
-        self._data[key] = object
+    def __setattr__(self, key, obj):
+        self._data[key] = obj
 
     def __getstate__(self):
         return {'_data': self.__dict__['_data']}
@@ -252,6 +259,8 @@ class OrderedProperties(Properties):
     """Provide a __getattr__/__setattr__ interface with an OrderedDict
     as backing store."""
 
+    __slots__ = ()
+
     def __init__(self):
         Properties.__init__(self, OrderedDict())
 
@@ -259,9 +268,16 @@ class OrderedProperties(Properties):
 class ImmutableProperties(ImmutableContainer, Properties):
     """Provide immutable dict/object attribute to an underlying dictionary."""
 
+    __slots__ = ()
+
 
 class OrderedDict(dict):
     """A dict that returns keys/values/items in the order they were added."""
+
+    __slots__ = '_list',
+
+    def __reduce__(self):
+        return OrderedDict, (self.items(),)
 
     def __init__(self, ____sequence=None, **kwargs):
         self._list = []

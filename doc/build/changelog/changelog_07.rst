@@ -3517,7 +3517,7 @@
         :tags: orm
         :tickets: 2122
 
-      Some fixes to "evaulate" and "fetch" evaluation
+      Some fixes to "evaluate" and "fetch" evaluation
       when query.update(), query.delete() are called.
       The retrieval of records is done after autoflush
       in all cases, and before update/delete is

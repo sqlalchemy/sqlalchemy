@@ -5,6 +5,7 @@ from sqlalchemy import (
 from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as tsa
 from sqlalchemy import testing
+from sqlalchemy.testing import mock
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
@@ -210,6 +211,15 @@ class MockReconnectTest(fixtures.TestBase):
             [c.close.mock_calls for c in self.dbapi.connections],
             [[call()], []]
         )
+
+    def test_invalidate_dont_call_finalizer(self):
+        conn = self.db.connect()
+        finalizer = mock.Mock()
+        conn.connection._connection_record.\
+            finalize_callback.append(finalizer)
+        conn.invalidate()
+        assert conn.invalidated
+        eq_(finalizer.call_count, 0)
 
     def test_conn_reusable(self):
         conn = self.db.connect()

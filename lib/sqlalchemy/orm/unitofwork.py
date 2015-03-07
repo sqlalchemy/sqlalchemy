@@ -16,6 +16,7 @@ organizes them in order of dependency, and executes.
 from .. import util, event
 from ..util import topological
 from . import attributes, persistence, util as orm_util
+import itertools
 
 
 def track_cascade_events(descriptor, prop):
@@ -379,14 +380,19 @@ class UOWTransaction(object):
         execute() method has succeeded and the transaction has been committed.
 
         """
+        if not self.states:
+            return
+
         states = set(self.states)
         isdel = set(
             s for (s, (isdelete, listonly)) in self.states.items()
             if isdelete
         )
         other = states.difference(isdel)
-        self.session._remove_newly_deleted(isdel)
-        self.session._register_newly_persistent(other)
+        if isdel:
+            self.session._remove_newly_deleted(isdel)
+        if other:
+            self.session._register_newly_persistent(other)
 
 
 class IterateMappersMixin(object):

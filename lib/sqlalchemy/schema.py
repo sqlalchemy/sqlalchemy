@@ -35,6 +35,7 @@ from .sql.schema import (
     UniqueConstraint,
     _get_table_key,
     ColumnCollectionConstraint,
+    ColumnCollectionMixin
     )
 
 
@@ -58,5 +59,7 @@ from .sql.ddl import (
     DDLBase,
     DDLElement,
     _CreateDropBase,
-    _DDLCompiles
+    _DDLCompiles,
+    sort_tables,
+    sort_tables_and_constraints
 )

@@ -496,6 +496,10 @@ class TextWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def _test(self, fn, arg, offending_clause, expected):
+        with expect_warnings("Textual "):
+            stmt = fn(arg)
+            self.assert_compile(stmt, expected)
+
         assert_raises_message(
             exc.SAWarning,
             r"Textual (?:SQL|column|SQL FROM) expression %(stmt)r should be "
@@ -504,10 +508,6 @@ class TextWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
             },
             fn, arg
         )
-
-        with expect_warnings("Textual "):
-            stmt = fn(arg)
-            self.assert_compile(stmt, expected)
 
     def test_where(self):
         self._test(

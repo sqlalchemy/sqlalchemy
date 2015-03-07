@@ -12,7 +12,6 @@ to invoke them for a create/drop call.
 
 from .. import util
 from .elements import ClauseElement
-from .visitors import traverse
 from .base import Executable, _generative, SchemaVisitor, _bind_or_error
 from ..util import topological
 from .. import event
@@ -370,7 +369,7 @@ class DDL(DDLElement):
 
             :class:`.DDLEvents`
 
-            :mod:`sqlalchemy.event`
+            :ref:`event_toplevel`
 
         """
 
@@ -464,19 +463,28 @@ class CreateTable(_CreateDropBase):
 
     __visit_name__ = "create_table"
 
-    def __init__(self, element, on=None, bind=None):
+    def __init__(
+            self, element, on=None, bind=None,
+            include_foreign_key_constraints=None):
         """Create a :class:`.CreateTable` construct.
 
         :param element: a :class:`.Table` that's the subject
          of the CREATE
         :param on: See the description for 'on' in :class:`.DDL`.
         :param bind: See the description for 'bind' in :class:`.DDL`.
+        :param include_foreign_key_constraints: optional sequence of
+         :class:`.ForeignKeyConstraint` objects that will be included
+         inline within the CREATE construct; if omitted, all foreign key
+         constraints that do not specify use_alter=True are included.
+
+         .. versionadded:: 1.0.0
 
         """
         super(CreateTable, self).__init__(element, on=on, bind=bind)
         self.columns = [CreateColumn(column)
                         for column in element.columns
                         ]
+        self.include_foreign_key_constraints = include_foreign_key_constraints
 
 
 class _DropView(_CreateDropBase):
@@ -696,8 +704,10 @@ class SchemaGenerator(DDLBase):
             tables = self.tables
         else:
             tables = list(metadata.tables.values())
-        collection = [t for t in sort_tables(tables)
-                      if self._can_create_table(t)]
+
+        collection = sort_tables_and_constraints(
+            [t for t in tables if self._can_create_table(t)])
+
         seq_coll = [s for s in metadata._sequences.values()
                     if s.column is None and self._can_create_sequence(s)]
 
@@ -709,15 +719,23 @@ class SchemaGenerator(DDLBase):
         for seq in seq_coll:
             self.traverse_single(seq, create_ok=True)
 
-        for table in collection:
-            self.traverse_single(table, create_ok=True)
+        for table, fkcs in collection:
+            if table is not None:
+                self.traverse_single(
+                    table, create_ok=True,
+                    include_foreign_key_constraints=fkcs)
+            else:
+                for fkc in fkcs:
+                    self.traverse_single(fkc)
 
         metadata.dispatch.after_create(metadata, self.connection,
                                        tables=collection,
                                        checkfirst=self.checkfirst,
                                        _ddl_runner=self)
 
-    def visit_table(self, table, create_ok=False):
+    def visit_table(
+            self, table, create_ok=False,
+            include_foreign_key_constraints=None):
         if not create_ok and not self._can_create_table(table):
             return
 
@@ -729,7 +747,15 @@ class SchemaGenerator(DDLBase):
             if column.default is not None:
                 self.traverse_single(column.default)
 
-        self.connection.execute(CreateTable(table))
+        if not self.dialect.supports_alter:
+            # e.g., don't omit any foreign key constraints
+            include_foreign_key_constraints = None
+
+        self.connection.execute(
+            CreateTable(
+                table,
+                include_foreign_key_constraints=include_foreign_key_constraints
+            ))
 
         if hasattr(table, 'indexes'):
             for index in table.indexes:
@@ -738,6 +764,11 @@ class SchemaGenerator(DDLBase):
         table.dispatch.after_create(table, self.connection,
                                     checkfirst=self.checkfirst,
                                     _ddl_runner=self)
+
+    def visit_foreign_key_constraint(self, constraint):
+        if not self.dialect.supports_alter:
+            return
+        self.connection.execute(AddConstraint(constraint))
 
     def visit_sequence(self, sequence, create_ok=False):
         if not create_ok and not self._can_create_sequence(sequence):
@@ -765,11 +796,33 @@ class SchemaDropper(DDLBase):
         else:
             tables = list(metadata.tables.values())
 
-        collection = [
-            t
-            for t in reversed(sort_tables(tables))
-            if self._can_drop_table(t)
-        ]
+        try:
+            collection = reversed(
+                sort_tables_and_constraints(
+                    [t for t in tables if self._can_drop_table(t)],
+                    filter_fn=
+                    lambda constraint: True if not self.dialect.supports_alter
+                    else False if constraint.name is None
+                    else None
+                )
+            )
+        except exc.CircularDependencyError as err2:
+            util.raise_from_cause(
+                exc.CircularDependencyError(
+                    err2.args[0],
+                    err2.cycles, err2.edges,
+                    msg="Can't sort tables for DROP; an "
+                    "unresolvable foreign key "
+                    "dependency exists between tables: %s.  Please ensure "
+                    "that the ForeignKey and ForeignKeyConstraint objects "
+                    "involved in the cycle have "
+                    "names so that they can be dropped using DROP CONSTRAINT."
+                    % (
+                        ", ".join(sorted([t.fullname for t in err2.cycles]))
+                    )
+
+                )
+            )
 
         seq_coll = [
             s
@@ -781,8 +834,13 @@ class SchemaDropper(DDLBase):
             metadata, self.connection, tables=collection,
             checkfirst=self.checkfirst, _ddl_runner=self)
 
-        for table in collection:
-            self.traverse_single(table, drop_ok=True)
+        for table, fkcs in collection:
+            if table is not None:
+                self.traverse_single(
+                    table, drop_ok=True)
+            else:
+                for fkc in fkcs:
+                    self.traverse_single(fkc)
 
         for seq in seq_coll:
             self.traverse_single(seq, drop_ok=True)
@@ -830,6 +888,11 @@ class SchemaDropper(DDLBase):
                                   checkfirst=self.checkfirst,
                                   _ddl_runner=self)
 
+    def visit_foreign_key_constraint(self, constraint):
+        if not self.dialect.supports_alter:
+            return
+        self.connection.execute(DropConstraint(constraint))
+
     def visit_sequence(self, sequence, drop_ok=False):
         if not drop_ok and not self._can_drop_sequence(sequence):
             return
@@ -837,32 +900,159 @@ class SchemaDropper(DDLBase):
 
 
 def sort_tables(tables, skip_fn=None, extra_dependencies=None):
-    """sort a collection of Table objects in order of
-                their foreign-key dependency."""
+    """sort a collection of :class:`.Table` objects based on dependency.
 
-    tables = list(tables)
-    tuples = []
+    This is a dependency-ordered sort which will emit :class:`.Table`
+    objects such that they will follow their dependent :class:`.Table` objects.
+    Tables are dependent on another based on the presence of
+    :class:`.ForeignKeyConstraint` objects as well as explicit dependencies
+    added by :meth:`.Table.add_is_dependent_on`.
+
+    .. warning::
+
+        The :func:`.sort_tables` function cannot by itself accommodate
+        automatic resolution of dependency cycles between tables, which
+        are usually caused by mutually dependent foreign key constraints.
+        To resolve these cycles, either the
+        :paramref:`.ForeignKeyConstraint.use_alter` parameter may be appled
+        to those constraints, or use the
+        :func:`.sql.sort_tables_and_constraints` function which will break
+        out foreign key constraints involved in cycles separately.
+
+    :param tables: a sequence of :class:`.Table` objects.
+
+    :param skip_fn: optional callable which will be passed a
+     :class:`.ForeignKey` object; if it returns True, this
+     constraint will not be considered as a dependency.  Note this is
+     **different** from the same parameter in
+     :func:`.sort_tables_and_constraints`, which is
+     instead passed the owning :class:`.ForeignKeyConstraint` object.
+
+    :param extra_dependencies: a sequence of 2-tuples of tables which will
+     also be considered as dependent on each other.
+
+    .. seealso::
+
+        :func:`.sort_tables_and_constraints`
+
+        :meth:`.MetaData.sorted_tables` - uses this function to sort
+
+
+    """
+
+    if skip_fn is not None:
+        def _skip_fn(fkc):
+            for fk in fkc.elements:
+                if skip_fn(fk):
+                    return True
+            else:
+                return None
+    else:
+        _skip_fn = None
+
+    return [
+        t for (t, fkcs) in
+        sort_tables_and_constraints(
+            tables, filter_fn=_skip_fn, extra_dependencies=extra_dependencies)
+        if t is not None
+    ]
+
+
+def sort_tables_and_constraints(
+        tables, filter_fn=None, extra_dependencies=None):
+    """sort a collection of :class:`.Table`  / :class:`.ForeignKeyConstraint`
+    objects.
+
+    This is a dependency-ordered sort which will emit tuples of
+    ``(Table, [ForeignKeyConstraint, ...])`` such that each
+    :class:`.Table` follows its dependent :class:`.Table` objects.
+    Remaining :class:`.ForeignKeyConstraint` objects that are separate due to
+    dependency rules not satisifed by the sort are emitted afterwards
+    as ``(None, [ForeignKeyConstraint ...])``.
+
+    Tables are dependent on another based on the presence of
+    :class:`.ForeignKeyConstraint` objects, explicit dependencies
+    added by :meth:`.Table.add_is_dependent_on`, as well as dependencies
+    stated here using the :paramref:`~.sort_tables_and_constraints.skip_fn`
+    and/or :paramref:`~.sort_tables_and_constraints.extra_dependencies`
+    parameters.
+
+    :param tables: a sequence of :class:`.Table` objects.
+
+    :param filter_fn: optional callable which will be passed a
+     :class:`.ForeignKeyConstraint` object, and returns a value based on
+     whether this constraint should definitely be included or excluded as
+     an inline constraint, or neither.   If it returns False, the constraint
+     will definitely be included as a dependency that cannot be subject
+     to ALTER; if True, it will **only** be included as an ALTER result at
+     the end.   Returning None means the constraint is included in the
+     table-based result unless it is detected as part of a dependency cycle.
+
+    :param extra_dependencies: a sequence of 2-tuples of tables which will
+     also be considered as dependent on each other.
+
+    .. versionadded:: 1.0.0
+
+    .. seealso::
+
+        :func:`.sort_tables`
+
+
+    """
+
+    fixed_dependencies = set()
+    mutable_dependencies = set()
+
     if extra_dependencies is not None:
-        tuples.extend(extra_dependencies)
+        fixed_dependencies.update(extra_dependencies)
 
-    def visit_foreign_key(fkey):
-        if fkey.use_alter:
-            return
-        elif skip_fn and skip_fn(fkey):
-            return
-        parent_table = fkey.column.table
-        if parent_table in tables:
-            child_table = fkey.parent.table
-            if parent_table is not child_table:
-                tuples.append((parent_table, child_table))
-
+    remaining_fkcs = set()
     for table in tables:
-        traverse(table,
-                 {'schema_visitor': True},
-                 {'foreign_key': visit_foreign_key})
+        for fkc in table.foreign_key_constraints:
+            if fkc.use_alter is True:
+                remaining_fkcs.add(fkc)
+                continue
 
-        tuples.extend(
-            [parent, table] for parent in table._extra_dependencies
+            if filter_fn:
+                filtered = filter_fn(fkc)
+
+                if filtered is True:
+                    remaining_fkcs.add(fkc)
+                    continue
+
+            dependent_on = fkc.referred_table
+            if dependent_on is not table:
+                mutable_dependencies.add((dependent_on, table))
+
+        fixed_dependencies.update(
+            (parent, table) for parent in table._extra_dependencies
         )
 
-    return list(topological.sort(tuples, tables))
+    try:
+        candidate_sort = list(
+            topological.sort(
+                fixed_dependencies.union(mutable_dependencies), tables
+            )
+        )
+    except exc.CircularDependencyError as err:
+        for edge in err.edges:
+            if edge in mutable_dependencies:
+                table = edge[1]
+                can_remove = [
+                    fkc for fkc in table.foreign_key_constraints
+                    if filter_fn is None or filter_fn(fkc) is not False]
+                remaining_fkcs.update(can_remove)
+                for fkc in can_remove:
+                    dependent_on = fkc.referred_table
+                    if dependent_on is not table:
+                        mutable_dependencies.discard((dependent_on, table))
+        candidate_sort = list(
+            topological.sort(
+                fixed_dependencies.union(mutable_dependencies), tables
+            )
+        )
+
+    return [
+        (table, table.foreign_key_constraints.difference(remaining_fkcs))
+        for table in candidate_sort
+    ] + [(None, list(remaining_fkcs))]

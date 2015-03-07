@@ -155,23 +155,20 @@ class EventsTest(fixtures.TestBase):
         t1.dispatch.event_one(5, 6)
         t2.dispatch.event_one(5, 6)
         is_(
-            t1.dispatch.__dict__['event_one'],
-            self.Target.dispatch.event_one.
-            _empty_listeners[self.Target]
+            self.Target.dispatch._empty_listener_reg[self.Target]['event_one'],
+            t1.dispatch.event_one
         )
 
         @event.listens_for(t1, "event_one")
         def listen_two(x, y):
             pass
         is_not_(
-            t1.dispatch.__dict__['event_one'],
-            self.Target.dispatch.event_one.
-            _empty_listeners[self.Target]
+            self.Target.dispatch._empty_listener_reg[self.Target]['event_one'],
+            t1.dispatch.event_one
         )
         is_(
-            t2.dispatch.__dict__['event_one'],
-            self.Target.dispatch.event_one.
-            _empty_listeners[self.Target]
+            self.Target.dispatch._empty_listener_reg[self.Target]['event_one'],
+            t2.dispatch.event_one
         )
 
     def test_immutable_methods(self):

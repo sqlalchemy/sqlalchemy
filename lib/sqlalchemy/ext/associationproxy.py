@@ -86,7 +86,7 @@ ASSOCIATION_PROXY = util.symbol('ASSOCIATION_PROXY')
 """
 
 
-class AssociationProxy(interfaces.InspectionAttr):
+class AssociationProxy(interfaces.InspectionAttrInfo):
     """A descriptor that presents a read/write view of an object attribute."""
 
     is_attribute = False

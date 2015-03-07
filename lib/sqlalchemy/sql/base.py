@@ -449,10 +449,12 @@ class ColumnCollection(util.OrderedProperties):
 
     """
 
+    __slots__ = '_all_col_set', '_all_columns'
+
     def __init__(self, *columns):
         super(ColumnCollection, self).__init__()
-        self.__dict__['_all_col_set'] = util.column_set()
-        self.__dict__['_all_columns'] = []
+        object.__setattr__(self, '_all_col_set', util.column_set())
+        object.__setattr__(self, '_all_columns', [])
         for c in columns:
             self.add(c)
 
@@ -576,13 +578,14 @@ class ColumnCollection(util.OrderedProperties):
         return util.OrderedProperties.__contains__(self, other)
 
     def __getstate__(self):
-        return {'_data': self.__dict__['_data'],
-                '_all_columns': self.__dict__['_all_columns']}
+        return {'_data': self._data,
+                '_all_columns': self._all_columns}
 
     def __setstate__(self, state):
-        self.__dict__['_data'] = state['_data']
-        self.__dict__['_all_columns'] = state['_all_columns']
-        self.__dict__['_all_col_set'] = util.column_set(state['_all_columns'])
+        object.__setattr__(self, '_data', state['_data'])
+        object.__setattr__(self, '_all_columns', state['_all_columns'])
+        object.__setattr__(
+            self, '_all_col_set', util.column_set(state['_all_columns']))
 
     def contains_column(self, col):
         # this has to be done via set() membership
@@ -596,8 +599,8 @@ class ColumnCollection(util.OrderedProperties):
 class ImmutableColumnCollection(util.ImmutableProperties, ColumnCollection):
     def __init__(self, data, colset, all_columns):
         util.ImmutableProperties.__init__(self, data)
-        self.__dict__['_all_col_set'] = colset
-        self.__dict__['_all_columns'] = all_columns
+        object.__setattr__(self, '_all_col_set', colset)
+        object.__setattr__(self, '_all_columns', all_columns)
 
     extend = remove = util.ImmutableProperties._immutable
 

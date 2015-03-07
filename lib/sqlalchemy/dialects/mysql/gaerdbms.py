@@ -17,6 +17,13 @@ developers-guide
 
     .. versionadded:: 0.7.8
 
+    .. deprecated:: 1.0 This dialect is **no longer necessary** for
+        Google Cloud SQL; the MySQLdb dialect can be used directly.
+        Cloud SQL now recommends creating connections via the
+        mysql dialect using the URL format
+
+        `mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>`
+
 
 Pooling
 -------
@@ -33,6 +40,7 @@ import os
 from .mysqldb import MySQLDialect_mysqldb
 from ...pool import NullPool
 import re
+from sqlalchemy.util import warn_deprecated
 
 
 def _is_dev_environment():
@@ -43,6 +51,14 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
 
     @classmethod
     def dbapi(cls):
+
+        warn_deprecated(
+            "Google Cloud SQL now recommends creating connections via the "
+            "MySQLdb dialect directly, using the URL format "
+            "mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/"
+            "<projectid>:<instancename>"
+        )
+
         # from django:
         # http://code.google.com/p/googleappengine/source/
         #     browse/trunk/python/google/storage/speckle/

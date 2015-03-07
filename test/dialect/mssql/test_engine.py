@@ -157,8 +157,7 @@ class ParseConnectTest(fixtures.TestBase):
 
         eq_(dialect.is_disconnect("not an error", None, None), False)
 
-    @testing.only_on(['mssql+pyodbc', 'mssql+pymssql'],
-                            "FreeTDS specific test")
+    @testing.requires.mssql_freetds
     def test_bad_freetds_warning(self):
         engine = engines.testing_engine()
 

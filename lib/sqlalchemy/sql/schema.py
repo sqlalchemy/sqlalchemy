@@ -516,6 +516,19 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         """
         return sorted(self.constraints, key=lambda c: c._creation_order)
 
+    @property
+    def foreign_key_constraints(self):
+        """:class:`.ForeignKeyConstraint` objects referred to by this
+        :class:`.Table`.
+
+        This list is produced from the collection of :class:`.ForeignKey`
+        objects currently associated.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return set(fkc.constraint for fkc in self.foreign_keys)
+
     def _init_existing(self, *args, **kwargs):
         autoload_with = kwargs.pop('autoload_with', None)
         autoload = kwargs.pop('autoload', autoload_with is not None)
@@ -1275,10 +1288,18 @@ class Column(SchemaItem, ColumnClause):
                     "Index object external to the Table.")
             table.append_constraint(UniqueConstraint(self.key))
 
-        fk_key = (table.key, self.key)
-        if fk_key in self.table.metadata._fk_memos:
-            for fk in self.table.metadata._fk_memos[fk_key]:
-                fk._set_remote_table(table)
+        self._setup_on_memoized_fks(lambda fk: fk._set_remote_table(table))
+
+    def _setup_on_memoized_fks(self, fn):
+        fk_keys = [
+            ((self.table.key, self.key), False),
+            ((self.table.key, self.name), True),
+        ]
+        for fk_key, link_to_name in fk_keys:
+            if fk_key in self.table.metadata._fk_memos:
+                for fk in self.table.metadata._fk_memos[fk_key]:
+                    if fk.link_to_name is link_to_name:
+                        fn(fk)
 
     def _on_table_attach(self, fn):
         if self.table is not None:
@@ -1463,7 +1484,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         :param use_alter: passed to the underlying
             :class:`.ForeignKeyConstraint` to indicate the constraint should
             be generated/dropped externally from the CREATE TABLE/ DROP TABLE
-            statement. See that classes' constructor for details.
+            statement.  See :paramref:`.ForeignKeyConstraint.use_alter`
+            for further description.
+
+            .. seealso::
+
+                :paramref:`.ForeignKeyConstraint.use_alter`
+
+                :ref:`use_alter`
 
         :param match: Optional string. If set, emit MATCH <value> when issuing
             DDL for this constraint. Typical values include SIMPLE, PARTIAL
@@ -1720,11 +1748,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         # super-edgy case, if other FKs point to our column,
         # they'd get the type propagated out also.
         if isinstance(self.parent.table, Table):
-            fk_key = (self.parent.table.key, self.parent.key)
-            if fk_key in self.parent.table.metadata._fk_memos:
-                for fk in self.parent.table.metadata._fk_memos[fk_key]:
-                    if fk.parent.type._isnull:
-                        fk.parent.type = column.type
+
+            def set_type(fk):
+                if fk.parent.type._isnull:
+                    fk.parent.type = column.type
+            self.parent._setup_on_memoized_fks(set_type)
 
         self.column = column
 
@@ -2345,14 +2373,40 @@ def _to_schema_column_or_string(element):
 
 
 class ColumnCollectionMixin(object):
-    def __init__(self, *columns):
+    columns = None
+    """A :class:`.ColumnCollection` of :class:`.Column` objects.
+
+    This collection represents the columns which are referred to by
+    this object.
+
+    """
+
+    _allow_multiple_tables = False
+
+    def __init__(self, *columns, **kw):
+        _autoattach = kw.pop('_autoattach', True)
         self.columns = ColumnCollection()
         self._pending_colargs = [_to_schema_column_or_string(c)
                                  for c in columns]
-        if self._pending_colargs and \
-                isinstance(self._pending_colargs[0], Column) and \
-                isinstance(self._pending_colargs[0].table, Table):
-            self._set_parent_with_dispatch(self._pending_colargs[0].table)
+        if _autoattach and self._pending_colargs:
+            columns = [
+                c for c in self._pending_colargs
+                if isinstance(c, Column) and
+                isinstance(c.table, Table)
+            ]
+
+            tables = set([c.table for c in columns])
+            if len(tables) == 1:
+                self._set_parent_with_dispatch(tables.pop())
+            elif len(tables) > 1 and not self._allow_multiple_tables:
+                table = columns[0].table
+                others = [c for c in columns[1:] if c.table is not table]
+                if others:
+                    raise exc.ArgumentError(
+                        "Column(s) %s are not part of table '%s'." %
+                        (", ".join("'%s'" % c for c in others),
+                            table.description)
+                    )
 
     def _set_parent(self, table):
         for col in self._pending_colargs:
@@ -2384,8 +2438,9 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
           arguments are propagated to the :class:`.Constraint` superclass.
 
         """
+        _autoattach = kw.pop('_autoattach', True)
         Constraint.__init__(self, **kw)
-        ColumnCollectionMixin.__init__(self, *columns)
+        ColumnCollectionMixin.__init__(self, *columns, _autoattach=_autoattach)
 
     def _set_parent(self, table):
         Constraint._set_parent(self, table)
@@ -2413,11 +2468,13 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         return len(self.columns._data)
 
 
-class CheckConstraint(Constraint):
+class CheckConstraint(ColumnCollectionConstraint):
     """A table- or column-level CHECK constraint.
 
     Can be included in the definition of a Table or Column.
     """
+
+    _allow_multiple_tables = True
 
     def __init__(self, sqltext, name=None, deferrable=None,
                  initially=None, table=None, info=None, _create_rule=None,
@@ -2450,20 +2507,19 @@ class CheckConstraint(Constraint):
 
         """
 
+        self.sqltext = _literal_as_text(sqltext, warn=False)
+
+        columns = []
+        visitors.traverse(self.sqltext, {}, {'column': columns.append})
+
         super(CheckConstraint, self).\
             __init__(
-                name, deferrable, initially, _create_rule, info=info,
-                _type_bound=_type_bound)
-        self.sqltext = _literal_as_text(sqltext, warn=False)
+                name=name, deferrable=deferrable,
+                initially=initially, _create_rule=_create_rule, info=info,
+                _type_bound=_type_bound, _autoattach=_autoattach,
+                *columns)
         if table is not None:
             self._set_parent_with_dispatch(table)
-        elif _autoattach:
-            cols = _find_columns(self.sqltext)
-            tables = set([c.table for c in cols
-                          if isinstance(c.table, Table)])
-            if len(tables) == 1:
-                self._set_parent_with_dispatch(
-                    tables.pop())
 
     def __visit_name__(self):
         if isinstance(self.parent, Table):
@@ -2545,11 +2601,23 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
           part of the CREATE TABLE definition. Instead, generate it via an
           ALTER TABLE statement issued after the full collection of tables
           have been created, and drop it via an ALTER TABLE statement before
-          the full collection of tables are dropped. This is shorthand for the
-          usage of :class:`.AddConstraint` and :class:`.DropConstraint`
-          applied as "after-create" and "before-drop" events on the MetaData
-          object.  This is normally used to generate/drop constraints on
-          objects that are mutually dependent on each other.
+          the full collection of tables are dropped.
+
+          The use of :paramref:`.ForeignKeyConstraint.use_alter` is
+          particularly geared towards the case where two or more tables
+          are established within a mutually-dependent foreign key constraint
+          relationship; however, the :meth:`.MetaData.create_all` and
+          :meth:`.MetaData.drop_all` methods will perform this resolution
+          automatically, so the flag is normally not needed.
+
+          .. versionchanged:: 1.0.0  Automatic resolution of foreign key
+             cycles has been added, removing the need to use the
+             :paramref:`.ForeignKeyConstraint.use_alter` in typical use
+             cases.
+
+          .. seealso::
+
+                :ref:`use_alter`
 
         :param match: Optional string. If set, emit MATCH <value> when issuing
           DDL for this constraint. Typical values include SIMPLE, PARTIAL
@@ -2575,8 +2643,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         self.onupdate = onupdate
         self.ondelete = ondelete
         self.link_to_name = link_to_name
-        if self.name is None and use_alter:
-            raise exc.ArgumentError("Alterable Constraint requires a name")
         self.use_alter = use_alter
         self.match = match
 
@@ -2623,6 +2689,20 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             return elem._referred_schema
         else:
             return None
+
+    @property
+    def referred_table(self):
+        """The :class:`.Table` object to which this
+        :class:`.ForeignKeyConstraint` references.
+
+        This is a dynamically calculated attribute which may not be available
+        if the constraint and/or parent table is not yet associated with
+        a metadata collection that contains the referred table.
+
+        .. versionadded:: 1.0.0
+
+        """
+        return self.elements[0].column.table
 
     def _validate_dest_table(self, table):
         table_keys = set([elem._table_key()
@@ -2680,16 +2760,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                 fk._set_parent_with_dispatch(col)
 
         self._validate_dest_table(table)
-
-        if self.use_alter:
-            def supports_alter(ddl, event, schema_item, bind, **kw):
-                return table in set(kw['tables']) and \
-                    bind.dialect.supports_alter
-
-            event.listen(table.metadata, "after_create",
-                         ddl.AddConstraint(self, on=supports_alter))
-            event.listen(table.metadata, "before_drop",
-                         ddl.DropConstraint(self, on=supports_alter))
 
     def copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(
@@ -3013,12 +3083,6 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
                 )
             )
         self.table = table
-        for c in self.columns:
-            if c.table != self.table:
-                raise exc.ArgumentError(
-                    "Column '%s' is not part of table '%s'." %
-                    (c, self.table.description)
-                )
         table.indexes.add(self)
 
         self.expressions = [
@@ -3333,11 +3397,29 @@ class MetaData(SchemaItem):
         order in which they can be created.   To get the order in which
         the tables would be dropped, use the ``reversed()`` Python built-in.
 
+        .. warning::
+
+            The :attr:`.sorted_tables` accessor cannot by itself accommodate
+            automatic resolution of dependency cycles between tables, which
+            are usually caused by mutually dependent foreign key constraints.
+            To resolve these cycles, either the
+            :paramref:`.ForeignKeyConstraint.use_alter` parameter may be appled
+            to those constraints, or use the
+            :func:`.schema.sort_tables_and_constraints` function which will break
+            out foreign key constraints involved in cycles separately.
+
         .. seealso::
+
+            :func:`.schema.sort_tables`
+
+            :func:`.schema.sort_tables_and_constraints`
 
             :attr:`.MetaData.tables`
 
             :meth:`.Inspector.get_table_names`
+
+            :meth:`.Inspector.get_sorted_table_and_fkc_names`
+
 
         """
         return ddl.sort_tables(self.tables.values())

@@ -328,6 +328,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
     def test_relationship_compare(self):
         sess = self._five_obj_fixture()
         e1 = sess.query(Engineer).filter_by(name='e1').one()
+        e2 = sess.query(Engineer).filter_by(name='e2').one()
 
         eq_(sess.query(Engineer)
                 .join(Engineer.engineers, aliased=True)
@@ -338,6 +339,11 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
                 .join(Engineer.engineers, aliased=True)
                 .filter(Engineer.reports_to == e1).all(),
             [e1])
+
+        eq_(sess.query(Engineer)
+                .join(Engineer.engineers, aliased=True)
+                .filter(Engineer.reports_to != None).all(),
+            [e1, e2])
 
 class M2MFilterTest(fixtures.MappedTest):
 

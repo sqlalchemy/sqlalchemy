@@ -72,6 +72,7 @@ from .base import (
 )
 
 from .result import (
+    BaseRowProxy,
     BufferedColumnResultProxy,
     BufferedColumnRow,
     BufferedRowResultProxy,
@@ -256,13 +257,25 @@ def create_engine(*args, **kwargs):
         Behavior here varies per backend, and
         individual dialects should be consulted directly.
 
+        Note that the isolation level can also be set on a per-:class:`.Connection`
+        basis as well, using the
+        :paramref:`.Connection.execution_options.isolation_level`
+        feature.
+
         .. seealso::
 
-            :ref:`SQLite Concurrency <sqlite_concurrency>`
+            :attr:`.Connection.default_isolation_level` - view default level
+
+            :paramref:`.Connection.execution_options.isolation_level`
+            - set per :class:`.Connection` isolation level
+
+            :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
 
             :ref:`Postgresql Transaction Isolation <postgresql_isolation_level>`
 
             :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
+
+            :ref:`session_transaction_isolation` - for the ORM
 
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many

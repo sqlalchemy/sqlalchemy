@@ -18,6 +18,7 @@ from .. import util
 from . import attributes, exc as orm_exc
 from ..sql import util as sql_util
 from .util import _none_set, state_str
+from .base import _SET_DEFERRED_EXPIRED, _DEFER_FOR_STATE
 from .. import exc as sa_exc
 import collections
 
@@ -42,41 +43,45 @@ def instances(query, cursor, context):
             def filter_fn(row):
                 return tuple(fn(x) for x, fn in zip(row, filter_fns))
 
-    (process, labels) = \
-        list(zip(*[
-            query_entity.row_processor(query,
-                                       context, cursor)
-            for query_entity in query._entities
-        ]))
+    try:
+        (process, labels) = \
+            list(zip(*[
+                query_entity.row_processor(query,
+                                           context, cursor)
+                for query_entity in query._entities
+            ]))
 
-    if not single_entity:
-        keyed_tuple = util.lightweight_named_tuple('result', labels)
+        if not single_entity:
+            keyed_tuple = util.lightweight_named_tuple('result', labels)
 
-    while True:
-        context.partials = {}
+        while True:
+            context.partials = {}
 
-        if query._yield_per:
-            fetch = cursor.fetchmany(query._yield_per)
-            if not fetch:
+            if query._yield_per:
+                fetch = cursor.fetchmany(query._yield_per)
+                if not fetch:
+                    break
+            else:
+                fetch = cursor.fetchall()
+
+            if single_entity:
+                proc = process[0]
+                rows = [proc(row) for row in fetch]
+            else:
+                rows = [keyed_tuple([proc(row) for proc in process])
+                        for row in fetch]
+
+            if filtered:
+                rows = util.unique_list(rows, filter_fn)
+
+            for row in rows:
+                yield row
+
+            if not query._yield_per:
                 break
-        else:
-            fetch = cursor.fetchall()
-
-        if single_entity:
-            proc = process[0]
-            rows = [proc(row) for row in fetch]
-        else:
-            rows = [keyed_tuple([proc(row) for proc in process])
-                    for row in fetch]
-
-        if filtered:
-            rows = util.unique_list(rows, filter_fn)
-
-        for row in rows:
-            yield row
-
-        if not query._yield_per:
-            break
+    except Exception as err:
+        cursor.close()
+        util.raise_from_cause(err)
 
 
 @util.dependencies("sqlalchemy.orm.query")
@@ -142,7 +147,7 @@ def get_from_identity(session, key, passive):
                 # expired state will be checked soon enough, if necessary
                 return instance
             try:
-                state(state, passive)
+                state._load_expired(state, passive)
             except orm_exc.ObjectDeletedError:
                 session._remove_newly_deleted([state])
                 return None
@@ -214,10 +219,56 @@ def load_on_ident(query, key,
         return None
 
 
-def instance_processor(mapper, context, result, path, adapter,
-                       only_load_props=None, refresh_state=None,
-                       polymorphic_discriminator=None,
-                       _polymorphic_from=None):
+def _setup_entity_query(
+    context, mapper, query_entity,
+        path, adapter, column_collection,
+        with_polymorphic=None, only_load_props=None,
+        polymorphic_discriminator=None, **kw):
+
+    if with_polymorphic:
+        poly_properties = mapper._iterate_polymorphic_properties(
+            with_polymorphic)
+    else:
+        poly_properties = mapper._polymorphic_properties
+
+    quick_populators = {}
+
+    path.set(
+        context.attributes,
+        "memoized_setups",
+        quick_populators)
+
+    for value in poly_properties:
+        if only_load_props and \
+                value.key not in only_load_props:
+            continue
+        value.setup(
+            context,
+            query_entity,
+            path,
+            adapter,
+            only_load_props=only_load_props,
+            column_collection=column_collection,
+            memoized_populators=quick_populators,
+            **kw
+        )
+
+    if polymorphic_discriminator is not None and \
+        polymorphic_discriminator \
+            is not mapper.polymorphic_on:
+
+        if adapter:
+            pd = adapter.columns[polymorphic_discriminator]
+        else:
+            pd = polymorphic_discriminator
+        column_collection.append(pd)
+
+
+def _instance_processor(
+        mapper, context, result, path, adapter,
+        only_load_props=None, refresh_state=None,
+        polymorphic_discriminator=None,
+        _polymorphic_from=None):
     """Produce a mapper level row processor callable
        which processes rows into mapped instances."""
 
@@ -236,13 +287,41 @@ def instance_processor(mapper, context, result, path, adapter,
 
     populators = collections.defaultdict(list)
 
-    props = mapper._props.values()
+    props = mapper._prop_set
     if only_load_props is not None:
-        props = (p for p in props if p.key in only_load_props)
+        props = props.intersection(
+            mapper._props[k] for k in only_load_props)
+
+    quick_populators = path.get(
+        context.attributes, "memoized_setups", _none_set)
 
     for prop in props:
-        prop.create_row_processor(
-            context, path, mapper, result, adapter, populators)
+        if prop in quick_populators:
+            # this is an inlined path just for column-based attributes.
+            col = quick_populators[prop]
+            if col is _DEFER_FOR_STATE:
+                populators["new"].append(
+                    (prop.key, prop._deferred_column_loader))
+            elif col is _SET_DEFERRED_EXPIRED:
+                # note that in this path, we are no longer
+                # searching in the result to see if the column might
+                # be present in some unexpected way.
+                populators["expire"].append((prop.key, False))
+            else:
+                if adapter:
+                    col = adapter.columns[col]
+                getter = result._getter(col)
+                if getter:
+                    populators["quick"].append((prop.key, getter))
+                else:
+                    # fall back to the ColumnProperty itself, which
+                    # will iterate through all of its columns
+                    # to see if one fits
+                    prop.create_row_processor(
+                        context, path, mapper, result, adapter, populators)
+        else:
+            prop.create_row_processor(
+                context, path, mapper, result, adapter, populators)
 
     propagate_options = context.propagate_options
     if propagate_options:
@@ -384,7 +463,7 @@ def instance_processor(mapper, context, result, path, adapter,
 
         return instance
 
-    if not _polymorphic_from and not refresh_state:
+    if mapper.polymorphic_map and not _polymorphic_from and not refresh_state:
         # if we are doing polymorphic, dispatch to a different _instance()
         # method specific to the subclass mapper
         _instance = _decorate_polymorphic_switch(
@@ -407,11 +486,11 @@ def _populate_full(
             for key, set_callable in populators["expire"]:
                 dict_.pop(key, None)
                 if set_callable:
-                    state.callables[key] = state
+                    state.expired_attributes.add(key)
         else:
             for key, set_callable in populators["expire"]:
                 if set_callable:
-                    state.callables[key] = state
+                    state.expired_attributes.add(key)
         for key, populator in populators["new"]:
             populator(state, dict_, row)
         for key, populator in populators["delayed"]:
@@ -441,7 +520,7 @@ def _populate_partial(
             if key in to_load:
                 dict_.pop(key, None)
                 if set_callable:
-                    state.callables[key] = state
+                    state.expired_attributes.add(key)
         for key, populator in populators["new"]:
             if key in to_load:
                 populator(state, dict_, row)
@@ -499,7 +578,7 @@ def _decorate_polymorphic_switch(
             if sub_mapper is mapper:
                 return None
 
-            return instance_processor(
+            return _instance_processor(
                 sub_mapper, context, result,
                 path, adapter, _polymorphic_from=mapper)
 

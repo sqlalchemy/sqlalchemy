@@ -22,6 +22,7 @@ return types are in use.
 .. automodule:: sqlalchemy.sql.functions
    :members:
    :undoc-members:
-    
+   :exclude-members: func
+
 
 

@@ -66,12 +66,13 @@ in ``/tmp``, or whatever socket directory was specified when PostgreSQL
 was built.  This value can be overridden by passing a pathname to psycopg2,
 using ``host`` as an additional keyword argument::
 
-    create_engine("postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql")
+    create_engine("postgresql+psycopg2://user:password@/dbname?\
+host=/var/lib/postgresql")
 
 See also:
 
-`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static\
-/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/\
+libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 Per-Statement/Connection Execution Options
 -------------------------------------------
@@ -237,7 +238,7 @@ The psycopg2 dialect supports these constants for isolation level:
 * ``AUTOCOMMIT``
 
 .. versionadded:: 0.8.2 support for AUTOCOMMIT isolation level when using
-   psycopg2.
+    psycopg2.
 
 .. seealso::
 
@@ -262,14 +263,17 @@ HSTORE type
 
 The ``psycopg2`` DBAPI includes an extension to natively handle marshalling of
 the HSTORE type.   The SQLAlchemy psycopg2 dialect will enable this extension
-by default when it is detected that the target database has the HSTORE
-type set up for use.   In other words, when the dialect makes the first
+by default when psycopg2 version 2.4 or greater is used, and
+it is detected that the target database has the HSTORE type set up for use.
+In other words, when the dialect makes the first
 connection, a sequence like the following is performed:
 
 1. Request the available HSTORE oids using
    ``psycopg2.extras.HstoreAdapter.get_oids()``.
    If this function returns a list of HSTORE identifiers, we then determine
    that the ``HSTORE`` extension is present.
+   This function is **skipped** if the version of psycopg2 installed is
+   less than version 2.4.
 
 2. If the ``use_native_hstore`` flag is at its default of ``True``, and
    we've detected that ``HSTORE`` oids are available, the
@@ -308,9 +312,14 @@ from ... import types as sqltypes
 from .base import PGDialect, PGCompiler, \
     PGIdentifierPreparer, PGExecutionContext, \
     ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
-    _INT_TYPES
+    _INT_TYPES, UUID
 from .hstore import HSTORE
-from .json import JSON
+from .json import JSON, JSONB
+
+try:
+    from uuid import UUID as _python_UUID
+except ImportError:
+    _python_UUID = None
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -374,6 +383,35 @@ class _PGJSON(JSON):
             return None
         else:
             return super(_PGJSON, self).result_processor(dialect, coltype)
+
+
+class _PGJSONB(JSONB):
+
+    def result_processor(self, dialect, coltype):
+        if dialect._has_native_jsonb:
+            return None
+        else:
+            return super(_PGJSONB, self).result_processor(dialect, coltype)
+
+
+class _PGUUID(UUID):
+    def bind_processor(self, dialect):
+        if not self.as_uuid and dialect.use_native_uuid:
+            nonetype = type(None)
+
+            def process(value):
+                if value is not None:
+                    value = _python_UUID(value)
+                return value
+            return process
+
+    def result_processor(self, dialect, coltype):
+        if not self.as_uuid and dialect.use_native_uuid:
+            def process(value):
+                if value is not None:
+                    value = str(value)
+                return value
+            return process
 
 # When we're handed literal SQL, ensure it's a SELECT query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
@@ -465,6 +503,7 @@ class PGDialect_psycopg2(PGDialect):
 
     _has_native_hstore = False
     _has_native_json = False
+    _has_native_jsonb = False
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -473,18 +512,21 @@ class PGDialect_psycopg2(PGDialect):
             ENUM: _PGEnum,  # needs force_unicode
             sqltypes.Enum: _PGEnum,  # needs force_unicode
             HSTORE: _PGHStore,
-            JSON: _PGJSON
+            JSON: _PGJSON,
+            JSONB: _PGJSONB,
+            UUID: _PGUUID
         }
     )
 
     def __init__(self, server_side_cursors=False, use_native_unicode=True,
                  client_encoding=None,
-                 use_native_hstore=True,
+                 use_native_hstore=True, use_native_uuid=True,
                  **kwargs):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
         self.use_native_hstore = use_native_hstore
+        self.use_native_uuid = use_native_uuid
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
         if self.dbapi and hasattr(self.dbapi, '__version__'):
@@ -502,6 +544,7 @@ class PGDialect_psycopg2(PGDialect):
             self._hstore_oids(connection.connection) \
             is not None
         self._has_native_json = self.psycopg2_version >= (2, 5)
+        self._has_native_jsonb = self.psycopg2_version >= (2, 5, 4)
 
         # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
         self.supports_sane_multi_rowcount = self.psycopg2_version >= (2, 0, 9)
@@ -511,9 +554,19 @@ class PGDialect_psycopg2(PGDialect):
         import psycopg2
         return psycopg2
 
+    @classmethod
+    def _psycopg2_extensions(cls):
+        from psycopg2 import extensions
+        return extensions
+
+    @classmethod
+    def _psycopg2_extras(cls):
+        from psycopg2 import extras
+        return extras
+
     @util.memoized_property
     def _isolation_lookup(self):
-        from psycopg2 import extensions
+        extensions = self._psycopg2_extensions()
         return {
             'AUTOCOMMIT': extensions.ISOLATION_LEVEL_AUTOCOMMIT,
             'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
@@ -535,7 +588,8 @@ class PGDialect_psycopg2(PGDialect):
         connection.set_isolation_level(level)
 
     def on_connect(self):
-        from psycopg2 import extras, extensions
+        extras = self._psycopg2_extras()
+        extensions = self._psycopg2_extensions()
 
         fns = []
         if self.client_encoding is not None:
@@ -546,6 +600,11 @@ class PGDialect_psycopg2(PGDialect):
         if self.isolation_level is not None:
             def on_connect(conn):
                 self.set_isolation_level(conn, self.isolation_level)
+            fns.append(on_connect)
+
+        if self.dbapi and self.use_native_uuid:
+            def on_connect(conn):
+                extras.register_uuid(None, conn)
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_unicode:
@@ -559,19 +618,22 @@ class PGDialect_psycopg2(PGDialect):
                 hstore_oids = self._hstore_oids(conn)
                 if hstore_oids is not None:
                     oid, array_oid = hstore_oids
+                    kw = {'oid': oid}
                     if util.py2k:
-                        extras.register_hstore(conn, oid=oid,
-                                               array_oid=array_oid,
-                                               unicode=True)
-                    else:
-                        extras.register_hstore(conn, oid=oid,
-                                               array_oid=array_oid)
+                        kw['unicode'] = True
+                    if self.psycopg2_version >= (2, 4, 3):
+                        kw['array_oid'] = array_oid
+                    extras.register_hstore(conn, **kw)
             fns.append(on_connect)
 
         if self.dbapi and self._json_deserializer:
             def on_connect(conn):
-                extras.register_default_json(
-                    conn, loads=self._json_deserializer)
+                if self._has_native_json:
+                    extras.register_default_json(
+                        conn, loads=self._json_deserializer)
+                if self._has_native_jsonb:
+                    extras.register_default_jsonb(
+                        conn, loads=self._json_deserializer)
             fns.append(on_connect)
 
         if fns:
@@ -585,7 +647,7 @@ class PGDialect_psycopg2(PGDialect):
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
         if self.psycopg2_version >= (2, 4):
-            from psycopg2 import extras
+            extras = self._psycopg2_extras()
             oids = extras.HstoreAdapter.get_oids(conn)
             if oids is not None and oids[0]:
                 return oids[0:2]

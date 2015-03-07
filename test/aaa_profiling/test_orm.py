@@ -407,3 +407,57 @@ class AttributeOverheadTest(fixtures.MappedTest):
             for child in children:
                 p1.children.remove(child)
         go()
+
+
+class SessionTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'parent',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(20)))
+        Table(
+            'child', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column(
+                'data', String(20)), Column(
+                'parent_id', Integer, ForeignKey('parent.id'), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(cls.Basic):
+            pass
+
+        class Child(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Child, Parent, parent, child = (cls.classes.Child,
+                                        cls.classes.Parent,
+                                        cls.tables.parent,
+                                        cls.tables.child)
+
+        mapper(
+            Parent, parent, properties={
+                'children': relationship(
+                    Child,
+                    backref='parent')})
+        mapper(Child, child)
+
+    def test_expire_lots(self):
+        Parent, Child = self.classes.Parent, self.classes.Child
+        obj = [Parent(
+            children=[Child() for j in range(10)]) for i in range(10)]
+
+        sess = Session()
+        sess.add_all(obj)
+        sess.flush()
+
+        @profiling.function_call_count()
+        def go():
+            sess.expire_all()
+        go()

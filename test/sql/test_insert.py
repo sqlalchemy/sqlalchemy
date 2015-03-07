@@ -1,12 +1,12 @@
 #! coding:utf-8
 
 from sqlalchemy import Column, Integer, MetaData, String, Table,\
-    bindparam, exc, func, insert, select, column
+    bindparam, exc, func, insert, select, column, text
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
     assert_raises_message, fixtures
-
+from sqlalchemy.sql import crud
 
 class _InsertTestBase(object):
 
@@ -19,6 +19,12 @@ class _InsertTestBase(object):
         Table('myothertable', metadata,
               Column('otherid', Integer, primary_key=True),
               Column('othername', String(30)))
+        Table('table_w_defaults', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('x', Integer, default=10),
+              Column('y', Integer, server_default=text('5')),
+              Column('z', Integer, default=lambda: 10)
+            )
 
 
 class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
@@ -565,6 +571,36 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkpositional=checkpositional,
             dialect=dialect)
 
+    def test_positional_w_defaults(self):
+        table1 = self.tables.table_w_defaults
+
+        values = [
+            {'id': 1},
+            {'id': 2},
+            {'id': 3}
+        ]
+
+        checkpositional = (1, None, None, 2, None, None, 3, None, None)
+
+        dialect = default.DefaultDialect()
+        dialect.supports_multivalues_insert = True
+        dialect.paramstyle = 'format'
+        dialect.positional = True
+
+        self.assert_compile(
+            table1.insert().values(values),
+            "INSERT INTO table_w_defaults (id, x, z) VALUES "
+            "(%s, %s, %s), (%s, %s, %s), (%s, %s, %s)",
+            checkpositional=checkpositional,
+            check_prefetch=[
+                table1.c.x, table1.c.z,
+                crud._multiparam_column(table1.c.x, 0),
+                crud._multiparam_column(table1.c.z, 0),
+                crud._multiparam_column(table1.c.x, 1),
+                crud._multiparam_column(table1.c.z, 1)
+            ],
+            dialect=dialect)
+
     def test_inline_default(self):
         metadata = MetaData()
         table = Table('sometable', metadata,
@@ -594,6 +630,74 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             '(%(id_0)s, %(data_0)s, foobar()), '
             '(%(id_1)s, %(data_1)s, %(foo_1)s), '
             '(%(id_2)s, %(data_2)s, foobar())',
+            checkparams=checkparams,
+            dialect=postgresql.dialect())
+
+    def test_python_scalar_default(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('data', String),
+                      Column('foo', Integer, default=10))
+
+        values = [
+            {'id': 1, 'data': 'data1'},
+            {'id': 2, 'data': 'data2', 'foo': 15},
+            {'id': 3, 'data': 'data3'},
+        ]
+
+        checkparams = {
+            'id_0': 1,
+            'id_1': 2,
+            'id_2': 3,
+            'data_0': 'data1',
+            'data_1': 'data2',
+            'data_2': 'data3',
+            'foo': None,  # evaluated later
+            'foo_1': 15,
+            'foo_2': None  # evaluated later
+        }
+
+        self.assert_compile(
+            table.insert().values(values),
+            'INSERT INTO sometable (id, data, foo) VALUES '
+            '(%(id_0)s, %(data_0)s, %(foo)s), '
+            '(%(id_1)s, %(data_1)s, %(foo_1)s), '
+            '(%(id_2)s, %(data_2)s, %(foo_2)s)',
+            checkparams=checkparams,
+            dialect=postgresql.dialect())
+
+    def test_python_fn_default(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata,
+                      Column('id', Integer, primary_key=True),
+                      Column('data', String),
+                      Column('foo', Integer, default=lambda: 10))
+
+        values = [
+            {'id': 1, 'data': 'data1'},
+            {'id': 2, 'data': 'data2', 'foo': 15},
+            {'id': 3, 'data': 'data3'},
+        ]
+
+        checkparams = {
+            'id_0': 1,
+            'id_1': 2,
+            'id_2': 3,
+            'data_0': 'data1',
+            'data_1': 'data2',
+            'data_2': 'data3',
+            'foo': None,  # evaluated later
+            'foo_1': 15,
+            'foo_2': None,  # evaluated later
+        }
+
+        self.assert_compile(
+            table.insert().values(values),
+            "INSERT INTO sometable (id, data, foo) VALUES "
+            "(%(id_0)s, %(data_0)s, %(foo)s), "
+            "(%(id_1)s, %(data_1)s, %(foo_1)s), "
+            "(%(id_2)s, %(data_2)s, %(foo_2)s)",
             checkparams=checkparams,
             dialect=postgresql.dialect())
 
@@ -684,24 +788,10 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             {'id': 3, 'data': 'data3', 'foo': 'otherfoo'},
         ]
 
-        checkparams = {
-            'id_0': 1,
-            'id_1': 2,
-            'id_2': 3,
-            'data_0': 'data1',
-            'data_1': 'data2',
-            'data_2': 'data3',
-            'foo_0': 'plainfoo',
-            'foo_2': 'otherfoo',
-        }
-
-        # note the effect here is that the first set of params
-        # takes effect for the rest of them, when one is absent
-        self.assert_compile(
-            table.insert().values(values),
-            'INSERT INTO sometable (id, data, foo) VALUES '
-            '(%(id_0)s, %(data_0)s, %(foo_0)s), '
-            '(%(id_1)s, %(data_1)s, %(foo_0)s), '
-            '(%(id_2)s, %(data_2)s, %(foo_2)s)',
-            checkparams=checkparams,
-            dialect=postgresql.dialect())
+        assert_raises_message(
+            exc.CompileError,
+            "INSERT value for column sometable.foo is explicitly rendered "
+            "as a boundparameter in the VALUES clause; a Python-side value or "
+            "SQL expression is required",
+            table.insert().values(values).compile
+        )

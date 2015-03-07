@@ -24,7 +24,8 @@ from .. import util
 from ..sql import operators
 from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
                    EXT_CONTINUE, EXT_STOP, NOT_EXTENSION)
-from .base import InspectionAttr, _MappedAttribute
+from .base import (InspectionAttr, InspectionAttr,
+    InspectionAttrInfo, _MappedAttribute)
 import collections
 
 # imported later
@@ -48,11 +49,8 @@ __all__ = (
 )
 
 
-class MapperProperty(_MappedAttribute, InspectionAttr):
-    """Manage the relationship of a ``Mapper`` to a single class
-    attribute, as well as that attribute as it appears on individual
-    instances of the class, including attribute instrumentation,
-    attribute access, loading behavior, and dependency calculations.
+class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
+    """Represent a particular class attribute mapped by :class:`.Mapper`.
 
     The most common occurrences of :class:`.MapperProperty` are the
     mapped :class:`.Column`, which is represented in a mapping as
@@ -62,6 +60,11 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
     :class:`.RelationshipProperty`.
 
     """
+
+    __slots__ = (
+        '_configure_started', '_configure_finished', 'parent', 'key',
+        'info'
+    )
 
     cascade = frozenset()
     """The set of 'cascade' attribute names.
@@ -77,6 +80,32 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
     mapper property.
 
     """
+
+    def _memoized_attr_info(self):
+        """Info dictionary associated with the object, allowing user-defined
+        data to be associated with this :class:`.InspectionAttr`.
+
+        The dictionary is generated when first accessed.  Alternatively,
+        it can be specified as a constructor argument to the
+        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        functions.
+
+        .. versionadded:: 0.8  Added support for .info to all
+           :class:`.MapperProperty` subclasses.
+
+        .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also
+           available on extension types via the
+           :attr:`.InspectionAttrInfo.info` attribute, so that it can apply
+           to a wider variety of ORM and extension constructs.
+
+        .. seealso::
+
+            :attr:`.QueryableAttribute.info`
+
+            :attr:`.SchemaItem.info`
+
+        """
+        return {}
 
     def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
@@ -139,8 +168,9 @@ class MapperProperty(_MappedAttribute, InspectionAttr):
 
         """
 
-    _configure_started = False
-    _configure_finished = False
+    def __init__(self):
+        self._configure_started = False
+        self._configure_finished = False
 
     def init(self):
         """Called after all mappers are created to assemble
@@ -303,6 +333,8 @@ class PropComparator(operators.ColumnOperators):
 
     """
 
+    __slots__ = 'prop', 'property', '_parentmapper', '_adapt_to_entity'
+
     def __init__(self, prop, parentmapper, adapt_to_entity=None):
         self.prop = self.property = prop
         self._parentmapper = parentmapper
@@ -331,7 +363,7 @@ class PropComparator(operators.ColumnOperators):
         else:
             return self._adapt_to_entity._adapt_element
 
-    @util.memoized_property
+    @property
     def info(self):
         return self.property.info
 
@@ -420,6 +452,8 @@ class StrategizedProperty(MapperProperty):
 
     """
 
+    __slots__ = '_strategies', 'strategy'
+
     strategy_wildcard_key = None
 
     def _get_context_loader(self, context, path):
@@ -454,7 +488,8 @@ class StrategizedProperty(MapperProperty):
     def _get_strategy_by_cls(self, cls):
         return self._get_strategy(cls._strategy_keys[0])
 
-    def setup(self, context, entity, path, adapter, **kwargs):
+    def setup(
+            self, context, entity, path, adapter, **kwargs):
         loader = self._get_context_loader(context, path)
         if loader and loader.strategy:
             strat = self._get_strategy(loader.strategy)
@@ -483,14 +518,15 @@ class StrategizedProperty(MapperProperty):
                 not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
 
-    _strategies = collections.defaultdict(dict)
+    _all_strategies = collections.defaultdict(dict)
 
     @classmethod
     def strategy_for(cls, **kw):
         def decorate(dec_cls):
-            dec_cls._strategy_keys = []
+            if not hasattr(dec_cls, '_strategy_keys'):
+                dec_cls._strategy_keys = []
             key = tuple(sorted(kw.items()))
-            cls._strategies[cls][key] = dec_cls
+            cls._all_strategies[cls][key] = dec_cls
             dec_cls._strategy_keys.append(key)
             return dec_cls
         return decorate
@@ -498,8 +534,8 @@ class StrategizedProperty(MapperProperty):
     @classmethod
     def _strategy_lookup(cls, *key):
         for prop_cls in cls.__mro__:
-            if prop_cls in cls._strategies:
-                strategies = cls._strategies[prop_cls]
+            if prop_cls in cls._all_strategies:
+                strategies = cls._all_strategies[prop_cls]
                 try:
                     return strategies[key]
                 except KeyError:
@@ -557,6 +593,8 @@ class LoaderStrategy(object):
       on a particular mapped instance.
 
     """
+
+    __slots__ = 'parent_property', 'is_class_level', 'parent', 'key'
 
     def __init__(self, parent):
         self.parent_property = parent

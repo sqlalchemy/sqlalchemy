@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: October 23, 2014
+    Document last updated: March 1, 2015
 
 Introduction
 ============
@@ -17,13 +17,44 @@ This guide introduces what's new in SQLAlchemy version 1.0,
 and also documents changes which affect users migrating
 their applications from the 0.9 series of SQLAlchemy to 1.0.
 
-Please carefully review
-:ref:`behavioral_changes_orm_10` and :ref:`behavioral_changes_core_10` for
-potentially backwards-incompatible changes.
+Please carefully review the sections on behavioral changes for
+potentially backwards-incompatible changes in behavior.
 
 
-New Features
-============
+New Features and Improvements - ORM
+===================================
+
+New Session Bulk INSERT/UPDATE API
+----------------------------------
+
+A new series of :class:`.Session` methods which provide hooks directly
+into the unit of work's facility for emitting INSERT and UPDATE
+statements has been created.  When used correctly, this expert-oriented system
+can allow ORM-mappings to be used to generate bulk insert and update
+statements batched into executemany groups, allowing the statements
+to proceed at speeds that rival direct use of the Core.
+
+.. seealso::
+
+    :ref:`bulk_operations` - introduction and full documentation
+
+:ticket:`3100`
+
+New Performance Example Suite
+------------------------------
+
+Inspired by the benchmarking done for the :ref:`bulk_operations` feature
+as well as for the :ref:`faq_how_to_profile` section of the FAQ, a new
+example section has been added which features several scripts designed
+to illustrate the relative performance profile of various Core and ORM
+techniques.  The scripts are organized into use cases, and are packaged
+under a single console interface such that any combination of demonstrations
+can be run, dumping out timings, Python profile results and/or RunSnake profile
+displays.
+
+.. seealso::
+
+    :ref:`examples_performance`
 
 .. _feature_3150:
 
@@ -160,218 +191,6 @@ the polymorphic union of the base.
 
 :ticket:`3150` :ticket:`2670` :ticket:`3149` :ticket:`2952` :ticket:`3050`
 
-.. _feature_3034:
-
-Select/Query LIMIT / OFFSET may be specified as an arbitrary SQL expression
-----------------------------------------------------------------------------
-
-The :meth:`.Select.limit` and :meth:`.Select.offset` methods now accept
-any SQL expression, in addition to integer values, as arguments.  The ORM
-:class:`.Query` object also passes through any expression to the underlying
-:class:`.Select` object.   Typically
-this is used to allow a bound parameter to be passed, which can be substituted
-with a value later::
-
-    sel = select([table]).limit(bindparam('mylimit')).offset(bindparam('myoffset'))
-
-Dialects which don't support non-integer LIMIT or OFFSET expressions may continue
-to not support this behavior; third party dialects may also need modification
-in order to take advantage of the new behavior.  A dialect which currently
-uses the ``._limit`` or ``._offset`` attributes will continue to function
-for those cases where the limit/offset was specified as a simple integer value.
-However, when a SQL expression is specified, these two attributes will
-instead raise a :class:`.CompileError` on access.  A third-party dialect which
-wishes to support the new feature should now call upon the ``._limit_clause``
-and ``._offset_clause`` attributes to receive the full SQL expression, rather
-than the integer value.
-
-.. _change_2051:
-
-.. _feature_insert_from_select_defaults:
-
-INSERT FROM SELECT now includes Python and SQL-expression defaults
--------------------------------------------------------------------
-
-:meth:`.Insert.from_select` now includes Python and SQL-expression defaults if
-otherwise unspecified; the limitation where non-server column defaults
-aren't included in an INSERT FROM SELECT is now lifted and these
-expressions are rendered as constants into the SELECT statement::
-
-    from sqlalchemy import Table, Column, MetaData, Integer, select, func
-
-    m = MetaData()
-
-    t = Table(
-        't', m,
-        Column('x', Integer),
-        Column('y', Integer, default=func.somefunction()))
-
-    stmt = select([t.c.x])
-    print t.insert().from_select(['x'], stmt)
-
-Will render::
-
-    INSERT INTO t (x, y) SELECT t.x, somefunction() AS somefunction_1
-    FROM t
-
-The feature can be disabled using
-:paramref:`.Insert.from_select.include_defaults`.
-
-New Postgresql Table options
------------------------------
-
-Added support for PG table options TABLESPACE, ON COMMIT,
-WITH(OUT) OIDS, and INHERITS, when rendering DDL via
-the :class:`.Table` construct.
-
-.. seealso::
-
-    :ref:`postgresql_table_options`
-
-:ticket:`2051`
-
-.. _feature_get_enums:
-
-New get_enums() method with Postgresql Dialect
-----------------------------------------------
-
-The :func:`.inspect` method returns a :class:`.PGInspector` object in the
-case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
-method that returns information on all available ``ENUM`` types::
-
-    from sqlalchemy import inspect, create_engine
-
-    engine = create_engine("postgresql+psycopg2://host/dbname")
-    insp = inspect(engine)
-    print(insp.get_enums())
-
-.. seealso::
-
-    :meth:`.PGInspector.get_enums`
-
-.. _feature_2891:
-
-Postgresql Dialect reflects Materialized Views, Foreign Tables
---------------------------------------------------------------
-
-Changes are as follows:
-
-* the :class:`Table` construct with ``autoload=True`` will now match a name
-  that exists in the database as a materialized view or foriegn table.
-
-* :meth:`.Inspector.get_view_names` will return plain and materialized view
-  names.
-
-* :meth:`.Inspector.get_table_names` does **not** change for Postgresql, it
-  continues to return only the names of plain tables.
-
-* A new method :meth:`.PGInspector.get_foreign_table_names` is added which
-  will return the names of tables that are specifically marked as "foreign"
-  in the Postgresql schema tables.
-
-The change to reflection involves adding ``'m'`` and ``'f'`` to the list
-of qualifiers we use when querying ``pg_class.relkind``, but this change
-is new in 1.0.0 to avoid any backwards-incompatible surprises for those
-running 0.9 in production.
-
-:ticket:`2891`
-
-.. _feature_gh134:
-
-Postgresql FILTER keyword
--------------------------
-
-The SQL standard FILTER keyword for aggregate functions is now supported
-by Postgresql as of 9.4.  SQLAlchemy allows this using
-:meth:`.FunctionElement.filter`::
-
-    func.count(1).filter(True)
-
-.. seealso::
-
-    :meth:`.FunctionElement.filter`
-
-    :class:`.FunctionFilter`
-
-.. _feature_3184:
-
-UniqueConstraint is now part of the Table reflection process
-------------------------------------------------------------
-
-A :class:`.Table` object populated using ``autoload=True`` will now
-include :class:`.UniqueConstraint` constructs as well as
-:class:`.Index` constructs.  This logic has a few caveats for
-Postgresql and Mysql:
-
-Postgresql
-^^^^^^^^^^
-
-Postgresql has the behavior such that when a UNIQUE constraint is
-created, it implicitly creates a UNIQUE INDEX corresponding to that
-constraint as well. The :meth:`.Inspector.get_indexes` and the
-:meth:`.Inspector.get_unique_constraints` methods will continue to
-**both** return these entries distinctly, where
-:meth:`.Inspector.get_indexes` now features a token
-``duplicates_constraint`` within the index entry  indicating the
-corresponding constraint when detected.   However, when performing
-full table reflection using  ``Table(..., autoload=True)``, the
-:class:`.Index` construct is detected as being linked to the
-:class:`.UniqueConstraint`, and is **not** present within the
-:attr:`.Table.indexes` collection; only the :class:`.UniqueConstraint`
-will be present in the :attr:`.Table.constraints` collection.   This
-deduplication logic works by joining to the ``pg_constraint`` table
-when querying ``pg_index`` to see if the two constructs are linked.
-
-MySQL
-^^^^^
-
-MySQL does not have separate concepts for a UNIQUE INDEX and a UNIQUE
-constraint.  While it supports both syntaxes when creating tables and indexes,
-it does not store them any differently. The
-:meth:`.Inspector.get_indexes`
-and the :meth:`.Inspector.get_unique_constraints` methods will continue to
-**both** return an entry for a UNIQUE index in MySQL,
-where :meth:`.Inspector.get_unique_constraints` features a new token
-``duplicates_index`` within the constraint entry indicating that this is a
-dupe entry corresponding to that index.  However, when performing
-full table reflection using ``Table(..., autoload=True)``,
-the :class:`.UniqueConstraint` construct is
-**not** part of the fully reflected :class:`.Table` construct under any
-circumstances; this construct is always represented by a :class:`.Index`
-with the ``unique=True`` setting present in the :attr:`.Table.indexes`
-collection.
-
-.. seealso::
-
-    :ref:`postgresql_index_reflection`
-
-    :ref:`mysql_unique_constraints`
-
-:ticket:`3184`
-
-
-Behavioral Improvements
-=======================
-
-.. _feature_updatemany:
-
-UPDATE statements are now batched with executemany() in a flush
-----------------------------------------------------------------
-
-UPDATE statements can now be batched within an ORM flush
-into more performant executemany() call, similarly to how INSERT
-statements can be batched; this will be invoked within flush
-based on the following criteria:
-
-* two or more UPDATE statements in sequence involve the identical set of
-  columns to be modified.
-
-* The statement has no embedded SQL expressions in the SET clause.
-
-* The mapping does not use a :paramref:`~.orm.mapper.version_id_col`, or
-  the backend dialect supports a "sane" rowcount for an executemany()
-  operation; most DBAPIs support this correctly now.
-
 ORM full object fetches 25% faster
 ----------------------------------
 
@@ -418,7 +237,6 @@ to allocate a huge amount of memory for all objects and their instrumentation
 at once.  Without the :meth:`.Query.yield_per`, the above script on the
 MacBookPro is 31 seconds on 0.9 and 26 seconds on 1.0, the extra time spent
 setting up very large memory buffers.
-
 
 .. _feature_3176:
 
@@ -468,6 +286,59 @@ object totally smokes both namedtuple and KeyedTuple::
 
 :ticket:`3176`
 
+.. _feature_slots:
+
+Significant Improvements in Structural Memory Use
+--------------------------------------------------
+
+Structural memory use has been improved via much more significant use
+of ``__slots__`` for many internal objects.  This optimization is
+particularly geared towards the base memory size of large applications
+that have lots of tables and columns, and reduces memory
+size for a variety of high-volume objects including event listening
+internals, comparator objects and parts of the ORM attribute and
+loader strategy system.
+
+A bench that makes use of heapy measure the startup size of Nova
+illustrates a difference of about 3.7 fewer megs, or 46%,
+taken up by SQLAlchemy's objects, associated dictionaries, as
+well as weakrefs, within a basic import of "nova.db.sqlalchemy.models"::
+
+    # reported by heapy, summation of SQLAlchemy objects +
+    # associated dicts + weakref-related objects with core of Nova imported:
+
+        Before: total count 26477 total bytes 7975712
+        After: total count 18181 total bytes 4236456
+
+    # reported for the Python module space overall with the
+    # core of Nova imported:
+
+        Before: Partition of a set of 355558 objects. Total size = 61661760 bytes.
+        After: Partition of a set of 346034 objects. Total size = 57808016 bytes.
+
+
+.. _feature_updatemany:
+
+UPDATE statements are now batched with executemany() in a flush
+----------------------------------------------------------------
+
+UPDATE statements can now be batched within an ORM flush
+into more performant executemany() call, similarly to how INSERT
+statements can be batched; this will be invoked within flush
+based on the following criteria:
+
+* two or more UPDATE statements in sequence involve the identical set of
+  columns to be modified.
+
+* The statement has no embedded SQL expressions in the SET clause.
+
+* The mapping does not use a :paramref:`~.orm.mapper.version_id_col`, or
+  the backend dialect supports a "sane" rowcount for an executemany()
+  operation; most DBAPIs support this correctly now.
+
+.. _feature_3178:
+
+
 .. _bug_3035:
 
 Session.get_bind() handles a wider variety of inheritance scenarios
@@ -511,55 +382,57 @@ of inheritance-oriented scenarios, including:
 :ticket:`3035`
 
 
-.. _feature_3178:
+.. _bug_3227:
 
-New systems to safely emit parameterized warnings
--------------------------------------------------
+Session.get_bind() will receive the Mapper in all relevant Query cases
+-----------------------------------------------------------------------
 
-For a long time, there has been a restriction that warning messages could not
-refer to data elements, such that a particular function might emit an
-infinite number of unique warnings.  The key place this occurs is in the
-``Unicode type received non-unicode bind param value`` warning.  Placing
-the data value in this message would mean that the Python ``__warningregistry__``
-for that module, or in some cases the Python-global ``warnings.onceregistry``,
-would grow unbounded, as in most warning scenarios, one of these two collections
-is populated with every distinct warning message.
+A series of issues were repaired where the :meth:`.Session.get_bind`
+would not receive the primary :class:`.Mapper` of the :class:`.Query`,
+even though this mapper was readily available (the primary mapper is the
+single mapper, or alternatively the first mapper, that is associated with
+a :class:`.Query` object).
 
-The change here is that by using a special ``string`` type that purposely
-changes how the string is hashed, we can control that a large number of
-parameterized messages are hashed only on a small set of possible hash
-values, such that a warning such as ``Unicode type received non-unicode
-bind param value`` can be tailored to be emitted only a specific number
-of times; beyond that, the Python warnings registry will begin recording
-them as duplicates.
+The :class:`.Mapper` object, when passed to :meth:`.Session.get_bind`,
+is typically used by sessions that make use of the
+:paramref:`.Session.binds` parameter to associate mappers with a
+series of engines (although in this use case, things frequently
+"worked" in most cases anyway as the bind would be located via the
+mapped table object), or more specifically implement a user-defined
+:meth:`.Session.get_bind` method that provies some pattern of
+selecting engines based on mappers, such as horizontal sharding or a
+so-called "routing" session that routes queries to different backends.
 
-To illustrate, the following test script will show only ten warnings being
-emitted for ten of the parameter sets, out of a total of 1000::
+These scenarios include:
 
-    from sqlalchemy import create_engine, Unicode, select, cast
-    import random
-    import warnings
+* :meth:`.Query.count`::
 
-    e = create_engine("sqlite://")
+        session.query(User).count()
 
-    # Use the "once" filter (which is also the default for Python
-    # warnings).  Exactly ten of these warnings will
-    # be emitted; beyond that, the Python warnings registry will accumulate
-    # new values as dupes of one of the ten existing.
-    warnings.filterwarnings("once")
+* :meth:`.Query.update` and :meth:`.Query.delete`, both for the UPDATE/DELETE
+  statement as well as for the SELECT used by the "fetch" strategy::
 
-    for i in range(1000):
-        e.execute(select([cast(
-            ('foo_%d' % random.randint(0, 1000000)).encode('ascii'), Unicode)]))
+        session.query(User).filter(User.id == 15).update(
+                {"name": "foob"}, synchronize_session='fetch')
 
-The format of the warning here is::
+        session.query(User).filter(User.id == 15).delete(
+                synchronize_session='fetch')
 
-    /path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
-      non-unicode bind param value 'foo_4852'. (this warning may be
-      suppressed after 10 occurrences)
+* Queries against individual columns::
 
+        session.query(User.id, User.name).all()
 
-:ticket:`3178`
+* SQL functions and other expressions against indirect mappings such as
+  :obj:`.column_property`::
+
+        class User(Base):
+            # ...
+
+            score = column_property(func.coalesce(self.tables.users.c.name, None)))
+
+        session.query(func.max(User.score)).scalar()
+
+:ticket:`3227` :ticket:`3242` :ticket:`1326`
 
 .. _feature_2963:
 
@@ -591,128 +464,6 @@ as remaining ORM constructs such as :func:`.orm.synonym`.
 :ticket:`2971`
 
 :ticket:`2963`
-
-.. _migration_3177:
-
-Change to single-table-inheritance criteria when using from_self(), count()
----------------------------------------------------------------------------
-
-Given a single-table inheritance mapping, such as::
-
-    class Widget(Base):
-        __table__ = 'widget_table'
-
-    class FooWidget(Widget):
-        pass
-
-Using :meth:`.Query.from_self` or :meth:`.Query.count` against a subclass
-would produce a subquery, but then add the "WHERE" criteria for subtypes
-to the outside::
-
-    sess.query(FooWidget).from_self().all()
-
-rendering::
-
-    SELECT
-        anon_1.widgets_id AS anon_1_widgets_id,
-        anon_1.widgets_type AS anon_1_widgets_type
-    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
-    FROM widgets) AS anon_1
-    WHERE anon_1.widgets_type IN (?)
-
-The issue with this is that if the inner query does not specify all
-columns, then we can't add the WHERE clause on the outside (it actually tries,
-and produces a bad query).  This decision
-apparently goes way back to 0.6.5 with the note "may need to make more
-adjustments to this".   Well, those adjustments have arrived!  So now the
-above query will render::
-
-    SELECT
-        anon_1.widgets_id AS anon_1_widgets_id,
-        anon_1.widgets_type AS anon_1_widgets_type
-    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
-    FROM widgets
-    WHERE widgets.type IN (?)) AS anon_1
-
-So that queries that don't include "type" will still work!::
-
-    sess.query(FooWidget.id).count()
-
-Renders::
-
-    SELECT count(*) AS count_1
-    FROM (SELECT widgets.id AS widgets_id
-    FROM widgets
-    WHERE widgets.type IN (?)) AS anon_1
-
-
-:ticket:`3177`
-
-
-.. _migration_3222:
-
-
-single-table-inheritance criteria added to all ON clauses unconditionally
--------------------------------------------------------------------------
-
-When joining to a single-table inheritance subclass target, the ORM always adds
-the "single table criteria" when joining on a relationship.  Given a
-mapping as::
-
-    class Widget(Base):
-        __tablename__ = 'widget'
-        id = Column(Integer, primary_key=True)
-        type = Column(String)
-        related_id = Column(ForeignKey('related.id'))
-        related = relationship("Related", backref="widget")
-        __mapper_args__ = {'polymorphic_on': type}
-
-
-    class FooWidget(Widget):
-        __mapper_args__ = {'polymorphic_identity': 'foo'}
-
-
-    class Related(Base):
-        __tablename__ = 'related'
-        id = Column(Integer, primary_key=True)
-
-It's been the behavior for quite some time that a JOIN on the relationship
-will render a "single inheritance" clause for the type::
-
-    s.query(Related).join(FooWidget, Related.widget).all()
-
-SQL output::
-
-    SELECT related.id AS related_id
-    FROM related JOIN widget ON related.id = widget.related_id AND widget.type IN (:type_1)
-
-Above, because we joined to a subclass ``FooWidget``, :meth:`.Query.join`
-knew to add the ``AND widget.type IN ('foo')`` criteria to the ON clause.
-
-The change here is that the ``AND widget.type IN()`` criteria is now appended
-to *any* ON clause, not just those generated from a relationship,
-including one that is explicitly stated::
-
-    # ON clause will now render as
-    # related.id = widget.related_id AND widget.type IN (:type_1)
-    s.query(Related).join(FooWidget, FooWidget.related_id == Related.id).all()
-
-As well as the "implicit" join when no ON clause of any kind is stated::
-
-    # ON clause will now render as
-    # related.id = widget.related_id AND widget.type IN (:type_1)
-    s.query(Related).join(FooWidget).all()
-
-Previously, the ON clause for these would not include the single-inheritance
-criteria.  Applications that are already adding this criteria to work around
-this will want to remove its explicit use, though it should continue to work
-fine if the criteria happens to be rendered twice in the meantime.
-
-.. seealso::
-
-	:ref:`bug_3233`
-
-:ticket:`3222`
 
 .. _bug_3188:
 
@@ -793,31 +544,273 @@ would again fail; these have also been fixed.
 
 :ticket:`3148` :ticket:`3188`
 
-.. _bug_3170:
+New Features and Improvements - Core
+====================================
 
-null(), false() and true() constants are no longer singletons
--------------------------------------------------------------
+.. _feature_3034:
 
-These three constants were changed to return a "singleton" value
-in 0.9; unfortunately, that would lead to a query like the following
-to not render as expected::
+Select/Query LIMIT / OFFSET may be specified as an arbitrary SQL expression
+----------------------------------------------------------------------------
 
-    select([null(), null()])
+The :meth:`.Select.limit` and :meth:`.Select.offset` methods now accept
+any SQL expression, in addition to integer values, as arguments.  The ORM
+:class:`.Query` object also passes through any expression to the underlying
+:class:`.Select` object.   Typically
+this is used to allow a bound parameter to be passed, which can be substituted
+with a value later::
 
-rendering only ``SELECT NULL AS anon_1``, because the two :func:`.null`
-constructs would come out as the same  ``NULL`` object, and
-SQLAlchemy's Core model is based on object identity in order to
-determine lexical significance.    The change in 0.9 had no
-importance other than the desire to save on object overhead; in general,
-an unnamed construct needs to stay lexically unique so that it gets
-labeled uniquely.
+    sel = select([table]).limit(bindparam('mylimit')).offset(bindparam('myoffset'))
 
-:ticket:`3170`
+Dialects which don't support non-integer LIMIT or OFFSET expressions may continue
+to not support this behavior; third party dialects may also need modification
+in order to take advantage of the new behavior.  A dialect which currently
+uses the ``._limit`` or ``._offset`` attributes will continue to function
+for those cases where the limit/offset was specified as a simple integer value.
+However, when a SQL expression is specified, these two attributes will
+instead raise a :class:`.CompileError` on access.  A third-party dialect which
+wishes to support the new feature should now call upon the ``._limit_clause``
+and ``._offset_clause`` attributes to receive the full SQL expression, rather
+than the integer value.
 
-.. _behavioral_changes_orm_10:
+.. _feature_3282:
 
-Behavioral Changes - ORM
-========================
+The ``use_alter`` flag on ``ForeignKeyConstraint`` is no longer needed
+----------------------------------------------------------------------
+
+The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` methods will
+now make use of a system that automatically renders an ALTER statement
+for foreign key constraints that are involved in mutually-dependent cycles
+between tables, without the
+need to specify :paramref:`.ForeignKeyConstraint.use_alter`.   Additionally,
+the foreign key constraints no longer need to have a name in order to be
+created via ALTER; only the DROP operation requires a name.   In the case
+of a DROP, the feature will ensure that only constraints which have
+explicit names are actually included as ALTER statements.  In the
+case of an unresolvable cycle within a DROP, the system emits
+a succinct and clear error message now if the DROP cannot proceed.
+
+The :paramref:`.ForeignKeyConstraint.use_alter` and
+:paramref:`.ForeignKey.use_alter` flags remain in place, and continue to have
+the same effect of establishing those constraints for which ALTER is
+required during a CREATE/DROP scenario.
+
+.. seealso::
+
+    :ref:`use_alter` - full description of the new behavior.
+
+:ticket:`3282`
+
+
+CHECK Constraints now support the ``%(column_0_name)s`` token in naming conventions
+-----------------------------------------------------------------------------------
+
+The ``%(column_0_name)s`` will derive from the first column found in the
+expression of a :class:`.CheckConstraint`::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
+    )
+
+    foo = Table('foo', metadata,
+        Column('value', Integer),
+    )
+
+    CheckConstraint(foo.c.value > 5)
+
+Will render::
+
+    CREATE TABLE foo (
+        flag BOOL,
+        CONSTRAINT ck_foo_flag CHECK (flag IN (0, 1))
+    )
+
+The combination of naming conventions with the constraint produced by a
+:class:`.SchemaType` such as :class:`.Boolean` or :class:`.Enum` will also
+now make use of all CHECK constraint conventions.
+
+.. seealso::
+
+    :ref:`naming_check_constraints`
+
+    :ref:`naming_schematypes`
+
+:ticket:`3299`
+
+
+.. _change_2051:
+
+.. _feature_insert_from_select_defaults:
+
+INSERT FROM SELECT now includes Python and SQL-expression defaults
+-------------------------------------------------------------------
+
+:meth:`.Insert.from_select` now includes Python and SQL-expression defaults if
+otherwise unspecified; the limitation where non-server column defaults
+aren't included in an INSERT FROM SELECT is now lifted and these
+expressions are rendered as constants into the SELECT statement::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, select, func
+
+    m = MetaData()
+
+    t = Table(
+        't', m,
+        Column('x', Integer),
+        Column('y', Integer, default=func.somefunction()))
+
+    stmt = select([t.c.x])
+    print t.insert().from_select(['x'], stmt)
+
+Will render::
+
+    INSERT INTO t (x, y) SELECT t.x, somefunction() AS somefunction_1
+    FROM t
+
+The feature can be disabled using
+:paramref:`.Insert.from_select.include_defaults`.
+
+.. _change_3087:
+
+Column server defaults now render literal values
+------------------------------------------------
+
+The "literal binds" compiler flag is switched on when a
+:class:`.DefaultClause`, set up by :paramref:`.Column.server_default`
+is present as a SQL expression to be compiled.  This allows literals
+embedded in SQL to render correctly, such as::
+
+    from sqlalchemy import Table, Column, MetaData, Text
+    from sqlalchemy.schema import CreateTable
+    from sqlalchemy.dialects.postgresql import ARRAY, array
+    from sqlalchemy.dialects import postgresql
+
+    metadata = MetaData()
+
+    tbl = Table("derp", metadata,
+        Column("arr", ARRAY(Text),
+                    server_default=array(["foo", "bar", "baz"])),
+    )
+
+    print(CreateTable(tbl).compile(dialect=postgresql.dialect()))
+
+Now renders::
+
+    CREATE TABLE derp (
+        arr TEXT[] DEFAULT ARRAY['foo', 'bar', 'baz']
+    )
+
+Previously, the literal values ``"foo", "bar", "baz"`` would render as
+bound parameters, which are useless in DDL.
+
+:ticket:`3087`
+
+.. _feature_3184:
+
+UniqueConstraint is now part of the Table reflection process
+------------------------------------------------------------
+
+A :class:`.Table` object populated using ``autoload=True`` will now
+include :class:`.UniqueConstraint` constructs as well as
+:class:`.Index` constructs.  This logic has a few caveats for
+Postgresql and Mysql:
+
+Postgresql
+^^^^^^^^^^
+
+Postgresql has the behavior such that when a UNIQUE constraint is
+created, it implicitly creates a UNIQUE INDEX corresponding to that
+constraint as well. The :meth:`.Inspector.get_indexes` and the
+:meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return these entries distinctly, where
+:meth:`.Inspector.get_indexes` now features a token
+``duplicates_constraint`` within the index entry  indicating the
+corresponding constraint when detected.   However, when performing
+full table reflection using  ``Table(..., autoload=True)``, the
+:class:`.Index` construct is detected as being linked to the
+:class:`.UniqueConstraint`, and is **not** present within the
+:attr:`.Table.indexes` collection; only the :class:`.UniqueConstraint`
+will be present in the :attr:`.Table.constraints` collection.   This
+deduplication logic works by joining to the ``pg_constraint`` table
+when querying ``pg_index`` to see if the two constructs are linked.
+
+MySQL
+^^^^^
+
+MySQL does not have separate concepts for a UNIQUE INDEX and a UNIQUE
+constraint.  While it supports both syntaxes when creating tables and indexes,
+it does not store them any differently. The
+:meth:`.Inspector.get_indexes`
+and the :meth:`.Inspector.get_unique_constraints` methods will continue to
+**both** return an entry for a UNIQUE index in MySQL,
+where :meth:`.Inspector.get_unique_constraints` features a new token
+``duplicates_index`` within the constraint entry indicating that this is a
+dupe entry corresponding to that index.  However, when performing
+full table reflection using ``Table(..., autoload=True)``,
+the :class:`.UniqueConstraint` construct is
+**not** part of the fully reflected :class:`.Table` construct under any
+circumstances; this construct is always represented by a :class:`.Index`
+with the ``unique=True`` setting present in the :attr:`.Table.indexes`
+collection.
+
+.. seealso::
+
+    :ref:`postgresql_index_reflection`
+
+    :ref:`mysql_unique_constraints`
+
+:ticket:`3184`
+
+
+New systems to safely emit parameterized warnings
+-------------------------------------------------
+
+For a long time, there has been a restriction that warning messages could not
+refer to data elements, such that a particular function might emit an
+infinite number of unique warnings.  The key place this occurs is in the
+``Unicode type received non-unicode bind param value`` warning.  Placing
+the data value in this message would mean that the Python ``__warningregistry__``
+for that module, or in some cases the Python-global ``warnings.onceregistry``,
+would grow unbounded, as in most warning scenarios, one of these two collections
+is populated with every distinct warning message.
+
+The change here is that by using a special ``string`` type that purposely
+changes how the string is hashed, we can control that a large number of
+parameterized messages are hashed only on a small set of possible hash
+values, such that a warning such as ``Unicode type received non-unicode
+bind param value`` can be tailored to be emitted only a specific number
+of times; beyond that, the Python warnings registry will begin recording
+them as duplicates.
+
+To illustrate, the following test script will show only ten warnings being
+emitted for ten of the parameter sets, out of a total of 1000::
+
+    from sqlalchemy import create_engine, Unicode, select, cast
+    import random
+    import warnings
+
+    e = create_engine("sqlite://")
+
+    # Use the "once" filter (which is also the default for Python
+    # warnings).  Exactly ten of these warnings will
+    # be emitted; beyond that, the Python warnings registry will accumulate
+    # new values as dupes of one of the ten existing.
+    warnings.filterwarnings("once")
+
+    for i in range(1000):
+        e.execute(select([cast(
+            ('foo_%d' % random.randint(0, 1000000)).encode('ascii'), Unicode)]))
+
+The format of the warning here is::
+
+    /path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
+      non-unicode bind param value 'foo_4852'. (this warning may be
+      suppressed after 10 occurrences)
+
+
+:ticket:`3178`
+
+Key Behavioral Changes - ORM
+============================
 
 .. _bug_3228:
 
@@ -1095,8 +1088,20 @@ as all the subclasses normally refer to the same table::
 :ticket:`3233`
 
 
+Deferred Columns No Longer Implicitly Undefer
+---------------------------------------------
 
-.. _migration_migration_deprecated_orm_events:
+Mapped attributes marked as deferred without explicit undeferral
+will now remain "deferred" even if their column is otherwise
+present in the result set in some way.   This is a performance
+enhancement in that an ORM load no longer spends time searching
+for each deferred column when the result set is obtained.  However,
+for an application that has been relying upon this, an explicit
+:func:`.undefer` or similar option should now be used, in order
+to prevent a SELECT from being emitted when the attribute is accessed.
+
+
+.. _migration_deprecated_orm_events:
 
 Deprecated ORM Event Hooks Removed
 ----------------------------------
@@ -1201,7 +1206,7 @@ join into a subquery as a join target on SQLite.
 query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
 -----------------------------------------------------------------------------------
 
-The "evaulator" for :meth:`.Query.update` won't work with multi-table
+The "evaluator" for :meth:`.Query.update` won't work with multi-table
 updates, and needs to be set to ``synchronize_session=False`` or
 ``synchronize_session='fetch'`` when multiple tables are present.
 The new behavior is that an explicit exception is now raised, with a message
@@ -1218,10 +1223,130 @@ have any function since version 0.8 removed the older "mutable" system
 from the unit of work.
 
 
-.. _behavioral_changes_core_10:
+.. _migration_3177:
 
-Behavioral Changes - Core
-=========================
+Change to single-table-inheritance criteria when using from_self(), count()
+---------------------------------------------------------------------------
+
+Given a single-table inheritance mapping, such as::
+
+    class Widget(Base):
+        __table__ = 'widget_table'
+
+    class FooWidget(Widget):
+        pass
+
+Using :meth:`.Query.from_self` or :meth:`.Query.count` against a subclass
+would produce a subquery, but then add the "WHERE" criteria for subtypes
+to the outside::
+
+    sess.query(FooWidget).from_self().all()
+
+rendering::
+
+    SELECT
+        anon_1.widgets_id AS anon_1_widgets_id,
+        anon_1.widgets_type AS anon_1_widgets_type
+    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+    FROM widgets) AS anon_1
+    WHERE anon_1.widgets_type IN (?)
+
+The issue with this is that if the inner query does not specify all
+columns, then we can't add the WHERE clause on the outside (it actually tries,
+and produces a bad query).  This decision
+apparently goes way back to 0.6.5 with the note "may need to make more
+adjustments to this".   Well, those adjustments have arrived!  So now the
+above query will render::
+
+    SELECT
+        anon_1.widgets_id AS anon_1_widgets_id,
+        anon_1.widgets_type AS anon_1_widgets_type
+    FROM (SELECT widgets.id AS widgets_id, widgets.type AS widgets_type,
+    FROM widgets
+    WHERE widgets.type IN (?)) AS anon_1
+
+So that queries that don't include "type" will still work!::
+
+    sess.query(FooWidget.id).count()
+
+Renders::
+
+    SELECT count(*) AS count_1
+    FROM (SELECT widgets.id AS widgets_id
+    FROM widgets
+    WHERE widgets.type IN (?)) AS anon_1
+
+
+:ticket:`3177`
+
+
+.. _migration_3222:
+
+
+single-table-inheritance criteria added to all ON clauses unconditionally
+-------------------------------------------------------------------------
+
+When joining to a single-table inheritance subclass target, the ORM always adds
+the "single table criteria" when joining on a relationship.  Given a
+mapping as::
+
+    class Widget(Base):
+        __tablename__ = 'widget'
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
+        related_id = Column(ForeignKey('related.id'))
+        related = relationship("Related", backref="widget")
+        __mapper_args__ = {'polymorphic_on': type}
+
+
+    class FooWidget(Widget):
+        __mapper_args__ = {'polymorphic_identity': 'foo'}
+
+
+    class Related(Base):
+        __tablename__ = 'related'
+        id = Column(Integer, primary_key=True)
+
+It's been the behavior for quite some time that a JOIN on the relationship
+will render a "single inheritance" clause for the type::
+
+    s.query(Related).join(FooWidget, Related.widget).all()
+
+SQL output::
+
+    SELECT related.id AS related_id
+    FROM related JOIN widget ON related.id = widget.related_id AND widget.type IN (:type_1)
+
+Above, because we joined to a subclass ``FooWidget``, :meth:`.Query.join`
+knew to add the ``AND widget.type IN ('foo')`` criteria to the ON clause.
+
+The change here is that the ``AND widget.type IN()`` criteria is now appended
+to *any* ON clause, not just those generated from a relationship,
+including one that is explicitly stated::
+
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget, FooWidget.related_id == Related.id).all()
+
+As well as the "implicit" join when no ON clause of any kind is stated::
+
+    # ON clause will now render as
+    # related.id = widget.related_id AND widget.type IN (:type_1)
+    s.query(Related).join(FooWidget).all()
+
+Previously, the ON clause for these would not include the single-inheritance
+criteria.  Applications that are already adding this criteria to work around
+this will want to remove its explicit use, though it should continue to work
+fine if the criteria happens to be rendered twice in the meantime.
+
+.. seealso::
+
+    :ref:`bug_3233`
+
+:ticket:`3222`
+
+Key Behavioral Changes - Core
+=============================
 
 .. _migration_2992:
 
@@ -1373,6 +1498,89 @@ be qualified with :func:`.text` or similar.
 
 :ticket:`2992`
 
+.. _bug_3288:
+
+Python-side defaults invoked for each row invidually when using a multivalued insert
+------------------------------------------------------------------------------------
+
+Support for Python-side column defaults when using the multi-valued
+version of :meth:`.Insert.values` were essentially not implemented, and
+would only work "by accident" in specific situations, when the dialect in
+use was using a non-positional (e.g. named) style of bound parameter, and
+when it was not necessary that a Python-side callable be invoked for each
+row.
+
+The feature has been overhauled so that it works more similarly to
+that of an "executemany" style of invocation::
+
+    import itertools
+
+    counter = itertools.count(1)
+    t = Table(
+        'my_table', metadata,
+        Column('id', Integer, default=lambda: next(counter)),
+        Column('data', String)
+    )
+
+    conn.execute(t.insert().values([
+        {"data": "d1"},
+        {"data": "d2"},
+        {"data": "d3"},
+    ]))
+
+The above example will invoke ``next(counter)`` for each row individually
+as would be expected::
+
+    INSERT INTO my_table (id, data) VALUES (?, ?), (?, ?), (?, ?)
+    (1, 'd1', 2, 'd2', 3, 'd3')
+
+Previously, a positional dialect would fail as a bind would not be generated
+for additional positions::
+
+    Incorrect number of bindings supplied. The current statement uses 6,
+    and there are 4 supplied.
+    [SQL: u'INSERT INTO my_table (id, data) VALUES (?, ?), (?, ?), (?, ?)']
+    [parameters: (1, 'd1', 'd2', 'd3')]
+
+And with a "named" dialect, the same value for "id" would be re-used in
+each row (hence this change is backwards-incompatible with a system that
+relied on this)::
+
+    INSERT INTO my_table (id, data) VALUES (:id, :data_0), (:id, :data_1), (:id, :data_2)
+    {u'data_2': 'd3', u'data_1': 'd2', u'data_0': 'd1', 'id': 1}
+
+The system will also refuse to invoke a "server side" default as inline-rendered
+SQL, since it cannot be guaranteed that a server side default is compatible
+with this.  If the VALUES clause renders for a specific column, then a Python-side
+value is required; if an omitted value only refers to a server-side default,
+an exception is raised::
+
+    t = Table(
+        'my_table', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', String, server_default='some default')
+    )
+
+    conn.execute(t.insert().values([
+        {"data": "d1"},
+        {"data": "d2"},
+        {},
+    ]))
+
+will raise::
+
+    sqlalchemy.exc.CompileError: INSERT value for column my_table.data is
+    explicitly rendered as a boundparameter in the VALUES clause; a
+    Python-side value or SQL expression is required
+
+Previously, the value "d1" would be copied into that of the third
+row (but again, only with named format!)::
+
+    INSERT INTO my_table (data) VALUES (:data_0), (:data_1), (:data_0)
+    {u'data_1': 'd2', u'data_0': 'd1'}
+
+:ticket:`3288`
+
 .. _change_3163:
 
 Event listeners can not be added or removed from within that event's runner
@@ -1427,6 +1635,28 @@ A :class:`.Table` can be set up for reflection by passing
 
 :ticket:`3027`
 
+.. _change_3266:
+
+DBAPI exception wrapping and handle_error() event improvements
+--------------------------------------------------------------
+
+SQLAlchemy's wrapping of DBAPI exceptions was not taking place in the
+case where a :class:`.Connection` object was invalidated, and then tried
+to reconnect and encountered an error; this has been resolved.
+
+Additionally, the recently added :meth:`.ConnectionEvents.handle_error`
+event is now invoked for errors that occur upon initial connect, upon
+reconnect, and when :func:`.create_engine` is used given a custom connection
+function via :paramref:`.create_engine.creator`.
+
+The :class:`.ExceptionContext` object has a new datamember
+:attr:`.ExceptionContext.engine` that will always refer to the :class:`.Engine`
+in use, in those cases when the :class:`.Connection` object is not available
+(e.g. on initial connect).
+
+
+:ticket:`3266`
+
 .. _change_3243:
 
 ForeignKeyConstraint.columns is now a ColumnCollection
@@ -1443,8 +1673,278 @@ is added to unconditionally return string keys for the local set of
 columns regardless of how the object was constructed or its current
 state.
 
-Dialect Changes
-===============
+
+.. _bug_3170:
+
+null(), false() and true() constants are no longer singletons
+-------------------------------------------------------------
+
+These three constants were changed to return a "singleton" value
+in 0.9; unfortunately, that would lead to a query like the following
+to not render as expected::
+
+    select([null(), null()])
+
+rendering only ``SELECT NULL AS anon_1``, because the two :func:`.null`
+constructs would come out as the same  ``NULL`` object, and
+SQLAlchemy's Core model is based on object identity in order to
+determine lexical significance.    The change in 0.9 had no
+importance other than the desire to save on object overhead; in general,
+an unnamed construct needs to stay lexically unique so that it gets
+labeled uniquely.
+
+:ticket:`3170`
+
+.. _change_3204:
+
+SQLite/Oracle have distinct methods for temporary table/view name reporting
+---------------------------------------------------------------------------
+
+The :meth:`.Inspector.get_table_names` and :meth:`.Inspector.get_view_names`
+methods in the case of SQLite/Oracle would also return the names of temporary
+tables and views, which is not provided by any other dialect (in the case
+of MySQL at least it is not even possible).  This logic has been moved
+out to two new methods :meth:`.Inspector.get_temp_table_names` and
+:meth:`.Inspector.get_temp_view_names`.
+
+Note that reflection of a specific named temporary table or temporary view,
+either by ``Table('name', autoload=True)`` or via methods like
+:meth:`.Inspector.get_columns` continues to function for most if not all
+dialects.   For SQLite specifically, there is a bug fix for UNIQUE constraint
+reflection from temp tables as well, which is :ticket:`3203`.
+
+:ticket:`3204`
+
+Dialect Improvements and Changes - Postgresql
+=============================================
+
+New Postgresql Table options
+-----------------------------
+
+Added support for PG table options TABLESPACE, ON COMMIT,
+WITH(OUT) OIDS, and INHERITS, when rendering DDL via
+the :class:`.Table` construct.
+
+.. seealso::
+
+    :ref:`postgresql_table_options`
+
+:ticket:`2051`
+
+.. _feature_get_enums:
+
+New get_enums() method with Postgresql Dialect
+----------------------------------------------
+
+The :func:`.inspect` method returns a :class:`.PGInspector` object in the
+case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
+method that returns information on all available ``ENUM`` types::
+
+    from sqlalchemy import inspect, create_engine
+
+    engine = create_engine("postgresql+psycopg2://host/dbname")
+    insp = inspect(engine)
+    print(insp.get_enums())
+
+.. seealso::
+
+    :meth:`.PGInspector.get_enums`
+
+.. _feature_2891:
+
+Postgresql Dialect reflects Materialized Views, Foreign Tables
+--------------------------------------------------------------
+
+Changes are as follows:
+
+* the :class:`Table` construct with ``autoload=True`` will now match a name
+  that exists in the database as a materialized view or foriegn table.
+
+* :meth:`.Inspector.get_view_names` will return plain and materialized view
+  names.
+
+* :meth:`.Inspector.get_table_names` does **not** change for Postgresql, it
+  continues to return only the names of plain tables.
+
+* A new method :meth:`.PGInspector.get_foreign_table_names` is added which
+  will return the names of tables that are specifically marked as "foreign"
+  in the Postgresql schema tables.
+
+The change to reflection involves adding ``'m'`` and ``'f'`` to the list
+of qualifiers we use when querying ``pg_class.relkind``, but this change
+is new in 1.0.0 to avoid any backwards-incompatible surprises for those
+running 0.9 in production.
+
+:ticket:`2891`
+
+.. _change_3264:
+
+Postgresql ``has_table()`` now works for temporary tables
+---------------------------------------------------------
+
+This is a simple fix such that "has table" for temporary tables now works,
+so that code like the following may proceed::
+
+    from sqlalchemy import *
+
+    metadata = MetaData()
+    user_tmp = Table(
+        "user_tmp", metadata,
+        Column("id", INT, primary_key=True),
+        Column('name', VARCHAR(50)),
+        prefixes=['TEMPORARY']
+    )
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo='debug')
+    with e.begin() as conn:
+        user_tmp.create(conn, checkfirst=True)
+
+        # checkfirst will succeed
+        user_tmp.create(conn, checkfirst=True)
+
+The very unlikely case that this behavior will cause a non-failing application
+to behave differently, is because Postgresql allows a non-temporary table
+to silently overwrite a temporary table.  So code like the following will
+now act completely differently, no longer creating the real table following
+the temporary table::
+
+    from sqlalchemy import *
+
+    metadata = MetaData()
+    user_tmp = Table(
+        "user_tmp", metadata,
+        Column("id", INT, primary_key=True),
+        Column('name', VARCHAR(50)),
+        prefixes=['TEMPORARY']
+    )
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo='debug')
+    with e.begin() as conn:
+        user_tmp.create(conn, checkfirst=True)
+
+        m2 = MetaData()
+        user = Table(
+            "user_tmp", m2,
+            Column("id", INT, primary_key=True),
+            Column('name', VARCHAR(50)),
+        )
+
+        # in 0.9, *will create* the new table, overwriting the old one.
+        # in 1.0, *will not create* the new table
+        user.create(conn, checkfirst=True)
+
+:ticket:`3264`
+
+.. _feature_gh134:
+
+Postgresql FILTER keyword
+-------------------------
+
+The SQL standard FILTER keyword for aggregate functions is now supported
+by Postgresql as of 9.4.  SQLAlchemy allows this using
+:meth:`.FunctionElement.filter`::
+
+    func.count(1).filter(True)
+
+.. seealso::
+
+    :meth:`.FunctionElement.filter`
+
+    :class:`.FunctionFilter`
+
+PG8000 dialect supports client side encoding
+---------------------------------------------
+
+The :paramref:`.create_engine.encoding` parameter is now honored
+by the pg8000 dialect, using on connect handler which
+emits ``SET CLIENT_ENCODING`` matching the selected encoding.
+
+PG8000 native JSONB support
+--------------------------------------
+
+Support for PG8000 versions greater than 1.10.1 has been added, where
+JSONB is supported natively.
+
+
+Support for psycopg2cffi Dialect on Pypy
+----------------------------------------
+
+Support for the pypy psycopg2cffi dialect is added.
+
+.. seealso::
+
+    :mod:`sqlalchemy.dialects.postgresql.psycopg2cffi`
+
+Dialect Improvements and Changes - MySQL
+=============================================
+
+.. _change_3155:
+
+MySQL TIMESTAMP Type now renders NULL / NOT NULL in all cases
+--------------------------------------------------------------
+
+The MySQL dialect has always worked around MySQL's implicit NOT NULL
+default associated with TIMESTAMP columns by emitting NULL for
+such a type, if the column is set up with ``nullable=True``.   However,
+MySQL 5.6.6 and above features a new flag
+`explicit_defaults_for_timestamp <http://dev.mysql.com/doc/refman/
+5.6/en/server-system-variables.html
+#sysvar_explicit_defaults_for_timestamp>`_ which repairs MySQL's non-standard
+behavior to make it behave like any other type; to accommodate this,
+SQLAlchemy now emits NULL/NOT NULL unconditionally for all TIMESTAMP
+columns.
+
+.. seealso::
+
+    :ref:`mysql_timestamp_null`
+
+:ticket:`3155`
+
+
+.. _change_3283:
+
+MySQL SET Type Overhauled to support empty sets, unicode, blank value handling
+-------------------------------------------------------------------------------
+
+The :class:`.mysql.SET` type historically not included a system of handling
+blank sets and empty values separately; as different drivers had different
+behaviors for treatment of empty strings and empty-string-set representations,
+the SET type tried only to hedge between these behaviors, opting to treat the
+empty set as ``set([''])`` as is still the current behavior for the
+MySQL-Connector-Python DBAPI.
+Part of the rationale here was that it was otherwise impossible to actually
+store a blank string within a MySQL SET, as the driver gives us back strings
+with no way to discern between ``set([''])`` and ``set()``.  It was left
+to the user to determine if ``set([''])`` actually meant "empty set" or not.
+
+The new behavior moves the use case for the blank string, which is an unusual
+case that isn't even documented in MySQL's documentation, into a special
+case, and the default behavior of :class:`.mysql.SET` is now:
+
+* to treat the empty string ``''`` as returned by MySQL-python into the empty
+  set ``set()``;
+
+* to convert the single-blank value set ``set([''])`` returned by
+  MySQL-Connector-Python into the empty set ``set()``;
+
+* To handle the case of a set type that actually wishes includes the blank
+  value ``''`` in its list of possible values,
+  a new feature (required in this use case) is implemented whereby the set
+  value is persisted and loaded as a bitwise integer value; the
+  flag :paramref:`.mysql.SET.retrieve_as_bitwise` is added in order to
+  enable this.
+
+Using the :paramref:`.mysql.SET.retrieve_as_bitwise` flag allows the set
+to be persisted and retrieved with no ambiguity of values.   Theoretically
+this flag can be turned on in all cases, as long as the given list of
+values to the type matches the ordering exactly as declared in the
+database; it only makes the SQL echo output a bit more unusual.
+
+The default behavior of :class:`.mysql.SET` otherwise remains the same,
+roundtripping values using strings.   The string-based behavior now
+supports unicode fully including MySQL-python with use_unicode=0.
+
+:ticket:`3283`
 
 
 MySQL internal "no such table" exceptions not passed to event handlers
@@ -1489,6 +1989,77 @@ again works on MySQL.
 
 :ticket:`3186`
 
+.. _change_3263:
+
+The match() operator now returns an agnostic MatchType compatible with MySQL's floating point return value
+----------------------------------------------------------------------------------------------------------
+
+The return type of a :meth:`.ColumnOperators.match` expression is now a new type
+called :class:`.MatchType`.  This is a subclass of :class:`.Boolean`,
+that can be intercepted by the dialect in order to produce a different
+result type at SQL execution time.
+
+Code like the following will now function correctly and return floating points
+on MySQL::
+
+    >>> connection.execute(
+    ...    select([
+    ...        matchtable.c.title.match('Agile Ruby Programming').label('ruby'),
+    ...        matchtable.c.title.match('Dive Python').label('python'),
+    ...        matchtable.c.title
+    ...    ]).order_by(matchtable.c.id)
+    ... )
+    [
+        (2.0, 0.0, 'Agile Web Development with Ruby On Rails'),
+        (0.0, 2.0, 'Dive Into Python'),
+        (2.0, 0.0, "Programming Matz's Ruby"),
+        (0.0, 0.0, 'The Definitive Guide to Django'),
+        (0.0, 1.0, 'Python in a Nutshell')
+    ]
+
+
+:ticket:`3263`
+
+.. _change_2984:
+
+Drizzle Dialect is now an External Dialect
+------------------------------------------
+
+The dialect for `Drizzle <http://www.drizzle.org/>`_ is now an external
+dialect, available at https://bitbucket.org/zzzeek/sqlalchemy-drizzle.
+This dialect was added to SQLAlchemy right before SQLAlchemy was able to
+accommodate third party dialects well; going forward, all databases that aren't
+within the "ubiquitous use" category are third party dialects.
+The dialect's implementation hasn't changed and is still based on the
+MySQL + MySQLdb dialects within SQLAlchemy.  The dialect is as of yet
+unreleased and in "attic" status; however it passes the majority of tests
+and is generally in decent working order, if someone wants to pick up
+on polishing it.
+
+Dialect Improvements and Changes - SQLite
+=============================================
+
+SQLite named and unnamed UNIQUE and FOREIGN KEY constraints will inspect and reflect
+-------------------------------------------------------------------------------------
+
+UNIQUE and FOREIGN KEY constraints are now fully reflected on
+SQLite both with and without names.  Previously, foreign key
+names were ignored and unnamed unique constraints were skipped.   In particular
+this will help with Alembic's new SQLite migration features.
+
+To achieve this, for both foreign keys and unique constraints, the result
+of PRAGMA foreign_keys, index_list, and index_info is combined with regular
+expression parsing of the CREATE TABLE statement overall to form a complete
+picture of the names of constraints, as well as differentiating UNIQUE
+constraints that were created as UNIQUE vs. unnamed INDEXes.
+
+:ticket:`3244`
+
+:ticket:`3261`
+
+Dialect Improvements and Changes - SQL Server
+=============================================
+
 .. _change_3182:
 
 PyODBC driver name is required with hostname-based SQL Server connections
@@ -1507,38 +2078,40 @@ when using ODBC to avoid this issue entirely.
 
 :ticket:`3182`
 
-.. _change_3204:
+SQL Server 2012 large text / binary types render as VARCHAR, NVARCHAR, VARBINARY
+--------------------------------------------------------------------------------
 
-SQLite/Oracle have distinct methods for temporary table/view name reporting
----------------------------------------------------------------------------
+The rendering of the :class:`.Text`, :class:`.UnicodeText`, and :class:`.LargeBinary`
+types has been changed for SQL Server 2012 and greater, with options
+to control the behavior completely, based on deprecation guidelines from
+Microsoft.  See :ref:`mssql_large_type_deprecation` for details.
 
-The :meth:`.Inspector.get_table_names` and :meth:`.Inspector.get_view_names`
-methods in the case of SQLite/Oracle would also return the names of temporary
-tables and views, which is not provided by any other dialect (in the case
-of MySQL at least it is not even possible).  This logic has been moved
-out to two new methods :meth:`.Inspector.get_temp_table_names` and
-:meth:`.Inspector.get_temp_view_names`.
+Dialect Improvements and Changes - Oracle
+=============================================
 
-Note that reflection of a specific named temporary table or temporary view,
-either by ``Table('name', autoload=True)`` or via methods like
-:meth:`.Inspector.get_columns` continues to function for most if not all
-dialects.   For SQLite specifically, there is a bug fix for UNIQUE constraint
-reflection from temp tables as well, which is :ticket:`3203`.
+.. _change_3220:
 
-:ticket:`3204`
+Improved support for CTEs in Oracle
+-----------------------------------
 
-.. _change_2984:
+CTE support has been fixed up for Oracle, and there is also a new feature
+:meth:`.CTE.with_suffixes` that can assist with Oracle's special directives::
 
-Drizzle Dialect is now an External Dialect
-------------------------------------------
+    included_parts = select([
+        part.c.sub_part, part.c.part, part.c.quantity
+    ]).where(part.c.part == "p1").\
+        cte(name="included_parts", recursive=True).\
+        suffix_with(
+            "search depth first by part set ord1",
+            "cycle part set y_cycle to 1 default 0", dialect='oracle')
 
-The dialect for `Drizzle <http://www.drizzle.org/>`_ is now an external
-dialect, available at https://bitbucket.org/zzzeek/sqlalchemy-drizzle.
-This dialect was added to SQLAlchemy right before SQLAlchemy was able to
-accommodate third party dialects well; going forward, all databases that aren't
-within the "ubiquitous use" category are third party dialects.
-The dialect's implementation hasn't changed and is still based on the
-MySQL + MySQLdb dialects within SQLAlchemy.  The dialect is as of yet
-unreleased and in "attic" status; however it passes the majority of tests
-and is generally in decent working order, if someone wants to pick up
-on polishing it.
+:ticket:`3220`
+
+New Oracle Keywords for DDL
+-----------------------------
+
+Keywords such as COMPRESS, ON COMMIT, BITMAP:
+
+:ref:`oracle_table_options`
+
+:ref:`oracle_index_options`

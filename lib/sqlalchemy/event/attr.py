@@ -40,17 +40,21 @@ import weakref
 import collections
 
 
-class RefCollection(object):
-    @util.memoized_property
-    def ref(self):
+class RefCollection(util.MemoizedSlots):
+    __slots__ = 'ref',
+
+    def _memoized_attr_ref(self):
         return weakref.ref(self, registry._collection_gced)
 
 
-class _DispatchDescriptor(RefCollection):
-    """Class-level attributes on :class:`._Dispatch` classes."""
+class _ClsLevelDispatch(RefCollection):
+    """Class-level events on :class:`._Dispatch` classes."""
+
+    __slots__ = ('name', 'arg_names', 'has_kw',
+                 'legacy_signatures', '_clslevel')
 
     def __init__(self, parent_dispatch_cls, fn):
-        self.__name__ = fn.__name__
+        self.name = fn.__name__
         argspec = util.inspect_getargspec(fn)
         self.arg_names = argspec.args[1:]
         self.has_kw = bool(argspec.keywords)
@@ -60,11 +64,9 @@ class _DispatchDescriptor(RefCollection):
                 key=lambda s: s[0]
             )
         ))
-        self.__doc__ = fn.__doc__ = legacy._augment_fn_docs(
-            self, parent_dispatch_cls, fn)
+        fn.__doc__ = legacy._augment_fn_docs(self, parent_dispatch_cls, fn)
 
         self._clslevel = weakref.WeakKeyDictionary()
-        self._empty_listeners = weakref.WeakKeyDictionary()
 
     def _adjust_fn_spec(self, fn, named):
         if named:
@@ -152,34 +154,23 @@ class _DispatchDescriptor(RefCollection):
     def for_modify(self, obj):
         """Return an event collection which can be modified.
 
-        For _DispatchDescriptor at the class level of
+        For _ClsLevelDispatch at the class level of
         a dispatcher, this returns self.
 
         """
         return self
 
-    def __get__(self, obj, cls):
-        if obj is None:
-            return self
-        elif obj._parent_cls in self._empty_listeners:
-            ret = self._empty_listeners[obj._parent_cls]
-        else:
-            self._empty_listeners[obj._parent_cls] = ret = \
-                _EmptyListener(self, obj._parent_cls)
-        # assigning it to __dict__ means
-        # memoized for fast re-access.  but more memory.
-        obj.__dict__[self.__name__] = ret
-        return ret
 
+class _InstanceLevelDispatch(RefCollection):
+    __slots__ = ()
 
-class _HasParentDispatchDescriptor(object):
     def _adjust_fn_spec(self, fn, named):
         return self.parent._adjust_fn_spec(fn, named)
 
 
-class _EmptyListener(_HasParentDispatchDescriptor):
-    """Serves as a class-level interface to the events
-    served by a _DispatchDescriptor, when there are no
+class _EmptyListener(_InstanceLevelDispatch):
+    """Serves as a proxy interface to the events
+    served by a _ClsLevelDispatch, when there are no
     instance-level events present.
 
     Is replaced by _ListenerCollection when instance-level
@@ -187,14 +178,17 @@ class _EmptyListener(_HasParentDispatchDescriptor):
 
     """
 
+    propagate = frozenset()
+    listeners = ()
+
+    __slots__ = 'parent', 'parent_listeners', 'name'
+
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
-        self.parent = parent  # _DispatchDescriptor
+        self.parent = parent  # _ClsLevelDispatch
         self.parent_listeners = parent._clslevel[target_cls]
-        self.name = parent.__name__
-        self.propagate = frozenset()
-        self.listeners = ()
+        self.name = parent.name
 
     def for_modify(self, obj):
         """Return an event collection which can be modified.
@@ -205,9 +199,11 @@ class _EmptyListener(_HasParentDispatchDescriptor):
         and returns it.
 
         """
-        result = _ListenerCollection(self.parent, obj._parent_cls)
-        if obj.__dict__[self.name] is self:
-            obj.__dict__[self.name] = result
+        result = _ListenerCollection(self.parent, obj._instance_cls)
+        if getattr(obj, self.name) is self:
+            setattr(obj, self.name, result)
+        else:
+            assert isinstance(getattr(obj, self.name), _JoinedListener)
         return result
 
     def _needs_modify(self, *args, **kw):
@@ -233,11 +229,12 @@ class _EmptyListener(_HasParentDispatchDescriptor):
     __nonzero__ = __bool__
 
 
-class _CompoundListener(_HasParentDispatchDescriptor):
+class _CompoundListener(_InstanceLevelDispatch):
     _exec_once = False
 
-    @util.memoized_property
-    def _exec_once_mutex(self):
+    __slots__ = '_exec_once_mutex',
+
+    def _memoized_attr__exec_once_mutex(self):
         return threading.Lock()
 
     def exec_once(self, *args, **kw):
@@ -272,7 +269,7 @@ class _CompoundListener(_HasParentDispatchDescriptor):
     __nonzero__ = __bool__
 
 
-class _ListenerCollection(RefCollection, _CompoundListener):
+class _ListenerCollection(_CompoundListener):
     """Instance-level attributes on instances of :class:`._Dispatch`.
 
     Represents a collection of listeners.
@@ -282,12 +279,14 @@ class _ListenerCollection(RefCollection, _CompoundListener):
 
     """
 
+    __slots__ = 'parent_listeners', 'parent', 'name', 'listeners', 'propagate'
+
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
         self.parent_listeners = parent._clslevel[target_cls]
         self.parent = parent
-        self.name = parent.__name__
+        self.name = parent.name
         self.listeners = collections.deque()
         self.propagate = set()
 
@@ -339,23 +338,10 @@ class _ListenerCollection(RefCollection, _CompoundListener):
         self.listeners.clear()
 
 
-class _JoinedDispatchDescriptor(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __get__(self, obj, cls):
-        if obj is None:
-            return self
-        else:
-            obj.__dict__[self.name] = ret = _JoinedListener(
-                obj.parent, self.name,
-                getattr(obj.local, self.name)
-            )
-            return ret
-
-
 class _JoinedListener(_CompoundListener):
     _exec_once = False
+
+    __slots__ = 'parent', 'name', 'local', 'parent_listeners'
 
     def __init__(self, parent, name, local):
         self.parent = parent

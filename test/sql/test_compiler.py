@@ -2440,7 +2440,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 """SELECT /*+ "QuotedName" idx1 */ "QuotedName".col1 """
                 """FROM "QuotedName" WHERE "QuotedName".col1 > :col1_1"""),
             (s7, oracle_d,
-             """SELECT /*+ SomeName idx1 */ "SomeName".col1 FROM """
+             """SELECT /*+ "SomeName" idx1 */ "SomeName".col1 FROM """
              """"QuotedName" "SomeName" WHERE "SomeName".col1 > :col1_1"""),
         ]:
             self.assert_compile(

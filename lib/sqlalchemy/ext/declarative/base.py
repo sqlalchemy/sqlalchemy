@@ -202,6 +202,7 @@ class _MapperConfig(object):
                         if not oldclassprop and obj._cascading:
                             dict_[name] = column_copies[obj] = \
                                 ret = obj.__get__(obj, cls)
+                            setattr(cls, name, ret)
                         else:
                             if oldclassprop:
                                 util.warn_deprecated(
@@ -278,7 +279,7 @@ class _MapperConfig(object):
             elif not isinstance(value, (Column, MapperProperty)):
                 # using @declared_attr for some object that
                 # isn't Column/MapperProperty; remove from the dict_
-                # and place the evaulated value onto the class.
+                # and place the evaluated value onto the class.
                 if not k.startswith('__'):
                     dict_.pop(k)
                     setattr(cls, k, value)
@@ -439,6 +440,7 @@ class _MapperConfig(object):
 
     def _prepare_mapper_arguments(self):
         properties = self.properties
+
         if self.mapper_args_fn:
             mapper_args = self.mapper_args_fn()
         else:

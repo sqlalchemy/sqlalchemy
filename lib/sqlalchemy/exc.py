@@ -63,7 +63,7 @@ class CircularDependencyError(SQLAlchemyError):
     """
     def __init__(self, message, cycles, edges, msg=None):
         if msg is None:
-            message += " Cycles: %r all edges: %r" % (cycles, edges)
+            message += " (%s)" % ", ".join(repr(s) for s in cycles)
         else:
             message = msg
         SQLAlchemyError.__init__(self, message)

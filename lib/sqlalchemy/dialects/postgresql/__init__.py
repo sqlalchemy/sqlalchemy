@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import base, psycopg2, pg8000, pypostgresql, zxjdbc
+from . import base, psycopg2, pg8000, pypostgresql, zxjdbc, psycopg2cffi
 
 base.dialect = psycopg2.dialect
 

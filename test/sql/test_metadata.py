@@ -1160,9 +1160,10 @@ class InfoTest(fixtures.TestBase):
         t = Table('x', MetaData(), info={'foo': 'bar'})
         eq_(t.info, {'foo': 'bar'})
 
+
 class TableTest(fixtures.TestBase, AssertsCompiledSQL):
 
-    @testing.requires.temporary_table
+    @testing.requires.temporary_tables
     @testing.skip_if('mssql', 'different col format')
     def test_prefixes(self):
         from sqlalchemy import Table
@@ -1194,6 +1195,30 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         for t in (t1, t2, t3):
             t.info['bar'] = 'zip'
             assert t.info['bar'] == 'zip'
+
+    def test_foreign_key_constraints_collection(self):
+        metadata = MetaData()
+        t1 = Table('foo', metadata, Column('a', Integer))
+        eq_(t1.foreign_key_constraints, set())
+
+        fk1 = ForeignKey('q.id')
+        fk2 = ForeignKey('j.id')
+        fk3 = ForeignKeyConstraint(['b', 'c'], ['r.x', 'r.y'])
+
+        t1.append_column(Column('b', Integer, fk1))
+        eq_(
+            t1.foreign_key_constraints,
+            set([fk1.constraint]))
+
+        t1.append_column(Column('c', Integer, fk2))
+        eq_(
+            t1.foreign_key_constraints,
+            set([fk1.constraint, fk2.constraint]))
+
+        t1.append_constraint(fk3)
+        eq_(
+            t1.foreign_key_constraints,
+            set([fk1.constraint, fk2.constraint, fk3]))
 
     def test_c_immutable(self):
         m = MetaData()
@@ -1946,6 +1971,22 @@ class ConstraintTest(fixtures.TestBase):
         assert s1.c.a.references(t1.c.a)
         assert not s1.c.a.references(t1.c.b)
 
+    def test_referred_table_accessor(self):
+        t1, t2, t3 = self._single_fixture()
+        fkc = list(t2.foreign_key_constraints)[0]
+        is_(fkc.referred_table, t1)
+
+    def test_referred_table_accessor_not_available(self):
+        t1 = Table('t', MetaData(), Column('x', ForeignKey('q.id')))
+        fkc = list(t1.foreign_key_constraints)[0]
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Foreign key associated with column 't.x' could not find "
+            "table 'q' with which to generate a foreign key to target "
+            "column 'id'",
+            getattr, fkc, "referred_table"
+        )
+
     def test_related_column_not_present_atfirst_ok(self):
         m = MetaData()
         base_table = Table("base", m,
@@ -1959,6 +2000,37 @@ class ConstraintTest(fixtures.TestBase):
 
         base_table.append_column(Column('q', Integer))
         assert fk.column is base_table.c.q
+        assert isinstance(derived_table.c.id.type, Integer)
+
+    def test_related_column_not_present_atfirst_ok_onname(self):
+        m = MetaData()
+        base_table = Table("base", m,
+                           Column("id", Integer, primary_key=True)
+                           )
+        fk = ForeignKey('base.q', link_to_name=True)
+        derived_table = Table("derived", m,
+                              Column("id", None, fk,
+                                     primary_key=True),
+                              )
+
+        base_table.append_column(Column('q', Integer, key='zz'))
+        assert fk.column is base_table.c.zz
+        assert isinstance(derived_table.c.id.type, Integer)
+
+    def test_related_column_not_present_atfirst_ok_linktoname_conflict(self):
+        m = MetaData()
+        base_table = Table("base", m,
+                           Column("id", Integer, primary_key=True)
+                           )
+        fk = ForeignKey('base.q', link_to_name=True)
+        derived_table = Table("derived", m,
+                              Column("id", None, fk,
+                                     primary_key=True),
+                              )
+
+        base_table.append_column(Column('zz', Integer, key='q'))
+        base_table.append_column(Column('q', Integer, key='zz'))
+        assert fk.column is base_table.c.zz
         assert isinstance(derived_table.c.id.type, Integer)
 
     def test_invalid_composite_fk_check_strings(self):
@@ -2117,6 +2189,67 @@ class ConstraintTest(fixtures.TestBase):
             Column('key1', Integer, primary_key=True))
 
         assert isinstance(b.c.a_key1.type, Integer)
+        assert isinstance(c.c.b_key1.type, Integer)
+
+    def test_type_propagate_chained_string_source_last_onname(self):
+        metadata = MetaData()
+
+        b = Table('b', metadata,
+                  Column(
+                      'a_key1', None,
+                      ForeignKey("a.key1", link_to_name=True), key="ak1"),
+                  )
+
+        c = Table('c', metadata,
+                  Column(
+                      'b_key1', None,
+                      ForeignKey("b.a_key1", link_to_name=True), key="bk1"),
+                  )
+
+        Table(
+            'a', metadata,
+            Column('key1', Integer, primary_key=True, key='ak1'))
+
+        assert isinstance(b.c.ak1.type, Integer)
+        assert isinstance(c.c.bk1.type, Integer)
+
+    def test_type_propagate_chained_string_source_last_onname_conflict(self):
+        metadata = MetaData()
+
+        b = Table('b', metadata,
+                  # b.c.key1 -> a.c.key1 -> String
+                  Column(
+                      'ak1', None,
+                      ForeignKey("a.key1", link_to_name=False), key="key1"),
+                  # b.c.ak1 -> a.c.ak1 -> Integer
+                  Column(
+                      'a_key1', None,
+                      ForeignKey("a.key1", link_to_name=True), key="ak1"),
+                  )
+
+        c = Table('c', metadata,
+                  # c.c.b_key1 -> b.c.ak1 -> Integer
+                  Column(
+                      'b_key1', None,
+                      ForeignKey("b.ak1", link_to_name=False)),
+                  # c.c.b_ak1 -> b.c.ak1
+                  Column(
+                      'b_ak1', None,
+                      ForeignKey("b.ak1", link_to_name=True)),
+                  )
+
+        Table(
+            'a', metadata,
+            # a.c.key1
+            Column('ak1', String, key="key1"),
+            # a.c.ak1
+            Column('key1', Integer, primary_key=True, key='ak1'),
+        )
+
+        assert isinstance(b.c.key1.type, String)
+        assert isinstance(b.c.ak1.type, Integer)
+
+        assert isinstance(c.c.b_ak1.type, String)
         assert isinstance(c.c.b_key1.type, Integer)
 
     def test_type_propagate_chained_col_orig_first(self):
@@ -3305,6 +3438,27 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             'CREATE TABLE "user" ('
             "x BOOLEAN, "
             "CONSTRAINT ck_user_foo CHECK (x IN (0, 1))"
+            ")"
+        )
+
+    def test_schematype_ck_name_boolean_not_on_name(self):
+        m1 = MetaData(naming_convention={
+            "ck": "ck_%(table_name)s_%(column_0_name)s"})
+
+        u1 = Table('user', m1,
+                   Column('x', Boolean())
+                   )
+        # constraint is not hit
+        eq_(
+            [c for c in u1.constraints
+                if isinstance(c, CheckConstraint)][0].name, "_unnamed_"
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x BOOLEAN, "
+            "CONSTRAINT ck_user_x CHECK (x IN (0, 1))"
             ")"
         )
 

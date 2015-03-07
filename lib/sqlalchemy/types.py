@@ -51,6 +51,7 @@ from .sql.sqltypes import (
     Integer,
     Interval,
     LargeBinary,
+    MatchType,
     NCHAR,
     NVARCHAR,
     NullType,

@@ -22,6 +22,7 @@ from . import properties
 from .interfaces import (
     LoaderStrategy, StrategizedProperty
 )
+from .base import _SET_DEFERRED_EXPIRED, _DEFER_FOR_STATE
 from .session import _state_session
 import itertools
 
@@ -105,6 +106,8 @@ class UninstrumentedColumnLoader(LoaderStrategy):
     if the argument is against the with_polymorphic selectable.
 
     """
+    __slots__ = 'columns',
+
     def __init__(self, parent):
         super(UninstrumentedColumnLoader, self).__init__(parent)
         self.columns = self.parent_property.columns
@@ -128,6 +131,8 @@ class UninstrumentedColumnLoader(LoaderStrategy):
 class ColumnLoader(LoaderStrategy):
     """Provide loading behavior for a :class:`.ColumnProperty`."""
 
+    __slots__ = 'columns', 'is_composite'
+
     def __init__(self, parent):
         super(ColumnLoader, self).__init__(parent)
         self.columns = self.parent_property.columns
@@ -135,11 +140,17 @@ class ColumnLoader(LoaderStrategy):
 
     def setup_query(
             self, context, entity, path, loadopt,
-            adapter, column_collection, **kwargs):
+            adapter, column_collection, memoized_populators, **kwargs):
+
         for c in self.columns:
             if adapter:
                 c = adapter.columns[c]
             column_collection.append(c)
+
+        fetch = self.columns[0]
+        if adapter:
+            fetch = adapter.columns[fetch]
+        memoized_populators[self.parent_property] = fetch
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -176,6 +187,8 @@ class ColumnLoader(LoaderStrategy):
 class DeferredColumnLoader(LoaderStrategy):
     """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
 
+    __slots__ = 'columns', 'group'
+
     def __init__(self, parent):
         super(DeferredColumnLoader, self).__init__(parent)
         if hasattr(self.parent_property, 'composite_class'):
@@ -187,22 +200,14 @@ class DeferredColumnLoader(LoaderStrategy):
     def create_row_processor(
             self, context, path, loadopt,
             mapper, result, adapter, populators):
-        col = self.columns[0]
-        if adapter:
-            col = adapter.columns[col]
 
-        # TODO: put a result-level contains here
-        getter = result._getter(col)
-        if getter:
-            self.parent_property._get_strategy_by_cls(ColumnLoader).\
-                create_row_processor(
-                    context, path, loadopt, mapper, result,
-                    adapter, populators)
-
-        elif not self.is_class_level:
-            set_deferred_for_local_state = InstanceState._row_processor(
-                mapper.class_manager,
-                LoadDeferredColumns(self.key), self.key)
+        # this path currently does not check the result
+        # for the column; this is because in most cases we are
+        # working just with the setup_query() directive which does
+        # not support this, and the behavior here should be consistent.
+        if not self.is_class_level:
+            set_deferred_for_local_state = \
+                self.parent_property._deferred_column_loader
             populators["new"].append((self.key, set_deferred_for_local_state))
         else:
             populators["expire"].append((self.key, False))
@@ -218,14 +223,16 @@ class DeferredColumnLoader(LoaderStrategy):
         )
 
     def setup_query(
-            self, context, entity, path, loadopt, adapter,
-            only_load_props=None, **kwargs):
+            self, context, entity, path, loadopt,
+            adapter, column_collection, memoized_populators,
+            only_load_props=None, **kw):
 
         if (
             (
                 loadopt and
                 'undefer_pks' in loadopt.local_opts and
-                set(self.columns).intersection(self.parent.primary_key)
+                set(self.columns).intersection(
+                    self.parent._should_undefer_in_wildcard)
             )
             or
             (
@@ -240,7 +247,12 @@ class DeferredColumnLoader(LoaderStrategy):
         ):
             self.parent_property._get_strategy_by_cls(ColumnLoader).\
                 setup_query(context, entity,
-                            path, loadopt, adapter, **kwargs)
+                            path, loadopt, adapter,
+                            column_collection, memoized_populators, **kw)
+        elif self.is_class_level:
+            memoized_populators[self.parent_property] = _SET_DEFERRED_EXPIRED
+        else:
+            memoized_populators[self.parent_property] = _DEFER_FOR_STATE
 
     def _load_for_state(self, state, passive):
         if not state.key:
@@ -300,6 +312,8 @@ class LoadDeferredColumns(object):
 class AbstractRelationshipLoader(LoaderStrategy):
     """LoaderStratgies which deal with related objects."""
 
+    __slots__ = 'mapper', 'target', 'uselist'
+
     def __init__(self, parent):
         super(AbstractRelationshipLoader, self).__init__(parent)
         self.mapper = self.parent_property.mapper
@@ -315,6 +329,8 @@ class NoLoader(AbstractRelationshipLoader):
     with "lazy=None".
 
     """
+
+    __slots__ = ()
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -342,6 +358,10 @@ class LazyLoader(AbstractRelationshipLoader):
     with "lazy=True", that is loads when first accessed.
 
     """
+
+    __slots__ = (
+        '_lazywhere', '_rev_lazywhere', 'use_get', '_bind_to_col',
+        '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns')
 
     def __init__(self, parent):
         super(LazyLoader, self).__init__(parent)
@@ -624,7 +644,7 @@ class LazyLoader(AbstractRelationshipLoader):
             # "lazyload" option on a "no load"
             # attribute - "eager" attributes always have a
             # class-level lazyloader installed.
-            set_lazy_callable = InstanceState._row_processor(
+            set_lazy_callable = InstanceState._instance_level_callable_processor(
                 mapper.class_manager,
                 LoadLazyAttribute(key), key)
 
@@ -661,6 +681,8 @@ class LoadLazyAttribute(object):
 
 @properties.RelationshipProperty.strategy_for(lazy="immediate")
 class ImmediateLoader(AbstractRelationshipLoader):
+    __slots__ = ()
+
     def init_class_attribute(self, mapper):
         self.parent_property.\
             _get_strategy_by_cls(LazyLoader).\
@@ -684,6 +706,8 @@ class ImmediateLoader(AbstractRelationshipLoader):
 @log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy="subquery")
 class SubqueryLoader(AbstractRelationshipLoader):
+    __slots__ = 'join_depth',
+
     def __init__(self, parent):
         super(SubqueryLoader, self).__init__(parent)
         self.join_depth = self.parent_property.join_depth
@@ -1069,6 +1093,9 @@ class JoinedLoader(AbstractRelationshipLoader):
     using joined eager loading.
 
     """
+
+    __slots__ = 'join_depth',
+
     def __init__(self, parent):
         super(JoinedLoader, self).__init__(parent)
         self.join_depth = self.parent_property.join_depth
@@ -1130,16 +1157,12 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         path = path[self.mapper]
 
-        for value in self.mapper._iterate_polymorphic_properties(
-                mappers=with_polymorphic):
-            value.setup(
-                context,
-                entity,
-                path,
-                clauses,
-                parentmapper=self.mapper,
-                column_collection=add_to_collection,
-                chained_from_outerjoin=chained_from_outerjoin)
+        loading._setup_entity_query(
+            context, self.mapper, entity,
+            path, clauses, add_to_collection,
+            with_polymorphic=with_polymorphic,
+            parentmapper=self.mapper,
+            chained_from_outerjoin=chained_from_outerjoin)
 
         if with_poly_info is not None and \
                 None in set(context.secondary_columns):
@@ -1431,7 +1454,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         if eager_adapter is not False:
             key = self.key
 
-            _instance = loading.instance_processor(
+            _instance = loading._instance_processor(
                 self.mapper,
                 context,
                 result,

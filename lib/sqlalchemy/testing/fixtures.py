@@ -192,9 +192,8 @@ class TablesTest(TestBase):
     def sql_count_(self, count, fn):
         self.assert_sql_count(self.bind, fn, count)
 
-    def sql_eq_(self, callable_, statements, with_sequences=None):
-        self.assert_sql(self.bind,
-                        callable_, statements, with_sequences)
+    def sql_eq_(self, callable_, statements):
+        self.assert_sql(self.bind, callable_, statements)
 
     @classmethod
     def _load_fixtures(cls):

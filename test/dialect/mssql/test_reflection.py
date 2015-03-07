@@ -24,14 +24,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             Column('user_name', types.VARCHAR(20), nullable=False),
             Column('test1', types.CHAR(5), nullable=False),
             Column('test2', types.Float(5), nullable=False),
-            Column('test3', types.Text),
+            Column('test3', types.Text('max')),
             Column('test4', types.Numeric, nullable=False),
             Column('test5', types.DateTime),
             Column('parent_user_id', types.Integer,
                    ForeignKey('engine_users.user_id')),
             Column('test6', types.DateTime, nullable=False),
-            Column('test7', types.Text),
-            Column('test8', types.LargeBinary),
+            Column('test7', types.Text('max')),
+            Column('test8', types.LargeBinary('max')),
             Column('test_passivedefault2', types.Integer,
                    server_default='5'),
             Column('test9', types.BINARY(100)),
@@ -203,6 +203,11 @@ class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'
+
+    # crashes on freetds 0.91, not worth it
+    __skip_if__ = (
+        lambda: testing.requires.mssql_freetds.enabled,
+    )
 
     def setup(self):
         self.col_num = 150

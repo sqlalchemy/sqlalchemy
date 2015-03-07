@@ -13,7 +13,7 @@ A high level view and getting set up.
 
 :doc:`Overview <intro>` |
 :ref:`Installation Guide <installation>` |
-:doc:`Frequently Asked Questions <faq>` |
+:doc:`Frequently Asked Questions <faq/index>` |
 :doc:`Migration from 0.9 <changelog/migration_10>` |
 :doc:`Glossary <glossary>` |
 :doc:`Changelog catalog <changelog/index>`
@@ -31,33 +31,24 @@ of Python objects, proceed first to the tutorial.
 
 * **ORM Configuration:**
   :doc:`Mapper Configuration <orm/mapper_config>` |
-  :doc:`Relationship Configuration <orm/relationships>` |
-  :doc:`Inheritance Mapping <orm/inheritance>` |
-  :doc:`Advanced Collection Configuration <orm/collections>`
+  :doc:`Relationship Configuration <orm/relationships>`
 
 * **Configuration Extensions:**
-  :doc:`Declarative Extension <orm/extensions/declarative>` |
+  :doc:`Declarative Extension <orm/extensions/declarative/index>` |
   :doc:`Association Proxy <orm/extensions/associationproxy>` |
   :doc:`Hybrid Attributes <orm/extensions/hybrid>` |
-  :doc:`Automap <orm/extensions/automap>` (**new**) |
-  :doc:`Mutable Scalars <orm/extensions/mutable>` |
-  :doc:`Ordered List <orm/extensions/orderinglist>`
+  :doc:`Automap <orm/extensions/automap>` |
+  :doc:`Mutable Scalars <orm/extensions/mutable>`
 
 * **ORM Usage:**
   :doc:`Session Usage and Guidelines <orm/session>` |
-  :doc:`Query API reference <orm/query>` |
-  :doc:`Relationship Loading Techniques <orm/loading>`
+  :doc:`Loading Objects <orm/loading_objects>`
 
 * **Extending the ORM:**
-  :doc:`ORM Event Interfaces <orm/events>` |
-  :doc:`Internals API <orm/internals>`
+  :doc:`ORM Events and Internals <orm/extending>`
 
 * **Other:**
-  :doc:`Introduction to Examples <orm/examples>` |
-  :doc:`Deprecated Event Interfaces <orm/deprecated>` |
-  :doc:`ORM Exceptions <orm/exceptions>` |
-  :doc:`Horizontal Sharding <orm/extensions/horizontal_shard>` |
-  :doc:`Alternate Instrumentation <orm/extensions/instrumentation>`
+  :doc:`Introduction to Examples <orm/examples>`
 
 SQLAlchemy Core
 ===============
@@ -78,6 +69,7 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
   :doc:`Connection Pooling <core/pooling>`
 
 * **Schema Definition:**
+  :doc:`Overview <core/schema>` |
   :ref:`Tables and Columns <metadata_describing_toplevel>` |
   :ref:`Database Introspection (Reflection) <metadata_reflection_toplevel>` |
   :ref:`Insert/Update Defaults <metadata_defaults_toplevel>` |
@@ -86,23 +78,15 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
 
 * **Datatypes:**
   :ref:`Overview <types_toplevel>` |
-  :ref:`Generic Types <types_generic>` |
-  :ref:`SQL Standard Types <types_sqlstandard>` |
-  :ref:`Vendor Specific Types <types_vendor>` |
   :ref:`Building Custom Types <types_custom>` |
-  :ref:`Defining New Operators <types_operators>` |
   :ref:`API <types_api>`
 
-* **Extending the Core:**
-  :doc:`SQLAlchemy Events <core/event>` |
+* **Core Basics:**
+  :doc:`Overview <core/api_basics>` |
+  :doc:`Runtime Inspection API <core/inspection>` |
+  :doc:`Event System <core/event>` |
   :doc:`Core Event Interfaces <core/events>` |
   :doc:`Creating Custom SQL Constructs <core/compiler>` |
-  :doc:`Internals API <core/internals>`
-
-* **Other:**
-  :doc:`Runtime Inspection API <core/inspection>` |
-  :doc:`core/interfaces` |
-  :doc:`core/exceptions`
 
 
 Dialect Documentation

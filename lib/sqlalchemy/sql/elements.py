@@ -1279,7 +1279,7 @@ class TextClause(Executable, ClauseElement):
 
         E.g.::
 
-            fom sqlalchemy import text
+            from sqlalchemy import text
 
             t = text("SELECT * FROM users")
             result = connection.execute(t)
@@ -2146,7 +2146,7 @@ class Case(ColumnElement):
           result of the ``CASE`` construct if all expressions within
           :paramref:`.case.whens` evaluate to false.  When omitted, most
           databases will produce a result of NULL if none of the "when"
-          expressions evaulate to true.
+          expressions evaluate to true.
 
 
         """
@@ -2763,7 +2763,7 @@ class BinaryExpression(ColumnElement):
                 self.right,
                 self.negate,
                 negate=self.operator,
-                type_=type_api.BOOLEANTYPE,
+                type_=self.type,
                 modifiers=self.modifiers)
         else:
             return super(BinaryExpression, self)._negate()
@@ -3387,7 +3387,7 @@ class ReleaseSavepointClause(_IdentifiedClause):
     __visit_name__ = 'release_savepoint'
 
 
-class quoted_name(util.text_type):
+class quoted_name(util.MemoizedSlots, util.text_type):
     """Represent a SQL identifier combined with quoting preferences.
 
     :class:`.quoted_name` is a Python unicode/str subclass which
@@ -3431,6 +3431,8 @@ class quoted_name(util.text_type):
 
     """
 
+    __slots__ = 'quote', 'lower', 'upper'
+
     def __new__(cls, value, quote):
         if value is None:
             return None
@@ -3450,15 +3452,13 @@ class quoted_name(util.text_type):
     def __reduce__(self):
         return quoted_name, (util.text_type(self), self.quote)
 
-    @util.memoized_instancemethod
-    def lower(self):
+    def _memoized_method_lower(self):
         if self.quote:
             return self
         else:
             return util.text_type(self).lower()
 
-    @util.memoized_instancemethod
-    def upper(self):
+    def _memoized_method_upper(self):
         if self.quote:
             return self
         else:
@@ -3474,6 +3474,8 @@ class quoted_name(util.text_type):
 class _truncated_label(quoted_name):
     """A unicode subclass used to identify symbolic "
     "names that may require truncation."""
+
+    __slots__ = ()
 
     def __new__(cls, value, quote=None):
         quote = getattr(value, "quote", quote)
@@ -3531,6 +3533,7 @@ class conv(_truncated_label):
         :ref:`constraint_naming_conventions`
 
     """
+    __slots__ = ()
 
 
 class _defer_name(_truncated_label):
@@ -3538,6 +3541,8 @@ class _defer_name(_truncated_label):
     generation.
 
     """
+    __slots__ = ()
+
     def __new__(cls, value):
         if value is None:
             return _NONE_NAME
@@ -3552,6 +3557,7 @@ class _defer_name(_truncated_label):
 
 class _defer_none_name(_defer_name):
     """indicate a 'deferred' name that was ultimately the value None."""
+    __slots__ = ()
 
 _NONE_NAME = _defer_none_name("_unnamed_")
 
@@ -3565,6 +3571,8 @@ _generated_label = _truncated_label
 class _anonymous_label(_truncated_label):
     """A unicode subclass used to identify anonymously
     generated names."""
+
+    __slots__ = ()
 
     def __add__(self, other):
         return _anonymous_label(
@@ -3732,7 +3740,8 @@ def _literal_as_text(element, warn=False):
         return _const_expr(element)
     else:
         raise exc.ArgumentError(
-            "SQL expression object or string expected."
+            "SQL expression object or string expected, got object of type %r "
+            "instead" % type(element)
         )
 
 

@@ -14,7 +14,6 @@ import codecs
 
 from .type_api import TypeEngine, TypeDecorator, to_instance
 from .elements import quoted_name, type_coerce, _defer_name
-from .default_comparator import _DefaultColumnComparator
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
 from . import operators
@@ -894,7 +893,7 @@ class LargeBinary(_Binary):
 
         :param length: optional, a length for the column for use in
           DDL statements, for those BLOB types that accept a length
-          (i.e. MySQL).  It does *not* produce a small BINARY/VARBINARY
+          (i.e. MySQL).  It does *not* produce a *lengthed* BINARY/VARBINARY
           type - use the BINARY/VARBINARY types specifically for those.
           May be safely omitted if no ``CREATE
           TABLE`` will be issued.  Certain databases may require a
@@ -1147,6 +1146,7 @@ class Enum(String, SchemaType):
 
     def __repr__(self):
         return util.generic_repr(self,
+                                 additional_kw=[('native_enum', True)],
                                  to_inspect=[Enum, SchemaType],
                                  )
 
@@ -1654,10 +1654,26 @@ class NullType(TypeEngine):
     comparator_factory = Comparator
 
 
+class MatchType(Boolean):
+    """Refers to the return type of the MATCH operator.
+
+    As the :meth:`.ColumnOperators.match` is probably the most open-ended
+    operator in generic SQLAlchemy Core, we can't assume the return type
+    at SQL evaluation time, as MySQL returns a floating point, not a boolean,
+    and other backends might do something different.    So this type
+    acts as a placeholder, currently subclassing :class:`.Boolean`.
+    The type allows dialects to inject result-processing functionality
+    if needed, and on MySQL will return floating-point values.
+
+    .. versionadded:: 1.0.0
+
+    """
+
 NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 INTEGERTYPE = Integer()
+MATCHTYPE = MatchType()
 
 _type_map = {
     int: Integer(),
@@ -1685,21 +1701,7 @@ type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
+type_api.MATCHTYPE = MATCHTYPE
 type_api._type_map = _type_map
 
-# this one, there's all kinds of ways to play it, but at the EOD
-# there's just a giant dependency cycle between the typing system and
-# the expression element system, as you might expect.   We can use
-# importlaters or whatnot, but the typing system just necessarily has
-# to have some kind of connection like this.  right now we're injecting the
-# _DefaultColumnComparator implementation into the TypeEngine.Comparator
-# interface.  Alternatively TypeEngine.Comparator could have an "impl"
-# injected, though just injecting the base is simpler, error free, and more
-# performant.
-
-
-class Comparator(_DefaultColumnComparator):
-    BOOLEANTYPE = BOOLEANTYPE
-
-TypeEngine.Comparator.__bases__ = (
-    Comparator, ) + TypeEngine.Comparator.__bases__
+TypeEngine.Comparator.BOOLEANTYPE = BOOLEANTYPE

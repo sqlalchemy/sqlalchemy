@@ -39,6 +39,14 @@ MySQL-python version 1.2.2 has a serious memory leak related
 to unicode conversion, a feature which is disabled via ``use_unicode=0``.
 It is strongly advised to use the latest version of MySQL-Python.
 
+Using MySQLdb with Google Cloud SQL
+-----------------------------------
+
+Google Cloud SQL now recommends use of the MySQLdb dialect.  Connect
+using a URL like the following::
+
+    mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>
+
 """
 
 from .base import (MySQLDialect, MySQLExecutionContext,
@@ -77,7 +85,7 @@ class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
 
 class MySQLDialect_mysqldb(MySQLDialect):
     driver = 'mysqldb'
-    supports_unicode_statements = False
+    supports_unicode_statements = True
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
@@ -102,12 +110,13 @@ class MySQLDialect_mysqldb(MySQLDialect):
         # https://github.com/farcepest/MySQLdb1/commit/cd44524fef63bd3fcb71947392326e9742d520e8
         # specific issue w/ the utf8_bin collation and unicode returns
 
-        has_utf8_bin = connection.scalar(
-            "show collation where %s = 'utf8' and %s = 'utf8_bin'"
-            % (
-                self.identifier_preparer.quote("Charset"),
-                self.identifier_preparer.quote("Collation")
-            ))
+        has_utf8_bin = self.server_version_info > (5, ) and \
+            connection.scalar(
+                "show collation where %s = 'utf8' and %s = 'utf8_bin'"
+                % (
+                    self.identifier_preparer.quote("Charset"),
+                    self.identifier_preparer.quote("Collation")
+                ))
         if has_utf8_bin:
             additional_tests = [
                 sql.collate(sql.cast(

@@ -1,3 +1,4 @@
+
 ==============
 0.9 Changelog
 ==============
@@ -12,6 +13,230 @@
 
 .. changelog::
     :version: 0.9.9
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3310
+
+        Fixed bugs in ORM object comparisons where comparison of
+        many-to-one ``!= None`` would fail if the source were an aliased
+        class, or if the query needed to apply special aliasing to the
+        expression due to aliased joins or polymorphic querying; also fixed
+        bug in the case where comparing a many-to-one to an object state
+        would fail if the query needed to apply special aliasing
+        due to aliased joins or polymorphic querying.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3309
+
+        Fixed bug where internal assertion would fail in the case where
+        an ``after_rollback()`` handler for a :class:`.Session` incorrectly
+        adds state to that :class:`.Session` within the handler, and the task
+        to warn and remove this state (established by :ticket:`2389`) attempts
+        to proceed.
+
+    .. change::
+        :tags: bug, orm
+        :pullreq: github:147
+
+        Fixed bug where TypeError raised when :meth:`.Query.join` called
+        with unknown kw arguments would raise its own TypeError due
+        to broken formatting.  Pull request courtesy Malthe Borch.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3302
+
+        Fixed bug in :class:`.Connection` and pool where the
+        :meth:`.Connection.invalidate` method, or an invalidation due
+        to a database disconnect, would fail if the
+        ``isolation_level`` parameter had been used with
+        :meth:`.Connection.execution_options`; the "finalizer" that resets
+        the isolation level would be called on the no longer opened connection.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3296
+
+        Added new parameter :paramref:`.Session.connection.execution_options`
+        which may be used to set up execution options on a :class:`.Connection`
+        when it is first checked out, before the transaction has begun.
+        This is used to set up options such as isolation level on the
+        connection before the transaction starts.
+
+        .. seealso::
+
+            :ref:`session_transaction_isolation` - new documentation section
+            detailing best practices for setting transaction isolation with
+            sessions.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3296
+
+        A warning is emitted if the ``isolation_level`` parameter is used
+        with :meth:`.Connection.execution_options` when a :class:`.Transaction`
+        is in play; DBAPIs and/or SQLAlchemy dialects such as psycopg2,
+        MySQLdb may implicitly rollback or commit the transaction, or
+        not change the setting til next transaction, so this is never safe.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3300
+
+        Fixed bug in lazy loading SQL construction whereby a complex
+        primaryjoin that referred to the same "local" column multiple
+        times in the "column that points to itself" style of self-referential
+        join would not be substituted in all cases.   The logic to determine
+        substitutions here has been reworked to be more open-ended.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 2940
+
+        Repaired support for Postgresql UUID types in conjunction with
+        the ARRAY type when using psycopg2.  The psycopg2 dialect now
+        employs use of the psycopg2.extras.register_uuid() hook
+        so that UUID values are always passed to/from the DBAPI as
+        UUID() objects.   The :paramref:`.UUID.as_uuid` flag is still
+        honored, except with psycopg2 we need to convert returned
+        UUID objects back into strings when this is disabled.
+
+    .. change::
+        :tags: bug, postgresql
+        :pullreq: github:145
+
+        Added support for the :class:`postgresql.JSONB` datatype when
+        using psycopg2 2.5.4 or greater, which features native conversion
+        of JSONB data so that SQLAlchemy's converters must be disabled;
+        additionally, the newly added psycopg2 extension
+        ``extras.register_default_jsonb`` is used to establish a JSON
+        deserializer passed to the dialect via the ``json_deserializer``
+        argument.  Also repaired the Postgresql integration tests which
+        weren't actually round-tripping the JSONB type as opposed to the
+        JSON type.  Pull request courtesy Mateusz Susik.
+
+    .. change::
+        :tags: bug, postgresql
+
+        Repaired the use of the "array_oid" flag when registering the
+        HSTORE type with older psycopg2 versions < 2.4.3, which does not
+        support this flag, as well as use of the native json serializer
+        hook "register_default_json" with user-defined ``json_deserializer``
+        on psycopg2 versions < 2.5, which does not include native json.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 3298, 1765
+
+        Fixed bug in 0.9's foreign key setup system, such that
+        the logic used to link a :class:`.ForeignKey` to its parent could fail
+        when the foreign key used "link_to_name=True" in conjunction with
+        a target :class:`.Table` that would not receive its parent column until
+        later, such as within a reflection + "useexisting" scenario,
+        if the target column in fact had a key value different from its name,
+        as would occur in reflection if column reflect events were used to
+        alter the .key of reflected :class:`.Column` objects so that the
+        link_to_name becomes significant.  Also repaired support for column
+        type via FK transmission in a similar way when target columns had a
+        different key and were referenced using link_to_name.
+
+    .. change::
+        :tags: feature, engine
+        :versions: 1.0.0
+
+        Added new user-space accessors for viewing transaction isolation
+        levels; :meth:`.Connection.get_isolation_level`,
+        :attr:`.Connection.default_isolation_level`.
+
+    .. change::
+        :tags: bug, postgresql
+        :versions: 1.0.0
+        :tickets: 3174
+
+        Fixed bug where Postgresql dialect would fail to render an
+        expression in an :class:`.Index` that did not correspond directly
+        to a table-bound column; typically when a :func:`.text` construct
+        was one of the expressions within the index; or could misinterpret the
+        list of expressions if one or more of them were such an expression.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 1.0.0
+        :tickets: 3287
+
+        The "wildcard" loader options, in particular the one set up by
+        the :func:`.orm.load_only` option to cover all attributes not
+        explicitly mentioned, now takes into account the superclasses
+        of a given entity, if that entity is mapped with inheritance mapping,
+        so that attribute names within the superclasses are also omitted
+        from the load.  Additionally, the polymorphic discriminator column
+        is unconditionally included in the list, just in the same way that
+        primary key columns are, so that even with load_only() set up,
+        polymorphic loading of subtypes continues to function correctly.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :pullreq: bitbucket:41
+
+        Added the ``native_enum`` flag to the ``__repr__()`` output
+        of :class:`.Enum`, which is mostly important when using it with
+        Alembic autogenerate.  Pull request courtesy Dimitris Theodorou.
+
+    .. change::
+        :tags: bug, orm, pypy
+        :versions: 1.0.0
+        :tickets: 3285
+
+        Fixed bug where if an exception were thrown at the start of a
+        :class:`.Query` before it fetched results, particularly when
+        row processors can't be formed, the cursor would stay open with
+        results pending and not actually be closed.  This is typically only
+        an issue on an interpreter like Pypy where the cursor isn't
+        immediately GC'ed, and can in some circumstances lead to transactions/
+        locks being open longer than is desirable.
+
+    .. change::
+        :tags: change, mysql
+        :versions: 1.0.0
+        :tickets: 3275
+
+        The ``gaerdbms`` dialect is no longer necessary, and emits a
+        deprecation warning.  Google now recommends using the MySQLdb
+        dialect directly.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 1.0.0
+        :tickets: 3278
+
+        Fixed bug where using a :class:`.TypeDecorator` that implemented
+        a type that was also a :class:`.TypeDecorator` would fail with
+        Python's "Cannot create a consistent method resolution order (MRO)"
+        error, when any kind of SQL comparison expression were used against
+        an object using this type.
+
+    .. change::
+        :tags: bug, mysql
+        :versions: 1.0.0
+        :tickets: 3274
+
+        Added a version check to the MySQLdb dialect surrounding the
+        check for 'utf8_bin' collation, as this fails on MySQL server < 5.0.
+
+    .. change::
+        :tags: enhancement, orm
+        :versions: 1.0.0
+
+        Added new method :meth:`.Session.invalidate`, functions similarly
+        to :meth:`.Session.close`, except also calls
+        :meth:`.Connection.invalidate`
+        on all connections, guaranteeing that they will not be returned to
+        the connection pool.  This is useful in situations e.g. dealing
+        with gevent timeouts when it is not safe to use the connection further,
+        even for rollbacks.
 
     .. change::
         :tags: bug, examples
@@ -274,7 +499,7 @@
         :versions: 1.0.0
         :pullrequest: bitbucket:28
 
-        Fixed bug where :ref:`ext.mutable.MutableDict`
+        Fixed bug where :class:`.ext.mutable.MutableDict`
         failed to implement the ``update()`` dictionary method, thus
         not catching changes. Pull request courtesy Matt Chisholm.
 
@@ -283,9 +508,9 @@
         :versions: 1.0.0
         :pullrequest: bitbucket:27
 
-        Fixed bug where a custom subclass of :ref:`ext.mutable.MutableDict`
+        Fixed bug where a custom subclass of :class:`.ext.mutable.MutableDict`
         would not show up in a "coerce" operation, and would instead
-        return a plain :ref:`ext.mutable.MutableDict`.  Pull request
+        return a plain :class:`.ext.mutable.MutableDict`.  Pull request
         courtesy Matt Chisholm.
 
     .. change::
@@ -517,7 +742,7 @@
         :tags: bug, orm
         :tickets: 3117
 
-        The "evaulator" for query.update()/delete() won't work with multi-table
+        The "evaluator" for query.update()/delete() won't work with multi-table
         updates, and needs to be set to `synchronize_session=False` or
         `synchronize_session='fetch'`; a warning is now emitted.  In
         1.0 this will be promoted to a full exception.
@@ -537,7 +762,7 @@
         :tickets: 3078
 
         Added kw argument ``postgresql_regconfig`` to the
-        :meth:`.Operators.match` operator, allows the "reg config" argument
+        :meth:`.ColumnOperators.match` operator, allows the "reg config" argument
         to be specified to the ``to_tsquery()`` function emitted.
         Pull request courtesy Jonathan Vanasco.
 
@@ -826,7 +1051,7 @@
         translated through some kind of SQL function or expression.  This
         is kind of experimental, but the first proof of concept is a
         "materialized path" join condition where a path string is compared
-        to itself using "like".   The :meth:`.Operators.like` operator has
+        to itself using "like".   The :meth:`.ColumnOperators.like` operator has
         also been added to the list of valid operators to use in a primaryjoin
         condition.
 
@@ -1899,8 +2124,8 @@
         Fixed an issue where the C extensions in Py3K are using the wrong API
         to specify the top-level module function, which breaks
         in Python 3.4b2.  Py3.4b2 changes PyMODINIT_FUNC to return
-        "void" instead of "PyObject *", so we now make sure to use
-        "PyMODINIT_FUNC" instead of "PyObject *" directly.  Pull request
+        "void" instead of ``PyObject *``, so we now make sure to use
+        "PyMODINIT_FUNC" instead of ``PyObject *`` directly.  Pull request
         courtesy cgohlke.
 
     .. change::
@@ -2884,7 +3109,7 @@
         in an ``ORDER BY`` clause, if that label is also referred to
         in the columns clause of the select, instead of rewriting the
         full expression.  This gives the database a better chance to
-        optimize the evaulation of the same expression in two different
+        optimize the evaluation of the same expression in two different
         contexts.
 
         .. seealso::

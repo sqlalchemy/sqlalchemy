@@ -22,8 +22,8 @@ def _legacy_signature(since, argnames, converter=None):
     return leg
 
 
-def _wrap_fn_for_legacy(dispatch_descriptor, fn, argspec):
-    for since, argnames, conv in dispatch_descriptor.legacy_signatures:
+def _wrap_fn_for_legacy(dispatch_collection, fn, argspec):
+    for since, argnames, conv in dispatch_collection.legacy_signatures:
         if argnames[-1] == "**kw":
             has_kw = True
             argnames = argnames[0:-1]
@@ -40,7 +40,7 @@ def _wrap_fn_for_legacy(dispatch_descriptor, fn, argspec):
                     return fn(*conv(*args))
             else:
                 def wrap_leg(*args, **kw):
-                    argdict = dict(zip(dispatch_descriptor.arg_names, args))
+                    argdict = dict(zip(dispatch_collection.arg_names, args))
                     args = [argdict[name] for name in argnames]
                     if has_kw:
                         return fn(*args, **kw)
@@ -58,16 +58,16 @@ def _indent(text, indent):
     )
 
 
-def _standard_listen_example(dispatch_descriptor, sample_target, fn):
+def _standard_listen_example(dispatch_collection, sample_target, fn):
     example_kw_arg = _indent(
         "\n".join(
             "%(arg)s = kw['%(arg)s']" % {"arg": arg}
-            for arg in dispatch_descriptor.arg_names[0:2]
+            for arg in dispatch_collection.arg_names[0:2]
         ),
         "    ")
-    if dispatch_descriptor.legacy_signatures:
+    if dispatch_collection.legacy_signatures:
         current_since = max(since for since, args, conv
-                            in dispatch_descriptor.legacy_signatures)
+                            in dispatch_collection.legacy_signatures)
     else:
         current_since = None
     text = (
@@ -80,7 +80,7 @@ def _standard_listen_example(dispatch_descriptor, sample_target, fn):
         "\n    # ... (event handling logic) ...\n"
     )
 
-    if len(dispatch_descriptor.arg_names) > 3:
+    if len(dispatch_collection.arg_names) > 3:
         text += (
 
             "\n# named argument style (new in 0.9)\n"
@@ -96,17 +96,17 @@ def _standard_listen_example(dispatch_descriptor, sample_target, fn):
         "current_since": " (arguments as of %s)" %
         current_since if current_since else "",
         "event_name": fn.__name__,
-        "has_kw_arguments": ", **kw" if dispatch_descriptor.has_kw else "",
-        "named_event_arguments": ", ".join(dispatch_descriptor.arg_names),
+        "has_kw_arguments": ", **kw" if dispatch_collection.has_kw else "",
+        "named_event_arguments": ", ".join(dispatch_collection.arg_names),
         "example_kw_arg": example_kw_arg,
         "sample_target": sample_target
     }
     return text
 
 
-def _legacy_listen_examples(dispatch_descriptor, sample_target, fn):
+def _legacy_listen_examples(dispatch_collection, sample_target, fn):
     text = ""
-    for since, args, conv in dispatch_descriptor.legacy_signatures:
+    for since, args, conv in dispatch_collection.legacy_signatures:
         text += (
             "\n# legacy calling style (pre-%(since)s)\n"
             "@event.listens_for(%(sample_target)s, '%(event_name)s')\n"
@@ -117,7 +117,7 @@ def _legacy_listen_examples(dispatch_descriptor, sample_target, fn):
                 "since": since,
                 "event_name": fn.__name__,
                 "has_kw_arguments": " **kw"
-                if dispatch_descriptor.has_kw else "",
+                if dispatch_collection.has_kw else "",
                 "named_event_arguments": ", ".join(args),
                 "sample_target": sample_target
             }
@@ -125,8 +125,8 @@ def _legacy_listen_examples(dispatch_descriptor, sample_target, fn):
     return text
 
 
-def _version_signature_changes(dispatch_descriptor):
-    since, args, conv = dispatch_descriptor.legacy_signatures[0]
+def _version_signature_changes(dispatch_collection):
+    since, args, conv = dispatch_collection.legacy_signatures[0]
     return (
         "\n.. versionchanged:: %(since)s\n"
         "    The ``%(event_name)s`` event now accepts the \n"
@@ -135,14 +135,14 @@ def _version_signature_changes(dispatch_descriptor):
         "    signature(s) listed above will be automatically \n"
         "    adapted to the new signature." % {
             "since": since,
-            "event_name": dispatch_descriptor.__name__,
-            "named_event_arguments": ", ".join(dispatch_descriptor.arg_names),
-            "has_kw_arguments": ", **kw" if dispatch_descriptor.has_kw else ""
+            "event_name": dispatch_collection.name,
+            "named_event_arguments": ", ".join(dispatch_collection.arg_names),
+            "has_kw_arguments": ", **kw" if dispatch_collection.has_kw else ""
         }
     )
 
 
-def _augment_fn_docs(dispatch_descriptor, parent_dispatch_cls, fn):
+def _augment_fn_docs(dispatch_collection, parent_dispatch_cls, fn):
     header = ".. container:: event_signatures\n\n"\
         "     Example argument forms::\n"\
         "\n"
@@ -152,16 +152,16 @@ def _augment_fn_docs(dispatch_descriptor, parent_dispatch_cls, fn):
         header +
         _indent(
             _standard_listen_example(
-                dispatch_descriptor, sample_target, fn),
+                dispatch_collection, sample_target, fn),
             " " * 8)
     )
-    if dispatch_descriptor.legacy_signatures:
+    if dispatch_collection.legacy_signatures:
         text += _indent(
             _legacy_listen_examples(
-                dispatch_descriptor, sample_target, fn),
+                dispatch_collection, sample_target, fn),
             " " * 8)
 
-        text += _version_signature_changes(dispatch_descriptor)
+        text += _version_signature_changes(dispatch_collection)
 
     return util.inject_docstring_text(fn.__doc__,
                                       text,

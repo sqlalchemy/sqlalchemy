@@ -143,6 +143,7 @@ class CompositeProperty(DescriptorProperty):
           class.  **Deprecated.**  Please see :class:`.AttributeEvents`.
 
         """
+        super(CompositeProperty, self).__init__()
 
         self.attrs = attrs
         self.composite_class = class_
@@ -471,6 +472,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
         return comparator_callable
 
     def __init__(self):
+        super(ConcreteInheritedProperty, self).__init__()
         def warn():
             raise AttributeError("Concrete %s does not implement "
                                  "attribute %r at the instance level.  Add "
@@ -555,6 +557,7 @@ class SynonymProperty(DescriptorProperty):
             more complicated attribute-wrapping schemes than synonyms.
 
         """
+        super(SynonymProperty, self).__init__()
 
         self.name = name
         self.map_column = map_column
@@ -684,6 +687,7 @@ class ComparableProperty(DescriptorProperty):
             .. versionadded:: 1.0.0
 
         """
+        super(ComparableProperty, self).__init__()
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
         self.doc = doc or (descriptor and descriptor.__doc__) or None

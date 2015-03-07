@@ -180,6 +180,51 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update().values(plain=5), 'UPDATE s SET "plain"=:"plain"'
         )
 
+    def test_cte(self):
+        part = table(
+            'part',
+            column('part'),
+            column('sub_part'),
+            column('quantity')
+        )
+
+        included_parts = select([
+            part.c.sub_part, part.c.part, part.c.quantity
+        ]).where(part.c.part == "p1").\
+            cte(name="included_parts", recursive=True).\
+            suffix_with(
+                "search depth first by part set ord1",
+                "cycle part set y_cycle to 1 default 0", dialect='oracle')
+
+        incl_alias = included_parts.alias("pr1")
+        parts_alias = part.alias("p")
+        included_parts = included_parts.union_all(
+            select([
+                parts_alias.c.sub_part,
+                parts_alias.c.part, parts_alias.c.quantity
+            ]).where(parts_alias.c.part == incl_alias.c.sub_part)
+        )
+
+        q = select([
+            included_parts.c.sub_part,
+            func.sum(included_parts.c.quantity).label('total_quantity')]).\
+            group_by(included_parts.c.sub_part)
+
+        self.assert_compile(
+            q,
+            "WITH included_parts(sub_part, part, quantity) AS "
+            "(SELECT part.sub_part AS sub_part, part.part AS part, "
+            "part.quantity AS quantity FROM part WHERE part.part = :part_1 "
+            "UNION ALL SELECT p.sub_part AS sub_part, p.part AS part, "
+            "p.quantity AS quantity FROM part p, included_parts pr1 "
+            "WHERE p.part = pr1.sub_part) "
+            "search depth first by part set ord1 cycle part set "
+            "y_cycle to 1 default 0  "
+            "SELECT included_parts.sub_part, sum(included_parts.quantity) "
+            "AS total_quantity FROM included_parts "
+            "GROUP BY included_parts.sub_part"
+        )
+
     def test_limit(self):
         t = table('sometable', column('col1'), column('col2'))
         s = select([t])
@@ -685,6 +730,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE GLOBAL TEMPORARY TABLE "
             "foo (x INTEGER) ON COMMIT PRESERVE ROWS"
         )
+
+
+    def test_create_table_compress(self):
+        m = MetaData()
+        tbl1 = Table('testtbl1', m, Column('data', Integer),
+                     oracle_compress=True)
+        tbl2 = Table('testtbl2', m, Column('data', Integer),
+                     oracle_compress="OLTP")
+
+        self.assert_compile(schema.CreateTable(tbl1),
+                            "CREATE TABLE testtbl1 (data INTEGER) COMPRESS")
+        self.assert_compile(schema.CreateTable(tbl2),
+                            "CREATE TABLE testtbl2 (data INTEGER) "
+                            "COMPRESS FOR OLTP")
+
+    def test_create_index_bitmap_compress(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', Integer))
+        idx1 = Index('idx1', tbl.c.data, oracle_compress=True)
+        idx2 = Index('idx2', tbl.c.data, oracle_compress=1)
+        idx3 = Index('idx3', tbl.c.data, oracle_bitmap=True)
+
+        self.assert_compile(schema.CreateIndex(idx1),
+                            "CREATE INDEX idx1 ON testtbl (data) COMPRESS")
+        self.assert_compile(schema.CreateIndex(idx2),
+                            "CREATE INDEX idx2 ON testtbl (data) COMPRESS 1")
+        self.assert_compile(schema.CreateIndex(idx3),
+                            "CREATE BITMAP INDEX idx3 ON testtbl (data)")
 
 
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1727,6 +1800,58 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
         m2 = MetaData(testing.db)
         Table('test_index_reflect', m2, autoload=True)
 
+
+def all_tables_compression_missing():
+    try:
+        testing.db.execute('SELECT compression FROM all_tables')
+        return False
+    except:
+        return True
+
+
+def all_tables_compress_for_missing():
+    try:
+        testing.db.execute('SELECT compress_for FROM all_tables')
+        return False
+    except:
+        return True
+
+
+class TableReflectionTest(fixtures.TestBase):
+    __only_on__ = 'oracle'
+
+    @testing.provide_metadata
+    @testing.fails_if(all_tables_compression_missing)
+    def test_reflect_basic_compression(self):
+        metadata = self.metadata
+
+        tbl = Table('test_compress', metadata,
+                    Column('data', Integer, primary_key=True),
+                    oracle_compress=True)
+        metadata.create_all()
+
+        m2 = MetaData(testing.db)
+
+        tbl = Table('test_compress', m2, autoload=True)
+        # Don't hardcode the exact value, but it must be non-empty
+        assert tbl.dialect_options['oracle']['compress']
+
+    @testing.provide_metadata
+    @testing.fails_if(all_tables_compress_for_missing)
+    def test_reflect_oltp_compression(self):
+        metadata = self.metadata
+
+        tbl = Table('test_compress', metadata,
+                    Column('data', Integer, primary_key=True),
+                    oracle_compress="OLTP")
+        metadata.create_all()
+
+        m2 = MetaData(testing.db)
+
+        tbl = Table('test_compress', m2, autoload=True)
+        assert tbl.dialect_options['oracle']['compress'] == "OLTP"
+
+
 class RoundTripIndexTest(fixtures.TestBase):
     __only_on__ = 'oracle'
 
@@ -1744,6 +1869,10 @@ class RoundTripIndexTest(fixtures.TestBase):
 
         # "group" is a keyword, so lower case
         normalind = Index('tableind', table.c.id_b, table.c.group)
+        compress1 = Index('compress1', table.c.id_a, table.c.id_b,
+                          oracle_compress=True)
+        compress2 = Index('compress2', table.c.id_a, table.c.id_b, table.c.col,
+                          oracle_compress=1)
 
         metadata.create_all()
         mirror = MetaData(testing.db)
@@ -1792,8 +1921,15 @@ class RoundTripIndexTest(fixtures.TestBase):
         )
         assert (Index, ('id_b', ), True) in reflected
         assert (Index, ('col', 'group'), True) in reflected
+
+        idx = reflected[(Index, ('id_a', 'id_b', ), False)]
+        assert idx.dialect_options['oracle']['compress'] == 2
+
+        idx = reflected[(Index, ('id_a', 'id_b', 'col', ), False)]
+        assert idx.dialect_options['oracle']['compress'] == 1
+
         eq_(len(reflectedtable.constraints), 1)
-        eq_(len(reflectedtable.indexes), 3)
+        eq_(len(reflectedtable.indexes), 5)
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
@@ -1938,3 +2074,23 @@ class DBLinkReflectionTest(fixtures.TestBase):
                 autoload_with=testing.db, oracle_resolve_synonyms=True)
         eq_(list(t.c.keys()), ['id', 'data'])
         eq_(list(t.primary_key), [t.c.id])
+
+
+class ServiceNameTest(fixtures.TestBase):
+    __only_on__ = 'oracle+cx_oracle'
+
+    def test_cx_oracle_service_name(self):
+        url_string = 'oracle+cx_oracle://scott:tiger@host/?service_name=hr'
+        eng = create_engine(url_string, _initialize=False)
+        cargs, cparams = eng.dialect.create_connect_args(eng.url)
+
+        assert 'SERVICE_NAME=hr' in cparams['dsn']
+        assert 'SID=hr' not in cparams['dsn']
+
+    def test_cx_oracle_service_name_bad(self):
+        url_string = 'oracle+cx_oracle://scott:tiger@host/hr1?service_name=hr2'
+        assert_raises(
+            exc.InvalidRequestError,
+            create_engine, url_string,
+            _initialize=False
+        )

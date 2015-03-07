@@ -180,16 +180,16 @@ ischema_names = {
 # _FBDate, etc. as bind/result functionality is required)
 
 class FBTypeCompiler(compiler.GenericTypeCompiler):
-    def visit_boolean(self, type_):
-        return self.visit_SMALLINT(type_)
+    def visit_boolean(self, type_, **kw):
+        return self.visit_SMALLINT(type_, **kw)
 
-    def visit_datetime(self, type_):
-        return self.visit_TIMESTAMP(type_)
+    def visit_datetime(self, type_, **kw):
+        return self.visit_TIMESTAMP(type_, **kw)
 
-    def visit_TEXT(self, type_):
+    def visit_TEXT(self, type_, **kw):
         return "BLOB SUB_TYPE 1"
 
-    def visit_BLOB(self, type_):
+    def visit_BLOB(self, type_, **kw):
         return "BLOB SUB_TYPE 0"
 
     def _extend_string(self, type_, basic):
@@ -199,16 +199,16 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return '%s CHARACTER SET %s' % (basic, charset)
 
-    def visit_CHAR(self, type_):
-        basic = super(FBTypeCompiler, self).visit_CHAR(type_)
+    def visit_CHAR(self, type_, **kw):
+        basic = super(FBTypeCompiler, self).visit_CHAR(type_, **kw)
         return self._extend_string(type_, basic)
 
-    def visit_VARCHAR(self, type_):
+    def visit_VARCHAR(self, type_, **kw):
         if not type_.length:
             raise exc.CompileError(
                 "VARCHAR requires a length on dialect %s" %
                 self.dialect.name)
-        basic = super(FBTypeCompiler, self).visit_VARCHAR(type_)
+        basic = super(FBTypeCompiler, self).visit_VARCHAR(type_, **kw)
         return self._extend_string(type_, basic)
 
 

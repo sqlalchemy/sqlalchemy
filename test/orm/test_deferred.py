@@ -2,10 +2,14 @@ import sqlalchemy as sa
 from sqlalchemy import testing, util
 from sqlalchemy.orm import mapper, deferred, defer, undefer, Load, \
     load_only, undefer_group, create_session, synonym, relationship, Session,\
-    joinedload, defaultload
+    joinedload, defaultload, aliased, contains_eager, with_polymorphic
 from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from test.orm import _fixtures
-from sqlalchemy.orm import strategies
+
+
+from .inheritance._poly_fixtures import Company, Person, Engineer, Manager, \
+    Boss, Machine, Paperwork, _Polymorphic
+
 
 class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
@@ -337,7 +341,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             )
 
     def test_locates_col(self):
-        """Manually adding a column to the result undefers the column."""
+        """changed in 1.0 - we don't search for deferred cols in the result
+        now.  """
 
         orders, Order = self.tables.orders, self.classes.Order
 
@@ -346,18 +351,40 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             'description': deferred(orders.c.description)})
 
         sess = create_session()
-        o1 = sess.query(Order).order_by(Order.id).first()
-        def go():
-            eq_(o1.description, 'order 1')
-        self.sql_count_(1, go)
-
-        sess = create_session()
         o1 = (sess.query(Order).
               order_by(Order.id).
               add_column(orders.c.description).first())[0]
         def go():
             eq_(o1.description, 'order 1')
-        self.sql_count_(0, go)
+        # prior to 1.0 we'd search in the result for this column
+        # self.sql_count_(0, go)
+        self.sql_count_(1, go)
+
+    def test_locates_col_rowproc_only(self):
+        """changed in 1.0 - we don't search for deferred cols in the result
+        now.
+
+        Because the loading for ORM Query and Query from a core select
+        is now split off, we test loading from a plain select()
+        separately.
+
+        """
+
+        orders, Order = self.tables.orders, self.classes.Order
+
+
+        mapper(Order, orders, properties={
+            'description': deferred(orders.c.description)})
+
+        sess = create_session()
+        stmt = sa.select([Order]).order_by(Order.id)
+        o1 = (sess.query(Order).
+              from_statement(stmt).all())[0]
+        def go():
+            eq_(o1.description, 'order 1')
+        # prior to 1.0 we'd search in the result for this column
+        # self.sql_count_(0, go)
+        self.sql_count_(1, go)
 
     def test_deep_options(self):
         users, items, order_items, Order, Item, User, orders = (self.tables.users,
@@ -593,5 +620,130 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             "ON users.id = addresses_1.user_id "
             "LEFT OUTER JOIN orders AS orders_1 ON users.id = orders_1.user_id"
         )
+
+
+class InheritanceTest(_Polymorphic):
+    __dialect__ = 'default'
+
+    def test_load_only_subclass(self):
+        s = Session()
+        q = s.query(Manager).options(load_only("status", "manager_name"))
+        self.assert_compile(
+            q,
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people JOIN managers "
+            "ON people.person_id = managers.person_id "
+            "ORDER BY people.person_id"
+        )
+
+    def test_load_only_subclass_and_superclass(self):
+        s = Session()
+        q = s.query(Boss).options(load_only("status", "manager_name"))
+        self.assert_compile(
+            q,
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people JOIN managers "
+            "ON people.person_id = managers.person_id JOIN boss "
+            "ON managers.person_id = boss.boss_id ORDER BY people.person_id"
+        )
+
+    def test_load_only_alias_subclass(self):
+        s = Session()
+        m1 = aliased(Manager, flat=True)
+        q = s.query(m1).options(load_only("status", "manager_name"))
+        self.assert_compile(
+            q,
+            "SELECT managers_1.person_id AS managers_1_person_id, "
+            "people_1.person_id AS people_1_person_id, "
+            "people_1.type AS people_1_type, "
+            "managers_1.status AS managers_1_status, "
+            "managers_1.manager_name AS managers_1_manager_name "
+            "FROM people AS people_1 JOIN managers AS "
+            "managers_1 ON people_1.person_id = managers_1.person_id "
+            "ORDER BY people_1.person_id"
+        )
+
+    def test_load_only_subclass_from_relationship_polymorphic(self):
+        s = Session()
+        wp = with_polymorphic(Person, [Manager], flat=True)
+        q = s.query(Company).join(Company.employees.of_type(wp)).options(
+            contains_eager(Company.employees.of_type(wp)).
+            load_only(wp.Manager.status, wp.Manager.manager_name)
+        )
+        self.assert_compile(
+            q,
+            "SELECT people_1.person_id AS people_1_person_id, "
+            "people_1.type AS people_1_type, "
+            "managers_1.person_id AS managers_1_person_id, "
+            "managers_1.status AS managers_1_status, "
+            "managers_1.manager_name AS managers_1_manager_name, "
+            "companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name "
+            "FROM companies JOIN (people AS people_1 LEFT OUTER JOIN "
+            "managers AS managers_1 ON people_1.person_id = "
+            "managers_1.person_id) ON companies.company_id = "
+            "people_1.company_id"
+        )
+
+    def test_load_only_subclass_from_relationship(self):
+        s = Session()
+        from sqlalchemy import inspect
+        inspect(Company).add_property("managers", relationship(Manager))
+        q = s.query(Company).join(Company.managers).options(
+            contains_eager(Company.managers).
+            load_only("status", "manager_name")
+        )
+        self.assert_compile(
+            q,
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, "
+            "managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM companies JOIN (people JOIN managers ON people.person_id = "
+            "managers.person_id) ON companies.company_id = people.company_id"
+        )
+
+
+    def test_defer_on_wildcard_subclass(self):
+        # pretty much the same as load_only except doesn't
+        # exclude the primary key
+
+        s = Session()
+        q = s.query(Manager).options(
+            defer(".*"), undefer("status"))
+        self.assert_compile(
+            q,
+            "SELECT managers.status AS managers_status "
+            "FROM people JOIN managers ON "
+            "people.person_id = managers.person_id ORDER BY people.person_id"
+        )
+
+    def test_defer_super_name_on_subclass(self):
+        s = Session()
+        q = s.query(Manager).options(defer("name"))
+        self.assert_compile(
+            q,
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.company_id AS people_company_id, "
+            "people.type AS people_type, managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people JOIN managers "
+            "ON people.person_id = managers.person_id "
+            "ORDER BY people.person_id"
+        )
+
+
 
 

@@ -1364,6 +1364,9 @@ class DisposedStates(fixtures.MappedTest):
     def test_close(self):
         self._test_session().close()
 
+    def test_invalidate(self):
+        self._test_session().invalidate()
+
     def test_expunge_all(self):
         self._test_session().expunge_all()
 
@@ -1446,7 +1449,9 @@ class SessionInterface(fixtures.TestBase):
         raises_('refresh', user_arg)
 
         instance_methods = self._public_session_methods() \
-            - self._class_methods
+            - self._class_methods - set([
+                'bulk_update_mappings', 'bulk_insert_mappings',
+                'bulk_save_objects'])
 
         eq_(watchdog, instance_methods,
             watchdog.symmetric_difference(instance_methods))

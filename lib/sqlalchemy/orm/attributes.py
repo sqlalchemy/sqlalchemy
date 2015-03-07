@@ -345,17 +345,15 @@ class Event(object):
 
     .. versionadded:: 0.9.0
 
-    """
+    :var impl: The :class:`.AttributeImpl` which is the current event
+     initiator.
 
-    impl = None
-    """The :class:`.AttributeImpl` which is the current event initiator.
-    """
-
-    op = None
-    """The symbol :attr:`.OP_APPEND`, :attr:`.OP_REMOVE` or :attr:`.OP_REPLACE`,
-    indicating the source operation.
+    :var op: The symbol :attr:`.OP_APPEND`, :attr:`.OP_REMOVE` or
+     :attr:`.OP_REPLACE`, indicating the source operation.
 
     """
+
+    __slots__ = 'impl', 'op', 'parent_token'
 
     def __init__(self, attribute_impl, op):
         self.impl = attribute_impl
@@ -455,6 +453,11 @@ class AttributeImpl(object):
 
         self.expire_missing = expire_missing
 
+    __slots__ = (
+        'class_', 'key', 'callable_', 'dispatch', 'trackparent',
+        'parent_token', 'send_modified_events', 'is_equal', 'expire_missing'
+    )
+
     def __str__(self):
         return "%s.%s" % (self.class_.__name__, self.key)
 
@@ -524,23 +527,6 @@ class AttributeImpl(object):
 
             state.parents[id_] = False
 
-    def set_callable(self, state, callable_):
-        """Set a callable function for this attribute on the given object.
-
-        This callable will be executed when the attribute is next
-        accessed, and is assumed to construct part of the instances
-        previously stored state. When its value or values are loaded,
-        they will be established as part of the instance's *committed
-        state*.  While *trackparent* information will be assembled for
-        these instances, attribute-level event handlers will not be
-        fired.
-
-        The callable overrides the class level callable set in the
-        ``InstrumentedAttribute`` constructor.
-
-        """
-        state.callables[self.key] = callable_
-
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         raise NotImplementedError()
 
@@ -583,7 +569,9 @@ class AttributeImpl(object):
                 if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
 
-                if key in state.callables:
+                if key in state.expired_attributes:
+                    value = state._load_expired(state, passive)
+                elif key in state.callables:
                     callable_ = state.callables[key]
                     value = callable_(state, passive)
                 elif self.callable_:
@@ -654,6 +642,23 @@ class ScalarAttributeImpl(AttributeImpl):
     supports_population = True
     collection = False
 
+    __slots__ = '_replace_token', '_append_token', '_remove_token'
+
+    def __init__(self, *arg, **kw):
+        super(ScalarAttributeImpl, self).__init__(*arg, **kw)
+        self._replace_token = self._append_token = None
+        self._remove_token = None
+
+    def _init_append_token(self):
+        self._replace_token = self._append_token = Event(self, OP_REPLACE)
+        return self._replace_token
+
+    _init_append_or_replace_token = _init_append_token
+
+    def _init_remove_token(self):
+        self._remove_token = Event(self, OP_REMOVE)
+        return self._remove_token
+
     def delete(self, state, dict_):
 
         # TODO: catch key errors, convert to attributeerror?
@@ -692,27 +697,18 @@ class ScalarAttributeImpl(AttributeImpl):
         state._modified_event(dict_, self, old)
         dict_[self.key] = value
 
-    @util.memoized_property
-    def _replace_token(self):
-        return Event(self, OP_REPLACE)
-
-    @util.memoized_property
-    def _append_token(self):
-        return Event(self, OP_REPLACE)
-
-    @util.memoized_property
-    def _remove_token(self):
-        return Event(self, OP_REMOVE)
-
     def fire_replace_event(self, state, dict_, value, previous, initiator):
         for fn in self.dispatch.set:
             value = fn(
-                state, value, previous, initiator or self._replace_token)
+                state, value, previous,
+                initiator or self._replace_token or
+                self._init_append_or_replace_token())
         return value
 
     def fire_remove_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.remove:
-            fn(state, value, initiator or self._remove_token)
+            fn(state, value,
+               initiator or self._remove_token or self._init_remove_token())
 
     @property
     def type(self):
@@ -732,9 +728,13 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     supports_population = True
     collection = False
 
+    __slots__ = ()
+
     def delete(self, state, dict_):
         old = self.get(state, dict_)
-        self.fire_remove_event(state, dict_, old, self._remove_token)
+        self.fire_remove_event(
+            state, dict_, old,
+            self._remove_token or self._init_remove_token())
         del dict_[self.key]
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
@@ -807,7 +807,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
-            fn(state, value, initiator or self._remove_token)
+            fn(state, value, initiator or
+               self._remove_token or self._init_remove_token())
 
         state._modified_event(dict_, self, value)
 
@@ -819,7 +820,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
         for fn in self.dispatch.set:
             value = fn(
-                state, value, previous, initiator or self._replace_token)
+                state, value, previous, initiator or
+                self._replace_token or self._init_append_or_replace_token())
 
         state._modified_event(dict_, self, previous)
 
@@ -846,6 +848,8 @@ class CollectionAttributeImpl(AttributeImpl):
     supports_population = True
     collection = True
 
+    __slots__ = 'copy', 'collection_factory', '_append_token', '_remove_token'
+
     def __init__(self, class_, key, callable_, dispatch,
                  typecallable=None, trackparent=False, extension=None,
                  copy_function=None, compare_function=None, **kwargs):
@@ -862,6 +866,8 @@ class CollectionAttributeImpl(AttributeImpl):
             copy_function = self.__copy
         self.copy = copy_function
         self.collection_factory = typecallable
+        self._append_token = None
+        self._remove_token = None
 
         if getattr(self.collection_factory, "_sa_linker", None):
 
@@ -872,6 +878,14 @@ class CollectionAttributeImpl(AttributeImpl):
             @event.listens_for(self, "dispose_collection")
             def unlink(target, collection, collection_adapter):
                 collection._sa_linker(None)
+
+    def _init_append_token(self):
+        self._append_token = Event(self, OP_APPEND)
+        return self._append_token
+
+    def _init_remove_token(self):
+        self._remove_token = Event(self, OP_REMOVE)
+        return self._remove_token
 
     def __copy(self, item):
         return [y for y in collections.collection_adapter(item)]
@@ -915,17 +929,11 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return [(instance_state(o), o) for o in current]
 
-    @util.memoized_property
-    def _append_token(self):
-        return Event(self, OP_APPEND)
-
-    @util.memoized_property
-    def _remove_token(self):
-        return Event(self, OP_REMOVE)
-
     def fire_append_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.append:
-            value = fn(state, value, initiator or self._append_token)
+            value = fn(
+                state, value,
+                initiator or self._append_token or self._init_append_token())
 
         state._modified_event(dict_, self, NEVER_SET, True)
 
@@ -942,7 +950,8 @@ class CollectionAttributeImpl(AttributeImpl):
             self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
-            fn(state, value, initiator or self._remove_token)
+            fn(state, value,
+               initiator or self._remove_token or self._init_remove_token())
 
         state._modified_event(dict_, self, NEVER_SET, True)
 
@@ -1134,7 +1143,8 @@ def backref_listeners(attribute, key, uselist):
                 impl.pop(old_state,
                          old_dict,
                          state.obj(),
-                         parent_impl._append_token,
+                         parent_impl._append_token or
+                            parent_impl._init_append_token(),
                          passive=PASSIVE_NO_FETCH)
 
         if child is not None:

@@ -204,7 +204,6 @@ def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
 
     from sqlalchemy import create_engine
-    from .assertsql import asserter
 
     if not options:
         use_reaper = True
@@ -216,11 +215,12 @@ def testing_engine(url=None, options=None):
         options = config.db_opts
 
     engine = create_engine(url, **options)
+    engine._has_events = True   # enable event blocks, helps with
+                                # profiling
+
     if isinstance(engine.pool, pool.QueuePool):
         engine.pool._timeout = 0
         engine.pool._max_overflow = 0
-    event.listen(engine, 'after_execute', asserter.execute)
-    event.listen(engine, 'after_cursor_execute', asserter.cursor_execute)
     if use_reaper:
         event.listen(engine.pool, 'connect', testing_reaper.connect)
         event.listen(engine.pool, 'checkout', testing_reaper.checkout)

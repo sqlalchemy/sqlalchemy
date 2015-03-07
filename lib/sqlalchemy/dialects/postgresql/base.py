@@ -48,7 +48,7 @@ Transaction Isolation Level
 ---------------------------
 
 All Postgresql dialects support setting of transaction isolation level
-both via a dialect-specific parameter ``isolation_level``
+both via a dialect-specific parameter :paramref:`.create_engine.isolation_level`
 accepted by :func:`.create_engine`,
 as well as the ``isolation_level`` argument as passed to
 :meth:`.Connection.execution_options`.  When using a non-psycopg2 dialect,
@@ -266,7 +266,7 @@ will emit to the database::
 
 The Postgresql text search functions such as ``to_tsquery()``
 and ``to_tsvector()`` are available
-explicitly using the standard :attr:`.func` construct.  For example::
+explicitly using the standard :data:`.func` construct.  For example::
 
     select([
         func.to_tsvector('fat cats ate rats').match('cat & rat')
@@ -299,7 +299,7 @@ not re-compute the column on demand.
 
 In order to provide for this explicit query planning, or to use different
 search strategies, the ``match`` method accepts a ``postgresql_regconfig``
-keyword argument.
+keyword argument::
 
     select([mytable.c.id]).where(
         mytable.c.title.match('somestring', postgresql_regconfig='english')
@@ -311,7 +311,7 @@ Emits the equivalent of::
     WHERE mytable.title @@ to_tsquery('english', 'somestring')
 
 One can also specifically pass in a `'regconfig'` value to the
-``to_tsvector()`` command as the initial argument.
+``to_tsvector()`` command as the initial argument::
 
     select([mytable.c.id]).where(
             func.to_tsvector('english', mytable.c.title )\
@@ -483,7 +483,7 @@ import re
 
 from ... import sql, schema, exc, util
 from ...engine import default, reflection
-from ...sql import compiler, expression, operators
+from ...sql import compiler, expression, operators, default_comparator
 from ... import types as sqltypes
 
 try:
@@ -680,10 +680,10 @@ class _Slice(expression.ColumnElement):
     type = sqltypes.NULLTYPE
 
     def __init__(self, slice_, source_comparator):
-        self.start = source_comparator._check_literal(
+        self.start = default_comparator._check_literal(
             source_comparator.expr,
             operators.getitem, slice_.start)
-        self.stop = source_comparator._check_literal(
+        self.stop = default_comparator._check_literal(
             source_comparator.expr,
             operators.getitem, slice_.stop)
 
@@ -876,8 +876,9 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
                 index += shift_indexes
                 return_type = self.type.item_type
 
-            return self._binary_operate(self.expr, operators.getitem, index,
-                                        result_type=return_type)
+            return default_comparator._binary_operate(
+                self.expr, operators.getitem, index,
+                result_type=return_type)
 
         def any(self, other, operator=operators.eq):
             """Return ``other operator ANY (array)`` clause.
@@ -1424,7 +1425,8 @@ class PGDDLCompiler(compiler.DDLCompiler):
             else:
                 colspec += " SERIAL"
         else:
-            colspec += " " + self.dialect.type_compiler.process(column.type)
+            colspec += " " + self.dialect.type_compiler.process(column.type,
+                                                    type_expression=column)
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default
@@ -1476,8 +1478,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
                             if not isinstance(expr, expression.ColumnClause)
                             else expr,
                             include_table=False, literal_binds=True) +
-                        (c.key in ops and (' ' + ops[c.key]) or '')
-                        for expr, c in zip(index.expressions, index.columns)])
+                        (
+                            (' ' + ops[expr.key])
+                            if hasattr(expr, 'key')
+                            and expr.key in ops else ''
+                        )
+                        for expr in index.expressions
+                    ])
                 )
 
         whereclause = index.dialect_options["postgresql"]["where"]
@@ -1539,94 +1546,93 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
-
-    def visit_TSVECTOR(self, type):
+    def visit_TSVECTOR(self, type, **kw):
         return "TSVECTOR"
 
-    def visit_INET(self, type_):
+    def visit_INET(self, type_, **kw):
         return "INET"
 
-    def visit_CIDR(self, type_):
+    def visit_CIDR(self, type_, **kw):
         return "CIDR"
 
-    def visit_MACADDR(self, type_):
+    def visit_MACADDR(self, type_, **kw):
         return "MACADDR"
 
-    def visit_OID(self, type_):
+    def visit_OID(self, type_, **kw):
         return "OID"
 
-    def visit_FLOAT(self, type_):
+    def visit_FLOAT(self, type_, **kw):
         if not type_.precision:
             return "FLOAT"
         else:
             return "FLOAT(%(precision)s)" % {'precision': type_.precision}
 
-    def visit_DOUBLE_PRECISION(self, type_):
+    def visit_DOUBLE_PRECISION(self, type_, **kw):
         return "DOUBLE PRECISION"
 
-    def visit_BIGINT(self, type_):
+    def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
 
-    def visit_HSTORE(self, type_):
+    def visit_HSTORE(self, type_, **kw):
         return "HSTORE"
 
-    def visit_JSON(self, type_):
+    def visit_JSON(self, type_, **kw):
         return "JSON"
 
-    def visit_JSONB(self, type_):
+    def visit_JSONB(self, type_, **kw):
         return "JSONB"
 
-    def visit_INT4RANGE(self, type_):
+    def visit_INT4RANGE(self, type_, **kw):
         return "INT4RANGE"
 
-    def visit_INT8RANGE(self, type_):
+    def visit_INT8RANGE(self, type_, **kw):
         return "INT8RANGE"
 
-    def visit_NUMRANGE(self, type_):
+    def visit_NUMRANGE(self, type_, **kw):
         return "NUMRANGE"
 
-    def visit_DATERANGE(self, type_):
+    def visit_DATERANGE(self, type_, **kw):
         return "DATERANGE"
 
-    def visit_TSRANGE(self, type_):
+    def visit_TSRANGE(self, type_, **kw):
         return "TSRANGE"
 
-    def visit_TSTZRANGE(self, type_):
+    def visit_TSTZRANGE(self, type_, **kw):
         return "TSTZRANGE"
 
-    def visit_datetime(self, type_):
-        return self.visit_TIMESTAMP(type_)
+    def visit_datetime(self, type_, **kw):
+        return self.visit_TIMESTAMP(type_, **kw)
 
-    def visit_enum(self, type_):
+    def visit_enum(self, type_, **kw):
         if not type_.native_enum or not self.dialect.supports_native_enum:
-            return super(PGTypeCompiler, self).visit_enum(type_)
+            return super(PGTypeCompiler, self).visit_enum(type_, **kw)
         else:
-            return self.visit_ENUM(type_)
+            return self.visit_ENUM(type_, **kw)
 
-    def visit_ENUM(self, type_):
+    def visit_ENUM(self, type_, **kw):
         return self.dialect.identifier_preparer.format_type(type_)
 
-    def visit_TIMESTAMP(self, type_):
+    def visit_TIMESTAMP(self, type_, **kw):
         return "TIMESTAMP%s %s" % (
             getattr(type_, 'precision', None) and "(%d)" %
             type_.precision or "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
         )
 
-    def visit_TIME(self, type_):
+    def visit_TIME(self, type_, **kw):
         return "TIME%s %s" % (
             getattr(type_, 'precision', None) and "(%d)" %
             type_.precision or "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
         )
 
-    def visit_INTERVAL(self, type_):
+    def visit_INTERVAL(self, type_, **kw):
         if type_.precision is not None:
             return "INTERVAL(%d)" % type_.precision
         else:
             return "INTERVAL"
 
-    def visit_BIT(self, type_):
+    def visit_BIT(self, type_, **kw):
         if type_.varying:
             compiled = "BIT VARYING"
             if type_.length is not None:
@@ -1635,16 +1641,16 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             compiled = "BIT(%d)" % type_.length
         return compiled
 
-    def visit_UUID(self, type_):
+    def visit_UUID(self, type_, **kw):
         return "UUID"
 
-    def visit_large_binary(self, type_):
-        return self.visit_BYTEA(type_)
+    def visit_large_binary(self, type_, **kw):
+        return self.visit_BYTEA(type_, **kw)
 
-    def visit_BYTEA(self, type_):
+    def visit_BYTEA(self, type_, **kw):
         return "BYTEA"
 
-    def visit_ARRAY(self, type_):
+    def visit_ARRAY(self, type_, **kw):
         return self.process(type_.item_type) + ('[]' * (type_.dimensions
                                                         if type_.dimensions
                                                         is not None else 1))
@@ -1942,7 +1948,8 @@ class PGDialect(default.DefaultDialect):
             cursor = connection.execute(
                 sql.text(
                     "select relname from pg_class c join pg_namespace n on "
-                    "n.oid=c.relnamespace where n.nspname=current_schema() "
+                    "n.oid=c.relnamespace where "
+                    "pg_catalog.pg_table_is_visible(c.oid) "
                     "and relname=:name",
                     bindparams=[
                         sql.bindparam('name', util.text_type(table_name),

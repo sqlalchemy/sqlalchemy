@@ -1,7 +1,8 @@
-from sqlalchemy.testing import eq_, assert_raises_message, assert_raises
+from sqlalchemy.testing import eq_, assert_raises_message, \
+    assert_raises, AssertsCompiledSQL
 import datetime
-from sqlalchemy.schema import CreateSequence, DropSequence
-from sqlalchemy.sql import select, text
+from sqlalchemy.schema import CreateSequence, DropSequence, CreateTable
+from sqlalchemy.sql import select, text, literal_column
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
@@ -17,6 +18,72 @@ from sqlalchemy import util
 import itertools
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
+
+
+class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_string(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, server_default='5'))
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER DEFAULT '5')"
+        )
+
+    def test_text(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, server_default=text('5 + 8')))
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER DEFAULT 5 + 8)"
+        )
+
+    def test_text_literal_binds(self):
+        m = MetaData()
+        t = Table(
+            't', m,
+            Column(
+                'x', Integer, server_default=text('q + :x1').bindparams(x1=7)))
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER DEFAULT q + 7)"
+        )
+
+    def test_sqlexpr(self):
+        m = MetaData()
+        t = Table('t', m, Column(
+            'x', Integer,
+            server_default=literal_column('a') + literal_column('b'))
+        )
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER DEFAULT a + b)"
+        )
+
+    def test_literal_binds_plain(self):
+        m = MetaData()
+        t = Table('t', m, Column(
+            'x', Integer,
+            server_default=literal('a') + literal('b'))
+        )
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER DEFAULT 'a' || 'b')"
+        )
+
+    def test_literal_binds_pgarray(self):
+        from sqlalchemy.dialects.postgresql import ARRAY, array
+        m = MetaData()
+        t = Table('t', m, Column(
+            'x', ARRAY(Integer),
+            server_default=array([1, 2, 3]))
+        )
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER[] DEFAULT ARRAY[1, 2, 3])",
+            dialect='postgresql'
+        )
 
 
 class DefaultTest(fixtures.TestBase):
@@ -336,14 +403,24 @@ class DefaultTest(fixtures.TestBase):
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, None, 'hi')])
 
-    @testing.fails_on('firebird', 'Data type unknown')
     def test_insertmany(self):
-        # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql+mysqldb') and
-                testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
-            return
-
         t.insert().execute({}, {}, {})
+
+        ctexec = currenttime.scalar()
+        l = t.select().execute()
+        today = datetime.date.today()
+        eq_(l.fetchall(),
+            [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
+              12, today, 'py', 'hi'),
+             (52, 'imthedefault', f, ts, ts, ctexec, True, False,
+              12, today, 'py', 'hi'),
+             (53, 'imthedefault', f, ts, ts, ctexec, True, False,
+              12, today, 'py', 'hi')])
+
+    @testing.requires.multivalues_inserts
+    def test_insert_multivalues(self):
+
+        t.insert().values([{}, {}, {}]).execute()
 
         ctexec = currenttime.scalar()
         l = t.select().execute()
@@ -368,7 +445,8 @@ class DefaultTest(fixtures.TestBase):
         ):
             assert_raises_message(
                 sa.exc.ArgumentError,
-                "SQL expression object or string expected.",
+                "SQL expression object or string expected, got object of type "
+                "<.* 'list'> instead",
                 t.select, [const]
             )
             assert_raises_message(

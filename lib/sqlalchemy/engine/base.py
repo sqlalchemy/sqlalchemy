@@ -201,14 +201,19 @@ class Connection(Connectable):
           used by the ORM internally supersedes a cache dictionary
           specified here.
 
-        :param isolation_level: Available on: Connection.
+        :param isolation_level: Available on: :class:`.Connection`.
           Set the transaction isolation level for
-          the lifespan of this connection.   Valid values include
-          those string values accepted by the ``isolation_level``
-          parameter passed to :func:`.create_engine`, and are
-          database specific, including those for :ref:`sqlite_toplevel`,
-          :ref:`postgresql_toplevel` - see those dialect's documentation
-          for further info.
+          the lifespan of this :class:`.Connection` object (*not* the
+          underyling DBAPI connection, for which the level is reset
+          to its original setting upon termination of this
+          :class:`.Connection` object).
+
+          Valid values include
+          those string values accepted by the
+          :paramref:`.create_engine.isolation_level`
+          parameter passed to :func:`.create_engine`.  These levels are
+          semi-database specific; see individual dialect documentation for
+          valid levels.
 
           Note that this option necessarily affects the underlying
           DBAPI connection for the lifespan of the originating
@@ -216,6 +221,41 @@ class Connection(Connectable):
           setting is not removed until the underlying DBAPI connection
           is returned to the connection pool, i.e.
           the :meth:`.Connection.close` method is called.
+
+          .. warning::  The ``isolation_level`` execution option should
+             **not** be used when a transaction is already established, that
+             is, the :meth:`.Connection.begin` method or similar has been
+             called.  A database cannot change the isolation level on a
+             transaction in progress, and different DBAPIs and/or
+             SQLAlchemy dialects may implicitly roll back or commit
+             the transaction, or not affect the connection at all.
+
+             .. versionchanged:: 0.9.9 A warning is emitted when the
+                ``isolation_level`` execution option is used after a
+                transaction has been started with :meth:`.Connection.begin`
+                or similar.
+
+          .. note:: The ``isolation_level`` execution option is implicitly
+             reset if the :class:`.Connection` is invalidated, e.g. via
+             the :meth:`.Connection.invalidate` method, or if a
+             disconnection error occurs.  The new connection produced after
+             the invalidation will not have the isolation level re-applied
+             to it automatically.
+
+          .. seealso::
+
+                :paramref:`.create_engine.isolation_level`
+                - set per :class:`.Engine` isolation level
+
+                :meth:`.Connection.get_isolation_level` - view current level
+
+                :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
+
+                :ref:`Postgresql Transaction Isolation <postgresql_isolation_level>`
+
+                :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
+
+                :ref:`session_transaction_isolation` - for the ORM
 
         :param no_parameters: When ``True``, if the final parameter
           list or dictionary is totally empty, will invoke the
@@ -260,23 +300,97 @@ class Connection(Connectable):
 
     @property
     def connection(self):
-        "The underlying DB-API connection managed by this Connection."
+        """The underlying DB-API connection managed by this Connection.
+
+        .. seealso::
+
+
+            :ref:`dbapi_connections`
+
+        """
 
         try:
             return self.__connection
         except AttributeError:
-            return self._revalidate_connection()
+            try:
+                return self._revalidate_connection()
+            except Exception as e:
+                self._handle_dbapi_exception(e, None, None, None, None)
+
+    def get_isolation_level(self):
+        """Return the current isolation level assigned to this
+        :class:`.Connection`.
+
+        This will typically be the default isolation level as determined
+        by the dialect, unless if the
+        :paramref:`.Connection.execution_options.isolation_level`
+        feature has been used to alter the isolation level on a
+        per-:class:`.Connection` basis.
+
+        This attribute will typically perform a live SQL operation in order
+        to procure the current isolation level, so the value returned is the
+        actual level on the underlying DBAPI connection regardless of how
+        this state was set.  Compare to the
+        :attr:`.Connection.default_isolation_level` accessor
+        which returns the dialect-level setting without performing a SQL
+        query.
+
+        .. versionadded:: 0.9.9
+
+        .. seealso::
+
+            :attr:`.Connection.default_isolation_level` - view default level
+
+            :paramref:`.create_engine.isolation_level`
+            - set per :class:`.Engine` isolation level
+
+            :paramref:`.Connection.execution_options.isolation_level`
+            - set per :class:`.Connection` isolation level
+
+        """
+        try:
+            return self.dialect.get_isolation_level(self.connection)
+        except Exception as e:
+            self._handle_dbapi_exception(e, None, None, None, None)
+
+    @property
+    def default_isolation_level(self):
+        """The default isolation level assigned to this :class:`.Connection`.
+
+        This is the isolation level setting that the :class:`.Connection`
+        has when first procured via the :meth:`.Engine.connect` method.
+        This level stays in place until the
+        :paramref:`.Connection.execution_options.isolation_level` is used
+        to change the setting on a per-:class:`.Connection` basis.
+
+        Unlike :meth:`.Connection.get_isolation_level`, this attribute is set
+        ahead of time from the first connection procured by the dialect,
+        so SQL query is not invoked when this accessor is called.
+
+        .. versionadded:: 0.9.9
+
+        .. seealso::
+
+            :meth:`.Connection.get_isolation_level` - view current level
+
+            :paramref:`.create_engine.isolation_level`
+            - set per :class:`.Engine` isolation level
+
+            :paramref:`.Connection.execution_options.isolation_level`
+            - set per :class:`.Connection` isolation level
+
+        """
+        return self.dialect.default_isolation_level
 
     def _revalidate_connection(self):
         if self.__branch_from:
             return self.__branch_from._revalidate_connection()
-
         if self.__can_reconnect and self.__invalid:
             if self.__transaction is not None:
                 raise exc.InvalidRequestError(
                     "Can't reconnect until invalid "
                     "transaction is rolled back")
-            self.__connection = self.engine.raw_connection()
+            self.__connection = self.engine.raw_connection(_connection=self)
             self.__invalid = False
             return self.__connection
         raise exc.ResourceClosedError("This Connection is closed")
@@ -741,7 +855,7 @@ class Connection(Connectable):
            a subclass of :class:`.Executable`, such as a
            :func:`~.expression.select` construct
          * a :class:`.FunctionElement`, such as that generated
-           by :attr:`.func`, will be automatically wrapped in
+           by :data:`.func`, will be automatically wrapped in
            a SELECT statement, which is then executed.
          * a :class:`.DDLElement` object
          * a :class:`.DefaultGenerator` object
@@ -959,9 +1073,10 @@ class Connection(Connectable):
 
             context = constructor(dialect, self, conn, *args)
         except Exception as e:
-            self._handle_dbapi_exception(e,
-                                         util.text_type(statement), parameters,
-                                         None, None)
+            self._handle_dbapi_exception(
+                e,
+                util.text_type(statement), parameters,
+                None, None)
 
         if context.compiled:
             context.pre_exec()
@@ -985,36 +1100,39 @@ class Connection(Connectable):
                 "%r",
                 sql_util._repr_params(parameters, batches=10)
             )
+
+        evt_handled = False
         try:
             if context.executemany:
-                for fn in () if not self.dialect._has_events \
-                        else self.dialect.dispatch.do_executemany:
-                    if fn(cursor, statement, parameters, context):
-                        break
-                else:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(cursor, statement, parameters, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
                     self.dialect.do_executemany(
                         cursor,
                         statement,
                         parameters,
                         context)
-
             elif not parameters and context.no_parameters:
-                for fn in () if not self.dialect._has_events \
-                        else self.dialect.dispatch.do_execute_no_params:
-                    if fn(cursor, statement, context):
-                        break
-                else:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
                     self.dialect.do_execute_no_params(
                         cursor,
                         statement,
                         context)
-
             else:
-                for fn in () if not self.dialect._has_events \
-                        else self.dialect.dispatch.do_execute:
-                    if fn(cursor, statement, parameters, context):
-                        break
-                else:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(cursor, statement, parameters, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
                     self.dialect.do_execute(
                         cursor,
                         statement,
@@ -1038,31 +1156,12 @@ class Connection(Connectable):
         if context.compiled:
             context.post_exec()
 
-            if context.isinsert and not context.executemany:
-                context.post_insert()
-
-        # create a resultproxy, get rowcount/implicit RETURNING
-        # rows, close cursor if no further results pending
-        result = context.get_result_proxy()
-        if context.isinsert:
-            if context._is_implicit_returning:
-                context._fetch_implicit_returning(result)
+        if context.is_crud:
+            result = context._setup_crud_result_proxy()
+        else:
+            result = context.get_result_proxy()
+            if result._metadata is None:
                 result.close(_autoclose_connection=False)
-                result._metadata = None
-            elif not context._is_explicit_returning:
-                result.close(_autoclose_connection=False)
-                result._metadata = None
-        elif context.isupdate and context._is_implicit_returning:
-            context._fetch_implicit_update_returning(result)
-            result.close(_autoclose_connection=False)
-            result._metadata = None
-
-        elif result._metadata is None:
-            # no results, get rowcount
-            # (which requires open cursor on some drivers
-            # such as kintersbasdb, mxodbc),
-            result.rowcount
-            result.close(_autoclose_connection=False)
 
         if context.should_autocommit and self._root.__transaction is None:
             self._root._commit_impl(autocommit=True)
@@ -1149,7 +1248,10 @@ class Connection(Connectable):
             self._is_disconnect =  \
                 isinstance(e, self.dialect.dbapi.Error) and \
                 not self.closed and \
-                self.dialect.is_disconnect(e, self.__connection, cursor)
+                self.dialect.is_disconnect(
+                    e,
+                    self.__connection if not self.invalidated else None,
+                    cursor)
             if context:
                 context.is_disconnect = self._is_disconnect
 
@@ -1194,7 +1296,8 @@ class Connection(Connectable):
 
                 # new handle_error event
                 ctx = ExceptionContextImpl(
-                    e, sqlalchemy_exception, self, cursor, statement,
+                    e, sqlalchemy_exception, self.engine,
+                    self, cursor, statement,
                     parameters, context, self._is_disconnect)
 
                 for fn in self.dispatch.handle_error:
@@ -1236,11 +1339,64 @@ class Connection(Connectable):
             del self._reentrant_error
             if self._is_disconnect:
                 del self._is_disconnect
-                dbapi_conn_wrapper = self.connection
-                self.engine.pool._invalidate(dbapi_conn_wrapper, e)
-                self.invalidate(e)
+                if not self.invalidated:
+                    dbapi_conn_wrapper = self.__connection
+                    self.engine.pool._invalidate(dbapi_conn_wrapper, e)
+                    self.invalidate(e)
             if self.should_close_with_result:
                 self.close()
+
+    @classmethod
+    def _handle_dbapi_exception_noconnection(cls, e, dialect, engine):
+
+        exc_info = sys.exc_info()
+
+        is_disconnect = dialect.is_disconnect(e, None, None)
+
+        should_wrap = isinstance(e, dialect.dbapi.Error)
+
+        if should_wrap:
+            sqlalchemy_exception = exc.DBAPIError.instance(
+                None,
+                None,
+                e,
+                dialect.dbapi.Error,
+                connection_invalidated=is_disconnect)
+        else:
+            sqlalchemy_exception = None
+
+        newraise = None
+
+        if engine._has_events:
+            ctx = ExceptionContextImpl(
+                e, sqlalchemy_exception, engine, None, None, None,
+                None, None, is_disconnect)
+            for fn in engine.dispatch.handle_error:
+                try:
+                    # handler returns an exception;
+                    # call next handler in a chain
+                    per_fn = fn(ctx)
+                    if per_fn is not None:
+                        ctx.chained_exception = newraise = per_fn
+                except Exception as _raised:
+                    # handler raises an exception - stop processing
+                    newraise = _raised
+                    break
+
+            if sqlalchemy_exception and \
+                    is_disconnect != ctx.is_disconnect:
+                sqlalchemy_exception.connection_invalidated = \
+                    is_disconnect = ctx.is_disconnect
+
+        if newraise:
+            util.raise_from_cause(newraise, exc_info)
+        elif should_wrap:
+            util.raise_from_cause(
+                sqlalchemy_exception,
+                exc_info
+            )
+        else:
+            util.reraise(*exc_info)
 
     def default_schema_name(self):
         return self.engine.dialect.get_default_schema_name(self)
@@ -1320,8 +1476,9 @@ class ExceptionContextImpl(ExceptionContext):
     """Implement the :class:`.ExceptionContext` interface."""
 
     def __init__(self, exception, sqlalchemy_exception,
-                 connection, cursor, statement, parameters,
+                 engine, connection, cursor, statement, parameters,
                  context, is_disconnect):
+        self.engine = engine
         self.connection = connection
         self.sqlalchemy_exception = sqlalchemy_exception
         self.original_exception = exception
@@ -1865,10 +2022,11 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        return self._connection_cls(self,
-                                    self.pool.connect(),
-                                    close_with_result=close_with_result,
-                                    **kwargs)
+        return self._connection_cls(
+            self,
+            self._wrap_pool_connect(self.pool.connect, None),
+            close_with_result=close_with_result,
+            **kwargs)
 
     def table_names(self, schema=None, connection=None):
         """Return a list of all table names available in the database.
@@ -1898,7 +2056,18 @@ class Engine(Connectable, log.Identified):
         """
         return self.run_callable(self.dialect.has_table, table_name, schema)
 
-    def raw_connection(self):
+    def _wrap_pool_connect(self, fn, connection):
+        dialect = self.dialect
+        try:
+            return fn()
+        except dialect.dbapi.Error as e:
+            if connection is None:
+                Connection._handle_dbapi_exception_noconnection(
+                    e, dialect, self)
+            else:
+                util.reraise(*sys.exc_info())
+
+    def raw_connection(self, _connection=None):
         """Return a "raw" DBAPI connection from the connection pool.
 
         The returned object is a proxied version of the DBAPI
@@ -1909,13 +2078,18 @@ class Engine(Connectable, log.Identified):
         for real.
 
         This method provides direct DBAPI connection access for
-        special situations.  In most situations, the :class:`.Connection`
-        object should be used, which is procured using the
-        :meth:`.Engine.connect` method.
+        special situations when the API provided by :class:`.Connection`
+        is not needed.   When a :class:`.Connection` object is already
+        present, the DBAPI connection is available using
+        the :attr:`.Connection.connection` accessor.
+
+        .. seealso::
+
+            :ref:`dbapi_connections`
 
         """
-
-        return self.pool.unique_connection()
+        return self._wrap_pool_connect(
+            self.pool.unique_connection, _connection)
 
 
 class OptionEngine(Engine):

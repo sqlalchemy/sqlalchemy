@@ -316,6 +316,7 @@ Column, Table, MetaData API
 
 .. autoclass:: SchemaItem
     :members:
+    :undoc-members:
 
 .. autoclass:: Table
     :members:

@@ -12,13 +12,14 @@
 
 from .. import exc, util
 from . import operators
-from .visitors import Visitable
+from .visitors import Visitable, VisitableType
 
 # these are back-assigned by sqltypes.
 BOOLEANTYPE = None
 INTEGERTYPE = None
 NULLTYPE = None
 STRINGTYPE = None
+MATCHTYPE = None
 
 
 class TypeEngine(Visitable):
@@ -45,9 +46,51 @@ class TypeEngine(Visitable):
 
 
         """
+        __slots__ = 'expr', 'type'
+
+        default_comparator = None
 
         def __init__(self, expr):
             self.expr = expr
+            self.type = expr.type
+
+        @util.dependencies('sqlalchemy.sql.default_comparator')
+        def operate(self, default_comparator, op, *other, **kwargs):
+            o = default_comparator.operator_lookup[op.__name__]
+            return o[0](self.expr, op, *(other + o[1:]), **kwargs)
+
+        @util.dependencies('sqlalchemy.sql.default_comparator')
+        def reverse_operate(self, default_comparator, op, other, **kwargs):
+            o = default_comparator.operator_lookup[op.__name__]
+            return o[0](self.expr, op, other,
+                        reverse=True, *o[1:], **kwargs)
+
+        def _adapt_expression(self, op, other_comparator):
+            """evaluate the return type of <self> <op> <othertype>,
+            and apply any adaptations to the given operator.
+
+            This method determines the type of a resulting binary expression
+            given two source types and an operator.   For example, two
+            :class:`.Column` objects, both of the type :class:`.Integer`, will
+            produce a :class:`.BinaryExpression` that also has the type
+            :class:`.Integer` when compared via the addition (``+``) operator.
+            However, using the addition operator with an :class:`.Integer`
+            and a :class:`.Date` object will produce a :class:`.Date`, assuming
+            "days delta" behavior by the database (in reality, most databases
+            other than Postgresql don't accept this particular operation).
+
+            The method returns a tuple of the form <operator>, <type>.
+            The resulting operator and type will be those applied to the
+            resulting :class:`.BinaryExpression` as the final operator and the
+            right-hand side of the expression.
+
+            Note that only a subset of operators make usage of
+            :meth:`._adapt_expression`,
+            including math operators and user-defined operators, but not
+            boolean comparison or special SQL keywords like MATCH or BETWEEN.
+
+            """
+            return op, other_comparator.type
 
         def __reduce__(self):
             return _reconstitute_comparator, (self.expr, )
@@ -252,7 +295,7 @@ class TypeEngine(Visitable):
         The construction of :meth:`.TypeEngine.with_variant` is always
         from the "fallback" type to that which is dialect specific.
         The returned type is an instance of :class:`.Variant`, which
-        itself provides a :meth:`~sqlalchemy.types.Variant.with_variant`
+        itself provides a :meth:`.Variant.with_variant`
         that can be called repeatedly.
 
         :param type_: a :class:`.TypeEngine` that will be selected
@@ -417,7 +460,11 @@ class TypeEngine(Visitable):
         return util.generic_repr(self)
 
 
-class UserDefinedType(TypeEngine):
+class VisitableCheckKWArg(util.EnsureKWArgType, VisitableType):
+    pass
+
+
+class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
     """Base for user defined types.
 
     This should be the base of new types.  Note that
@@ -430,7 +477,7 @@ class UserDefinedType(TypeEngine):
           def __init__(self, precision = 8):
               self.precision = precision
 
-          def get_col_spec(self):
+          def get_col_spec(self, **kw):
               return "MYTYPE(%s)" % self.precision
 
           def bind_processor(self, dialect):
@@ -450,10 +497,26 @@ class UserDefinedType(TypeEngine):
           Column('data', MyType(16))
           )
 
+    The ``get_col_spec()`` method will in most cases receive a keyword
+    argument ``type_expression`` which refers to the owning expression
+    of the type as being compiled, such as a :class:`.Column` or
+    :func:`.cast` construct.  This keyword is only sent if the method
+    accepts keyword arguments (e.g. ``**kw``) in its argument signature;
+    introspection is used to check for this in order to support legacy
+    forms of this function.
+
+    .. versionadded:: 1.0.0 the owning expression is passed to
+       the ``get_col_spec()`` method via the keyword argument
+       ``type_expression``, if it receives ``**kw`` in its signature.
+
     """
     __visit_name__ = "user_defined"
 
+    ensure_kwarg = 'get_col_spec'
+
     class Comparator(TypeEngine.Comparator):
+        __slots__ = ()
+
         def _adapt_expression(self, op, other_comparator):
             if hasattr(self.type, 'adapt_operator'):
                 util.warn_deprecated(
@@ -617,6 +680,7 @@ class TypeDecorator(TypeEngine):
     """
 
     class Comparator(TypeEngine.Comparator):
+        __slots__ = ()
 
         def operate(self, op, *other, **kwargs):
             kwargs['_python_is_types'] = self.expr.type.coerce_to_is_types
@@ -630,9 +694,13 @@ class TypeDecorator(TypeEngine):
 
     @property
     def comparator_factory(self):
-        return type("TDComparator",
-                    (TypeDecorator.Comparator, self.impl.comparator_factory),
-                    {})
+        if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:
+            return self.impl.comparator_factory
+        else:
+            return type("TDComparator",
+                        (TypeDecorator.Comparator,
+                         self.impl.comparator_factory),
+                        {})
 
     def _gen_dialect_impl(self, dialect):
         """

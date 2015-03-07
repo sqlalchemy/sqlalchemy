@@ -10,6 +10,8 @@ from sqlalchemy import (
     type_coerce, VARCHAR, Time, DateTime, BigInteger, SmallInteger, BOOLEAN,
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
     INTEGER, DECIMAL, NUMERIC, FLOAT, REAL)
+from sqlalchemy.sql import ddl
+
 from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
@@ -309,6 +311,24 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             literal_binds=True
         )
 
+    def test_kw_colspec(self):
+        class MyType(types.UserDefinedType):
+            def get_col_spec(self, **kw):
+                return "FOOB %s" % kw['type_expression'].name
+
+        class MyOtherType(types.UserDefinedType):
+            def get_col_spec(self):
+                return "BAR"
+
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', MyType)),
+            "bar FOOB bar"
+        )
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', MyOtherType)),
+            "bar BAR"
+        )
+
     def test_typedecorator_literal_render_fallback_bound(self):
         # fall back to process_bind_param for literal
         # value rendering.
@@ -572,6 +592,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_insert_round_trip_cast(self):
         self._test_insert_round_trip(cast)
 
@@ -592,6 +614,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
     @testing.fails_on(
         "oracle", "ORA-00906: missing left parenthesis - "
         "seems to be CAST(:param AS type)")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_coerce_from_nulltype_cast(self):
         self._test_coerce_from_nulltype(cast)
 
@@ -619,6 +643,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_cast(self):
         self._test_vs_non_coerced(cast)
 
@@ -639,6 +665,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_alias_cast(self):
         self._test_vs_non_coerced_alias(cast)
 
@@ -659,6 +687,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_where_cast(self):
         self._test_vs_non_coerced_where(cast)
 
@@ -687,6 +717,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_coerce_none_cast(self):
         self._test_coerce_none(cast)
 
@@ -713,6 +745,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "oracle", "oracle doesn't like CAST in the VALUES of an INSERT")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_resolve_clause_element_cast(self):
         self._test_resolve_clause_element(cast)
 
@@ -740,6 +774,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
     @testing.fails_on(
         "oracle", "ORA-00906: missing left parenthesis - "
         "seems to be CAST(:param AS type)")
+    @testing.fails_on(
+        "mysql", "mysql dialect warns on skipped CAST")
     def test_cast_existing_typed(self):
         MyType = self.MyType
         coerce_fn = cast
@@ -932,6 +968,7 @@ class UnicodeTest(fixtures.TestBase):
             expected = (testing.db.name, testing.db.driver) in \
                 (
                     ('postgresql', 'psycopg2'),
+                    ('postgresql', 'psycopg2cffi'),
                     ('postgresql', 'pypostgresql'),
                     ('postgresql', 'pg8000'),
                     ('postgresql', 'zxjdbc'),
@@ -1157,8 +1194,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_repr(self):
         e = Enum(
             "x", "y", name="somename", convert_unicode=True, quote=True,
-            inherit_schema=True)
-        eq_(repr(e), "Enum('x', 'y', name='somename', inherit_schema=True)")
+            inherit_schema=True, native_enum=False)
+        eq_(
+            repr(e),
+            "Enum('x', 'y', name='somename', "
+            "inherit_schema=True, native_enum=False)")
 
 binary_table = MyPickleType = metadata = None
 
@@ -1638,6 +1678,49 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_decimal_scale(self):
         self.assert_compile(types.DECIMAL(2, 4), 'DECIMAL(2, 4)')
+
+    def test_kwarg_legacy_typecompiler(self):
+        from sqlalchemy.sql import compiler
+
+        class SomeTypeCompiler(compiler.GenericTypeCompiler):
+            # transparently decorated w/ kw decorator
+            def visit_VARCHAR(self, type_):
+                return "MYVARCHAR"
+
+            # not affected
+            def visit_INTEGER(self, type_, **kw):
+                return "MYINTEGER %s" % kw['type_expression'].name
+
+        dialect = default.DefaultDialect()
+        dialect.type_compiler = SomeTypeCompiler(dialect)
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', VARCHAR(50))),
+            "bar MYVARCHAR",
+            dialect=dialect
+        )
+        self.assert_compile(
+            ddl.CreateColumn(Column('bar', INTEGER)),
+            "bar MYINTEGER bar",
+            dialect=dialect
+        )
+
+
+class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):
+    __backend__ = True
+
+    def test_user_defined(self):
+        """test that dialects pass the column through on DDL."""
+
+        class MyType(types.UserDefinedType):
+            def get_col_spec(self, **kw):
+                return "FOOB %s" % kw['type_expression'].name
+
+        m = MetaData()
+        t = Table('t', m, Column('bar', MyType))
+        self.assert_compile(
+            ddl.CreateColumn(t.c.bar),
+            "bar FOOB bar"
+        )
 
 
 class NumericRawSQLTest(fixtures.TestBase):

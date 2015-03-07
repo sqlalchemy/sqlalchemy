@@ -9,7 +9,7 @@ from sqlalchemy import testing
 from sqlalchemy.engine import default
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
+from sqlalchemy.testing.assertsql import AllOf, RegexSQL, CompiledSQL
 from sqlalchemy.sql import table, column
 
 
@@ -58,8 +58,77 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
                         )
         )
 
+    @testing.force_drop_names('a', 'b')
+    def test_fk_cant_drop_cycled_unnamed(self):
+        metadata = MetaData()
+
+        Table("a", metadata,
+              Column('id', Integer, primary_key=True),
+              Column('bid', Integer),
+              ForeignKeyConstraint(["bid"], ["b.id"])
+              )
+        Table(
+            "b", metadata,
+            Column('id', Integer, primary_key=True),
+            Column("aid", Integer),
+            ForeignKeyConstraint(["aid"], ["a.id"]))
+        metadata.create_all(testing.db)
+        if testing.db.dialect.supports_alter:
+            assert_raises_message(
+                exc.CircularDependencyError,
+                "Can't sort tables for DROP; an unresolvable foreign key "
+                "dependency exists between tables: a, b.  Please ensure "
+                "that the ForeignKey and ForeignKeyConstraint objects "
+                "involved in the cycle have names so that they can be "
+                "dropped using DROP CONSTRAINT.",
+                metadata.drop_all, testing.db
+            )
+        else:
+
+            with self.sql_execution_asserter() as asserter:
+                metadata.drop_all(testing.db, checkfirst=False)
+
+            asserter.assert_(
+                AllOf(
+                    CompiledSQL("DROP TABLE a"),
+                    CompiledSQL("DROP TABLE b")
+                )
+            )
+
     @testing.provide_metadata
-    def test_cyclic_fk_table_constraint_create(self):
+    def test_fk_table_auto_alter_constraint_create(self):
+        metadata = self.metadata
+
+        Table("a", metadata,
+              Column('id', Integer, primary_key=True),
+              Column('bid', Integer),
+              ForeignKeyConstraint(["bid"], ["b.id"])
+              )
+        Table(
+            "b", metadata,
+            Column('id', Integer, primary_key=True),
+            Column("aid", Integer),
+            ForeignKeyConstraint(["aid"], ["a.id"], name="bfk"))
+        self._assert_cyclic_constraint(metadata, auto=True)
+
+    @testing.provide_metadata
+    def test_fk_column_auto_alter_constraint_create(self):
+        metadata = self.metadata
+
+        Table("a", metadata,
+              Column('id', Integer, primary_key=True),
+              Column('bid', Integer, ForeignKey("b.id")),
+              )
+        Table("b", metadata,
+              Column('id', Integer, primary_key=True),
+              Column("aid", Integer,
+                     ForeignKey("a.id", name="bfk")
+                     ),
+              )
+        self._assert_cyclic_constraint(metadata, auto=True)
+
+    @testing.provide_metadata
+    def test_fk_table_use_alter_constraint_create(self):
         metadata = self.metadata
 
         Table("a", metadata,
@@ -75,7 +144,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         self._assert_cyclic_constraint(metadata)
 
     @testing.provide_metadata
-    def test_cyclic_fk_column_constraint_create(self):
+    def test_fk_column_use_alter_constraint_create(self):
         metadata = self.metadata
 
         Table("a", metadata,
@@ -90,45 +159,104 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
               )
         self._assert_cyclic_constraint(metadata)
 
-    def _assert_cyclic_constraint(self, metadata):
-        assertions = [
-            CompiledSQL('CREATE TABLE b ('
+    def _assert_cyclic_constraint(self, metadata, auto=False):
+        table_assertions = []
+        if auto:
+            if testing.db.dialect.supports_alter:
+                table_assertions.append(
+                    CompiledSQL('CREATE TABLE b ('
+                                'id INTEGER NOT NULL, '
+                                'aid INTEGER, '
+                                'PRIMARY KEY (id)'
+                                ')'
+                                )
+                )
+            else:
+                table_assertions.append(
+                    CompiledSQL(
+                        'CREATE TABLE b ('
                         'id INTEGER NOT NULL, '
                         'aid INTEGER, '
+                        'PRIMARY KEY (id), '
+                        'CONSTRAINT bfk FOREIGN KEY(aid) REFERENCES a (id)'
+                        ')'
+                    )
+                )
+
+            if testing.db.dialect.supports_alter:
+                table_assertions.append(
+                    CompiledSQL(
+                        'CREATE TABLE a ('
+                        'id INTEGER NOT NULL, '
+                        'bid INTEGER, '
                         'PRIMARY KEY (id)'
                         ')'
-                        ),
-            CompiledSQL('CREATE TABLE a ('
+                    )
+                )
+            else:
+                table_assertions.append(
+                    CompiledSQL(
+                        'CREATE TABLE a ('
                         'id INTEGER NOT NULL, '
                         'bid INTEGER, '
                         'PRIMARY KEY (id), '
                         'FOREIGN KEY(bid) REFERENCES b (id)'
                         ')'
-                        ),
-        ]
+                    )
+                )
+        else:
+            table_assertions.append(
+                CompiledSQL('CREATE TABLE b ('
+                            'id INTEGER NOT NULL, '
+                            'aid INTEGER, '
+                            'PRIMARY KEY (id)'
+                            ')'
+                            )
+            )
+            table_assertions.append(
+                CompiledSQL(
+                    'CREATE TABLE a ('
+                    'id INTEGER NOT NULL, '
+                    'bid INTEGER, '
+                    'PRIMARY KEY (id), '
+                    'FOREIGN KEY(bid) REFERENCES b (id)'
+                    ')'
+                )
+            )
+
+        assertions = [AllOf(*table_assertions)]
         if testing.db.dialect.supports_alter:
-            assertions.append(
+            fk_assertions = []
+            fk_assertions.append(
                 CompiledSQL('ALTER TABLE b ADD CONSTRAINT bfk '
                             'FOREIGN KEY(aid) REFERENCES a (id)')
             )
-        self.assert_sql_execution(
-            testing.db,
-            lambda: metadata.create_all(checkfirst=False),
-            *assertions
-        )
+            if auto:
+                fk_assertions.append(
+                    CompiledSQL('ALTER TABLE a ADD '
+                                'FOREIGN KEY(bid) REFERENCES b (id)')
+                )
+            assertions.append(AllOf(*fk_assertions))
 
-        assertions = []
+        with self.sql_execution_asserter() as asserter:
+            metadata.create_all(checkfirst=False)
+        asserter.assert_(*assertions)
+
         if testing.db.dialect.supports_alter:
-            assertions.append(CompiledSQL('ALTER TABLE b DROP CONSTRAINT bfk'))
-        assertions.extend([
-            CompiledSQL("DROP TABLE a"),
-            CompiledSQL("DROP TABLE b"),
-        ])
-        self.assert_sql_execution(
-            testing.db,
-            lambda: metadata.drop_all(checkfirst=False),
-            *assertions
-        )
+            assertions = [
+                CompiledSQL('ALTER TABLE b DROP CONSTRAINT bfk'),
+                CompiledSQL("DROP TABLE a"),
+                CompiledSQL("DROP TABLE b")
+            ]
+        else:
+            assertions = [AllOf(
+                CompiledSQL("DROP TABLE a"),
+                CompiledSQL("DROP TABLE b")
+            )]
+
+        with self.sql_execution_asserter() as asserter:
+            metadata.drop_all(checkfirst=False),
+        asserter.assert_(*assertions)
 
     @testing.requires.check_constraints
     @testing.provide_metadata
@@ -289,13 +417,13 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             lambda: events.create(testing.db),
             RegexSQL("^CREATE TABLE events"),
             AllOf(
-                ExactSQL('CREATE UNIQUE INDEX ix_events_name ON events '
+                CompiledSQL('CREATE UNIQUE INDEX ix_events_name ON events '
                          '(name)'),
-                ExactSQL('CREATE INDEX ix_events_location ON events '
+                CompiledSQL('CREATE INDEX ix_events_location ON events '
                          '(location)'),
-                ExactSQL('CREATE UNIQUE INDEX sport_announcer ON events '
+                CompiledSQL('CREATE UNIQUE INDEX sport_announcer ON events '
                          '(sport, announcer)'),
-                ExactSQL('CREATE INDEX idx_winners ON events (winner)')
+                CompiledSQL('CREATE INDEX idx_winners ON events (winner)'),
             )
         )
 
@@ -313,7 +441,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             lambda: t.create(testing.db),
             CompiledSQL('CREATE TABLE sometable (id INTEGER NOT NULL, '
                         'data VARCHAR(50), PRIMARY KEY (id))'),
-            ExactSQL('CREATE INDEX myindex ON sometable (data DESC)')
+            CompiledSQL('CREATE INDEX myindex ON sometable (data DESC)')
         )
 
 
@@ -540,6 +668,33 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.AddConstraint(list(t.foreign_keys)[0].constraint),
             "ALTER TABLE tbl ADD FOREIGN KEY(b) "
             "REFERENCES tbl (a) MATCH SIMPLE"
+        )
+
+    def test_create_table_omit_fks(self):
+        fkcs = [
+            ForeignKeyConstraint(['a'], ['remote.id'], name='foo'),
+            ForeignKeyConstraint(['b'], ['remote.id'], name='bar'),
+            ForeignKeyConstraint(['c'], ['remote.id'], name='bat'),
+        ]
+        m = MetaData()
+        t = Table(
+            't', m,
+            Column('a', Integer),
+            Column('b', Integer),
+            Column('c', Integer),
+            *fkcs
+        )
+        Table('remote', m, Column('id', Integer, primary_key=True))
+
+        self.assert_compile(
+            schema.CreateTable(t, include_foreign_key_constraints=[]),
+            "CREATE TABLE t (a INTEGER, b INTEGER, c INTEGER)"
+        )
+        self.assert_compile(
+            schema.CreateTable(t, include_foreign_key_constraints=fkcs[0:2]),
+            "CREATE TABLE t (a INTEGER, b INTEGER, c INTEGER, "
+            "CONSTRAINT foo FOREIGN KEY(a) REFERENCES remote (id), "
+            "CONSTRAINT bar FOREIGN KEY(b) REFERENCES remote (id))"
         )
 
     def test_deferrable_unique(self):
@@ -908,7 +1063,7 @@ class ConstraintAPITest(fixtures.TestBase):
                    )
         assert_raises_message(
             exc.ArgumentError,
-            "Column 't2.y' is not part of table 't1'.",
+            r"Column\(s\) 't2.y' are not part of table 't1'.",
             Index,
             "bar", t1.c.x, t2.c.y
         )
