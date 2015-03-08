@@ -327,7 +327,7 @@ def _is_mapped_class(entity):
 
     insp = inspection.inspect(entity, False)
     return insp is not None and \
-        hasattr(insp, "mapper") and \
+        not insp.is_clause_element and \
         (
             insp.is_mapper
             or insp.is_aliased_class

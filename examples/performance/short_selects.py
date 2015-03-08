@@ -41,10 +41,10 @@ def setup_database(dburl, echo, num):
     sess.add_all([
         Customer(
             id=i, name='c%d' % i, description="c%d" % i,
-            q="q%d" % i,
-            p="p%d" % i,
-            x="x%d" % i,
-            y="y%d" % i,
+            q=i * 10,
+            p=i * 20,
+            x=i * 30,
+            y=i * 40,
         )
         for i in ids
     ])

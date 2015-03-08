@@ -3342,6 +3342,12 @@ class Bundle(object):
     """If True, queries for a single Bundle will be returned as a single
     entity, rather than an element within a keyed tuple."""
 
+    is_clause_element = False
+
+    is_mapper = False
+
+    is_aliased_class = False
+
     def __init__(self, name, *exprs, **kw):
         """Construct a new :class:`.Bundle`.
 

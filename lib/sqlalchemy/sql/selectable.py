@@ -2484,21 +2484,20 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         seen = set()
         translate = self._from_cloned
 
-        def add(items):
-            for item in items:
-                if item is self:
-                    raise exc.InvalidRequestError(
-                        "select() construct refers to itself as a FROM")
-                if translate and item in translate:
-                    item = translate[item]
-                if not seen.intersection(item._cloned_set):
-                    froms.append(item)
-                seen.update(item._cloned_set)
-
-        add(_from_objects(*self._raw_columns))
-        if self._whereclause is not None:
-            add(_from_objects(self._whereclause))
-        add(self._from_obj)
+        for item in itertools.chain(
+            _from_objects(*self._raw_columns),
+            _from_objects(self._whereclause)
+            if self._whereclause is not None else (),
+            self._from_obj
+        ):
+            if item is self:
+                raise exc.InvalidRequestError(
+                    "select() construct refers to itself as a FROM")
+            if translate and item in translate:
+                item = translate[item]
+            if not seen.intersection(item._cloned_set):
+                froms.append(item)
+            seen.update(item._cloned_set)
 
         return froms
 
