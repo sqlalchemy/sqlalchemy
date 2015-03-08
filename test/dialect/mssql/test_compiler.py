@@ -416,11 +416,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT TOP 0 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
             checkparams={'x_1': 5}
         )
+        c = s.compile(dialect=mssql.MSDialect())
+        eq_(len(c._result_columns), 2)
+        assert t.c.x in set(c.result_map['x'][1])
 
     def test_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))
 
-        s = select([t]).where(t.c.x==5).order_by(t.c.y).offset(20)
+        s = select([t]).where(t.c.x == 5).order_by(t.c.y).offset(20)
 
         # test that the select is not altered with subsequent compile
         # calls
@@ -433,6 +436,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "anon_1 WHERE mssql_rn > :param_1",
                 checkparams={'param_1': 20, 'x_1': 5}
             )
+
+            c = s.compile(dialect=mssql.MSDialect())
+            eq_(len(c._result_columns), 2)
+            assert t.c.x in set(c.result_map['x'][1])
 
     def test_limit_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))
@@ -449,6 +456,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
             checkparams={'param_1': 20, 'param_2': 10, 'x_1': 5}
         )
+        c = s.compile(dialect=mssql.MSDialect())
+        eq_(len(c._result_columns), 2)
+        assert t.c.x in set(c.result_map['x'][1])
+        assert t.c.y in set(c.result_map['y'][1])
 
     def test_limit_offset_with_correlated_order_by(self):
         t1 = table('t1', column('x', Integer), column('y', Integer))
@@ -470,6 +481,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
             checkparams={'param_1': 20, 'param_2': 10, 'x_1': 5}
         )
+
+        c = s.compile(dialect=mssql.MSDialect())
+        eq_(len(c._result_columns), 2)
+        assert t1.c.x in set(c.result_map['x'][1])
+        assert t1.c.y in set(c.result_map['y'][1])
 
     def test_limit_zero_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))

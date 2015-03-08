@@ -663,7 +663,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.cursor = self.create_cursor()
         return self
 
-    @property
+    @util.memoized_property
     def result_map(self):
         if self._result_columns:
             return self.compiled.result_map

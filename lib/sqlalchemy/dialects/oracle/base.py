@@ -665,8 +665,8 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return sql.and_(*clauses)
 
-    def visit_outer_join_column(self, vc):
-        return self.process(vc.column) + "(+)"
+    def visit_outer_join_column(self, vc, **kw):
+        return self.process(vc.column, **kw) + "(+)"
 
     def visit_sequence(self, seq):
         return (self.dialect.identifier_preparer.format_sequence(seq) +
@@ -738,6 +738,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 # limit=0
 
                 # TODO: use annotations instead of clone + attr set ?
+                kwargs['_select_wraps'] = select
                 select = select._generate()
                 select._oracle_visit = True
 
@@ -794,7 +795,6 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect._for_update_arg = select._for_update_arg
                     select = offsetselect
 
-        kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
         return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 
     def limit_clause(self, select, **kw):

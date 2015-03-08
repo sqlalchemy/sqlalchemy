@@ -1031,6 +1031,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             _order_by_clauses = select._order_by_clause.clauses
             limit_clause = select._limit_clause
             offset_clause = select._offset_clause
+            kwargs['_select_wraps'] = select
             select = select._generate()
             select._mssql_visit = True
             select = select.column(
@@ -1048,7 +1049,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             else:
                 limitselect.append_whereclause(
                     mssql_rn <= (limit_clause))
-            return self.process(limitselect, iswrapper=True, **kwargs)
+            return self.process(limitselect, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 

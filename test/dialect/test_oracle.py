@@ -240,9 +240,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             checkparams={'param_1': 10, 'param_2': 20})
 
         c = s.compile(dialect=oracle.OracleDialect())
+        eq_(len(c._result_columns), 2)
         assert t.c.col1 in set(c.result_map['col1'][1])
-        s = select([s.c.col1, s.c.col2])
-        self.assert_compile(s,
+
+        s2 = select([s.c.col1, s.c.col2])
+        self.assert_compile(s2,
                             'SELECT col1, col2 FROM (SELECT col1, col2 '
                             'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
                             'FROM (SELECT sometable.col1 AS col1, '
@@ -251,13 +253,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             ':param_2)',
                             checkparams={'param_1': 10, 'param_2': 20})
 
-        self.assert_compile(s,
+        self.assert_compile(s2,
                             'SELECT col1, col2 FROM (SELECT col1, col2 '
                             'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
                             'FROM (SELECT sometable.col1 AS col1, '
                             'sometable.col2 AS col2 FROM sometable) '
                             'WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > '
                             ':param_2)')
+        c = s2.compile(dialect=oracle.OracleDialect())
+        eq_(len(c._result_columns), 2)
+        assert s.c.col1 in set(c.result_map['col1'][1])
 
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
         self.assert_compile(s,
@@ -269,6 +274,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             ':param_1 + :param_2) WHERE ora_rn > :param_2',
                             checkparams={'param_1': 10, 'param_2': 20}
                             )
+        c = s.compile(dialect=oracle.OracleDialect())
+        eq_(len(c._result_columns), 2)
+        assert t.c.col1 in set(c.result_map['col1'][1])
 
         s = select([t], for_update=True).limit(10).order_by(t.c.col2)
         self.assert_compile(s,
