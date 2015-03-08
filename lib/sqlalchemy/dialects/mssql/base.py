@@ -1031,7 +1031,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             _order_by_clauses = select._order_by_clause.clauses
             limit_clause = select._limit_clause
             offset_clause = select._offset_clause
-            kwargs['_select_wraps'] = select
+            kwargs['select_wraps_for'] = select
             select = select._generate()
             select._mssql_visit = True
             select = select.column(

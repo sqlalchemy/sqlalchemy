@@ -737,8 +737,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 # Outer select and "ROWNUM as ora_rn" can be dropped if
                 # limit=0
 
-                # TODO: use annotations instead of clone + attr set ?
-                kwargs['_select_wraps'] = select
+                kwargs['select_wraps_for'] = select
                 select = select._generate()
                 select._oracle_visit = True
 

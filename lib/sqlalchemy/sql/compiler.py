@@ -23,6 +23,7 @@ To generate user-defined SQL strings, see
 
 """
 
+import contextlib
 import re
 from . import schema, sqltypes, operators, functions, visitors, \
     elements, selectable, crud
@@ -407,6 +408,26 @@ class SQLCompiler(Compiled):
         if self.positional:
             self.cte_positional = {}
 
+    @contextlib.contextmanager
+    def _nested_result(self):
+        """special API to support the use case of 'nested result sets'"""
+        result_columns, ordered_columns = (
+            self._result_columns, self._ordered_columns)
+        self._result_columns, self._ordered_columns = [], False
+
+        try:
+            if self.stack:
+                entry = self.stack[-1]
+                entry['need_result_map_for_nested'] = True
+            else:
+                entry = None
+            yield self._result_columns, self._ordered_columns
+        finally:
+            if entry:
+                entry.pop('need_result_map_for_nested')
+            self._result_columns, self._ordered_columns = (
+                result_columns, ordered_columns)
+
     def _apply_numbered_params(self):
         poscount = itertools.count(1)
         self.string = re.sub(
@@ -673,17 +694,18 @@ class SQLCompiler(Compiled):
         )
 
     def visit_text_as_from(self, taf,
-                           compound_index=None, force_result_map=False,
+                           compound_index=None,
                            asfrom=False,
                            parens=True, **kw):
 
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
-        populate_result_map = force_result_map or \
-            toplevel or \
-            (compound_index == 0 and entry.get(
-                'need_result_map_for_compound', False))
+        populate_result_map = toplevel or \
+            (
+                compound_index == 0 and entry.get(
+                    'need_result_map_for_compound', False)
+            ) or entry.get('need_result_map_for_nested', False)
 
         if populate_result_map:
             self._ordered_columns = False
@@ -1478,9 +1500,8 @@ class SQLCompiler(Compiled):
     def visit_select(self, select, asfrom=False, parens=True,
                      fromhints=None,
                      compound_index=0,
-                     force_result_map=False,
                      nested_join_translation=False,
-                     _select_wraps=None,
+                     select_wraps_for=None,
                      **kwargs):
 
         needs_nested_translation = \
@@ -1496,18 +1517,17 @@ class SQLCompiler(Compiled):
                 transformed_select, asfrom=asfrom, parens=parens,
                 fromhints=fromhints,
                 compound_index=compound_index,
-                force_result_map=force_result_map,
                 nested_join_translation=True, **kwargs
             )
 
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
-        populate_result_map = force_result_map or \
-            toplevel or (
+        populate_result_map = toplevel or \
+            (
                 compound_index == 0 and entry.get(
                     'need_result_map_for_compound', False)
-            )
+            ) or entry.get('need_result_map_for_nested', False)
 
         if needs_nested_translation:
             if populate_result_map:
@@ -1552,10 +1572,10 @@ class SQLCompiler(Compiled):
             if c is not None
         ]
 
-        if populate_result_map and _select_wraps is not None:
+        if populate_result_map and select_wraps_for is not None:
             # if this select is a compiler-generated wrapper,
             # rewrite the targeted columns in the result map
-            wrapped_inner_columns = set(_select_wraps.inner_columns)
+            wrapped_inner_columns = set(select_wraps_for.inner_columns)
             translate = dict(
                 (outer, inner.pop()) for outer, inner in [
                     (

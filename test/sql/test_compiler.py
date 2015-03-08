@@ -3466,3 +3466,64 @@ class ResultMapTest(fixtures.TestBase):
             comp._create_result_map(),
             {'a': ('a', (aint, 'a', 'a'), aint.type)}
         )
+
+    def test_nested_api(self):
+        from sqlalchemy.engine.result import ResultMetaData
+        stmt2 = select([table2])
+
+        stmt1 = select([table1]).select_from(stmt2)
+
+        contexts = {}
+
+        int_ = Integer()
+
+        class MyCompiler(compiler.SQLCompiler):
+            def visit_select(self, stmt, *arg, **kw):
+
+                if stmt is stmt2:
+                    with self._nested_result() as nested:
+                        contexts[stmt2] = nested
+                        text = super(MyCompiler, self).visit_select(stmt2)
+                        self._add_to_result_map("k1", "k1", (1, 2, 3), int_)
+                else:
+                    text = super(MyCompiler, self).visit_select(
+                        stmt, *arg, **kw)
+                    self._add_to_result_map("k2", "k2", (3, 4, 5), int_)
+                return text
+
+        comp = MyCompiler(default.DefaultDialect(), stmt1)
+
+        eq_(
+            ResultMetaData._create_result_map(contexts[stmt2][0]),
+            {
+                'otherid': (
+                    'otherid',
+                    (table2.c.otherid, 'otherid', 'otherid'),
+                    table2.c.otherid.type),
+                'othername': (
+                    'othername',
+                    (table2.c.othername, 'othername', 'othername'),
+                    table2.c.othername.type),
+                'k1': ('k1', (1, 2, 3), int_)
+            }
+        )
+        eq_(
+            comp._create_result_map(),
+            {
+                'myid': (
+                    'myid',
+                    (table1.c.myid, 'myid', 'myid'), table1.c.myid.type
+                ),
+                'k2': ('k2', (3, 4, 5), int_),
+                'name': (
+                    'name', (table1.c.name, 'name', 'name'),
+                    table1.c.name.type),
+                'description': (
+                    'description',
+                    (table1.c.description, 'description', 'description'),
+                    table1.c.description.type)}
+        )
+
+
+
+
