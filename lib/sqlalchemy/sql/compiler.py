@@ -393,22 +393,6 @@ class SQLCompiler(Compiled):
         if self.positional and dialect.paramstyle == 'numeric':
             self._apply_numbered_params()
 
-    @property
-    def result_map(self):
-        d = {}
-        for elem in self._result_columns:
-            key, rec = elem[0], elem[1:]
-            if key in d:
-                # conflicting keyname, just double up the list
-                # of objects.  this will cause an "ambiguous name"
-                # error if an attempt is made by the result set to
-                # access.
-                e_name, e_obj, e_type = d[key]
-                d[key] = e_name, e_obj + rec[1], e_type
-            else:
-                d[key] = rec
-        return d
-
     @util.memoized_instancemethod
     def _init_cte_state(self):
         """Initialize collections related to CTEs only if
@@ -500,6 +484,11 @@ class SQLCompiler(Compiled):
         """Return the bind param dictionary embedded into this
         compiled object, for those values that are present."""
         return self.construct_params(_check=False)
+
+    @util.dependencies("sqlalchemy.engine.result")
+    def _create_result_map(self, result):
+        """utility method used for unit tests only."""
+        return result.ResultMetaData._create_result_map(self._result_columns)
 
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is

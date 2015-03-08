@@ -1969,11 +1969,11 @@ class WithLabelsTest(fixtures.TestBase):
 
     def _assert_result_keys(self, s, keys):
         compiled = s.compile()
-        eq_(set(compiled.result_map), set(keys))
+        eq_(set(compiled._create_result_map()), set(keys))
 
     def _assert_subq_result_keys(self, s, keys):
         compiled = s.select().compile()
-        eq_(set(compiled.result_map), set(keys))
+        eq_(set(compiled._create_result_map()), set(keys))
 
     def _names_overlap(self):
         m = MetaData()
@@ -2124,7 +2124,7 @@ class SelectProxyTest(fixtures.TestBase):
         compiled = stmt.compile()
         return dict(
             (elem, key)
-            for key, elements in compiled.result_map.items()
+            for key, elements in compiled._create_result_map().items()
             for elem in elements[1]
         )
 

@@ -80,7 +80,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         # .key in SQL
         for key, col in zip([c.name for c in s.c], s.inner_columns):
             key = key % compiled.anon_map
-            assert col in compiled.result_map[key][1]
+            assert col in compiled._create_result_map()[key][1]
 
     _a_bkeyselect_bkey = ""
 

@@ -463,7 +463,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     executemany = False
     compiled = None
     statement = None
-    _result_columns = None
+    result_column_struct = None
     _is_implicit_returning = False
     _is_explicit_returning = False
 
@@ -522,10 +522,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.execution_options = compiled.statement._execution_options.union(
             connection._execution_options)
 
-        # compiled clauseelement.  process bind params, process table defaults,
-        # track collections used by ResultProxy to target and process results
-
-        self._result_columns = compiled._result_columns
+        self.result_column_struct = (
+            compiled._result_columns, compiled._ordered_columns)
 
         self.unicode_statement = util.text_type(compiled)
         if not dialect.supports_unicode_statements:
@@ -662,13 +660,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.execution_options = connection._execution_options
         self.cursor = self.create_cursor()
         return self
-
-    @util.memoized_property
-    def result_map(self):
-        if self._result_columns:
-            return self.compiled.result_map
-        else:
-            return None
 
     @util.memoized_property
     def engine(self):

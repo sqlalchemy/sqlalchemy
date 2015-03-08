@@ -315,7 +315,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         compiled = t.compile()
-        eq_(compiled.result_map,
+        eq_(compiled._create_result_map(),
             {'id': ('id',
                     (t.c.id._proxies[0],
                      'id',
@@ -331,7 +331,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         t = text("select id, name from user").columns(id=Integer, name=String)
 
         compiled = t.compile()
-        eq_(compiled.result_map,
+        eq_(compiled._create_result_map(),
             {'id': ('id',
                     (t.c.id._proxies[0],
                      'id',
@@ -350,7 +350,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             table1.join(t, table1.c.myid == t.c.id))
         compiled = stmt.compile()
         eq_(
-            compiled.result_map,
+            compiled._create_result_map(),
             {
                 "myid": ("myid",
                          (table1.c.myid, "myid", "myid"), table1.c.myid.type),
@@ -382,7 +382,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         compiled = stmt.compile()
         return dict(
             (elem, key)
-            for key, elements in compiled.result_map.items()
+            for key, elements in compiled._create_result_map().items()
             for elem in elements[1]
         )
 

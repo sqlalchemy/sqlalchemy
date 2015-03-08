@@ -3380,7 +3380,7 @@ class ResultMapTest(fixtures.TestBase):
         stmt = select([t]).union(select([t]))
         comp = stmt.compile()
         eq_(
-            comp.result_map,
+            comp._create_result_map(),
             {'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type),
              'b': ('b', (t.c.b, 'b', 'b'), t.c.b.type)}
         )
@@ -3391,7 +3391,7 @@ class ResultMapTest(fixtures.TestBase):
         stmt = select([t.c.a]).select_from(t.join(subq, t.c.a == subq.c.a))
         comp = stmt.compile()
         eq_(
-            comp.result_map,
+            comp._create_result_map(),
             {'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type)}
         )
 
@@ -3400,7 +3400,7 @@ class ResultMapTest(fixtures.TestBase):
         stmt = select([t.c.a]).union(select([t.c.b]))
         comp = stmt.compile()
         eq_(
-            comp.result_map,
+            comp._create_result_map(),
             {'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type)},
         )
 
@@ -3410,9 +3410,9 @@ class ResultMapTest(fixtures.TestBase):
         tc = type_coerce(t.c.a, String)
         stmt = select([t.c.a, l1, tc])
         comp = stmt.compile()
-        tc_anon_label = comp.result_map['a_1'][1][0]
+        tc_anon_label = comp._create_result_map()['a_1'][1][0]
         eq_(
-            comp.result_map,
+            comp._create_result_map(),
             {
                 'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type),
                 'bar': ('bar', (l1, 'bar'), l1.type),
@@ -3431,11 +3431,11 @@ class ResultMapTest(fixtures.TestBase):
             t1.join(union, t1.c.a == union.c.t1_a)).apply_labels()
         comp = stmt.compile()
         eq_(
-            set(comp.result_map),
+            set(comp._create_result_map()),
             set(['t1_1_b', 't1_1_a', 't1_a', 't1_b'])
         )
         is_(
-            comp.result_map['t1_a'][1][2], t1.c.a
+            comp._create_result_map()['t1_a'][1][2], t1.c.a
         )
 
     def test_insert_with_select_values(self):
@@ -3448,7 +3448,7 @@ class ResultMapTest(fixtures.TestBase):
         stmt = t2.insert().values(a=select([astring])).returning(aint)
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
-            comp.result_map,
+            comp._create_result_map(),
             {'a': ('a', (aint, 'a', 'a'), aint.type)}
         )
 
@@ -3463,6 +3463,6 @@ class ResultMapTest(fixtures.TestBase):
             returning(aint)
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
-            comp.result_map,
+            comp._create_result_map(),
             {'a': ('a', (aint, 'a', 'a'), aint.type)}
         )

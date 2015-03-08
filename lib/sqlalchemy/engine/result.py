@@ -193,13 +193,14 @@ class ResultMetaData(object):
         translate_colname = context._translate_colname
         self.case_sensitive = case_sensitive = dialect.case_sensitive
 
-        if context._result_columns:
-            num_ctx_cols = len(context._result_columns)
+        if context.result_column_struct:
+            result_columns, cols_are_ordered = context.result_column_struct
+            num_ctx_cols = len(result_columns)
         else:
             num_ctx_cols = None
 
         if num_ctx_cols and \
-                context.compiled._ordered_columns and \
+                cols_are_ordered and \
                 num_ctx_cols == len(metadata):
             # case 1 - SQL expression statement, number of columns
             # in result matches number of cols in compiled.  This is the
@@ -217,10 +218,10 @@ class ResultMetaData(object):
                     obj,
                     None
                 ) for idx, (key, name, obj, type_)
-                in enumerate(context._result_columns)
+                in enumerate(result_columns)
             ]
             self.keys = [
-                elem[1] for elem in context._result_columns
+                elem[1] for elem in result_columns
             ]
         else:
             # case 2 - raw string, or number of columns in result does
@@ -233,6 +234,9 @@ class ResultMetaData(object):
             # that is adding extra columns.
             # In all these cases we fall back to the "named" approach
             # that SQLAlchemy has used up through 0.9.
+
+            if num_ctx_cols:
+                result_map = self._create_result_map(result_columns)
 
             raw = []
             self.keys = []
@@ -256,7 +260,7 @@ class ResultMetaData(object):
 
                 if num_ctx_cols:
                     try:
-                        ctx_rec = context.result_map[colname]
+                        ctx_rec = result_map[colname]
                     except KeyError:
                         mapped_type = typemap.get(coltype, sqltypes.NULLTYPE)
                         obj = None
@@ -296,8 +300,8 @@ class ResultMetaData(object):
             # ambiguous column exception when accessed.
             if len(by_key) != num_ctx_cols:
                 seen = set()
-                for idx in range(num_ctx_cols):
-                    key = raw[idx][1]
+                for rec in raw:
+                    key = rec[1]
                     if key in seen:
                         by_key[key] = (None, by_key[key][1], None)
                     seen.add(key)
@@ -323,6 +327,22 @@ class ResultMetaData(object):
                     (elem[5], self._keymap[elem[2]])
                     for elem in raw if elem[5]
                 ])
+
+    @classmethod
+    def _create_result_map(cls, result_columns):
+        d = {}
+        for elem in result_columns:
+            key, rec = elem[0], elem[1:]
+            if key in d:
+                # conflicting keyname, just double up the list
+                # of objects.  this will cause an "ambiguous name"
+                # error if an attempt is made by the result set to
+                # access.
+                e_name, e_obj, e_type = d[key]
+                d[key] = e_name, e_obj + rec[1], e_type
+            else:
+                d[key] = rec
+        return d
 
     @util.pending_deprecation("0.8", "sqlite dialect uses "
                               "_translate_colname() now")
