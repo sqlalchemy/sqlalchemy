@@ -418,7 +418,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         c = s.compile(dialect=mssql.MSDialect())
         eq_(len(c._result_columns), 2)
-        assert t.c.x in set(c.result_map['x'][1])
+        assert t.c.x in set(c._create_result_map()['x'][1])
 
     def test_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))
@@ -439,7 +439,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
             c = s.compile(dialect=mssql.MSDialect())
             eq_(len(c._result_columns), 2)
-            assert t.c.x in set(c.result_map['x'][1])
+            assert t.c.x in set(c._create_result_map()['x'][1])
 
     def test_limit_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))
@@ -458,8 +458,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         c = s.compile(dialect=mssql.MSDialect())
         eq_(len(c._result_columns), 2)
-        assert t.c.x in set(c.result_map['x'][1])
-        assert t.c.y in set(c.result_map['y'][1])
+        assert t.c.x in set(c._create_result_map()['x'][1])
+        assert t.c.y in set(c._create_result_map()['y'][1])
 
     def test_limit_offset_with_correlated_order_by(self):
         t1 = table('t1', column('x', Integer), column('y', Integer))
@@ -484,8 +484,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         c = s.compile(dialect=mssql.MSDialect())
         eq_(len(c._result_columns), 2)
-        assert t1.c.x in set(c.result_map['x'][1])
-        assert t1.c.y in set(c.result_map['y'][1])
+        assert t1.c.x in set(c._create_result_map()['x'][1])
+        assert t1.c.y in set(c._create_result_map()['y'][1])
 
     def test_limit_zero_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))

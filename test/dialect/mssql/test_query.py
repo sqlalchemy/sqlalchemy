@@ -35,12 +35,12 @@ class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_result_map(self):
         s = self.t2.select()
         c = s.compile(dialect=self.__dialect__)
-        assert self.t2.c.a in set(c.result_map['a'][1])
+        assert self.t2.c.a in set(c._create_result_map()['a'][1])
 
     def test_result_map_use_labels(self):
         s = self.t2.select(use_labels=True)
         c = s.compile(dialect=self.__dialect__)
-        assert self.t2.c.a in set(c.result_map['schema_t2_a'][1])
+        assert self.t2.c.a in set(c._create_result_map()['schema_t2_a'][1])
 
     def test_straight_select(self):
         self.assert_compile(self.t2.select(),
