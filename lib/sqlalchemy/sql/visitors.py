@@ -213,12 +213,19 @@ def iterate(obj, opts):
     traversal is configured to be breadth-first.
 
     """
+    # fasttrack for atomic elements like columns
+    children = obj.get_children(**opts)
+    if not children:
+        return [obj]
+
+    traversal = deque()
     stack = deque([obj])
     while stack:
         t = stack.popleft()
-        yield t
+        traversal.append(t)
         for c in t.get_children(**opts):
             stack.append(c)
+    return iter(traversal)
 
 
 def iterate_depthfirst(obj, opts):
@@ -227,6 +234,11 @@ def iterate_depthfirst(obj, opts):
     traversal is configured to be depth-first.
 
     """
+    # fasttrack for atomic elements like columns
+    children = obj.get_children(**opts)
+    if not children:
+        return [obj]
+
     stack = deque([obj])
     traversal = deque()
     while stack:

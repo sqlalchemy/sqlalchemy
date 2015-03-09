@@ -129,11 +129,13 @@ class _LW(AbstractKeyedTuple):
 
 def lightweight_named_tuple(name, fields):
 
-    tp_cls = type(name, (_LW,), {})
-    for idx, field in enumerate(fields):
-        if field is None:
-            continue
-        setattr(tp_cls, field, property(operator.itemgetter(idx)))
+    tp_cls = type(
+        name, (_LW,),
+        dict([
+            (field, _property_getters[idx])
+            for idx, field in enumerate(fields) if field is not None
+        ])
+    )
 
     tp_cls._real_fields = fields
     tp_cls._fields = tuple([f for f in fields if f is not None])
@@ -745,6 +747,12 @@ column_set = set
 column_dict = dict
 ordered_column_set = OrderedSet
 populate_column_dict = PopulateDict
+
+
+_getters = PopulateDict(operator.itemgetter)
+
+_property_getters = PopulateDict(
+    lambda idx: property(operator.itemgetter(idx)))
 
 
 def unique_list(seq, hashfunc=None):

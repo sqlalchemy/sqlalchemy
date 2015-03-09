@@ -100,7 +100,8 @@ class Query(object):
     _with_options = ()
     _with_hints = ()
     _enable_single_crit = True
-
+    _orm_only_adapt = True
+    _orm_only_from_obj_alias = True
     _current_path = _path_registry
 
     def __init__(self, entities, session=None):
@@ -231,7 +232,8 @@ class Query(object):
         adapters = []
         # do we adapt all expression elements or only those
         # tagged as 'ORM' constructs ?
-        orm_only = getattr(self, '_orm_only_adapt', orm_only)
+        if not self._orm_only_adapt:
+            orm_only = False
 
         if as_filter and self._filter_aliases:
             for fa in self._filter_aliases._visitor_iterator:
@@ -248,7 +250,7 @@ class Query(object):
             # to all SQL constructs.
             adapters.append(
                 (
-                    getattr(self, '_orm_only_from_obj_alias', orm_only),
+                    orm_only if self._orm_only_from_obj_alias else False,
                     self._from_obj_alias.replace
                 )
             )
@@ -305,7 +307,7 @@ class Query(object):
         ezero = self._mapper_zero()
         if ezero is not None:
             insp = inspect(ezero)
-            if hasattr(insp, 'mapper'):
+            if not insp.is_clause_element:
                 return insp.mapper
 
         return None
@@ -3580,18 +3582,18 @@ class _ColumnEntity(_QueryEntity):
             if 'parententity' in elem._annotations
         ]
 
-        self.entities = util.unique_list(
+        self.entities = util.unique_list([
             elem._annotations['parententity']
             for elem in all_elements
             if 'parententity' in elem._annotations
-        )
+        ])
 
-        self._from_entities = set(
+        self._from_entities = set([
             elem._annotations['parententity']
             for elem in all_elements
             if 'parententity' in elem._annotations
             and actual_froms.intersection(elem._from_objects)
-        )
+        ])
 
         if self.entities:
             self.entity_zero = self.entities[0]
@@ -3636,12 +3638,11 @@ class _ColumnEntity(_QueryEntity):
             return not _is_aliased_class(self.entity_zero) and \
                 entity.common_parent(self.entity_zero)
 
-    def _resolve_expr_against_query_aliases(self, query, expr, context):
-        return query._adapt_clause(expr, False, True)
-
     def row_processor(self, query, context, result):
-        column = self._resolve_expr_against_query_aliases(
-            query, self.column, context)
+        if ('fetch_column', self) in context.attributes:
+            column = context.attributes[('fetch_column', self)]
+        else:
+            column = query._adapt_clause(self.column, False, True)
 
         if context.adapter:
             column = context.adapter.columns[column]
@@ -3650,10 +3651,11 @@ class _ColumnEntity(_QueryEntity):
         return getter, self._label_name
 
     def setup_context(self, query, context):
-        column = self._resolve_expr_against_query_aliases(
-            query, self.column, context)
+        column = query._adapt_clause(self.column, False, True)
         context.froms += tuple(self.froms)
         context.primary_columns.append(column)
+
+        context.attributes[('fetch_column', self)] = column
 
     def __str__(self):
         return str(self.column)

@@ -1564,12 +1564,9 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
 
         bname, cname, dname = q._entities
 
-        b_name_adapted = bname._resolve_expr_against_query_aliases(
-                                        q, bname.column, None)
-        c_name_adapted = cname._resolve_expr_against_query_aliases(
-                                        q, cname.column, None)
-        d_name_adapted = dname._resolve_expr_against_query_aliases(
-                                        q, dname.column, None)
+        b_name_adapted = q._adapt_clause(bname.column, False, True)
+        c_name_adapted = q._adapt_clause(cname.column, False, True)
+        d_name_adapted = q._adapt_clause(dname.column, False, True)
 
         assert bool(b_name_adapted == a.c.name)
         assert bool(c_name_adapted == ac_adapted.c.name)

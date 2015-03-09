@@ -298,7 +298,7 @@ class Profiler(object):
             pr.disable()
 
         stats = pstats.Stats(pr).sort_stats('cumulative')
-        #stats.print_callers()
+        # stats.print_callers()
 
         self.stats.append(TestResult(self, fn, stats=stats))
         return result

@@ -43,9 +43,10 @@ def _interpret_as_from(element):
                 {"expr": util.ellipses_string(element)})
 
             return TextClause(util.text_type(element))
-    elif hasattr(insp, "selectable"):
+    try:
         return insp.selectable
-    raise exc.ArgumentError("FROM expression expected")
+    except AttributeError:
+        raise exc.ArgumentError("FROM expression expected")
 
 
 def _interpret_as_select(element):
