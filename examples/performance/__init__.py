@@ -241,6 +241,7 @@ class Profiler(object):
         self.runsnake = options.runsnake
         self.profile = options.profile
         self.dump = options.dump
+        self.callers = options.callers
         self.num = options.num
         self.echo = options.echo
         self.stats = []
@@ -298,7 +299,6 @@ class Profiler(object):
             pr.disable()
 
         stats = pstats.Stats(pr).sort_stats('cumulative')
-        # stats.print_callers()
 
         self.stats.append(TestResult(self, fn, stats=stats))
         return result
@@ -356,6 +356,9 @@ class Profiler(object):
             '--dump', action='store_true',
             help='dump full call profile (implies --profile)')
         parser.add_argument(
+            '--callers', action='store_true',
+            help='print callers as well (implies --dump)')
+        parser.add_argument(
             '--runsnake', action='store_true',
             help='invoke runsnakerun (implies --profile)')
         parser.add_argument(
@@ -363,6 +366,7 @@ class Profiler(object):
             help="Echo SQL output")
         args = parser.parse_args()
 
+        args.dump = args.dump or args.callers
         args.profile = args.profile or args.dump or args.runsnake
 
         if cls.name is None:
@@ -410,6 +414,8 @@ class TestResult(object):
     def _dump(self):
         self.stats.sort_stats('time', 'calls')
         self.stats.print_stats()
+        if self.profile.callers:
+            self.stats.print_callers()
 
     def _runsnake(self):
         filename = "%s.profile" % self.test.__name__
