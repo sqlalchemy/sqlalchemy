@@ -991,9 +991,8 @@ class Connection(Connectable):
         dialect = self.dialect
         if 'compiled_cache' in self._execution_options:
             key = dialect, elem, tuple(sorted(keys)), len(distilled_params) > 1
-            if key in self._execution_options['compiled_cache']:
-                compiled_sql = self._execution_options['compiled_cache'][key]
-            else:
+            compiled_sql = self._execution_options['compiled_cache'].get(key)
+            if compiled_sql is None:
                 compiled_sql = elem.compile(
                     dialect=dialect, column_keys=keys,
                     inline=len(distilled_params) > 1)
