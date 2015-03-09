@@ -12,8 +12,8 @@ import os
 
 
 for pth in ['./lib']:
-    sys.path.insert(
-        0, os.path.join(os.path.dirname(os.path.abspath(__file__)), pth))
+    sys.path.append(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), pth))
 
 # use bootstrapping so that test plugins are loaded
 # without touching the main library before coverage starts
