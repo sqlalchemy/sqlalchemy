@@ -17,7 +17,7 @@ from . import mapperlib, instrumentation
 from .session import Session, sessionmaker
 from .scoping import scoped_session
 from .attributes import QueryableAttribute
-
+from .query import Query
 
 class InstrumentationEvents(event.Events):
     """Events related to class instrumentation events.
@@ -1651,3 +1651,56 @@ class AttributeEvents(event.Events):
            the :class:`.collection.linker` hook.
 
         """
+
+
+class QueryEvents(event.Events):
+    """Represent events within the construction of a :class:`.Query` object.
+
+    The events here are intended to be used with an as-yet-unreleased
+    inspection system for :class:`.Query`.   Some very basic operations
+    are possible now, however the inspection system is intended to allow
+    complex query manipulations to be automated.
+
+    .. versionadded:: 1.0.0
+
+    """
+
+    _target_class_doc = "SomeQuery"
+    _dispatch_target = Query
+
+    def before_compile(self, query):
+        """Receive the :class:`.Query` object before it is composed into a
+        core :class:`.Select` object.
+
+        This event is intended to allow changes to the query given::
+
+            @event.listens_for(Query, "before_compile", retval=True)
+            def no_deleted(query):
+                for desc in query.column_descriptions:
+                    if desc['type'] is User:
+                        entity = desc['expr']
+                        query = query.filter(entity.deleted == False)
+                return query
+
+        The event should normally be listened with the ``retval=True``
+        parameter set, so that the modified query may be returned.
+
+
+        """
+
+    @classmethod
+    def _listen(
+            cls, event_key, retval=False, **kw):
+        fn = event_key._listen_fn
+
+        if not retval:
+            def wrap(*arg, **kw):
+                if not retval:
+                    query = arg[0]
+                    fn(*arg, **kw)
+                    return query
+                else:
+                    return fn(*arg, **kw)
+            event_key = event_key.with_wrapper(wrap)
+
+        event_key.base_listen(**kw)

@@ -5,12 +5,13 @@ from sqlalchemy import Integer, String
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, \
     create_session, class_mapper, \
-    Mapper, column_property, \
+    Mapper, column_property, query, \
     Session, sessionmaker, attributes, configure_mappers
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm import instrumentation, events
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 from sqlalchemy import event
@@ -22,6 +23,7 @@ class _RemoveListeners(object):
         events.InstanceEvents._clear()
         events.SessionEvents._clear()
         events.InstrumentationEvents._clear()
+        events.QueryEvents._clear()
         super(_RemoveListeners, self).teardown()
 
 
@@ -1880,4 +1882,38 @@ class SessionExtensionTest(_fixtures.FixtureTest):
         s = Session(extension=MyExtension())
         assert not s.dispatch.after_commit
         assert len(s.dispatch.before_commit) == 1
+
+
+class QueryEventsTest(
+        _RemoveListeners, _fixtures.FixtureTest, AssertsCompiledSQL):
+    run_inserts = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        users = cls.tables.users
+
+        mapper(User, users)
+
+    def test_before_compile(self):
+        @event.listens_for(query.Query, "before_compile", retval=True)
+        def no_deleted(query):
+            for desc in query.column_descriptions:
+                if desc['type'] is User:
+                    entity = desc['expr']
+                    query = query.filter(entity.id != 10)
+            return query
+
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User).filter_by(id=7)
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users "
+            "WHERE users.id = :id_1 AND users.id != :id_2",
+            checkparams={'id_2': 10, 'id_1': 7}
+        )
 

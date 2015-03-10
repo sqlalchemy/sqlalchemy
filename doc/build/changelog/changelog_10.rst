@@ -25,6 +25,24 @@
 
     .. change::
         :tags: feature, orm
+        :tickets: 3317
+
+        Added a new event suite :class:`.QueryEvents`.  The
+        :meth:`.QueryEvents.before_compile` event allows the creation
+        of functions which may place additional modifications to
+        :class:`.Query` objects before the construction of the SELECT
+        statement.   It is hoped that this event be made much more
+        useful via the advent of a new inspection system that will
+        allow for detailed modifications to be made against
+        :class:`.Query` objects in an automated fashion.
+
+        .. seealso::
+
+            :class:`.QueryEvents`
+
+
+    .. change::
+        :tags: feature, orm
         :tickets: 3249
 
         The subquery wrapping which occurs when joined eager loading

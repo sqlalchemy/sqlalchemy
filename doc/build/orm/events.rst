@@ -9,7 +9,7 @@ The ORM includes a wide variety of hooks available for subscription.
     The event supersedes the previous system of "extension" classes.
 
 For an introduction to the event API, see :ref:`event_toplevel`.  Non-ORM events
-such as those regarding connections and low-level statement execution are described in 
+such as those regarding connections and low-level statement execution are described in
 :ref:`core_event_toplevel`.
 
 Attribute Events
@@ -34,6 +34,12 @@ Session Events
 --------------
 
 .. autoclass:: sqlalchemy.orm.events.SessionEvents
+   :members:
+
+Query Events
+-------------
+
+.. autoclass:: sqlalchemy.orm.events.QueryEvents
    :members:
 
 Instrumentation Events

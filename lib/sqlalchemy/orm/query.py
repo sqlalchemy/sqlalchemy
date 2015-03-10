@@ -2934,6 +2934,12 @@ class Query(object):
         return update_op.rowcount
 
     def _compile_context(self, labels=True):
+        if self.dispatch.before_compile:
+            for fn in self.dispatch.before_compile:
+                new_query = fn(self)
+                if new_query is not None:
+                    self = new_query
+
         context = QueryContext(self)
 
         if context.statement is not None:
@@ -2954,10 +2960,8 @@ class Query(object):
             # "load from explicit FROMs" mode,
             # i.e. when select_from() or join() is used
             context.froms = list(context.from_clause)
-        else:
-            # "load from discrete FROMs" mode,
-            # i.e. when each _MappedEntity has its own FROM
-            context.froms = context.froms
+        # else "load from discrete FROMs" mode,
+        # i.e. when each _MappedEntity has its own FROM
 
         if self._enable_single_crit:
             self._adjust_for_single_inheritance(context)
@@ -2977,6 +2981,7 @@ class Query(object):
             context.statement = self._compound_eager_statement(context)
         else:
             context.statement = self._simple_statement(context)
+
         return context
 
     def _compound_eager_statement(self, context):
