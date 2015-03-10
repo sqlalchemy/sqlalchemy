@@ -1830,7 +1830,7 @@ class Session(_SessionClassMethods):
                 "function to send this object back to the transient state." %
                 state_str(state)
             )
-        self._before_attach(state)
+        self._before_attach(state, check_identity_map=False)
         self._deleted.pop(state, None)
         if discard_existing:
             self.identity_map.replace(state)
@@ -1910,13 +1910,12 @@ class Session(_SessionClassMethods):
         self._attach(state, include_before=True)
         state._load_pending = True
 
-    def _before_attach(self, state):
+    def _before_attach(self, state, check_identity_map=True):
         if state.session_id != self.hash_key and \
                 self.dispatch.before_attach:
             self.dispatch.before_attach(self, state.obj())
 
-    def _attach(self, state, include_before=False):
-        if state.key and \
+        if check_identity_map and state.key and \
             state.key in self.identity_map and \
                 not self.identity_map.contains_state(state):
             raise sa_exc.InvalidRequestError(
@@ -1932,10 +1931,11 @@ class Session(_SessionClassMethods):
                 "(this is '%s')" % (state_str(state),
                                     state.session_id, self.hash_key))
 
+    def _attach(self, state, include_before=False):
+
         if state.session_id != self.hash_key:
-            if include_before and \
-                    self.dispatch.before_attach:
-                self.dispatch.before_attach(self, state.obj())
+            if include_before:
+                self._before_attach(state)
             state.session_id = self.hash_key
             if state.modified and state._strong_obj is None:
                 state._strong_obj = state.obj()

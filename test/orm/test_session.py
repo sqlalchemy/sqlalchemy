@@ -505,6 +505,25 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert user not in s
         assert s.query(User).count() == 0
 
+    def test_already_attached(self):
+        User = self.classes.User
+        users = self.tables.users
+        mapper(User, users)
+
+        s1 = Session()
+        s2 = Session()
+
+        u1 = User(id=1, name='u1')
+        make_transient_to_detached(u1)  # shorthand for actually persisting it
+        s1.add(u1)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Object '<User.*?>' is already attached to session",
+            s2.add, u1
+        )
+        assert u1 not in s2
+        assert not s2.identity_map.keys()
 
     @testing.uses_deprecated()
     def test_identity_conflict(self):
@@ -562,7 +581,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u2 is not None and u2 is not u1
         assert u2 in sess
 
-        assert_raises(Exception, lambda: sess.add(u1))
+        assert_raises(AssertionError, lambda: sess.add(u1))
 
         sess.expunge(u2)
         assert u2 not in sess

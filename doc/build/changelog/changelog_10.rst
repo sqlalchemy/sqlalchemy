@@ -24,6 +24,15 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3301
+
+        Fixed bug where the session attachment error "object is already
+        attached to session X" would fail to prevent the object from
+        also being attached to the new session, in the case that execution
+        continued after the error raise occurred.
+
+    .. change::
         :tags: bug, ext
         :tickets: 3219, 3240
 
