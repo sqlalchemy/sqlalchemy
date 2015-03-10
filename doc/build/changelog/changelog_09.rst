@@ -15,6 +15,17 @@
     :version: 0.9.9
 
     .. change::
+        :tags: feature, sqlite
+        :pullreq: bitbucket:42
+
+        Added support for partial indexes (e.g. with a WHERE clause) on
+        SQLite.  Pull request courtesy Kai Groner.
+
+        .. seealso::
+
+            :ref:`sqlite_partial_index`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3310
 
