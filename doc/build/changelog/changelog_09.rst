@@ -259,7 +259,7 @@
         check for 'utf8_bin' collation, as this fails on MySQL server < 5.0.
 
     .. change::
-        :tags: enhancement, orm
+        :tags: feature, orm
         :versions: 1.0.0
 
         Added new method :meth:`.Session.invalidate`, functions similarly
