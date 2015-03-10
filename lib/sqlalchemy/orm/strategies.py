@@ -1269,7 +1269,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             anonymize_labels=True)
         assert clauses.aliased_class is not None
 
-        if self.parent_property.direction != interfaces.MANYTOONE:
+        if self.parent_property.uselist:
             context.multi_row_eager_loaders = True
 
         innerjoin = (

@@ -1073,6 +1073,32 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_([User(id=7, address=Address(id=1))], l)
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_one_to_many_scalar_subq_wrapping(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
+
+        mapper(User, users, properties=dict(
+            address=relationship(mapper(Address, addresses),
+                                 lazy='joined', uselist=False)
+        ))
+        q = create_session().query(User)
+        q = q.filter(users.c.id == 7).limit(1)
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM users LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id "
+            "WHERE users.id = :id_1 "
+            "LIMIT :param_1",
+            checkparams={'id_1': 7, 'param_1': 1}
+        )
+
     def test_many_to_one(self):
         users, Address, addresses, User = (
             self.tables.users,

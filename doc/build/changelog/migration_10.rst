@@ -1203,6 +1203,55 @@ join into a subquery as a join target on SQLite.
 
 :ticket:`3008`
 
+.. _change_3429:
+
+Subqueries no longer applied to uselist=False joined eager loads
+----------------------------------------------------------------
+
+Given a joined eager load like the following::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        b = relationship("B", uselist=False)
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+
+    s = Session()
+    print(s.query(A).options(joinedload(A.b)).limit(5))
+
+SQLAlchemy considers the relationship ``A.b`` to be a "one to many,
+loaded as a single value", which is essentially a "one to one"
+relationship.  However, joined eager loading has always treated the
+above as a situation where the main query needs to be inside a
+subquery, as would normally be needed for a collection of B objects
+where the main query has a LIMIT applied::
+
+    SELECT anon_1.a_id AS anon_1_a_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id
+    FROM (SELECT a.id AS a_id
+    FROM a LIMIT :param_1) AS anon_1
+    LEFT OUTER JOIN b AS b_1 ON anon_1.a_id = b_1.a_id
+
+However, since the relationship of the inner query to the outer one is
+that at most only one row is shared in the case of ``uselist=False``
+(in the same way as a many-to-one), the "subquery" used with LIMIT +
+joined eager loading is now dropped in this case::
+
+    SELECT a.id AS a_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id
+    FROM a LEFT OUTER JOIN b AS b_1 ON a.id = b_1.a_id
+    LIMIT :param_1
+
+In the case that the LEFT OUTER JOIN returns more than one row, the ORM
+has always emitted a warning here and ignored addtional results for
+``uselist=False``, so the results in that error situation should not change.
+
+:ticket:`3249`
+
+
 query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
 -----------------------------------------------------------------------------------
 

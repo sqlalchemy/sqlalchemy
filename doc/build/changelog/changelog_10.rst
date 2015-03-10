@@ -24,6 +24,22 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3249
+
+        The subquery wrapping which occurs when joined eager loading
+        is used with a one-to-many query that also features LIMIT,
+        OFFSET, or DISTINCT has been disabled in the case of a one-to-one
+        relationship, that is a one-to-many with
+        :paramref:`.relationship.uselist` set to False.  This will produce
+        more efficient queries in these cases.
+
+        .. seealso::
+
+            :ref:`change_3249`
+
+
+    .. change::
         :tags: bug, orm
         :tickets: 3301
 
