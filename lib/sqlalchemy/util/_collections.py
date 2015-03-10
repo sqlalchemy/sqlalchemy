@@ -910,7 +910,7 @@ class LRUCache(dict):
             self._mutex.release()
 
 
-_lw_tuples = LRUCache(1000)
+_lw_tuples = LRUCache(100)
 
 
 def lightweight_named_tuple(name, fields):
