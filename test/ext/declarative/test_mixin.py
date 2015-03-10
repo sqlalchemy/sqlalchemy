@@ -1570,3 +1570,44 @@ class AbstractTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
 
         eq_(set(Base.metadata.tables), set(['y', 'z', 'q']))
+
+    def test_middle_abstract_attributes(self):
+        # test for [ticket:3219]
+        class A(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+
+        class B(A):
+            __abstract__ = True
+            data = Column(String)
+
+        class C(B):
+            c_value = Column(String)
+
+        eq_(
+            sa.inspect(C).attrs.keys(), ['id', 'name', 'data', 'c_value']
+        )
+
+    def test_middle_abstract_inherits(self):
+        # test for [ticket:3240]
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class AAbs(A):
+            __abstract__ = True
+
+        class B1(A):
+            __tablename__ = 'b1'
+            id = Column(ForeignKey('a.id'), primary_key=True)
+
+        class B2(AAbs):
+            __tablename__ = 'b2'
+            id = Column(ForeignKey('a.id'), primary_key=True)
+
+        assert B1.__mapper__.inherits is A.__mapper__
+
+        assert B2.__mapper__.inherits is A.__mapper__

@@ -24,6 +24,15 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, ext
+        :tickets: 3219, 3240
+
+        Fixed bug where using an ``__abstract__`` mixin in the middle
+        of a declarative inheritance hierarchy would prevent attributes
+        and configuration being correctly propagated from the base class
+        to the inheriting class.
+
+    .. change::
         :tags: feature, sql
         :tickets: 918
 
