@@ -272,6 +272,26 @@ lookup is used instead:
 .. versionadded:: 0.9.3 Support for SQLite type affinity rules when reflecting
    columns.
 
+
+.. _sqlite_partial_index:
+
+Partial Indexes
+===============
+
+A partial index, e.g. one which uses a WHERE clause, can be specified
+with the DDL system using the argument ``sqlite_where``::
+
+    tbl = Table('testtbl', m, Column('data', Integer))
+    idx = Index('test_idx1', tbl.c.data,
+                sqlite_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+
+The index will be rendered at create time as::
+
+    CREATE INDEX test_idx1 ON testtbl (data)
+    WHERE data > 5 AND data < 10
+
+.. versionadded:: 0.9.9
+
 """
 
 import datetime
