@@ -13,6 +13,7 @@
 
 .. changelog::
     :version: 0.9.9
+    :released: March 10, 2015
 
     .. change::
         :tags: feature, postgresql
