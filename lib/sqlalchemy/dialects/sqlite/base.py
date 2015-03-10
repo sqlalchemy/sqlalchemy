@@ -249,7 +249,7 @@ lookup is used instead:
 .. _sqlite_partial_index:
 
 Partial Indexes
-===============
+---------------
 
 A partial index, e.g. one which uses a WHERE clause, can be specified
 with the DDL system using the argument ``sqlite_where``::
