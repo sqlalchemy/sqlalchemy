@@ -401,6 +401,25 @@ The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
+
+.. _postgresql_index_concurrently:
+
+Indexes with CONCURRENTLY
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Postgresql index option CONCURRENTLY is supported by passing the
+flag ``postgresql_concurrently`` to the :class:`.Index` construct::
+
+    tbl = Table('testtbl', m, Column('data', Integer))
+
+    idx1 = Index('test_idx1', tbl.c.data, postgresql_concurrently=True)
+
+The above index construct will render SQL as::
+
+    CREATE INDEX CONCURRENTLY test_idx1 ON testtbl (data)
+
+.. versionadded:: 0.9.9
+
 """
 from collections import defaultdict
 import re

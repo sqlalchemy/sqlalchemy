@@ -15,6 +15,18 @@
     :version: 0.9.9
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: bitbucket:45
+
+        Added support for the ``CONCURRENTLY`` keyword with Postgresql
+        indexes, established using ``postgresql_concurrently``.  Pull
+        request courtesy Iuri de Silvio.
+
+        .. seealso::
+
+            :ref:`postgresql_index_concurrently`
+
+    .. change::
         :tags: bug, ext, py3k
         :pullreq: github:154
 
