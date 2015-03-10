@@ -1459,7 +1459,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
-        text += "INDEX %s ON %s " % (
+        text += "INDEX "
+
+        concurrently = index.dialect_options['postgresql']['concurrently']
+        if concurrently:
+            text += "CONCURRENTLY "
+
+        text += "%s ON %s " % (
             self._prepared_index_name(index,
                                       include_schema=False),
             preparer.format_table(index.table)
@@ -1812,7 +1818,8 @@ class PGDialect(default.DefaultDialect):
         (schema.Index, {
             "using": False,
             "where": None,
-            "ops": {}
+            "ops": {},
+            "concurrently": False,
         }),
         (schema.Table, {
             "ignore_search_path": False,
