@@ -15,6 +15,14 @@
     :version: 0.9.9
 
     .. change::
+        :tags: bug, ext, py3k
+        :pullreq: github:154
+
+        Fixed bug where the association proxy list class would not interpret
+        slices correctly under Py3K.  Pull request courtesy
+        Gilles Dartiguelongue.
+
+    .. change::
         :tags: feature, sqlite
         :pullreq: bitbucket:42
 
