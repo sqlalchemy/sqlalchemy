@@ -79,17 +79,17 @@ class RowTupleTest(QueryTest):
                 [
                     {
                         'name': 'User', 'type': User, 'aliased': False,
-                        'expr': User}]
+                        'expr': User, 'entity': User}]
             ),
             (
                 sess.query(User.id, User),
                 [
                     {
                         'name': 'id', 'type': users.c.id.type,
-                        'aliased': False, 'expr': User.id},
+                        'aliased': False, 'expr': User.id, 'entity': User},
                     {
                         'name': 'User', 'type': User, 'aliased': False,
-                        'expr': User}
+                        'expr': User, 'entity': User}
                 ]
             ),
             (
@@ -97,10 +97,10 @@ class RowTupleTest(QueryTest):
                 [
                     {
                         'name': 'id', 'type': users.c.id.type,
-                        'aliased': False, 'expr': User.id},
+                        'aliased': False, 'expr': User.id, 'entity': User},
                     {
                         'name': None, 'type': User, 'aliased': True,
-                        'expr': user_alias}
+                        'expr': user_alias, 'entity': user_alias}
                 ]
             ),
             (
@@ -108,7 +108,7 @@ class RowTupleTest(QueryTest):
                 [
                     {
                         'name': 'aalias', 'type': Address, 'aliased': True,
-                        'expr': address_alias}
+                        'expr': address_alias, 'entity': address_alias}
                 ]
             ),
             (
@@ -116,19 +116,28 @@ class RowTupleTest(QueryTest):
                 [
                     {
                         'name': 'uname', 'type': users.c.name.type,
-                        'aliased': False, 'expr': name_label},
+                        'aliased': False, 'expr': name_label, 'entity': User},
                     {
                         'name': None, 'type': fn.type, 'aliased': False,
-                        'expr': fn},
+                        'expr': fn, 'entity': User},
                 ]
+            ),
+            (
+                sess.query(users.c.name),
+                [{
+                    "name": "name", "type": users.c.name.type,
+                    "aliased": False, "expr": users.c.name, "entity": None
+                }]
             ),
             (
                 sess.query(bundle),
                 [
-                    {'aliased': False,
-                    'expr': bundle,
-                    'type': Bundle,
-                    'name': 'b1'}
+                    {
+                        'aliased': False,
+                        'expr': bundle,
+                        'type': Bundle,
+                        'name': 'b1', 'entity': User
+                    }
                 ]
             )
         ]:

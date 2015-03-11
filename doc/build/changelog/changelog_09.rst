@@ -12,6 +12,20 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.10
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3320
+
+        Added a new entry ``"entity"`` to the dictionaries returned by
+        :attr:`.Query.column_descriptions`.  This refers to the primary ORM
+        mapped class or aliased class that is referred to by the expression.
+        Compared to the existing entry for ``"type"``, it will always be
+        a mapped entity, even if extracted from a column expression, or
+        None if the given expression is a pure core expression.
+
+.. changelog::
     :version: 0.9.9
     :released: March 10, 2015
 
