@@ -2476,18 +2476,21 @@ class Query(object):
                     'type':User,
                     'aliased':False,
                     'expr':User,
+                    'entity': User
                 },
                 {
                     'name':'id',
                     'type':Integer(),
                     'aliased':False,
                     'expr':User.id,
+                    'entity': User
                 },
                 {
                     'name':'user2',
                     'type':User,
                     'aliased':True,
-                    'expr':user_alias
+                    'expr':user_alias,
+                    'entity': user_alias
                 }
             ]
 
@@ -2497,7 +2500,10 @@ class Query(object):
                 'name': ent._label_name,
                 'type': ent.type,
                 'aliased': getattr(ent, 'is_aliased_class', False),
-                'expr': ent.expr
+                'expr': ent.expr,
+                'entity':
+                    ent.entity_zero.entity if ent.entity_zero is not None
+                    else None
             }
             for ent in self._entities
         ]
