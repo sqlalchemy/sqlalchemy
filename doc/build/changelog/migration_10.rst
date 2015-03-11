@@ -1767,6 +1767,57 @@ reflection from temp tables as well, which is :ticket:`3203`.
 Dialect Improvements and Changes - Postgresql
 =============================================
 
+.. _change_3319:
+
+Overhaul of ENUM type create/drop rules
+---------------------------------------
+
+The rules for Postgresql :class:`.postgresql.ENUM` have been made more strict
+with regards to creating and dropping of the TYPE.
+
+An :class:`.postgresql.ENUM` that is created **without** being explicitly
+associated with a :class:`.MetaData` object will be created *and* dropped
+corresponding to :meth:`.Table.create` and :meth:`.Table.drop`::
+
+    table = Table('sometable', metadata,
+        Column('some_enum', ENUM('a', 'b', 'c', name='myenum'))
+    )
+
+    table.create(engine)  # will emit CREATE TYPE and CREATE TABLE
+    table.drop(engine)  # will emit DROP TABLE and DROP TYPE - new for 1.0
+
+This means that if a second table also has an enum named 'myenum', the
+above DROP operation will now fail.    In order to accomodate the use case
+of a common shared enumerated type, the behavior of a metadata-associated
+enumeration has been enhanced.
+
+An :class:`.postgresql.ENUM` that is created **with** being explicitly
+associated with a :class:`.MetaData` object will *not* be created *or* dropped
+corresponding to :meth:`.Table.create` and :meth:`.Table.drop`, with
+the exception of :meth:`.Table.create` called with the ``checkfirst=True``
+flag::
+
+    my_enum = ENUM('a', 'b', 'c', name='myenum', metadata=metadata)
+
+    table = Table('sometable', metadata,
+        Column('some_enum', my_enum)
+    )
+
+    # will fail: ENUM 'my_enum' does not exist
+    table.create(engine)
+
+    # will check for enum and emit CREATE TYPE
+    table.create(engine, checkfirst=True)
+
+    table.drop(engine)  # will emit DROP TABLE, *not* DROP TYPE
+
+    metadata.drop_all(engine) # will emit DROP TYPE
+
+    metadata.create_all(engine) # will emit CREATE TYPE
+
+
+:ticket:`3319`
+
 New Postgresql Table options
 -----------------------------
 

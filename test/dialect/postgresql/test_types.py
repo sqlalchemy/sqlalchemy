@@ -10,6 +10,7 @@ from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
     Text, null, text
 from sqlalchemy.sql import operators
 from sqlalchemy import types
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
     INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE, \
@@ -237,6 +238,104 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         metadata.create_all(checkfirst=False)
         metadata.drop_all(checkfirst=False)
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+    @testing.provide_metadata
+    def test_generate_alone_on_metadata(self):
+        """Test that the same enum twice only generates once
+        for the create_all() call, without using checkfirst.
+
+        A 'memo' collection held by the DDL runner
+        now handles this.
+
+        """
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum", metadata=self.metadata)
+
+        metadata.create_all(checkfirst=False)
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        metadata.drop_all(checkfirst=False)
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+    @testing.provide_metadata
+    def test_generate_multiple_on_metadata(self):
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum", metadata=metadata)
+
+        t1 = Table('e1', metadata,
+                   Column('c1', e1)
+                   )
+
+        t2 = Table('e2', metadata,
+                   Column('c1', e1)
+                   )
+
+        metadata.create_all(checkfirst=False)
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        metadata.drop_all(checkfirst=False)
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+        e1.create()  # creates ENUM
+        t1.create()  # does not create ENUM
+        t2.create()  # does not create ENUM
+
+    @testing.provide_metadata
+    def test_drops_on_table(self):
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum")
+        table = Table(
+            'e1', metadata,
+            Column('c1', e1)
+        )
+
+        table.create()
+        table.drop()
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        table.create()
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        table.drop()
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+    @testing.provide_metadata
+    def test_remain_on_table_metadata_wide(self):
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum", metadata=metadata)
+        table = Table(
+            'e1', metadata,
+            Column('c1', e1)
+        )
+
+        # need checkfirst here, otherwise enum will not be created
+        assert_raises_message(
+            sa.exc.ProgrammingError,
+            '.*type "myenum" does not exist',
+            table.create,
+        )
+        table.create(checkfirst=True)
+        table.drop()
+        table.create(checkfirst=True)
+        table.drop()
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        metadata.drop_all()
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
 
     def test_non_native_dialect(self):
         engine = engines.testing_engine()

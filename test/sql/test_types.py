@@ -154,7 +154,7 @@ class AdaptTest(fixtures.TestBase):
                     t2, t1 = t1, t2
 
                 for k in t1.__dict__:
-                    if k in ('impl', '_is_oracle_number'):
+                    if k in ('impl', '_is_oracle_number', '_create_events'):
                         continue
                     # assert each value was copied, or that
                     # the adapted type has a more specific

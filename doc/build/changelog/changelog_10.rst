@@ -24,6 +24,24 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3319
+
+        The Postgresql :class:`.postgresql.ENUM` type will emit a
+        DROP TYPE instruction when a plain ``table.drop()`` is called,
+        assuming the object is not associated directly with a
+        :class:`.MetaData` object.   In order to accomodate the use case of
+        an enumerated type shared between multiple tables, the type should
+        be associated directly with the :class:`.MetaData` object; in this
+        case the type will only be created at the metadata level, or if
+        created directly.  The rules for create/drop of
+        Postgresql enumerated types have been highly reworked in general.
+
+        .. seealso::
+
+            :ref:`change_3319`
+
+    .. change::
         :tags: feature, orm
         :tickets: 3317
 

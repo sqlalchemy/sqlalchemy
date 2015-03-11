@@ -495,6 +495,22 @@ dialect in conjunction with the :class:`.Table` construct:
     `Postgresql CREATE TABLE options
     <http://www.postgresql.org/docs/9.3/static/sql-createtable.html>`_
 
+ENUM Types
+----------
+
+Postgresql has an independently creatable TYPE structure which is used
+to implement an enumerated type.   This approach introduces significant
+complexity on the SQLAlchemy side in terms of when this type should be
+CREATED and DROPPED.   The type object is also an independently reflectable
+entity.   The following sections should be consulted:
+
+* :class:`.postgresql.ENUM` - DDL and typing support for ENUM.
+
+* :meth:`.PGInspector.get_enums` - retrieve a listing of current ENUM types
+
+* :meth:`.postgresql.ENUM.create` , :meth:`.postgresql.ENUM.drop` - individual
+  CREATE and DROP commands for ENUM.
+
 """
 from collections import defaultdict
 import re
@@ -1099,21 +1115,76 @@ class ENUM(sqltypes.Enum):
     """Postgresql ENUM type.
 
     This is a subclass of :class:`.types.Enum` which includes
-    support for PG's ``CREATE TYPE``.
+    support for PG's ``CREATE TYPE`` and ``DROP TYPE``.
 
-    :class:`~.postgresql.ENUM` is used automatically when
-    using the :class:`.types.Enum` type on PG assuming
-    the ``native_enum`` is left as ``True``.   However, the
-    :class:`~.postgresql.ENUM` class can also be instantiated
-    directly in order to access some additional Postgresql-specific
-    options, namely finer control over whether or not
-    ``CREATE TYPE`` should be emitted.
+    When the builtin type :class:`.types.Enum` is used and the
+    :paramref:`.Enum.native_enum` flag is left at its default of
+    True, the Postgresql backend will use a :class:`.postgresql.ENUM`
+    type as the implementation, so the special create/drop rules
+    will be used.
 
-    Note that both :class:`.types.Enum` as well as
-    :class:`~.postgresql.ENUM` feature create/drop
-    methods; the base :class:`.types.Enum` type ultimately
-    delegates to the :meth:`~.postgresql.ENUM.create` and
-    :meth:`~.postgresql.ENUM.drop` methods present here.
+    The create/drop behavior of ENUM is necessarily intricate, due to the
+    awkward relationship the ENUM type has in relationship to the
+    parent table, in that it may be "owned" by just a single table, or
+    may be shared among many tables.
+
+    When using :class:`.types.Enum` or :class:`.postgresql.ENUM`
+    in an "inline" fashion, the ``CREATE TYPE`` and ``DROP TYPE`` is emitted
+    corresponding to when the :meth:`.Table.create` and :meth:`.Table.drop`
+    methods are called::
+
+        table = Table('sometable', metadata,
+            Column('some_enum', ENUM('a', 'b', 'c', name='myenum'))
+        )
+
+        table.create(engine)  # will emit CREATE ENUM and CREATE TABLE
+        table.drop(engine)  # will emit DROP TABLE and DROP ENUM
+
+    To use a common enumerated type between multiple tables, the best
+    practice is to declare the :class:`.types.Enum` or
+    :class:`.postgresql.ENUM` independently, and associate it with the
+    :class:`.MetaData` object itself::
+
+        my_enum = ENUM('a', 'b', 'c', name='myenum', metadata=metadata)
+
+        t1 = Table('sometable_one', metadata,
+            Column('some_enum', myenum)
+        )
+
+        t2 = Table('sometable_two', metadata,
+            Column('some_enum', myenum)
+        )
+
+    When this pattern is used, care must still be taken at the level
+    of individual table creates.  Emitting CREATE TABLE without also
+    specifying ``checkfirst=True`` will still cause issues::
+
+        t1.create(engine) # will fail: no such type 'myenum'
+
+    If we specify ``checkfirst=True``, the individual table-level create
+    operation will check for the ``ENUM`` and create if not exists::
+
+        # will check if enum exists, and emit CREATE TYPE if not
+        t1.create(engine, checkfirst=True)
+
+    When using a metadata-level ENUM type, the type will always be created
+    and dropped if either the metadata-wide create/drop is called::
+
+        metadata.create_all(engine)  # will emit CREATE TYPE
+        metadata.drop_all(engine)  # will emit DROP TYPE
+
+    The type can also be created and dropped directly::
+
+        my_enum.create(engine)
+        my_enum.drop(engine)
+
+    .. versionchanged:: 1.0.0 The Postgresql :class:`.postgresql.ENUM` type
+       now behaves more strictly with regards to CREATE/DROP.  A metadata-level
+       ENUM type will only be created and dropped at the metadata level,
+       not the table level, with the exception of
+       ``table.create(checkfirst=True)``.
+       The ``table.drop()`` call will now emit a DROP TYPE for a table-level
+       enumerated type.
 
     """
 
@@ -1219,8 +1290,17 @@ class ENUM(sqltypes.Enum):
             return False
 
     def _on_table_create(self, target, bind, checkfirst, **kw):
-        if not self._check_for_name_in_memos(checkfirst, kw):
+        if checkfirst or (
+                not self.metadata and
+                not kw.get('_is_metadata_operation', False)) and \
+                not self._check_for_name_in_memos(checkfirst, kw):
             self.create(bind=bind, checkfirst=checkfirst)
+
+    def _on_table_drop(self, target, bind, checkfirst, **kw):
+        if not self.metadata and \
+            not kw.get('_is_metadata_operation', False) and \
+                not self._check_for_name_in_memos(checkfirst, kw):
+            self.drop(bind=bind, checkfirst=checkfirst)
 
     def _on_metadata_create(self, target, bind, checkfirst, **kw):
         if not self._check_for_name_in_memos(checkfirst, kw):

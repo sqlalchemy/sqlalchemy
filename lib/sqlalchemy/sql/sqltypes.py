@@ -938,7 +938,7 @@ class SchemaType(SchemaEventTarget):
     """
 
     def __init__(self, name=None, schema=None, metadata=None,
-                 inherit_schema=False, quote=None):
+                 inherit_schema=False, quote=None, _create_events=True):
         if name is not None:
             self.name = quoted_name(name, quote)
         else:
@@ -946,8 +946,9 @@ class SchemaType(SchemaEventTarget):
         self.schema = schema
         self.metadata = metadata
         self.inherit_schema = inherit_schema
+        self._create_events = _create_events
 
-        if self.metadata:
+        if _create_events and self.metadata:
             event.listen(
                 self.metadata,
                 "before_create",
@@ -965,6 +966,9 @@ class SchemaType(SchemaEventTarget):
     def _set_table(self, column, table):
         if self.inherit_schema:
             self.schema = table.schema
+
+        if not self._create_events:
+            return
 
         event.listen(
             table,
@@ -992,17 +996,18 @@ class SchemaType(SchemaEventTarget):
             )
 
     def copy(self, **kw):
-        return self.adapt(self.__class__)
+        return self.adapt(self.__class__, _create_events=True)
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
+        metadata = kw.pop('metadata', self.metadata)
+        _create_events = kw.pop('_create_events', False)
 
-        # don't associate with self.metadata as the hosting type
-        # is already associated with it, avoid creating event
-        # listeners
         return impltype(name=self.name,
                         schema=schema,
                         inherit_schema=self.inherit_schema,
+                        metadata=metadata,
+                        _create_events=_create_events,
                         **kw)
 
     @property
@@ -1170,7 +1175,8 @@ class Enum(String, SchemaType):
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', None)
+        metadata = kw.pop('metadata', self.metadata)
+        _create_events = kw.pop('_create_events', False)
         if issubclass(impltype, Enum):
             return impltype(name=self.name,
                             schema=schema,
@@ -1178,9 +1184,11 @@ class Enum(String, SchemaType):
                             convert_unicode=self.convert_unicode,
                             native_enum=self.native_enum,
                             inherit_schema=self.inherit_schema,
+                            _create_events=_create_events,
                             *self.enums,
                             **kw)
         else:
+            # TODO: why would we be here?
             return super(Enum, self).adapt(impltype, **kw)
 
 
@@ -1276,7 +1284,8 @@ class Boolean(TypeEngine, SchemaType):
 
     __visit_name__ = 'boolean'
 
-    def __init__(self, create_constraint=True, name=None):
+    def __init__(
+            self, create_constraint=True, name=None, _create_events=True):
         """Construct a Boolean.
 
         :param create_constraint: defaults to True.  If the boolean
@@ -1289,6 +1298,7 @@ class Boolean(TypeEngine, SchemaType):
         """
         self.create_constraint = create_constraint
         self.name = name
+        self._create_events = _create_events
 
     def _should_create_constraint(self, compiler):
         return not compiler.dialect.supports_native_boolean
