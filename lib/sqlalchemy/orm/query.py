@@ -3541,7 +3541,7 @@ class _ColumnEntity(_QueryEntity):
             attributes.QueryableAttribute,
             interfaces.PropComparator
         )):
-            _entity = column._parententity
+            _entity = getattr(column, '_parententity', None)
             if _entity is not None:
                 search_entities = False
             self._label_name = column.key
