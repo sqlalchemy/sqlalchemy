@@ -192,6 +192,33 @@ brand new :class:`.Select` is sent off to the string compilation step every
 time, which for a simple case like the above is probably about 70% of the
 overhead.
 
+To reduce the additional overhead, we need some more specialized logic,
+some way to memoize the construction of the select object and the
+construction of the SQL.  There is an example of this on the wiki
+in the section `BakedQuery <https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/BakedQuery>`_,
+a precursor to this feature, however in that system, we aren't caching
+the *construction* of the query.  In order to remove all the overhead,
+we need to cache both the construction of the query as well as the SQL
+compilation.  Let's assume we adapted the recipe in this way
+and made ourselves a method ``.bake()`` that pre-compiles the SQL for the
+query, producing a new object that can be invoked with minimal overhead.
+Our example becomes::
+
+    my_simple_cache = {}
+
+    def lookup(session, id_argument):
+
+        if "my_key" not in my_simple_cache:
+            query = session.query(Model).filter(Model.id == bindparam('id'))
+            my_simple_cache["my_key"] = query.with_session(None).bake()
+        else:
+            query = my_simple_cache["my_key"].with_session(session)
+
+        return query.params(id=id_argument).all()
+
+Above, we've fixed the performance situation, but we still have this
+string cache key to deal with.
+
 We can use the "bakery" approach to re-frame the above in a way that
 looks less unusual than the "building up lambdas" approach, and more like
 a simple improvement upon the simple "reuse a query" approach::
@@ -208,7 +235,8 @@ a simple improvement upon the simple "reuse a query" approach::
 Above, we use the "baked" system in a manner that is
 very similar to the simplistic "cache a query" system.  However, it
 uses two fewer lines of code, does not need to manufacture a cache key of
-"my_key", and caches **100%** of the Python invocation work from the
+"my_key", and also includes the same feature as our custom "bake" function
+that caches 100% of the Python invocation work from the
 constructor of the query, to the filter call, to the production
 of the :class:`.Select` object, to the string compilation step.
 
@@ -233,7 +261,7 @@ query on a conditional basis::
             if include_frobnizzle:
                 query = query.filter(Model.frobnizzle == True)
 
-            my_simple_cache[cache_key] = query.with_session(None)
+            my_simple_cache[cache_key] = query.with_session(None).bake()
         else:
             query = my_simple_cache[cache_key].with_session(session)
 
@@ -272,7 +300,8 @@ all of the structural modifications we've made; this is now handled
 automatically and without the chance of mistakes.
 
 This code sample is a few lines shorter than the naive example, removes
-the need to deal with cache keys, and is vastly more performant.  But
+the need to deal with cache keys, and has the vast performance benefits
+of the full so-called "baked" feature.  But
 still a little verbose!  Hence we take methods like :meth:`.BakedQuery.add_criteria`
 and :meth:`.BakedQuery.with_criteria` and shorten them into operators, and
 encourage (though certainly not require!) using simple lambdas, only as a
@@ -290,8 +319,7 @@ means to reduce verbosity::
 
         return parameterized_query(session).params(id=id_argument).all()
 
-Where above, we have an approach to our naive caching example
-that is vastly more performant, simpler to implement, and much more similar
+Where above, the approach is simpler to implement and much more similar
 in code flow to what a non-cached querying function would look like,
 hence making code easier to port.
 
