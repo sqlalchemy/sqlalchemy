@@ -102,6 +102,7 @@ Following are some observations about the above code:
    SQL string, we use :func:`.bindparam` to construct named parameters,
    where we apply their actual values later using :meth:`.Result.params`.
 
+
 Performance
 -----------
 
@@ -159,6 +160,146 @@ as being impacted by this particular form of overhead.
     measurement techniques are used when attempting to improve the performance
     of an application.
 
+Rationale
+---------
+
+The "lambda" approach above is a superset of what would be a more
+traditional "parameterized" approach.   Suppose we wished to build
+a simple system where we build a :class:`~.query.Query` just once, then
+store it in a dictionary for re-use.   This is possible right now by
+just building up the query, and removing its :class:`.Session` by calling
+``my_cached_query = query.with_session(None)``::
+
+    my_simple_cache = {}
+
+    def lookup(session, id_argument):
+        if "my_key" not in my_simple_cache:
+            query = session.query(Model).filter(Model.id == bindparam('id'))
+            my_simple_cache["my_key"] = query.with_session(None)
+        else:
+            query = my_simple_cache["my_key"].with_session(session)
+
+        return query.params(id=id_argument).all()
+
+The above approach gets us a very minimal performance benefit.
+By re-using a :class:`~.query.Query`, we save on the Python work within
+the ``session.query(Model)`` constructor as well as calling upon
+``filter(Model.id == bindparam('id'))``, which will skip for us the building
+up of the Core expression as well as sending it to :meth:`.Query.filter`.
+However, the approach still regenerates the full :class:`.Select`
+object every time when :meth:`.Query.all` is called and additionally this
+brand new :class:`.Select` is sent off to the string compilation step every
+time, which for a simple case like the above is probably about 70% of the
+overhead.
+
+We can use the "bakery" approach to re-frame the above in a way that
+looks less unusual than the "building up lambdas" approach, and more like
+a simple improvement upon the simple "reuse a query" approach::
+
+    bakery = baked.bakery()
+
+    def lookup(session, id_argument):
+        def create_model_query(session):
+            return session.query(Model).filter(Model.id == bindparam('id'))
+
+        parameterized_query = bakery.bake(create_model_query)
+        return parameterized_query(session).params(id=id_argument).all()
+
+Above, we use the "baked" system in a manner that is
+very similar to the simplistic "cache a query" system.  However, it
+uses two fewer lines of code, does not need to manufacture a cache key of
+"my_key", and caches **100%** of the Python invocation work from the
+constructor of the query, to the filter call, to the production
+of the :class:`.Select` object, to the string compilation step.
+
+From the above, if we ask ourselves, "what if lookup needs to make conditional decisions
+as to the structure of the query?", this is where hopefully it becomes apparent
+why "baked" is the way it is.   Instead of a parameterized query building
+off from exactly one function (which is how we thought baked might work
+originally), we can build it from *any number* of functions.  Consider
+our naive example, if we needed to have an additional clause in our
+query on a conditional basis::
+
+    my_simple_cache = {}
+
+    def lookup(session, id_argument, include_frobnizzle=False):
+        if include_frobnizzle:
+            cache_key = "my_key_with_frobnizzle"
+        else:
+            cache_key = "my_key_without_frobnizzle"
+
+        if cache_key not in my_simple_cache:
+            query = session.query(Model).filter(Model.id == bindparam('id'))
+            if include_frobnizzle:
+                query = query.filter(Model.frobnizzle == True)
+
+            my_simple_cache[cache_key] = query.with_session(None)
+        else:
+            query = my_simple_cache[cache_key].with_session(session)
+
+        return query.params(id=id_argument).all()
+
+Our "simple" parameterized system must now be tasked with generating
+cache keys which take into account whether or not the "include_frobnizzle"
+flag was passed, as the presence of this flag means that the generated
+SQL would be entirely different.   It should be apparent that as the
+complexity of query building goes up, the task of caching these queries
+becomes burdensome very quickly.   We can convert the above example
+into a direct use of "bakery" as follows::
+
+
+    bakery = baked.bakery()
+
+    def lookup(session, id_argument, include_frobnizzle=False):
+        def create_model_query(session):
+            return session.query(Model).filter(Model.id == bindparam('id'))
+
+        parameterized_query = bakery.bake(create_model_query)
+
+        if include_frobnizzle:
+            def include_frobnizzle_in_query(query):
+                return query.filter(Model.frobnizzle == True)
+
+            parameterized_query = parameterized_query.with_criteria(
+                include_frobnizzle_in_query)
+
+        return parameterized_query(session).params(id=id_argument).all()
+
+Above, we again cache not just the query object but all the work it needs
+to do in order to generate SQL.  We also no longer need to deal with
+making sure we generate a cache key that accurately takes into account
+all of the structural modifications we've made; this is now handled
+automatically and without the chance of mistakes.
+
+This code sample is a few lines shorter than the naive example, removes
+the need to deal with cache keys, and is vastly more performant.  But
+still a little verbose!  Hence we take methods like :meth:`.BakedQuery.add_criteria`
+and :meth:`.BakedQuery.with_criteria` and shorten them into operators, and
+encourage (though certainly not require!) using simple lambdas, only as a
+means to reduce verbosity::
+
+    bakery = baked.bakery()
+
+    def lookup(session, id_argument, include_frobnizzle=False):
+        parameterized_query = bakery.bake(
+            lambda s: s.query(Model).filter(Model.id == bindparam('id'))
+          )
+
+        if include_frobnizzle:
+            parameterized_query += lambda q: q.filter(Model.frobnizzle == True)
+
+        return parameterized_query(session).params(id=id_argument).all()
+
+Where above, we have an approach to our naive caching example
+that is vastly more performant, simpler to implement, and much more similar
+in code flow to what a non-cached querying function would look like,
+hence making code easier to port.
+
+The above description is essentially a summary of the design process used
+to arrive at the current "baked" approach.   Starting from the
+"normal" approaches, the additional issues of cache key construction and
+management,  removal of all redundant Python execution, and queries built up
+with conditionals needed to be addressed, leading to the final approach.
 
 Lazy Loading Integration
 ------------------------
