@@ -13,5 +13,6 @@ from .api import declarative_base, synonym_for, comparable_using, \
 
 __all__ = ['declarative_base', 'synonym_for', 'has_inherited_table',
            'comparable_using', 'instrument_declarative', 'declared_attr',
+           'as_declarative',
            'ConcreteBase', 'AbstractConcreteBase', 'DeclarativeMeta',
            'DeferredReflection']
