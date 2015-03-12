@@ -15,6 +15,14 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, ext
+        :tickets: 3324
+
+        Fixed regression from 0.9.9 where the :func:`.as_declarative`
+        symbol was removed from the ``sqlalchemy.ext.declarative``
+        namespace.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3320
 
