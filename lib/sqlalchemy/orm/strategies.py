@@ -353,7 +353,7 @@ class NoLoader(AbstractRelationshipLoader):
 @log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy=True)
 @properties.RelationshipProperty.strategy_for(lazy="select")
-class LazyLoader(AbstractRelationshipLoader):
+class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=True", that is loads when first accessed.
 
@@ -421,78 +421,54 @@ class LazyLoader(AbstractRelationshipLoader):
             active_history=active_history
         )
 
-    def lazy_clause(
-            self, state, reverse_direction=False,
-            alias_secondary=False,
-            adapt_source=None,
-            passive=None):
+    def _memoized_attr__simple_lazy_clause(self):
+        criterion, bind_to_col = (
+            self._lazywhere,
+            self._bind_to_col
+        )
+
+        params = []
+
+        def visit_bindparam(bindparam):
+            bindparam.unique = False
+            if bindparam._identifying_key in bind_to_col:
+                params.append((
+                    bindparam.key, bind_to_col[bindparam._identifying_key],
+                    None))
+            else:
+                params.append((bindparam.key, None, bindparam.value))
+
+        criterion = visitors.cloned_traverse(
+            criterion, {}, {'bindparam': visit_bindparam}
+        )
+
+        return criterion, params
+
+    def _generate_lazy_clause(self, state, passive):
+        criterion, param_keys = self._simple_lazy_clause
+
         if state is None:
-            return self._lazy_none_clause(
-                reverse_direction,
-                adapt_source=adapt_source)
+            return sql_util.adapt_criterion_to_null(
+                criterion, [key for key, ident, value in param_keys])
 
-        if not reverse_direction:
-            criterion, bind_to_col = \
-                self._lazywhere, \
-                self._bind_to_col
-        else:
-            criterion, bind_to_col = \
-                self._rev_lazywhere, \
-                self._rev_bind_to_col
-
-        if reverse_direction:
-            mapper = self.parent_property.mapper
-        else:
-            mapper = self.parent_property.parent
+        mapper = self.parent_property.parent
 
         o = state.obj()  # strong ref
         dict_ = attributes.instance_dict(o)
 
-        # use the "committed state" only if we're in a flush
-        # for this state.
+        params = {}
+        for key, ident, value in param_keys:
+            if ident is not None:
+                if passive and passive & attributes.LOAD_AGAINST_COMMITTED:
+                    value = mapper._get_committed_state_attr_by_column(
+                        state, dict_, ident)
+                else:
+                    value = mapper._get_state_attr_by_column(
+                        state, dict_, ident)
 
-        if passive and passive & attributes.LOAD_AGAINST_COMMITTED:
-            def visit_bindparam(bindparam):
-                if bindparam._identifying_key in bind_to_col:
-                    bindparam.callable = \
-                        lambda: mapper._get_committed_state_attr_by_column(
-                            state, dict_,
-                            bind_to_col[bindparam._identifying_key])
-        else:
-            def visit_bindparam(bindparam):
-                if bindparam._identifying_key in bind_to_col:
-                    bindparam.callable = \
-                        lambda: mapper._get_state_attr_by_column(
-                            state, dict_,
-                            bind_to_col[bindparam._identifying_key])
+            params[key] = value
 
-        if self.parent_property.secondary is not None and alias_secondary:
-            criterion = sql_util.ClauseAdapter(
-                self.parent_property.secondary.alias()).\
-                traverse(criterion)
-
-        criterion = visitors.cloned_traverse(
-            criterion, {}, {'bindparam': visit_bindparam})
-
-        if adapt_source:
-            criterion = adapt_source(criterion)
-        return criterion
-
-    def _lazy_none_clause(self, reverse_direction=False, adapt_source=None):
-        if not reverse_direction:
-            criterion, bind_to_col = \
-                self._lazywhere, \
-                self._bind_to_col
-        else:
-            criterion, bind_to_col = \
-                self._rev_lazywhere, \
-                self._rev_bind_to_col
-
-        criterion = sql_util.adapt_criterion_to_null(criterion, bind_to_col)
-
-        if adapt_source:
-            criterion = adapt_source(criterion)
-        return criterion
+        return criterion, params
 
     def _load_for_state(self, state, passive):
         if not state.key and (
@@ -569,10 +545,9 @@ class LazyLoader(AbstractRelationshipLoader):
 
     @util.dependencies("sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
-            self, strategy_options, session, state,
-            ident_key, passive):
-        q = session.query(self.mapper)._adapt_all_clauses()
+            self, strategy_options, session, state, ident_key, passive):
 
+        q = session.query(self.mapper)._adapt_all_clauses()
         if self.parent_property.secondary is not None:
             q = q.select_from(self.mapper, self.parent_property.secondary)
 
@@ -603,17 +578,15 @@ class LazyLoader(AbstractRelationshipLoader):
                 rev._use_get and \
                     not isinstance(rev.strategy, LazyLoader):
                 q = q.options(
-                    strategy_options.Load(rev.parent).
-                    lazyload(rev.key))
+                    strategy_options.Load(rev.parent).lazyload(rev.key))
 
-        lazy_clause = self.lazy_clause(state, passive=passive)
+        lazy_clause, params = self._generate_lazy_clause(
+            state, passive=passive)
 
-        if pending:
-            bind_values = sql_util.bind_values(lazy_clause)
-            if orm_util._none_set.intersection(bind_values):
-                return None
+        if pending and orm_util._none_set.intersection(params.values()):
+            return None
 
-        q = q.filter(lazy_clause)
+        q = q.filter(lazy_clause).params(params)
 
         result = q.all()
         if self.uselist:
@@ -646,7 +619,7 @@ class LazyLoader(AbstractRelationshipLoader):
             # class-level lazyloader installed.
             set_lazy_callable = InstanceState._instance_level_callable_processor(
                 mapper.class_manager,
-                LoadLazyAttribute(key), key)
+                LoadLazyAttribute(key, self._strategy_keys[0]), key)
 
             populators["new"].append((self.key, set_lazy_callable))
         elif context.populate_existing or mapper.always_refresh:
@@ -667,14 +640,15 @@ class LazyLoader(AbstractRelationshipLoader):
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
 
-    def __init__(self, key):
+    def __init__(self, key, strategy_key=(('lazy', 'select'),)):
         self.key = key
+        self.strategy_key = strategy_key
 
     def __call__(self, state, passive=attributes.PASSIVE_OFF):
         key = self.key
         instance_mapper = state.manager.mapper
         prop = instance_mapper._props[key]
-        strategy = prop._strategies[LazyLoader]
+        strategy = prop._strategies[self.strategy_key]
 
         return strategy._load_for_state(state, passive)
 
@@ -1028,6 +1002,12 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         if subq is None:
             return
+
+        assert subq.session is context.session, (
+            "Subquery session doesn't refer to that of "
+            "our context.  Are there broken context caching "
+            "schemes being used?"
+        )
 
         local_cols = self.parent_property.local_columns
 

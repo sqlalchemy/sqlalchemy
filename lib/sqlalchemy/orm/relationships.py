@@ -23,7 +23,7 @@ from . import attributes
 from ..sql.util import (
     ClauseAdapter,
     join_condition, _shallow_annotate, visit_binary_product,
-    _deep_deannotate, selectables_overlap
+    _deep_deannotate, selectables_overlap, adapt_criterion_to_null
 )
 from ..sql import operators, expression, visitors
 from .interfaces import (MANYTOMANY, MANYTOONE, ONETOMANY,
@@ -113,6 +113,7 @@ class RelationshipProperty(StrategizedProperty):
                  active_history=False,
                  cascade_backrefs=True,
                  load_on_pending=False,
+                 bake_queries=True,
                  strategy_class=None, _local_remote_pairs=None,
                  query_class=None,
                  info=None):
@@ -273,6 +274,15 @@ class RelationshipProperty(StrategizedProperty):
 
             :paramref:`~.relationship.backref` - alternative form
             of backref specification.
+
+        :param bake_queries:
+          Use the :class:`.BakedQuery` cache to cache queries used in lazy
+          loads.  True by default, as this typically improves performance
+          significantly.  Set to False to reduce ORM memory use, or
+          if unresolved stability issues are observed with the baked query
+          cache system.
+
+          .. versionadded:: 1.0.0
 
         :param cascade:
           a comma-separated list of cascade rules which determines how
@@ -802,6 +812,7 @@ class RelationshipProperty(StrategizedProperty):
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
+        self.bake_queries = bake_queries
         self.load_on_pending = load_on_pending
         self.comparator_factory = comparator_factory or \
             RelationshipProperty.Comparator
@@ -873,13 +884,13 @@ class RelationshipProperty(StrategizedProperty):
 
             """
             self.prop = prop
-            self._parentmapper = parentmapper
+            self._parententity = parentmapper
             self._adapt_to_entity = adapt_to_entity
             if of_type:
                 self._of_type = of_type
 
         def adapt_to_entity(self, adapt_to_entity):
-            return self.__class__(self.property, self._parentmapper,
+            return self.__class__(self.property, self._parententity,
                                   adapt_to_entity=adapt_to_entity,
                                   of_type=self._of_type)
 
@@ -931,7 +942,7 @@ class RelationshipProperty(StrategizedProperty):
             """
             return RelationshipProperty.Comparator(
                 self.property,
-                self._parentmapper,
+                self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
                 of_type=cls)
 
@@ -1315,16 +1326,69 @@ class RelationshipProperty(StrategizedProperty):
         return self._optimized_compare(
             instance, value_is_parent=True, alias_secondary=alias_secondary)
 
-    def _optimized_compare(self, value, value_is_parent=False,
+    def _optimized_compare(self, state, value_is_parent=False,
                            adapt_source=None,
                            alias_secondary=True):
-        if value is not None:
-            value = attributes.instance_state(value)
-        return self._lazy_strategy.lazy_clause(
-            value,
-            reverse_direction=not value_is_parent,
-            alias_secondary=alias_secondary,
-            adapt_source=adapt_source)
+        if state is not None:
+            state = attributes.instance_state(state)
+
+        reverse_direction = not value_is_parent
+
+        if state is None:
+            return self._lazy_none_clause(
+                reverse_direction,
+                adapt_source=adapt_source)
+
+        if not reverse_direction:
+            criterion, bind_to_col = \
+                self._lazy_strategy._lazywhere, \
+                self._lazy_strategy._bind_to_col
+        else:
+            criterion, bind_to_col = \
+                self._lazy_strategy._rev_lazywhere, \
+                self._lazy_strategy._rev_bind_to_col
+
+        if reverse_direction:
+            mapper = self.mapper
+        else:
+            mapper = self.parent
+
+        dict_ = attributes.instance_dict(state.obj())
+
+        def visit_bindparam(bindparam):
+            if bindparam._identifying_key in bind_to_col:
+                bindparam.callable = \
+                    lambda: mapper._get_state_attr_by_column(
+                        state, dict_,
+                        bind_to_col[bindparam._identifying_key])
+
+        if self.secondary is not None and alias_secondary:
+            criterion = ClauseAdapter(
+                self.secondary.alias()).\
+                traverse(criterion)
+
+        criterion = visitors.cloned_traverse(
+            criterion, {}, {'bindparam': visit_bindparam})
+
+        if adapt_source:
+            criterion = adapt_source(criterion)
+        return criterion
+
+    def _lazy_none_clause(self, reverse_direction=False, adapt_source=None):
+        if not reverse_direction:
+            criterion, bind_to_col = \
+                self._lazy_strategy._lazywhere, \
+                self._lazy_strategy._bind_to_col
+        else:
+            criterion, bind_to_col = \
+                self._lazy_strategy._rev_lazywhere, \
+                self._lazy_strategy._rev_bind_to_col
+
+        criterion = adapt_criterion_to_null(criterion, bind_to_col)
+
+        if adapt_source:
+            criterion = adapt_source(criterion)
+        return criterion
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key

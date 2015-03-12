@@ -56,6 +56,41 @@ displays.
 
     :ref:`examples_performance`
 
+"Baked" Queries
+---------------
+
+The "baked" query feature is an unusual new approach which allows for
+straightforward construction an invocation of :class:`.Query` objects
+using caching, which upon successive calls features vastly reduced
+Python function call overhead (over 75%).    By  specifying a
+:class:`.Query` object as a series of lambdas which are only invoked
+once, a query as a pre-compiled unit begins to be feasable::
+
+    from sqlalchemy.ext import baked
+    from sqlalchemy import bindparam
+
+    bakery = baked.bakery()
+
+    def search_for_user(session, username, email=None):
+
+        baked_query = bakery(lambda session: session.query(User))
+        baked_query += lambda q: q.filter(User.name == bindparam('username'))
+
+        baked_query += lambda q: q.order_by(User.id)
+
+        if email:
+            baked_query += lambda q: q.filter(User.email == bindparam('email'))
+
+        result = baked_query(session).params(username=username, email=email).all()
+
+        return result
+
+.. seealso::
+
+    :ref:`baked_toplevel`
+
+:ticket:`3054`
+
 .. _feature_3150:
 
 Improvements to declarative mixins, ``@declared_attr`` and related features

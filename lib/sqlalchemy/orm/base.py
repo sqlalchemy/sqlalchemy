@@ -329,8 +329,7 @@ def _is_mapped_class(entity):
     return insp is not None and \
         not insp.is_clause_element and \
         (
-            insp.is_mapper
-            or insp.is_aliased_class
+            insp.is_mapper or insp.is_aliased_class
         )
 
 

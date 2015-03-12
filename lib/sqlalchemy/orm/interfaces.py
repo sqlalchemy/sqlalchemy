@@ -27,6 +27,7 @@ from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
 from .base import (InspectionAttr, InspectionAttr,
     InspectionAttrInfo, _MappedAttribute)
 import collections
+from .. import inspect
 
 # imported later
 MapperExtension = SessionExtension = AttributeExtension = None
@@ -333,11 +334,11 @@ class PropComparator(operators.ColumnOperators):
 
     """
 
-    __slots__ = 'prop', 'property', '_parentmapper', '_adapt_to_entity'
+    __slots__ = 'prop', 'property', '_parententity', '_adapt_to_entity'
 
     def __init__(self, prop, parentmapper, adapt_to_entity=None):
         self.prop = self.property = prop
-        self._parentmapper = parentmapper
+        self._parententity = parentmapper
         self._adapt_to_entity = adapt_to_entity
 
     def __clause_element__(self):
@@ -350,7 +351,13 @@ class PropComparator(operators.ColumnOperators):
         """Return a copy of this PropComparator which will use the given
         :class:`.AliasedInsp` to produce corresponding expressions.
         """
-        return self.__class__(self.prop, self._parentmapper, adapt_to_entity)
+        return self.__class__(self.prop, self._parententity, adapt_to_entity)
+
+    @property
+    def _parentmapper(self):
+        """legacy; this is renamed to _parententity to be
+        compatible with QueryableAttribute."""
+        return inspect(self._parententity).mapper
 
     @property
     def adapter(self):
@@ -523,7 +530,9 @@ class StrategizedProperty(MapperProperty):
     @classmethod
     def strategy_for(cls, **kw):
         def decorate(dec_cls):
-            if not hasattr(dec_cls, '_strategy_keys'):
+            # ensure each subclass of the strategy has its
+            # own _strategy_keys collection
+            if '_strategy_keys' not in dec_cls.__dict__:
                 dec_cls._strategy_keys = []
             key = tuple(sorted(kw.items()))
             cls._all_strategies[cls][key] = dec_cls

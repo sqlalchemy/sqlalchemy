@@ -246,8 +246,8 @@ class ColumnProperty(StrategizedProperty):
                 return self.adapter(self.prop.columns[0])
             else:
                 return self.prop.columns[0]._annotate({
-                    "parententity": self._parentmapper,
-                    "parentmapper": self._parentmapper})
+                    "parententity": self._parententity,
+                    "parentmapper": self._parententity})
 
         def _memoized_attr_info(self):
             ce = self.__clause_element__()

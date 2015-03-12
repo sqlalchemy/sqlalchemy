@@ -6,7 +6,7 @@ profile and associated implications:
 * bulk inserts
 * individual inserts, with or without transactions
 * fetching large numbers of rows
-* running lots of small queries (TODO)
+* running lots of short queries
 
 All suites include a variety of use patterns illustrating both Core
 and ORM use, and are generally sorted in order of performance from worst

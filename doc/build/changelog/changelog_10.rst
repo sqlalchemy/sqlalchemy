@@ -24,6 +24,20 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
+        :tags: feature, extensions
+        :tickets: 3054
+
+        Added a new extension suite :mod:`sqlalchemy.ext.baked`.  This
+        simple but unusual system allows for a dramatic savings in Python
+        overhead for the construction and processing of orm :class:`.Query`
+        objects, from query construction up through rendering of a string
+        SQL statement.
+
+        .. seealso::
+
+            :ref:`baked_toplevel`
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3319
 

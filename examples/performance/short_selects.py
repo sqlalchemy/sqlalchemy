@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, create_engine, \
     bindparam, select
 from sqlalchemy.orm import Session, deferred
+from sqlalchemy.ext import baked
 import random
 
 Base = declarative_base()
@@ -67,6 +68,30 @@ def test_orm_query_cols_only(n):
         session.query(
             Customer.id, Customer.name, Customer.description
         ).filter(Customer.id == id_).one()
+
+
+@Profiler.profile
+def test_baked_query(n):
+    """test a baked query of the full entity."""
+    bakery = baked.bakery()
+    s = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        q = bakery(lambda s: s.query(Customer))
+        q += lambda q: q.filter(Customer.id == bindparam('id'))
+        q(s).params(id=id_).one()
+
+
+@Profiler.profile
+def test_baked_query_cols_only(n):
+    """test a baked query of only the entity columns."""
+    bakery = baked.bakery()
+    s = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        q = bakery(
+            lambda s: s.query(
+                Customer.id, Customer.name, Customer.description))
+        q += lambda q: q.filter(Customer.id == bindparam('id'))
+        q(s).params(id=id_).one()
 
 
 @Profiler.profile
