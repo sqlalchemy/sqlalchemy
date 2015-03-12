@@ -435,6 +435,13 @@ Constraints API
 .. autoclass:: Constraint
     :members:
 
+.. autoclass:: ColumnCollectionMixin
+    :members:
+
+.. autoclass:: ColumnCollectionConstraint
+    :members:
+    :inherited-members:
+
 .. autoclass:: CheckConstraint
     :members:
     :inherited-members:
@@ -456,6 +463,7 @@ Constraints API
 .. autoclass:: UniqueConstraint
     :members:
     :inherited-members:
+
 
 .. autofunction:: sqlalchemy.schema.conv
 

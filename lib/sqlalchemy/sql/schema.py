@@ -2309,6 +2309,7 @@ def _to_schema_column_or_string(element):
 
 
 class ColumnCollectionMixin(object):
+
     columns = None
     """A :class:`.ColumnCollection` of :class:`.Column` objects.
 
@@ -2372,6 +2373,13 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         return self._schema_item_copy(c)
 
     def contains_column(self, col):
+        """Return True if this constraint contains the given column.
+
+        Note that this object also contains an attribute ``.columns``
+        which is a :class:`.ColumnCollection` of :class:`.Column` objects.
+
+        """
+
         return self.columns.contains_column(col)
 
     def __iter__(self):
