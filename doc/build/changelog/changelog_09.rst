@@ -25,6 +25,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3320
+        :versions: 1.0.0
 
         Added a new entry ``"entity"`` to the dictionaries returned by
         :attr:`.Query.column_descriptions`.  This refers to the primary ORM
@@ -40,6 +41,7 @@
     .. change::
         :tags: feature, postgresql
         :pullreq: bitbucket:45
+        :versions: 1.0.0
 
         Added support for the ``CONCURRENTLY`` keyword with Postgresql
         indexes, established using ``postgresql_concurrently``.  Pull
@@ -52,6 +54,7 @@
     .. change::
         :tags: bug, ext, py3k
         :pullreq: github:154
+        :versions: 1.0.0
 
         Fixed bug where the association proxy list class would not interpret
         slices correctly under Py3K.  Pull request courtesy
@@ -60,6 +63,7 @@
     .. change::
         :tags: feature, sqlite
         :pullreq: bitbucket:42
+        :versions: 1.0.0
 
         Added support for partial indexes (e.g. with a WHERE clause) on
         SQLite.  Pull request courtesy Kai Groner.
@@ -71,6 +75,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3310
+        :versions: 1.0.0
 
         Fixed bugs in ORM object comparisons where comparison of
         many-to-one ``!= None`` would fail if the source were an aliased
@@ -83,6 +88,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3309
+        :versions: 1.0.0
 
         Fixed bug where internal assertion would fail in the case where
         an ``after_rollback()`` handler for a :class:`.Session` incorrectly
@@ -93,6 +99,7 @@
     .. change::
         :tags: bug, orm
         :pullreq: github:147
+        :versions: 1.0.0
 
         Fixed bug where TypeError raised when :meth:`.Query.join` called
         with unknown kw arguments would raise its own TypeError due
@@ -101,6 +108,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 3302
+        :versions: 1.0.0
 
         Fixed bug in :class:`.Connection` and pool where the
         :meth:`.Connection.invalidate` method, or an invalidation due
@@ -112,6 +120,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3296
+        :versions: 1.0.0
 
         Added new parameter :paramref:`.Session.connection.execution_options`
         which may be used to set up execution options on a :class:`.Connection`
@@ -128,6 +137,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 3296
+        :versions: 1.0.0
 
         A warning is emitted if the ``isolation_level`` parameter is used
         with :meth:`.Connection.execution_options` when a :class:`.Transaction`
@@ -138,6 +148,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3300
+        :versions: 1.0.0
 
         Fixed bug in lazy loading SQL construction whereby a complex
         primaryjoin that referred to the same "local" column multiple
@@ -148,6 +159,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2940
+        :versions: 1.0.0
 
         Repaired support for Postgresql UUID types in conjunction with
         the ARRAY type when using psycopg2.  The psycopg2 dialect now
@@ -160,6 +172,7 @@
     .. change::
         :tags: bug, postgresql
         :pullreq: github:145
+        :versions: 1.0.0
 
         Added support for the :class:`postgresql.JSONB` datatype when
         using psycopg2 2.5.4 or greater, which features native conversion
@@ -173,6 +186,7 @@
 
     .. change::
         :tags: bug, postgresql
+        :versions: 1.0.0
 
         Repaired the use of the "array_oid" flag when registering the
         HSTORE type with older psycopg2 versions < 2.4.3, which does not
