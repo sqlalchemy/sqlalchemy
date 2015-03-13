@@ -93,25 +93,25 @@ SQLAlchemy supports installation using standard Python "distutils" or
   rides on top of ``setuptools`` or ``distribute``, replacing the usage
   of ``easy_install``.  It is often preferred for its simpler mode of usage.
 
-Install via easy_install or pip
--------------------------------
+Install via pip
+---------------
 
-When ``easy_install`` or ``pip`` is available, the distribution can be
+When ``pip`` is available, the distribution can be
 downloaded from Pypi and installed in one step::
-
-    easy_install SQLAlchemy
-
-Or with pip::
 
     pip install SQLAlchemy
 
-This command will download the latest version of SQLAlchemy from the `Python
+This command will download the latest **released** version of SQLAlchemy from the `Python
 Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
 
-.. note::
+In order to install the latest **prerelease** version, such as ``1.0.0b1``,
+pip requires that the ``--pre`` flag be used::
 
-    Beta releases of SQLAlchemy may not be present on Pypi, and may instead
-    require a direct download first.
+    pip install --pre SQLAlchemy
+
+Where above, if the most recent version is a prerelease, it will be installed
+instead of the latest released version.
+
 
 Installing using setup.py
 ----------------------------------
