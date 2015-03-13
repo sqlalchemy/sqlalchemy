@@ -16,7 +16,8 @@
         :start-line: 5
 
 .. changelog::
-	:version: 1.0.0b1
+    :version: 1.0.0b1
+    :released: March 13, 2015
 
     Version 1.0.0b1 is the first release of the 1.0 series.   Many changes
     described here are also present in the 0.9 and sometimes the 0.8
