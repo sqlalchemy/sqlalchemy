@@ -106,7 +106,7 @@ copyright = u'2007-2015, the SQLAlchemy authors and contributors'
 # The short X.Y version.
 version = "1.0"
 # The full version, including alpha/beta/rc tags.
-release = "1.0.0"
+release = "1.0.0b1"
 
 release_date = "Not released"
 

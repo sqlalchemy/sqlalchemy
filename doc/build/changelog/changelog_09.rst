@@ -17,7 +17,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3320
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added a new entry ``"entity"`` to the dictionaries returned by
         :attr:`.Query.column_descriptions`.  This refers to the primary ORM
@@ -33,7 +33,7 @@
     .. change::
         :tags: feature, postgresql
         :pullreq: bitbucket:45
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added support for the ``CONCURRENTLY`` keyword with Postgresql
         indexes, established using ``postgresql_concurrently``.  Pull
@@ -46,7 +46,7 @@
     .. change::
         :tags: bug, ext, py3k
         :pullreq: github:154
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where the association proxy list class would not interpret
         slices correctly under Py3K.  Pull request courtesy
@@ -55,7 +55,7 @@
     .. change::
         :tags: feature, sqlite
         :pullreq: bitbucket:42
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added support for partial indexes (e.g. with a WHERE clause) on
         SQLite.  Pull request courtesy Kai Groner.
@@ -67,7 +67,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3310
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bugs in ORM object comparisons where comparison of
         many-to-one ``!= None`` would fail if the source were an aliased
@@ -80,7 +80,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3309
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where internal assertion would fail in the case where
         an ``after_rollback()`` handler for a :class:`.Session` incorrectly
@@ -91,7 +91,7 @@
     .. change::
         :tags: bug, orm
         :pullreq: github:147
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where TypeError raised when :meth:`.Query.join` called
         with unknown kw arguments would raise its own TypeError due
@@ -100,7 +100,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 3302
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug in :class:`.Connection` and pool where the
         :meth:`.Connection.invalidate` method, or an invalidation due
@@ -112,7 +112,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3296
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added new parameter :paramref:`.Session.connection.execution_options`
         which may be used to set up execution options on a :class:`.Connection`
@@ -129,7 +129,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 3296
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         A warning is emitted if the ``isolation_level`` parameter is used
         with :meth:`.Connection.execution_options` when a :class:`.Transaction`
@@ -140,7 +140,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3300
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug in lazy loading SQL construction whereby a complex
         primaryjoin that referred to the same "local" column multiple
@@ -151,7 +151,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 2940
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Repaired support for Postgresql UUID types in conjunction with
         the ARRAY type when using psycopg2.  The psycopg2 dialect now
@@ -164,7 +164,7 @@
     .. change::
         :tags: bug, postgresql
         :pullreq: github:145
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added support for the :class:`postgresql.JSONB` datatype when
         using psycopg2 2.5.4 or greater, which features native conversion
@@ -178,7 +178,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Repaired the use of the "array_oid" flag when registering the
         HSTORE type with older psycopg2 versions < 2.4.3, which does not
@@ -204,7 +204,7 @@
 
     .. change::
         :tags: feature, engine
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added new user-space accessors for viewing transaction isolation
         levels; :meth:`.Connection.get_isolation_level`,
@@ -212,7 +212,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3174
 
         Fixed bug where Postgresql dialect would fail to render an
@@ -223,7 +223,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3287
 
         The "wildcard" loader options, in particular the one set up by
@@ -238,7 +238,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullreq: bitbucket:41
 
         Added the ``native_enum`` flag to the ``__repr__()`` output
@@ -247,7 +247,7 @@
 
     .. change::
         :tags: bug, orm, pypy
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3285
 
         Fixed bug where if an exception were thrown at the start of a
@@ -260,7 +260,7 @@
 
     .. change::
         :tags: change, mysql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3275
 
         The ``gaerdbms`` dialect is no longer necessary, and emits a
@@ -269,7 +269,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3278
 
         Fixed bug where using a :class:`.TypeDecorator` that implemented
@@ -280,7 +280,7 @@
 
     .. change::
         :tags: bug, mysql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3274
 
         Added a version check to the MySQLdb dialect surrounding the
@@ -288,7 +288,7 @@
 
     .. change::
         :tags: feature, orm
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added new method :meth:`.Session.invalidate`, functions similarly
         to :meth:`.Session.close`, except also calls
@@ -300,7 +300,7 @@
 
     .. change::
         :tags: bug, examples
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Updated the :ref:`examples_versioned_history` example such that
         mapped columns are re-mapped to
@@ -313,7 +313,7 @@
 
     .. change::
         :tags: bug, examples
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed a bug in the examples/generic_assocaitions/discriminator_on_association.py
         example, where the subclasses of AddressAssociation were not being
@@ -322,7 +322,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3251
 
         Fixed a leak which would occur in the unsupported and highly
@@ -334,7 +334,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3248
 
         Fixed issue where the columns from a SELECT embedded in an
@@ -346,7 +346,7 @@
 
     .. change::
         :tags: bug, orm, sqlite
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3241
 
         Fixed bug regarding expression mutations which could express
@@ -357,7 +357,7 @@
 
     .. change::
         :tags: feature, sqlite
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added a new SQLite backend for the SQLCipher backend.  This backend
         provides for encrypted SQLite databases using the pysqlcipher Python
@@ -370,7 +370,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3232
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where the ON clause for :meth:`.Query.join`,
         and :meth:`.Query.outerjoin` to a single-inheritance subclass
@@ -383,7 +383,7 @@
 
     .. change::
         :tags: bug, mysql, mysqlconnector
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Mysqlconnector as of version 2.0, probably as a side effect of
         the  python 3 merge, now does not expect percent signs (e.g.
@@ -396,7 +396,7 @@
 
     .. change::
         :tags: bug, mysql, mysqlconnector
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Unicode SQL is now passed for MySQLconnector version 2.0 and above;
         for Py2k and MySQL < 2.0, strings are encoded.
@@ -404,7 +404,7 @@
 
     .. change::
         :tags: bug, oracle
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 2138
 
         Fixed long-standing bug in Oracle dialect where bound parameter
@@ -413,7 +413,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3195
 
         Fixed bug where a fair number of SQL elements within
@@ -424,7 +424,7 @@
 
     .. change::
         :tags: bug, declarative, orm
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3185
 
         Fixed "'NoneType' object has no attribute 'concrete'" error
@@ -433,7 +433,7 @@
 
     .. change::
         :tags: bug, engine
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3200
 
         The execution options passed to an :class:`.Engine` either via
@@ -450,7 +450,7 @@
 
     .. change::
         :tags: bug, sqlite
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3211
 
         When selecting from a UNION using an attached database file,
@@ -464,7 +464,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3021
 
         A revisit to this issue first patched in 0.9.5, apparently
@@ -477,7 +477,7 @@
 
     .. change::
         :tags: bug, orm, engine
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3197
 
         Fixed bug that affected generally the same classes of event
@@ -490,7 +490,7 @@
 
     .. change::
         :tags: bug, declarative
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3208
 
         Fixed an unlikely race condition observed in some exotic end-user
@@ -501,7 +501,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3199
 
         Fixed bug that affected many classes of event, particularly
@@ -515,7 +515,7 @@
 
     .. change::
         :tags: bug, mssql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3151
 
         Fixed the version string detection in the pymssql dialect to
@@ -524,7 +524,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3194
 
         Fixed warning that would emit when a complex self-referential
@@ -534,7 +534,7 @@
 
     .. change::
         :tags: bug, ext
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3191
 
         Fixed bug in ordering list where the order of items would be
@@ -545,7 +545,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3180
 
         An adjustment to table/index reflection such that if an index
@@ -556,7 +556,7 @@
 
     .. change::
         :tags: bug, ext
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullrequest: bitbucket:28
 
         Fixed bug where :class:`.ext.mutable.MutableDict`
@@ -565,7 +565,7 @@
 
     .. change::
         :tags: bug, ext
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullrequest: bitbucket:27
 
         Fixed bug where a custom subclass of :class:`.ext.mutable.MutableDict`
@@ -575,7 +575,7 @@
 
     .. change::
         :tags: bug, pool
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3168
 
         Fixed bug in connection pool logging where the "connection checked out"
@@ -586,7 +586,7 @@
 
     .. change::
         :tags: feature, postgresql, pg8000
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullreq: github:125
 
         Support is added for "sane multi row count" with the pg8000 driver,
@@ -596,7 +596,7 @@
 
     .. change::
         :tags: bug, engine
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3165
 
         The string keys that are used to determine the columns impacted
@@ -608,7 +608,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3159
 
         Fixed bug where Postgresql JSON type was not able to persist or
@@ -627,7 +627,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3154
 
         Fixed bug in CTE where ``literal_binds`` compiler argument would not
@@ -636,7 +636,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3075
 
         The exception wrapping system for DBAPI errors can now accommodate
@@ -647,7 +647,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3144, 3067
 
         Fixed 0.9.7 regression caused by :ticket:`3067` in conjunction with
@@ -656,7 +656,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3141
         :pullreq: github:124
 
@@ -666,7 +666,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3137
 
         Added a supported :meth:`.FunctionElement.alias` method to functions,
@@ -683,7 +683,7 @@
     .. change::
         :tags: bug, postgresql, pg8000
         :tickets: 3134
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug introduced in 0.9.5 by new pg8000 isolation level feature
         where engine-level isolation level parameter would raise an error
@@ -692,7 +692,7 @@
     .. change::
         :tags: bug, oracle, tests
         :tickets: 3128
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug in oracle dialect test suite where in one test,
         'username' was assumed to be in the database URL, even though
@@ -701,7 +701,7 @@
     .. change::
         :tags: bug, orm, eagerloading
         :tickets: 3131
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed a regression caused by :ticket:`2976` released in 0.9.4 where
         the "outer join" propagation along a chain of joined eager loads
@@ -714,7 +714,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 3130
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed a SQLite join rewriting issue where a subquery that is embedded
         as a scalar subquery such as within an IN would receive inappropriate
@@ -725,7 +725,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3067
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fix bug in naming convention feature where using a check
         constraint convention that includes ``constraint_name`` would
@@ -751,7 +751,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3083, 2736
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed a regression from 0.9.0 due to :ticket:`2736` where the
         :meth:`.Query.select_from` method no longer set up the "from
@@ -763,7 +763,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3090
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug in common table expressions whereby positional bound
         parameters could be expressed in the wrong final order
@@ -772,7 +772,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3069
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where multi-valued :class:`.Insert` construct would fail
         to check subsequent values entries beyond the first one given
@@ -781,7 +781,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3123
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added a "str()" step to the dialect_kwargs iteration for
         Python version < 2.6.5, working around the
@@ -791,7 +791,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3122
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         The :meth:`.TypeEngine.with_variant` method will now accept a
         type class as an argument which is internally converted to an
@@ -809,7 +809,7 @@
 
     .. change::
         :tags: bug, tests
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where "python setup.py test" wasn't calling into
         distutils appropriately, and errors would be emitted at the end
@@ -817,7 +817,7 @@
 
     .. change::
         :tags: feature, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullreq: bitbucket:22
         :tickets: 3078
 
@@ -828,7 +828,7 @@
 
     .. change::
         :tags: feature, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullreq: github:101
 
         Added support for Postgresql JSONB via :class:`.JSONB`.  Pull request
@@ -837,7 +837,7 @@
     .. change::
         :tags: feature, mssql
         :pullreq: github:98
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Enabled "multivalues insert" for SQL Server 2008.  Pull request
         courtesy Albert Cervin.  Also expanded the checks for "IDENTITY INSERT"
@@ -847,7 +847,7 @@
     .. change::
         :tags: feature, engine
         :tickets: 3076
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added new event :meth:`.ConnectionEvents.handle_error`, a more
         fully featured and comprehensive replacement for
@@ -856,7 +856,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3108
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where items that were persisted, deleted, or had a
         primary key change within a savepoint block would not
@@ -867,7 +867,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3106
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug in subquery eager loading in conjunction with
         :func:`.with_polymorphic`, the targeting of entities and columns
@@ -885,7 +885,7 @@
     .. change::
         :tags: bug, declarative
         :tickets: 3097
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug when the declarative ``__abstract__`` flag was not being
         distinguished for when it was actually the value ``False``.
@@ -913,7 +913,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3042
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Additional checks have been added for the case where an inheriting
         mapper is implicitly combining one of its column-based attributes
@@ -930,7 +930,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3023
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         The :paramref:`.Column.nullable` flag is implicitly set to ``False``
         when that :class:`.Column` is referred to in an explicit
@@ -942,7 +942,7 @@
     .. change::
         :tags: enhancement, postgresql
         :tickets: 3002
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added a new type :class:`.postgresql.OID` to the Postgresql dialect.
         While "oid" is generally a private type within PG that is not exposed
@@ -953,7 +953,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3080
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Modified the behavior of :func:`.orm.load_only` such that primary key
         columns are always added to the list of columns to be "undeferred";
@@ -966,7 +966,7 @@
     .. change::
         :tags: feature, examples
         :pullreq: bitbucket:21
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added a new example illustrating materialized paths, using the
         latest relationship features.   Example courtesy Jack Zhou.
@@ -974,7 +974,7 @@
     .. change::
         :tags: bug, testsuite
         :pullreq: github:95
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         In public test suite, shanged to use of ``String(40)`` from
         less-supported ``Text`` in ``StringTest.test_literal_backslashes``.
@@ -982,7 +982,7 @@
 
     .. change::
         :tags: bug, engine
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :tickets: 3063
 
         Fixed bug which would occur if a DBAPI exception
@@ -996,7 +996,7 @@
 
     .. change::
         :tags: feature, postgresql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullreq: github:88
 
         Added support for AUTOCOMMIT isolation level when using the pg8000
@@ -1005,7 +1005,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 3021
-        :versions: 1.0.0
+        :versions: 1.0.0b1
         :pullreq: github:87
 
         The psycopg2 ``.closed`` accessor is now consulted when determining
@@ -1018,7 +1018,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3060
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed a few edge cases which arise in the so-called "row switch"
         scenario, where an INSERT/DELETE can be turned into an UPDATE.
@@ -1038,7 +1038,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Related to :ticket:`3060`, an adjustment has been made to the unit
         of work such that loading for related many-to-one objects is slightly
@@ -1050,7 +1050,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3057
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug in SQLite join rewriting where anonymized column names
         due to repeats would not correctly be rewritten in subqueries.
@@ -1059,7 +1059,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3012
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug where the :meth:`.Operators.__and__`,
         :meth:`.Operators.__or__` and :meth:`.Operators.__invert__`
@@ -1070,7 +1070,7 @@
         :tags: feature, postgresql
         :tickets: 2785
         :pullreq: bitbucket:18
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added a new flag :paramref:`.ARRAY.zero_indexes` to the Postgresql
         :class:`.ARRAY` type.  When set to ``True``, a value of one will be
@@ -1081,7 +1081,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 3043
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed some "double invalidate" situations were detected where
         a connection invalidation could occur within an already critical section
@@ -1104,7 +1104,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3029
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         The "primaryjoin" model has been stretched a bit further to allow
         a join condition that is strictly from a single column to itself,
@@ -1118,7 +1118,7 @@
     .. change::
         :tags: feature, sql
         :tickets: 3028
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Liberalized the contract for :class:`.Index` a bit in that you can
         specify a :func:`.text` expression as the target; the index no longer
@@ -1141,7 +1141,7 @@
     .. change::
         :tags: bug, mssql
         :tickets: 3025
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Revised the query used to determine the current default schema name
         to use the ``database_principal_id()`` function in conjunction with
@@ -1152,7 +1152,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3024
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed bug in new :meth:`.DialectKWArgs.argument_for` method where
         adding an argument for a construct not previously included for any
@@ -1162,7 +1162,7 @@
         :tags: bug, py3k, tests
         :tickets: 2830
         :pullreq: bitbucket:2830
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Corrected for some deprecation warnings involving the ``imp``
         module and Python 3.3 or greater, when running tests.  Pull
@@ -1171,7 +1171,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3020, 1068
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixed regression introduced in 0.9 where new "ORDER BY <labelname>"
         feature from :ticket:`1068` would not apply quoting rules to the
@@ -1180,7 +1180,7 @@
     .. change::
         :tags: feature, orm
         :tickets: 3017
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added new utility function :func:`.make_transient_to_detached` which can
         be used to manufacture objects that behave as though they were loaded
@@ -1190,7 +1190,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Restored the import for :class:`.Function` to the ``sqlalchemy.sql.expression``
         import namespace, which was removed at the beginning of 0.9.
@@ -1198,7 +1198,7 @@
     .. change::
         :tags: bug, orm, sql
         :tickets: 3013
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Fixes to the newly enhanced boolean coercion in :ticket:`2804` where
         the new rules for "where" and "having" woudn't take effect for the
@@ -1209,7 +1209,7 @@
     .. change::
         :tags: feature, sql
         :tickets: 2990
-        :versions: 1.0.0
+        :versions: 1.0.0b1
 
         Added new flag :paramref:`.expression.between.symmetric`, when set to True
         renders "BETWEEN SYMMETRIC".  Also added a new negation operator

@@ -16,9 +16,9 @@
         :start-line: 5
 
 .. changelog::
-	:version: 1.0.0
+	:version: 1.0.0b1
 
-    Version 1.0.0 is the first release of the 1.0 series.   Many changes
+    Version 1.0.0b1 is the first release of the 1.0 series.   Many changes
     described here are also present in the 0.9 and sometimes the 0.8
     series as well.  For changes that are specific to 1.0 with an emphasis
     on compatibility concerns, see :doc:`/changelog/migration_10`.
