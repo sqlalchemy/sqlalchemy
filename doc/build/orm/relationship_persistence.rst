@@ -56,8 +56,7 @@ have been INSERTED; it also causes the rows to be de-associated with
 each other via UPDATE before a DELETE is emitted.  The flag should
 be placed on just *one* of the relationships, preferably the
 many-to-one side.  Below we illustrate
-a complete example, including two :class:`.ForeignKey` constructs, one which
-specifies :paramref:`~.ForeignKey.use_alter` to help with emitting CREATE TABLE statements::
+a complete example, including two :class:`.ForeignKey` constructs::
 
     from sqlalchemy import Integer, ForeignKey, Column
     from sqlalchemy.ext.declarative import declarative_base
@@ -77,7 +76,6 @@ specifies :paramref:`~.ForeignKey.use_alter` to help with emitting CREATE TABLE 
         widget_id = Column(Integer, primary_key=True)
         favorite_entry_id = Column(Integer,
                                 ForeignKey('entry.entry_id',
-                                use_alter=True,
                                 name="fk_favorite_entry"))
         name = Column(String(50))
 
@@ -145,7 +143,7 @@ as illustrated below::
             ForeignKeyConstraint(
                 ["widget_id", "favorite_entry_id"],
                 ["entry.widget_id", "entry.entry_id"],
-                name="fk_favorite_entry", use_alter=True
+                name="fk_favorite_entry"
             ),
         )
 

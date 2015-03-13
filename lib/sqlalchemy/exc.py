@@ -54,8 +54,7 @@ class CircularDependencyError(SQLAlchemyError):
       or pre-deassociate one of the foreign key constrained values.
       The ``post_update`` flag described at :ref:`post_update` can resolve
       this cycle.
-    * In a :meth:`.MetaData.create_all`, :meth:`.MetaData.drop_all`,
-      :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
+    * In a :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
       or :class:`.ForeignKeyConstraint` objects mutually refer to each
       other.  Apply the ``use_alter=True`` flag to one or both,
       see :ref:`use_alter`.
