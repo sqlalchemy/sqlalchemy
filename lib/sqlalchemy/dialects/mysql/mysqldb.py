@@ -28,8 +28,10 @@ unicode** will include both charset and use_unicode=0::
 
     create_engine("mysql+mysqldb://user:pass@host/dbname?charset=utf8&use_unicode=0")
 
-As of this writing, MySQLdb only runs on Python 2.   It is not known how
-MySQLdb behaves on Python 3 as far as unicode decoding.
+As of this writing, MySQLdb only runs on Python 2 and development has been stopped.
+`mysqlclient`_ is fork of MySQLdb and provides Python 3 support and some bugfixes.
+
+.. _mysqlclient: https://github.com/PyMySQL/mysqlclient-python
 
 
 Known Issues
