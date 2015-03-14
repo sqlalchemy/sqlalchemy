@@ -512,8 +512,10 @@ class ColumnOperators(Operators):
         * Postgresql - renders ``x @@ to_tsquery(y)``
         * MySQL - renders ``MATCH (x) AGAINST (y IN BOOLEAN MODE)``
         * Oracle - renders ``CONTAINS(x, y)``
-        * other backends may provide special implementations;
-          some backends such as SQLite have no support.
+        * other backends may provide special implementations.
+        * Backends without any special implementation will emit
+          the operator as "MATCH".  This is compatible with SQlite, for
+          example.
 
         """
         return self.operate(match_op, other, **kwargs)
