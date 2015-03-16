@@ -2,7 +2,7 @@ import copy
 
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, \
-    exc as sa_exc
+    exc as sa_exc, util
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     sessionmaker, class_mapper, backref, Session, util as orm_util,\
@@ -118,6 +118,14 @@ class CascadeArgTest(fixtures.MappedTest):
             set(['delete', 'delete-orphan', 'expunge', 'merge',
                     'refresh-expire', 'save-update'])
             )
+
+    def test_cascade_unicode(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        rel = relationship(Address)
+        rel.cascade = util.u('save-update, merge, expunge')
+        eq_(rel.cascade, set(['save-update', 'merge', 'expunge']))
 
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):

@@ -35,7 +35,7 @@ class CascadeOptions(frozenset):
         'expunge', 'delete_orphan')
 
     def __new__(cls, value_list):
-        if isinstance(value_list, str) or value_list is None:
+        if isinstance(value_list, util.string_types) or value_list is None:
             return cls.from_string(value_list)
         values = set(value_list)
         if values.difference(cls._allowed_cascades):
