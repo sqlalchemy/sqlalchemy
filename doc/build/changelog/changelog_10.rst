@@ -16,6 +16,20 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.0b2
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3327
+        :pullreq: github:160
+
+        Fixed 1.0 regression from pullreq github:137 where Py2K unicode
+        literals (e.g. ``u""``) would not be accepted by the
+        :paramref:`.relationship.cascade` option.
+        Pull request courtesy Julien Castets.
+
+
+.. changelog::
     :version: 1.0.0b1
     :released: March 13, 2015
 
