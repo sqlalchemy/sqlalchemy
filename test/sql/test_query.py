@@ -993,6 +993,9 @@ class QueryTest(fixtures.TestBase):
     def test_fetchone_til_end(self):
         result = testing.db.execute("select * from query_users")
         eq_(result.fetchone(), None)
+        eq_(result.fetchone(), None)
+        eq_(result.fetchone(), None)
+        result.close()
         assert_raises_message(
             exc.ResourceClosedError,
             "This result object is closed.",

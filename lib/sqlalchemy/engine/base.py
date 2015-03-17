@@ -1160,12 +1160,12 @@ class Connection(Connectable):
         else:
             result = context.get_result_proxy()
             if result._metadata is None:
-                result.close(_autoclose_connection=False)
+                result._soft_close(_autoclose_connection=False)
 
         if context.should_autocommit and self._root.__transaction is None:
             self._root._commit_impl(autocommit=True)
 
-        if result.closed and self.should_close_with_result:
+        if result._soft_closed and self.should_close_with_result:
             self.close()
 
         return result

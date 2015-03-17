@@ -635,6 +635,58 @@ required during a CREATE/DROP scenario.
 
 :ticket:`3282`
 
+.. _change_3330:
+
+ResultProxy "auto close" is now a "soft" close
+----------------------------------------------
+
+For many releases, the :class:`.ResultProxy` object has always been
+automatically closed out at the point at which all result rows have been
+fetched.  This was to allow usage of the object without the need to call
+upon :meth:`.ResultProxy.close` explicitly; as all DBAPI resources had been
+freed, the object was safe to discard.   However, the object maintained
+a strict "closed" behavior, which meant that any subsequent calls to
+:meth:`.ResultProxy.fetchone`, :meth:`.ResultProxy.fetchmany` or
+:meth:`.ResultProxy.fetchall` would now raise a :class:`.ResourceClosedError`::
+
+    >>> result = connection.execute(stmt)
+    >>> result.fetchone()
+    (1, 'x')
+    >>> result.fetchone()
+    None  # indicates no more rows
+    >>> result.fetchone()
+    exception: ResourceClosedError
+
+This behavior is inconsistent vs. what pep-249 states, which is
+that you can call upon the fetch methods repeatedly even after results
+are exhausted.  It also interferes with behavior for some implementations of
+result proxy, such as the :class:`.BufferedColumnResultProxy` used by the
+cx_oracle dialect for certain datatypes.
+
+To solve this, the "closed" state of the :class:`.ResultProxy` has been
+broken into two states; a "soft close" which does the majority of what
+"close" does, in that it releases the DBAPI cursor and in the case of a
+"close with result" object will also release the connection, and a
+"closed" state which is everything included by "soft close" as well as
+establishing the fetch methods as "closed".   The :meth:`.ResultProxy.close`
+method is now never called implicitly, only the :meth:`.ResultProxy._soft_close`
+method which is non-public::
+
+    >>> result = connection.execute(stmt)
+    >>> result.fetchone()
+    (1, 'x')
+    >>> result.fetchone()
+    None  # indicates no more rows
+    >>> result.fetchone()
+    None  # still None
+    >>> result.fetchall()
+    []
+    >>> result.close()
+    >>> result.fetchone()
+    exception: ResourceClosedError  # *now* it raises
+
+:ticket:`3330`
+:ticket:`3329`
 
 CHECK Constraints now support the ``%(column_0_name)s`` token in naming conventions
 -----------------------------------------------------------------------------------

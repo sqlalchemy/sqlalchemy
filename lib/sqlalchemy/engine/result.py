@@ -479,11 +479,12 @@ class ResultProxy(object):
     out_parameters = None
     _can_close_connection = False
     _metadata = None
+    _soft_closed = False
+    closed = False
 
     def __init__(self, context):
         self.context = context
         self.dialect = context.dialect
-        self.closed = False
         self.cursor = self._saved_cursor = context.cursor
         self.connection = context.root_connection
         self._echo = self.connection._echo and \
@@ -620,33 +621,79 @@ class ResultProxy(object):
 
         return self._saved_cursor.description
 
-    def close(self, _autoclose_connection=True):
-        """Close this ResultProxy.
+    def _soft_close(self, _autoclose_connection=True):
+        """Soft close this :class:`.ResultProxy`.
 
-        Closes the underlying DBAPI cursor corresponding to the execution.
-
-        Note that any data cached within this ResultProxy is still available.
-        For some types of results, this may include buffered rows.
-
-        If this ResultProxy was generated from an implicit execution,
-        the underlying Connection will also be closed (returns the
-        underlying DBAPI connection to the connection pool.)
+        This releases all DBAPI cursor resources, but leaves the
+        ResultProxy "open" from a semantic perspective, meaning the
+        fetchXXX() methods will continue to return empty results.
 
         This method is called automatically when:
 
         * all result rows are exhausted using the fetchXXX() methods.
         * cursor.description is None.
 
+        This method is **not public**, but is documented in order to clarify
+        the "autoclose" process used.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`.ResultProxy.close`
+
+
+        """
+        if self._soft_closed:
+            return
+        self._soft_closed = True
+        cursor = self.cursor
+        self.connection._safe_close_cursor(cursor)
+        if _autoclose_connection and \
+                self.connection.should_close_with_result:
+            self.connection.close()
+        self.cursor = None
+
+    def close(self):
+        """Close this ResultProxy.
+
+        This closes out the underlying DBAPI cursor corresonding
+        to the statement execution, if one is stil present.  Note that the
+        DBAPI cursor is automatically released when the :class:`.ResultProxy`
+        exhausts all available rows.  :meth:`.ResultProxy.close` is generally
+        an optional method except in the case when discarding a
+        :class:`.ResultProxy` that still has additional rows pending for fetch.
+
+        In the case of a result that is the product of
+        :ref:`connectionless execution <dbengine_implicit>`,
+        the underyling :class:`.Connection` object is also closed, which
+        :term:`releases` DBAPI connection resources.
+
+        After this method is called, it is no longer valid to call upon
+        the fetch methods, which will raise a :class:`.ResourceClosedError`
+        on subsequent use.
+
+        .. versionchanged:: 1.0.0 - the :meth:`.ResultProxy.close` method
+           has been separated out from the process that releases the underlying
+           DBAPI cursor resource.   The "auto close" feature of the
+           :class:`.Connection` now performs a so-called "soft close", which
+           releases the underlying DBAPI cursor, but allows the
+           :class:`.ResultProxy` to still behave as an open-but-exhausted
+           result set; the actual :meth:`.ResultProxy.close` method is never
+           called.    It is still safe to discard a :class:`.ResultProxy`
+           that has been fully exhausted without calling this method.
+
+        .. seealso::
+
+            :ref:`connections_toplevel`
+
+            :meth:`.ResultProxy._soft_close`
+
         """
 
         if not self.closed:
+            self._soft_close()
             self.closed = True
-            self.connection._safe_close_cursor(self.cursor)
-            if _autoclose_connection and \
-                    self.connection.should_close_with_result:
-                self.connection.close()
-            # allow consistent errors
-            self.cursor = None
 
     def __iter__(self):
         while True:
@@ -837,7 +884,7 @@ class ResultProxy(object):
         try:
             return self.cursor.fetchone()
         except AttributeError:
-            self._non_result()
+            return self._non_result(None)
 
     def _fetchmany_impl(self, size=None):
         try:
@@ -846,22 +893,24 @@ class ResultProxy(object):
             else:
                 return self.cursor.fetchmany(size)
         except AttributeError:
-            self._non_result()
+            return self._non_result([])
 
     def _fetchall_impl(self):
         try:
             return self.cursor.fetchall()
         except AttributeError:
-            self._non_result()
+            return self._non_result([])
 
-    def _non_result(self):
+    def _non_result(self, default):
         if self._metadata is None:
             raise exc.ResourceClosedError(
                 "This result object does not return rows. "
                 "It has been closed automatically.",
             )
-        else:
+        elif self.closed:
             raise exc.ResourceClosedError("This result object is closed.")
+        else:
+            return default
 
     def process_rows(self, rows):
         process_row = self._process_row
@@ -880,11 +929,25 @@ class ResultProxy(object):
                     for row in rows]
 
     def fetchall(self):
-        """Fetch all rows, just like DB-API ``cursor.fetchall()``."""
+        """Fetch all rows, just like DB-API ``cursor.fetchall()``.
+
+        After all rows have been exhausted, the underlying DBAPI
+        cursor resource is released, and the object may be safely
+        discarded.
+
+        Subsequent calls to :meth:`.ResultProxy.fetchall` will return
+        an empty list.   After the :meth:`.ResultProxy.close` method is
+        called, the method will raise :class:`.ResourceClosedError`.
+
+        .. versionchanged:: 1.0.0 - Added "soft close" behavior which
+           allows the result to be used in an "exhausted" state prior to
+           calling the :meth:`.ResultProxy.close` method.
+
+        """
 
         try:
             l = self.process_rows(self._fetchall_impl())
-            self.close()
+            self._soft_close()
             return l
         except Exception as e:
             self.connection._handle_dbapi_exception(
@@ -895,15 +958,25 @@ class ResultProxy(object):
         """Fetch many rows, just like DB-API
         ``cursor.fetchmany(size=cursor.arraysize)``.
 
-        If rows are present, the cursor remains open after this is called.
-        Else the cursor is automatically closed and an empty list is returned.
+        After all rows have been exhausted, the underlying DBAPI
+        cursor resource is released, and the object may be safely
+        discarded.
+
+        Calls to :meth:`.ResultProxy.fetchmany` after all rows have been
+        exhuasted will return
+        an empty list.   After the :meth:`.ResultProxy.close` method is
+        called, the method will raise :class:`.ResourceClosedError`.
+
+        .. versionchanged:: 1.0.0 - Added "soft close" behavior which
+           allows the result to be used in an "exhausted" state prior to
+           calling the :meth:`.ResultProxy.close` method.
 
         """
 
         try:
             l = self.process_rows(self._fetchmany_impl(size))
             if len(l) == 0:
-                self.close()
+                self._soft_close()
             return l
         except Exception as e:
             self.connection._handle_dbapi_exception(
@@ -913,8 +986,18 @@ class ResultProxy(object):
     def fetchone(self):
         """Fetch one row, just like DB-API ``cursor.fetchone()``.
 
-        If a row is present, the cursor remains open after this is called.
-        Else the cursor is automatically closed and None is returned.
+        After all rows have been exhausted, the underlying DBAPI
+        cursor resource is released, and the object may be safely
+        discarded.
+
+        Calls to :meth:`.ResultProxy.fetchone` after all rows have
+        been exhausted will return ``None``.
+        After the :meth:`.ResultProxy.close` method is
+        called, the method will raise :class:`.ResourceClosedError`.
+
+        .. versionchanged:: 1.0.0 - Added "soft close" behavior which
+           allows the result to be used in an "exhausted" state prior to
+           calling the :meth:`.ResultProxy.close` method.
 
         """
         try:
@@ -922,7 +1005,7 @@ class ResultProxy(object):
             if row is not None:
                 return self.process_rows([row])[0]
             else:
-                self.close()
+                self._soft_close()
                 return None
         except Exception as e:
             self.connection._handle_dbapi_exception(
@@ -934,9 +1017,12 @@ class ResultProxy(object):
 
         Returns None if no row is present.
 
+        After calling this method, the object is fully closed,
+        e.g. the :meth:`.ResultProxy.close` method will have been called.
+
         """
         if self._metadata is None:
-            self._non_result()
+            return self._non_result(None)
 
         try:
             row = self._fetchone_impl()
@@ -957,6 +1043,9 @@ class ResultProxy(object):
         """Fetch the first column of the first row, and close the result set.
 
         Returns None if no row is present.
+
+        After calling this method, the object is fully closed,
+        e.g. the :meth:`.ResultProxy.close` method will have been called.
 
         """
         row = self.first()
@@ -1001,13 +1090,19 @@ class BufferedRowResultProxy(ResultProxy):
     }
 
     def __buffer_rows(self):
+        if self.cursor is None:
+            return
         size = getattr(self, '_bufsize', 1)
         self.__rowbuffer = collections.deque(self.cursor.fetchmany(size))
         self._bufsize = self.size_growth.get(size, size)
 
+    def _soft_close(self, **kw):
+        self.__rowbuffer.clear()
+        super(BufferedRowResultProxy, self)._soft_close(**kw)
+
     def _fetchone_impl(self):
-        if self.closed:
-            return None
+        if self.cursor is None:
+            return self._non_result(None)
         if not self.__rowbuffer:
             self.__buffer_rows()
             if not self.__rowbuffer:
@@ -1026,6 +1121,8 @@ class BufferedRowResultProxy(ResultProxy):
         return result
 
     def _fetchall_impl(self):
+        if self.cursor is None:
+            return self._non_result([])
         self.__rowbuffer.extend(self.cursor.fetchall())
         ret = self.__rowbuffer
         self.__rowbuffer = collections.deque()
@@ -1048,11 +1145,15 @@ class FullyBufferedResultProxy(ResultProxy):
     def _buffer_rows(self):
         return collections.deque(self.cursor.fetchall())
 
+    def _soft_close(self, **kw):
+        self.__rowbuffer.clear()
+        super(FullyBufferedResultProxy, self)._soft_close(**kw)
+
     def _fetchone_impl(self):
         if self.__rowbuffer:
             return self.__rowbuffer.popleft()
         else:
-            return None
+            return self._non_result(None)
 
     def _fetchmany_impl(self, size=None):
         if size is None:
@@ -1066,6 +1167,8 @@ class FullyBufferedResultProxy(ResultProxy):
         return result
 
     def _fetchall_impl(self):
+        if not self.cursor:
+            return self._non_result([])
         ret = self.__rowbuffer
         self.__rowbuffer = collections.deque()
         return ret

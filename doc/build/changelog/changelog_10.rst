@@ -19,6 +19,23 @@
     :version: 1.0.0b2
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3330, 3329
+
+        The "auto close" for :class:`.ResultProxy` is now a "soft" close.
+        That is, after exhausing all rows using the fetch methods, the
+        DBAPI cursor is released as before and the object may be safely
+        discarded, but the fetch methods may continue to be called for which
+        they will return an end-of-result object (None for fetchone, empty list
+        for fetchmany and fetchall).   Only if :meth:`.ResultProxy.close`
+        is called explicitly will these methods raise the "result is closed"
+        error.
+
+        .. seealso::
+
+            :ref:`change_3330`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3327
         :pullreq: github:160

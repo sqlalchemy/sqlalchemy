@@ -1305,7 +1305,7 @@ class SQLiteDialect(default.DefaultDialect):
         qtable = quote(table_name)
         statement = "%s%s(%s)" % (statement, pragma, qtable)
         cursor = connection.execute(statement)
-        if not cursor.closed:
+        if not cursor._soft_closed:
             # work around SQLite issue whereby cursor.description
             # is blank when PRAGMA returns no rows:
             # http://www.sqlite.org/cvstrac/tktview?tn=1884

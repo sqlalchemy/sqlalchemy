@@ -1070,6 +1070,47 @@ class AlternateResultProxyTest(fixtures.TestBase):
         rows = r.fetchmany(6)
         eq_(rows, [(i, "t_%d" % i) for i in range(1, 6)])
 
+        # result keeps going just fine with blank results...
+        eq_(r.fetchmany(2), [])
+
+        eq_(r.fetchmany(2), [])
+
+        eq_(r.fetchall(), [])
+
+        eq_(r.fetchone(), None)
+
+        # until we close
+        r.close()
+
+        self._assert_result_closed(r)
+
+        r = self.engine.execute(select([self.table]).limit(5))
+        eq_(r.first(), (1, "t_1"))
+        self._assert_result_closed(r)
+
+        r = self.engine.execute(select([self.table]).limit(5))
+        eq_(r.scalar(), 1)
+        self._assert_result_closed(r)
+
+    def _assert_result_closed(self, r):
+        assert_raises_message(
+            tsa.exc.ResourceClosedError,
+            "object is closed",
+            r.fetchone
+        )
+
+        assert_raises_message(
+            tsa.exc.ResourceClosedError,
+            "object is closed",
+            r.fetchmany, 2
+        )
+
+        assert_raises_message(
+            tsa.exc.ResourceClosedError,
+            "object is closed",
+            r.fetchall
+        )
+
     def test_plain(self):
         self._test_proxy(_result.ResultProxy)
 
