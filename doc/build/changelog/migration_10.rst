@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, as of yet unreleased.
 
-    Document last updated: March 1, 2015
+    Document last updated: March 17, 2015
 
 Introduction
 ============
@@ -707,8 +707,8 @@ expression of a :class:`.CheckConstraint`::
 Will render::
 
     CREATE TABLE foo (
-        flag BOOL,
-        CONSTRAINT ck_foo_flag CHECK (flag IN (0, 1))
+        value INTEGER,
+        CONSTRAINT ck_foo_value CHECK (value > 5)
     )
 
 The combination of naming conventions with the constraint produced by a
