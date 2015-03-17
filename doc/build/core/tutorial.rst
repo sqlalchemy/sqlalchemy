@@ -1684,7 +1684,7 @@ Inserts, Updates and Deletes
 
 We've seen :meth:`~.TableClause.insert` demonstrated
 earlier in this tutorial.   Where :meth:`~.TableClause.insert`
-prodces INSERT, the :meth:`~.TableClause.update`
+produces INSERT, the :meth:`~.TableClause.update`
 method produces UPDATE.  Both of these constructs feature
 a method called :meth:`~.ValuesBase.values` which specifies
 the VALUES or SET clause of the statement.
