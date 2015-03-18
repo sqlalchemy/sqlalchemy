@@ -19,6 +19,21 @@
     :version: 1.0.0b2
 
     .. change::
+        :tags: change, ext, declarative
+        :tickets: 3331
+
+        Loosened some restrictions that were added to ``@declared_attr``
+        objects, such that they were prevented from being called outside
+        of the declarative process; this is related to the enhancements
+        of #3150 which allow ``@declared_attr`` to return a value that is
+        cached based on the current class as it's being configured.
+        The exception raise has been removed, and the behavior changed
+        so that outside of the declarative process, the function decorated by
+        ``@declared_attr`` is called every time just like a regular
+        ``@property``, without using any caching, as none is available
+        at this stage.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3330, 3329
 

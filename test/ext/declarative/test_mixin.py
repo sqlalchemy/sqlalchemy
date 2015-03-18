@@ -1392,6 +1392,39 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             getattr, Mixin, "my_prop"
         )
 
+    def test_non_decl_access(self):
+        counter = mock.Mock()
+
+        class Mixin(object):
+            @declared_attr
+            def __tablename__(cls):
+                counter(cls)
+                return "foo"
+
+        class Foo(Mixin, Base):
+            id = Column(Integer, primary_key=True)
+
+            @declared_attr
+            def x(cls):
+                cls.__tablename__
+
+            @declared_attr
+            def y(cls):
+                cls.__tablename__
+
+        eq_(
+            counter.mock_calls,
+            [mock.call(Foo)]
+        )
+
+        eq_(Foo.__tablename__, 'foo')
+        eq_(Foo.__tablename__, 'foo')
+
+        eq_(
+            counter.mock_calls,
+            [mock.call(Foo), mock.call(Foo), mock.call(Foo)]
+        )
+
     def test_property_noncascade(self):
         counter = mock.Mock()
 
