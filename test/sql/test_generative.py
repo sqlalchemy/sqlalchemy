@@ -878,7 +878,6 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             a2_to_a1.columns[t2.c.col2], stmt2.c.col2
         )
 
-
     def test_wrapping_multiple(self):
         """illustrate that wrapping runs both adapters"""
 
@@ -1529,7 +1528,6 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         l3 = adapter.traverse(expr)
         is_(l3._order_by_label_element, l3)
         eq_(l3._allow_label_resolve, False)
-
 
 
 class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
