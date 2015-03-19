@@ -462,6 +462,7 @@ class SessionTest(fixtures.MappedTest):
             sess.expire_all()
         go()
 
+
 class QueryTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
