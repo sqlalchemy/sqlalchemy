@@ -167,14 +167,14 @@ class ZooMarkTest(fixtures.TestBase):
 
             # Animals
 
-            leopard = list(session.query(Animal).filter(Animal.Species
-                           == 'Leopard'))
-            ostrich = list(session.query(Animal).filter(Animal.Species
-                           == 'Ostrich'))
-            millipede = list(session.query(Animal).filter(Animal.Legs
-                             == 1000000))
-            ticks = list(session.query(Animal).filter(Animal.Species
-                         == 'Tick'))
+            list(session.query(Animal).filter(
+                    Animal.Species == 'Leopard'))
+            list(session.query(Animal).filter(
+                    Animal.Species == 'Ostrich'))
+            list(session.query(Animal).filter(
+                    Animal.Legs == 1000000))
+            list(session.query(Animal).filter(
+                    Animal.Species == 'Tick'))
 
     def test_baseline_4_expressions(self):
         for x in range(ITERATIONS):
@@ -327,9 +327,10 @@ class ZooMarkTest(fixtures.TestBase):
 
     def test_profile_0(self):
         global metadata, session
-        player = lambda : dbapi_session.player()
-        engine = create_engine('postgresql:///', creator=player,
-                    use_native_hstore=False)
+        player = lambda: dbapi_session.player()
+        engine = create_engine(
+            'postgresql:///', creator=player,
+            use_native_hstore=False)
         metadata = MetaData(engine)
         session = sessionmaker(engine)()
         engine.connect()
