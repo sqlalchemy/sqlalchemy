@@ -709,6 +709,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 WHERE table1.col1 = anon_1.col1)")
 
 
+
 class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 

@@ -8,6 +8,7 @@ from sqlalchemy.testing import AssertsCompiledSQL,\
     assert_raises_message, fixtures
 
 
+
 class _InsertTestBase(object):
 
     @classmethod

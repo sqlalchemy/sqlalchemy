@@ -18,6 +18,7 @@ from sqlalchemy.testing import eq_, is_, mock
 from contextlib import contextmanager
 from sqlalchemy import util
 
+
 class MetaDataTest(fixtures.TestBase, ComparesTables):
 
     def test_metadata_connect(self):
