@@ -77,6 +77,10 @@ SQLAlchemy has been tested against the following platforms:
 .. versionchanged:: 0.9
    Python 2.6 is now the minimum Python version supported.
 
+Platforms that don't currently have support include Jython, IronPython.
+Jython has been supported in the past and may be supported in future
+releases as well, depending on the state of Jython itself.
+
 Supported Installation Methods
 -------------------------------
 
