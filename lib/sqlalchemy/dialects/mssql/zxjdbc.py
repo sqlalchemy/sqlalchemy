@@ -13,6 +13,8 @@
 [?key=value&key=value...]
     :driverurl: http://jtds.sourceforge.net/
 
+    .. note:: Jython is not supported by current versions of SQLAlchemy.  The
+       zxjdbc dialect should be considered as experimental.
 
 """
 from ...connectors.zxJDBC import ZxJDBCConnector

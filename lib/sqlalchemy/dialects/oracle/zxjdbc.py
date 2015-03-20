@@ -13,6 +13,9 @@
     :driverurl: http://www.oracle.com/technology/software/tech/java/\
 sqlj_jdbc/index.html.
 
+    .. note:: Jython is not supported by current versions of SQLAlchemy.  The
+       zxjdbc dialect should be considered as experimental.
+
 """
 import decimal
 import re
