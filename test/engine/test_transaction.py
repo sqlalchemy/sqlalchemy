@@ -12,6 +12,8 @@ from sqlalchemy.testing import fixtures
 
 
 users, metadata = None, None
+
+
 class TransactionTest(fixtures.TestBase):
     __backend__ = True
 
@@ -20,7 +22,7 @@ class TransactionTest(fixtures.TestBase):
         global users, metadata
         metadata = MetaData()
         users = Table('query_users', metadata,
-            Column('user_id', INT, primary_key = True),
+            Column('user_id', INT, primary_key=True),
             Column('user_name', VARCHAR(20)),
             test_needs_acid=True,
         )
@@ -411,6 +413,7 @@ class TransactionTest(fixtures.TestBase):
                     order_by(users.c.user_id))
             eq_(result.fetchall(), [])
 
+
 class ResetAgentTest(fixtures.TestBase):
     __backend__ = True
 
@@ -514,6 +517,7 @@ class ResetAgentTest(fixtures.TestBase):
             trans.rollback()
             assert connection.connection._reset_agent is None
 
+
 class AutoRollbackTest(fixtures.TestBase):
     __backend__ = True
 
@@ -546,6 +550,7 @@ class AutoRollbackTest(fixtures.TestBase):
 
         users.drop(conn2)
         conn2.close()
+
 
 class ExplicitAutoCommitTest(fixtures.TestBase):
 
@@ -1354,4 +1359,3 @@ class IsolationLevelTest(fixtures.TestBase):
             eq_(conn.get_isolation_level(),
                 self._non_default_isolation_level())
             eq_(c2.get_isolation_level(), self._non_default_isolation_level())
-
