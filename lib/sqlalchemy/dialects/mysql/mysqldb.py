@@ -41,6 +41,15 @@ codepoints up to four bytes in size::
 
     :ref:`mysql_unicode` - Includes background on the ``'utf8mb4'`` character set.
 
+Py3K Support
+------------
+
+Currently, MySQLdb only runs on Python 2 and development has been stopped.
+`mysqlclient`_ is fork of MySQLdb and provides Python 3 support as well
+as some bugfixes.
+
+.. _mysqlclient: https://github.com/PyMySQL/mysqlclient-python
+
 
 Known Issues
 -------------
