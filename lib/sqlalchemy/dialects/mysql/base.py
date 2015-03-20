@@ -3351,7 +3351,7 @@ class _DecodingRowProxy(object):
 
     def __init__(self, rowproxy, charset):
         self.rowproxy = rowproxy
-        self.charset = charset #self._encoding_compat.get(charset, charset)
+        self.charset = self._encoding_compat.get(charset, charset)
 
     def __getitem__(self, index):
         item = self.rowproxy[index]

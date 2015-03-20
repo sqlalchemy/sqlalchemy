@@ -16,6 +16,17 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.0b3
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 2771
+
+        Repaired the commit for issue #2771 which was inadvertently commented
+        out.
+
+
+.. changelog::
     :version: 1.0.0b2
     :released: March 20, 2015
 

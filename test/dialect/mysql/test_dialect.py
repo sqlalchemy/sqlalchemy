@@ -8,7 +8,10 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 import datetime
 
+
 class DialectTest(fixtures.TestBase):
+    __backend__ = True
+
     def test_ssl_arguments_mysqldb(self):
         from sqlalchemy.dialects.mysql import mysqldb
         dialect = mysqldb.dialect()
