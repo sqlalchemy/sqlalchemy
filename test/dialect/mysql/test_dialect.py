@@ -83,6 +83,14 @@ class DialectTest(fixtures.TestBase):
             )[1]
         eq_(kw['foo'], "true")
 
+    def test_special_encodings(self):
+
+        for enc in ['utf8mb4', 'utf8']:
+            eng = engines.testing_engine(
+                options={"connect_args": {'charset': enc, 'use_unicode': 0}})
+            conn = eng.connect()
+            eq_(conn.dialect._connection_charset, enc)
+
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
     __backend__ = True

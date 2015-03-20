@@ -19,6 +19,17 @@
     :version: 1.0.0b2
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 2771
+        :pullreq: bitbucket:49
+
+        Fixes to fully support using the ``'utf8mb4'`` MySQL-specific charset
+        with MySQL dialects, in particular MySQL-Python and PyMySQL.   In
+        addition, MySQL databases that report more unusual charsets such as
+        'koi8u' or 'eucjpms' will also work correctly.  Pull request
+        courtesy Thomas Grainger.
+
+    .. change::
         :tags: change, ext, declarative
         :tickets: 3331
 
