@@ -32,6 +32,11 @@ defaults to, there is a separate parameter::
 
   # use latin1 as the connection charset; all strings come back as unicode
   create_engine('mysql+oursql:///mydb?charset=latin1')
+
+.. seealso::
+
+    :ref:`mysql_unicode` - includes background on the ``'utf8'`` and ``'utf8mb4'`` charsets.
+
 """
 
 import re

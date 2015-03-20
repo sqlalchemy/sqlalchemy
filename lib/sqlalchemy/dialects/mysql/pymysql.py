@@ -14,6 +14,12 @@
 [?<options>]
     :url: http://code.google.com/p/pymysql/
 
+Unicode
+-------
+
+Please see :ref:`mysql_unicode` for background on enabling charset support
+with PyMySQL.
+
 MySQL-Python Compatibility
 --------------------------
 

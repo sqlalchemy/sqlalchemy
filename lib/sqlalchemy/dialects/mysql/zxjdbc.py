@@ -14,6 +14,9 @@
 <database>
     :driverurl: http://dev.mysql.com/downloads/connector/j/
 
+    .. note:: Jython is not supported by current versions of SQLAlchemy.  The
+       zxjdbc dialect should be considered as experimental.
+
 Character Sets
 --------------
 

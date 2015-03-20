@@ -14,6 +14,12 @@
     :url: http://dev.mysql.com/downloads/connector/python/
 
 
+Unicode
+-------
+
+Please see :ref:`mysql_unicode` for background on enabling charset support
+with mysql-connector.
+
 """
 
 from .base import (MySQLDialect, MySQLExecutionContext,

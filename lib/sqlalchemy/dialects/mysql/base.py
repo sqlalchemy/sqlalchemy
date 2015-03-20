@@ -146,6 +146,49 @@ multi-column key for some storage engines::
         Column('id', Integer, primary_key=True)
        )
 
+.. _mysql_unicode:
+
+Unicode
+-------
+
+Most MySQL DBAPIs offer the option to set the client character set for
+a connection.   This is typically delivered using the ``charset`` parameter
+in the URL, such as::
+
+    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
+test?charset=utf8")
+
+Whether or not the DBAPI handles the job of encoding and decoding is determined
+by passing the ``use_unicode`` parameter.   For example, to disable
+unicode conversion by the DBAPI and let SQLAlchemy handle it::
+
+    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
+test?charset=utf8&use_uncode=0")
+
+The encoding used for Unicode has traditionally been ``'utf8'``.  However,
+for MySQL versions 5.5.3 on forward, a new MySQL-specific encoding
+``'utf8mb4'`` has been introduced.   The rationale for this new encoding
+is due to the fact that MySQL's utf-8 encoding only supports
+codepoints up to three bytes instead of four.  Therefore,
+when communicating with a MySQL database
+that includes codepoints more than three bytes in size,
+this new charset must be used, as in::
+
+    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
+test?charset=utf8mb4")
+
+In order to use ``utf8mb4`` encoding, changes to
+the MySQL schema and/or server configuration may be required - see the
+MySQL documentation below for more information.
+
+.. seealso::
+
+    `The utf8mb4 Character Set \
+<http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_
+
+    :ref:`mysqldb_unicode` - MySQL-Python connection strings, which are
+    also equivalent on other MySQL DBAPIs.
+
 Ansi Quoting Style
 ------------------
 
@@ -3308,7 +3351,7 @@ class _DecodingRowProxy(object):
 
     def __init__(self, rowproxy, charset):
         self.rowproxy = rowproxy
-        self.charset = self._encoding_compat.get(charset, charset)
+        self.charset = charset #self._encoding_compat.get(charset, charset)
 
     def __getitem__(self, index):
         item = self.rowproxy[index]
