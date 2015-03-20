@@ -2827,7 +2827,7 @@ class Query(object):
         delete_op.exec_()
         return delete_op.rowcount
 
-    def update(self, values, synchronize_session='evaluate'):
+    def update(self, values, synchronize_session='evaluate', update_args=None):
         """Perform a bulk update query.
 
         Updates rows matched by this query in the database.
@@ -2936,8 +2936,9 @@ class Query(object):
 
         """
 
+        update_args = update_args or {}
         update_op = persistence.BulkUpdate.factory(
-            self, synchronize_session, values)
+            self, synchronize_session, values, update_args)
         update_op.exec_()
         return update_op.rowcount
 
