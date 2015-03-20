@@ -3298,9 +3298,17 @@ class _DecodingRowProxy(object):
     # sets.Set(['value']) (seriously) but thankfully that doesn't
     # seem to come up in DDL queries.
 
+    _encoding_compat = {
+        'koi8r': 'koi8_r',
+        'koi8u': 'koi8_u',
+        'utf16': 'utf-16-be',  # MySQL's uft16 is always bigendian
+        'utf8mb4': 'utf8',  # real utf8
+        'eucjpms': 'ujis',
+    }
+
     def __init__(self, rowproxy, charset):
         self.rowproxy = rowproxy
-        self.charset = charset
+        self.charset = self._encoding_compat.get(charset, charset)
 
     def __getitem__(self, index):
         item = self.rowproxy[index]

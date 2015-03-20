@@ -28,6 +28,18 @@ unicode** will include both charset and use_unicode=0::
 
     create_engine("mysql+mysqldb://user:pass@host/dbname?charset=utf8&use_unicode=0")
 
+For MySQL versions 5.5.3 and MySQLdb version 1.2.3 forward, the special
+MySQL-specific encoding 'utf8mb4' is now recommended::
+
+    create_engine("mysql+mysqldb://user:pass@host/dbname?charset=utf8mb4&use_unicode=0")
+
+The 'utf8' encoding may still be used, however MySQL will only support
+unicode characters within the first three of four possible bytes:
+no (&#128169; or &#128571;) note that in order to use utf8mb4 fully, changes to
+the MySQL schema and/or server configuration may be required.
+See also: `The utf8mb4 character set
+<http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>_`.
+
 As of this writing, MySQLdb only runs on Python 2.   It is not known how
 MySQLdb behaves on Python 3 as far as unicode decoding.
 
