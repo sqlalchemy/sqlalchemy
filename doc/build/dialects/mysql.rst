@@ -25,145 +25,140 @@ construction arguments, are as follows:
 
 .. autoclass:: BIGINT
     :members: __init__
-     
+
 
 .. autoclass:: BINARY
     :members: __init__
-     
+
 
 .. autoclass:: BIT
     :members: __init__
-     
+
 
 .. autoclass:: BLOB
     :members: __init__
-     
+
 
 .. autoclass:: BOOLEAN
     :members: __init__
-     
+
 
 .. autoclass:: CHAR
     :members: __init__
-     
+
 
 .. autoclass:: DATE
     :members: __init__
-     
+
 
 .. autoclass:: DATETIME
     :members: __init__
-     
+
 
 .. autoclass:: DECIMAL
     :members: __init__
-     
+
 
 .. autoclass:: DOUBLE
     :members: __init__
-     
+
 
 .. autoclass:: ENUM
     :members: __init__
-     
+
 
 .. autoclass:: FLOAT
     :members: __init__
-     
+
 
 .. autoclass:: INTEGER
     :members: __init__
-     
+
 
 .. autoclass:: LONGBLOB
     :members: __init__
-     
+
 
 .. autoclass:: LONGTEXT
     :members: __init__
-     
+
 
 .. autoclass:: MEDIUMBLOB
     :members: __init__
-     
+
 
 .. autoclass:: MEDIUMINT
     :members: __init__
-     
+
 
 .. autoclass:: MEDIUMTEXT
     :members: __init__
-     
+
 
 .. autoclass:: NCHAR
     :members: __init__
-     
+
 
 .. autoclass:: NUMERIC
     :members: __init__
-     
+
 
 .. autoclass:: NVARCHAR
     :members: __init__
-     
+
 
 .. autoclass:: REAL
     :members: __init__
-     
+
 
 .. autoclass:: SET
     :members: __init__
-     
+
 
 .. autoclass:: SMALLINT
     :members: __init__
-     
+
 
 .. autoclass:: TEXT
     :members: __init__
-     
+
 
 .. autoclass:: TIME
     :members: __init__
-     
+
 
 .. autoclass:: TIMESTAMP
     :members: __init__
-     
+
 
 .. autoclass:: TINYBLOB
     :members: __init__
-     
+
 
 .. autoclass:: TINYINT
     :members: __init__
-     
+
 
 .. autoclass:: TINYTEXT
     :members: __init__
-     
+
 
 .. autoclass:: VARBINARY
     :members: __init__
-     
+
 
 .. autoclass:: VARCHAR
     :members: __init__
-     
+
 
 .. autoclass:: YEAR
     :members: __init__
-     
+
 
 MySQL-Python
 --------------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
-
-OurSQL
---------------
-
-.. automodule:: sqlalchemy.dialects.mysql.oursql
 
 pymysql
 -------------
@@ -179,6 +174,11 @@ cymysql
 ------------
 
 .. automodule:: sqlalchemy.dialects.mysql.cymysql
+
+OurSQL
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.oursql
 
 Google App Engine
 -----------------------

@@ -146,6 +146,90 @@ multi-column key for some storage engines::
         Column('id', Integer, primary_key=True)
        )
 
+.. _mysql_unicode:
+
+Unicode
+-------
+
+Charset Selection
+~~~~~~~~~~~~~~~~~
+
+Most MySQL DBAPIs offer the option to set the client character set for
+a connection.   This is typically delivered using the ``charset`` parameter
+in the URL, such as::
+
+    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
+test?charset=utf8")
+
+This charset is the **client character set** for the connection.  Some
+MySQL DBAPIs will default this to a value such as ``latin1``, and some
+will make use of the ``default-character-set`` setting in the ``my.cnf``
+file as well.   Documentation for the DBAPI in use should be consulted
+for specific behavior.
+
+The encoding used for Unicode has traditionally been ``'utf8'``.  However,
+for MySQL versions 5.5.3 on forward, a new MySQL-specific encoding
+``'utf8mb4'`` has been introduced.   The rationale for this new encoding
+is due to the fact that MySQL's utf-8 encoding only supports
+codepoints up to three bytes instead of four.  Therefore,
+when communicating with a MySQL database
+that includes codepoints more than three bytes in size,
+this new charset is preferred, if supported by both the database as well
+as the client DBAPI, as in::
+
+    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
+test?charset=utf8mb4")
+
+At the moment, up-to-date versions of MySQLdb and PyMySQL support the
+``utf8mb4`` charset.   Other DBAPIs such as MySQL-Connector and OurSQL
+may **not** support it as of yet.
+
+In order to use ``utf8mb4`` encoding, changes to
+the MySQL schema and/or server configuration may be required.
+
+.. seealso::
+
+    `The utf8mb4 Character Set \
+<http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_ - \
+in the MySQL documentation
+
+Unicode Encoding / Decoding
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All modern MySQL DBAPIs all offer the service of handling the encoding and
+decoding of unicode data between the Python application space and the database.
+As this was not always the case, SQLAlchemy also includes a comprehensive system
+of performing the encode/decode task as well.   As only one of these systems
+should be in use at at time, SQLAlchemy has long included functionality
+to automatically detect upon first connection whether or not the DBAPI is
+automatically handling unicode.
+
+Whether or not the MySQL DBAPI will handle encoding can usually be configured
+using a DBAPI flag ``use_unicode``, which is known to be supported at least
+by MySQLdb, PyMySQL, and MySQL-Connector.   Setting this value to ``0``
+in the "connect args" or query string will have the effect of disabling the
+DBAPI's handling of unicode, such that it instead will return data of the
+``str`` type or ``bytes`` type, with data in the configured charset::
+
+    # connect while disabling the DBAPI's unicode encoding/decoding
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test?charset=utf8&use_unicode=0")
+
+Current recommendations for modern DBAPIs are as follows:
+
+* It is generally always safe to leave the ``use_unicode`` flag set at
+  its default; that is, don't use it at all.
+* Under Python 3, the ``use_unicode=0`` flag should **never be used**.
+  SQLAlchemy under Python 3 generally assumes the DBAPI receives and returns
+  string values as Python 3 strings, which are inherently unicode objects.
+* Under Python 2 with MySQLdb, the ``use_unicode=0`` flag will **offer
+  superior performance**, as MySQLdb's unicode converters under Python 2 only
+  have been observed to have unusually slow performance compared to SQLAlchemy's
+  fast C-based encoders/decoders.
+
+In short:  don't specify ``use_unicode`` *at all*, with the possible
+exception of ``use_unicode=0`` on MySQLdb with Python 2 **only** for a
+potential performance gain.
+
 Ansi Quoting Style
 ------------------
 

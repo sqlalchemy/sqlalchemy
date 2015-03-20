@@ -14,14 +14,11 @@
     :connectstring: mysql+pyodbc://<username>:<password>@<dsnname>
     :url: http://pypi.python.org/pypi/pyodbc/
 
-
-Limitations
------------
-
-The mysql-pyodbc dialect is subject to unresolved character encoding issues
-which exist within the current ODBC drivers available.
-(see http://code.google.com/p/pyodbc/issues/detail?id=25).   Consider usage
-of OurSQL, MySQLdb, or MySQL-connector/Python.
+    .. note:: The PyODBC for MySQL dialect is not well supported, and
+       is subject to unresolved character encoding issues
+       which exist within the current ODBC drivers available.
+       (see http://code.google.com/p/pyodbc/issues/detail?id=25).
+       Other dialects for MySQL are recommended.
 
 """
 

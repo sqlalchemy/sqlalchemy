@@ -22,7 +22,7 @@ developers-guide
         Cloud SQL now recommends creating connections via the
         mysql dialect using the URL format
 
-        `mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>`
+        ``mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>``
 
 
 Pooling
