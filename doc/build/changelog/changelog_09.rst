@@ -15,6 +15,15 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, py3k, mysql
+        :tickets: 3333
+        :pullreq: github:158
+        :versions: 1.0.0b2
+
+        Fixed the :class:`.mysql.BIT` type on Py3K which was not using the
+        ``ord()`` function correctly.  Pull request courtesy David Marin.
+
+    .. change::
         :tags: bug, ext
         :tickets: 3324
 
