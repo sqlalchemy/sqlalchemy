@@ -83,6 +83,7 @@ class DialectTest(fixtures.TestBase):
             )[1]
         eq_(kw['foo'], "true")
 
+    @testing.only_on('mysql')
     def test_special_encodings(self):
 
         for enc in ['utf8mb4', 'utf8']:
