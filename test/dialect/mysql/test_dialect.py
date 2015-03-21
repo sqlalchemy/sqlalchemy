@@ -87,6 +87,7 @@ class DialectTest(fixtures.TestBase):
         eq_(kw['foo'], "true")
 
     @testing.only_on('mysql')
+    @testing.skip_if('mysql+mysqlconnector', "totally broken for the moment")
     @testing.fails_on('mysql+oursql', "unsupported")
     def test_special_encodings(self):
 
