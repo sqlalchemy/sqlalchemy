@@ -2680,7 +2680,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         only_froms = dict(
             (c.key, c) for c in
             _select_iterables(self.froms) if c._allow_label_resolve)
-        with_cols.update(only_froms)
+        for key, value in only_froms.items():
+            with_cols.setdefault(key, value)
 
         return with_cols, only_froms
 

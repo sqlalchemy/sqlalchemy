@@ -574,6 +574,20 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable AS mytable_1 ORDER BY mytable_1.name"
         )
 
+    def test_order_by_outermost_label(self):
+        # test [ticket:3335], assure that order_by("foo")
+        # catches the label named "foo" in the columns clause only,
+        # and not the label named "foo" in the FROM clause
+        s1 = select([table1.c.myid.label("foo"), table1.c.name]).alias()
+        stmt = select([s1.c.name, func.bar().label("foo")]).order_by("foo")
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.name, bar() AS foo FROM "
+            "(SELECT mytable.myid AS foo, mytable.name AS name "
+            "FROM mytable) AS anon_1 ORDER BY foo"
+        )
+
     def test_unresolvable_warning_order_by(self):
         stmt = select([table1.c.myid]).order_by('foobar')
         self._test_warning(

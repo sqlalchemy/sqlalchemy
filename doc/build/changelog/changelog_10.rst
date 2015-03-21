@@ -16,6 +16,19 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.0b4
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3335
+
+        Fixed bug in new "label resolution" feature of :ticket:`2992` where
+        the string label placed in the order_by() or group_by() of a statement
+        would place higher priority on the name as found
+        inside the FROM clause instead of a more locally available name
+        inside the columns clause.
+
+.. changelog::
     :version: 1.0.0b3
     :released: March 20, 2015
 
