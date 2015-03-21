@@ -159,8 +159,10 @@ in the URL, such as::
 test?charset=utf8")
 
 Whether or not the DBAPI handles the job of encoding and decoding is determined
-by passing the ``use_unicode`` parameter.   For example, to disable
-unicode conversion by the DBAPI and let SQLAlchemy handle it::
+by passing the ``use_unicode`` parameter, supported by MySQLdb and PyMySQL
+and possibly others.
+For example, to disable unicode conversion by the DBAPI and let
+SQLAlchemy handle it::
 
     e = create_engine("mysql+pymysql://scott:tiger@localhost/\
 test?charset=utf8&use_uncode=0")

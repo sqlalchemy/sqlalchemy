@@ -16,6 +16,9 @@
 Unicode
 -------
 
+The ``use_unicode=0`` flag is **not** supported in OurSQL,
+nor is the ``utf8mb4`` charset.
+
 oursql defaults to using ``utf8`` as the connection charset, but other
 encodings may be used instead. Like the MySQL-Python driver, unicode support
 can be completely disabled::
