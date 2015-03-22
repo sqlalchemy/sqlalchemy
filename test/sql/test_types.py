@@ -931,6 +931,7 @@ class UnicodeTest(fixtures.TestBase):
                     ('postgresql', 'pypostgresql'),
                     ('postgresql', 'pg8000'),
                     ('postgresql', 'zxjdbc'),
+                    ('mysql', 'pymysql'),
                     ('mysql', 'oursql'),
                     ('mysql', 'zxjdbc'),
                     ('mysql', 'mysqlconnector'),
