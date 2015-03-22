@@ -17,11 +17,8 @@
 Unicode
 -------
 
-The ``use_unicode=0`` flag is **not** supported in MySQL-Connector at this
-time, nor is the ``utf8mb4`` charset.
-
-Please see :ref:`mysql_unicode` for background on enabling charset support
-with mysql-connector.
+Please see :ref:`mysql_unicode` for current recommendations on unicode
+handling.
 
 """
 

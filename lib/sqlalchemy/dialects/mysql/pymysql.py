@@ -12,13 +12,13 @@
     :dbapi: pymysql
     :connectstring: mysql+pymysql://<username>:<password>@<host>/<dbname>\
 [?<options>]
-    :url: http://code.google.com/p/pymysql/
+    :url: http://www.pymysql.org/
 
 Unicode
 -------
 
-Please see :ref:`mysql_unicode` for background on enabling charset support
-with PyMySQL.
+Please see :ref:`mysql_unicode` for current recommendations on unicode
+handling.
 
 MySQL-Python Compatibility
 --------------------------

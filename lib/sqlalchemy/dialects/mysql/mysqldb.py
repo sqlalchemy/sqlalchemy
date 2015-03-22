@@ -18,28 +18,8 @@
 Unicode
 -------
 
-MySQLdb requires a "charset" parameter to be passed in order for it
-to handle non-ASCII characters correctly.   When this parameter is passed,
-MySQLdb will also implicitly set the "use_unicode" flag to true, which means
-that it will return Python unicode objects instead of bytestrings.
-However, SQLAlchemy's decode process, when C extensions are enabled,
-is dramatically faster than that of MySQLdb as it does not call into
-Python functions to do so.  Therefore, the **recommended URL to use for
-unicode** will include both charset and use_unicode=0::
-
-    create_engine("mysql+mysqldb://user:pass@host/dbname?charset=utf8&use_unicode=0")
-
-The ``'utf8'`` charset on MySQL only supports **up to three-byte codepoints**,
-and not four-byte codepoints as normally supported by utf8.  In order to
-support all unicode codepoints, MySQL versions 5.5.3 and above
-provide a MySQL-specific encoding ``'utf8mb4'``, which supports
-codepoints up to four bytes in size::
-
-    create_engine("mysql+mysqldb://user:pass@host/dbname?charset=utf8mb4&use_unicode=0")
-
-.. seealso::
-
-    :ref:`mysql_unicode` - Includes background on the ``'utf8mb4'`` character set.
+Please see :ref:`mysql_unicode` for current recommendations on unicode
+handling.
 
 Py3K Support
 ------------
@@ -49,14 +29,6 @@ Currently, MySQLdb only runs on Python 2 and development has been stopped.
 as some bugfixes.
 
 .. _mysqlclient: https://github.com/PyMySQL/mysqlclient-python
-
-
-Known Issues
--------------
-
-MySQL-python version 1.2.2 has a serious memory leak related
-to unicode conversion, a feature which is disabled via ``use_unicode=0``.
-It is strongly advised to use the latest version of MySQL-Python.
 
 Using MySQLdb with Google Cloud SQL
 -----------------------------------
