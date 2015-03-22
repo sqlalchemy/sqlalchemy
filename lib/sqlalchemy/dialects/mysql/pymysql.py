@@ -37,7 +37,12 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
+
+    # generally, these two values should be both True
+    # or both False.   PyMySQL unicode tests pass all the way back
+    # to 0.4 either way.  See [ticket:3337]
     supports_unicode_statements = True
+    supports_unicode_binds = True
 
     @classmethod
     def dbapi(cls):

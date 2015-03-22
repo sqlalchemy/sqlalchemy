@@ -15,6 +15,18 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, mysql, pymysql
+        :tickets: 3337
+        :versions: 1.0.0b4
+
+        Fixed unicode support for PyMySQL when using an "executemany"
+        operation with unicode parameters.  SQLAlchemy now passes both
+        the statement as well as the bound parameters as unicode
+        objects, as PyMySQL generally uses string interpolation
+        internally to produce the final statement, and in the case of
+        executemany does the "encode" step only on the final statement.
+
+    .. change::
         :tags: bug, py3k, mysql
         :tickets: 3333
         :pullreq: github:158
