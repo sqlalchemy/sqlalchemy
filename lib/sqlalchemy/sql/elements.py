@@ -3040,10 +3040,12 @@ class Label(ColumnElement):
 
         if name:
             self.name = name
+            self._resolve_label = self.name
         else:
             self.name = _anonymous_label(
                 '%%(%d %s)s' % (id(self), getattr(element, 'name', 'anon'))
             )
+
         self.key = self._label = self._key_label = self.name
         self._element = element
         self._type = type_
@@ -3094,7 +3096,7 @@ class Label(ColumnElement):
         self.element = clone(self.element, **kw)
         self.__dict__.pop('_allow_label_resolve', None)
         if anonymize_labels:
-            self.name = _anonymous_label(
+            self.name = self._resolve_label = _anonymous_label(
                 '%%(%d %s)s' % (
                     id(self), getattr(self.element, 'name', 'anon'))
             )

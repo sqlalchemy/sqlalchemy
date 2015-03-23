@@ -560,7 +560,6 @@ class SQLCompiler(Compiled):
 
         selectable = self.stack[-1]['selectable']
         with_cols, only_froms = selectable._label_resolve_dict
-
         try:
             if within_columns_clause:
                 col = only_froms[element.element]

@@ -20,6 +20,16 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3340
+
+        Fixed bug in new "label resolution" feature of :ticket:`2992` where
+        a label that was anonymous, then labeled again with a name, would
+        fail to be locatable via a textual label.  This situation occurs
+        naturally when a mapped :func:`.column_property` is given an
+        explicit label in a query.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3335
 
         Fixed bug in new "label resolution" feature of :ticket:`2992` where

@@ -574,6 +574,15 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable AS mytable_1 ORDER BY mytable_1.name"
         )
 
+    def test_order_by_named_label_from_anon_label(self):
+        s1 = select([table1.c.myid.label(None).label("foo"), table1.c.name])
+        stmt = s1.order_by("foo")
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid AS foo, mytable.name "
+            "FROM mytable ORDER BY foo"
+        )
+
     def test_order_by_outermost_label(self):
         # test [ticket:3335], assure that order_by("foo")
         # catches the label named "foo" in the columns clause only,
