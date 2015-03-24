@@ -2390,24 +2390,44 @@ class ColumnCollectionMixin(object):
         self._pending_colargs = [_to_schema_column_or_string(c)
                                  for c in columns]
         if _autoattach and self._pending_colargs:
-            columns = [
-                c for c in self._pending_colargs
-                if isinstance(c, Column) and
-                isinstance(c.table, Table)
-            ]
+            self._check_attach()
 
-            tables = set([c.table for c in columns])
-            if len(tables) == 1:
-                self._set_parent_with_dispatch(tables.pop())
-            elif len(tables) > 1 and not self._allow_multiple_tables:
-                table = columns[0].table
-                others = [c for c in columns[1:] if c.table is not table]
-                if others:
-                    raise exc.ArgumentError(
-                        "Column(s) %s are not part of table '%s'." %
-                        (", ".join("'%s'" % c for c in others),
-                            table.description)
-                    )
+    def _check_attach(self, evt=False):
+        col_objs = [
+            c for c in self._pending_colargs
+            if isinstance(c, Column)
+        ]
+        cols_w_table = [
+            c for c in col_objs if isinstance(c.table, Table)
+        ]
+        cols_wo_table = set(col_objs).difference(cols_w_table)
+
+        if cols_wo_table:
+            assert not evt, "Should not reach here on event call"
+
+            def _col_attached(column, table):
+                cols_wo_table.discard(column)
+                if not cols_wo_table:
+                    self._check_attach(evt=True)
+            self._cols_wo_table = cols_wo_table
+            for col in cols_wo_table:
+                col._on_table_attach(_col_attached)
+            return
+
+        columns = cols_w_table
+
+        tables = set([c.table for c in columns])
+        if len(tables) == 1:
+            self._set_parent_with_dispatch(tables.pop())
+        elif len(tables) > 1 and not self._allow_multiple_tables:
+            table = columns[0].table
+            others = [c for c in columns[1:] if c.table is not table]
+            if others:
+                raise exc.ArgumentError(
+                    "Column(s) %s are not part of table '%s'." %
+                    (", ".join("'%s'" % c for c in others),
+                        table.description)
+                )
 
     def _set_parent(self, table):
         for col in self._pending_colargs:

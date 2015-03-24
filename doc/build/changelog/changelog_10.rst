@@ -19,6 +19,18 @@
     :version: 1.0.0b4
 
     .. change::
+        :tags: feature, schema
+        :tickets: 3341
+
+        The "auto-attach" feature of constraints such as :class:`.UniqueConstraint`
+        and :class:`.CheckConstraint` has been further enhanced such that
+        when the constraint is associated with non-table-bound :class:`.Column`
+        objects, the constraint will set up event listeners with the
+        columns themselves such that the constraint auto attaches at the
+        same time the columns are associated with the table.  This in particular
+        helps in some edge cases in declarative but is also of general use.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3340
 

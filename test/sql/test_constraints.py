@@ -1052,6 +1052,103 @@ class ConstraintAPITest(fixtures.TestBase):
         assert c not in t.constraints
         assert c not in t2.constraints
 
+    def test_auto_append_ck_on_col_attach_one(self):
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        ck = CheckConstraint(a > b)
+
+        t = Table('tbl', m, a, b)
+        assert ck in t.constraints
+
+    def test_auto_append_ck_on_col_attach_two(self):
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        c = Column('c', Integer)
+        ck = CheckConstraint(a > b + c)
+
+        t = Table('tbl', m, a)
+        assert ck not in t.constraints
+
+        t.append_column(b)
+        assert ck not in t.constraints
+
+        t.append_column(c)
+        assert ck in t.constraints
+
+    def test_auto_append_ck_on_col_attach_three(self):
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        c = Column('c', Integer)
+        ck = CheckConstraint(a > b + c)
+
+        t = Table('tbl', m, a)
+        assert ck not in t.constraints
+
+        t.append_column(b)
+        assert ck not in t.constraints
+
+        t2 = Table('t2', m)
+        t2.append_column(c)
+
+        # two different tables, so CheckConstraint does nothing.
+        assert ck not in t.constraints
+
+    def test_auto_append_uq_on_col_attach_one(self):
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        uq = UniqueConstraint(a, b)
+
+        t = Table('tbl', m, a, b)
+        assert uq in t.constraints
+
+    def test_auto_append_uq_on_col_attach_two(self):
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        c = Column('c', Integer)
+        uq = UniqueConstraint(a, b, c)
+
+        t = Table('tbl', m, a)
+        assert uq not in t.constraints
+
+        t.append_column(b)
+        assert uq not in t.constraints
+
+        t.append_column(c)
+        assert uq in t.constraints
+
+    def test_auto_append_uq_on_col_attach_three(self):
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        c = Column('c', Integer)
+        uq = UniqueConstraint(a, b, c)
+
+        t = Table('tbl', m, a)
+        assert uq not in t.constraints
+
+        t.append_column(b)
+        assert uq not in t.constraints
+
+        t2 = Table('t2', m)
+
+        # two different tables, so UniqueConstraint raises
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Column\(s\) 't2\.c' are not part of table 'tbl'\.",
+            t2.append_column, c
+        )
+
     def test_index_asserts_cols_standalone(self):
         metadata = MetaData()
 
