@@ -919,6 +919,8 @@ class OracleDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
 
+    supports_simple_order_by_label = False
+
     supports_sequences = True
     sequences_optional = False
     postfetch_lastrowid = False

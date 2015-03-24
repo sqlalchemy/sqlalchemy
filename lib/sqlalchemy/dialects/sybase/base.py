@@ -435,6 +435,7 @@ class SybaseDialect(default.DefaultDialect):
     supports_native_boolean = False
     supports_unicode_binds = False
     postfetch_lastrowid = True
+    supports_simple_order_by_label = False
 
     colspecs = {}
     ischema_names = ischema_names

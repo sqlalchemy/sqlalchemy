@@ -394,6 +394,8 @@ class FBDialect(default.DefaultDialect):
     requires_name_normalize = True
     supports_empty_insert = False
 
+    supports_simple_order_by_label = False
+
     statement_compiler = FBCompiler
     ddl_compiler = FBDDLCompiler
     preparer = FBIdentifierPreparer
