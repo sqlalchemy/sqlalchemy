@@ -19,6 +19,18 @@
     :version: 1.0.0b4
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3338
+
+        Turned off the "simple order by" flag on the MSSQL dialect; this
+        is the flag that per :ticket:`2992` causes an order by or group by
+        an expression that's also in the columns clause to be copied by
+        label, even if referenced as the expression object.   The behavior
+        for MSSQL is now the old behavior that copies the whole expression
+        in by default, as MSSQL can be picky on these particularly in
+        GROUP BY expressions.
+
+    .. change::
         :tags: feature, schema
         :tickets: 3341
 
