@@ -410,7 +410,7 @@ name based on class name::
 Alternatively, we can modify our ``__tablename__`` function to return
 ``None`` for subclasses, using :func:`.has_inherited_table`.  This has
 the effect of those subclasses being mapped with single table inheritance
-agaisnt the parent::
+against the parent::
 
     from sqlalchemy.ext.declarative import declared_attr
     from sqlalchemy.ext.declarative import has_inherited_table

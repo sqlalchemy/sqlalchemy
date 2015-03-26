@@ -948,7 +948,7 @@ class Join(FromClause):
         """return an alias of this :class:`.Join`.
 
         The default behavior here is to first produce a SELECT
-        construct from this :class:`.Join`, then to produce a
+        construct from this :class:`.Join`, then to produce an
         :class:`.Alias` from that.  So given a join of the form::
 
             j = table_a.join(table_b, table_a.c.id == table_b.c.a_id)
