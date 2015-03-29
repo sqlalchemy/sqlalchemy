@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.0b4
+    :released: March 29, 2015
 
     .. change::
         :tags: bug, mssql, oracle, firebird, sybase
