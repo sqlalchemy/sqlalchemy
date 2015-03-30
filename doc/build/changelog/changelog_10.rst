@@ -18,6 +18,18 @@
 .. changelog::
     :version: 1.0.0b5
 
+    .. change::
+        :tags: bug, orm
+        :tickets: 3347
+
+        Fixed a bug related to "nested" inner join eager loading, which
+        exists in 0.9 as well but is more of a regression in 1.0 due to
+        :ticket:`3008` which turns on "nested" by default, such that
+        a joined eager load that travels across sibling paths from a common
+        ancestor using innerjoin=True will correctly splice each "innerjoin"
+        sibling into the appropriate part of the join, when a series of
+        inner/outer joins are mixed together.
+
 .. changelog::
     :version: 1.0.0b4
     :released: March 29, 2015

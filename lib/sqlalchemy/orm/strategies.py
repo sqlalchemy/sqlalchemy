@@ -1332,34 +1332,24 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         assert clauses.aliased_class is not None
 
-        join_to_outer = innerjoin and isinstance(towrap, sql.Join) and \
-            towrap.isouter
+        attach_on_outside = (
+            not chained_from_outerjoin or
+            not innerjoin or innerjoin == 'unnested')
 
-        if chained_from_outerjoin and \
-                join_to_outer and innerjoin != 'unnested':
-            inner = orm_util.join(
-                towrap.right,
-                clauses.aliased_class,
-                onclause,
-                isouter=False
-            )
-
-            eagerjoin = orm_util.join(
-                towrap.left,
-                inner,
-                towrap.onclause,
-                isouter=True
-            )
-            eagerjoin._target_adapter = inner._target_adapter
-        else:
-            if chained_from_outerjoin:
-                innerjoin = False
+        if attach_on_outside:
+            # this is the "classic" eager join case.
             eagerjoin = orm_util.join(
                 towrap,
                 clauses.aliased_class,
                 onclause,
-                isouter=not innerjoin
+                isouter=not innerjoin or (
+                    chained_from_outerjoin and isinstance(towrap, sql.Join)
+                )
             )
+        else:
+            # all other cases are innerjoin=='nested' approach
+            eagerjoin = self._splice_nested_inner_join(
+                path, towrap, clauses, onclause)
         context.eager_joins[entity_key] = eagerjoin
 
         # send a hint to the Query as to where it may "splice" this join
@@ -1388,6 +1378,64 @@ class JoinedLoader(AbstractRelationshipLoader):
                         self.parent_property.order_by
                     )
                 )
+
+    def _splice_nested_inner_join(
+            self, path, join_obj, clauses, onclause, splicing=False):
+
+        if not splicing:
+            # first call is always handed a join object
+            # from the outside
+            assert isinstance(join_obj, sql.Join)
+        elif isinstance(join_obj, sql.selectable.FromGrouping):
+            return self._splice_nested_inner_join(
+                path, join_obj.element, clauses, onclause, True
+            )
+        elif not isinstance(join_obj, sql.Join):
+            if join_obj.is_derived_from(path[-2].selectable):
+                return orm_util.join(
+                    join_obj, clauses.aliased_class,
+                    onclause, isouter=False
+                )
+            else:
+                # only here if splicing == True
+                return None
+
+        target_join = self._splice_nested_inner_join(
+            path, join_obj.right, clauses, onclause, True)
+        if target_join is None:
+            right_splice = False
+            target_join = self._splice_nested_inner_join(
+                path, join_obj.left, clauses, onclause, True)
+            if target_join is None:
+                # should only return None when recursively called,
+                # e.g. splicing==True
+                assert splicing, \
+                    "assertion failed attempting to produce joined eager loads"
+                return None
+        else:
+            right_splice = True
+
+        if right_splice:
+            # for a right splice, attempt to flatten out
+            # a JOIN b JOIN c JOIN .. to avoid needless
+            # parenthesis nesting
+            if not join_obj.isouter and not target_join.isouter:
+                eagerjoin = orm_util.join(
+                    join_obj.left, target_join.left,
+                    join_obj.onclause, isouter=False,
+                ).join(target_join.right,
+                       target_join.onclause, isouter=False)
+            else:
+                eagerjoin = orm_util.join(
+                    join_obj.left, target_join,
+                    join_obj.onclause, isouter=join_obj.isouter)
+        else:
+            eagerjoin = orm_util.join(
+                target_join, join_obj.right,
+                join_obj.onclause, isouter=join_obj.isouter)
+
+        eagerjoin._target_adapter = target_join._target_adapter
+        return eagerjoin
 
     def _create_eager_adapter(self, context, result, adapter, path, loadopt):
         user_defined_adapter = self._init_user_defined_eager_proc(

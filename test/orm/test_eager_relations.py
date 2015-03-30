@@ -1699,6 +1699,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "ON users.id = addresses_1.user_id"
         )
 
+
     def test_catch_the_right_target(self):
         # test eager join chaining to the "nested" join on the left,
         # a new feature as of [ticket:2369]
@@ -2004,6 +2005,257 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
              "orders.isopen AS orders_isopen FROM orders "
              "WHERE :param_1 = orders.user_id", {"param_1": 7}),
         ])
+
+
+class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+    __backend__ = True  # exercise hardcore join nesting on backends
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+              Column('id', Integer, primary_key=True)
+              )
+
+        Table('b', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('a_id', Integer, ForeignKey('a.id')),
+              Column('value', String(10)),
+              )
+        Table('c1', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('b_id', Integer, ForeignKey('b.id')),
+              Column('value', String(10)),
+              )
+        Table('c2', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('b_id', Integer, ForeignKey('b.id')),
+              Column('value', String(10)),
+              )
+        Table('d1', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('c1_id', Integer, ForeignKey('c1.id')),
+              Column('value', String(10)),
+              )
+        Table('d2', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('c2_id', Integer, ForeignKey('c2.id')),
+              Column('value', String(10)),
+              )
+        Table('e1', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('d1_id', Integer, ForeignKey('d1.id')),
+              Column('value', String(10)),
+              )
+
+    @classmethod
+    def setup_classes(cls):
+
+        class A(cls.Comparable):
+            pass
+
+        class B(cls.Comparable):
+            pass
+
+        class C1(cls.Comparable):
+            pass
+
+        class C2(cls.Comparable):
+            pass
+
+        class D1(cls.Comparable):
+            pass
+
+        class D2(cls.Comparable):
+            pass
+
+        class E1(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C1, C2, D1, D2, E1 = (
+            cls.classes.A, cls.classes.B, cls.classes.C1,
+            cls.classes.C2, cls.classes.D1, cls.classes.D2, cls.classes.E1)
+        mapper(A, cls.tables.a, properties={
+            'bs': relationship(B)
+        })
+        mapper(B, cls.tables.b, properties={
+            'c1s': relationship(C1, order_by=cls.tables.c1.c.id),
+            'c2s': relationship(C2, order_by=cls.tables.c2.c.id)
+        })
+        mapper(C1, cls.tables.c1, properties={
+            'd1s': relationship(D1, order_by=cls.tables.d1.c.id)
+        })
+        mapper(C2, cls.tables.c2, properties={
+            'd2s': relationship(D2, order_by=cls.tables.d2.c.id)
+        })
+        mapper(D1, cls.tables.d1, properties={
+            'e1s': relationship(E1, order_by=cls.tables.e1.c.id)
+        })
+        mapper(D2, cls.tables.d2)
+        mapper(E1, cls.tables.e1)
+
+    @classmethod
+    def _fixture_data(cls):
+        A, B, C1, C2, D1, D2, E1 = (
+            cls.classes.A, cls.classes.B, cls.classes.C1,
+            cls.classes.C2, cls.classes.D1, cls.classes.D2, cls.classes.E1)
+        return [
+            A(id=1, bs=[
+                B(
+                    id=1,
+                    c1s=[C1(
+                        id=1, value='C11',
+                        d1s=[
+                            D1(id=1, e1s=[E1(id=1)]), D1(id=2, e1s=[E1(id=2)])
+                        ]
+                    )
+                    ],
+                    c2s=[C2(id=1, value='C21', d2s=[D2(id=3)]),
+                         C2(id=2, value='C22', d2s=[D2(id=4)])]
+                ),
+                B(
+                    id=2,
+                    c1s=[
+                        C1(
+                            id=4, value='C14',
+                            d1s=[D1(
+                                id=3, e1s=[
+                                    E1(id=3, value='E13'),
+                                    E1(id=4, value="E14")
+                                ]),
+                                D1(id=4, e1s=[E1(id=5)])
+                            ]
+                        )
+                    ],
+                    c2s=[C2(id=4, value='C24', d2s=[])]
+                ),
+            ]),
+            A(id=2, bs=[
+                B(
+                    id=3,
+                    c1s=[
+                        C1(
+                            id=8,
+                            d1s=[D1(id=5, value='D15', e1s=[E1(id=6)])]
+                        )
+                    ],
+                    c2s=[C2(id=8, d2s=[D2(id=6, value='D26')])]
+                )
+            ])
+        ]
+
+    @classmethod
+    def insert_data(cls):
+        s = Session(testing.db)
+        s.add_all(cls._fixture_data())
+        s.commit()
+
+    def _assert_result(self, query):
+        eq_(
+            query.all(),
+            self._fixture_data()
+        )
+
+    def test_nested_innerjoin_propagation_multiple_paths_one(self):
+        A, B, C1, C2 = (
+            self.classes.A, self.classes.B, self.classes.C1,
+            self.classes.C2)
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload(A.bs, innerjoin=False).
+            joinedload(B.c1s, innerjoin=True).
+            joinedload(C1.d1s, innerjoin=True),
+            defaultload(A.bs).joinedload(B.c2s, innerjoin=True).
+            joinedload(C2.d2s, innerjoin=False)
+        )
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, d1_1.id AS d1_1_id, "
+            "d1_1.c1_id AS d1_1_c1_id, d1_1.value AS d1_1_value, "
+            "c1_1.id AS c1_1_id, c1_1.b_id AS c1_1_b_id, "
+            "c1_1.value AS c1_1_value, d2_1.id AS d2_1_id, "
+            "d2_1.c2_id AS d2_1_c2_id, d2_1.value AS d2_1_value, "
+            "c2_1.id AS c2_1_id, c2_1.b_id AS c2_1_b_id, "
+            "c2_1.value AS c2_1_value, b_1.id AS b_1_id, "
+            "b_1.a_id AS b_1_a_id, b_1.value AS b_1_value "
+            "FROM a "
+            "LEFT OUTER JOIN "
+            "(b AS b_1 JOIN c2 AS c2_1 ON b_1.id = c2_1.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id "
+            "JOIN d1 AS d1_1 ON c1_1.id = d1_1.c1_id) ON a.id = b_1.a_id "
+            "LEFT OUTER JOIN d2 AS d2_1 ON c2_1.id = d2_1.c2_id "
+            "ORDER BY c1_1.id, d1_1.id, c2_1.id, d2_1.id"
+        )
+        self._assert_result(q)
+
+    def test_nested_innerjoin_propagation_multiple_paths_two(self):
+        # test #3447
+        A = self.classes.A
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload('bs'),
+            joinedload('bs.c2s', innerjoin=True),
+            joinedload('bs.c1s', innerjoin=True),
+            joinedload('bs.c1s.d1s')
+        )
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, d1_1.id AS d1_1_id, "
+            "d1_1.c1_id AS d1_1_c1_id, d1_1.value AS d1_1_value, "
+            "c1_1.id AS c1_1_id, c1_1.b_id AS c1_1_b_id, "
+            "c1_1.value AS c1_1_value, c2_1.id AS c2_1_id, "
+            "c2_1.b_id AS c2_1_b_id, c2_1.value AS c2_1_value, "
+            "b_1.id AS b_1_id, b_1.a_id AS b_1_a_id, "
+            "b_1.value AS b_1_value "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN c2 AS c2_1 ON b_1.id = c2_1.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id) ON a.id = b_1.a_id "
+            "LEFT OUTER JOIN d1 AS d1_1 ON c1_1.id = d1_1.c1_id "
+            "ORDER BY c1_1.id, d1_1.id, c2_1.id"
+        )
+        self._assert_result(q)
+
+    def test_multiple_splice_points(self):
+        A = self.classes.A
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload('bs', innerjoin=False),
+            joinedload('bs.c1s', innerjoin=True),
+            joinedload('bs.c2s', innerjoin=True),
+            joinedload('bs.c1s.d1s', innerjoin=False),
+            joinedload('bs.c2s.d2s'),
+            joinedload('bs.c1s.d1s.e1s', innerjoin=True)
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, e1_1.id AS e1_1_id, "
+            "e1_1.d1_id AS e1_1_d1_id, e1_1.value AS e1_1_value, "
+            "d1_1.id AS d1_1_id, d1_1.c1_id AS d1_1_c1_id, "
+            "d1_1.value AS d1_1_value, c1_1.id AS c1_1_id, "
+            "c1_1.b_id AS c1_1_b_id, c1_1.value AS c1_1_value, "
+            "d2_1.id AS d2_1_id, d2_1.c2_id AS d2_1_c2_id, "
+            "d2_1.value AS d2_1_value, c2_1.id AS c2_1_id, "
+            "c2_1.b_id AS c2_1_b_id, c2_1.value AS c2_1_value, "
+            "b_1.id AS b_1_id, b_1.a_id AS b_1_a_id, b_1.value AS b_1_value "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN c2 AS c2_1 ON b_1.id = c2_1.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id) ON a.id = b_1.a_id "
+            "LEFT OUTER JOIN ("
+            "d1 AS d1_1 JOIN e1 AS e1_1 ON d1_1.id = e1_1.d1_id) "
+            "ON c1_1.id = d1_1.c1_id "
+            "LEFT OUTER JOIN d2 AS d2_1 ON c2_1.id = d2_1.c2_id "
+            "ORDER BY c1_1.id, d1_1.id, e1_1.id, c2_1.id, d2_1.id"
+        )
+        self._assert_result(q)
 
 
 class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
