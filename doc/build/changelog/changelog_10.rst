@@ -19,6 +19,20 @@
     :version: 1.0.0b5
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3346
+
+        The warning emitted by the unicode type for a non-unicode type
+        has been liberalized to warn for values that aren't even string
+        values, such as integers; previously, the updated warning system
+        of 1.0 made use of string formatting operations which
+        would raise an internal TypeError.   While these cases should ideally
+        raise totally, some backends like SQLite and MySQL do accept them
+        and are potentially in use by legacy code, not to mention that they
+        will always pass through if unicode conversion is turned off
+        for the target backend.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3347
 

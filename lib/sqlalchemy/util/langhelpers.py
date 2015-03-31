@@ -1257,9 +1257,12 @@ def warn_exception(func, *args, **kwargs):
 
 
 def ellipses_string(value, len_=25):
-    if len(value) > len_:
-        return "%s..." % value[0:len_]
-    else:
+    try:
+        if len(value) > len_:
+            return "%s..." % value[0:len_]
+        else:
+            return value
+    except TypeError:
         return value
 
 

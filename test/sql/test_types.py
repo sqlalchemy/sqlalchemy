@@ -1,5 +1,5 @@
 # coding: utf-8
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, expect_warnings
 import decimal
 import datetime
 import os
@@ -1014,6 +1014,15 @@ class UnicodeTest(fixtures.TestBase):
         assert isinstance(uni(unicodedata), util.binary_type)
 
         eq_(uni(unicodedata), unicodedata.encode('utf-8'))
+
+    def test_unicode_warnings_totally_wrong_type(self):
+        u = Unicode()
+        dialect = default.DefaultDialect()
+        dialect.supports_unicode_binds = False
+        uni = u.dialect_impl(dialect).bind_processor(dialect)
+        with expect_warnings(
+                "Unicode type received non-unicode bind param value 5."):
+            eq_(uni(5), 5)
 
     def test_unicode_warnings_dialectlevel(self):
 
