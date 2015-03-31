@@ -2080,10 +2080,10 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         mapper(A, cls.tables.a, properties={
             'bs': relationship(B)
         })
-        mapper(B, cls.tables.b, properties={
-            'c1s': relationship(C1, order_by=cls.tables.c1.c.id),
-            'c2s': relationship(C2, order_by=cls.tables.c2.c.id)
-        })
+        mapper(B, cls.tables.b, properties=odict([
+            ('c1s', relationship(C1, order_by=cls.tables.c1.c.id)),
+            ('c2s', relationship(C2, order_by=cls.tables.c2.c.id))
+        ]))
         mapper(C1, cls.tables.c1, properties={
             'd1s': relationship(D1, order_by=cls.tables.d1.c.id)
         })
