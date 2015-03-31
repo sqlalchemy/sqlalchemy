@@ -2257,6 +2257,47 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         )
         self._assert_result(q)
 
+    def test_splice_onto_np_mapper(self):
+        A = self.classes.A
+        B = self.classes.B
+        C1 = self.classes.C1
+        b_table = self.tables.b
+        c1_table = self.tables.c1
+
+        from sqlalchemy import inspect
+
+        weird_selectable = b_table.outerjoin(c1_table)
+
+        b_np = mapper(B, weird_selectable, non_primary=True, properties={
+            'c_id': c1_table.c.id,
+            'b_value': b_table.c.value,
+            # note we need to make this fixed with lazy=False until
+            # [ticket:3348] is resolved
+            'c1s': relationship(C1, lazy=False, innerjoin=True)
+        })
+
+        a_mapper = inspect(A)
+        a_mapper.add_property(
+            "bs_np", relationship(b_np)
+        )
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload('bs_np', innerjoin=False)
+        )
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, c1_1.id AS c1_1_id, c1_1.b_id AS c1_1_b_id, "
+            "c1_1.value AS c1_1_value, c1_2.id AS c1_2_id, "
+            "b_1.value AS b_1_value, b_1.id AS b_1_id, "
+            "b_1.a_id AS b_1_a_id, c1_2.b_id AS c1_2_b_id, "
+            "c1_2.value AS c1_2_value "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 LEFT OUTER JOIN c1 AS c1_2 ON b_1.id = c1_2.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id) ON a.id = b_1.a_id"
+        )
+
 
 class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 

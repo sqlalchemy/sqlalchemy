@@ -776,7 +776,10 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None, isouter=False):
+    def __init__(
+            self,
+            left, right, onclause=None, isouter=False,
+            _left_memo=None, _right_memo=None):
 
         left_info = inspection.inspect(left)
         left_orm_info = getattr(left, '_joined_from_info', left_info)
@@ -785,6 +788,9 @@ class _ORMJoin(expression.Join):
         adapt_to = right_info.selectable
 
         self._joined_from_info = right_info
+
+        self._left_memo = _left_memo
+        self._right_memo = _right_memo
 
         if isinstance(onclause, util.string_types):
             onclause = getattr(left_orm_info.entity, onclause)
@@ -836,6 +842,28 @@ class _ORMJoin(expression.Join):
             if right_info.is_aliased_class:
                 single_crit = right_info._adapter.traverse(single_crit)
             self.onclause = self.onclause & single_crit
+
+    def _splice_into_center(self, other):
+        """Splice a join into the center.
+
+        Given join(a, b) and join(b, c), return join(a, b).join(c)
+
+        """
+        assert self.right is other.left
+
+        left = _ORMJoin(
+            self.left, other.left,
+            self.onclause, isouter=self.isouter,
+            _left_memo=self._left_memo,
+            _right_memo=other._left_memo
+        )
+
+        return _ORMJoin(
+            left,
+            other.right,
+            other.onclause, isouter=other.isouter,
+            _right_memo=other._right_memo
+        )
 
     def join(self, right, onclause=None, isouter=False, join_to_left=None):
         return _ORMJoin(self, right, onclause, isouter)

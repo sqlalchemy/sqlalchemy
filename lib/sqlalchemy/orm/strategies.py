@@ -1338,18 +1338,19 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if attach_on_outside:
             # this is the "classic" eager join case.
-            eagerjoin = orm_util.join(
+            eagerjoin = orm_util._ORMJoin(
                 towrap,
                 clauses.aliased_class,
                 onclause,
                 isouter=not innerjoin or (
                     chained_from_outerjoin and isinstance(towrap, sql.Join)
-                )
+                ), _left_memo=self.parent, _right_memo=self.mapper
             )
         else:
             # all other cases are innerjoin=='nested' approach
             eagerjoin = self._splice_nested_inner_join(
                 path, towrap, clauses, onclause)
+
         context.eager_joins[entity_key] = eagerjoin
 
         # send a hint to the Query as to where it may "splice" this join
@@ -1382,34 +1383,38 @@ class JoinedLoader(AbstractRelationshipLoader):
     def _splice_nested_inner_join(
             self, path, join_obj, clauses, onclause, splicing=False):
 
-        if not splicing:
+        if splicing is False:
             # first call is always handed a join object
             # from the outside
-            assert isinstance(join_obj, sql.Join)
+            assert isinstance(join_obj, orm_util._ORMJoin)
         elif isinstance(join_obj, sql.selectable.FromGrouping):
             return self._splice_nested_inner_join(
-                path, join_obj.element, clauses, onclause, True
+                path, join_obj.element, clauses, onclause, splicing
             )
-        elif not isinstance(join_obj, sql.Join):
-            if join_obj.is_derived_from(path[-2].selectable):
-                return orm_util.join(
+        elif not isinstance(join_obj, orm_util._ORMJoin):
+            if path[-2] is splicing:
+                return orm_util._ORMJoin(
                     join_obj, clauses.aliased_class,
-                    onclause, isouter=False
+                    onclause, isouter=False,
+                    _left_memo=splicing,
+                    _right_memo=path[-1].mapper
                 )
             else:
                 # only here if splicing == True
                 return None
 
         target_join = self._splice_nested_inner_join(
-            path, join_obj.right, clauses, onclause, True)
+            path, join_obj.right, clauses,
+            onclause, join_obj._right_memo)
         if target_join is None:
             right_splice = False
             target_join = self._splice_nested_inner_join(
-                path, join_obj.left, clauses, onclause, True)
+                path, join_obj.left, clauses,
+                onclause, join_obj._left_memo)
             if target_join is None:
                 # should only return None when recursively called,
                 # e.g. splicing==True
-                assert splicing, \
+                assert splicing is not False, \
                     "assertion failed attempting to produce joined eager loads"
                 return None
         else:
@@ -1420,19 +1425,17 @@ class JoinedLoader(AbstractRelationshipLoader):
             # a JOIN b JOIN c JOIN .. to avoid needless
             # parenthesis nesting
             if not join_obj.isouter and not target_join.isouter:
-                eagerjoin = orm_util.join(
-                    join_obj.left, target_join.left,
-                    join_obj.onclause, isouter=False,
-                ).join(target_join.right,
-                       target_join.onclause, isouter=False)
+                eagerjoin = join_obj._splice_into_center(target_join)
             else:
-                eagerjoin = orm_util.join(
+                eagerjoin = orm_util._ORMJoin(
                     join_obj.left, target_join,
-                    join_obj.onclause, isouter=join_obj.isouter)
+                    join_obj.onclause, isouter=join_obj.isouter,
+                    _left_memo=join_obj._left_memo)
         else:
-            eagerjoin = orm_util.join(
+            eagerjoin = orm_util._ORMJoin(
                 target_join, join_obj.right,
-                join_obj.onclause, isouter=join_obj.isouter)
+                join_obj.onclause, isouter=join_obj.isouter,
+                _right_memo=join_obj._right_memo)
 
         eagerjoin._target_adapter = target_join._target_adapter
         return eagerjoin
