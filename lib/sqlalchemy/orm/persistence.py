@@ -20,6 +20,7 @@ from .. import sql, util, exc as sa_exc, schema
 from . import attributes, sync, exc as orm_exc, evaluator
 from .base import _state_mapper, state_str, _attr_as_key
 from ..sql import expression
+from ..sql.base import _from_objects
 from . import loading
 
 
@@ -874,6 +875,34 @@ class BulkUD(object):
 
     def __init__(self, query):
         self.query = query.enable_eagerloads(False)
+        self._validate_query_state()
+
+    def _validate_query_state(self):
+        for attr, methname, notset, err in (
+            ('_limit', 'limit()', None, True),
+            ('_offset', 'offset()', None, True),
+            ('_order_by', 'order_by()', False, True),
+            ('_group_by', 'group_by()', False, True),
+            ('_distinct', 'distinct()', False, True),
+            (
+                '_from_obj',
+                'join(), outerjoin(), select_from(), or from_self()',
+                (), False)
+        ):
+            if getattr(self.query, attr) is not notset:
+                if err:
+                    raise sa_exc.InvalidRequestError(
+                        "Can't call Query.update() or Query.delete() "
+                        "when %s has been called" %
+                        (methname, )
+                    )
+                else:
+                    util.warn(
+                        "Can't call Query.update() or Query.delete() "
+                        "when %s has been called.  This will be an "
+                        "exception in 1.0" %
+                        (methname, )
+                    )
 
     @property
     def session(self):
@@ -900,6 +929,10 @@ class BulkUD(object):
 
     def _do_pre(self):
         query = self.query
+
+        # the completion of the full Query statement here is wasteful;
+        # in 1.0 we will directly extract the target table without
+        # this step.
         self.context = context = query._compile_context()
         if len(context.statement.froms) != 1 or \
                 not isinstance(context.statement.froms[0], schema.Table):
@@ -976,7 +1009,6 @@ class BulkUpdate(BulkUD):
 
     def __init__(self, query, values):
         super(BulkUpdate, self).__init__(query)
-        self.query._no_select_modifiers("update")
         self.values = values
 
     @classmethod
@@ -1005,7 +1037,6 @@ class BulkDelete(BulkUD):
 
     def __init__(self, query):
         super(BulkDelete, self).__init__(query)
-        self.query._no_select_modifiers("delete")
 
     @classmethod
     def factory(cls, query, synchronize_session):
