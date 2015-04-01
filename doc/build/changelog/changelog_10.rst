@@ -20,6 +20,17 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3349
+
+        :class:`.Query` doesn't support joins, subselects, or special
+        FROM clauses when using the :meth:`.Query.update` or
+        :meth:`.Query.delete` methods; instead of silently ignoring these
+        fields if methods like :meth:`.Query.join` or
+        :meth:`.Query.select_from` has been called, an error is raised.
+        In 0.9.10 this only emits a warning.
+
+    .. change::
+        :tags: bug, orm
 
         Added a list() call around a weak dictionary used within the
         commit phase of the session, which without it could cause

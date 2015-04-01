@@ -16,10 +16,11 @@ in unitofwork.py.
 
 import operator
 from itertools import groupby, chain
-from .. import sql, util, exc as sa_exc, schema
+from .. import sql, util, exc as sa_exc
 from . import attributes, sync, exc as orm_exc, evaluator
 from .base import state_str, _attr_as_key, _entity_descriptor
 from ..sql import expression
+from ..sql.base import _from_objects
 from . import loading
 
 
@@ -1031,6 +1032,26 @@ class BulkUD(object):
     def __init__(self, query):
         self.query = query.enable_eagerloads(False)
         self.mapper = self.query._bind_mapper()
+        self._validate_query_state()
+
+    def _validate_query_state(self):
+        for attr, methname, notset in (
+            ('_limit', 'limit()', None),
+            ('_offset', 'offset()', None),
+            ('_order_by', 'order_by()', False),
+            ('_group_by', 'group_by()', False),
+            ('_distinct', 'distinct()', False),
+            (
+                '_from_obj',
+                'join(), outerjoin(), select_from(), or from_self()',
+                ())
+        ):
+            if getattr(self.query, attr) is not notset:
+                raise sa_exc.InvalidRequestError(
+                    "Can't call Query.update() or Query.delete() "
+                    "when %s has been called" %
+                    (methname, )
+                )
 
     @property
     def session(self):
@@ -1055,18 +1076,34 @@ class BulkUD(object):
         self._do_post_synchronize()
         self._do_post()
 
-    def _do_pre(self):
+    @util.dependencies("sqlalchemy.orm.query")
+    def _do_pre(self, querylib):
         query = self.query
-        self.context = context = query._compile_context()
-        if len(context.statement.froms) != 1 or \
-                not isinstance(context.statement.froms[0], schema.Table):
+        self.context = querylib.QueryContext(query)
 
+        if isinstance(query._entities[0], querylib._ColumnEntity):
+            # check for special case of query(table)
+            tables = set()
+            for ent in query._entities:
+                if not isinstance(ent, querylib._ColumnEntity):
+                    tables.clear()
+                    break
+                else:
+                    tables.update(_from_objects(ent.column))
+
+            if len(tables) != 1:
+                raise sa_exc.InvalidRequestError(
+                    "This operation requires only one Table or "
+                    "entity be specified as the target."
+                )
+            else:
+                self.primary_table = tables.pop()
+
+        else:
             self.primary_table = query._only_entity_zero(
                 "This operation requires only one Table or "
                 "entity be specified as the target."
             ).mapper.local_table
-        else:
-            self.primary_table = context.statement.froms[0]
 
         session = query.session
 
@@ -1121,7 +1158,8 @@ class BulkFetch(BulkUD):
     def _do_pre_synchronize(self):
         query = self.query
         session = query.session
-        select_stmt = self.context.statement.with_only_columns(
+        context = query._compile_context()
+        select_stmt = context.statement.with_only_columns(
             self.primary_table.primary_key)
         self.matched_rows = session.execute(
             select_stmt,
@@ -1134,7 +1172,6 @@ class BulkUpdate(BulkUD):
 
     def __init__(self, query, values):
         super(BulkUpdate, self).__init__(query)
-        self.query._no_select_modifiers("update")
         self.values = values
 
     @classmethod
@@ -1195,7 +1232,6 @@ class BulkDelete(BulkUD):
 
     def __init__(self, query):
         super(BulkDelete, self).__init__(query)
-        self.query._no_select_modifiers("delete")
 
     @classmethod
     def factory(cls, query, synchronize_session):

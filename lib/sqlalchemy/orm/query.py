@@ -399,22 +399,6 @@ class Query(object):
                 % (meth, meth)
             )
 
-    def _no_select_modifiers(self, meth):
-        if not self._enable_assertions:
-            return
-        for attr, methname, notset in (
-            ('_limit', 'limit()', None),
-            ('_offset', 'offset()', None),
-            ('_order_by', 'order_by()', False),
-            ('_group_by', 'group_by()', False),
-            ('_distinct', 'distinct()', False),
-        ):
-            if getattr(self, attr) is not notset:
-                raise sa_exc.InvalidRequestError(
-                    "Can't call Query.%s() when %s has been called" %
-                    (meth, methname)
-                )
-
     def _get_options(self, populate_existing=None,
                      version_check=None,
                      only_load_props=None,

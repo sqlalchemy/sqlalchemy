@@ -19,10 +19,18 @@ class UpdateDeleteTest(fixtures.MappedTest):
                      test_needs_autoincrement=True),
               Column('name', String(32)),
               Column('age_int', Integer))
+        Table(
+            "addresses", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('user_id', ForeignKey('users.id'))
+        )
 
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
+            pass
+
+        class Address(cls.Comparable):
             pass
 
     @classmethod
@@ -41,9 +49,14 @@ class UpdateDeleteTest(fixtures.MappedTest):
         User = cls.classes.User
         users = cls.tables.users
 
+        Address = cls.classes.Address
+        addresses = cls.tables.addresses
+
         mapper(User, users, properties={
-            'age': users.c.age_int
+            'age': users.c.age_int,
+            'addresses': relationship(Address)
         })
+        mapper(Address, addresses)
 
     def test_illegal_eval(self):
         User = self.classes.User
@@ -59,27 +72,36 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
     def test_illegal_operations(self):
         User = self.classes.User
+        Address = self.classes.Address
 
         s = Session()
 
         for q, mname in (
-            (s.query(User).limit(2), "limit"),
-            (s.query(User).offset(2), "offset"),
-            (s.query(User).limit(2).offset(2), "limit"),
-            (s.query(User).order_by(User.id), "order_by"),
-            (s.query(User).group_by(User.id), "group_by"),
-            (s.query(User).distinct(), "distinct")
+            (s.query(User).limit(2), r"limit\(\)"),
+            (s.query(User).offset(2), r"offset\(\)"),
+            (s.query(User).limit(2).offset(2), r"limit\(\)"),
+            (s.query(User).order_by(User.id), r"order_by\(\)"),
+            (s.query(User).group_by(User.id), r"group_by\(\)"),
+            (s.query(User).distinct(), r"distinct\(\)"),
+            (s.query(User).join(User.addresses),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
+            (s.query(User).outerjoin(User.addresses),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
+            (s.query(User).select_from(Address),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
+            (s.query(User).from_self(),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
         ):
             assert_raises_message(
                 exc.InvalidRequestError,
-                r"Can't call Query.update\(\) when "
-                "%s\(\) has been called" % mname,
+                r"Can't call Query.update\(\) or Query.delete\(\) when "
+                "%s has been called" % mname,
                 q.update,
                 {'name': 'ed'})
             assert_raises_message(
                 exc.InvalidRequestError,
-                r"Can't call Query.delete\(\) when "
-                "%s\(\) has been called" % mname,
+                r"Can't call Query.update\(\) or Query.delete\(\) when "
+                "%s has been called" % mname,
                 q.delete)
 
     def test_evaluate_clauseelement(self):

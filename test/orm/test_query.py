@@ -702,39 +702,6 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             text("select * from table"))
         assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
 
-    def test_cancel_order_by(self):
-        User = self.classes.User
-
-        s = create_session()
-
-        q = s.query(User).order_by(User.id)
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users ORDER BY users.id",
-            use_default_dialect=True)
-
-        assert_raises(
-            sa_exc.InvalidRequestError, q._no_select_modifiers, "foo")
-
-        q = q.order_by(None)
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name FROM users",
-            use_default_dialect=True)
-
-        assert_raises(
-            sa_exc.InvalidRequestError, q._no_select_modifiers, "foo")
-
-        q = q.order_by(False)
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name FROM users",
-            use_default_dialect=True)
-
-        # after False was set, this should pass
-        q._no_select_modifiers("foo")
-
     def test_mapper_zero(self):
         User, Address = self.classes.User, self.classes.Address
 
