@@ -300,7 +300,7 @@ class SessionTransaction(object):
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
                 s._expire(s.dict, self.session.identity_map._modified)
-            for s in self._deleted:
+            for s in list(self._deleted):
                 s._detach()
             self._deleted.clear()
         elif self.nested:

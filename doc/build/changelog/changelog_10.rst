@@ -19,6 +19,15 @@
     :version: 1.0.0b5
 
     .. change::
+        :tags: bug, orm
+
+        Added a list() call around a weak dictionary used within the
+        commit phase of the session, which without it could cause
+        a "dictionary changed size during iter" error if garbage collection
+        interacted within the process.   Change was introduced by
+        #3139.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3343
 
