@@ -2268,13 +2268,15 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
         weird_selectable = b_table.outerjoin(c1_table)
 
-        b_np = mapper(B, weird_selectable, non_primary=True, properties={
-            'c_id': c1_table.c.id,
-            'b_value': b_table.c.value,
-            # note we need to make this fixed with lazy=False until
-            # [ticket:3348] is resolved
-            'c1s': relationship(C1, lazy=False, innerjoin=True)
-        })
+        b_np = mapper(
+            B, weird_selectable, non_primary=True, properties=odict([
+                # note we need to make this fixed with lazy=False until
+                # [ticket:3348] is resolved
+                ('c1s', relationship(C1, lazy=False, innerjoin=True)),
+                ('c_id', c1_table.c.id),
+                ('b_value', b_table.c.value),
+            ])
+        )
 
         a_mapper = inspect(A)
         a_mapper.add_property(
