@@ -19,6 +19,15 @@
     :version: 1.0.0b5
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3343
+
+        Fixed bug where updated PG index reflection as a result of
+        :ticket:`3184` would cause index operations to fail on Postgresql
+        versions 8.4 and earlier.  The enhancements are now
+        disabled when using an older version of Postgresql.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3346
 

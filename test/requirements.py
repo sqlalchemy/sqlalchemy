@@ -372,7 +372,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def window_functions(self):
         return only_if([
-                    "postgresql", "mssql", "oracle"
+                    "postgresql>=8.4", "mssql", "oracle"
                 ], "Backend does not support window functions")
 
     @property

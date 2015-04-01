@@ -2601,37 +2601,59 @@ class PGDialect(default.DefaultDialect):
         # cast indkey as varchar since it's an int2vector,
         # returned as a list by some drivers such as pypostgresql
 
-        IDX_SQL = """
-          SELECT
-              i.relname as relname,
-              ix.indisunique, ix.indexprs, ix.indpred,
-              a.attname, a.attnum, c.conrelid, ix.indkey%s
-          FROM
-              pg_class t
-                    join pg_index ix on t.oid = ix.indrelid
-                    join pg_class i on i.oid = ix.indexrelid
-                    left outer join
-                        pg_attribute a
-                        on t.oid = a.attrelid and %s
-                    left outer join
-                        pg_constraint c
-                        on (ix.indrelid = c.conrelid and
-                            ix.indexrelid = c.conindid and
-                            c.contype in ('p', 'u', 'x'))
-          WHERE
-              t.relkind IN ('r', 'v', 'f', 'm')
-              and t.oid = :table_oid
-              and ix.indisprimary = 'f'
-          ORDER BY
-              t.relname,
-              i.relname
-        """ % (
-            # version 8.3 here was based on observing the
-            # cast does not work in PG 8.2.4, does work in 8.3.0.
-            # nothing in PG changelogs regarding this.
-            "::varchar" if self.server_version_info >= (8, 3) else "",
-            self._pg_index_any("a.attnum", "ix.indkey")
-        )
+        if self.server_version_info < (8, 5):
+            IDX_SQL = """
+              SELECT
+                  i.relname as relname,
+                  ix.indisunique, ix.indexprs, ix.indpred,
+                  a.attname, a.attnum, NULL, ix.indkey%s
+              FROM
+                  pg_class t
+                        join pg_index ix on t.oid = ix.indrelid
+                        join pg_class i on i.oid = ix.indexrelid
+                        left outer join
+                            pg_attribute a
+                            on t.oid = a.attrelid and %s
+              WHERE
+                  t.relkind IN ('r', 'v', 'f', 'm')
+                  and t.oid = :table_oid
+                  and ix.indisprimary = 'f'
+              ORDER BY
+                  t.relname,
+                  i.relname
+            """ % (
+                # version 8.3 here was based on observing the
+                # cast does not work in PG 8.2.4, does work in 8.3.0.
+                # nothing in PG changelogs regarding this.
+                "::varchar" if self.server_version_info >= (8, 3) else "",
+                self._pg_index_any("a.attnum", "ix.indkey")
+            )
+        else:
+            IDX_SQL = """
+              SELECT
+                  i.relname as relname,
+                  ix.indisunique, ix.indexprs, ix.indpred,
+                  a.attname, a.attnum, c.conrelid, ix.indkey::varchar
+              FROM
+                  pg_class t
+                        join pg_index ix on t.oid = ix.indrelid
+                        join pg_class i on i.oid = ix.indexrelid
+                        left outer join
+                            pg_attribute a
+                            on t.oid = a.attrelid and a.attnum = ANY(ix.indkey)
+                        left outer join
+                            pg_constraint c
+                            on (ix.indrelid = c.conrelid and
+                                ix.indexrelid = c.conindid and
+                                c.contype in ('p', 'u', 'x'))
+              WHERE
+                  t.relkind IN ('r', 'v', 'f', 'm')
+                  and t.oid = :table_oid
+                  and ix.indisprimary = 'f'
+              ORDER BY
+                  t.relname,
+                  i.relname
+            """
 
         t = sql.text(IDX_SQL, typemap={'attname': sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
