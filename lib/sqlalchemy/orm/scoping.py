@@ -21,6 +21,12 @@ class scoped_session(object):
 
     """
 
+    session_factory = None
+    """The `session_factory` provided to `__init__` is stored in this
+    attribute and may be accessed at a later time.  This can be useful when
+    a new non-scoped :class:`.Session` or :class:`.Connection` to the
+    database is needed."""
+
     def __init__(self, session_factory, scopefunc=None):
         """Construct a new :class:`.scoped_session`.
 
@@ -38,6 +44,7 @@ class scoped_session(object):
 
         """
         self.session_factory = session_factory
+
         if scopefunc:
             self.registry = ScopedRegistry(session_factory, scopefunc)
         else:
@@ -45,12 +52,12 @@ class scoped_session(object):
 
     def __call__(self, **kw):
         """Return the current :class:`.Session`, creating it
-        using the session factory if not present.
+        using the :attr:`.scoped_session.session_factory` if not present.
 
         :param \**kw: Keyword arguments will be passed to the
-         session factory callable, if an existing :class:`.Session`
-         is not present.  If the :class:`.Session` is present and
-         keyword arguments have been passed,
+         :attr:`.scoped_session.session_factory` callable, if an existing
+         :class:`.Session` is not present.  If the :class:`.Session` is present
+         and keyword arguments have been passed,
          :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
 
         """
