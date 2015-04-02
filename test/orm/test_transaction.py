@@ -143,6 +143,34 @@ class SessionTransactionTest(FixtureTest):
         assert session.connection().execute(
             'select count(1) from users').scalar() == 2
 
+    @testing.requires.savepoints
+    def test_dirty_state_transferred_deep_nesting(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(testing.db)
+        u1 = User(name='u1')
+        s.add(u1)
+        s.commit()
+
+        nt1 = s.begin_nested()
+        nt2 = s.begin_nested()
+        u1.name = 'u2'
+        assert attributes.instance_state(u1) not in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+        s.flush()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+
+        s.commit()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) in nt1._dirty
+
+        s.rollback()
+        assert attributes.instance_state(u1).expired
+        eq_(u1.name, 'u1')
+
     @testing.requires.independent_connections
     def test_transactions_isolated(self):
         User, users = self.classes.User, self.tables.users

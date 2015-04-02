@@ -298,6 +298,7 @@ class SessionTransaction(object):
             self._deleted.clear()
         elif self.nested:
             self._parent._new.update(self._new)
+            self._parent._dirty.update(self._dirty)
             self._parent._deleted.update(self._deleted)
             self._parent._key_switches.update(self._key_switches)
 

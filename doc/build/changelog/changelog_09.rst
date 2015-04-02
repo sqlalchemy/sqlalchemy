@@ -26,6 +26,18 @@
         As of 1.0.0b5 this will raise an error.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3352
+        :versions: 1.0.0b5
+
+        Fixed bug where the state tracking within multiple, nested
+        :meth:`.Session.begin_nested` operations would fail to propagate
+        the "dirty" flag for an object that had been updated within
+        the inner savepoint, such that if the enclosing savepoint were
+        rolled back, the object would not be part of the state that was
+        expired and therefore reverted to its database state.
+
+    .. change::
         :tags: bug, mysql, pymysql
         :tickets: 3337
         :versions: 1.0.0b4
