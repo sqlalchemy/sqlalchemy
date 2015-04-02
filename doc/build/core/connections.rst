@@ -453,13 +453,36 @@ Working with Raw DBAPI Connections
 There are some cases where SQLAlchemy does not provide a genericized way
 at accessing some :term:`DBAPI` functions, such as calling stored procedures as well
 as dealing with multiple result sets.  In these cases, it's just as expedient
-to deal with the raw DBAPI connection directly.   This is accessible from
-a :class:`.Engine` using the :meth:`.Engine.raw_connection` method::
+to deal with the raw DBAPI connection directly.
+
+The most common way to access the raw DBAPI connection is to get it
+from an already present :class:`.Connection` object directly.  It is
+present using the :attr:`.Connection.connection` attribute::
+
+    connection = engine.connect()
+    dbapi_conn = connection.connection
+
+The DBAPI connection here is actually a "proxied" in terms of the
+originating connection pool, however this is an implementation detail
+that in most cases can be ignored.    As this DBAPI connection is still
+contained within the scope of an owning :class:`.Connection` object, it is
+best to make use of the :class:`.Connection` object for most features such
+as transaction control as well as calling the :meth:`.Connection.close`
+method; if these operations are performed on the DBAPI connection directly,
+the owning :class:`.Connection` will not be aware of these changes in state.
+
+To overcome the limitations imposed by the DBAPI connection that is
+maintained by an owning :class:`.Connection`, a DBAPI connection is also
+available without the need to procure a
+:class:`.Connection` first, using the :meth:`.Engine.raw_connection` method
+of :class:`.Engine`::
 
     dbapi_conn = engine.raw_connection()
 
-The instance returned is a "wrapped" form of DBAPI connection. When its
-``.close()`` method is called, the connection is :term:`released` back to the
+This DBAPI connection is again a "proxied" form as was the case before.
+The purpose of this proxying is now apparent, as when we call the ``.close()``
+method of this connection, the DBAPI connection is typically not actually
+closed, but instead :term:`released` back to the
 engine's connection pool::
 
     dbapi_conn.close()
@@ -568,16 +591,17 @@ Connection / Engine API
 .. autoclass:: Engine
    :members:
 
-.. autoclass:: sqlalchemy.engine.ExceptionContext
+.. autoclass:: ExceptionContext
    :members:
 
 .. autoclass:: NestedTransaction
     :members:
 
-.. autoclass:: sqlalchemy.engine.ResultProxy
+.. autoclass:: ResultProxy
     :members:
+    :private-members: _soft_close
 
-.. autoclass:: sqlalchemy.engine.RowProxy
+.. autoclass:: RowProxy
     :members:
 
 .. autoclass:: Transaction

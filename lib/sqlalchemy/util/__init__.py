@@ -1,5 +1,5 @@
 # util/__init__.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -36,7 +36,7 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
     generic_repr, counter, PluginLoader, hybridproperty, hybridmethod, \
     safe_reraise,\
     get_callable_argspec, only_once, attrsetter, ellipses_string, \
-    warn_limited
+    warn_limited, map_bits, MemoizedSlots, EnsureKWArgType
 
 from .deprecations import warn_deprecated, warn_pending_deprecation, \
     deprecated, pending_deprecation, inject_docstring_text

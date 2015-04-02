@@ -1,5 +1,5 @@
 # orm/path_registry.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,6 +13,9 @@ from .. import util
 from .. import exc
 from itertools import chain
 from .base import class_mapper
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def _unreduce_path(path):
@@ -49,14 +52,19 @@ class PathRegistry(object):
 
     """
 
+    is_token = False
+    is_root = False
+
     def __eq__(self, other):
         return other is not None and \
             self.path == other.path
 
     def set(self, attributes, key, value):
+        log.debug("set '%s' on path '%s' to '%s'", key, self, value)
         attributes[(key, self.path)] = value
 
     def setdefault(self, attributes, key, value):
+        log.debug("setdefault '%s' on path '%s' to '%s'", key, self, value)
         attributes.setdefault((key, self.path), value)
 
     def get(self, attributes, key, value=None):
@@ -148,6 +156,8 @@ class RootRegistry(PathRegistry):
     """
     path = ()
     has_entity = False
+    is_aliased_class = False
+    is_root = True
 
     def __getitem__(self, entity):
         return entity._path_registry
@@ -162,6 +172,15 @@ class TokenRegistry(PathRegistry):
         self.path = parent.path + (token,)
 
     has_entity = False
+
+    is_token = True
+
+    def generate_for_superclasses(self):
+        if not self.parent.is_aliased_class and not self.parent.is_root:
+            for ent in self.parent.mapper.iterate_to_root():
+                yield TokenRegistry(self.parent.parent[ent], self.token)
+        else:
+            yield self
 
     def __getitem__(self, entity):
         raise NotImplementedError()
@@ -183,6 +202,11 @@ class PropRegistry(PathRegistry):
         self.prop = prop
         self.parent = parent
         self.path = parent.path + (prop,)
+
+    def __str__(self):
+        return " -> ".join(
+            str(elem) for elem in self.path
+        )
 
     @util.memoized_property
     def has_entity(self):

@@ -10,6 +10,7 @@ from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
     Text, null, text
 from sqlalchemy.sql import operators
 from sqlalchemy import types
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
     INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, TSTZRANGE, \
@@ -189,7 +190,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         try:
             self.assert_sql(
-                testing.db, go, [], with_sequences=[
+                testing.db, go, [
                     ("CREATE TABLE foo (\tbar "
                      "VARCHAR(5), \tCONSTRAINT myenum CHECK "
                      "(bar IN ('one', 'two', 'three')))", {})])
@@ -237,6 +238,104 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         metadata.create_all(checkfirst=False)
         metadata.drop_all(checkfirst=False)
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+    @testing.provide_metadata
+    def test_generate_alone_on_metadata(self):
+        """Test that the same enum twice only generates once
+        for the create_all() call, without using checkfirst.
+
+        A 'memo' collection held by the DDL runner
+        now handles this.
+
+        """
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum", metadata=self.metadata)
+
+        metadata.create_all(checkfirst=False)
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        metadata.drop_all(checkfirst=False)
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+    @testing.provide_metadata
+    def test_generate_multiple_on_metadata(self):
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum", metadata=metadata)
+
+        t1 = Table('e1', metadata,
+                   Column('c1', e1)
+                   )
+
+        t2 = Table('e2', metadata,
+                   Column('c1', e1)
+                   )
+
+        metadata.create_all(checkfirst=False)
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        metadata.drop_all(checkfirst=False)
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+        e1.create()  # creates ENUM
+        t1.create()  # does not create ENUM
+        t2.create()  # does not create ENUM
+
+    @testing.provide_metadata
+    def test_drops_on_table(self):
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum")
+        table = Table(
+            'e1', metadata,
+            Column('c1', e1)
+        )
+
+        table.create()
+        table.drop()
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        table.create()
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        table.drop()
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+
+    @testing.provide_metadata
+    def test_remain_on_table_metadata_wide(self):
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three',
+                  name="myenum", metadata=metadata)
+        table = Table(
+            'e1', metadata,
+            Column('c1', e1)
+        )
+
+        # need checkfirst here, otherwise enum will not be created
+        assert_raises_message(
+            sa.exc.ProgrammingError,
+            '.*type "myenum" does not exist',
+            table.create,
+        )
+        table.create(checkfirst=True)
+        table.drop()
+        table.create(checkfirst=True)
+        table.drop()
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        metadata.drop_all()
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
 
     def test_non_native_dialect(self):
         engine = engines.testing_engine()
@@ -259,9 +358,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         try:
             self.assert_sql(
-                engine, go, [], with_sequences=[
-                    ("CREATE TABLE foo (\tbar "
-                     "VARCHAR(5), \tCONSTRAINT myenum CHECK "
+                engine, go, [
+                    ("CREATE TABLE foo (bar "
+                     "VARCHAR(5), CONSTRAINT myenum CHECK "
                      "(bar IN ('one', 'two', 'three')))", {})])
         finally:
             metadata.drop_all(engine)
@@ -379,10 +478,12 @@ class NumericInterpretationTest(fixtures.TestBase):
     __backend__ = True
 
     def test_numeric_codes(self):
-        from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
+        from sqlalchemy.dialects.postgresql import psycopg2cffi, pg8000, \
+            psycopg2, base
 
-        for dialect in (pg8000.dialect(), psycopg2.dialect()):
-
+        dialects = (pg8000.dialect(), psycopg2.dialect(),
+                    psycopg2cffi.dialect())
+        for dialect in dialects:
             typ = Numeric().dialect_impl(dialect)
             for code in base._INT_TYPES + base._FLOAT_TYPES + \
                     base._DECIMAL_TYPES:
@@ -1033,7 +1134,7 @@ class UUIDTest(fixtures.TestBase):
         import uuid
         self._test_round_trip(
             Table('utable', MetaData(),
-                  Column('data', postgresql.UUID())
+                  Column('data', postgresql.UUID(as_uuid=False))
                   ),
             str(uuid.uuid4()),
             str(uuid.uuid4())
@@ -1052,6 +1153,38 @@ class UUIDTest(fixtures.TestBase):
                   ),
             uuid.uuid4(),
             uuid.uuid4()
+        )
+
+    @testing.fails_on('postgresql+zxjdbc',
+                      'column "data" is of type uuid[] but '
+                      'expression is of type character varying')
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    def test_uuid_array(self):
+        import uuid
+        self._test_round_trip(
+            Table(
+                'utable', MetaData(),
+                Column('data', postgresql.ARRAY(postgresql.UUID(as_uuid=True)))
+            ),
+            [uuid.uuid4(), uuid.uuid4()],
+            [uuid.uuid4(), uuid.uuid4()],
+        )
+
+    @testing.fails_on('postgresql+zxjdbc',
+                      'column "data" is of type uuid[] but '
+                      'expression is of type character varying')
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    def test_uuid_string_array(self):
+        import uuid
+        self._test_round_trip(
+            Table(
+                'utable', MetaData(),
+                Column(
+                    'data',
+                    postgresql.ARRAY(postgresql.UUID(as_uuid=False)))
+            ),
+            [str(uuid.uuid4()), str(uuid.uuid4())],
+            [str(uuid.uuid4()), str(uuid.uuid4())],
         )
 
     def test_no_uuid_available(self):
@@ -1073,7 +1206,7 @@ class UUIDTest(fixtures.TestBase):
     def teardown(self):
         self.conn.close()
 
-    def _test_round_trip(self, utable, value1, value2):
+    def _test_round_trip(self, utable, value1, value2, exp_value2=None):
         utable.create(self.conn)
         self.conn.execute(utable.insert(), {'data': value1})
         self.conn.execute(utable.insert(), {'data': value2})
@@ -1081,7 +1214,10 @@ class UUIDTest(fixtures.TestBase):
             select([utable.c.data]).
             where(utable.c.data != value1)
         )
-        eq_(r.fetchone()[0], value2)
+        if exp_value2:
+            eq_(r.fetchone()[0], exp_value2)
+        else:
+            eq_(r.fetchone()[0], value2)
         eq_(r.fetchone(), None)
 
 
@@ -1397,7 +1533,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
                     use_native_hstore=False))
         else:
             engine = testing.db
-        engine.connect()
+        engine.connect().close()
         return engine
 
     def test_reflect(self):
@@ -1946,13 +2082,15 @@ class JSONRoundTripTest(fixtures.TablesTest):
     __only_on__ = ('postgresql >= 9.3',)
     __backend__ = True
 
+    test_type = JSON
+
     @classmethod
     def define_tables(cls, metadata):
         Table('data_table', metadata,
               Column('id', Integer, primary_key=True),
               Column('name', String(30), nullable=False),
-              Column('data', JSON),
-              Column('nulldata', JSON(none_as_null=True))
+              Column('data', cls.test_type),
+              Column('nulldata', cls.test_type(none_as_null=True))
               )
 
     def _fixture_data(self, engine):
@@ -2014,7 +2152,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
         else:
             options = {}
 
-        if testing.against("postgresql+psycopg2"):
+        if testing.against("postgresql+psycopg2") and \
+                testing.db.dialect.psycopg2_version >= (2, 5):
             from psycopg2.extras import register_default_json
             engine = engines.testing_engine(options=options)
 
@@ -2029,13 +2168,13 @@ class JSONRoundTripTest(fixtures.TablesTest):
             engine = engines.testing_engine(options=options)
         else:
             engine = testing.db
-        engine.connect()
+        engine.connect().close()
         return engine
 
     def test_reflect(self):
         insp = inspect(testing.db)
         cols = insp.get_columns('data_table')
-        assert isinstance(cols[2]['type'], JSON)
+        assert isinstance(cols[2]['type'], self.test_type)
 
     @testing.only_on("postgresql+psycopg2")
     def test_insert_native(self):
@@ -2094,7 +2233,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     "key": "value",
                     "x": "q"
                 },
-                JSON
+                self.test_type
             )
         ])
         eq_(
@@ -2170,7 +2309,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     "key": "value",
                     "key2": {"k1": "v1", "k2": "v2"}
                 },
-                JSON
+                self.test_type
             )
         ])
         eq_(
@@ -2197,7 +2336,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     util.u('réveillé'): util.u('réveillé'),
                     "data": {"k1": util.u('drôle')}
                 },
-                JSON
+                self.test_type
             )
         ])
         eq_(
@@ -2264,3 +2403,14 @@ class JSONBTest(JSONTest):
 
 class JSONBRoundTripTest(JSONRoundTripTest):
     __only_on__ = ('postgresql >= 9.4',)
+    __requires__ = ('postgresql_jsonb', )
+
+    test_type = JSONB
+
+    @testing.requires.postgresql_utf8_server_encoding
+    def test_unicode_round_trip_python(self):
+        super(JSONBRoundTripTest, self).test_unicode_round_trip_python()
+
+    @testing.requires.postgresql_utf8_server_encoding
+    def test_unicode_round_trip_native(self):
+        super(JSONBRoundTripTest, self).test_unicode_round_trip_native()

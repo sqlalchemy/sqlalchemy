@@ -1,5 +1,5 @@
 # types.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -51,6 +51,7 @@ from .sql.sqltypes import (
     Integer,
     Interval,
     LargeBinary,
+    MatchType,
     NCHAR,
     NVARCHAR,
     NullType,

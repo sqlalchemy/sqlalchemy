@@ -1,5 +1,5 @@
 # orm/mapper.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -974,6 +974,15 @@ class Mapper(InspectionAttr):
             self._all_tables = self.inherits._all_tables
 
             if self.polymorphic_identity is not None:
+                if self.polymorphic_identity in self.polymorphic_map:
+                    util.warn(
+                        "Reassigning polymorphic association for identity %r "
+                        "from %r to %r: Check for duplicate use of %r as "
+                        "value for polymorphic_identity." %
+                        (self.polymorphic_identity,
+                         self.polymorphic_map[self.polymorphic_identity],
+                         self, self.polymorphic_identity)
+                )
                 self.polymorphic_map[self.polymorphic_identity] = self
 
         else:
@@ -1248,7 +1257,7 @@ class Mapper(InspectionAttr):
         self._readonly_props = set(
             self._columntoproperty[col]
             for col in self._columntoproperty
-            if self._columntoproperty[col] not in self._primary_key_props and
+            if self._columntoproperty[col] not in self._identity_key_props and
             (not hasattr(col, 'table') or
                 col.table not in self._cols_by_table))
 
@@ -1492,6 +1501,10 @@ class Mapper(InspectionAttr):
 
         return identities
 
+    @_memoized_configured_property
+    def _prop_set(self):
+        return frozenset(self._props.values())
+
     def _adapt_inherited_property(self, key, prop, init):
         if not self.concrete:
             self._configure_property(key, prop, init=False, setparent=False)
@@ -1581,6 +1594,8 @@ class Mapper(InspectionAttr):
                           self,
                           prop,
                       ))
+            oldprop = self._props[key]
+            self._path_registry.pop(oldprop, None)
 
         self._props[key] = prop
 
@@ -2371,15 +2386,30 @@ class Mapper(InspectionAttr):
             manager[prop.key].
             impl.get(state, dict_,
                      attributes.PASSIVE_RETURN_NEVER_SET)
-            for prop in self._primary_key_props
+            for prop in self._identity_key_props
         ]
 
     @_memoized_configured_property
-    def _primary_key_props(self):
-        # TODO: this should really be called "identity key props",
-        # as it does not necessarily include primary key columns within
-        # individual tables
+    def _identity_key_props(self):
         return [self._columntoproperty[col] for col in self.primary_key]
+
+    @_memoized_configured_property
+    def _all_pk_props(self):
+        collection = set()
+        for table in self.tables:
+            collection.update(self._pks_by_table[table])
+        return collection
+
+    @_memoized_configured_property
+    def _should_undefer_in_wildcard(self):
+        cols = set(self.primary_key)
+        if self.polymorphic_on is not None:
+            cols.add(self.polymorphic_on)
+        return cols
+
+    @_memoized_configured_property
+    def _primary_key_propkeys(self):
+        return set([prop.key for prop in self._all_pk_props])
 
     def _get_state_attr_by_column(
             self, state, dict_, column,
@@ -2633,7 +2663,7 @@ def configure_mappers():
             if not Mapper._new_mappers:
                 return
 
-            Mapper.dispatch(Mapper).before_configured()
+            Mapper.dispatch._for_class(Mapper).before_configured()
             # initialize properties on all mappers
             # note that _mapper_registry is unordered, which
             # may randomly conceal/reveal issues related to
@@ -2665,7 +2695,7 @@ def configure_mappers():
             _already_compiling = False
     finally:
         _CONFIGURE_MUTEX.release()
-    Mapper.dispatch(Mapper).after_configured()
+    Mapper.dispatch._for_class(Mapper).after_configured()
 
 
 def reconstructor(fn):
@@ -2776,6 +2806,8 @@ def _event_on_init(state, args, kwargs):
 
 class _ColumnMapping(dict):
     """Error reporting helper for mapper._columntoproperty."""
+
+    __slots__ = 'mapper',
 
     def __init__(self, mapper):
         self.mapper = mapper

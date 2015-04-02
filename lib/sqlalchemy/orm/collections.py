@@ -1,5 +1,5 @@
 # orm/collections.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1507,8 +1507,8 @@ class MappedCollection(dict):
     def __init__(self, keyfunc):
         """Create a new collection with keying provided by keyfunc.
 
-        keyfunc may be any callable any callable that takes an object and
-        returns an object for use as a dictionary key.
+        keyfunc may be any callable that takes an object and returns an object
+        for use as a dictionary key.
 
         The keyfunc will be called every time the ORM needs to add a member by
         value-only (such as when loading instances from the database) or

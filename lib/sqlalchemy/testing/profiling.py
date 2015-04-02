@@ -1,5 +1,5 @@
 # testing/profiling.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -42,7 +42,11 @@ class ProfileStatsFile(object):
     """
 
     def __init__(self, filename):
-        self.write = (
+        self.force_write = (
+            config.options is not None and
+            config.options.force_write_profiles
+        )
+        self.write = self.force_write or (
             config.options is not None and
             config.options.write_profiles
         )
@@ -115,7 +119,11 @@ class ProfileStatsFile(object):
         per_fn = self.data[test_key]
         per_platform = per_fn[self.platform_key]
         counts = per_platform['counts']
-        counts[-1] = callcount
+        current_count = per_platform['current_count']
+        if current_count < len(counts):
+            counts[current_count - 1] = callcount
+        else:
+            counts[-1] = callcount
         if self.write:
             self._write()
 
@@ -218,6 +226,7 @@ def count_functions(variance=0.05):
     callcount = stats.total_calls
 
     expected = _profile_stats.result(callcount)
+
     if expected is None:
         expected_count = None
     else:
@@ -235,16 +244,17 @@ def count_functions(variance=0.05):
         deviance = int(callcount * variance)
         failed = abs(callcount - expected_count) > deviance
 
-        if failed:
+        if failed or _profile_stats.force_write:
             if _profile_stats.write:
                 _profile_stats.replace(callcount)
             else:
                 raise AssertionError(
                     "Adjusted function call count %s not within %s%% "
-                    "of expected %s. Rerun with --write-profiles to "
+                    "of expected %s, platform %s. Rerun with "
+                    "--write-profiles to "
                     "regenerate this callcount."
                     % (
                         callcount, (variance * 100),
-                        expected_count))
+                        expected_count, _profile_stats.platform_key))
 
 

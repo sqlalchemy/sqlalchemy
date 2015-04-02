@@ -90,7 +90,7 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         table1 = self.table1
         compiled = s.compile(dialect=self._length_fixture())
 
-        assert set(compiled.result_map['some_large_named_table__2'][1]).\
+        assert set(compiled._create_result_map()['some_large_named_table__2'][1]).\
             issuperset(
             [
                 'some_large_named_table_this_is_the_data_column',
@@ -99,7 +99,7 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             ]
         )
 
-        assert set(compiled.result_map['some_large_named_table__1'][1]).\
+        assert set(compiled._create_result_map()['some_large_named_table__1'][1]).\
             issuperset(
             [
                 'some_large_named_table_this_is_the_primarykey_column',
@@ -134,11 +134,11 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         s2 = select([s])
         compiled = s2.compile(dialect=self._length_fixture())
         assert \
-            set(compiled.result_map['this_is_the_data_column'][1]).\
+            set(compiled._create_result_map()['this_is_the_data_column'][1]).\
             issuperset(['this_is_the_data_column',
                         s.c.this_is_the_data_column])
         assert \
-            set(compiled.result_map['this_is_the_primarykey_column'][1]).\
+            set(compiled._create_result_map()['this_is_the_primarykey_column'][1]).\
             issuperset(['this_is_the_primarykey_column',
                         s.c.this_is_the_primarykey_column])
 
@@ -170,14 +170,14 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             ') '
             'AS anon_1', dialect=dialect)
         compiled = s.compile(dialect=dialect)
-        assert set(compiled.result_map['anon_1_this_is_the_data_2'][1]).\
+        assert set(compiled._create_result_map()['anon_1_this_is_the_data_2'][1]).\
             issuperset([
                 'anon_1_this_is_the_data_2',
                 q.corresponding_column(
                     table1.c.this_is_the_data_column)
             ])
 
-        assert set(compiled.result_map['anon_1_this_is_the_prim_1'][1]).\
+        assert set(compiled._create_result_map()['anon_1_this_is_the_prim_1'][1]).\
             issuperset([
                 'anon_1_this_is_the_prim_1',
                 q.corresponding_column(
@@ -437,13 +437,13 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = default.DefaultDialect(label_length=10)
         compiled = q.compile(dialect=dialect)
 
-        assert set(compiled.result_map['some_2'][1]).issuperset([
+        assert set(compiled._create_result_map()['some_2'][1]).issuperset([
             table1.c.this_is_the_data_column,
             'some_large_named_table_this_is_the_data_column',
             'some_2'
         ])
 
-        assert set(compiled.result_map['some_1'][1]).issuperset([
+        assert set(compiled._create_result_map()['some_1'][1]).issuperset([
             table1.c.this_is_the_primarykey_column,
             'some_large_named_table_this_is_the_primarykey_column',
             'some_1'
@@ -459,12 +459,12 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = default.DefaultDialect(label_length=10)
         compiled = x.compile(dialect=dialect)
 
-        assert set(compiled.result_map['this_2'][1]).issuperset([
+        assert set(compiled._create_result_map()['this_2'][1]).issuperset([
             q.corresponding_column(table1.c.this_is_the_data_column),
             'this_is_the_data_column',
             'this_2'])
 
-        assert set(compiled.result_map['this_1'][1]).issuperset([
+        assert set(compiled._create_result_map()['this_1'][1]).issuperset([
             q.corresponding_column(table1.c.this_is_the_primarykey_column),
             'this_is_the_primarykey_column',
             'this_1'])
@@ -531,7 +531,7 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT asdf.abcde FROM a AS asdf',
                             dialect=dialect)
         compiled = s.compile(dialect=dialect)
-        assert set(compiled.result_map['abcde'][1]).issuperset([
+        assert set(compiled._create_result_map()['abcde'][1]).issuperset([
             'abcde', a1.c.abcde, 'abcde'])
 
         # column still there, but short label
@@ -540,5 +540,5 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT asdf.abcde AS _1 FROM a AS asdf',
                             dialect=dialect)
         compiled = s.compile(dialect=dialect)
-        assert set(compiled.result_map['_1'][1]).issuperset([
+        assert set(compiled._create_result_map()['_1'][1]).issuperset([
             'asdf_abcde', a1.c.abcde, '_1'])

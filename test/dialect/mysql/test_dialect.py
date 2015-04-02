@@ -8,7 +8,10 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 import datetime
 
+
 class DialectTest(fixtures.TestBase):
+    __backend__ = True
+
     def test_ssl_arguments_mysqldb(self):
         from sqlalchemy.dialects.mysql import mysqldb
         dialect = mysqldb.dialect()
@@ -82,6 +85,17 @@ class DialectTest(fixtures.TestBase):
                 make_url("mysql://u:p@host/db?foo=true")
             )[1]
         eq_(kw['foo'], "true")
+
+    @testing.only_on('mysql')
+    @testing.skip_if('mysql+mysqlconnector', "totally broken for the moment")
+    @testing.fails_on('mysql+oursql', "unsupported")
+    def test_special_encodings(self):
+
+        for enc in ['utf8mb4', 'utf8']:
+            eng = engines.testing_engine(
+                options={"connect_args": {'charset': enc, 'use_unicode': 0}})
+            conn = eng.connect()
+            eq_(conn.dialect._connection_charset, enc)
 
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'

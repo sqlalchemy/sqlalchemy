@@ -1,5 +1,5 @@
 # sql/sqltypes.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,7 +14,6 @@ import codecs
 
 from .type_api import TypeEngine, TypeDecorator, to_instance
 from .elements import quoted_name, type_coerce, _defer_name
-from .default_comparator import _DefaultColumnComparator
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
 from . import operators
@@ -894,7 +893,7 @@ class LargeBinary(_Binary):
 
         :param length: optional, a length for the column for use in
           DDL statements, for those BLOB types that accept a length
-          (i.e. MySQL).  It does *not* produce a small BINARY/VARBINARY
+          (i.e. MySQL).  It does *not* produce a *lengthed* BINARY/VARBINARY
           type - use the BINARY/VARBINARY types specifically for those.
           May be safely omitted if no ``CREATE
           TABLE`` will be issued.  Certain databases may require a
@@ -939,7 +938,7 @@ class SchemaType(SchemaEventTarget):
     """
 
     def __init__(self, name=None, schema=None, metadata=None,
-                 inherit_schema=False, quote=None):
+                 inherit_schema=False, quote=None, _create_events=True):
         if name is not None:
             self.name = quoted_name(name, quote)
         else:
@@ -947,8 +946,9 @@ class SchemaType(SchemaEventTarget):
         self.schema = schema
         self.metadata = metadata
         self.inherit_schema = inherit_schema
+        self._create_events = _create_events
 
-        if self.metadata:
+        if _create_events and self.metadata:
             event.listen(
                 self.metadata,
                 "before_create",
@@ -966,6 +966,9 @@ class SchemaType(SchemaEventTarget):
     def _set_table(self, column, table):
         if self.inherit_schema:
             self.schema = table.schema
+
+        if not self._create_events:
+            return
 
         event.listen(
             table,
@@ -993,19 +996,18 @@ class SchemaType(SchemaEventTarget):
             )
 
     def copy(self, **kw):
-        return self.adapt(self.__class__)
+        return self.adapt(self.__class__, _create_events=True)
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
+        metadata = kw.pop('metadata', self.metadata)
+        _create_events = kw.pop('_create_events', False)
 
-        # don't associate with MetaData as the hosting type
-        # is already associated with it, avoid creating event
-        # listeners
-        metadata = kw.pop('metadata', None)
         return impltype(name=self.name,
                         schema=schema,
-                        metadata=metadata,
                         inherit_schema=self.inherit_schema,
+                        metadata=metadata,
+                        _create_events=_create_events,
                         **kw)
 
     @property
@@ -1149,6 +1151,7 @@ class Enum(String, SchemaType):
 
     def __repr__(self):
         return util.generic_repr(self,
+                                 additional_kw=[('native_enum', True)],
                                  to_inspect=[Enum, SchemaType],
                                  )
 
@@ -1165,13 +1168,15 @@ class Enum(String, SchemaType):
             type_coerce(column, self).in_(self.enums),
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
-                self._should_create_constraint)
+                self._should_create_constraint),
+            _type_bound=True
         )
         assert e.table is table
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', None)
+        metadata = kw.pop('metadata', self.metadata)
+        _create_events = kw.pop('_create_events', False)
         if issubclass(impltype, Enum):
             return impltype(name=self.name,
                             schema=schema,
@@ -1179,9 +1184,11 @@ class Enum(String, SchemaType):
                             convert_unicode=self.convert_unicode,
                             native_enum=self.native_enum,
                             inherit_schema=self.inherit_schema,
+                            _create_events=_create_events,
                             *self.enums,
                             **kw)
         else:
+            # TODO: why would we be here?
             return super(Enum, self).adapt(impltype, **kw)
 
 
@@ -1277,7 +1284,8 @@ class Boolean(TypeEngine, SchemaType):
 
     __visit_name__ = 'boolean'
 
-    def __init__(self, create_constraint=True, name=None):
+    def __init__(
+            self, create_constraint=True, name=None, _create_events=True):
         """Construct a Boolean.
 
         :param create_constraint: defaults to True.  If the boolean
@@ -1290,6 +1298,7 @@ class Boolean(TypeEngine, SchemaType):
         """
         self.create_constraint = create_constraint
         self.name = name
+        self._create_events = _create_events
 
     def _should_create_constraint(self, compiler):
         return not compiler.dialect.supports_native_boolean
@@ -1303,7 +1312,8 @@ class Boolean(TypeEngine, SchemaType):
             type_coerce(column, self).in_([0, 1]),
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
-                self._should_create_constraint)
+                self._should_create_constraint),
+            _type_bound=True
         )
         assert e.table is table
 
@@ -1654,10 +1664,26 @@ class NullType(TypeEngine):
     comparator_factory = Comparator
 
 
+class MatchType(Boolean):
+    """Refers to the return type of the MATCH operator.
+
+    As the :meth:`.ColumnOperators.match` is probably the most open-ended
+    operator in generic SQLAlchemy Core, we can't assume the return type
+    at SQL evaluation time, as MySQL returns a floating point, not a boolean,
+    and other backends might do something different.    So this type
+    acts as a placeholder, currently subclassing :class:`.Boolean`.
+    The type allows dialects to inject result-processing functionality
+    if needed, and on MySQL will return floating-point values.
+
+    .. versionadded:: 1.0.0
+
+    """
+
 NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 INTEGERTYPE = Integer()
+MATCHTYPE = MatchType()
 
 _type_map = {
     int: Integer(),
@@ -1685,21 +1711,7 @@ type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
+type_api.MATCHTYPE = MATCHTYPE
 type_api._type_map = _type_map
 
-# this one, there's all kinds of ways to play it, but at the EOD
-# there's just a giant dependency cycle between the typing system and
-# the expression element system, as you might expect.   We can use
-# importlaters or whatnot, but the typing system just necessarily has
-# to have some kind of connection like this.  right now we're injecting the
-# _DefaultColumnComparator implementation into the TypeEngine.Comparator
-# interface.  Alternatively TypeEngine.Comparator could have an "impl"
-# injected, though just injecting the base is simpler, error free, and more
-# performant.
-
-
-class Comparator(_DefaultColumnComparator):
-    BOOLEANTYPE = BOOLEANTYPE
-
-TypeEngine.Comparator.__bases__ = (
-    Comparator, ) + TypeEngine.Comparator.__bases__
+TypeEngine.Comparator.BOOLEANTYPE = BOOLEANTYPE

@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -204,7 +204,6 @@ def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
 
     from sqlalchemy import create_engine
-    from .assertsql import asserter
 
     if not options:
         use_reaper = True
@@ -216,11 +215,12 @@ def testing_engine(url=None, options=None):
         options = config.db_opts
 
     engine = create_engine(url, **options)
+    engine._has_events = True   # enable event blocks, helps with
+                                # profiling
+
     if isinstance(engine.pool, pool.QueuePool):
         engine.pool._timeout = 0
         engine.pool._max_overflow = 0
-    event.listen(engine, 'after_execute', asserter.execute)
-    event.listen(engine, 'after_cursor_execute', asserter.cursor_execute)
     if use_reaper:
         event.listen(engine.pool, 'connect', testing_reaper.connect)
         event.listen(engine.pool, 'checkout', testing_reaper.checkout)
@@ -280,10 +280,10 @@ class DBAPIProxyCursor(object):
 
     """
 
-    def __init__(self, engine, conn):
+    def __init__(self, engine, conn, *args, **kwargs):
         self.engine = engine
         self.connection = conn
-        self.cursor = conn.cursor()
+        self.cursor = conn.cursor(*args, **kwargs)
 
     def execute(self, stmt, parameters=None, **kw):
         if parameters:
@@ -311,8 +311,8 @@ class DBAPIProxyConnection(object):
         self.engine = engine
         self.cursor_cls = cursor_cls
 
-    def cursor(self):
-        return self.cursor_cls(self.engine, self.conn)
+    def cursor(self, *args, **kwargs):
+        return self.cursor_cls(self.engine, self.conn, *args, **kwargs)
 
     def close(self):
         self.conn.close()

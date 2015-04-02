@@ -1,5 +1,5 @@
 # testing/warnings.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,7 +9,7 @@ from __future__ import absolute_import
 
 import warnings
 from .. import exc as sa_exc
-import re
+from . import assertions
 
 
 def setup_filters():
@@ -22,19 +22,13 @@ def setup_filters():
 
 
 def assert_warnings(fn, warning_msgs, regex=False):
-    """Assert that each of the given warnings are emitted by fn."""
+    """Assert that each of the given warnings are emitted by fn.
 
-    from .assertions import eq_
+    Deprecated.  Please use assertions.expect_warnings().
 
-    with warnings.catch_warnings(record=True) as log:
-        # ensure that nothing is going into __warningregistry__
-        warnings.filterwarnings("always")
+    """
 
-        result = fn()
-    for warning in log:
-        popwarn = warning_msgs.pop(0)
-        if regex:
-            assert re.match(popwarn, str(warning.message))
-        else:
-            eq_(popwarn, str(warning.message))
-    return result
+    with assertions._expect_warnings(
+            sa_exc.SAWarning, warning_msgs, regex=regex):
+        return fn()
+

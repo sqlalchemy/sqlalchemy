@@ -84,7 +84,8 @@ def pytest_collection_modifyitems(session, config, items):
     rebuilt_items = collections.defaultdict(list)
     items[:] = [
         item for item in
-        items if isinstance(item.parent, pytest.Instance)]
+        items if isinstance(item.parent, pytest.Instance)
+        and not item.parent.parent.name.startswith("_")]
     test_classes = set(item.parent for item in items)
     for test_class in test_classes:
         for sub_cls in plugin_base.generate_sub_tests(

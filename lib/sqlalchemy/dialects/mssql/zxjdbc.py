@@ -1,5 +1,5 @@
 # mssql/zxjdbc.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,6 +13,8 @@
 [?key=value&key=value...]
     :driverurl: http://jtds.sourceforge.net/
 
+    .. note:: Jython is not supported by current versions of SQLAlchemy.  The
+       zxjdbc dialect should be considered as experimental.
 
 """
 from ...connectors.zxJDBC import ZxJDBCConnector

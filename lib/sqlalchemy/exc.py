@@ -1,5 +1,5 @@
 # sqlalchemy/exc.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -54,8 +54,7 @@ class CircularDependencyError(SQLAlchemyError):
       or pre-deassociate one of the foreign key constrained values.
       The ``post_update`` flag described at :ref:`post_update` can resolve
       this cycle.
-    * In a :meth:`.MetaData.create_all`, :meth:`.MetaData.drop_all`,
-      :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
+    * In a :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
       or :class:`.ForeignKeyConstraint` objects mutually refer to each
       other.  Apply the ``use_alter=True`` flag to one or both,
       see :ref:`use_alter`.
@@ -63,7 +62,7 @@ class CircularDependencyError(SQLAlchemyError):
     """
     def __init__(self, message, cycles, edges, msg=None):
         if msg is None:
-            message += " Cycles: %r all edges: %r" % (cycles, edges)
+            message += " (%s)" % ", ".join(repr(s) for s in cycles)
         else:
             message = msg
         SQLAlchemyError.__init__(self, message)
@@ -238,14 +237,16 @@ class StatementError(SQLAlchemyError):
 
     def __str__(self):
         from sqlalchemy.sql import util
-        params_repr = util._repr_params(self.params, 10)
 
+        details = [SQLAlchemyError.__str__(self)]
+        if self.statement:
+            details.append("[SQL: %r]" % self.statement)
+            if self.params:
+                params_repr = util._repr_params(self.params, 10)
+                details.append("[parameters: %r]" % params_repr)
         return ' '.join([
             "(%s)" % det for det in self.detail
-            ] + [
-                SQLAlchemyError.__str__(self),
-                repr(self.statement), repr(params_repr)
-            ])
+        ] + details)
 
     def __unicode__(self):
         return self.__str__()
@@ -289,10 +290,10 @@ class DBAPIError(StatementError):
             # not a DBAPI error, statement is present.
             # raise a StatementError
             if not isinstance(orig, dbapi_base_err) and statement:
-                msg = traceback.format_exception_only(
-                    orig.__class__, orig)[-1].strip()
                 return StatementError(
-                    "%s (original cause: %s)" % (str(orig), msg),
+                    "(%s.%s) %s" %
+                    (orig.__class__.__module__, orig.__class__.__name__,
+                     orig),
                     statement, params, orig
                 )
 
@@ -316,7 +317,8 @@ class DBAPIError(StatementError):
             text = 'Error in str() of DB-API-generated exception: ' + str(e)
         StatementError.__init__(
             self,
-            '(%s) %s' % (orig.__class__.__name__, text),
+            '(%s.%s) %s' % (
+                orig.__class__.__module__, orig.__class__.__name__, text, ),
             statement,
             params,
             orig

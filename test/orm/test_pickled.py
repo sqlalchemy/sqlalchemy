@@ -11,6 +11,8 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
                             clear_mappers, exc as orm_exc,\
                             configure_mappers, Session, lazyload_all,\
                             lazyload, aliased
+from sqlalchemy.orm import state as sa_state
+from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm.collections import attribute_mapped_collection, \
     column_mapped_collection
 from sqlalchemy.testing import fixtures
@@ -241,6 +243,35 @@ class PickleTest(fixtures.MappedTest):
             u2 = loads(dumps(u1))
             eq_(u1, u2)
 
+    def test_09_pickle(self):
+        users = self.tables.users
+        mapper(User, users)
+        sess = Session()
+        sess.add(User(id=1, name='ed'))
+        sess.commit()
+        sess.close()
+
+        inst = User(id=1, name='ed')
+        del inst._sa_instance_state
+
+        state = sa_state.InstanceState.__new__(sa_state.InstanceState)
+        state_09 = {
+            'class_': User,
+            'modified': False,
+            'committed_state': {},
+            'instance': inst,
+            'callables': {'name': state, 'id': state},
+            'key': (User, (1,)),
+            'expired': True}
+        manager = instrumentation._SerializeManager.__new__(
+            instrumentation._SerializeManager)
+        manager.class_ = User
+        state_09['manager'] = manager
+        state.__setstate__(state_09)
+
+        sess = Session()
+        sess.add(inst)
+        eq_(inst.name, 'ed')
 
     @testing.requires.non_broken_pickle
     def test_options_with_descriptors(self):

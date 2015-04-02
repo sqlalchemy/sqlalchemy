@@ -14,6 +14,7 @@ from .inheritance._poly_fixtures import Company, Person, Engineer, Manager, Boss
     _PolymorphicPolymorphic, _PolymorphicUnions, _PolymorphicJoins,\
     _PolymorphicAliasedJoins
 
+
 class _PolymorphicTestBase(object):
     __dialect__ = 'default'
 
@@ -190,6 +191,21 @@ class _PolymorphicTestBase(object):
                 [self._company_with_emps_fixture()[0]]
             )
         self.assert_sql_count(testing.db, go, 3)
+
+    def test_joinedload_stacked_of_type(self):
+        sess = Session()
+
+        def go():
+            eq_(
+                sess.query(Company).
+                filter_by(company_id=1).
+                options(
+                    joinedload(Company.employees.of_type(Manager)),
+                    joinedload(Company.employees.of_type(Engineer))
+                ).all(),
+                [self._company_with_emps_fixture()[0]]
+            )
+        self.assert_sql_count(testing.db, go, 2)
 
 
 class PolymorphicPolymorphicTest(_PolymorphicTestBase, _PolymorphicPolymorphic):

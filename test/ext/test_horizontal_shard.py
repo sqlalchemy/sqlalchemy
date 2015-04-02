@@ -235,8 +235,6 @@ class AttachedFileShardTest(ShardTest, fixtures.TestBase):
     def _init_dbs(self):
         db1 = testing_engine('sqlite://', options={"execution_options":
                                             {"shard_id": "shard1"}})
-        assert db1._has_events
-
         db2 = db1.execution_options(shard_id="shard2")
         db3 = db1.execution_options(shard_id="shard3")
         db4 = db1.execution_options(shard_id="shard4")

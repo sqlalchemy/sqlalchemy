@@ -29,6 +29,10 @@ Some key internal constructs are listed here.
     :members:
 
 
+.. autoclass:: sqlalchemy.log.Identified
+    :members:
+
+
 .. autoclass:: sqlalchemy.sql.compiler.IdentifierPreparer
     :members:
 

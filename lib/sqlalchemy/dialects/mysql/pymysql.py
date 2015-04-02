@@ -1,5 +1,5 @@
 # mysql/pymysql.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,7 +12,13 @@
     :dbapi: pymysql
     :connectstring: mysql+pymysql://<username>:<password>@<host>/<dbname>\
 [?<options>]
-    :url: http://code.google.com/p/pymysql/
+    :url: http://www.pymysql.org/
+
+Unicode
+-------
+
+Please see :ref:`mysql_unicode` for current recommendations on unicode
+handling.
 
 MySQL-Python Compatibility
 --------------------------
@@ -31,8 +37,12 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'
 
     description_encoding = None
-    if py3k:
-        supports_unicode_statements = True
+
+    # generally, these two values should be both True
+    # or both False.   PyMySQL unicode tests pass all the way back
+    # to 0.4 either way.  See [ticket:3337]
+    supports_unicode_statements = True
+    supports_unicode_binds = True
 
     @classmethod
     def dbapi(cls):

@@ -1,5 +1,5 @@
 # orm/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -183,6 +183,10 @@ NOT_EXTENSION = util.symbol(
 
 _none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
 
+_SET_DEFERRED_EXPIRED = util.symbol("SET_DEFERRED_EXPIRED")
+
+_DEFER_FOR_STATE = util.symbol("DEFER_FOR_STATE")
+
 
 def _generative(*assertions):
     """Mark a method as generative, e.g. method-chained."""
@@ -323,10 +327,9 @@ def _is_mapped_class(entity):
 
     insp = inspection.inspect(entity, False)
     return insp is not None and \
-        hasattr(insp, "mapper") and \
+        not insp.is_clause_element and \
         (
-            insp.is_mapper
-            or insp.is_aliased_class
+            insp.is_mapper or insp.is_aliased_class
         )
 
 
@@ -437,6 +440,7 @@ class InspectionAttr(object):
     here intact for forwards-compatibility.
 
     """
+    __slots__ = ()
 
     is_selectable = False
     """Return True if this object is an instance of :class:`.Selectable`."""
@@ -488,6 +492,16 @@ class InspectionAttr(object):
 
     """
 
+
+class InspectionAttrInfo(InspectionAttr):
+    """Adds the ``.info`` attribute to :class:`.InspectionAttr`.
+
+    The rationale for :class:`.InspectionAttr` vs. :class:`.InspectionAttrInfo`
+    is that the former is compatible as a mixin for classes that specify
+    ``__slots__``; this is essentially an implementation artifact.
+
+    """
+
     @util.memoized_property
     def info(self):
         """Info dictionary associated with the object, allowing user-defined
@@ -501,9 +515,10 @@ class InspectionAttr(object):
         .. versionadded:: 0.8  Added support for .info to all
            :class:`.MapperProperty` subclasses.
 
-        .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
-           from :class:`.MapperProperty` so that it can apply to a wider
-           variety of ORM and extension constructs.
+        .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also
+           available on extension types via the
+           :attr:`.InspectionAttrInfo.info` attribute, so that it can apply
+           to a wider variety of ORM and extension constructs.
 
         .. seealso::
 
@@ -520,3 +535,4 @@ class _MappedAttribute(object):
     attributes.
 
     """
+    __slots__ = ()

@@ -485,6 +485,41 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                                            ).one(),
             Engineer(name='vlad', primary_language='cobol'))
 
+    def test_single_constraint_on_sub(self):
+        """test the somewhat unusual case of [ticket:3341]"""
+
+        class Person(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on': discriminator}
+
+        class Engineer(Person):
+
+            __mapper_args__ = {'polymorphic_identity': 'engineer'}
+            primary_language = Column(String(50))
+
+            __hack_args_one__ = sa.UniqueConstraint(
+                Person.name, primary_language)
+            __hack_args_two__ = sa.CheckConstraint(
+                Person.name != primary_language)
+
+        uq = [c for c in Person.__table__.constraints
+              if isinstance(c, sa.UniqueConstraint)][0]
+        ck = [c for c in Person.__table__.constraints
+              if isinstance(c, sa.CheckConstraint)][0]
+        eq_(
+            list(uq.columns),
+            [Person.__table__.c.name, Person.__table__.c.primary_language]
+        )
+        eq_(
+            list(ck.columns),
+            [Person.__table__.c.name, Person.__table__.c.primary_language]
+        )
+
     @testing.skip_if(lambda: testing.against('oracle'),
                      "Test has an empty insert in it at the moment")
     def test_columns_single_inheritance_conflict_resolution(self):

@@ -475,6 +475,8 @@ subselect back to the parent ``companies`` table.
    :func:`.orm.aliased` and :func:`.orm.with_polymorphic` constructs in conjunction
    with :meth:`.Query.join`, ``any()`` and ``has()``.
 
+.. _eagerloading_polymorphic_subtypes:
+
 Eager Loading of Specific or Polymorphic Subtypes
 ++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -491,7 +493,7 @@ objects, querying the ``employee`` and ``engineer`` tables simultaneously::
             )
         )
 
-As is the case with :meth:`.Query.join`, :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`
+As is the case with :meth:`.Query.join`, :meth:`~PropComparator.of_type`
 also can be used with eager loading and :func:`.orm.with_polymorphic`
 at the same time, so that all sub-attributes of all referenced subtypes
 can be loaded::
@@ -512,6 +514,23 @@ can be loaded::
     paths that are qualified with
     :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`, supporting
     single target types as well as :func:`.orm.with_polymorphic` targets.
+
+Another option for the above query is to state the two subtypes separately;
+the :func:`.joinedload` directive should detect this and create the
+above ``with_polymorphic`` construct automatically::
+
+    session.query(Company).\
+        options(
+            joinedload(Company.employees.of_type(Manager)),
+            joinedload(Company.employees.of_type(Engineer)),
+            )
+        )
+
+.. versionadded:: 1.0
+    Eager loaders such as :func:`.joinedload` will create a polymorphic
+    entity when multiple overlapping :meth:`~PropComparator.of_type`
+    directives are encountered.
+
 
 
 Single Table Inheritance

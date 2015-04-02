@@ -1,5 +1,5 @@
 # oracle/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -213,6 +213,8 @@ is reflected and the type is reported as ``DATE``, the time-supporting
    examining the type of column for use in special Python translations or
    for migrating schemas to other database backends.
 
+.. _oracle_table_options:
+
 Oracle Table Options
 -------------------------
 
@@ -228,15 +230,63 @@ in conjunction with the :class:`.Table` construct:
 
 .. versionadded:: 1.0.0
 
+* ``COMPRESS``::
+
+    Table('mytable', metadata, Column('data', String(32)),
+        oracle_compress=True)
+
+    Table('mytable', metadata, Column('data', String(32)),
+        oracle_compress=6)
+
+   The ``oracle_compress`` parameter accepts either an integer compression
+   level, or ``True`` to use the default compression level.
+
+.. versionadded:: 1.0.0
+
+.. _oracle_index_options:
+
+Oracle Specific Index Options
+-----------------------------
+
+Bitmap Indexes
+~~~~~~~~~~~~~~
+
+You can specify the ``oracle_bitmap`` parameter to create a bitmap index
+instead of a B-tree index::
+
+    Index('my_index', my_table.c.data, oracle_bitmap=True)
+
+Bitmap indexes cannot be unique and cannot be compressed. SQLAlchemy will not
+check for such limitations, only the database will.
+
+.. versionadded:: 1.0.0
+
+Index compression
+~~~~~~~~~~~~~~~~~
+
+Oracle has a more efficient storage mode for indexes containing lots of
+repeated values. Use the ``oracle_compress`` parameter to turn on key c
+ompression::
+
+    Index('my_index', my_table.c.data, oracle_compress=True)
+
+    Index('my_index', my_table.c.data1, my_table.c.data2, unique=True,
+           oracle_compress=1)
+
+The ``oracle_compress`` parameter accepts either an integer specifying the
+number of prefix columns to compress, or ``True`` to use the default (all
+columns for non-unique indexes, all but the last column for unique indexes).
+
+.. versionadded:: 1.0.0
+
 """
 
 import re
 
 from sqlalchemy import util, sql
-from sqlalchemy.engine import default, base, reflection
+from sqlalchemy.engine import default, reflection
 from sqlalchemy.sql import compiler, visitors, expression
-from sqlalchemy.sql import (operators as sql_operators,
-                            functions as sql_functions)
+from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes, schema as sa_schema
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, \
     BLOB, CLOB, TIMESTAMP, FLOAT
@@ -407,19 +457,19 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     # Oracle does not allow milliseconds in DATE
     # Oracle does not support TIME columns
 
-    def visit_datetime(self, type_):
-        return self.visit_DATE(type_)
+    def visit_datetime(self, type_, **kw):
+        return self.visit_DATE(type_, **kw)
 
-    def visit_float(self, type_):
-        return self.visit_FLOAT(type_)
+    def visit_float(self, type_, **kw):
+        return self.visit_FLOAT(type_, **kw)
 
-    def visit_unicode(self, type_):
+    def visit_unicode(self, type_, **kw):
         if self.dialect._supports_nchar:
-            return self.visit_NVARCHAR2(type_)
+            return self.visit_NVARCHAR2(type_, **kw)
         else:
-            return self.visit_VARCHAR2(type_)
+            return self.visit_VARCHAR2(type_, **kw)
 
-    def visit_INTERVAL(self, type_):
+    def visit_INTERVAL(self, type_, **kw):
         return "INTERVAL DAY%s TO SECOND%s" % (
             type_.day_precision is not None and
             "(%d)" % type_.day_precision or
@@ -429,22 +479,22 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             "",
         )
 
-    def visit_LONG(self, type_):
+    def visit_LONG(self, type_, **kw):
         return "LONG"
 
-    def visit_TIMESTAMP(self, type_):
+    def visit_TIMESTAMP(self, type_, **kw):
         if type_.timezone:
             return "TIMESTAMP WITH TIME ZONE"
         else:
             return "TIMESTAMP"
 
-    def visit_DOUBLE_PRECISION(self, type_):
-        return self._generate_numeric(type_, "DOUBLE PRECISION")
+    def visit_DOUBLE_PRECISION(self, type_, **kw):
+        return self._generate_numeric(type_, "DOUBLE PRECISION", **kw)
 
     def visit_NUMBER(self, type_, **kw):
         return self._generate_numeric(type_, "NUMBER", **kw)
 
-    def _generate_numeric(self, type_, name, precision=None, scale=None):
+    def _generate_numeric(self, type_, name, precision=None, scale=None, **kw):
         if precision is None:
             precision = type_.precision
 
@@ -460,17 +510,17 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             n = "%(name)s(%(precision)s, %(scale)s)"
             return n % {'name': name, 'precision': precision, 'scale': scale}
 
-    def visit_string(self, type_):
-        return self.visit_VARCHAR2(type_)
+    def visit_string(self, type_, **kw):
+        return self.visit_VARCHAR2(type_, **kw)
 
-    def visit_VARCHAR2(self, type_):
+    def visit_VARCHAR2(self, type_, **kw):
         return self._visit_varchar(type_, '', '2')
 
-    def visit_NVARCHAR2(self, type_):
+    def visit_NVARCHAR2(self, type_, **kw):
         return self._visit_varchar(type_, 'N', '2')
     visit_NVARCHAR = visit_NVARCHAR2
 
-    def visit_VARCHAR(self, type_):
+    def visit_VARCHAR(self, type_, **kw):
         return self._visit_varchar(type_, '', '')
 
     def _visit_varchar(self, type_, n, num):
@@ -483,31 +533,31 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             varchar = "%(n)sVARCHAR%(two)s(%(length)s)"
             return varchar % {'length': type_.length, 'two': num, 'n': n}
 
-    def visit_text(self, type_):
-        return self.visit_CLOB(type_)
+    def visit_text(self, type_, **kw):
+        return self.visit_CLOB(type_, **kw)
 
-    def visit_unicode_text(self, type_):
+    def visit_unicode_text(self, type_, **kw):
         if self.dialect._supports_nchar:
-            return self.visit_NCLOB(type_)
+            return self.visit_NCLOB(type_, **kw)
         else:
-            return self.visit_CLOB(type_)
+            return self.visit_CLOB(type_, **kw)
 
-    def visit_large_binary(self, type_):
-        return self.visit_BLOB(type_)
+    def visit_large_binary(self, type_, **kw):
+        return self.visit_BLOB(type_, **kw)
 
-    def visit_big_integer(self, type_):
-        return self.visit_NUMBER(type_, precision=19)
+    def visit_big_integer(self, type_, **kw):
+        return self.visit_NUMBER(type_, precision=19, **kw)
 
-    def visit_boolean(self, type_):
-        return self.visit_SMALLINT(type_)
+    def visit_boolean(self, type_, **kw):
+        return self.visit_SMALLINT(type_, **kw)
 
-    def visit_RAW(self, type_):
+    def visit_RAW(self, type_, **kw):
         if type_.length:
             return "RAW(%(length)s)" % {'length': type_.length}
         else:
             return "RAW"
 
-    def visit_ROWID(self, type_):
+    def visit_ROWID(self, type_, **kw):
         return "ROWID"
 
 
@@ -548,6 +598,9 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def visit_false(self, expr, **kw):
         return '0'
+
+    def get_cte_preamble(self, recursive):
+        return "WITH"
 
     def get_select_hint_text(self, byfroms):
         return " ".join(
@@ -612,29 +665,17 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return sql.and_(*clauses)
 
-    def visit_outer_join_column(self, vc):
-        return self.process(vc.column) + "(+)"
+    def visit_outer_join_column(self, vc, **kw):
+        return self.process(vc.column, **kw) + "(+)"
 
     def visit_sequence(self, seq):
         return (self.dialect.identifier_preparer.format_sequence(seq) +
                 ".nextval")
 
-    def visit_alias(self, alias, asfrom=False, ashint=False, **kwargs):
-        """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard
-        SQL??
-        """
+    def get_render_as_alias_suffix(self, alias_name_text):
+        """Oracle doesn't like ``FROM table AS alias``"""
 
-        if asfrom or ashint:
-            alias_name = isinstance(alias.name, expression._truncated_label) and \
-                self._truncated_identifier("alias", alias.name) or alias.name
-
-        if ashint:
-            return alias_name
-        elif asfrom:
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + \
-                " " + self.preparer.format_alias(alias, alias_name)
-        else:
-            return self.process(alias.original, **kwargs)
+        return " " + alias_name_text
 
     def returning_clause(self, stmt, returning_cols):
         columns = []
@@ -651,8 +692,9 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.bindparam_string(self._truncate_bindparam(outparam)))
             columns.append(
                 self.process(col_expr, within_columns_clause=False))
-            self.result_map[outparam.key] = (
-                outparam.key,
+
+            self._add_to_result_map(
+                outparam.key, outparam.key,
                 (column, getattr(column, 'name', None),
                  getattr(column, 'key', None)),
                 column.type
@@ -695,7 +737,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 # Outer select and "ROWNUM as ora_rn" can be dropped if
                 # limit=0
 
-                # TODO: use annotations instead of clone + attr set ?
+                kwargs['select_wraps_for'] = select
                 select = select._generate()
                 select._oracle_visit = True
 
@@ -752,7 +794,6 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect._for_update_arg = select._for_update_arg
                     select = offsetselect
 
-        kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
         return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 
     def limit_clause(self, select, **kw):
@@ -795,9 +836,32 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_create_index(self, create, **kw):
-        return super(OracleDDLCompiler, self).\
-            visit_create_index(create, include_schema=True)
+    def visit_create_index(self, create):
+        index = create.element
+        self._verify_index_table(index)
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        if index.dialect_options['oracle']['bitmap']:
+            text += "BITMAP "
+        text += "INDEX %s ON %s (%s)" % (
+            self._prepared_index_name(index, include_schema=True),
+            preparer.format_table(index.table, use_schema=True),
+            ', '.join(
+                self.sql_compiler.process(
+                    expr,
+                    include_table=False, literal_binds=True)
+                for expr in index.expressions)
+        )
+        if index.dialect_options['oracle']['compress'] is not False:
+            if index.dialect_options['oracle']['compress'] is True:
+                text += " COMPRESS"
+            else:
+                text += " COMPRESS %d" % (
+                    index.dialect_options['oracle']['compress']
+                )
+        return text
 
     def post_create_table(self, table):
         table_opts = []
@@ -806,6 +870,14 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         if opts['on_commit']:
             on_commit_options = opts['on_commit'].replace("_", " ").upper()
             table_opts.append('\n ON COMMIT %s' % on_commit_options)
+
+        if opts['compress']:
+            if opts['compress'] is True:
+                table_opts.append("\n COMPRESS")
+            else:
+                table_opts.append("\n COMPRESS FOR %s" % (
+                    opts['compress']
+                ))
 
         return ''.join(table_opts)
 
@@ -847,6 +919,8 @@ class OracleDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
 
+    supports_simple_order_by_label = False
+
     supports_sequences = True
     sequences_optional = False
     postfetch_lastrowid = False
@@ -870,7 +944,12 @@ class OracleDialect(default.DefaultDialect):
     construct_arguments = [
         (sa_schema.Table, {
             "resolve_synonyms": False,
-            "on_commit": None
+            "on_commit": None,
+            "compress": False
+        }),
+        (sa_schema.Index, {
+            "bitmap": False,
+            "compress": False
         })
     ]
 
@@ -900,6 +979,16 @@ class OracleDialect(default.DefaultDialect):
     def _is_oracle_8(self):
         return self.server_version_info and \
             self.server_version_info < (9, )
+
+    @property
+    def _supports_table_compression(self):
+        return self.server_version_info and \
+            self.server_version_info >= (9, 2, )
+
+    @property
+    def _supports_table_compress_for(self):
+        return self.server_version_info and \
+            self.server_version_info >= (11, )
 
     @property
     def _supports_char_length(self):
@@ -1084,6 +1173,50 @@ class OracleDialect(default.DefaultDialect):
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        options = {}
+
+        resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
+        dblink = kw.get('dblink', '')
+        info_cache = kw.get('info_cache')
+
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
+
+        params = {"table_name": table_name}
+
+        columns = ["table_name"]
+        if self._supports_table_compression:
+            columns.append("compression")
+        if self._supports_table_compress_for:
+            columns.append("compress_for")
+
+        text = "SELECT %(columns)s "\
+            "FROM ALL_TABLES%(dblink)s "\
+            "WHERE table_name = :table_name"
+
+        if schema is not None:
+            params['owner'] = schema
+            text += " AND owner = :owner "
+        text = text % {'dblink': dblink, 'columns': ", ".join(columns)}
+
+        result = connection.execute(sql.text(text), **params)
+
+        enabled = dict(DISABLED=False, ENABLED=True)
+
+        row = result.first()
+        if row:
+            if "compression" in row and enabled.get(row.compression, False):
+                if "compress_for" in row:
+                    options['oracle_compress'] = row.compress_for
+                else:
+                    options['oracle_compress'] = True
+
+        return options
+
+    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
         """
 
@@ -1168,7 +1301,8 @@ class OracleDialect(default.DefaultDialect):
 
         params = {'table_name': table_name}
         text = \
-            "SELECT a.index_name, a.column_name, b.uniqueness "\
+            "SELECT a.index_name, a.column_name, "\
+            "\nb.index_type, b.uniqueness, b.compression, b.prefix_length "\
             "\nFROM ALL_IND_COLUMNS%(dblink)s a, "\
             "\nALL_INDEXES%(dblink)s b "\
             "\nWHERE "\
@@ -1194,6 +1328,7 @@ class OracleDialect(default.DefaultDialect):
             dblink=dblink, info_cache=kw.get('info_cache'))
         pkeys = pk_constraint['constrained_columns']
         uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
+        enabled = dict(DISABLED=False, ENABLED=True)
 
         oracle_sys_col = re.compile(r'SYS_NC\d+\$', re.IGNORECASE)
 
@@ -1213,9 +1348,14 @@ class OracleDialect(default.DefaultDialect):
             if rset.index_name != last_index_name:
                 remove_if_primary_key(index)
                 index = dict(name=self.normalize_name(rset.index_name),
-                             column_names=[])
+                             column_names=[], dialect_options={})
                 indexes.append(index)
             index['unique'] = uniqueness.get(rset.uniqueness, False)
+
+            if rset.index_type in ('BITMAP', 'FUNCTION-BASED BITMAP'):
+                index['dialect_options']['oracle_bitmap'] = True
+            if enabled.get(rset.compression, False):
+                index['dialect_options']['oracle_compress'] = rset.prefix_length
 
             # filter out Oracle SYS_NC names.  could also do an outer join
             # to the all_tab_columns table and check for real col names there.

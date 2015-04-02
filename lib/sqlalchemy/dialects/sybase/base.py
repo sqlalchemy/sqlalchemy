@@ -1,5 +1,5 @@
 # sybase/base.py
-# Copyright (C) 2010-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2010-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # get_select_precolumns(), limit_clause() implementation
 # copyright (C) 2007 Fisch Asset Management
@@ -146,40 +146,40 @@ class IMAGE(sqltypes.LargeBinary):
 
 
 class SybaseTypeCompiler(compiler.GenericTypeCompiler):
-    def visit_large_binary(self, type_):
+    def visit_large_binary(self, type_, **kw):
         return self.visit_IMAGE(type_)
 
-    def visit_boolean(self, type_):
+    def visit_boolean(self, type_, **kw):
         return self.visit_BIT(type_)
 
-    def visit_unicode(self, type_):
+    def visit_unicode(self, type_, **kw):
         return self.visit_NVARCHAR(type_)
 
-    def visit_UNICHAR(self, type_):
+    def visit_UNICHAR(self, type_, **kw):
         return "UNICHAR(%d)" % type_.length
 
-    def visit_UNIVARCHAR(self, type_):
+    def visit_UNIVARCHAR(self, type_, **kw):
         return "UNIVARCHAR(%d)" % type_.length
 
-    def visit_UNITEXT(self, type_):
+    def visit_UNITEXT(self, type_, **kw):
         return "UNITEXT"
 
-    def visit_TINYINT(self, type_):
+    def visit_TINYINT(self, type_, **kw):
         return "TINYINT"
 
-    def visit_IMAGE(self, type_):
+    def visit_IMAGE(self, type_, **kw):
         return "IMAGE"
 
-    def visit_BIT(self, type_):
+    def visit_BIT(self, type_, **kw):
         return "BIT"
 
-    def visit_MONEY(self, type_):
+    def visit_MONEY(self, type_, **kw):
         return "MONEY"
 
-    def visit_SMALLMONEY(self, type_):
+    def visit_SMALLMONEY(self, type_, **kw):
         return "SMALLMONEY"
 
-    def visit_UNIQUEIDENTIFIER(self, type_):
+    def visit_UNIQUEIDENTIFIER(self, type_, **kw):
         return "UNIQUEIDENTIFIER"
 
 ischema_names = {
@@ -377,7 +377,8 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 class SybaseDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + \
-            self.dialect.type_compiler.process(column.type)
+            self.dialect.type_compiler.process(
+                column.type, type_expression=column)
 
         if column.table is None:
             raise exc.CompileError(
@@ -434,6 +435,7 @@ class SybaseDialect(default.DefaultDialect):
     supports_native_boolean = False
     supports_unicode_binds = False
     postfetch_lastrowid = True
+    supports_simple_order_by_label = False
 
     colspecs = {}
     ischema_names = ischema_names

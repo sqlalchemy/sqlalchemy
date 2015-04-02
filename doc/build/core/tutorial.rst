@@ -307,6 +307,8 @@ them is different across different databases; each database's
 determine the correct value (or values; note that ``inserted_primary_key``
 returns a list so that it supports composite primary keys).
 
+.. _execute_multiple:
+
 Executing Multiple Statements
 ==============================
 
@@ -368,7 +370,7 @@ Selecting
 ==========
 
 We began with inserts just so that our test database had some data in it. The
-more interesting part of the data is selecting it ! We'll cover UPDATE and
+more interesting part of the data is selecting it! We'll cover UPDATE and
 DELETE statements later. The primary construct used to generate SELECT
 statements is the :func:`.select` function:
 
@@ -1689,7 +1691,7 @@ Inserts, Updates and Deletes
 
 We've seen :meth:`~.TableClause.insert` demonstrated
 earlier in this tutorial.   Where :meth:`~.TableClause.insert`
-prodces INSERT, the :meth:`~.TableClause.update`
+produces INSERT, the :meth:`~.TableClause.update`
 method produces UPDATE.  Both of these constructs feature
 a method called :meth:`~.ValuesBase.values` which specifies
 the VALUES or SET clause of the statement.

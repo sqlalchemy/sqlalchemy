@@ -1,7 +1,8 @@
+import copy
 
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, \
-    exc as sa_exc
+    exc as sa_exc, util
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     sessionmaker, class_mapper, backref, Session, util as orm_util,\
@@ -12,6 +13,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
+
 
 class CascadeArgTest(fixtures.MappedTest):
     run_inserts = None
@@ -85,6 +87,12 @@ class CascadeArgTest(fixtures.MappedTest):
             orm_util.CascadeOptions("all, delete-orphan"),
             frozenset)
 
+    def test_cascade_deepcopy(self):
+        old = orm_util.CascadeOptions("all, delete-orphan")
+        new = copy.deepcopy(old)
+        eq_(old, new)
+
+
     def test_cascade_assignable(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
@@ -110,6 +118,14 @@ class CascadeArgTest(fixtures.MappedTest):
             set(['delete', 'delete-orphan', 'expunge', 'merge',
                     'refresh-expire', 'save-update'])
             )
+
+    def test_cascade_unicode(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        rel = relationship(Address)
+        rel.cascade = util.u('save-update, merge, expunge')
+        eq_(rel.cascade, set(['save-update', 'merge', 'expunge']))
 
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):

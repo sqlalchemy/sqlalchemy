@@ -1,5 +1,5 @@
 # orm/sync.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -43,6 +43,23 @@ def populate(source, source_mapper, dest, dest_mapper,
                 r.primary_key and \
                 r.references(l):
             uowcommit.attributes[("pk_cascaded", dest, r)] = True
+
+
+def bulk_populate_inherit_keys(
+        source_dict, source_mapper, synchronize_pairs):
+    # a simplified version of populate() used by bulk insert mode
+    for l, r in synchronize_pairs:
+        try:
+            prop = source_mapper._columntoproperty[l]
+            value = source_dict[prop.key]
+        except exc.UnmappedColumnError:
+            _raise_col_to_prop(False, source_mapper, l, source_mapper, r)
+
+        try:
+            prop = source_mapper._columntoproperty[r]
+            source_dict[prop.key] = value
+        except exc.UnmappedColumnError:
+            _raise_col_to_prop(True, source_mapper, l, source_mapper, r)
 
 
 def clear(dest, dest_mapper, synchronize_pairs):

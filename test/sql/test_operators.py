@@ -1,4 +1,4 @@
-from sqlalchemy.testing import fixtures, eq_, is_
+from sqlalchemy.testing import fixtures, eq_, is_, is_not_
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate, null, true, false
@@ -12,7 +12,8 @@ from sqlalchemy import exc
 from sqlalchemy.engine import default
 from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
-from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, Boolean
+from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
+    Boolean, NullType, MatchType
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -360,7 +361,7 @@ class CustomComparatorTest(_CustomComparatorTests, fixtures.TestBase):
             class comparator_factory(TypeEngine.Comparator):
 
                 def __init__(self, expr):
-                    self.expr = expr
+                    super(MyInteger.comparator_factory, self).__init__(expr)
 
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
@@ -381,7 +382,7 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
             class comparator_factory(TypeDecorator.Comparator):
 
                 def __init__(self, expr):
-                    self.expr = expr
+                    super(MyInteger.comparator_factory, self).__init__(expr)
 
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
@@ -390,6 +391,31 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
                     return self.expr.op("goofy_and")(other)
 
         return MyInteger
+
+
+class TypeDecoratorTypeDecoratorComparatorTest(
+        _CustomComparatorTests, fixtures.TestBase):
+
+    def _add_override_factory(self):
+
+        class MyIntegerOne(TypeDecorator):
+            impl = Integer
+
+            class comparator_factory(TypeDecorator.Comparator):
+
+                def __init__(self, expr):
+                    super(MyIntegerOne.comparator_factory, self).__init__(expr)
+
+                def __add__(self, other):
+                    return self.expr.op("goofy")(other)
+
+                def __and__(self, other):
+                    return self.expr.op("goofy_and")(other)
+
+        class MyIntegerTwo(TypeDecorator):
+            impl = MyIntegerOne
+
+        return MyIntegerTwo
 
 
 class TypeDecoratorWVariantComparatorTest(
@@ -403,7 +429,9 @@ class TypeDecoratorWVariantComparatorTest(
             class comparator_factory(TypeEngine.Comparator):
 
                 def __init__(self, expr):
-                    self.expr = expr
+                    super(
+                        SomeOtherInteger.comparator_factory,
+                        self).__init__(expr)
 
                 def __add__(self, other):
                     return self.expr.op("not goofy")(other)
@@ -417,7 +445,7 @@ class TypeDecoratorWVariantComparatorTest(
             class comparator_factory(TypeDecorator.Comparator):
 
                 def __init__(self, expr):
-                    self.expr = expr
+                    super(MyInteger.comparator_factory, self).__init__(expr)
 
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
@@ -438,7 +466,7 @@ class CustomEmbeddedinTypeDecoratorTest(
             class comparator_factory(TypeEngine.Comparator):
 
                 def __init__(self, expr):
-                    self.expr = expr
+                    super(MyInteger.comparator_factory, self).__init__(expr)
 
                 def __add__(self, other):
                     return self.expr.op("goofy")(other)
@@ -460,7 +488,7 @@ class NewOperatorTest(_CustomComparatorTests, fixtures.TestBase):
             class comparator_factory(TypeEngine.Comparator):
 
                 def __init__(self, expr):
-                    self.expr = expr
+                    super(MyInteger.comparator_factory, self).__init__(expr)
 
                 def foob(self, other):
                     return self.expr.op("foob")(other)
@@ -776,6 +804,25 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             select([x]).where(~null()),
             "SELECT x WHERE NOT NULL"
+        )
+
+    def test_constant_non_singleton(self):
+        is_not_(null(), null())
+        is_not_(false(), false())
+        is_not_(true(), true())
+
+    def test_constant_render_distinct(self):
+        self.assert_compile(
+            select([null(), null()]),
+            "SELECT NULL AS anon_1, NULL AS anon_2"
+        )
+        self.assert_compile(
+            select([true(), true()]),
+            "SELECT true AS anon_1, true AS anon_2"
+        )
+        self.assert_compile(
+            select([false(), false()]),
+            "SELECT false AS anon_1, false AS anon_2"
         )
 
 
@@ -1599,6 +1646,31 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(self.table1.c.myid.match('somstr'),
                             "CONTAINS (mytable.myid, :myid_1)",
                             dialect=oracle.dialect())
+
+    def test_match_is_now_matchtype(self):
+        expr = self.table1.c.myid.match('somstr')
+        assert expr.type._type_affinity is MatchType()._type_affinity
+        assert isinstance(expr.type, MatchType)
+
+    def test_boolean_inversion_postgresql(self):
+        self.assert_compile(
+            ~self.table1.c.myid.match('somstr'),
+            "NOT mytable.myid @@ to_tsquery(%(myid_1)s)",
+            dialect=postgresql.dialect())
+
+    def test_boolean_inversion_mysql(self):
+        # because mysql doesnt have native boolean
+        self.assert_compile(
+            ~self.table1.c.myid.match('somstr'),
+            "NOT MATCH (mytable.myid) AGAINST (%s IN BOOLEAN MODE)",
+            dialect=mysql.dialect())
+
+    def test_boolean_inversion_mssql(self):
+        # because mssql doesnt have native boolean
+        self.assert_compile(
+            ~self.table1.c.myid.match('somstr'),
+            "NOT CONTAINS (mytable.myid, :myid_1)",
+            dialect=mssql.dialect())
 
 
 class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):

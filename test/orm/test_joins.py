@@ -361,6 +361,29 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 
+class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        Address = cls.classes.Address
+        users, addresses = (cls.tables.users, cls.tables.addresses)
+        mapper(User, users, properties={
+            'addresses': relationship(Address),
+            'ad_syn': synonym("addresses")
+        })
+        mapper(Address, addresses)
+
+    def test_join_on_synonym(self):
+        User = self.classes.User
+        self.assert_compile(
+            Session().query(User).join(User.ad_syn),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id"
+        )
+
+
 class JoinTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -396,6 +419,20 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON addresses.id = orders.address_id"
         )
 
+    def test_invalid_kwarg_join(self):
+        User = self.classes.User
+        sess = create_session()
+        assert_raises_message(
+            TypeError,
+            "unknown arguments: bar, foob",
+            sess.query(User).join, "address", foob="bar", bar="bat"
+        )
+        assert_raises_message(
+            TypeError,
+            "unknown arguments: bar, foob",
+            sess.query(User).outerjoin, "address", foob="bar", bar="bat"
+        )
+
     def test_left_is_none(self):
         User = self.classes.User
         Address = self.classes.Address
@@ -409,23 +446,15 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(literal_column('x'), User).join, Address
         )
 
-    def test_join_on_synonym(self):
+    def test_isouter_flag(self):
+        User = self.classes.User
 
-        class User(object):
-            pass
-        class Address(object):
-            pass
-        users, addresses = (self.tables.users, self.tables.addresses)
-        mapper(User, users, properties={
-            'addresses':relationship(Address),
-            'ad_syn':synonym("addresses")
-        })
-        mapper(Address, addresses)
         self.assert_compile(
-            Session().query(User).join(User.ad_syn),
+            create_session().query(User).join('orders', isouter=True),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses ON users.id = addresses.user_id"
+            "FROM users LEFT OUTER JOIN orders ON users.id = orders.user_id"
         )
+
 
     def test_multi_tuple_form(self):
         """test the 'tuple' form of join, now superseded
@@ -1088,7 +1117,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             [User(name='fred')]
         )
 
-
     def test_aliased_classes(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -1237,7 +1265,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_joins_from_adapted_entities(self):
         User = self.classes.User
 
-
         # test for #1853
 
         session = create_session()
@@ -1274,12 +1301,54 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                             'anon_2 ON anon_2.id = anon_1.users_id',
                             use_default_dialect=True)
 
+    def test_joins_from_adapted_entities_isouter(self):
+        User = self.classes.User
+
+        # test for #1853
+
+        session = create_session()
+        first = session.query(User)
+        second = session.query(User)
+        unioned = first.union(second)
+        subquery = session.query(User.id).subquery()
+        join = subquery, subquery.c.id == User.id
+        joined = unioned.join(*join, isouter=True)
+        self.assert_compile(joined,
+                            'SELECT anon_1.users_id AS '
+                            'anon_1_users_id, anon_1.users_name AS '
+                            'anon_1_users_name FROM (SELECT users.id '
+                            'AS users_id, users.name AS users_name '
+                            'FROM users UNION SELECT users.id AS '
+                            'users_id, users.name AS users_name FROM '
+                            'users) AS anon_1 LEFT OUTER JOIN (SELECT '
+                            'users.id AS id FROM users) AS anon_2 ON '
+                            'anon_2.id = anon_1.users_id',
+                            use_default_dialect=True)
+
+        first = session.query(User.id)
+        second = session.query(User.id)
+        unioned = first.union(second)
+        subquery = session.query(User.id).subquery()
+        join = subquery, subquery.c.id == User.id
+        joined = unioned.join(*join, isouter=True)
+        self.assert_compile(joined,
+                            'SELECT anon_1.users_id AS anon_1_users_id '
+                            'FROM (SELECT users.id AS users_id FROM '
+                            'users UNION SELECT users.id AS users_id '
+                            'FROM users) AS anon_1 LEFT OUTER JOIN '
+                            '(SELECT users.id AS id FROM users) AS '
+                            'anon_2 ON anon_2.id = anon_1.users_id',
+                            use_default_dialect=True)
+
     def test_reset_joinpoint(self):
         User = self.classes.User
 
         for aliased in (True, False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
             result = create_session().query(User).join('orders', 'items', aliased=aliased).filter_by(id=3).reset_joinpoint().join('orders','address', aliased=aliased).filter_by(id=1).all()
+            assert [User(id=7, name='jack')] == result
+
+            result = create_session().query(User).join('orders', 'items', aliased=aliased, isouter=True).filter_by(id=3).reset_joinpoint().join('orders','address', aliased=aliased, isouter=True).filter_by(id=1).all()
             assert [User(id=7, name='jack')] == result
 
             result = create_session().query(User).outerjoin('orders', 'items', aliased=aliased).filter_by(id=3).reset_joinpoint().outerjoin('orders','address', aliased=aliased).filter_by(id=1).all()

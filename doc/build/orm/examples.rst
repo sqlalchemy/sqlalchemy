@@ -62,6 +62,13 @@ Nested Sets
 
 .. automodule:: examples.nested_sets
 
+.. _examples_performance:
+
+Performance
+-----------
+
+.. automodule:: examples.performance
+
 .. _examples_relationships:
 
 Relationship Join Conditions
@@ -78,6 +85,8 @@ XML Persistence
 
 Versioning Objects
 ------------------------
+
+.. _examples_versioned_history:
 
 Versioning with a History Table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

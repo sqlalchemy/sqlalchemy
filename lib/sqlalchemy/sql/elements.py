@@ -1,5 +1,5 @@
 # sql/elements.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -861,6 +861,9 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
         expressions and function calls.
 
         """
+        while self._is_clone_of is not None:
+            self = self._is_clone_of
+
         return _anonymous_label(
             '%%(%d %s)s' % (id(self), getattr(self, 'name', 'anon'))
         )
@@ -1089,7 +1092,7 @@ class BindParameter(ColumnElement):
         """
         if isinstance(key, ColumnClause):
             type_ = key.type
-            key = key.name
+            key = key.key
         if required is NO_ARG:
             required = (value is NO_ARG and callable_ is None)
         if value is NO_ARG:
@@ -1276,7 +1279,7 @@ class TextClause(Executable, ClauseElement):
 
         E.g.::
 
-            fom sqlalchemy import text
+            from sqlalchemy import text
 
             t = text("SELECT * FROM users")
             result = connection.execute(t)
@@ -1617,10 +1620,10 @@ class Null(ColumnElement):
         return type_api.NULLTYPE
 
     @classmethod
-    def _singleton(cls):
+    def _instance(cls):
         """Return a constant :class:`.Null` construct."""
 
-        return NULL
+        return Null()
 
     def compare(self, other):
         return isinstance(other, Null)
@@ -1641,11 +1644,11 @@ class False_(ColumnElement):
         return type_api.BOOLEANTYPE
 
     def _negate(self):
-        return TRUE
+        return True_()
 
     @classmethod
-    def _singleton(cls):
-        """Return a constant :class:`.False_` construct.
+    def _instance(cls):
+        """Return a :class:`.False_` construct.
 
         E.g.::
 
@@ -1679,7 +1682,7 @@ class False_(ColumnElement):
 
         """
 
-        return FALSE
+        return False_()
 
     def compare(self, other):
         return isinstance(other, False_)
@@ -1700,17 +1703,17 @@ class True_(ColumnElement):
         return type_api.BOOLEANTYPE
 
     def _negate(self):
-        return FALSE
+        return False_()
 
     @classmethod
     def _ifnone(cls, other):
         if other is None:
-            return cls._singleton()
+            return cls._instance()
         else:
             return other
 
     @classmethod
-    def _singleton(cls):
+    def _instance(cls):
         """Return a constant :class:`.True_` construct.
 
         E.g.::
@@ -1745,14 +1748,10 @@ class True_(ColumnElement):
 
         """
 
-        return TRUE
+        return True_()
 
     def compare(self, other):
         return isinstance(other, True_)
-
-NULL = Null()
-FALSE = False_()
-TRUE = True_()
 
 
 class ClauseList(ClauseElement):
@@ -2147,7 +2146,7 @@ class Case(ColumnElement):
           result of the ``CASE`` construct if all expressions within
           :paramref:`.case.whens` evaluate to false.  When omitted, most
           databases will produce a result of NULL if none of the "when"
-          expressions evaulate to true.
+          expressions evaluate to true.
 
 
         """
@@ -2764,7 +2763,7 @@ class BinaryExpression(ColumnElement):
                 self.right,
                 self.negate,
                 negate=self.operator,
-                type_=type_api.BOOLEANTYPE,
+                type_=self.type,
                 modifiers=self.modifiers)
         else:
             return super(BinaryExpression, self)._negate()
@@ -2781,6 +2780,10 @@ class Grouping(ColumnElement):
 
     def self_group(self, against=None):
         return self
+
+    @property
+    def _key_label(self):
+        return self._label
 
     @property
     def _label(self):
@@ -3037,10 +3040,12 @@ class Label(ColumnElement):
 
         if name:
             self.name = name
+            self._resolve_label = self.name
         else:
             self.name = _anonymous_label(
                 '%%(%d %s)s' % (id(self), getattr(element, 'name', 'anon'))
             )
+
         self.key = self._label = self._key_label = self.name
         self._element = element
         self._type = type_
@@ -3091,7 +3096,7 @@ class Label(ColumnElement):
         self.element = clone(self.element, **kw)
         self.__dict__.pop('_allow_label_resolve', None)
         if anonymize_labels:
-            self.name = _anonymous_label(
+            self.name = self._resolve_label = _anonymous_label(
                 '%%(%d %s)s' % (
                     id(self), getattr(self.element, 'name', 'anon'))
             )
@@ -3332,7 +3337,7 @@ class ColumnClause(Immutable, ColumnElement):
             return name
 
     def _bind_param(self, operator, obj):
-        return BindParameter(self.name, obj,
+        return BindParameter(self.key, obj,
                              _compared_to_operator=operator,
                              _compared_to_type=self.type,
                              unique=True)
@@ -3384,7 +3389,7 @@ class ReleaseSavepointClause(_IdentifiedClause):
     __visit_name__ = 'release_savepoint'
 
 
-class quoted_name(util.text_type):
+class quoted_name(util.MemoizedSlots, util.text_type):
     """Represent a SQL identifier combined with quoting preferences.
 
     :class:`.quoted_name` is a Python unicode/str subclass which
@@ -3428,6 +3433,8 @@ class quoted_name(util.text_type):
 
     """
 
+    __slots__ = 'quote', 'lower', 'upper'
+
     def __new__(cls, value, quote):
         if value is None:
             return None
@@ -3447,15 +3454,13 @@ class quoted_name(util.text_type):
     def __reduce__(self):
         return quoted_name, (util.text_type(self), self.quote)
 
-    @util.memoized_instancemethod
-    def lower(self):
+    def _memoized_method_lower(self):
         if self.quote:
             return self
         else:
             return util.text_type(self).lower()
 
-    @util.memoized_instancemethod
-    def upper(self):
+    def _memoized_method_upper(self):
         if self.quote:
             return self
         else:
@@ -3471,6 +3476,8 @@ class quoted_name(util.text_type):
 class _truncated_label(quoted_name):
     """A unicode subclass used to identify symbolic "
     "names that may require truncation."""
+
+    __slots__ = ()
 
     def __new__(cls, value, quote=None):
         quote = getattr(value, "quote", quote)
@@ -3528,6 +3535,7 @@ class conv(_truncated_label):
         :ref:`constraint_naming_conventions`
 
     """
+    __slots__ = ()
 
 
 class _defer_name(_truncated_label):
@@ -3535,6 +3543,8 @@ class _defer_name(_truncated_label):
     generation.
 
     """
+    __slots__ = ()
+
     def __new__(cls, value):
         if value is None:
             return _NONE_NAME
@@ -3549,6 +3559,7 @@ class _defer_name(_truncated_label):
 
 class _defer_none_name(_defer_name):
     """indicate a 'deferred' name that was ultimately the value None."""
+    __slots__ = ()
 
 _NONE_NAME = _defer_none_name("_unnamed_")
 
@@ -3562,6 +3573,8 @@ _generated_label = _truncated_label
 class _anonymous_label(_truncated_label):
     """A unicode subclass used to identify anonymously
     generated names."""
+
+    __slots__ = ()
 
     def __add__(self, other):
         return _anonymous_label(
@@ -3729,7 +3742,8 @@ def _literal_as_text(element, warn=False):
         return _const_expr(element)
     else:
         raise exc.ArgumentError(
-            "SQL expression object or string expected."
+            "SQL expression object or string expected, got object of type %r "
+            "instead" % type(element)
         )
 
 

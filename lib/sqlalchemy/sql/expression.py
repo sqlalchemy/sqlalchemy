@@ -1,5 +1,5 @@
 # sql/expression.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -47,7 +47,7 @@ from .base import ColumnCollection, Generative, Executable, \
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
     CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
     alias, GenerativeSelect, \
-    subquery, HasPrefixes, Exists, ScalarSelect, TextAsFrom
+    subquery, HasPrefixes, HasSuffixes, Exists, ScalarSelect, TextAsFrom
 
 
 from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
@@ -89,9 +89,9 @@ asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
 desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
 distinct = public_factory(
     UnaryExpression._create_distinct, ".expression.distinct")
-true = public_factory(True_._singleton, ".expression.true")
-false = public_factory(False_._singleton, ".expression.false")
-null = public_factory(Null._singleton, ".expression.null")
+true = public_factory(True_._instance, ".expression.true")
+false = public_factory(False_._instance, ".expression.false")
+null = public_factory(Null._instance, ".expression.null")
 join = public_factory(Join._create_join, ".expression.join")
 outerjoin = public_factory(Join._create_outerjoin, ".expression.outerjoin")
 insert = public_factory(Insert, ".expression.insert")

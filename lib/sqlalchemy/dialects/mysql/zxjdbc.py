@@ -1,5 +1,5 @@
 # mysql/zxjdbc.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,6 +13,9 @@
     :connectstring: mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/\
 <database>
     :driverurl: http://dev.mysql.com/downloads/connector/j/
+
+    .. note:: Jython is not supported by current versions of SQLAlchemy.  The
+       zxjdbc dialect should be considered as experimental.
 
 Character Sets
 --------------

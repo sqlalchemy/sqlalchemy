@@ -294,6 +294,7 @@ class FixtureTest(fixtures.MappedTest):
     def static(self):
         return CannedResults(self)
 
+
 class CannedResults(object):
     """Built on demand, instances use mappers in effect at time of call."""
 
@@ -327,6 +328,20 @@ class CannedResults(object):
                 Address(id=5)
             ]),
             User(id=10, addresses=[])]
+
+    @property
+    def address_user_result(self):
+        User, Address = self.test.classes.User, self.test.classes.Address
+        u7 = User(id=7)
+        u8 = User(id=8)
+        u9 = User(id=9)
+        return [
+            Address(id=1, email_address='jack@bean.com', user=u7),
+            Address(id=2, email_address='ed@wood.com', user=u8),
+            Address(id=3, email_address='ed@bettyboop.com', user=u8),
+            Address(id=4, email_address='ed@lala.com', user=u8),
+            Address(id=5, user=u9)
+        ]
 
     @property
     def user_all_result(self):

@@ -1,6 +1,6 @@
 /*
 resultproxy.c
-Copyright (C) 2010-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
+Copyright (C) 2010-2015 the SQLAlchemy authors and contributors <see AUTHORS file>
 Copyright (C) 2010-2011 Gaetan de Menten gdementen@gmail.com
 
 This module is part of SQLAlchemy and is released under

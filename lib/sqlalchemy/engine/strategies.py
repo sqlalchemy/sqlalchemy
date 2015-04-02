@@ -1,5 +1,5 @@
 # engine/strategies.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -86,16 +86,7 @@ class DefaultEngineStrategy(EngineStrategy):
         pool = pop_kwarg('pool', None)
         if pool is None:
             def connect():
-                try:
-                    return dialect.connect(*cargs, **cparams)
-                except dialect.dbapi.Error as e:
-                    invalidated = dialect.is_disconnect(e, None, None)
-                    util.raise_from_cause(
-                        exc.DBAPIError.instance(
-                            None, None, e, dialect.dbapi.Error,
-                            connection_invalidated=invalidated
-                        )
-                    )
+                return dialect.connect(*cargs, **cparams)
 
             creator = pop_kwarg('creator', connect)
 

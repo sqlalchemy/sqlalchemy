@@ -86,6 +86,15 @@ class OrderByLabelTest(fixtures.TablesTest):
             [(7, ), (5, ), (3, )]
         )
 
+    def test_group_by_composed(self):
+        table = self.tables.some_table
+        expr = (table.c.x + table.c.y).label('lx')
+        stmt = select([func.count(table.c.id), expr]).group_by(expr).order_by(expr)
+        self._assert_result(
+            stmt,
+            [(1, 3), (1, 5), (1, 7)]
+        )
+
 
 class LimitOffsetTest(fixtures.TablesTest):
     __backend__ = True

@@ -81,11 +81,10 @@ class QueryTest(fixtures.TestBase):
 
         assert_raises_message(
             exc.StatementError,
-            r"A value is required for bind parameter 'user_name', in "
+            r"\(sqlalchemy.exc.InvalidRequestError\) A value is required for "
+            "bind parameter 'user_name', in "
             "parameter group 2 "
-            "\(original cause: (sqlalchemy.exc.)?InvalidRequestError: A "
-            "value is required for bind parameter 'user_name', in "
-            "parameter group 2\) u?'INSERT INTO query_users",
+            r"\[SQL: u?'INSERT INTO query_users",
             users.insert().execute,
             {'user_id': 7, 'user_name': 'jack'},
             {'user_id': 8, 'user_name': 'ed'},
@@ -994,6 +993,9 @@ class QueryTest(fixtures.TestBase):
     def test_fetchone_til_end(self):
         result = testing.db.execute("select * from query_users")
         eq_(result.fetchone(), None)
+        eq_(result.fetchone(), None)
+        eq_(result.fetchone(), None)
+        result.close()
         assert_raises_message(
             exc.ResourceClosedError,
             "This result object is closed.",
@@ -1174,6 +1176,48 @@ class QueryTest(fixtures.TestBase):
         )
         eq_(
             row[1], 1
+        )
+
+    def test_fetch_partial_result_map(self):
+        users.insert().execute(user_id=7, user_name='ed')
+
+        t = text("select * from query_users").columns(
+            user_name=String()
+        )
+        eq_(
+            testing.db.execute(t).fetchall(), [(7, 'ed')]
+        )
+
+    def test_fetch_unordered_result_map(self):
+        users.insert().execute(user_id=7, user_name='ed')
+
+        class Goofy1(TypeDecorator):
+            impl = String
+
+            def process_result_value(self, value, dialect):
+                return value + "a"
+
+        class Goofy2(TypeDecorator):
+            impl = String
+
+            def process_result_value(self, value, dialect):
+                return value + "b"
+
+        class Goofy3(TypeDecorator):
+            impl = String
+
+            def process_result_value(self, value, dialect):
+                return value + "c"
+
+        t = text(
+            "select user_name as a, user_name as b, "
+            "user_name as c from query_users").columns(
+            a=Goofy1(), b=Goofy2(), c=Goofy3()
+        )
+        eq_(
+            testing.db.execute(t).fetchall(), [
+                ('eda', 'edb', 'edc')
+            ]
         )
 
     @testing.requires.subqueries

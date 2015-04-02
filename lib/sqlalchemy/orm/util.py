@@ -1,5 +1,5 @@
 # orm/util.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -30,21 +30,19 @@ class CascadeOptions(frozenset):
         'all', 'none', 'delete-orphan'])
     _allowed_cascades = all_cascades
 
-    def __new__(cls, arg):
-        values = set([
-            c for c
-            in re.split('\s*,\s*', arg or "")
-            if c
-        ])
+    __slots__ = (
+        'save_update', 'delete', 'refresh_expire', 'merge',
+        'expunge', 'delete_orphan')
 
+    def __new__(cls, value_list):
+        if isinstance(value_list, util.string_types) or value_list is None:
+            return cls.from_string(value_list)
+        values = set(value_list)
         if values.difference(cls._allowed_cascades):
             raise sa_exc.ArgumentError(
                 "Invalid cascade option(s): %s" %
                 ", ".join([repr(x) for x in
-                           sorted(
-                    values.difference(cls._allowed_cascades)
-                )])
-            )
+                           sorted(values.difference(cls._allowed_cascades))]))
 
         if "all" in values:
             values.update(cls._add_w_all_cascades)
@@ -69,6 +67,15 @@ class CascadeOptions(frozenset):
         return "CascadeOptions(%r)" % (
             ",".join([x for x in sorted(self)])
         )
+
+    @classmethod
+    def from_string(cls, arg):
+        values = [
+            c for c
+            in re.split('\s*,\s*', arg or "")
+            if c
+        ]
+        return cls(values)
 
 
 def _validator_events(
@@ -538,8 +545,13 @@ class AliasedInsp(InspectionAttr):
                 mapper, self)
 
     def __repr__(self):
-        return '<AliasedInsp at 0x%x; %s>' % (
-            id(self), self.class_.__name__)
+        if self.with_polymorphic_mappers:
+            with_poly = "(%s)" % ", ".join(
+                mp.class_.__name__ for mp in self.with_polymorphic_mappers)
+        else:
+            with_poly = ""
+        return '<AliasedInsp at 0x%x; %s%s>' % (
+            id(self), self.class_.__name__, with_poly)
 
 
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
@@ -643,7 +655,8 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 def with_polymorphic(base, classes, selectable=False,
                      flat=False,
                      polymorphic_on=None, aliased=False,
-                     innerjoin=False, _use_mapper_path=False):
+                     innerjoin=False, _use_mapper_path=False,
+                     _existing_alias=None):
     """Produce an :class:`.AliasedClass` construct which specifies
     columns for descendant mappers of the given base.
 
@@ -708,6 +721,16 @@ def with_polymorphic(base, classes, selectable=False,
        only be specified if querying for one specific subtype only
     """
     primary_mapper = _class_to_mapper(base)
+    if _existing_alias:
+        assert _existing_alias.mapper is primary_mapper
+        classes = util.to_set(classes)
+        new_classes = set([
+            mp.class_ for mp in
+            _existing_alias.with_polymorphic_mappers])
+        if classes == new_classes:
+            return _existing_alias
+        else:
+            classes = classes.union(new_classes)
     mappers, selectable = primary_mapper.\
         _with_polymorphic_args(classes, selectable,
                                innerjoin=innerjoin)
@@ -753,7 +776,10 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None, isouter=False):
+    def __init__(
+            self,
+            left, right, onclause=None, isouter=False,
+            _left_memo=None, _right_memo=None):
 
         left_info = inspection.inspect(left)
         left_orm_info = getattr(left, '_joined_from_info', left_info)
@@ -762,6 +788,9 @@ class _ORMJoin(expression.Join):
         adapt_to = right_info.selectable
 
         self._joined_from_info = right_info
+
+        self._left_memo = _left_memo
+        self._right_memo = _right_memo
 
         if isinstance(onclause, util.string_types):
             onclause = getattr(left_orm_info.entity, onclause)
@@ -813,6 +842,28 @@ class _ORMJoin(expression.Join):
             if right_info.is_aliased_class:
                 single_crit = right_info._adapter.traverse(single_crit)
             self.onclause = self.onclause & single_crit
+
+    def _splice_into_center(self, other):
+        """Splice a join into the center.
+
+        Given join(a, b) and join(b, c), return join(a, b).join(c)
+
+        """
+        assert self.right is other.left
+
+        left = _ORMJoin(
+            self.left, other.left,
+            self.onclause, isouter=self.isouter,
+            _left_memo=self._left_memo,
+            _right_memo=other._left_memo
+        )
+
+        return _ORMJoin(
+            left,
+            other.right,
+            other.onclause, isouter=other.isouter,
+            _right_memo=other._right_memo
+        )
 
     def join(self, right, onclause=None, isouter=False, join_to_left=None):
         return _ORMJoin(self, right, onclause, isouter)

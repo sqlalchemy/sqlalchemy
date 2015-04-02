@@ -1,5 +1,5 @@
 # testing/exclusions.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -425,7 +425,7 @@ def skip(db, reason=None):
 
 def only_on(dbs, reason=None):
     return only_if(
-        OrPredicate([SpecPredicate(db) for db in util.to_list(dbs)])
+        OrPredicate([Predicate.as_predicate(db) for db in util.to_list(dbs)])
     )
 
 

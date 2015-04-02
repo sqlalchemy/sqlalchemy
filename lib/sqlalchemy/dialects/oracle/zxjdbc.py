@@ -1,5 +1,5 @@
 # oracle/zxjdbc.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,6 +12,9 @@
     :connectstring: oracle+zxjdbc://user:pass@host/dbname
     :driverurl: http://www.oracle.com/technology/software/tech/java/\
 sqlj_jdbc/index.html.
+
+    .. note:: Jython is not supported by current versions of SQLAlchemy.  The
+       zxjdbc dialect should be considered as experimental.
 
 """
 import decimal

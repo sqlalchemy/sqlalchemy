@@ -1,5 +1,5 @@
 # engine/default.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -395,6 +395,12 @@ class DefaultDialect(interfaces.Dialect):
             self._set_connection_isolation(connection, opts['isolation_level'])
 
     def _set_connection_isolation(self, connection, level):
+        if connection.in_transaction():
+            util.warn(
+                "Connection is already established with a Transaction; "
+                "setting isolation_level may implicitly rollback or commit "
+                "the existing transaction, or have no effect until "
+                "next transaction")
         self.set_isolation_level(connection.connection, level)
         connection.connection._connection_record.\
             finalize_callback.append(self.reset_isolation_level)
@@ -452,14 +458,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     isinsert = False
     isupdate = False
     isdelete = False
+    is_crud = False
     isddl = False
     executemany = False
-    result_map = None
     compiled = None
     statement = None
-    postfetch_cols = None
-    prefetch_cols = None
-    returning_cols = None
+    result_column_struct = None
     _is_implicit_returning = False
     _is_explicit_returning = False
 
@@ -515,15 +519,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if not compiled.can_execute:
             raise exc.ArgumentError("Not an executable clause")
 
-        self.execution_options = compiled.statement._execution_options
-        if connection._execution_options:
-            self.execution_options = dict(self.execution_options)
-            self.execution_options.update(connection._execution_options)
+        self.execution_options = compiled.statement._execution_options.union(
+            connection._execution_options)
 
-        # compiled clauseelement.  process bind params, process table defaults,
-        # track collections used by ResultProxy to target and process results
-
-        self.result_map = compiled.result_map
+        self.result_column_struct = (
+            compiled._result_columns, compiled._ordered_columns)
 
         self.unicode_statement = util.text_type(compiled)
         if not dialect.supports_unicode_statements:
@@ -548,6 +548,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.cursor = self.create_cursor()
 
         if self.isinsert or self.isupdate or self.isdelete:
+            self.is_crud = True
             self._is_explicit_returning = bool(compiled.statement._returning)
             self._is_implicit_returning = bool(
                 compiled.returning and not compiled.statement._returning)
@@ -681,10 +682,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return self.execution_options.get("no_parameters", False)
 
     @util.memoized_property
-    def is_crud(self):
-        return self.isinsert or self.isupdate or self.isdelete
-
-    @util.memoized_property
     def should_autocommit(self):
         autocommit = self.execution_options.get('autocommit',
                                                 not self.compiled and
@@ -799,52 +796,84 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def supports_sane_multi_rowcount(self):
         return self.dialect.supports_sane_multi_rowcount
 
-    def post_insert(self):
+    def _setup_crud_result_proxy(self):
+        if self.isinsert and \
+                not self.executemany:
+            if not self._is_implicit_returning and \
+                not self.compiled.inline and \
+                    self.dialect.postfetch_lastrowid:
 
+                self._setup_ins_pk_from_lastrowid()
+
+            elif not self._is_implicit_returning:
+                self._setup_ins_pk_from_empty()
+
+        result = self.get_result_proxy()
+
+        if self.isinsert:
+            if self._is_implicit_returning:
+                row = result.fetchone()
+                self.returned_defaults = row
+                self._setup_ins_pk_from_implicit_returning(row)
+                result._soft_close(_autoclose_connection=False)
+                result._metadata = None
+            elif not self._is_explicit_returning:
+                result._soft_close(_autoclose_connection=False)
+                result._metadata = None
+        elif self.isupdate and self._is_implicit_returning:
+            row = result.fetchone()
+            self.returned_defaults = row
+            result._soft_close(_autoclose_connection=False)
+            result._metadata = None
+
+        elif result._metadata is None:
+            # no results, get rowcount
+            # (which requires open cursor on some drivers
+            # such as kintersbasdb, mxodbc)
+            result.rowcount
+            result._soft_close(_autoclose_connection=False)
+        return result
+
+    def _setup_ins_pk_from_lastrowid(self):
         key_getter = self.compiled._key_getters_for_crud_column[2]
         table = self.compiled.statement.table
+        compiled_params = self.compiled_parameters[0]
 
-        if not self._is_implicit_returning and \
-                not self._is_explicit_returning and \
-                not self.compiled.inline and \
-                self.dialect.postfetch_lastrowid:
+        lastrowid = self.get_lastrowid()
+        autoinc_col = table._autoincrement_column
+        if autoinc_col is not None:
+            # apply type post processors to the lastrowid
+            proc = autoinc_col.type._cached_result_processor(
+                self.dialect, None)
+            if proc is not None:
+                lastrowid = proc(lastrowid)
+        self.inserted_primary_key = [
+            lastrowid if c is autoinc_col else
+            compiled_params.get(key_getter(c), None)
+            for c in table.primary_key
+        ]
 
-                lastrowid = self.get_lastrowid()
-                autoinc_col = table._autoincrement_column
-                if autoinc_col is not None:
-                    # apply type post processors to the lastrowid
-                    proc = autoinc_col.type._cached_result_processor(
-                        self.dialect, None)
-                    if proc is not None:
-                        lastrowid = proc(lastrowid)
-                self.inserted_primary_key = [
-                    lastrowid if c is autoinc_col else
-                    self.compiled_parameters[0].get(key_getter(c), None)
-                    for c in table.primary_key
-                ]
-        else:
-            self.inserted_primary_key = [
-                self.compiled_parameters[0].get(key_getter(c), None)
-                for c in table.primary_key
-            ]
-
-    def _fetch_implicit_returning(self, resultproxy):
+    def _setup_ins_pk_from_empty(self):
+        key_getter = self.compiled._key_getters_for_crud_column[2]
         table = self.compiled.statement.table
-        row = resultproxy.fetchone()
+        compiled_params = self.compiled_parameters[0]
+        self.inserted_primary_key = [
+            compiled_params.get(key_getter(c), None)
+            for c in table.primary_key
+        ]
 
-        ipk = []
-        for c, v in zip(table.primary_key, self.inserted_primary_key):
-            if v is not None:
-                ipk.append(v)
-            else:
-                ipk.append(row[c])
+    def _setup_ins_pk_from_implicit_returning(self, row):
+        key_getter = self.compiled._key_getters_for_crud_column[2]
+        table = self.compiled.statement.table
+        compiled_params = self.compiled_parameters[0]
 
-        self.inserted_primary_key = ipk
-        self.returned_defaults = row
-
-    def _fetch_implicit_update_returning(self, resultproxy):
-        row = resultproxy.fetchone()
-        self.returned_defaults = row
+        self.inserted_primary_key = [
+            row[col] if value is None else value
+            for col, value in [
+                (col, compiled_params.get(key_getter(col), None))
+                for col in table.primary_key
+            ]
+        ]
 
     def lastrow_has_defaults(self):
         return (self.isinsert or self.isupdate) and \
@@ -956,22 +985,23 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def _process_executesingle_defaults(self):
         key_getter = self.compiled._key_getters_for_crud_column[2]
-
         prefetch = self.compiled.prefetch
         self.current_parameters = compiled_parameters = \
             self.compiled_parameters[0]
 
         for c in prefetch:
             if self.isinsert:
-                val = self.get_insert_default(c)
+                if c.default and \
+                        not c.default.is_sequence and c.default.is_scalar:
+                    val = c.default.arg
+                else:
+                    val = self.get_insert_default(c)
             else:
                 val = self.get_update_default(c)
 
             if val is not None:
                 compiled_parameters[key_getter(c)] = val
         del self.current_parameters
-
-
 
 
 DefaultDialect.execution_ctx_cls = DefaultExecutionContext

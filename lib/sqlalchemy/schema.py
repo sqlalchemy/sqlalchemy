@@ -1,5 +1,5 @@
 # schema.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -35,6 +35,7 @@ from .sql.schema import (
     UniqueConstraint,
     _get_table_key,
     ColumnCollectionConstraint,
+    ColumnCollectionMixin
     )
 
 
@@ -58,5 +59,7 @@ from .sql.ddl import (
     DDLBase,
     DDLElement,
     _CreateDropBase,
-    _DDLCompiles
+    _DDLCompiles,
+    sort_tables,
+    sort_tables_and_constraints
 )

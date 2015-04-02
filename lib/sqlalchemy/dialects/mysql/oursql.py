@@ -1,5 +1,5 @@
 # mysql/oursql.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,22 +16,10 @@
 Unicode
 -------
 
-oursql defaults to using ``utf8`` as the connection charset, but other
-encodings may be used instead. Like the MySQL-Python driver, unicode support
-can be completely disabled::
+Please see :ref:`mysql_unicode` for current recommendations on unicode
+handling.
 
-  # oursql sets the connection charset to utf8 automatically; all strings come
-  # back as utf8 str
-  create_engine('mysql+oursql:///mydb?use_unicode=0')
 
-To not automatically use ``utf8`` and instead use whatever the connection
-defaults to, there is a separate parameter::
-
-  # use the default connection charset; all strings come back as unicode
-  create_engine('mysql+oursql:///mydb?default_charset=1')
-
-  # use latin1 as the connection charset; all strings come back as unicode
-  create_engine('mysql+oursql:///mydb?charset=latin1')
 """
 
 import re

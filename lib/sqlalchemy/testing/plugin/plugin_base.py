@@ -1,5 +1,5 @@
 # plugin/plugin_base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -93,7 +93,10 @@ def setup_options(make_option):
                 help="Exclude tests with tag <tag>")
     make_option("--write-profiles", action="store_true",
                 dest="write_profiles", default=False,
-                help="Write/update profiling data.")
+                help="Write/update failing profiling data.")
+    make_option("--force-write-profiles", action="store_true",
+                dest="force_write_profiles", default=False,
+                help="Unconditionally write/update profiling data.")
 
 
 def configure_follower(follower_ident):
@@ -291,7 +294,7 @@ def _setup_requirements(argument):
 
 @post
 def _prep_testing_database(options, file_config):
-    from sqlalchemy.testing import config
+    from sqlalchemy.testing import config, util
     from sqlalchemy.testing.exclusions import against
     from sqlalchemy import schema, inspect
 
@@ -322,19 +325,10 @@ def _prep_testing_database(options, file_config):
                                          schema="test_schema")
                         ))
 
-            for tname in reversed(inspector.get_table_names(
-                    order_by="foreign_key")):
-                e.execute(schema.DropTable(
-                    schema.Table(tname, schema.MetaData())
-                ))
+            util.drop_all_tables(e, inspector)
 
             if config.requirements.schemas.enabled_for_config(cfg):
-                for tname in reversed(inspector.get_table_names(
-                        order_by="foreign_key", schema="test_schema")):
-                    e.execute(schema.DropTable(
-                        schema.Table(tname, schema.MetaData(),
-                                     schema="test_schema")
-                    ))
+                util.drop_all_tables(e, inspector, schema=cfg.test_schema)
 
             if against(cfg, "postgresql"):
                 from sqlalchemy.dialects import postgresql

@@ -1,5 +1,5 @@
 # engine/interfaces.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -654,17 +654,82 @@ class Dialect(object):
         return None
 
     def reset_isolation_level(self, dbapi_conn):
-        """Given a DBAPI connection, revert its isolation to the default."""
+        """Given a DBAPI connection, revert its isolation to the default.
+
+        Note that this is a dialect-level method which is used as part
+        of the implementation of the :class:`.Connection` and
+        :class:`.Engine`
+        isolation level facilities; these APIs should be preferred for
+        most typical use cases.
+
+        .. seealso::
+
+            :meth:`.Connection.get_isolation_level` - view current level
+
+            :attr:`.Connection.default_isolation_level` - view default level
+
+            :paramref:`.Connection.execution_options.isolation_level` -
+            set per :class:`.Connection` isolation level
+
+            :paramref:`.create_engine.isolation_level` -
+            set per :class:`.Engine` isolation level
+
+        """
 
         raise NotImplementedError()
 
     def set_isolation_level(self, dbapi_conn, level):
-        """Given a DBAPI connection, set its isolation level."""
+        """Given a DBAPI connection, set its isolation level.
+
+        Note that this is a dialect-level method which is used as part
+        of the implementation of the :class:`.Connection` and
+        :class:`.Engine`
+        isolation level facilities; these APIs should be preferred for
+        most typical use cases.
+
+        .. seealso::
+
+            :meth:`.Connection.get_isolation_level` - view current level
+
+            :attr:`.Connection.default_isolation_level` - view default level
+
+            :paramref:`.Connection.execution_options.isolation_level` -
+            set per :class:`.Connection` isolation level
+
+            :paramref:`.create_engine.isolation_level` -
+            set per :class:`.Engine` isolation level
+
+        """
 
         raise NotImplementedError()
 
     def get_isolation_level(self, dbapi_conn):
-        """Given a DBAPI connection, return its isolation level."""
+        """Given a DBAPI connection, return its isolation level.
+
+        When working with a :class:`.Connection` object, the corresponding
+        DBAPI connection may be procured using the
+        :attr:`.Connection.connection` accessor.
+
+        Note that this is a dialect-level method which is used as part
+        of the implementation of the :class:`.Connection` and
+        :class:`.Engine` isolation level facilities;
+        these APIs should be preferred for most typical use cases.
+
+
+        .. seealso::
+
+            :meth:`.Connection.get_isolation_level` - view current level
+
+            :attr:`.Connection.default_isolation_level` - view default level
+
+            :paramref:`.Connection.execution_options.isolation_level` -
+            set per :class:`.Connection` isolation level
+
+            :paramref:`.create_engine.isolation_level` -
+            set per :class:`.Engine` isolation level
+
+
+        """
 
         raise NotImplementedError()
 
@@ -917,7 +982,23 @@ class ExceptionContext(object):
     connection = None
     """The :class:`.Connection` in use during the exception.
 
-    This member is always present.
+    This member is present, except in the case of a failure when
+    first connecting.
+
+    .. seealso::
+
+        :attr:`.ExceptionContext.engine`
+
+
+    """
+
+    engine = None
+    """The :class:`.Engine` in use during the exception.
+
+    This member should always be present, even in the case of a failure
+    when first connecting.
+
+    .. versionadded:: 1.0.0
 
     """
 

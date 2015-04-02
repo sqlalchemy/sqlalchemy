@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, assert_raises
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema
 from sqlalchemy.util import u
@@ -10,6 +10,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionRes
 from sqlalchemy import testing
 import datetime
 import decimal
+
 
 class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
@@ -295,9 +296,6 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             self.assert_compile(type_, expected)
 
     @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
-    @testing.fails_if(
-            lambda: testing.against("mysql+oursql") and util.py3k,
-            'some round trips fail, oursql bug ?')
     @testing.provide_metadata
     def test_bit_50_roundtrip(self):
         bit_table = Table('mysql_bits', self.metadata,
@@ -419,29 +417,66 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         """Exercise funky TIMESTAMP default syntax when used in columns."""
 
         columns = [
-            ([TIMESTAMP],
+            ([TIMESTAMP], {},
              'TIMESTAMP NULL'),
-            ([mysql.MSTimeStamp],
+
+            ([mysql.MSTimeStamp], {},
              'TIMESTAMP NULL'),
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text('CURRENT_TIMESTAMP'))],
+             {},
+             "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"),
+
             ([mysql.MSTimeStamp,
               DefaultClause(sql.text('CURRENT_TIMESTAMP'))],
-             "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"),
+
             ([mysql.MSTimeStamp,
               DefaultClause(sql.text("'1999-09-09 09:09:09'"))],
-             "TIMESTAMP DEFAULT '1999-09-09 09:09:09'"),
-            ([mysql.MSTimeStamp,
-              DefaultClause(sql.text("'1999-09-09 09:09:09' "
-                                      "ON UPDATE CURRENT_TIMESTAMP"))],
-             "TIMESTAMP DEFAULT '1999-09-09 09:09:09' "
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09'"),
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text("'1999-09-09 09:09:09'"))],
+             {},
+             "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09'"),
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text(
+                  "'1999-09-09 09:09:09' "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {},
+             "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09' "
              "ON UPDATE CURRENT_TIMESTAMP"),
+
             ([mysql.MSTimeStamp,
-              DefaultClause(sql.text("CURRENT_TIMESTAMP "
-                                      "ON UPDATE CURRENT_TIMESTAMP"))],
-             "TIMESTAMP DEFAULT CURRENT_TIMESTAMP "
+              DefaultClause(sql.text(
+                  "'1999-09-09 09:09:09' "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09' "
              "ON UPDATE CURRENT_TIMESTAMP"),
-            ]
-        for spec, expected in columns:
-            c = Column('t', *spec)
+
+            ([mysql.MSTimeStamp(),
+              DefaultClause(sql.text(
+                  "CURRENT_TIMESTAMP "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {},
+             "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP "
+             "ON UPDATE CURRENT_TIMESTAMP"),
+
+            ([mysql.MSTimeStamp,
+              DefaultClause(sql.text(
+                  "CURRENT_TIMESTAMP "
+                  "ON UPDATE CURRENT_TIMESTAMP"))],
+             {'nullable': False},
+             "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP "
+             "ON UPDATE CURRENT_TIMESTAMP"),
+        ]
+        for spec, kw, expected in columns:
+            c = Column('t', *spec, **kw)
             Table('t', MetaData(), c)
             self.assert_compile(
                 schema.CreateColumn(c),
@@ -451,19 +486,20 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_timestamp_nullable(self):
-        ts_table = Table('mysql_timestamp', self.metadata,
-                            Column('t1', TIMESTAMP),
-                            Column('t2', TIMESTAMP, nullable=False),
-                    )
+        ts_table = Table(
+            'mysql_timestamp', self.metadata,
+            Column('t1', TIMESTAMP),
+            Column('t2', TIMESTAMP, nullable=False),
+            mysql_engine='InnoDB'
+        )
         self.metadata.create_all()
-
-        now = testing.db.execute("select now()").scalar()
 
         # TIMESTAMP without NULL inserts current time when passed
         # NULL.  when not passed, generates 0000-00-00 quite
         # annoyingly.
-        ts_table.insert().execute({'t1': now, 't2': None})
-        ts_table.insert().execute({'t1': None, 't2': None})
+        # the flag http://dev.mysql.com/doc/refman/5.6/en/\
+        # server-system-variables.html#sysvar_explicit_defaults_for_timestamp
+        # changes this for 5.6 if set.
 
         # normalize dates that are over the second boundary
         def normalize(dt):
@@ -473,11 +509,27 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 return now
             else:
                 return dt
-        eq_(
-            [tuple([normalize(dt) for dt in row])
-            for row in ts_table.select().execute()],
-            [(now, now), (None, now)]
-        )
+
+        with testing.db.begin() as conn:
+            now = conn.scalar("select now()")
+
+            conn.execute(
+                ts_table.insert(), {'t1': now, 't2': None})
+            conn.execute(
+                ts_table.insert(), {'t1': None, 't2': None})
+            conn.execute(
+                ts_table.insert(), {'t2': None})
+
+            eq_(
+                [tuple([normalize(dt) for dt in row])
+                 for row in conn.execute(ts_table.select())],
+                [
+                    (now, now),
+                    (None, now),
+                    (None, now)
+                ]
+            )
+
 
     def test_datetime_generic(self):
         self.assert_compile(
@@ -550,12 +602,12 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             eq_(colspec(table.c.y5), 'y5 YEAR(4)')
 
 
-class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class EnumSetTest(
+        fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'mysql'
     __dialect__ = mysql.dialect()
     __backend__ = True
-
 
     @testing.provide_metadata
     def test_enum(self):
@@ -566,7 +618,8 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
             e3 = mysql.ENUM("'a'", "'b'", strict=True)
             e4 = mysql.ENUM("'a'", "'b'", strict=True)
 
-        enum_table = Table('mysql_enum', self.metadata,
+        enum_table = Table(
+            'mysql_enum', self.metadata,
             Column('e1', e1),
             Column('e2', e2, nullable=False),
             Column('e2generic', Enum("a", "b"), nullable=False),
@@ -576,32 +629,43 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
             Column('e5', mysql.ENUM("a", "b")),
             Column('e5generic', Enum("a", "b")),
             Column('e6', mysql.ENUM("'a'", "b")),
-            )
+        )
 
-        eq_(colspec(enum_table.c.e1),
-                       "e1 ENUM('a','b')")
-        eq_(colspec(enum_table.c.e2),
-                       "e2 ENUM('a','b') NOT NULL")
-        eq_(colspec(enum_table.c.e2generic),
-                      "e2generic ENUM('a','b') NOT NULL")
-        eq_(colspec(enum_table.c.e3),
-                       "e3 ENUM('a','b')")
-        eq_(colspec(enum_table.c.e4),
-                       "e4 ENUM('a','b') NOT NULL")
-        eq_(colspec(enum_table.c.e5),
-                       "e5 ENUM('a','b')")
-        eq_(colspec(enum_table.c.e5generic),
-                      "e5generic ENUM('a','b')")
-        eq_(colspec(enum_table.c.e6),
-                       "e6 ENUM('''a''','b')")
+        eq_(
+            colspec(enum_table.c.e1),
+            "e1 ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e2),
+            "e2 ENUM('a','b') NOT NULL")
+        eq_(
+            colspec(enum_table.c.e2generic),
+            "e2generic ENUM('a','b') NOT NULL")
+        eq_(
+            colspec(enum_table.c.e3),
+            "e3 ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e4),
+            "e4 ENUM('a','b') NOT NULL")
+        eq_(
+            colspec(enum_table.c.e5),
+            "e5 ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e5generic),
+            "e5generic ENUM('a','b')")
+        eq_(
+            colspec(enum_table.c.e6),
+            "e6 ENUM('''a''','b')")
         enum_table.create()
 
-        assert_raises(exc.DBAPIError, enum_table.insert().execute,
-                        e1=None, e2=None, e3=None, e4=None)
+        assert_raises(
+            exc.DBAPIError, enum_table.insert().execute,
+            e1=None, e2=None, e3=None, e4=None)
 
-        assert_raises(exc.StatementError, enum_table.insert().execute,
-                                        e1='c', e2='c', e2generic='c', e3='c',
-                                        e4='c', e5='c', e5generic='c', e6='c')
+        assert_raises(
+            exc.StatementError,
+            enum_table.insert().execute,
+            e1='c', e2='c', e2generic='c', e3='c',
+            e4='c', e5='c', e5generic='c', e6='c')
 
         enum_table.insert().execute()
         enum_table.insert().execute(e1='a', e2='a', e2generic='a', e3='a',
@@ -617,67 +681,191 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 
         eq_(res, expected)
 
-    @testing.provide_metadata
-    def test_set(self):
-
+    def _set_fixture_one(self):
         with testing.expect_deprecated('Manually quoting SET value literals'):
             e1, e2 = mysql.SET("'a'", "'b'"), mysql.SET("'a'", "'b'")
             e4 = mysql.SET("'a'", "b")
             e5 = mysql.SET("'a'", "'b'", quoting="quoted")
-        set_table = Table('mysql_set', self.metadata,
+
+        set_table = Table(
+            'mysql_set', self.metadata,
             Column('e1', e1),
             Column('e2', e2, nullable=False),
             Column('e3', mysql.SET("a", "b")),
             Column('e4', e4),
             Column('e5', e5)
+        )
+        return set_table
+
+    def test_set_colspec(self):
+        self.metadata = MetaData()
+        set_table = self._set_fixture_one()
+        eq_(
+            colspec(set_table.c.e1),
+            "e1 SET('a','b')")
+        eq_(colspec(
+            set_table.c.e2),
+            "e2 SET('a','b') NOT NULL")
+        eq_(
+            colspec(set_table.c.e3),
+            "e3 SET('a','b')")
+        eq_(
+            colspec(set_table.c.e4),
+            "e4 SET('''a''','b')")
+        eq_(
+            colspec(set_table.c.e5),
+            "e5 SET('a','b')")
+
+    @testing.provide_metadata
+    def test_no_null(self):
+        set_table = self._set_fixture_one()
+        set_table.create()
+        assert_raises(
+            exc.DBAPIError, set_table.insert().execute,
+            e1=None, e2=None, e3=None, e4=None)
+
+    @testing.only_on('+oursql')
+    @testing.provide_metadata
+    def test_oursql_error_one(self):
+        set_table = self._set_fixture_one()
+        set_table.create()
+        assert_raises(
+            exc.StatementError, set_table.insert().execute,
+            e1='c', e2='c', e3='c', e4='c')
+
+    @testing.fails_on("+oursql", "oursql raises on the truncate warning")
+    @testing.provide_metadata
+    def test_empty_set_no_empty_string(self):
+        t = Table(
+            't', self.metadata,
+            Column('id', Integer),
+            Column('data', mysql.SET("a", "b"))
+        )
+        t.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                t.insert(),
+                {'id': 1, 'data': set()},
+                {'id': 2, 'data': set([''])},
+                {'id': 3, 'data': set(['a', ''])},
+                {'id': 4, 'data': set(['b'])},
+            )
+            eq_(
+                conn.execute(t.select().order_by(t.c.id)).fetchall(),
+                [
+                    (1, set()),
+                    (2, set()),
+                    (3, set(['a'])),
+                    (4, set(['b'])),
+                ]
             )
 
-        eq_(colspec(set_table.c.e1),
-                       "e1 SET('a','b')")
-        eq_(colspec(set_table.c.e2),
-                       "e2 SET('a','b') NOT NULL")
-        eq_(colspec(set_table.c.e3),
-                       "e3 SET('a','b')")
-        eq_(colspec(set_table.c.e4),
-                       "e4 SET('''a''','b')")
-        eq_(colspec(set_table.c.e5),
-                       "e5 SET('a','b')")
+    def test_bitwise_required_for_empty(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            "Can't use the blank value '' in a SET without setting "
+            "retrieve_as_bitwise=True",
+            mysql.SET, "a", "b", ''
+        )
+
+    @testing.provide_metadata
+    def test_empty_set_empty_string(self):
+        t = Table(
+            't', self.metadata,
+            Column('id', Integer),
+            Column('data', mysql.SET("a", "b", '', retrieve_as_bitwise=True))
+        )
+        t.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                t.insert(),
+                {'id': 1, 'data': set()},
+                {'id': 2, 'data': set([''])},
+                {'id': 3, 'data': set(['a', ''])},
+                {'id': 4, 'data': set(['b'])},
+            )
+            eq_(
+                conn.execute(t.select().order_by(t.c.id)).fetchall(),
+                [
+                    (1, set()),
+                    (2, set([''])),
+                    (3, set(['a', ''])),
+                    (4, set(['b'])),
+                ]
+            )
+
+    @testing.provide_metadata
+    def test_string_roundtrip(self):
+        set_table = self._set_fixture_one()
         set_table.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                set_table.insert(),
+                dict(e1='a', e2='a', e3='a', e4="'a'", e5="a,b"))
+            conn.execute(
+                set_table.insert(),
+                dict(e1='b', e2='b', e3='b', e4='b', e5="a,b"))
 
-        assert_raises(exc.DBAPIError, set_table.insert().execute,
-                        e1=None, e2=None, e3=None, e4=None)
-
-        if testing.against("+oursql"):
-            assert_raises(exc.StatementError, set_table.insert().execute,
-                                        e1='c', e2='c', e3='c', e4='c')
-
-        set_table.insert().execute(e1='a', e2='a', e3='a', e4="'a'", e5="a,b")
-        set_table.insert().execute(e1='b', e2='b', e3='b', e4='b', e5="a,b")
-
-        res = set_table.select().execute().fetchall()
-
-        if not testing.against("+oursql"):
-            # oursql receives this for first row:
-            # (set(['']), set(['']), set(['']), set(['']), None),
-            # but based on ...OS?  MySQL version?  not clear.
-            # not worth testing.
-
-            expected = []
-
-            expected.extend([
-                (set(['a']), set(['a']), set(['a']), set(["'a'"]), set(['a', 'b'])),
-                (set(['b']), set(['b']), set(['b']), set(['b']), set(['a', 'b']))
-            ])
+            expected = [
+                (set(['a']), set(['a']), set(['a']),
+                 set(["'a'"]), set(['a', 'b'])),
+                (set(['b']), set(['b']), set(['b']),
+                 set(['b']), set(['a', 'b']))
+            ]
+            res = conn.execute(
+                set_table.select()
+            ).fetchall()
 
             eq_(res, expected)
 
     @testing.provide_metadata
+    def test_unicode_roundtrip(self):
+        set_table = Table(
+            't', self.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', mysql.SET(
+                u('réveillé'), u('drôle'), u('S’il'), convert_unicode=True)),
+        )
+
+        set_table.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                set_table.insert(),
+                {"data": set([u('réveillé'), u('drôle')])})
+
+            row = conn.execute(
+                set_table.select()
+            ).first()
+
+            eq_(
+                row,
+                (1, set([u('réveillé'), u('drôle')]))
+            )
+
+    @testing.provide_metadata
+    def test_int_roundtrip(self):
+        set_table = self._set_fixture_one()
+        set_table.create()
+        with testing.db.begin() as conn:
+            conn.execute(
+                set_table.insert(),
+                dict(e1=1, e2=2, e3=3, e4=3, e5=0)
+            )
+            res = conn.execute(set_table.select()).first()
+            eq_(
+                res,
+                (
+                    set(['a']), set(['b']), set(['a', 'b']),
+                    set(["'a'", 'b']), set([]))
+            )
+
+    @testing.provide_metadata
     def test_set_roundtrip_plus_reflection(self):
-        set_table = Table('mysql_set', self.metadata,
-                        Column('s1',
-                          mysql.SET("dq", "sq")),
-                            Column('s2', mysql.SET("a")),
-                            Column('s3', mysql.SET("5", "7", "9")))
+        set_table = Table(
+            'mysql_set', self.metadata,
+            Column('s1', mysql.SET("dq", "sq")),
+            Column('s2', mysql.SET("a")),
+            Column('s3', mysql.SET("5", "7", "9")))
 
         eq_(colspec(set_table.c.s1), "s1 SET('dq','sq')")
         eq_(colspec(set_table.c.s2), "s2 SET('a')")
@@ -691,37 +879,34 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
                 expected = expected or store
                 table.insert(store).execute()
                 row = table.select().execute().first()
-                self.assert_(list(row) == expected)
+                eq_(row, tuple(expected))
                 table.delete().execute()
 
             roundtrip([None, None, None], [None] * 3)
-            roundtrip(['', '', ''], [set([''])] * 3)
+            roundtrip(['', '', ''], [set([])] * 3)
             roundtrip([set(['dq']), set(['a']), set(['5'])])
             roundtrip(['dq', 'a', '5'], [set(['dq']), set(['a']),
                       set(['5'])])
-            roundtrip([1, 1, 1], [set(['dq']), set(['a']), set(['5'
-                      ])])
-            roundtrip([set(['dq', 'sq']), None, set(['9', '5', '7'
-                      ])])
-        set_table.insert().execute({'s3': set(['5'])},
-                {'s3': set(['5', '7'])}, {'s3': set(['5', '7', '9'])},
-                {'s3': set(['7', '9'])})
+            roundtrip([1, 1, 1], [set(['dq']), set(['a']), set(['5'])])
+            roundtrip([set(['dq', 'sq']), None, set(['9', '5', '7'])])
+        set_table.insert().execute(
+            {'s3': set(['5'])},
+            {'s3': set(['5', '7'])},
+            {'s3': set(['5', '7', '9'])},
+            {'s3': set(['7', '9'])})
 
-        # NOTE: the string sent to MySQL here is sensitive to ordering.
-        # for some reason the set ordering is always "5, 7" when we test on
-        # MySQLdb but in Py3K this is not guaranteed.   So basically our
-        # SET type doesn't do ordering correctly (not sure how it can,
-        # as we don't know how the SET was configured in the first place.)
-        rows = select([set_table.c.s3],
-                    set_table.c.s3.in_([set(['5']), ['5', '7']])
-                        ).execute().fetchall()
+        rows = select(
+            [set_table.c.s3],
+            set_table.c.s3.in_([set(['5']), ['5', '7']])
+        ).execute().fetchall()
         found = set([frozenset(row[0]) for row in rows])
         eq_(found, set([frozenset(['5']), frozenset(['5', '7'])]))
 
     @testing.provide_metadata
     def test_unicode_enum(self):
         metadata = self.metadata
-        t1 = Table('table', metadata,
+        t1 = Table(
+            'table', metadata,
             Column('id', Integer, primary_key=True),
             Column('value', Enum(u('réveillé'), u('drôle'), u('S’il'))),
             Column('value2', mysql.ENUM(u('réveillé'), u('drôle'), u('S’il')))
@@ -731,9 +916,11 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
         t1.insert().execute(value=u('réveillé'), value2=u('réveillé'))
         t1.insert().execute(value=u('S’il'), value2=u('S’il'))
         eq_(t1.select().order_by(t1.c.id).execute().fetchall(),
-            [(1, u('drôle'), u('drôle')), (2, u('réveillé'), u('réveillé')),
-                        (3, u('S’il'), u('S’il'))]
-        )
+            [
+                (1, u('drôle'), u('drôle')),
+                (2, u('réveillé'), u('réveillé')),
+                (3, u('S’il'), u('S’il'))
+            ])
 
         # test reflection of the enum labels
 
@@ -743,11 +930,15 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
         # TODO: what's wrong with the last element ?  is there
         # latin-1 stuff forcing its way in ?
 
-        assert t2.c.value.type.enums[0:2] == \
-                (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        eq_(
+            t2.c.value.type.enums[0:2],
+            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        )
 
-        assert t2.c.value2.type.enums[0:2] == \
-                (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        eq_(
+            t2.c.value2.type.enums[0:2],
+            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+        )
 
     def test_enum_compile(self):
         e1 = Enum('x', 'y', 'z', name='somename')
@@ -767,7 +958,8 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
     def test_enum_parse(self):
 
         with testing.expect_deprecated('Manually quoting ENUM value literals'):
-            enum_table = Table('mysql_enum', self.metadata,
+            enum_table = Table(
+                'mysql_enum', self.metadata,
                 Column('e1', mysql.ENUM("'a'")),
                 Column('e2', mysql.ENUM("''")),
                 Column('e3', mysql.ENUM('a')),
@@ -795,14 +987,17 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
     @testing.exclude('mysql', '<', (5,))
     def test_set_parse(self):
         with testing.expect_deprecated('Manually quoting SET value literals'):
-            set_table = Table('mysql_set', self.metadata,
+            set_table = Table(
+                'mysql_set', self.metadata,
                 Column('e1', mysql.SET("'a'")),
-                Column('e2', mysql.SET("''")),
+                Column('e2', mysql.SET("''", retrieve_as_bitwise=True)),
                 Column('e3', mysql.SET('a')),
-                Column('e4', mysql.SET('')),
-                Column('e5', mysql.SET("'a'", "''")),
-                Column('e6', mysql.SET("''", "'a'")),
-                Column('e7', mysql.SET("''", "'''a'''", "'b''b'", "''''")))
+                Column('e4', mysql.SET('', retrieve_as_bitwise=True)),
+                Column('e5', mysql.SET("'a'", "''", retrieve_as_bitwise=True)),
+                Column('e6', mysql.SET("''", "'a'", retrieve_as_bitwise=True)),
+                Column('e7', mysql.SET(
+                    "''", "'''a'''", "'b''b'", "''''",
+                    retrieve_as_bitwise=True)))
 
         for col in set_table.c:
             self.assert_(repr(col))
@@ -821,7 +1016,8 @@ class EnumSetTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
             eq_(t.c.e6.type.values, ("", "a"))
             eq_(t.c.e7.type.values, ("", "'a'", "b'b", "'"))
 
+
 def colspec(c):
     return testing.db.dialect.ddl_compiler(
-                    testing.db.dialect, None).get_column_specification(c)
+        testing.db.dialect, None).get_column_specification(c)
 

@@ -17,7 +17,8 @@ behavior.   In particular the "Horizontal Sharding", "Hybrid Attributes", and
 
     associationproxy
     automap
-    declarative
+    baked
+    declarative/index
     mutable
     orderinglist
     horizontal_shard

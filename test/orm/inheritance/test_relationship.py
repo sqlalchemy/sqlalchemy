@@ -328,6 +328,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
     def test_relationship_compare(self):
         sess = self._five_obj_fixture()
         e1 = sess.query(Engineer).filter_by(name='e1').one()
+        e2 = sess.query(Engineer).filter_by(name='e2').one()
 
         eq_(sess.query(Engineer)
                 .join(Engineer.engineers, aliased=True)
@@ -338,6 +339,11 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
                 .join(Engineer.engineers, aliased=True)
                 .filter(Engineer.reports_to == e1).all(),
             [e1])
+
+        eq_(sess.query(Engineer)
+                .join(Engineer.engineers, aliased=True)
+                .filter(Engineer.reports_to != None).all(),
+            [e1, e2])
 
 class M2MFilterTest(fixtures.MappedTest):
 
@@ -565,20 +571,20 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         # test that the splicing of the join works here, doesn't break in
         # the middle of "parent join child1"
         q = sess.query(Child1).options(joinedload('left_child2'))
-        self.assert_compile(q.limit(1).with_labels().statement,
-            "SELECT anon_1.child1_id AS anon_1_child1_id, anon_1.parent_id "
-            "AS anon_1_parent_id, anon_1.parent_cls AS anon_1_parent_cls, "
-            "child2_1.id AS child2_1_id, parent_1.id AS "
-            "parent_1_id, parent_1.cls AS parent_1_cls FROM "
-            "(SELECT child1.id AS child1_id, parent.id AS parent_id, "
-            "parent.cls AS parent_cls "
+        self.assert_compile(
+            q.limit(1).with_labels().statement,
+            "SELECT child1.id AS child1_id, parent.id AS parent_id, "
+            "parent.cls AS parent_cls, child2_1.id AS child2_1_id, "
+            "parent_1.id AS parent_1_id, parent_1.cls AS parent_1_cls "
             "FROM parent JOIN child1 ON parent.id = child1.id "
-            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN "
-            "(secondary AS secondary_1 JOIN "
+            "LEFT OUTER JOIN (secondary AS secondary_1 JOIN "
             "(parent AS parent_1 JOIN child2 AS child2_1 "
-            "ON parent_1.id = child2_1.id) ON parent_1.id = secondary_1.left_id) "
-            "ON anon_1.parent_id = secondary_1.right_id",
-            {'param_1':1})
+            "ON parent_1.id = child2_1.id) "
+            "ON parent_1.id = secondary_1.left_id) "
+            "ON parent.id = secondary_1.right_id "
+            "LIMIT :param_1",
+            checkparams={'param_1': 1}
+        )
 
         # another way to check
         assert q.limit(1).with_labels().subquery().count().scalar() == 1
@@ -1558,12 +1564,9 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
 
         bname, cname, dname = q._entities
 
-        b_name_adapted = bname._resolve_expr_against_query_aliases(
-                                        q, bname.column, None)
-        c_name_adapted = cname._resolve_expr_against_query_aliases(
-                                        q, cname.column, None)
-        d_name_adapted = dname._resolve_expr_against_query_aliases(
-                                        q, dname.column, None)
+        b_name_adapted = q._adapt_clause(bname.column, False, True)
+        c_name_adapted = q._adapt_clause(cname.column, False, True)
+        d_name_adapted = q._adapt_clause(dname.column, False, True)
 
         assert bool(b_name_adapted == a.c.name)
         assert bool(c_name_adapted == ac_adapted.c.name)

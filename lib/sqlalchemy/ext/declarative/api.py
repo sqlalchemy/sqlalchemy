@@ -1,5 +1,5 @@
 # ext/declarative/api.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -175,15 +175,12 @@ class declared_attr(interfaces._MappedAttribute, property):
                 "non-mapped class %s" %
                 (desc.fget.__name__, cls.__name__))
             return desc.fget(cls)
-        try:
-            reg = manager.info['declared_attr_reg']
-        except KeyError:
-            raise exc.InvalidRequestError(
-                "@declared_attr called outside of the "
-                "declarative mapping process; is declarative_base() being "
-                "used correctly?")
 
-        if desc in reg:
+        reg = manager.info.get('declared_attr_reg', None)
+
+        if reg is None:
+            return desc.fget(cls)
+        elif desc in reg:
             return reg[desc]
         else:
             reg[desc] = obj = desc.fget(cls)

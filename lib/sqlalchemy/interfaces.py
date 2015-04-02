@@ -1,5 +1,5 @@
 # sqlalchemy/interfaces.py
-# Copyright (C) 2007-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2007-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # Copyright (C) 2007 Jason Kirtland jek@discorporate.us
 #

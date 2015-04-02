@@ -1,5 +1,5 @@
 # testing/fixtures.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -192,9 +192,8 @@ class TablesTest(TestBase):
     def sql_count_(self, count, fn):
         self.assert_sql_count(self.bind, fn, count)
 
-    def sql_eq_(self, callable_, statements, with_sequences=None):
-        self.assert_sql(self.bind,
-                        callable_, statements, with_sequences)
+    def sql_eq_(self, callable_, statements):
+        self.assert_sql(self.bind, callable_, statements)
 
     @classmethod
     def _load_fixtures(cls):

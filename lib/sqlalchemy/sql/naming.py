@@ -1,5 +1,5 @@
 # sqlalchemy/naming.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -113,10 +113,12 @@ def _constraint_name_for_table(const, table):
 
     if isinstance(const.name, conv):
         return const.name
-    elif convention is not None and (
-        const.name is None or not isinstance(const.name, conv) and
-            "constraint_name" in convention
-    ):
+    elif convention is not None and \
+        not isinstance(const.name, conv) and \
+            (
+            const.name is None or
+            "constraint_name" in convention or
+            isinstance(const.name, _defer_name)):
         return conv(
             convention % ConventionDict(const, table,
                                         metadata.naming_convention)

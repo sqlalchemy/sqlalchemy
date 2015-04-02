@@ -315,7 +315,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         compiled = t.compile()
-        eq_(compiled.result_map,
+        eq_(compiled._create_result_map(),
             {'id': ('id',
                     (t.c.id._proxies[0],
                      'id',
@@ -331,7 +331,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         t = text("select id, name from user").columns(id=Integer, name=String)
 
         compiled = t.compile()
-        eq_(compiled.result_map,
+        eq_(compiled._create_result_map(),
             {'id': ('id',
                     (t.c.id._proxies[0],
                      'id',
@@ -350,7 +350,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             table1.join(t, table1.c.myid == t.c.id))
         compiled = stmt.compile()
         eq_(
-            compiled.result_map,
+            compiled._create_result_map(),
             {
                 "myid": ("myid",
                          (table1.c.myid, "myid", "myid"), table1.c.myid.type),
@@ -382,7 +382,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         compiled = stmt.compile()
         return dict(
             (elem, key)
-            for key, elements in compiled.result_map.items()
+            for key, elements in compiled._create_result_map().items()
             for elem in elements[1]
         )
 
@@ -496,6 +496,10 @@ class TextWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def _test(self, fn, arg, offending_clause, expected):
+        with expect_warnings("Textual "):
+            stmt = fn(arg)
+            self.assert_compile(stmt, expected)
+
         assert_raises_message(
             exc.SAWarning,
             r"Textual (?:SQL|column|SQL FROM) expression %(stmt)r should be "
@@ -504,10 +508,6 @@ class TextWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
             },
             fn, arg
         )
-
-        with expect_warnings("Textual "):
-            stmt = fn(arg)
-            self.assert_compile(stmt, expected)
 
     def test_where(self):
         self._test(
@@ -572,6 +572,29 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT mytable_1.myid AS mytable_1_myid "
             "FROM mytable AS mytable_1 ORDER BY mytable_1.name"
+        )
+
+    def test_order_by_named_label_from_anon_label(self):
+        s1 = select([table1.c.myid.label(None).label("foo"), table1.c.name])
+        stmt = s1.order_by("foo")
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid AS foo, mytable.name "
+            "FROM mytable ORDER BY foo"
+        )
+
+    def test_order_by_outermost_label(self):
+        # test [ticket:3335], assure that order_by("foo")
+        # catches the label named "foo" in the columns clause only,
+        # and not the label named "foo" in the FROM clause
+        s1 = select([table1.c.myid.label("foo"), table1.c.name]).alias()
+        stmt = select([s1.c.name, func.bar().label("foo")]).order_by("foo")
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.name, bar() AS foo FROM "
+            "(SELECT mytable.myid AS foo, mytable.name AS name "
+            "FROM mytable) AS anon_1 ORDER BY foo"
         )
 
     def test_unresolvable_warning_order_by(self):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -161,11 +161,14 @@ class Load(Generative, MapperOption):
                 ext_info = inspect(ac)
 
                 path_element = ext_info.mapper
+                existing = path.entity_path[prop].get(
+                    self.context, "path_with_polymorphic")
                 if not ext_info.is_aliased_class:
                     ac = orm_util.with_polymorphic(
                         ext_info.mapper.base_mapper,
                         ext_info.mapper, aliased=True,
-                        _use_mapper_path=True)
+                        _use_mapper_path=True,
+                        _existing_alias=existing)
                 path.entity_path[prop].set(
                     self.context, "path_with_polymorphic", inspect(ac))
                 path = path[prop][path_element]
@@ -175,6 +178,9 @@ class Load(Generative, MapperOption):
         if path.has_entity:
             path = path.entity_path
         return path
+
+    def __str__(self):
+        return "Load(strategy=%r)" % self.strategy
 
     def _coerce_strat(self, strategy):
         if strategy is not None:
@@ -358,6 +364,7 @@ class _UnboundLoad(Load):
             return None
 
         token = start_path[0]
+
         if isinstance(token, util.string_types):
             entity = self._find_entity_basestring(query, token, raiseerr)
         elif isinstance(token, PropComparator):
@@ -401,10 +408,18 @@ class _UnboundLoad(Load):
         # prioritize "first class" options over those
         # that were "links in the chain", e.g. "x" and "y" in
         # someload("x.y.z") versus someload("x") / someload("x.y")
-        if self._is_chain_link:
-            effective_path.setdefault(context, "loader", loader)
+
+        if effective_path.is_token:
+            for path in effective_path.generate_for_superclasses():
+                if self._is_chain_link:
+                    path.setdefault(context, "loader", loader)
+                else:
+                    path.set(context, "loader", loader)
         else:
-            effective_path.set(context, "loader", loader)
+            if self._is_chain_link:
+                effective_path.setdefault(context, "loader", loader)
+            else:
+                effective_path.set(context, "loader", loader)
 
     def _find_entity_prop_comparator(self, query, token, mapper, raiseerr):
         if _is_aliased_class(mapper):

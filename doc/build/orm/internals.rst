@@ -11,6 +11,9 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.state.AttributeState
     :members:
 
+.. autoclass:: sqlalchemy.orm.util.CascadeOptions
+    :members:
+
 .. autoclass:: sqlalchemy.orm.instrumentation.ClassManager
     :members:
     :inherited-members:
@@ -19,6 +22,9 @@ sections, are listed here.
     :members:
     :inherited-members:
 
+.. autoclass:: sqlalchemy.orm.properties.ComparableProperty
+    :members:
+
 .. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
     :members:
 
@@ -26,10 +32,14 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.attributes.Event
     :members:
 
+.. autoclass:: sqlalchemy.orm.identity.IdentityMap
+    :members:
 
 .. autoclass:: sqlalchemy.orm.base.InspectionAttr
     :members:
 
+.. autoclass:: sqlalchemy.orm.base.InspectionAttrInfo
+    :members:
 
 .. autoclass:: sqlalchemy.orm.state.InstanceState
     :members:
@@ -45,6 +55,29 @@ sections, are listed here.
 
 .. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
     :members:
+
+    .. py:attribute:: info
+
+        Info dictionary associated with the object, allowing user-defined
+        data to be associated with this :class:`.InspectionAttr`.
+
+        The dictionary is generated when first accessed.  Alternatively,
+        it can be specified as a constructor argument to the
+        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        functions.
+
+        .. versionadded:: 0.8  Added support for .info to all
+           :class:`.MapperProperty` subclasses.
+
+        .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
+           from :class:`.MapperProperty` so that it can apply to a wider
+           variety of ORM and extension constructs.
+
+        .. seealso::
+
+            :attr:`.QueryableAttribute.info`
+
+            :attr:`.SchemaItem.info`
 
 .. autodata:: sqlalchemy.orm.interfaces.NOT_EXTENSION
 

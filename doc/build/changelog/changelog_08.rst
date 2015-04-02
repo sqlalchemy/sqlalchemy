@@ -14,7 +14,7 @@
 
     .. change::
         :tags: bug, mssql
-        :versions: 1.0.0, 0.9.7
+        :versions: 1.0.0b1, 0.9.7
 
         Added statement encoding to the "SET IDENTITY_INSERT"
         statements which operate when an explicit INSERT is being
@@ -24,7 +24,7 @@
 
     .. change::
         :tags: bug, mssql
-        :versions: 1.0.0, 0.9.7
+        :versions: 1.0.0b1, 0.9.7
         :tickets: 3091
 
         In the SQL Server pyodbc dialect, repaired the implementation
@@ -36,7 +36,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0, 0.9.7
+        :versions: 1.0.0b1, 0.9.7
         :tickets: 3124
 
         Fixed bug in :class:`.Enum` and other :class:`.SchemaType`
@@ -46,7 +46,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.0.0, 0.9.7
+        :versions: 1.0.0b1, 0.9.7
         :tickets: 3102
 
         Fixed a bug within the custom operator plus :meth:`.TypeEngine.with_variant`
@@ -55,7 +55,7 @@
 
     .. change::
         :tags: bug, mysql
-        :versions: 1.0.0, 0.9.7
+        :versions: 1.0.0b1, 0.9.7
         :tickets: 3101
 
         MySQL error 2014 "commands out of sync" appears to be raised as a
@@ -65,7 +65,7 @@
 
     .. change::
         :tags: bug, mysql
-        :versions: 1.0.0, 0.9.5
+        :versions: 1.0.0b1, 0.9.5
         :tickets: 3085
 
         Fixed bug where column names added to ``mysql_length`` parameter
@@ -76,7 +76,7 @@
 
     .. change::
         :tags: bug, declarative
-        :versions: 1.0.0, 0.9.5
+        :versions: 1.0.0b1, 0.9.5
         :tickets: 3062
 
         The ``__mapper_args__`` dictionary is copied from a declarative
@@ -89,7 +89,7 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
         :tickets: 3044
 
         Fixed bug in INSERT..FROM SELECT construct where selecting from a
@@ -97,7 +97,7 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
         :tickets: 3053
 
         Added the ``hashable=False`` flag to the PG :class:`.HSTORE` type, which
@@ -107,7 +107,7 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
         :tickets: 3055
 
         Fixed bug in subquery eager loading where a long chain of
@@ -118,7 +118,7 @@
 
     .. change::
         :tags: bug, ext
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
         :tickets: 3051, 3093
 
         Fixed bug in mutable extension where :class:`.MutableDict` did not
@@ -126,7 +126,7 @@
 
     .. change::
         :tags: bug, ext
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
         :pullreq: bitbucket:24
         :tickets: 3093, 3051
 
@@ -136,7 +136,7 @@
 
     .. change::
         :tags: bug, mysql
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
         :pullreq: bitbucket:15
 
         Added support for reflecting tables where an index includes
@@ -146,7 +146,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3047
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
 
         Fixed ORM bug where the :func:`.class_mapper` function would mask
         AttributeErrors or KeyErrors that should raise during mapper
@@ -156,7 +156,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3045
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
 
         Fixed bug where :meth:`.Table.update` and :meth:`.Table.delete`
         would produce an empty WHERE clause when an empty :func:`.and_()`
@@ -166,7 +166,7 @@
     .. change::
         :tags: bug, postgresql
         :pullreq: bitbucket:13
-        :versions: 0.9.5, 1.0.0
+        :versions: 0.9.5, 1.0.0b1
 
         Added a new "disconnect" message "connection has been closed unexpectedly".
         This appears to be related to newer versions of SSL.
@@ -2214,7 +2214,7 @@
         expr1 = mycolumn > 2
         bool(expr1 == expr1)
 
-      Would evaulate as ``False``, even though this is an identity
+      Would evaluate as ``False``, even though this is an identity
       comparison, because ``mycolumn > 2`` would be "grouped" before
       being placed into the :class:`.BinaryExpression`, thus changing
       its identity.   :class:`.BinaryExpression` now keeps track

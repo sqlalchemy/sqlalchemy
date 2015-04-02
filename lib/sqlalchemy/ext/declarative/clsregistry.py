@@ -1,5 +1,5 @@
 # ext/declarative/clsregistry.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -71,6 +71,8 @@ class _MultipleClassMarker(object):
 
     """
 
+    __slots__ = 'on_remove', 'contents', '__weakref__'
+
     def __init__(self, classes, on_remove=None):
         self.on_remove = on_remove
         self.contents = set([
@@ -127,6 +129,8 @@ class _ModuleMarker(object):
 
     """
 
+    __slots__ = 'parent', 'name', 'contents', 'mod_ns', 'path', '__weakref__'
+
     def __init__(self, name, parent):
         self.parent = parent
         self.name = name
@@ -172,6 +176,8 @@ class _ModuleMarker(object):
 
 
 class _ModNS(object):
+    __slots__ = '__parent',
+
     def __init__(self, parent):
         self.__parent = parent
 
@@ -193,6 +199,8 @@ class _ModNS(object):
 
 
 class _GetColumns(object):
+    __slots__ = 'cls',
+
     def __init__(self, cls):
         self.cls = cls
 
@@ -221,6 +229,8 @@ inspection._inspects(_GetColumns)(
 
 
 class _GetTable(object):
+    __slots__ = 'key', 'metadata'
+
     def __init__(self, key, metadata):
         self.key = key
         self.metadata = metadata

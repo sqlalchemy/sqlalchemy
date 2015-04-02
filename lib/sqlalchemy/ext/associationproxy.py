@@ -1,5 +1,5 @@
 # ext/associationproxy.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -86,7 +86,7 @@ ASSOCIATION_PROXY = util.symbol('ASSOCIATION_PROXY')
 """
 
 
-class AssociationProxy(interfaces.InspectionAttr):
+class AssociationProxy(interfaces.InspectionAttrInfo):
     """A descriptor that presents a read/write view of an object attribute."""
 
     is_attribute = False
@@ -527,7 +527,10 @@ class _AssociationList(_AssociationCollection):
         return self.setter(object, value)
 
     def __getitem__(self, index):
-        return self._get(self.col[index])
+        if not isinstance(index, slice):
+            return self._get(self.col[index])
+        else:
+            return [self._get(member) for member in self.col[index]]
 
     def __setitem__(self, index, value):
         if not isinstance(index, slice):

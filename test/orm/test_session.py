@@ -204,6 +204,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         sess.flush()
         make_transient(u1)
         sess.rollback()
+        assert attributes.instance_state(u1).transient
 
     def test_make_transient_to_detached(self):
         users, User = self.tables.users, self.classes.User
@@ -504,6 +505,25 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert user not in s
         assert s.query(User).count() == 0
 
+    def test_already_attached(self):
+        User = self.classes.User
+        users = self.tables.users
+        mapper(User, users)
+
+        s1 = Session()
+        s2 = Session()
+
+        u1 = User(id=1, name='u1')
+        make_transient_to_detached(u1)  # shorthand for actually persisting it
+        s1.add(u1)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Object '<User.*?>' is already attached to session",
+            s2.add, u1
+        )
+        assert u1 not in s2
+        assert not s2.identity_map.keys()
 
     @testing.uses_deprecated()
     def test_identity_conflict(self):
@@ -561,7 +581,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u2 is not None and u2 is not u1
         assert u2 in sess
 
-        assert_raises(Exception, lambda: sess.add(u1))
+        assert_raises(AssertionError, lambda: sess.add(u1))
 
         sess.expunge(u2)
         assert u2 not in sess
@@ -661,7 +681,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         go()
         eq_(canary, [False])
 
-    def test_deleted_expunged(self):
+    def test_deleted_auto_expunged(self):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
@@ -681,6 +701,53 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.commit()
 
         assert object_session(u1) is None
+
+    def test_explicit_expunge_pending(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(name='x')
+        sess.add(u1)
+
+        sess.flush()
+        sess.expunge(u1)
+
+        assert u1 not in sess
+        assert object_session(u1) is None
+
+        sess.rollback()
+
+        assert u1 not in sess
+        assert object_session(u1) is None
+
+    def test_explicit_expunge_deleted(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        sess.add(User(name='x'))
+        sess.commit()
+
+        u1 = sess.query(User).first()
+        sess.delete(u1)
+
+        sess.flush()
+
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is sess
+
+        sess.expunge(u1)
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is None
+
+        sess.rollback()
+        assert was_deleted(u1)
+        assert u1 not in sess
+        assert object_session(u1) is None
+
 
 class SessionStateWFixtureTest(_fixtures.FixtureTest):
     __backend__ = True
@@ -1316,6 +1383,9 @@ class DisposedStates(fixtures.MappedTest):
     def test_close(self):
         self._test_session().close()
 
+    def test_invalidate(self):
+        self._test_session().invalidate()
+
     def test_expunge_all(self):
         self._test_session().expunge_all()
 
@@ -1398,7 +1468,9 @@ class SessionInterface(fixtures.TestBase):
         raises_('refresh', user_arg)
 
         instance_methods = self._public_session_methods() \
-            - self._class_methods
+            - self._class_methods - set([
+                'bulk_update_mappings', 'bulk_insert_mappings',
+                'bulk_save_objects'])
 
         eq_(watchdog, instance_methods,
             watchdog.symmetric_difference(instance_methods))

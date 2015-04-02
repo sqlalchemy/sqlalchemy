@@ -1,5 +1,5 @@
 # orm/identity.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -44,7 +44,8 @@ class IdentityMap(object):
 
     def _manage_removed_state(self, state):
         del state._instance_dict
-        self._modified.discard(state)
+        if state.modified:
+            self._modified.discard(state)
 
     def _dirty_states(self):
         return self._modified
@@ -186,6 +187,9 @@ class WeakInstanceDict(IdentityMap):
         else:
             return list(self._dict.values())
 
+    def _fast_discard(self, state):
+        self._dict.pop(state.key, None)
+
     def discard(self, state):
         st = self._dict.pop(state.key, None)
         if st:
@@ -263,6 +267,9 @@ class StrongInstanceDict(IdentityMap):
         # inlined form of add() called by loading.py
         self._dict[key] = state.obj()
         state._instance_dict = self._wr
+
+    def _fast_discard(self, state):
+        self._dict.pop(state.key, None)
 
     def discard(self, state):
         obj = self._dict.pop(state.key, None)

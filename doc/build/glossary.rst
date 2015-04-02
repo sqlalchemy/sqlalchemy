@@ -99,6 +99,7 @@ Glossary
 
     instrumentation
     instrumented
+    instrumenting
         Instrumentation refers to the process of augmenting the functionality
         and attribute set of a particular class.   Ideally, the
         behavior of the class should remain close to a regular
@@ -146,7 +147,7 @@ Glossary
 
             :term:`N plus one problem`
 
-            :doc:`orm/loading`
+            :doc:`orm/loading_relationships`
 
     mapping
     mapped
@@ -175,7 +176,7 @@ Glossary
 
         .. seealso::
 
-            :doc:`orm/loading`
+            :doc:`orm/loading_relationships`
 
     polymorphic
     polymorphically

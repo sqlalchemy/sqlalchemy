@@ -9,19 +9,11 @@ In contrast to the ORM’s domain-centric mode of usage, the SQL Expression
 Language provides a schema-centric usage paradigm.
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 2
 
     tutorial
     expression_api
     schema
-    engines
-    connections
-    pooling
-    event
-    events
-    compiler
-    inspection
-    serializer
-    interfaces
-    exceptions
-    internals
+    types
+    engines_connections
+    api_basics

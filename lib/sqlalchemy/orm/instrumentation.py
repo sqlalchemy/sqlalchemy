@@ -1,5 +1,5 @@
 # orm/instrumentation.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -33,6 +33,9 @@ alternate instrumentation forms.
 from . import exc, collections, interfaces, state
 from .. import util
 from . import base
+
+
+_memoized_key_collection = util.group_expirable_memoized_property()
 
 
 class ClassManager(dict):
@@ -91,6 +94,21 @@ class ClassManager(dict):
     @property
     def is_mapped(self):
         return 'mapper' in self.__dict__
+
+    @_memoized_key_collection
+    def _all_key_set(self):
+        return frozenset(self)
+
+    @_memoized_key_collection
+    def _collection_impl_keys(self):
+        return frozenset([
+            attr.key for attr in self.values() if attr.impl.collection])
+
+    @_memoized_key_collection
+    def _scalar_loader_impls(self):
+        return frozenset([
+            attr.impl for attr in
+            self.values() if attr.impl.accepts_scalar_loader])
 
     @util.memoized_property
     def mapper(self):
@@ -195,6 +213,7 @@ class ClassManager(dict):
         else:
             self.local_attrs[key] = inst
             self.install_descriptor(key, inst)
+        _memoized_key_collection.expire_instance(self)
         self[key] = inst
 
         for cls in self.class_.__subclasses__():
@@ -223,6 +242,7 @@ class ClassManager(dict):
         else:
             del self.local_attrs[key]
             self.uninstall_descriptor(key)
+        _memoized_key_collection.expire_instance(self)
         del self[key]
         for cls in self.class_.__subclasses__():
             manager = manager_of_class(cls)

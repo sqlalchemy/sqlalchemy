@@ -33,13 +33,11 @@ real DDL. They are therefore most intuitive to those who have some background
 in creating real schema generation scripts.
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
     metadata
     reflection
     defaults
     constraints
     ddl
-
-
 

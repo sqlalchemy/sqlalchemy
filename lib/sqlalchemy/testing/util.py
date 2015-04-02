@@ -1,5 +1,5 @@
 # testing/util.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -147,6 +147,10 @@ def run_as_contextmanager(ctx, fn, *arg, **kw):
     simulating the behavior of 'with' to support older
     Python versions.
 
+    This is not necessary anymore as we have placed 2.6
+    as minimum Python version, however some tests are still using
+    this structure.
+
     """
 
     obj = ctx.__enter__()
@@ -194,6 +198,25 @@ def provide_metadata(fn, *args, **kw):
         self.metadata = prev_meta
 
 
+def force_drop_names(*names):
+    """Force the given table names to be dropped after test complete,
+    isolating for foreign key cycles
+
+    """
+    from . import config
+    from sqlalchemy import inspect
+
+    @decorator
+    def go(fn, *args, **kw):
+
+        try:
+            return fn(*args, **kw)
+        finally:
+            drop_all_tables(
+                config.db, inspect(config.db), include_names=names)
+    return go
+
+
 class adict(dict):
     """Dict keys available as attributes.  Shadows."""
 
@@ -207,3 +230,39 @@ class adict(dict):
         return tuple([self[key] for key in keys])
 
     get_all = __call__
+
+
+def drop_all_tables(engine, inspector, schema=None, include_names=None):
+    from sqlalchemy import Column, Table, Integer, MetaData, \
+        ForeignKeyConstraint
+    from sqlalchemy.schema import DropTable, DropConstraint
+
+    if include_names is not None:
+        include_names = set(include_names)
+
+    with engine.connect() as conn:
+        for tname, fkcs in reversed(
+                inspector.get_sorted_table_and_fkc_names(schema=schema)):
+            if tname:
+                if include_names is not None and tname not in include_names:
+                    continue
+                conn.execute(DropTable(
+                    Table(tname, MetaData())
+                ))
+            elif fkcs:
+                if not engine.dialect.supports_alter:
+                    continue
+                for tname, fkc in fkcs:
+                    if include_names is not None and \
+                            tname not in include_names:
+                        continue
+                    tb = Table(
+                        tname, MetaData(),
+                        Column('x', Integer),
+                        Column('y', Integer),
+                        schema=schema
+                    )
+                    conn.execute(DropConstraint(
+                        ForeignKeyConstraint(
+                            [tb.c.x], [tb.c.y], name=fkc)
+                    ))

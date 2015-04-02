@@ -1,5 +1,5 @@
 # ext/declarative/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -35,6 +35,21 @@ def _declared_mapping_info(cls):
         return None
 
 
+def _resolve_for_abstract(cls):
+    if cls is object:
+        return None
+
+    if _get_immediate_cls_attr(cls, '__abstract__'):
+        for sup in cls.__bases__:
+            sup = _resolve_for_abstract(sup)
+            if sup is not None:
+                return sup
+        else:
+            return None
+    else:
+        return cls
+
+
 def _get_immediate_cls_attr(cls, attrname):
     """return an attribute of the class that is either present directly
     on the class, e.g. not on a superclass, or is from a superclass but
@@ -46,6 +61,9 @@ def _get_immediate_cls_attr(cls, attrname):
     inherit from.
 
     """
+    if not issubclass(cls, object):
+        return None
+
     for base in cls.__mro__:
         _is_declarative_inherits = hasattr(base, '_decl_class_registry')
         if attrname in base.__dict__:
@@ -202,6 +220,7 @@ class _MapperConfig(object):
                         if not oldclassprop and obj._cascading:
                             dict_[name] = column_copies[obj] = \
                                 ret = obj.__get__(obj, cls)
+                            setattr(cls, name, ret)
                         else:
                             if oldclassprop:
                                 util.warn_deprecated(
@@ -278,7 +297,7 @@ class _MapperConfig(object):
             elif not isinstance(value, (Column, MapperProperty)):
                 # using @declared_attr for some object that
                 # isn't Column/MapperProperty; remove from the dict_
-                # and place the evaulated value onto the class.
+                # and place the evaluated value onto the class.
                 if not k.startswith('__'):
                     dict_.pop(k)
                     setattr(cls, k, value)
@@ -388,6 +407,9 @@ class _MapperConfig(object):
         table_args = self.table_args
         declared_columns = self.declared_columns
         for c in cls.__bases__:
+            c = _resolve_for_abstract(c)
+            if c is None:
+                continue
             if _declared_mapping_info(c) is not None and \
                     not _get_immediate_cls_attr(
                         c, '_sa_decl_prepare_nocascade'):
@@ -439,6 +461,7 @@ class _MapperConfig(object):
 
     def _prepare_mapper_arguments(self):
         properties = self.properties
+
         if self.mapper_args_fn:
             mapper_args = self.mapper_args_fn()
         else:

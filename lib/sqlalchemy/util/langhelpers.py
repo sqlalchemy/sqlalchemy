@@ -1,5 +1,5 @@
 # util/langhelpers.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -90,6 +90,15 @@ def _unique_symbols(used, *bases):
                 break
         else:
             raise NameError("exhausted namespace for symbol base %s" % base)
+
+
+def map_bits(fn, n):
+    """Call the given function given each nonzero bit from n."""
+
+    while n:
+        b = n & (~n + 1)
+        yield fn(b)
+        n ^= b
 
 
 def decorator(target):
@@ -513,6 +522,15 @@ class portable_instancemethod(object):
 
     """
 
+    __slots__ = 'target', 'name', '__weakref__'
+
+    def __getstate__(self):
+        return {'target': self.target, 'name': self.name}
+
+    def __setstate__(self, state):
+        self.target = state['target']
+        self.name = state['name']
+
     def __init__(self, meth):
         self.target = meth.__self__
         self.name = meth.__name__
@@ -791,6 +809,40 @@ class group_expirable_memoized_property(object):
         return memoized_instancemethod(fn)
 
 
+class MemoizedSlots(object):
+    """Apply memoized items to an object using a __getattr__ scheme.
+
+    This allows the functionality of memoized_property and
+    memoized_instancemethod to be available to a class using __slots__.
+
+    """
+
+    def _fallback_getattr(self, key):
+        raise AttributeError(key)
+
+    def __getattr__(self, key):
+        if key.startswith('_memoized'):
+            raise AttributeError(key)
+        elif hasattr(self, '_memoized_attr_%s' % key):
+            value = getattr(self, '_memoized_attr_%s' % key)()
+            setattr(self, key, value)
+            return value
+        elif hasattr(self, '_memoized_method_%s' % key):
+            fn = getattr(self, '_memoized_method_%s' % key)
+
+            def oneshot(*args, **kw):
+                result = fn(*args, **kw)
+                memo = lambda *a, **kw: result
+                memo.__name__ = fn.__name__
+                memo.__doc__ = fn.__doc__
+                setattr(self, key, memo)
+                return result
+            oneshot.__doc__ = fn.__doc__
+            return oneshot
+        else:
+            return self._fallback_getattr(key)
+
+
 def dependency_for(modulename):
     def decorate(obj):
         # TODO: would be nice to improve on this import silliness,
@@ -936,7 +988,7 @@ def asbool(obj):
 
 
 def bool_or_str(*text):
-    """Return a callable that will evaulate a string as
+    """Return a callable that will evaluate a string as
     boolean, or one of a set of "alternate" string values.
 
     """
@@ -969,7 +1021,7 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
             kw[key] = type_(kw[key])
 
 
-def constructor_copy(obj, cls, **kw):
+def constructor_copy(obj, cls, *args, **kw):
     """Instantiate cls using the __dict__ of obj as constructor arguments.
 
     Uses inspect to match the named arguments of ``cls``.
@@ -978,7 +1030,7 @@ def constructor_copy(obj, cls, **kw):
 
     names = get_cls_kwargs(cls)
     kw.update((k, obj.__dict__[k]) for k in names if k in obj.__dict__)
-    return cls(**kw)
+    return cls(*args, **kw)
 
 
 def counter():
@@ -1205,9 +1257,12 @@ def warn_exception(func, *args, **kwargs):
 
 
 def ellipses_string(value, len_=25):
-    if len(value) > len_:
-        return "%s..." % value[0:len_]
-    else:
+    try:
+        if len(value) > len_:
+            return "%s..." % value[0:len_]
+        else:
+            return value
+    except TypeError:
         return value
 
 
@@ -1296,6 +1351,7 @@ def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
 
 NoneType = type(None)
 
+
 def attrsetter(attrname):
     code = \
         "def set(obj, value):"\
@@ -1303,3 +1359,29 @@ def attrsetter(attrname):
     env = locals().copy()
     exec(code, env)
     return env['set']
+
+
+class EnsureKWArgType(type):
+    """Apply translation of functions to accept **kw arguments if they
+    don't already.
+
+    """
+    def __init__(cls, clsname, bases, clsdict):
+        fn_reg = cls.ensure_kwarg
+        if fn_reg:
+            for key in clsdict:
+                m = re.match(fn_reg, key)
+                if m:
+                    fn = clsdict[key]
+                    spec = inspect.getargspec(fn)
+                    if not spec.keywords:
+                        clsdict[key] = wrapped = cls._wrap_w_kw(fn)
+                        setattr(cls, key, wrapped)
+        super(EnsureKWArgType, cls).__init__(clsname, bases, clsdict)
+
+    def _wrap_w_kw(self, fn):
+
+        def wrap(*arg, **kw):
+            return fn(*arg)
+        return update_wrapper(wrap, fn)
+

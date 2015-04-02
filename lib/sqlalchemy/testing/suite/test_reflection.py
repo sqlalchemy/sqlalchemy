@@ -128,6 +128,10 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 DDL("create temporary view user_tmp_v as "
                     "select * from user_tmp")
             )
+            event.listen(
+                user_tmp, "before_drop",
+                DDL("drop view user_tmp_v")
+            )
 
     @classmethod
     def define_index(cls, metadata, users):
@@ -511,6 +515,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_temp_table_indexes(self):
         insp = inspect(self.metadata.bind)
         indexes = insp.get_indexes('user_tmp')
+        for ind in indexes:
+            ind.pop('dialect_options', None)
         eq_(
             # TODO: we need to add better filtering for indexes/uq constraints
             # that are doubled up

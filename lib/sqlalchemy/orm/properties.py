@@ -1,5 +1,5 @@
 # orm/properties.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -33,6 +33,13 @@ class ColumnProperty(StrategizedProperty):
     """
 
     strategy_wildcard_key = 'column'
+
+    __slots__ = (
+        '_orig_columns', 'columns', 'group', 'deferred',
+        'instrument', 'comparator_factory', 'descriptor', 'extension',
+        'active_history', 'expire_on_flush', 'info', 'doc',
+        'strategy_class', '_creation_order', '_is_polymorphic_discriminator',
+        '_mapped_by_synonym', '_deferred_loader')
 
     def __init__(self, *columns, **kwargs):
         """Provide a column-level property for use with a Mapper.
@@ -109,6 +116,7 @@ class ColumnProperty(StrategizedProperty):
             **Deprecated.** Please see :class:`.AttributeEvents`.
 
         """
+        super(ColumnProperty, self).__init__()
         self._orig_columns = [expression._labeled(c) for c in columns]
         self.columns = [expression._labeled(_orm_full_deannotate(c))
                         for c in columns]
@@ -148,6 +156,12 @@ class ColumnProperty(StrategizedProperty):
             ("deferred", self.deferred),
             ("instrument", self.instrument)
         )
+
+    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__deferred_column_loader(self, state, strategies):
+        return state.InstanceState._instance_level_callable_processor(
+            self.parent.class_manager,
+            strategies.LoadDeferredColumns(self.key), self.key)
 
     @property
     def expression(self):
@@ -206,7 +220,7 @@ class ColumnProperty(StrategizedProperty):
         elif dest_state.has_identity and self.key not in dest_dict:
             dest_state._expire_attributes(dest_dict, [self.key])
 
-    class Comparator(PropComparator):
+    class Comparator(util.MemoizedSlots, PropComparator):
         """Produce boolean, comparison, and other operators for
         :class:`.ColumnProperty` attributes.
 
@@ -224,24 +238,25 @@ class ColumnProperty(StrategizedProperty):
         :attr:`.TypeEngine.comparator_factory`
 
         """
-        @util.memoized_instancemethod
-        def __clause_element__(self):
+
+        __slots__ = '__clause_element__', 'info'
+
+        def _memoized_method___clause_element__(self):
             if self.adapter:
                 return self.adapter(self.prop.columns[0])
             else:
                 return self.prop.columns[0]._annotate({
-                    "parententity": self._parentmapper,
-                    "parentmapper": self._parentmapper})
+                    "parententity": self._parententity,
+                    "parentmapper": self._parententity})
 
-        @util.memoized_property
-        def info(self):
+        def _memoized_attr_info(self):
             ce = self.__clause_element__()
             try:
                 return ce.info
             except AttributeError:
                 return self.prop.info
 
-        def __getattr__(self, key):
+        def _fallback_getattr(self, key):
             """proxy attribute access down to the mapped column.
 
             this allows user-defined comparison methods to be accessed.

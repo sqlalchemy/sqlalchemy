@@ -80,7 +80,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         # .key in SQL
         for key, col in zip([c.name for c in s.c], s.inner_columns):
             key = key % compiled.anon_map
-            assert col in compiled.result_map[key][1]
+            assert col in compiled._create_result_map()[key][1]
 
     _a_bkeyselect_bkey = ""
 
@@ -251,6 +251,16 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
             self._f_b1a_where_in_b2a
         )
 
+    def test_anon_scalar_subqueries(self):
+        s1 = select([1]).as_scalar()
+        s2 = select([2]).as_scalar()
+
+        s = select([s1, s2]).apply_labels()
+        self._test(
+            s,
+            self._anon_scalar_subqueries
+        )
+
 
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
 
@@ -389,6 +399,10 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a JOIN b2 ON a.id = b2.a_id)"
     )
 
+    _anon_scalar_subqueries = (
+        "SELECT (SELECT 1) AS anon_1, (SELECT 2) AS anon_2"
+    )
+
 
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
 
@@ -495,6 +509,10 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM f JOIN (a JOIN b1 ON a.id = b1.a_id) ON a.id = f.a_id "
         "WHERE b1.id IN (SELECT b2.id "
         "FROM a JOIN b2 ON a.id = b2.a_id)"
+    )
+
+    _anon_scalar_subqueries = (
+        "SELECT (SELECT 1) AS anon_1, (SELECT 2) AS anon_2"
     )
 
 
@@ -605,6 +623,10 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a JOIN b2 ON a.id = b2.a_id)"
     )
 
+    _anon_scalar_subqueries = (
+        "SELECT (SELECT 1) AS anon_1, (SELECT 2) AS anon_2"
+    )
+
 
 class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
 
@@ -615,7 +637,8 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
         _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = \
         _a_atobalias_balias = _b_ab1_union_c_ab2 = \
-        _b_a_id_double_overlap_annotated = _f_b1a_where_in_b2a = None
+        _b_a_id_double_overlap_annotated = _f_b1a_where_in_b2a = \
+        _anon_scalar_subqueries = None
 
     @classmethod
     def setup_class(cls):
@@ -627,6 +650,7 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     def _test(self, selectable, assert_):
         result = testing.db.execute(selectable)
+        result.close()
         for col in selectable.inner_columns:
             assert col in result._metadata._keymap
 

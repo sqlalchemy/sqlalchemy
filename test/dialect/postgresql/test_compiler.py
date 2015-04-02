@@ -5,7 +5,7 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL, is_, \
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
-    insert, func, MetaData, Enum, Index, and_, delete, select, cast
+    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -296,6 +296,58 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             '(data text_pattern_ops, data2 int4_ops)',
                             dialect=postgresql.dialect())
 
+    def test_create_index_with_text_or_composite(self):
+        m = MetaData()
+        tbl = Table('testtbl', m,
+                    Column('d1', String),
+                    Column('d2', Integer))
+
+        idx = Index('test_idx1', text('x'))
+        tbl.append_constraint(idx)
+
+        idx2 = Index('test_idx2', text('y'), tbl.c.d2)
+
+        idx3 = Index(
+            'test_idx2', tbl.c.d1, text('y'), tbl.c.d2,
+            postgresql_ops={'d1': 'x1', 'd2': 'x2'}
+        )
+
+        idx4 = Index(
+            'test_idx2', tbl.c.d1, tbl.c.d2 > 5, text('q'),
+            postgresql_ops={'d1': 'x1', 'd2': 'x2'}
+        )
+
+        idx5 = Index(
+            'test_idx2', tbl.c.d1, (tbl.c.d2 > 5).label('g'), text('q'),
+            postgresql_ops={'d1': 'x1', 'g': 'x2'}
+        )
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx1 ON testtbl (x)"
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx2),
+            "CREATE INDEX test_idx2 ON testtbl (y, d2)"
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx3),
+            "CREATE INDEX test_idx2 ON testtbl (d1 x1, y, d2 x2)"
+        )
+
+        # note that at the moment we do not expect the 'd2' op to
+        # pick up on the "d2 > 5" expression
+        self.assert_compile(
+            schema.CreateIndex(idx4),
+            "CREATE INDEX test_idx2 ON testtbl (d1 x1, (d2 > 5), q)"
+        )
+
+        # however it does work if we label!
+        self.assert_compile(
+            schema.CreateIndex(idx5),
+            "CREATE INDEX test_idx2 ON testtbl (d1 x1, (d2 > 5) x2, q)"
+        )
+
     def test_create_index_with_using(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String))
@@ -335,6 +387,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl ((data + 5))"
+        )
+
+    def test_create_index_concurrently(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', Integer))
+
+        idx1 = Index('test_idx1', tbl.c.data, postgresql_concurrently=True)
+        self.assert_compile(
+            schema.CreateIndex(idx1),
+            "CREATE INDEX CONCURRENTLY test_idx1 ON testtbl (data)"
         )
 
     def test_exclude_constraint_min(self):

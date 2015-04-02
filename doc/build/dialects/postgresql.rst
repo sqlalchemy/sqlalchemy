@@ -188,17 +188,24 @@ psycopg2
 
 .. automodule:: sqlalchemy.dialects.postgresql.psycopg2
 
-py-postgresql
---------------------
-
-.. automodule:: sqlalchemy.dialects.postgresql.pypostgresql
-
 pg8000
 --------------
 
 .. automodule:: sqlalchemy.dialects.postgresql.pg8000
 
+psycopg2cffi
+--------------
+
+.. automodule:: sqlalchemy.dialects.postgresql.psycopg2cffi
+
+py-postgresql
+--------------------
+
+.. automodule:: sqlalchemy.dialects.postgresql.pypostgresql
+
+
 zxjdbc
 --------------
 
 .. automodule:: sqlalchemy.dialects.postgresql.zxjdbc
+

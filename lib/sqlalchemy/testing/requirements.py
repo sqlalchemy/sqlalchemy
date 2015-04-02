@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -321,6 +321,11 @@ class SuiteRequirements(Requirements):
     def temp_table_names(self):
         """target dialect supports listing of temporary table names"""
         return exclusions.closed()
+
+    @property
+    def temporary_tables(self):
+        """target database supports temporary tables"""
+        return exclusions.open()
 
     @property
     def temporary_views(self):

@@ -3,7 +3,7 @@ from sqlalchemy import (
     testing, exc as sa_exc, event, String, Column, Table, select, func)
 from sqlalchemy.testing import (
     fixtures, engines, eq_, assert_raises, assert_raises_message,
-    assert_warnings)
+    assert_warnings, mock, expect_warnings)
 from sqlalchemy.orm import (
     exc as orm_exc, Session, mapper, sessionmaker, create_session,
     relationship, attributes)
@@ -65,7 +65,7 @@ class SessionTransactionTest(FixtureTest):
             conn = testing.db.connect()
             trans = conn.begin()
             sess = create_session(bind=conn, autocommit=False,
-                                autoflush=True)
+                                  autoflush=True)
             u1 = User(name='u1')
             sess.add(u1)
             sess.flush()
@@ -143,6 +143,34 @@ class SessionTransactionTest(FixtureTest):
         assert session.connection().execute(
             'select count(1) from users').scalar() == 2
 
+    @testing.requires.savepoints
+    def test_dirty_state_transferred_deep_nesting(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(testing.db)
+        u1 = User(name='u1')
+        s.add(u1)
+        s.commit()
+
+        nt1 = s.begin_nested()
+        nt2 = s.begin_nested()
+        u1.name = 'u2'
+        assert attributes.instance_state(u1) not in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+        s.flush()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+
+        s.commit()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) in nt1._dirty
+
+        s.rollback()
+        assert attributes.instance_state(u1).expired
+        eq_(u1.name, 'u1')
+
     @testing.requires.independent_connections
     def test_transactions_isolated(self):
         User, users = self.classes.User, self.tables.users
@@ -160,9 +188,9 @@ class SessionTransactionTest(FixtureTest):
     @testing.requires.two_phase_transactions
     def test_twophase(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         # TODO: mock up a failure condition here
         # to ensure a rollback succeeds
@@ -171,7 +199,7 @@ class SessionTransactionTest(FixtureTest):
 
         engine2 = engines.testing_engine()
         sess = create_session(autocommit=True, autoflush=False,
-                            twophase=True)
+                              twophase=True)
         sess.bind_mapper(User, testing.db)
         sess.bind_mapper(Address, engine2)
         sess.begin()
@@ -183,6 +211,23 @@ class SessionTransactionTest(FixtureTest):
         engine2.dispose()
         assert users.count().scalar() == 1
         assert addresses.count().scalar() == 1
+
+    @testing.requires.independent_connections
+    def test_invalidate(self):
+        User, users = self.classes.User, self.tables.users
+        mapper(User, users)
+        sess = Session()
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        c1 = sess.connection(User)
+
+        sess.invalidate()
+        assert c1.invalidated
+
+        eq_(sess.query(User).all(), [])
+        c2 = sess.connection(User)
+        assert not c2.invalidated
 
     def test_subtransaction_on_noautocommit(self):
         User, users = self.classes.User, self.tables.users
@@ -402,28 +447,30 @@ class SessionTransactionTest(FixtureTest):
         @event.listens_for(sess, "after_commit")
         def go(session):
             session.execute("select 1")
-        assert_raises_message(sa_exc.InvalidRequestError,
-                    "This session is in 'committed' state; no further "
-                    "SQL can be emitted within this transaction.",
-                    sess.commit)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This session is in 'committed' state; no further "
+            "SQL can be emitted within this transaction.",
+            sess.commit)
 
     def test_no_sql_during_prepare(self):
         sess = create_session(bind=testing.db, autocommit=False, twophase=True)
 
         sess.prepare()
 
-        assert_raises_message(sa_exc.InvalidRequestError,
-                    "This session is in 'prepared' state; no further "
-                    "SQL can be emitted within this transaction.",
-                    sess.execute, "select 1")
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This session is in 'prepared' state; no further "
+            "SQL can be emitted within this transaction.",
+            sess.execute, "select 1")
 
     def test_no_prepare_wo_twophase(self):
         sess = create_session(bind=testing.db, autocommit=False)
 
         assert_raises_message(sa_exc.InvalidRequestError,
-                    "'twophase' mode not enabled, or not root "
-                    "transaction; can't prepare.",
-                    sess.prepare)
+                              "'twophase' mode not enabled, or not root "
+                              "transaction; can't prepare.",
+                              sess.prepare)
 
     def test_closed_status_check(self):
         sess = create_session()
@@ -481,6 +528,32 @@ class SessionTransactionTest(FixtureTest):
         )
         return sess, u1
 
+    def test_execution_options_begin_transaction(self):
+        bind = mock.Mock()
+        sess = Session(bind=bind)
+        c1 = sess.connection(execution_options={'isolation_level': 'FOO'})
+        eq_(
+            bind.mock_calls,
+            [
+                mock.call.contextual_connect(),
+                mock.call.contextual_connect().
+                execution_options(isolation_level='FOO'),
+                mock.call.contextual_connect().execution_options().begin()
+            ]
+        )
+        eq_(c1, bind.contextual_connect().execution_options())
+
+    def test_execution_options_ignored_mid_transaction(self):
+        bind = mock.Mock()
+        conn = mock.Mock(engine=bind)
+        bind.contextual_connect = mock.Mock(return_value=conn)
+        sess = Session(bind=bind)
+        sess.execute("select 1")
+        with expect_warnings(
+                "Connection is already established for the "
+                "given bind; execution_options ignored"):
+            sess.connection(execution_options={'isolation_level': 'FOO'})
+
     def test_warning_on_using_inactive_session_new(self):
         User = self.classes.User
 
@@ -491,10 +564,10 @@ class SessionTransactionTest(FixtureTest):
         def go():
             sess.rollback()
         assert_warnings(go,
-            ["Session's state has been changed on a "
-            "non-active transaction - this state "
-            "will be discarded."],
-        )
+                        ["Session's state has been changed on a "
+                         "non-active transaction - this state "
+                         "will be discarded."],
+                        )
         assert u2 not in sess
         assert u1 in sess
 
@@ -505,10 +578,10 @@ class SessionTransactionTest(FixtureTest):
         def go():
             sess.rollback()
         assert_warnings(go,
-            ["Session's state has been changed on a "
-            "non-active transaction - this state "
-            "will be discarded."],
-        )
+                        ["Session's state has been changed on a "
+                         "non-active transaction - this state "
+                         "will be discarded."],
+                        )
         assert u1 in sess
         assert u1 not in sess.dirty
 
@@ -519,12 +592,41 @@ class SessionTransactionTest(FixtureTest):
         def go():
             sess.rollback()
         assert_warnings(go,
-            ["Session's state has been changed on a "
-            "non-active transaction - this state "
-            "will be discarded."],
-        )
+                        ["Session's state has been changed on a "
+                         "non-active transaction - this state "
+                         "will be discarded."],
+                        )
         assert u1 in sess
         assert u1 not in sess.deleted
+
+    def test_warning_on_using_inactive_session_rollback_evt(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(id=1, name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        u3 = User(name='u3')
+
+        @event.listens_for(sess, "after_rollback")
+        def evt(s):
+            sess.add(u3)
+
+        sess.add(User(id=1, name='u2'))
+
+        def go():
+            assert_raises(
+                orm_exc.FlushError, sess.flush
+            )
+
+        assert_warnings(go,
+                        ["Session's state has been changed on a "
+                         "non-active transaction - this state "
+                         "will be discarded."],
+                        )
+        assert u3 not in sess
 
     def test_preserve_flush_error(self):
         User = self.classes.User
@@ -533,14 +635,14 @@ class SessionTransactionTest(FixtureTest):
 
         for i in range(5):
             assert_raises_message(sa_exc.InvalidRequestError,
-                              "^This Session's transaction has been "
-                              r"rolled back due to a previous exception "
-                              "during flush. To "
-                              "begin a new transaction with this "
-                              "Session, first issue "
-                              r"Session.rollback\(\). Original exception "
-                              "was:",
-                              sess.commit)
+                                  "^This Session's transaction has been "
+                                  r"rolled back due to a previous exception "
+                                  "during flush. To "
+                                  "begin a new transaction with this "
+                                  "Session, first issue "
+                                  r"Session.rollback\(\). Original exception "
+                                  "was:",
+                                  sess.commit)
         sess.rollback()
         sess.add(User(id=5, name='some name'))
         sess.commit()
@@ -612,6 +714,7 @@ class FixtureDataTest(_LocalFixture):
 
 
 class CleanSavepointTest(FixtureTest):
+
     """test the behavior for [ticket:2452] - rollback on begin_nested()
     only expires objects tracked as being modified in that transaction.
 
@@ -660,8 +763,9 @@ class CleanSavepointTest(FixtureTest):
         User = self.classes.User
 
         def update_fn(s, u2):
-            s.query(User).filter_by(name='u2').update(dict(name='u2modified'),
-                                    synchronize_session='fetch')
+            s.query(User).filter_by(name='u2').update(
+                dict(name='u2modified'),
+                synchronize_session='fetch')
         self._run_test(update_fn)
 
 
@@ -918,7 +1022,7 @@ class RollbackRecoverTest(_LocalFixture):
         eq_(
             s.query(User).all(),
             [User(id=1, name='edward',
-                addresses=[Address(email_address='foober')])]
+                  addresses=[Address(email_address='foober')])]
         )
 
     @testing.requires.savepoints

@@ -386,6 +386,30 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             ]
         )
 
+    def test_of_type_aliased_fromjoinpoint(self):
+        Company, Employee, Engineer = self.classes.Company,\
+                                self.classes.Employee,\
+                                self.classes.Engineer
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies, properties={
+            'employee':relationship(Employee)
+        })
+        mapper(Employee, employees, polymorphic_on=employees.c.type)
+        mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
+
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Company).outerjoin(
+                Company.employee.of_type(Engineer),
+                aliased=True, from_joinpoint=True),
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name FROM companies "
+            "LEFT OUTER JOIN employees AS employees_1 ON "
+            "companies.company_id = employees_1.company_id "
+            "AND employees_1.type IN (:type_1)"
+        )
+
     def test_outer_join_prop(self):
         Company, Employee, Engineer = self.classes.Company,\
                                 self.classes.Employee,\
@@ -548,6 +572,66 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "companies.company_id = employees_1.company_id "
             "AND employees_1.type IN (:type_1)"
         )
+
+    def test_no_aliasing_from_overlap(self):
+        # test [ticket:3233]
+
+        Company, Employee, Engineer, Manager = self.classes.Company,\
+                                self.classes.Employee,\
+                                self.classes.Engineer,\
+                                self.classes.Manager
+
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies, properties={
+            'employees': relationship(Employee, backref="company")
+        })
+        mapper(Employee, employees, polymorphic_on=employees.c.type)
+        mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
+        mapper(Manager, inherits=Employee, polymorphic_identity='manager')
+
+        s = create_session()
+
+        q1 = s.query(Engineer).\
+            join(Engineer.company).\
+            join(Manager, Company.employees)
+
+        q2 = s.query(Engineer).\
+            join(Engineer.company).\
+            join(Manager, Company.company_id == Manager.company_id)
+
+        q3 = s.query(Engineer).\
+            join(Engineer.company).\
+            join(Manager, Company.employees.of_type(Manager))
+
+        q4 = s.query(Engineer).\
+            join(Company, Company.company_id == Engineer.company_id).\
+            join(Manager, Company.employees.of_type(Manager))
+
+        q5 = s.query(Engineer).\
+            join(Company, Company.company_id == Engineer.company_id).\
+            join(Manager, Company.company_id == Manager.company_id)
+
+        # note that the query is incorrect SQL; we JOIN to
+        # employees twice.   However, this is what's expected so we seek
+        # to be consistent; previously, aliasing would sneak in due to the
+        # nature of the "left" side.
+        for q in [q1, q2, q3, q4, q5]:
+            self.assert_compile(
+                q,
+                "SELECT employees.employee_id AS employees_employee_id, "
+                "employees.name AS employees_name, "
+                "employees.manager_data AS employees_manager_data, "
+                "employees.engineer_info AS employees_engineer_info, "
+                "employees.type AS employees_type, "
+                "employees.company_id AS employees_company_id "
+                "FROM employees JOIN companies "
+                "ON companies.company_id = employees.company_id "
+                "JOIN employees "
+                "ON companies.company_id = employees.company_id "
+                "AND employees.type IN (:type_1) "
+                "WHERE employees.type IN (:type_2)"
+            )
 
     def test_relationship_to_subclass(self):
         JuniorEngineer, Company, companies, Manager, \

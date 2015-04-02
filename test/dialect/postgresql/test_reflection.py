@@ -323,6 +323,18 @@ class ReflectionTest(fixtures.TestBase):
         eq_([c.name for c in t2.primary_key], ['t_id'])
 
     @testing.provide_metadata
+    def test_has_temporary_table(self):
+        assert not testing.db.has_table("some_temp_table")
+        user_tmp = Table(
+            "some_temp_table", self.metadata,
+            Column("id", Integer, primary_key=True),
+            Column('name', String(50)),
+            prefixes=['TEMPORARY']
+        )
+        user_tmp.create(testing.db)
+        assert testing.db.has_table("some_temp_table")
+
+    @testing.provide_metadata
     def test_cross_schema_reflection_one(self):
 
         meta1 = self.metadata
@@ -805,6 +817,7 @@ class ReflectionTest(fixtures.TestBase):
             }])
 
     @testing.provide_metadata
+    @testing.only_on("postgresql>=8.5")
     def test_reflection_with_unique_constraint(self):
         insp = inspect(testing.db)
 

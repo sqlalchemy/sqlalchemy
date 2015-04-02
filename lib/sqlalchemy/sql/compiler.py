@@ -1,5 +1,5 @@
 # sql/compiler.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,6 +23,7 @@ To generate user-defined SQL strings, see
 
 """
 
+import contextlib
 import re
 from . import schema, sqltypes, operators, functions, visitors, \
     elements, selectable, crud
@@ -82,6 +83,7 @@ OPERATORS = {
     operators.eq: ' = ',
     operators.concat_op: ' || ',
     operators.match_op: ' MATCH ',
+    operators.notmatch_op: ' NOT MATCH ',
     operators.in_op: ' IN ',
     operators.notin_op: ' NOT IN ',
     operators.comma_op: ', ',
@@ -247,15 +249,16 @@ class Compiled(object):
         return self.execute(*multiparams, **params).scalar()
 
 
-class TypeCompiler(object):
-
+class TypeCompiler(util.with_metaclass(util.EnsureKWArgType, object)):
     """Produces DDL specification for TypeEngine objects."""
+
+    ensure_kwarg = 'visit_\w+'
 
     def __init__(self, dialect):
         self.dialect = dialect
 
-    def process(self, type_):
-        return type_._compiler_dispatch(self)
+    def process(self, type_, **kw):
+        return type_._compiler_dispatch(self, **kw)
 
 
 class _CompileLabel(visitors.Visitable):
@@ -359,7 +362,12 @@ class SQLCompiler(Compiled):
         # column/label name, ColumnElement object (if any) and
         # TypeEngine. ResultProxy uses this for type processing and
         # column targeting
-        self.result_map = {}
+        self._result_columns = []
+
+        # if False, means we can't be sure the list of entries
+        # in _result_columns is actually the rendered order.   This
+        # gets flipped when we use TextAsFrom, for example.
+        self._ordered_columns = True
 
         # true if the paramstyle is positional
         self.positional = dialect.positional
@@ -399,6 +407,26 @@ class SQLCompiler(Compiled):
         self.ctes_recursive = False
         if self.positional:
             self.cte_positional = {}
+
+    @contextlib.contextmanager
+    def _nested_result(self):
+        """special API to support the use case of 'nested result sets'"""
+        result_columns, ordered_columns = (
+            self._result_columns, self._ordered_columns)
+        self._result_columns, self._ordered_columns = [], False
+
+        try:
+            if self.stack:
+                entry = self.stack[-1]
+                entry['need_result_map_for_nested'] = True
+            else:
+                entry = None
+            yield self._result_columns, self._ordered_columns
+        finally:
+            if entry:
+                entry.pop('need_result_map_for_nested')
+            self._result_columns, self._ordered_columns = (
+                result_columns, ordered_columns)
 
     def _apply_numbered_params(self):
         poscount = itertools.count(1)
@@ -478,6 +506,11 @@ class SQLCompiler(Compiled):
         compiled object, for those values that are present."""
         return self.construct_params(_check=False)
 
+    @util.dependencies("sqlalchemy.engine.result")
+    def _create_result_map(self, result):
+        """utility method used for unit tests only."""
+        return result.ResultMetaData._create_result_map(self._result_columns)
+
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is
         to be appended.
@@ -527,7 +560,6 @@ class SQLCompiler(Compiled):
 
         selectable = self.stack[-1]['selectable']
         with_cols, only_froms = selectable._label_resolve_dict
-
         try:
             if within_columns_clause:
                 col = only_froms[element.element]
@@ -637,8 +669,9 @@ class SQLCompiler(Compiled):
     def visit_index(self, index, **kwargs):
         return index.name
 
-    def visit_typeclause(self, typeclause, **kwargs):
-        return self.dialect.type_compiler.process(typeclause.type)
+    def visit_typeclause(self, typeclause, **kw):
+        kw['type_expression'] = typeclause
+        return self.dialect.type_compiler.process(typeclause.type, **kw)
 
     def post_process_text(self, text):
         return text
@@ -659,22 +692,22 @@ class SQLCompiler(Compiled):
                 self.post_process_text(textclause.text))
         )
 
-    def visit_text_as_from(self, taf, iswrapper=False,
-                           compound_index=0, force_result_map=False,
+    def visit_text_as_from(self, taf,
+                           compound_index=None,
                            asfrom=False,
                            parens=True, **kw):
 
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
-        populate_result_map = force_result_map or (
-            compound_index == 0 and (
-                toplevel or
-                entry['iswrapper']
-            )
-        )
+        populate_result_map = toplevel or \
+            (
+                compound_index == 0 and entry.get(
+                    'need_result_map_for_compound', False)
+            ) or entry.get('need_result_map_for_nested', False)
 
         if populate_result_map:
+            self._ordered_columns = False
             for c in taf.column_args:
                 self.process(c, within_columns_clause=True,
                              add_to_result_map=self._add_to_result_map)
@@ -787,13 +820,16 @@ class SQLCompiler(Compiled):
                               parens=True, compound_index=0, **kwargs):
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
+        need_result_map = toplevel or \
+            (compound_index == 0
+                and entry.get('need_result_map_for_compound', False))
 
         self.stack.append(
             {
                 'correlate_froms': entry['correlate_froms'],
-                'iswrapper': toplevel,
                 'asfrom_froms': entry['asfrom_froms'],
-                'selectable': cs
+                'selectable': cs,
+                'need_result_map_for_compound': need_result_map
             })
 
         keyword = self.compound_keywords.get(cs.keyword)
@@ -813,10 +849,9 @@ class SQLCompiler(Compiled):
         text += self.order_by_clause(cs, **kwargs)
         text += (cs._limit_clause is not None
                  or cs._offset_clause is not None) and \
-            self.limit_clause(cs) or ""
+            self.limit_clause(cs, **kwargs) or ""
 
-        if self.ctes and \
-                compound_index == 0 and toplevel:
+        if self.ctes and toplevel:
             text = self._render_cte_clause() + text
 
         self.stack.pop(-1)
@@ -862,14 +897,18 @@ class SQLCompiler(Compiled):
         else:
             return "%s = 0" % self.process(element.element, **kw)
 
-    def visit_binary(self, binary, **kw):
+    def visit_notmatch_op_binary(self, binary, operator, **kw):
+        return "NOT %s" % self.visit_binary(
+            binary, override_operator=operators.match_op)
+
+    def visit_binary(self, binary, override_operator=None, **kw):
         # don't allow "? = ?" to render
         if self.ansi_bind_rules and \
                 isinstance(binary.left, elements.BindParameter) and \
                 isinstance(binary.right, elements.BindParameter):
             kw['literal_binds'] = True
 
-        operator_ = binary.operator
+        operator_ = override_operator or binary.operator
         disp = getattr(self, "visit_%s_binary" % operator_.__name__, None)
         if disp:
             return disp(binary, operator_, **kw)
@@ -1188,12 +1227,16 @@ class SQLCompiler(Compiled):
                     self, asfrom=True, **kwargs
                 )
 
+            if cte._suffixes:
+                text += " " + self._generate_prefixes(
+                    cte, cte._suffixes, **kwargs)
+
             self.ctes[cte] = text
 
         if asfrom:
             if cte_alias_name:
                 text = self.preparer.format_alias(cte, cte_alias_name)
-                text += " AS " + cte_name
+                text += self.get_render_as_alias_suffix(cte_name)
             else:
                 return self.preparer.format_alias(cte, cte_name)
             return text
@@ -1212,8 +1255,8 @@ class SQLCompiler(Compiled):
         elif asfrom:
             ret = alias.original._compiler_dispatch(self,
                                                     asfrom=True, **kwargs) + \
-                " AS " + \
-                self.preparer.format_alias(alias, alias_name)
+                self.get_render_as_alias_suffix(
+                    self.preparer.format_alias(alias, alias_name))
 
             if fromhints and alias in fromhints:
                 ret = self.format_from_hint_text(ret, alias,
@@ -1223,19 +1266,14 @@ class SQLCompiler(Compiled):
         else:
             return alias.original._compiler_dispatch(self, **kwargs)
 
+    def get_render_as_alias_suffix(self, alias_name_text):
+        return " AS " + alias_name_text
+
     def _add_to_result_map(self, keyname, name, objects, type_):
         if not self.dialect.case_sensitive:
             keyname = keyname.lower()
 
-        if keyname in self.result_map:
-            # conflicting keyname, just double up the list
-            # of objects.  this will cause an "ambiguous name"
-            # error if an attempt is made by the result set to
-            # access.
-            e_name, e_obj, e_type = self.result_map[keyname]
-            self.result_map[keyname] = e_name, e_obj + objects, e_type
-        else:
-            self.result_map[keyname] = name, objects, type_
+        self._result_columns.append((keyname, name, objects, type_))
 
     def _label_select_column(self, select, column,
                              populate_result_map,
@@ -1425,12 +1463,13 @@ class SQLCompiler(Compiled):
             (inner_col[c._key_label], c)
             for c in select.inner_columns
         )
-        for key, (name, objs, typ) in list(self.result_map.items()):
-            objs = tuple([d.get(col, col) for col in objs])
-            self.result_map[key] = (name, objs, typ)
+
+        self._result_columns = [
+            (key, name, tuple([d.get(col, col) for col in objs]), typ)
+            for key, name, objs, typ in self._result_columns
+        ]
 
     _default_stack_entry = util.immutabledict([
-        ('iswrapper', False),
         ('correlate_froms', frozenset()),
         ('asfrom_froms', frozenset())
     ])
@@ -1458,10 +1497,10 @@ class SQLCompiler(Compiled):
         return froms
 
     def visit_select(self, select, asfrom=False, parens=True,
-                     iswrapper=False, fromhints=None,
+                     fromhints=None,
                      compound_index=0,
-                     force_result_map=False,
                      nested_join_translation=False,
+                     select_wraps_for=None,
                      **kwargs):
 
         needs_nested_translation = \
@@ -1475,21 +1514,19 @@ class SQLCompiler(Compiled):
                 select)
             text = self.visit_select(
                 transformed_select, asfrom=asfrom, parens=parens,
-                iswrapper=iswrapper, fromhints=fromhints,
+                fromhints=fromhints,
                 compound_index=compound_index,
-                force_result_map=force_result_map,
                 nested_join_translation=True, **kwargs
             )
 
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
-        populate_result_map = force_result_map or (
-            compound_index == 0 and (
-                toplevel or
-                entry['iswrapper']
-            )
-        )
+        populate_result_map = toplevel or \
+            (
+                compound_index == 0 and entry.get(
+                    'need_result_map_for_compound', False)
+            ) or entry.get('need_result_map_for_nested', False)
 
         if needs_nested_translation:
             if populate_result_map:
@@ -1497,7 +1534,7 @@ class SQLCompiler(Compiled):
                     select, transformed_select)
             return text
 
-        froms = self._setup_select_stack(select, entry, asfrom, iswrapper)
+        froms = self._setup_select_stack(select, entry, asfrom)
 
         column_clause_args = kwargs.copy()
         column_clause_args.update({
@@ -1523,15 +1560,33 @@ class SQLCompiler(Compiled):
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
             c for c in [
-                self._label_select_column(select,
-                                          column,
-                                          populate_result_map, asfrom,
-                                          column_clause_args,
-                                          name=name)
+                self._label_select_column(
+                    select,
+                    column,
+                    populate_result_map, asfrom,
+                    column_clause_args,
+                    name=name)
                 for name, column in select._columns_plus_names
             ]
             if c is not None
         ]
+
+        if populate_result_map and select_wraps_for is not None:
+            # if this select is a compiler-generated wrapper,
+            # rewrite the targeted columns in the result map
+            wrapped_inner_columns = set(select_wraps_for.inner_columns)
+            translate = dict(
+                (outer, inner.pop()) for outer, inner in [
+                    (
+                        outer,
+                        outer.proxy_set.intersection(wrapped_inner_columns))
+                    for outer in select.inner_columns
+                ] if inner
+            )
+            self._result_columns = [
+                (key, name, tuple(translate.get(o, o) for o in obj), type_)
+                for key, name, obj, type_ in self._result_columns
+            ]
 
         text = self._compose_select_body(
             text, select, inner_columns, froms, byfrom, kwargs)
@@ -1545,9 +1600,12 @@ class SQLCompiler(Compiled):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        if self.ctes and \
-                compound_index == 0 and toplevel:
+        if self.ctes and toplevel:
             text = self._render_cte_clause() + text
+
+        if select._suffixes:
+            text += " " + self._generate_prefixes(
+                select, select._suffixes, **kwargs)
 
         self.stack.pop(-1)
 
@@ -1569,7 +1627,7 @@ class SQLCompiler(Compiled):
         hint_text = self.get_select_hint_text(byfrom)
         return hint_text, byfrom
 
-    def _setup_select_stack(self, select, entry, asfrom, iswrapper):
+    def _setup_select_stack(self, select, entry, asfrom):
         correlate_froms = entry['correlate_froms']
         asfrom_froms = entry['asfrom_froms']
 
@@ -1588,7 +1646,6 @@ class SQLCompiler(Compiled):
 
         new_entry = {
             'asfrom_froms': new_correlate_froms,
-            'iswrapper': iswrapper,
             'correlate_froms': all_correlate_froms,
             'selectable': select,
         }
@@ -1729,6 +1786,11 @@ class SQLCompiler(Compiled):
         )
 
     def visit_insert(self, insert_stmt, **kw):
+        self.stack.append(
+            {'correlate_froms': set(),
+             "asfrom_froms": set(),
+             "selectable": insert_stmt})
+
         self.isinsert = True
         crud_params = crud._get_crud_params(self, insert_stmt, **kw)
 
@@ -1812,6 +1874,8 @@ class SQLCompiler(Compiled):
         if self.returning and not self.returning_precedes_values:
             text += " " + returning_clause
 
+        self.stack.pop(-1)
+
         return text
 
     def update_limit_clause(self, update_stmt):
@@ -1847,7 +1911,6 @@ class SQLCompiler(Compiled):
     def visit_update(self, update_stmt, **kw):
         self.stack.append(
             {'correlate_froms': set([update_stmt.table]),
-             "iswrapper": False,
              "asfrom_froms": set([update_stmt.table]),
              "selectable": update_stmt})
 
@@ -1933,7 +1996,6 @@ class SQLCompiler(Compiled):
 
     def visit_delete(self, delete_stmt, **kw):
         self.stack.append({'correlate_froms': set([delete_stmt.table]),
-                           "iswrapper": False,
                            "asfrom_froms": set([delete_stmt.table]),
                            "selectable": delete_stmt})
         self.isdelete = True
@@ -2078,7 +2140,9 @@ class DDLCompiler(Compiled):
                         (table.description, column.name, ce.args[0])
                     ))
 
-        const = self.create_table_constraints(table)
+        const = self.create_table_constraints(
+            table, _include_foreign_key_constraints=
+            create.include_foreign_key_constraints)
         if const:
             text += ", \n\t" + const
 
@@ -2102,7 +2166,9 @@ class DDLCompiler(Compiled):
 
         return text
 
-    def create_table_constraints(self, table):
+    def create_table_constraints(
+        self, table,
+            _include_foreign_key_constraints=None):
 
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
@@ -2110,8 +2176,15 @@ class DDLCompiler(Compiled):
         if table.primary_key:
             constraints.append(table.primary_key)
 
+        all_fkcs = table.foreign_key_constraints
+        if _include_foreign_key_constraints is not None:
+            omit_fkcs = all_fkcs.difference(_include_foreign_key_constraints)
+        else:
+            omit_fkcs = set()
+
         constraints.extend([c for c in table._sorted_constraints
-                            if c is not table.primary_key])
+                            if c is not table.primary_key and
+                            c not in omit_fkcs])
 
         return ", \n\t".join(
             p for p in
@@ -2206,15 +2279,26 @@ class DDLCompiler(Compiled):
             self.preparer.format_sequence(drop.element)
 
     def visit_drop_constraint(self, drop):
+        constraint = drop.element
+        if constraint.name is not None:
+            formatted_name = self.preparer.format_constraint(constraint)
+        else:
+            formatted_name = None
+
+        if formatted_name is None:
+            raise exc.CompileError(
+                "Can't emit DROP CONSTRAINT for constraint %r; "
+                "it has no name" % drop.element)
         return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (
             self.preparer.format_table(drop.element.table),
-            self.preparer.format_constraint(drop.element),
+            formatted_name,
             drop.cascade and " CASCADE" or ""
         )
 
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + \
-            self.dialect.type_compiler.process(column.type)
+            self.dialect.type_compiler.process(
+                column.type, type_expression=column)
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -2231,7 +2315,8 @@ class DDLCompiler(Compiled):
             if isinstance(column.server_default.arg, util.string_types):
                 return "'%s'" % column.server_default.arg
             else:
-                return self.sql_compiler.process(column.server_default.arg)
+                return self.sql_compiler.process(
+                    column.server_default.arg, literal_binds=True)
         else:
             return None
 
@@ -2278,14 +2363,14 @@ class DDLCompiler(Compiled):
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        remote_table = list(constraint._elements.values())[0].column.table
+        remote_table = list(constraint.elements)[0].column.table
         text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name)
-                      for f in constraint._elements.values()),
+                      for f in constraint.elements),
             self.define_constraint_remote_table(
                 constraint, remote_table, preparer),
             ', '.join(preparer.quote(f.column.name)
-                      for f in constraint._elements.values())
+                      for f in constraint.elements)
         )
         text += self.define_constraint_match(constraint)
         text += self.define_constraint_cascades(constraint)
@@ -2338,13 +2423,13 @@ class DDLCompiler(Compiled):
 
 class GenericTypeCompiler(TypeCompiler):
 
-    def visit_FLOAT(self, type_):
+    def visit_FLOAT(self, type_, **kw):
         return "FLOAT"
 
-    def visit_REAL(self, type_):
+    def visit_REAL(self, type_, **kw):
         return "REAL"
 
-    def visit_NUMERIC(self, type_):
+    def visit_NUMERIC(self, type_, **kw):
         if type_.precision is None:
             return "NUMERIC"
         elif type_.scale is None:
@@ -2355,7 +2440,7 @@ class GenericTypeCompiler(TypeCompiler):
                 {'precision': type_.precision,
                  'scale': type_.scale}
 
-    def visit_DECIMAL(self, type_):
+    def visit_DECIMAL(self, type_, **kw):
         if type_.precision is None:
             return "DECIMAL"
         elif type_.scale is None:
@@ -2366,31 +2451,31 @@ class GenericTypeCompiler(TypeCompiler):
                 {'precision': type_.precision,
                  'scale': type_.scale}
 
-    def visit_INTEGER(self, type_):
+    def visit_INTEGER(self, type_, **kw):
         return "INTEGER"
 
-    def visit_SMALLINT(self, type_):
+    def visit_SMALLINT(self, type_, **kw):
         return "SMALLINT"
 
-    def visit_BIGINT(self, type_):
+    def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
 
-    def visit_TIMESTAMP(self, type_):
+    def visit_TIMESTAMP(self, type_, **kw):
         return 'TIMESTAMP'
 
-    def visit_DATETIME(self, type_):
+    def visit_DATETIME(self, type_, **kw):
         return "DATETIME"
 
-    def visit_DATE(self, type_):
+    def visit_DATE(self, type_, **kw):
         return "DATE"
 
-    def visit_TIME(self, type_):
+    def visit_TIME(self, type_, **kw):
         return "TIME"
 
-    def visit_CLOB(self, type_):
+    def visit_CLOB(self, type_, **kw):
         return "CLOB"
 
-    def visit_NCLOB(self, type_):
+    def visit_NCLOB(self, type_, **kw):
         return "NCLOB"
 
     def _render_string_type(self, type_, name):
@@ -2402,91 +2487,91 @@ class GenericTypeCompiler(TypeCompiler):
             text += ' COLLATE "%s"' % type_.collation
         return text
 
-    def visit_CHAR(self, type_):
+    def visit_CHAR(self, type_, **kw):
         return self._render_string_type(type_, "CHAR")
 
-    def visit_NCHAR(self, type_):
+    def visit_NCHAR(self, type_, **kw):
         return self._render_string_type(type_, "NCHAR")
 
-    def visit_VARCHAR(self, type_):
+    def visit_VARCHAR(self, type_, **kw):
         return self._render_string_type(type_, "VARCHAR")
 
-    def visit_NVARCHAR(self, type_):
+    def visit_NVARCHAR(self, type_, **kw):
         return self._render_string_type(type_, "NVARCHAR")
 
-    def visit_TEXT(self, type_):
+    def visit_TEXT(self, type_, **kw):
         return self._render_string_type(type_, "TEXT")
 
-    def visit_BLOB(self, type_):
+    def visit_BLOB(self, type_, **kw):
         return "BLOB"
 
-    def visit_BINARY(self, type_):
+    def visit_BINARY(self, type_, **kw):
         return "BINARY" + (type_.length and "(%d)" % type_.length or "")
 
-    def visit_VARBINARY(self, type_):
+    def visit_VARBINARY(self, type_, **kw):
         return "VARBINARY" + (type_.length and "(%d)" % type_.length or "")
 
-    def visit_BOOLEAN(self, type_):
+    def visit_BOOLEAN(self, type_, **kw):
         return "BOOLEAN"
 
-    def visit_large_binary(self, type_):
-        return self.visit_BLOB(type_)
+    def visit_large_binary(self, type_, **kw):
+        return self.visit_BLOB(type_, **kw)
 
-    def visit_boolean(self, type_):
-        return self.visit_BOOLEAN(type_)
+    def visit_boolean(self, type_, **kw):
+        return self.visit_BOOLEAN(type_, **kw)
 
-    def visit_time(self, type_):
-        return self.visit_TIME(type_)
+    def visit_time(self, type_, **kw):
+        return self.visit_TIME(type_, **kw)
 
-    def visit_datetime(self, type_):
-        return self.visit_DATETIME(type_)
+    def visit_datetime(self, type_, **kw):
+        return self.visit_DATETIME(type_, **kw)
 
-    def visit_date(self, type_):
-        return self.visit_DATE(type_)
+    def visit_date(self, type_, **kw):
+        return self.visit_DATE(type_, **kw)
 
-    def visit_big_integer(self, type_):
-        return self.visit_BIGINT(type_)
+    def visit_big_integer(self, type_, **kw):
+        return self.visit_BIGINT(type_, **kw)
 
-    def visit_small_integer(self, type_):
-        return self.visit_SMALLINT(type_)
+    def visit_small_integer(self, type_, **kw):
+        return self.visit_SMALLINT(type_, **kw)
 
-    def visit_integer(self, type_):
-        return self.visit_INTEGER(type_)
+    def visit_integer(self, type_, **kw):
+        return self.visit_INTEGER(type_, **kw)
 
-    def visit_real(self, type_):
-        return self.visit_REAL(type_)
+    def visit_real(self, type_, **kw):
+        return self.visit_REAL(type_, **kw)
 
-    def visit_float(self, type_):
-        return self.visit_FLOAT(type_)
+    def visit_float(self, type_, **kw):
+        return self.visit_FLOAT(type_, **kw)
 
-    def visit_numeric(self, type_):
-        return self.visit_NUMERIC(type_)
+    def visit_numeric(self, type_, **kw):
+        return self.visit_NUMERIC(type_, **kw)
 
-    def visit_string(self, type_):
-        return self.visit_VARCHAR(type_)
+    def visit_string(self, type_, **kw):
+        return self.visit_VARCHAR(type_, **kw)
 
-    def visit_unicode(self, type_):
-        return self.visit_VARCHAR(type_)
+    def visit_unicode(self, type_, **kw):
+        return self.visit_VARCHAR(type_, **kw)
 
-    def visit_text(self, type_):
-        return self.visit_TEXT(type_)
+    def visit_text(self, type_, **kw):
+        return self.visit_TEXT(type_, **kw)
 
-    def visit_unicode_text(self, type_):
-        return self.visit_TEXT(type_)
+    def visit_unicode_text(self, type_, **kw):
+        return self.visit_TEXT(type_, **kw)
 
-    def visit_enum(self, type_):
-        return self.visit_VARCHAR(type_)
+    def visit_enum(self, type_, **kw):
+        return self.visit_VARCHAR(type_, **kw)
 
-    def visit_null(self, type_):
+    def visit_null(self, type_, **kw):
         raise exc.CompileError("Can't generate DDL for %r; "
                                "did you forget to specify a "
                                "type on this Column?" % type_)
 
-    def visit_type_decorator(self, type_):
-        return self.process(type_.type_engine(self.dialect))
+    def visit_type_decorator(self, type_, **kw):
+        return self.process(type_.type_engine(self.dialect), **kw)
 
-    def visit_user_defined(self, type_):
-        return type_.get_col_spec()
+    def visit_user_defined(self, type_, **kw):
+        return type_.get_col_spec(**kw)
 
 
 class IdentifierPreparer(object):

@@ -1,5 +1,5 @@
 # postgresql/json.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,7 +12,7 @@ from .base import ischema_names
 from ... import types as sqltypes
 from ...sql.operators import custom_op
 from ... import sql
-from ...sql import elements
+from ...sql import elements, default_comparator
 from ... import util
 
 __all__ = ('JSON', 'JSONElement', 'JSONB')
@@ -46,7 +46,8 @@ class JSONElement(elements.BinaryExpression):
 
         self._json_opstring = opstring
         operator = custom_op(opstring, precedence=5)
-        right = left._check_literal(left, operator, right)
+        right = default_comparator._check_literal(
+            left, operator, right)
         super(JSONElement, self).__init__(
             left, right, operator, type_=result_type)
 
@@ -77,7 +78,7 @@ class JSONElement(elements.BinaryExpression):
 
     def cast(self, type_):
         """Convert this :class:`.JSONElement` to apply both the 'astext' operator
-        as well as an explicit type cast when evaulated.
+        as well as an explicit type cast when evaluated.
 
         E.g.::
 

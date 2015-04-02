@@ -1,5 +1,5 @@
 # util/_collections.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,9 +10,10 @@
 from __future__ import absolute_import
 import weakref
 import operator
-from .compat import threading, itertools_filterfalse
+from .compat import threading, itertools_filterfalse, string_types
 from . import py2k
 import types
+import collections
 
 EMPTY_SET = frozenset()
 
@@ -126,20 +127,6 @@ class _LW(AbstractKeyedTuple):
         return d
 
 
-def lightweight_named_tuple(name, fields):
-
-    tp_cls = type(name, (_LW,), {})
-    for idx, field in enumerate(fields):
-        if field is None:
-            continue
-        setattr(tp_cls, field, property(operator.itemgetter(idx)))
-
-    tp_cls._real_fields = fields
-    tp_cls._fields = tuple([f for f in fields if f is not None])
-
-    return tp_cls
-
-
 class ImmutableContainer(object):
     def _immutable(self, *arg, **kw):
         raise TypeError("%s object is immutable" % self.__class__.__name__)
@@ -164,8 +151,13 @@ class immutabledict(ImmutableContainer, dict):
         return immutabledict, (dict(self), )
 
     def union(self, d):
-        if not self:
-            return immutabledict(d)
+        if not d:
+            return self
+        elif not self:
+            if isinstance(d, immutabledict):
+                return d
+            else:
+                return immutabledict(d)
         else:
             d2 = immutabledict(self)
             dict.update(d2, d)
@@ -178,8 +170,10 @@ class immutabledict(ImmutableContainer, dict):
 class Properties(object):
     """Provide a __getattr__/__setattr__ interface over a dict."""
 
+    __slots__ = '_data',
+
     def __init__(self, data):
-        self.__dict__['_data'] = data
+        object.__setattr__(self, '_data', data)
 
     def __len__(self):
         return len(self._data)
@@ -199,8 +193,8 @@ class Properties(object):
     def __delitem__(self, key):
         del self._data[key]
 
-    def __setattr__(self, key, object):
-        self._data[key] = object
+    def __setattr__(self, key, obj):
+        self._data[key] = obj
 
     def __getstate__(self):
         return {'_data': self.__dict__['_data']}
@@ -251,6 +245,8 @@ class OrderedProperties(Properties):
     """Provide a __getattr__/__setattr__ interface with an OrderedDict
     as backing store."""
 
+    __slots__ = ()
+
     def __init__(self):
         Properties.__init__(self, OrderedDict())
 
@@ -258,9 +254,16 @@ class OrderedProperties(Properties):
 class ImmutableProperties(ImmutableContainer, Properties):
     """Provide immutable dict/object attribute to an underlying dictionary."""
 
+    __slots__ = ()
+
 
 class OrderedDict(dict):
     """A dict that returns keys/values/items in the order they were added."""
+
+    __slots__ = '_list',
+
+    def __reduce__(self):
+        return OrderedDict, (self.items(),)
 
     def __init__(self, ____sequence=None, **kwargs):
         self._list = []
@@ -355,7 +358,10 @@ class OrderedSet(set):
         set.__init__(self)
         self._list = []
         if d is not None:
-            self.update(d)
+            self._list = unique_list(d)
+            set.update(self, self._list)
+        else:
+            self._list = []
 
     def add(self, element):
         if element not in self:
@@ -730,6 +736,12 @@ ordered_column_set = OrderedSet
 populate_column_dict = PopulateDict
 
 
+_getters = PopulateDict(operator.itemgetter)
+
+_property_getters = PopulateDict(
+    lambda idx: property(operator.itemgetter(idx)))
+
+
 def unique_list(seq, hashfunc=None):
     seen = {}
     if not hashfunc:
@@ -779,10 +791,12 @@ def coerce_generator_arg(arg):
 def to_list(x, default=None):
     if x is None:
         return default
-    if not isinstance(x, (list, tuple)):
+    if not isinstance(x, collections.Iterable) or isinstance(x, string_types):
         return [x]
-    else:
+    elif isinstance(x, list):
         return x
+    else:
+        return list(x)
 
 
 def to_set(x):
@@ -830,16 +844,29 @@ class LRUCache(dict):
     """Dictionary with 'squishy' removal of least
     recently used items.
 
+    Note that either get() or [] should be used here, but
+    generally its not safe to do an "in" check first as the dictionary
+    can change subsequent to that call.
+
     """
 
     def __init__(self, capacity=100, threshold=.5):
         self.capacity = capacity
         self.threshold = threshold
         self._counter = 0
+        self._mutex = threading.Lock()
 
     def _inc_counter(self):
         self._counter += 1
         return self._counter
+
+    def get(self, key, default=None):
+        item = dict.get(self, key, default)
+        if item is not default:
+            item[2] = self._inc_counter()
+            return item[1]
+        else:
+            return default
 
     def __getitem__(self, key):
         item = dict.__getitem__(self, key)
@@ -866,18 +893,45 @@ class LRUCache(dict):
         self._manage_size()
 
     def _manage_size(self):
-        while len(self) > self.capacity + self.capacity * self.threshold:
-            by_counter = sorted(dict.values(self),
-                                key=operator.itemgetter(2),
-                                reverse=True)
-            for item in by_counter[self.capacity:]:
-                try:
-                    del self[item[0]]
-                except KeyError:
-                    # if we couldn't find a key, most
-                    # likely some other thread broke in
-                    # on us. loop around and try again
-                    break
+        if not self._mutex.acquire(False):
+            return
+        try:
+            while len(self) > self.capacity + self.capacity * self.threshold:
+                by_counter = sorted(dict.values(self),
+                                    key=operator.itemgetter(2),
+                                    reverse=True)
+                for item in by_counter[self.capacity:]:
+                    try:
+                        del self[item[0]]
+                    except KeyError:
+                        # deleted elsewhere; skip
+                        continue
+        finally:
+            self._mutex.release()
+
+
+_lw_tuples = LRUCache(100)
+
+
+def lightweight_named_tuple(name, fields):
+    hash_ = (name, ) + tuple(fields)
+    tp_cls = _lw_tuples.get(hash_)
+    if tp_cls:
+        return tp_cls
+
+    tp_cls = type(
+        name, (_LW,),
+        dict([
+            (field, _property_getters[idx])
+            for idx, field in enumerate(fields) if field is not None
+        ] + [('__slots__', ())])
+    )
+
+    tp_cls._real_fields = fields
+    tp_cls._fields = tuple([f for f in fields if f is not None])
+
+    _lw_tuples[hash_] = tp_cls
+    return tp_cls
 
 
 class ScopedRegistry(object):

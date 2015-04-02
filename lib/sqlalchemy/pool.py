@@ -1,5 +1,5 @@
 # sqlalchemy/pool.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -230,6 +230,7 @@ class Pool(log.Identified):
                 % reset_on_return)
 
         self.echo = echo
+
         if _dispatch:
             self.dispatch._update(_dispatch, only_propagate=False)
         if _dialect:
@@ -528,6 +529,7 @@ class _ConnectionRecord(object):
         return self.connection
 
     def __close(self):
+        self.finalize_callback.clear()
         self.__pool._close_connection(self.connection)
 
     def __connect(self):
@@ -917,9 +919,9 @@ class QueuePool(Pool):
           on returning a connection. Defaults to 30.
 
         :param \**kw: Other keyword arguments including
-        :paramref:`.Pool.recycle`, :paramref:`.Pool.echo`,
-        :paramref:`.Pool.reset_on_return` and others are passed to the
-        :class:`.Pool` constructor.
+          :paramref:`.Pool.recycle`, :paramref:`.Pool.echo`,
+          :paramref:`.Pool.reset_on_return` and others are passed to the
+          :class:`.Pool` constructor.
 
         """
         Pool.__init__(self, creator, **kw)

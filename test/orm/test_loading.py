@@ -1,12 +1,39 @@
 from . import _fixtures
 from sqlalchemy.orm import loading, Session, aliased
-from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import eq_, assert_raises
 from sqlalchemy.util import KeyedTuple
-
-# class InstancesTest(_fixtures.FixtureTest):
+from sqlalchemy.testing import mock
 # class GetFromIdentityTest(_fixtures.FixtureTest):
 # class LoadOnIdentTest(_fixtures.FixtureTest):
 # class InstanceProcessorTest(_fixture.FixtureTest):
+
+
+class InstancesTest(_fixtures.FixtureTest):
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    def test_cursor_close_w_failed_rowproc(self):
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User)
+
+        ctx = q._compile_context()
+        cursor = mock.Mock()
+        q._entities = [
+            mock.Mock(row_processor=mock.Mock(side_effect=Exception("boom")))
+        ]
+        assert_raises(
+            Exception,
+            list, loading.instances(q, cursor, ctx)
+        )
+        assert cursor.close.called, "Cursor wasn't closed"
+
 
 class MergeResultTest(_fixtures.FixtureTest):
     run_setup_mappers = 'once'

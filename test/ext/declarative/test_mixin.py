@@ -1392,6 +1392,39 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             getattr, Mixin, "my_prop"
         )
 
+    def test_non_decl_access(self):
+        counter = mock.Mock()
+
+        class Mixin(object):
+            @declared_attr
+            def __tablename__(cls):
+                counter(cls)
+                return "foo"
+
+        class Foo(Mixin, Base):
+            id = Column(Integer, primary_key=True)
+
+            @declared_attr
+            def x(cls):
+                cls.__tablename__
+
+            @declared_attr
+            def y(cls):
+                cls.__tablename__
+
+        eq_(
+            counter.mock_calls,
+            [mock.call(Foo)]
+        )
+
+        eq_(Foo.__tablename__, 'foo')
+        eq_(Foo.__tablename__, 'foo')
+
+        eq_(
+            counter.mock_calls,
+            [mock.call(Foo), mock.call(Foo), mock.call(Foo)]
+        )
+
     def test_property_noncascade(self):
         counter = mock.Mock()
 
@@ -1431,6 +1464,59 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             pass
 
         eq_(counter.mock_calls, [mock.call(A), mock.call(B)])
+
+    def test_col_prop_attrs_associated_w_class_for_mapper_args(self):
+        from sqlalchemy import Column
+        import collections
+
+        asserted = collections.defaultdict(set)
+
+        class Mixin(object):
+            @declared_attr.cascading
+            def my_attr(cls):
+                if decl.has_inherited_table(cls):
+                    id = Column(ForeignKey('a.my_attr'), primary_key=True)
+                    asserted['b'].add(id)
+                else:
+                    id = Column(Integer, primary_key=True)
+                    asserted['a'].add(id)
+                return id
+
+        class A(Base, Mixin):
+            __tablename__ = 'a'
+
+            @declared_attr
+            def __mapper_args__(cls):
+                asserted['a'].add(cls.my_attr)
+                return {}
+
+        # here:
+        # 1. A is mapped.  so A.my_attr is now the InstrumentedAttribute.
+        # 2. B wants to call my_attr also.  Due to .cascading, it has been
+        # invoked specific to B, and is present in the dict_ that will
+        # be used when we map the class.  But except for the
+        # special setattr() we do in _scan_attributes() in this case, would
+        # otherwise not been set on the class as anything from this call;
+        # the usual mechanics of calling it from the descriptor also do not
+        # work because A is fully mapped and because A set it up, is currently
+        # that non-expected InstrumentedAttribute and replaces the
+        # descriptor from being invoked.
+
+        class B(A):
+            __tablename__ = 'b'
+
+            @declared_attr
+            def __mapper_args__(cls):
+                asserted['b'].add(cls.my_attr)
+                return {}
+
+        eq_(
+            asserted,
+            {
+                'a': set([A.my_attr.property.columns[0]]),
+                'b': set([B.my_attr.property.columns[0]])
+            }
+        )
 
     def test_column_pre_map(self):
         counter = mock.Mock()
@@ -1517,3 +1603,44 @@ class AbstractTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
 
         eq_(set(Base.metadata.tables), set(['y', 'z', 'q']))
+
+    def test_middle_abstract_attributes(self):
+        # test for [ticket:3219]
+        class A(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+
+        class B(A):
+            __abstract__ = True
+            data = Column(String)
+
+        class C(B):
+            c_value = Column(String)
+
+        eq_(
+            sa.inspect(C).attrs.keys(), ['id', 'name', 'data', 'c_value']
+        )
+
+    def test_middle_abstract_inherits(self):
+        # test for [ticket:3240]
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class AAbs(A):
+            __abstract__ = True
+
+        class B1(A):
+            __tablename__ = 'b1'
+            id = Column(ForeignKey('a.id'), primary_key=True)
+
+        class B2(AAbs):
+            __tablename__ = 'b2'
+            id = Column(ForeignKey('a.id'), primary_key=True)
+
+        assert B1.__mapper__.inherits is A.__mapper__
+
+        assert B2.__mapper__.inherits is A.__mapper__

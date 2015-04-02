@@ -7,6 +7,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.util import ue
 from sqlalchemy import util
+from sqlalchemy.testing.assertsql import CursorSQL
 
 
 
@@ -34,12 +35,12 @@ class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_result_map(self):
         s = self.t2.select()
         c = s.compile(dialect=self.__dialect__)
-        assert self.t2.c.a in set(c.result_map['a'][1])
+        assert self.t2.c.a in set(c._create_result_map()['a'][1])
 
     def test_result_map_use_labels(self):
         s = self.t2.select(use_labels=True)
         c = s.compile(dialect=self.__dialect__)
-        assert self.t2.c.a in set(c.result_map['schema_t2_a'][1])
+        assert self.t2.c.a in set(c._create_result_map()['schema_t2_a'][1])
 
     def test_straight_select(self):
         self.assert_compile(self.t2.select(),
@@ -163,7 +164,6 @@ class QueryUnicodeTest(fixtures.TestBase):
         finally:
             meta.drop_all()
 
-from sqlalchemy.testing.assertsql import ExactSQL
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = 'mssql'
 
@@ -232,27 +232,73 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             con.execute("""drop trigger paj""")
             meta.drop_all()
 
-    @testing.fails_on_everything_except('mssql+pyodbc', 'pyodbc-specific feature')
     @testing.provide_metadata
     def test_disable_scope_identity(self):
         engine = engines.testing_engine(options={"use_scope_identity": False})
         metadata = self.metadata
-        metadata.bind = engine
-        t1 = Table('t1', metadata,
-                Column('id', Integer, primary_key=True),
-                implicit_returning=False
+        t1 = Table(
+            't1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            implicit_returning=False
         )
-        metadata.create_all()
+        metadata.create_all(engine)
 
-        self.assert_sql_execution(
-                testing.db,
-                lambda: engine.execute(t1.insert()),
-                ExactSQL("INSERT INTO t1 DEFAULT VALUES"),
-                # we don't have an event for
-                # "SELECT @@IDENTITY" part here.
-                # this will be in 0.8 with #2459
+        with self.sql_execution_asserter(engine) as asserter:
+            engine.execute(t1.insert(), {"data": "somedata"})
+
+        asserter.assert_(
+            CursorSQL(
+                "INSERT INTO t1 (data) VALUES (?)",
+                ("somedata", )
+            ),
+            CursorSQL("SELECT @@identity AS lastrowid"),
         )
-        assert not engine.dialect.use_scope_identity
+
+    @testing.provide_metadata
+    def test_enable_scope_identity(self):
+        engine = engines.testing_engine(options={"use_scope_identity": True})
+        metadata = self.metadata
+        t1 = Table(
+            't1', metadata,
+            Column('id', Integer, primary_key=True),
+            implicit_returning=False
+        )
+        metadata.create_all(engine)
+
+        with self.sql_execution_asserter(engine) as asserter:
+            engine.execute(t1.insert())
+
+        # even with pyodbc, we don't embed the scope identity on a
+        # DEFAULT VALUES insert
+        asserter.assert_(
+            CursorSQL("INSERT INTO t1 DEFAULT VALUES"),
+            CursorSQL("SELECT scope_identity() AS lastrowid"),
+        )
+
+    @testing.only_on('mssql+pyodbc')
+    @testing.provide_metadata
+    def test_embedded_scope_identity(self):
+        engine = engines.testing_engine(options={"use_scope_identity": True})
+        metadata = self.metadata
+        t1 = Table(
+            't1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            implicit_returning=False
+        )
+        metadata.create_all(engine)
+
+        with self.sql_execution_asserter(engine) as asserter:
+            engine.execute(t1.insert(), {'data': 'somedata'})
+
+        # pyodbc-specific system
+        asserter.assert_(
+            CursorSQL(
+                "INSERT INTO t1 (data) VALUES (?); select scope_identity()",
+                ("somedata", )
+            ),
+        )
 
     def test_insertid_schema(self):
         meta = MetaData(testing.db)

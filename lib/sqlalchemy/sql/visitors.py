@@ -1,5 +1,5 @@
 # sql/visitors.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2015 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -51,6 +51,7 @@ class VisitableType(type):
 
     Classes having no __visit_name__ attribute will remain unaffected.
     """
+
     def __init__(cls, clsname, bases, clsdict):
         if clsname != 'Visitable' and \
                 hasattr(cls, '__visit_name__'):
@@ -212,12 +213,19 @@ def iterate(obj, opts):
     traversal is configured to be breadth-first.
 
     """
+    # fasttrack for atomic elements like columns
+    children = obj.get_children(**opts)
+    if not children:
+        return [obj]
+
+    traversal = deque()
     stack = deque([obj])
     while stack:
         t = stack.popleft()
-        yield t
+        traversal.append(t)
         for c in t.get_children(**opts):
             stack.append(c)
+    return iter(traversal)
 
 
 def iterate_depthfirst(obj, opts):
@@ -226,6 +234,11 @@ def iterate_depthfirst(obj, opts):
     traversal is configured to be depth-first.
 
     """
+    # fasttrack for atomic elements like columns
+    children = obj.get_children(**opts)
+    if not children:
+        return [obj]
+
     stack = deque([obj])
     traversal = deque()
     while stack:
