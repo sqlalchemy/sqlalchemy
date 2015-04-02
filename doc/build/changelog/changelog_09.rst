@@ -16,6 +16,17 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3349
+
+        :class:`.Query` doesn't support joins, subselects, or special
+        FROM clauses when using the :meth:`.Query.update` or
+        :meth:`.Query.delete` methods; instead of silently ignoring these
+        fields if methods like :meth:`.Query.join` or
+        :meth:`.Query.select_from` has been called, a warning is emitted.
+        As of 1.0.0b5 this will raise an error.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3352
         :versions: 1.0.0b5
 
