@@ -2860,6 +2860,13 @@ class Query(object):
             The expression evaluator currently doesn't account for differing
             string collations between the database and Python.
 
+        :param update_args: Optional dictionary, if present will be passed
+         to the underlying :func:`.update` construct as the ``**kw`` for
+         the object.  May be used to pass dialect-specific arguments such
+         as ``mysql_limit``.
+
+         .. versionadded:: 1.0.0
+
         :return: the count of rows matched as returned by the database's
          "row count" feature.
 

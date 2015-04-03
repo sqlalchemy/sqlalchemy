@@ -16,6 +16,17 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.0
+
+    .. change::
+        :tags: feature, orm
+        :pullreq: github:164
+
+        Added new argument :paramref:`.Query.update.update_args` which allows
+        kw arguments such as ``mysql_limit`` to be passed to the underlying
+        :class:`.Update` construct.  Pull request courtesy Amir Sadoughi.
+
+.. changelog::
     :version: 1.0.0b5
     :released: April 3, 2015
 
