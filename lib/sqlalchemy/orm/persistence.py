@@ -1170,17 +1170,18 @@ class BulkFetch(BulkUD):
 class BulkUpdate(BulkUD):
     """BulkUD which handles UPDATEs."""
 
-    def __init__(self, query, values):
+    def __init__(self, query, values, update_kwargs):
         super(BulkUpdate, self).__init__(query)
         self.values = values
+        self.update_kwargs = update_kwargs
 
     @classmethod
-    def factory(cls, query, synchronize_session, values):
+    def factory(cls, query, synchronize_session, values, update_kwargs):
         return BulkUD._factory({
             "evaluate": BulkUpdateEvaluate,
             "fetch": BulkUpdateFetch,
             False: BulkUpdate
-        }, synchronize_session, query, values)
+        }, synchronize_session, query, values, update_kwargs)
 
     def _resolve_string_to_expr(self, key):
         if self.mapper and isinstance(key, util.string_types):
@@ -1215,7 +1216,8 @@ class BulkUpdate(BulkUD):
             for k, v in self.values.items()
         )
         update_stmt = sql.update(self.primary_table,
-                                 self.context.whereclause, values)
+                                 self.context.whereclause, values,
+                                 **self.update_kwargs)
 
         self.result = self.query.session.execute(
             update_stmt, params=self.query._params,
