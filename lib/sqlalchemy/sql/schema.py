@@ -3450,7 +3450,7 @@ class MetaData(SchemaItem):
 
 
         """
-        return ddl.sort_tables(self.tables.values())
+        return ddl.sort_tables(sorted(self.tables.values(), key=lambda t: t.key))
 
     def reflect(self, bind=None, schema=None, views=False, only=None,
                 extend_existing=False,

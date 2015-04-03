@@ -492,6 +492,21 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             [d, b, a, c, e]
         )
 
+    def test_deterministic_order(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('foo', Integer))
+        b = Table('b', meta, Column('foo', Integer))
+        c = Table('c', meta, Column('foo', Integer))
+        d = Table('d', meta, Column('foo', Integer))
+        e = Table('e', meta, Column('foo', Integer))
+
+        e.add_is_dependent_on(c)
+        a.add_is_dependent_on(b)
+        eq_(
+            meta.sorted_tables,
+            [b, c, d, a, e]
+        )
+
     def test_nonexistent(self):
         assert_raises(tsa.exc.NoSuchTableError, Table,
                       'fake_table',
