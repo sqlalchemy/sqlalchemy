@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.0b5
+    :released: April 3, 2015
 
     .. change::
         :tags: bug, orm
