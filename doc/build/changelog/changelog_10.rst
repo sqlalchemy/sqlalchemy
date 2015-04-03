@@ -19,6 +19,21 @@
     :version: 1.0.0
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3084
+        :pullreq: bitbucket:47
+
+        The topological sorting used to sort :class:`.Table` objects
+        and available via the :attr:`.MetaData.sorted_tables` collection
+        will now produce a **deterministic** ordering; that is, the same
+        ordering each time given a set of tables with particular names
+        and dependencies.  This is to help with comparison of DDL scripts
+        and other use cases.  The tables are sent to the topological sort
+        sorted by name, and the topological sort itself will process
+        the incoming data in an ordered fashion.  Pull request
+        courtesy Sebastian Bank.
+
+    .. change::
         :tags: feature, orm
         :pullreq: github:164
 
