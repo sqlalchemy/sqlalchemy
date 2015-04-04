@@ -19,6 +19,16 @@
     :version: 1.0.0
 
     .. change::
+        :tags: bug, tests
+        :tickets: 3356
+
+        Fixed the pathing used when tests run; for sqla_nose.py and py.test,
+        the "./lib" prefix is again inserted at the head of sys.path but
+        only if sys.flags.no_user_site isn't set; this makes it act just
+        like the way Python puts "." in the current path by default.
+        For tox, we are setting the PYTHONNOUSERSITE flag now.
+
+    .. change::
         :tags: feature, sql
         :tickets: 3084
         :pullreq: bitbucket:47

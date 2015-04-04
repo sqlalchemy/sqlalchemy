@@ -10,10 +10,11 @@ import sys
 import nose
 import os
 
-
-for pth in ['./lib']:
-    sys.path.append(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), pth))
+if not sys.flags.no_user_site:
+    sys.path.insert(
+        0,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
+    )
 
 # use bootstrapping so that test plugins are loaded
 # without touching the main library before coverage starts
