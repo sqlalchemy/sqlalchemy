@@ -17,6 +17,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 3354
+        :versions: 1.0.0
 
         Fixed a long-standing bug where the :class:`.Enum` type as used
         with the psycopg2 dialect in conjunction with non-ascii values
