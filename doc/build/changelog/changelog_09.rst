@@ -15,6 +15,16 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3354
+
+        Fixed a long-standing bug where the :class:`.Enum` type as used
+        with the psycopg2 dialect in conjunction with non-ascii values
+        and ``native_enum=False`` would fail to decode return results properly.
+        This stemmed from when the PG :class:`.postgresql.ENUM` type used
+        to be a standalone type without a "non native" option.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3349
 

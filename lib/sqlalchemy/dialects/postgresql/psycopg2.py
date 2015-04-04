@@ -341,7 +341,7 @@ class _PGNumeric(sqltypes.Numeric):
 
 class _PGEnum(ENUM):
     def result_processor(self, dialect, coltype):
-        if util.py2k and self.convert_unicode is True:
+        if self.native_enum and util.py2k and self.convert_unicode is True:
             # we can't easily use PG's extensions here because
             # the OID is on the fly, and we need to give it a python
             # function anyway - not really worth it.

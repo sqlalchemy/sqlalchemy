@@ -170,8 +170,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             (util.u('réveillé'), util.u('drôle'), util.u('S’il'))
         )
 
-    def test_non_native_type(self):
-        metadata = MetaData()
+    @testing.provide_metadata
+    def test_non_native_enum(self):
+        metadata = self.metadata
         t1 = Table(
             'foo',
             metadata,
@@ -187,14 +188,53 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         def go():
             t1.create(testing.db)
 
-        try:
-            self.assert_sql(
-                testing.db, go, [], with_sequences=[
-                    ("CREATE TABLE foo (\tbar "
-                     "VARCHAR(5), \tCONSTRAINT myenum CHECK "
-                     "(bar IN ('one', 'two', 'three')))", {})])
-        finally:
-            metadata.drop_all(testing.db)
+        self.assert_sql(
+            testing.db, go, [
+                ("CREATE TABLE foo (\tbar "
+                 "VARCHAR(5), \tCONSTRAINT myenum CHECK "
+                 "(bar IN ('one', 'two', 'three')))", {})])
+        with testing.db.begin() as conn:
+            conn.execute(
+                t1.insert(), {'bar': 'two'}
+            )
+            eq_(
+                conn.scalar(select([t1.c.bar])), 'two'
+            )
+
+    @testing.provide_metadata
+    def test_non_native_enum_w_unicode(self):
+        metadata = self.metadata
+        t1 = Table(
+            'foo',
+            metadata,
+            Column(
+                'bar',
+                Enum('B', util.u('Ü'), name='myenum', native_enum=False)))
+
+        def go():
+            t1.create(testing.db)
+
+        self.assert_sql(
+            testing.db,
+            go,
+            [
+                (
+                    util.u(
+                        "CREATE TABLE foo (\tbar "
+                        "VARCHAR(1), \tCONSTRAINT myenum CHECK "
+                        "(bar IN ('B', 'Ü')))"
+                    ),
+                    {}
+                )
+            ])
+
+        with testing.db.begin() as conn:
+            conn.execute(
+                t1.insert(), {'bar': util.u('Ü')}
+            )
+            eq_(
+                conn.scalar(select([t1.c.bar])), util.u('Ü')
+            )
 
     @testing.provide_metadata
     def test_disable_create(self):
