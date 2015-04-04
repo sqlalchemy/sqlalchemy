@@ -85,7 +85,7 @@ class CompiledSQL(SQLMatchRule):
                     column_keys=context.compiled.column_keys,
                     inline=context.compiled.inline)
             )
-        _received_statement = re.sub(r'[\n\t]', '', str(compiled))
+        _received_statement = re.sub(r'[\n\t]', '', util.text_type(compiled))
         parameters = execute_observed.parameters
 
         if not parameters:
