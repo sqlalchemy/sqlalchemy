@@ -9,6 +9,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing import fixtures
 import random
 from sqlalchemy.testing.mock import Mock, call
+import weakref
 
 join_timeout = 10
 
@@ -35,10 +36,21 @@ def MockDBAPI():
 class PoolTestBase(fixtures.TestBase):
     def setup(self):
         pool.clear_managers()
+        self._teardown_conns = []
+
+    def teardown(self):
+        for ref in self._teardown_conns:
+            conn = ref()
+            if conn:
+                conn.close()
 
     @classmethod
     def teardown_class(cls):
         pool.clear_managers()
+
+    def _with_teardown(self, connection):
+        self._teardown_conns.append(weakref.ref(connection))
+        return connection
 
     def _queuepool_fixture(self, **kw):
         dbapi, pool = self._queuepool_dbapi_fixture(**kw)
@@ -960,9 +972,9 @@ class QueuePoolTest(PoolTestBase):
             return creator()
 
         p = pool.QueuePool(creator=create, pool_size=2, max_overflow=3)
-        c1 = p.connect()
-        c2 = p.connect()
-        c3 = p.connect()
+        c1 = self._with_teardown(p.connect())
+        c2 = self._with_teardown(p.connect())
+        c3 = self._with_teardown(p.connect())
         eq_(p._overflow, 1)
         creator = failing_dbapi
         assert_raises(Exception, p.connect)
@@ -1293,13 +1305,13 @@ class QueuePoolTest(PoolTestBase):
 
         dbapi.shutdown(False)
 
-        c1 = p.connect()
+        c1 = self._with_teardown(p.connect())
         assert p._pool.empty()  # poolsize is one, so we're empty OK
-        c2 = p.connect()
+        c2 = self._with_teardown(p.connect())
         eq_(p._overflow, 1)  # and not 2
 
         # this hangs if p._overflow is 2
-        c3 = p.connect()
+        c3 = self._with_teardown(p.connect())
 
     def test_error_on_pooled_reconnect_cleanup_invalidate(self):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=2)
