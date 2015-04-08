@@ -20,6 +20,14 @@
 
     .. change::
         :tags: bug, mssql
+        :tickets: 3360
+
+        Fixed a regression where the "last inserted id" mechanics would
+        fail to store the correct value for MSSQL on an INSERT where the
+        primary key value was present in the insert params before execution.
+
+    .. change::
+        :tags: bug, mssql
         :pullreq: github:166
 
         Using the ``Binary`` constructor now present in pymssql rather than

@@ -840,18 +840,26 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         compiled_params = self.compiled_parameters[0]
 
         lastrowid = self.get_lastrowid()
-        autoinc_col = table._autoincrement_column
-        if autoinc_col is not None:
-            # apply type post processors to the lastrowid
-            proc = autoinc_col.type._cached_result_processor(
-                self.dialect, None)
-            if proc is not None:
-                lastrowid = proc(lastrowid)
-        self.inserted_primary_key = [
-            lastrowid if c is autoinc_col else
-            compiled_params.get(key_getter(c), None)
-            for c in table.primary_key
-        ]
+        if lastrowid is not None:
+            autoinc_col = table._autoincrement_column
+            if autoinc_col is not None:
+                # apply type post processors to the lastrowid
+                proc = autoinc_col.type._cached_result_processor(
+                    self.dialect, None)
+                if proc is not None:
+                    lastrowid = proc(lastrowid)
+            self.inserted_primary_key = [
+                lastrowid if c is autoinc_col else
+                compiled_params.get(key_getter(c), None)
+                for c in table.primary_key
+            ]
+        else:
+            # don't have a usable lastrowid, so
+            # do the same as _setup_ins_pk_from_empty
+            self.inserted_primary_key = [
+                compiled_params.get(key_getter(c), None)
+                for c in table.primary_key
+            ]
 
     def _setup_ins_pk_from_empty(self):
         key_getter = self.compiled._key_getters_for_crud_column[2]
