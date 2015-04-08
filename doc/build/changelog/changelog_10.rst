@@ -24,7 +24,10 @@
 
         Fixed a regression where the "last inserted id" mechanics would
         fail to store the correct value for MSSQL on an INSERT where the
-        primary key value was present in the insert params before execution.
+        primary key value was present in the insert params before execution,
+        as well as in the case where an INSERT from SELECT would state the
+        target columns as column objects, instead of string keys.
+
 
     .. change::
         :tags: bug, mssql

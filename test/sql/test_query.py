@@ -275,9 +275,16 @@ class QueryTest(fixtures.TestBase):
         r = t6.insert().values(manual_id=id).execute()
         eq_(r.inserted_primary_key, [12, 1])
 
-    def test_implicit_id_insert_select(self):
+    def test_implicit_id_insert_select_columns(self):
         stmt = users.insert().from_select(
             (users.c.user_id, users.c.user_name),
+            users.select().where(users.c.user_id == 20))
+
+        testing.db.execute(stmt)
+
+    def test_implicit_id_insert_select_keys(self):
+        stmt = users.insert().from_select(
+            ["user_id", "user_name"],
             users.select().where(users.c.user_id == 20))
 
         testing.db.execute(stmt)

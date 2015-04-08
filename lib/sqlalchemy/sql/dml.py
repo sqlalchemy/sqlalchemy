@@ -10,7 +10,8 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 """
 
 from .base import Executable, _generative, _from_objects, DialectKWArgs
-from .elements import ClauseElement, _literal_as_text, Null, and_, _clone
+from .elements import ClauseElement, _literal_as_text, Null, and_, _clone, \
+    _column_as_key
 from .selectable import _interpret_as_from, _interpret_as_select, HasPrefixes
 from .. import util
 from .. import exc
@@ -544,7 +545,8 @@ class Insert(ValuesBase):
                 "This construct already inserts value expressions")
 
         self.parameters, self._has_multi_parameters = \
-            self._process_colparams(dict((n, Null()) for n in names))
+            self._process_colparams(
+                dict((_column_as_key(n), Null()) for n in names))
 
         self.select_names = names
         self.inline = True
