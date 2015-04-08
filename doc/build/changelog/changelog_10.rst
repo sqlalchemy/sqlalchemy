@@ -19,6 +19,13 @@
     :version: 1.0.0
 
     .. change::
+        :tags: bug, mssql
+        :pullreq: github:166
+
+        Using the ``Binary`` constructor now present in pymssql rather than
+        patching one in.  Pull request courtesy Ramiro Morales.
+
+    .. change::
         :tags: bug, tests
         :tickets: 3356
 
