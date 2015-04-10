@@ -3194,11 +3194,14 @@ class MetaData(SchemaItem):
                 'schema': self.schema,
                 'schemas': self._schemas,
                 'sequences': self._sequences,
-                'fk_memos': self._fk_memos}
+                'fk_memos': self._fk_memos,
+                'naming_convention': self.naming_convention
+                }
 
     def __setstate__(self, state):
         self.tables = state['tables']
         self.schema = state['schema']
+        self.naming_convention = state['naming_convention']
         self._bind = None
         self._sequences = state['sequences']
         self._schemas = state['schemas']
