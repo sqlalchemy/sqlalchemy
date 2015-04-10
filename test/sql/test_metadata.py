@@ -3575,3 +3575,16 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         u1.append_constraint(ck1)
 
         eq_(ck1.name, "ck_user_foo")
+
+    def test_pickle_metadata(self):
+        m = MetaData(naming_convention={"pk": "%(table_name)s_pk"})
+
+        m2 = pickle.loads(pickle.dumps(m))
+
+        eq_(m2.naming_convention, {"pk": "%(table_name)s_pk"})
+
+        t2a = Table('t2', m, Column('id', Integer, primary_key=True))
+        t2b = Table('t2', m2, Column('id', Integer, primary_key=True))
+
+        eq_(t2a.primary_key.name, t2b.primary_key.name)
+        eq_(t2b.primary_key.name, "t2_pk")

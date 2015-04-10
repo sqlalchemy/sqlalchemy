@@ -15,6 +15,17 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3362
+        :versions: 1.0.0
+
+        Fixed issue where a :class:`.MetaData` object that used a naming
+        convention would not properly work with pickle.  The attribute was
+        skipped leading to inconsistencies and failures if the unpickled
+        :class:`.MetaData` object were used to base additional tables
+        from.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3354
         :versions: 1.0.0
