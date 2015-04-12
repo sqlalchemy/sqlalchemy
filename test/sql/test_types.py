@@ -967,7 +967,9 @@ class UnicodeTest(fixtures.TestBase):
         elif testing.against("mysql+mysqldb"):
             eq_(
                 testing.db.dialect.returns_unicode_strings,
-                True if util.py3k or testing.db.url.query.get("use_unicode")
+                True if util.py3k or util.asbool(
+                    testing.db.url.query.get("use_unicode")
+                )
                 else False
             )
         else:
