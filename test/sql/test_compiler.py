@@ -3523,7 +3523,3 @@ class ResultMapTest(fixtures.TestBase):
                     (table1.c.description, 'description', 'description'),
                     table1.c.description.type)}
         )
-
-
-
-

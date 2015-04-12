@@ -408,4 +408,3 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
     def _baseline_8_drop(self):
         self.metadata.drop_all()
-

@@ -174,10 +174,14 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
             # Animals
 
-            list(self.session.query(Animal).filter(Animal.Species == 'Leopard'))
-            list(self.session.query(Animal).filter(Animal.Species == 'Ostrich'))
-            list(self.session.query(Animal).filter(Animal.Legs == 1000000))
-            list(self.session.query(Animal).filter(Animal.Species == 'Tick'))
+            list(self.session.query(Animal).filter(
+                    Animal.Species == 'Leopard'))
+            list(self.session.query(Animal).filter(
+                    Animal.Species == 'Ostrich'))
+            list(self.session.query(Animal).filter(
+                    Animal.Legs == 1000000))
+            list(self.session.query(Animal).filter(
+                    Animal.Species == 'Tick'))
 
     def _baseline_4_expressions(self):
         for x in range(ITERATIONS):
@@ -342,4 +346,3 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
     def _baseline_7_drop(self):
         self.session.rollback()
         self.metadata.drop_all()
-

@@ -11,6 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.testing import fixtures
 
+
 class BindTest(fixtures.TestBase):
     def test_bind_close_engine(self):
         e = testing.db
@@ -76,7 +77,8 @@ class BindTest(fixtures.TestBase):
         ]:
             assert_raises_message(
                 exc.UnboundExecutionError,
-                "Table object 'test_table' is not bound to an Engine or Connection.",
+                ("Table object 'test_table' is not bound to an Engine or "
+                 "Connection."),
                 meth
             )
 
@@ -163,7 +165,6 @@ class BindTest(fixtures.TestBase):
         finally:
             metadata.drop_all(bind=conn)
 
-
     def test_clauseelement(self):
         metadata = MetaData()
         table = Table('test_table', metadata,
@@ -198,5 +199,3 @@ class BindTest(fixtures.TestBase):
             if isinstance(bind, engine.Connection):
                 bind.close()
             metadata.drop_all(bind=testing.db)
-
-
