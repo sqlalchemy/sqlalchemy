@@ -2329,12 +2329,21 @@ class JoinCondition(object):
             binary.right, binary.left = proc_left_right(binary.right,
                                                         binary.left)
 
+        check_entities = self.prop is not None and \
+            self.prop.mapper is not self.prop.parent
+
         def proc_left_right(left, right):
             if isinstance(left, expression.ColumnClause) and \
                     isinstance(right, expression.ColumnClause):
                 if self.child_selectable.c.contains_column(right) and \
                         self.parent_selectable.c.contains_column(left):
                     right = right._annotate({"remote": True})
+            elif check_entities and \
+                    right._annotations.get('parentmapper') is self.prop.mapper:
+                right = right._annotate({"remote": True})
+            elif check_entities and \
+                    left._annotations.get('parentmapper') is self.prop.mapper:
+                left = left._annotate({"remote": True})
             else:
                 self._warn_non_column_elements()
 

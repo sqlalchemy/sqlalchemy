@@ -19,6 +19,18 @@
     :version: 1.0.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3364
+
+        Made a small improvement to the heuristics of relationship when
+        determining remote side with semi-self-referential (e.g. two joined
+        inh subclasses referring to each other), non-simple join conditions
+        such that the parententity is taken into account and can reduce the
+        need for using the ``remote()`` annotation; this can restore some
+        cases that might have worked without the annotation prior to 0.9.4
+        via :ticket:`2948`.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3360
 
