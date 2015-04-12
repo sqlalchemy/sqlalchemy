@@ -506,8 +506,6 @@ class _JoinFixtures(object):
         )
 
     def _join_fixture_inh_selfref_w_entity(self, **kw):
-        # MARKMARK
-
         fake_logger = mock.Mock(info=lambda *arg, **kw: None)
         prop = mock.Mock(
             parent=mock.Mock(),
