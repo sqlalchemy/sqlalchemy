@@ -1092,18 +1092,83 @@ joined loader options can still be used::
 
 .. _bug_3233:
 
-Single inheritance join targets will no longer sometimes implicitly alias themselves
-------------------------------------------------------------------------------------
+Changes and fixes in handling of duplicate join targets
+--------------------------------------------------------
 
-This is a bug where an unexpected and inconsistent behavior would occur
-in some scenarios when joining to a single-table-inheritance entity.  The
-difficulty this might cause is that the query is supposed to raise an error,
-as it is invalid SQL, however the bug would cause an alias to be added which
-makes the query "work".   The issue is confusing because this aliasing
-is not applied consistently and could change based on the nature of the query
-preceding the join.
+Changes here encompass bugs where an unexpected and inconsistent
+behavior would occur in some scenarios when joining to an entity
+twice, or to multple single-table entities against the same table,
+without using a relationship-based ON clause, as well as when joining
+multiple times to the same target relationship.
 
-A simple example is::
+Starting with a mapping as::
+
+    from sqlalchemy import Integer, Column, String, ForeignKey
+    from sqlalchemy.orm import Session, relationship
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B")
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+
+A query that joins to ``A.bs`` twice::
+
+    print s.query(A).join(A.bs).join(A.bs)
+
+Will render::
+
+    SELECT a.id AS a_id
+    FROM a JOIN b ON a.id = b.a_id
+
+The query deduplicates the redundant ``A.bs`` because it is attempting
+to support a case like the following::
+
+    s.query(A).join(A.bs).\
+        filter(B.foo == 'bar').\
+        reset_joinpoint().join(A.bs, B.cs).filter(C.bar == 'bat')
+
+That is, the ``A.bs`` is part of a "path".  As part of :ticket:`3367`,
+arriving at the same endpoint twice without it being part of a
+larger path will now emit a warning::
+
+    SAWarning: Pathed join target A.bs has already been joined to; skipping
+
+The bigger change involves when joining to an entity without using a
+relationship-bound path.  If we join to ``B`` twice::
+
+    print s.query(A).join(B, B.a_id == A.id).join(B, B.a_id == A.id)
+
+In 0.9, this would render as follows::
+
+    SELECT a.id AS a_id
+    FROM a JOIN b ON b.a_id = a.id JOIN b AS b_1 ON b_1.a_id = a.id
+
+This is problematic since the aliasing is implicit and in the case of different
+ON clauses can lead to unpredictable results.
+
+In 1.0, no automatic aliasing is applied and we get::
+
+    SELECT a.id AS a_id
+    FROM a JOIN b ON b.a_id = a.id JOIN b ON b.a_id = a.id
+
+This will raise an error from the database.  While it might be nice if
+the "duplicate join target" acted identically if we joined both from
+redundant relationships vs. redundant non-relationship based targets,
+for now we are only changing the behavior in the more serious case where
+implicit aliasing would have occurred previously, and only emitting a warning
+in the relationship case.  Ultimately, joining to the same thing twice without
+any aliasing to disambiguate should raise an error in all cases.
+
+The change also has an impact on single-table inheritance targets.  Using
+a mapping as follows::
 
     from sqlalchemy import Integer, Column, String, ForeignKey
     from sqlalchemy.orm import Session, relationship
@@ -1151,7 +1216,8 @@ the identical SQL::
     WHERE a.type IN (:type_2)
 
 The above SQL is invalid, as it renders "a" within the FROM list twice.
-The bug however would occur with the second query only and render this instead::
+However, the implicit aliasing bug would occur with the second query only
+and render this instead::
 
     SELECT a.id AS a_id, a.type AS a_type
     FROM a JOIN b ON b.a_id = a.id JOIN a AS a_1
@@ -1173,6 +1239,7 @@ as all the subclasses normally refer to the same table::
     print s.query(ASub1).join(B, ASub1.b).join(asub2_alias, B.a.of_type(asub2_alias))
 
 :ticket:`3233`
+:ticket:`3367`
 
 
 Deferred Columns No Longer Implicitly Undefer

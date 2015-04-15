@@ -1815,7 +1815,8 @@ class Query(object):
             # convert to a tuple.
             keys = (keys,)
 
-        for arg1 in util.to_list(keys):
+        keylist = util.to_list(keys)
+        for idx, arg1 in enumerate(keylist):
             if isinstance(arg1, tuple):
                 # "tuple" form of join, multiple
                 # tuples are accepted as well.   The simpler
@@ -1894,6 +1895,11 @@ class Query(object):
                         jp = self._joinpoint[edge].copy()
                         jp['prev'] = (edge, self._joinpoint)
                         self._update_joinpoint(jp)
+
+                        if idx == len(keylist) - 1:
+                            util.warn(
+                                "Pathed join target %s has already "
+                                "been joined to; skipping" % prop)
                         continue
 
             elif onclause is not None and right_entity is None:

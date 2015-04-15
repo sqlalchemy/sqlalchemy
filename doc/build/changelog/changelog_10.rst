@@ -20,6 +20,19 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3367
+
+        Identified an inconsistency when handling :meth:`.Query.join` to the
+        same target more than once; it implicitly dedupes only in the case of
+        a relationship join, and due to :ticket:`3233`, in 1.0 a join
+        to the same table twice behaves differently than 0.9 in that it no
+        longer erroneously aliases.   To help document this change,
+        the verbiage regarding :ticket:`3233` in the migration notes has
+        been generalized, and a warning has been added when :meth:`.Query.join`
+        is called against the same target relationship more than once.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3364
 
         Made a small improvement to the heuristics of relationship when
