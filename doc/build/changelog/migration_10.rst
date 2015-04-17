@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, released in April, 2015.
 
-    Document last updated: March 17, 2015
+    Document last updated: April 17, 2015
 
 Introduction
 ============
@@ -1014,7 +1014,8 @@ INSERT statement in relational databases considers a missing value to be
 the same as NULL in most cases.   Whether SQLAlchemy received a history
 event for a particular attribute set to None or not would usually not matter;
 as the difference between sending None/NULL or not wouldn't have an impact.
-However, as :ticket:`3060` illustrates, there are some seldom edge cases
+However, as :ticket:`3060` (described here in :ref:`migration_3060`)
+illustrates, there are some seldom edge cases
 where we do in fact want to positively have ``None`` set.  Also, allowing
 the attribute event here means it's now possible to create "default value"
 functions for ORM mapped attributes.
@@ -1031,6 +1032,58 @@ would be ``None`` before, it will now be the :data:`.orm.attributes.NEVER_SET`
 symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
+
+.. _migration_3060:
+
+Priority of attribute changes on relationship-bound attributes vs. FK-bound may appear to change
+------------------------------------------------------------------------------------------------
+
+As a side effect of :ticket:`3060`, setting a relationship-bound attribute to ``None``
+is now a tracked history event which refers to the intention of persisting
+``None`` to that attribute.   As it has always been the case that setting a
+relationship-bound attribute will trump direct assignment to the foreign key
+attributes, a change in behavior can be seen here when assigning None.
+Given a mapping::
+
+    class A(Base):
+        __tablename__ = 'table_a'
+
+        id = Column(Integer, primary_key=True)
+
+    class B(Base):
+        __tablename__ = 'table_b'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('table_a.id'))
+        a = relationship(A)
+
+In 1.0, the relationship-bound attribute takes precedence over the FK-bound
+attribute in all cases, whether or not
+the value we assign is a reference to an ``A`` object or is ``None``.
+In 0.9, the behavior is inconsistent and
+only takes effect if a value is assigned; the None is not considered::
+
+    a1 = A(id=1)
+    a2 = A(id=2)
+    session.add_all([a1, a2])
+    session.flush()
+
+    b1 = B()
+    b1.a = a1   # we expect a_id to be '1'; takes precedence in 0.9 and 1.0
+
+    b2 = B()
+    b2.a = None  # we expect a_id to be None; takes precedence only in 1.0
+
+    b1.a_id = 2
+    b2.a_id = 2
+
+    session.add_all([b1, b2])
+    session.commit()
+
+    assert b1.a is a1  # passes in both 0.9 and 1.0
+    assert b2.a is None  # passes in 1.0, in 0.9 it's a2
+
+:ticket:`3060`
 
 .. _bug_3139:
 
