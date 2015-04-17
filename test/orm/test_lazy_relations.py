@@ -559,7 +559,7 @@ class GetterStateTest(_fixtures.FixtureTest):
 
     run_inserts = None
 
-    def _u_ad_fixture(self, populate_user):
+    def _u_ad_fixture(self, populate_user, dont_use_get=False):
         users, Address, addresses, User = (
             self.tables.users,
             self.classes.Address,
@@ -567,9 +567,17 @@ class GetterStateTest(_fixtures.FixtureTest):
             self.classes.User)
 
         mapper(User, users, properties={
-            'addresses': relationship(Address, backref='user')
+            'addresses': relationship(Address, back_populates='user')
         })
-        mapper(Address, addresses)
+        mapper(Address, addresses, properties={
+            'user': relationship(
+                User,
+                primaryjoin=and_(
+                    users.c.id == addresses.c.user_id, users.c.id != 27)
+                if dont_use_get else None,
+                back_populates='addresses'
+            )
+        })
 
         sess = create_session()
         a1 = Address(email_address='a1')
@@ -580,6 +588,19 @@ class GetterStateTest(_fixtures.FixtureTest):
         if populate_user:
             sess.expire_all()
         return User, Address, sess, a1
+
+    def test_no_use_get_params_missing(self):
+        User, Address, sess, a1 = self._u_ad_fixture(False, True)
+
+        def go():
+            eq_(a1.user, None)
+
+        # doesn't emit SQL
+        self.assert_sql_count(
+            testing.db,
+            go,
+            0
+        )
 
     def test_get_empty_passive_return_never_set(self):
         User, Address, sess, a1 = self._u_ad_fixture(False)

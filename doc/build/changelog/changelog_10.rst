@@ -16,6 +16,23 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.1
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3368
+
+        Fixed a critical regression caused by :ticket:`3061` where the
+        NEVER_SET symbol could easily leak into a lazyload query, subsequent
+        to the flush of a pending object.  This would occur typically
+        for a many-to-one relationship that does not use a simple
+        "get" strategy.   The good news is that the fix improves efficiency
+        vs. 0.9, because we can now skip the SELECT statement entirely
+        when we detect NEVER_SET symbols present in the parameters; prior to
+        :ticket:`3061`, we couldn't discern if the None here were set or not.
+
+
+.. changelog::
     :version: 1.0.0
     :released: April 16, 2015
 

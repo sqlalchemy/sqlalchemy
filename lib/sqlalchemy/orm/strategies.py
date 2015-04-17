@@ -585,6 +585,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         if pending and orm_util._none_set.intersection(params.values()):
             return None
+        elif orm_util._never_set.intersection(params.values()):
+            return None
 
         q = q.filter(lazy_clause).params(params)
 
