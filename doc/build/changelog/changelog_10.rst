@@ -19,6 +19,24 @@
     :version: 1.0.1
 
     .. change::
+        :tags: bug, core
+        :tickets: 3372
+
+        Fixed issue where a straight SELECT EXISTS query would fail to
+        assign the proper result type of Boolean to the result mapping, and
+        instead would leak column types from within the query into the
+        result map.  This issue exists in 0.9 and earlier as well, however
+        has less of an impact in those versions.  In 1.0, due to #918
+        this becomes a regression in that we now rely upon the result mapping
+        to be very accurate, else we can assign result-type processors to
+        the wrong column.   In all versions, this issue also has the effect
+        that a simple EXISTS will not apply the Boolean type handler, leading
+        to simple 1/0 values for backends without native boolean instead of
+        True/False.   The fix includes that an EXISTS columns argument
+        will be anon-labeled like other column expressions; a similar fix is
+        implemented for pure-boolean expressions like ``not_(True())``.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3374
 

@@ -3343,7 +3343,8 @@ class Exists(UnaryExpression):
             s = Select(*args, **kwargs).as_scalar().self_group()
 
         UnaryExpression.__init__(self, s, operator=operators.exists,
-                                 type_=type_api.BOOLEANTYPE)
+                                 type_=type_api.BOOLEANTYPE,
+                                 wraps_column_expression=True)
 
     def select(self, whereclause=None, **params):
         return Select([self], whereclause, **params)

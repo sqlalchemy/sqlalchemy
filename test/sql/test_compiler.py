@@ -380,7 +380,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # this is native_boolean=False for default dialect
         self.assert_compile(
             select([not_(True)], use_labels=True),
-            "SELECT :param_1 = 0"
+            "SELECT :param_1 = 0 AS anon_1"
         )
 
         self.assert_compile(
@@ -561,13 +561,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(exists([table1.c.myid], table1.c.myid
                                    == 5).select(),
                             'SELECT EXISTS (SELECT mytable.myid FROM '
-                            'mytable WHERE mytable.myid = :myid_1)',
+                            'mytable WHERE mytable.myid = :myid_1) AS anon_1',
                             params={'mytable_myid': 5})
         self.assert_compile(select([table1, exists([1],
                                                    from_obj=table2)]),
                             'SELECT mytable.myid, mytable.name, '
                             'mytable.description, EXISTS (SELECT 1 '
-                            'FROM myothertable) FROM mytable',
+                            'FROM myothertable) AS anon_1 FROM mytable',
                             params={})
         self.assert_compile(select([table1,
                                     exists([1],
