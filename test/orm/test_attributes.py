@@ -1524,6 +1524,13 @@ class HistoryTest(fixtures.TestBase):
         f.someattr = 3
         eq_(self._someattr_committed_state(f), None)
 
+    def test_committed_value_set_active_hist(self):
+        Foo = self._fixture(uselist=False, useobject=False,
+                                active_history=True)
+        f = Foo()
+        f.someattr = 3
+        eq_(self._someattr_committed_state(f), None)
+
     def test_committed_value_set_commit(self):
         Foo = self._fixture(uselist=False, useobject=False,
                                 active_history=False)

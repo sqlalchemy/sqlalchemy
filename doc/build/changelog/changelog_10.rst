@@ -20,6 +20,44 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3374
+
+        A query of the form ``query(B).filter(B.a != A(id=7))`` would
+        render the ``NEVER_SET`` symbol, even in older versions as far back
+        as 0.8, for a transient object; for a persistent object, it would
+        always use the persisisted database value and not the currently set
+        value.   Assuming autoflush is turned on, this usually would not be
+        apparent for persistent values, as the pending changes would be
+        flushed first.  However, this is inconsistent vs. the logic used for
+        the  non-negated comparison, ``query(B).filter(B.a == A(id=7))``, which
+        does use the current value and additionally allows comparisons
+        to transient objects.   The comparison now uses the current value
+        and not the database-persisted value.
+
+        .. seealso::
+
+            :ref:`bug_3374`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3371
+
+        Fixed a regression cause by :ticket:`3061` where the NEVER_SET
+        symbol could leak into relationship-oriented queries, including
+        ``filter()`` and ``with_parent()`` queries.  The ``None`` symbol
+        is returned in all cases, however many of these queries have never
+        been correctly supported in any case, and produce comparisons
+        to NULL without using the IS operator.  For this reason, a warning
+        is also added to that subset of relationship queries that don't
+        currently provide for ``IS NULL``.
+
+        .. seealso::
+
+            :ref:`bug_3371`
+
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3368
 
         Fixed a critical regression caused by :ticket:`3061` where the

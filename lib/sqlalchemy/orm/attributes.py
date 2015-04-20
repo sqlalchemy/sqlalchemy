@@ -619,7 +619,7 @@ class AttributeImpl(object):
 
         if self.key in state.committed_state:
             value = state.committed_state[self.key]
-            if value is NO_VALUE:
+            if value in (NO_VALUE, NEVER_SET):
                 return None
             else:
                 return value

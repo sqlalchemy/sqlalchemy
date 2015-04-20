@@ -531,7 +531,7 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
                 params[col._label] = \
                     mapper._get_state_attr_by_column(
                         state,
-                        state_dict, col)
+                        state_dict, col, passive=attributes.PASSIVE_OFF)
 
             elif col in post_update_cols:
                 prop = mapper._columntoproperty[col]

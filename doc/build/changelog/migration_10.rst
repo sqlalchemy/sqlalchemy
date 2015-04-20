@@ -955,6 +955,117 @@ to by string name as well::
 
 :ticket:`3228`
 
+.. _bug_3371:
+
+Warnings emitted when comparing objects with None values to relationships
+-------------------------------------------------------------------------
+
+This change is new as of 1.0.1.  Some users are performing
+queries that are essentially of this form::
+
+    session.query(Address).filter(Address.user == User(id=None))
+
+This pattern is not currently supported in SQLAlchemy.  For all versions,
+it emits SQL resembling::
+
+    SELECT address.id AS address_id, address.user_id AS address_user_id,
+    address.email_address AS address_email_address
+    FROM address WHERE ? = address.user_id
+    (None,)
+
+Note above, there is a comparison ``WHERE ? = address.user_id`` where the
+bound value ``?`` is receving ``None``, or ``NULL`` in SQL.  **This will
+always return False in SQL**.  The comparison here would in theory
+generate SQL as follows::
+
+    SELECT address.id AS address_id, address.user_id AS address_user_id,
+    address.email_address AS address_email_address
+    FROM address WHERE address.user_id IS NULL
+
+But right now, **it does not**.   Applications which are relying upon the
+fact that "NULL = NULL" produces False in all cases run the risk that
+someday, SQLAlchemy might fix this issue to generate "IS NULL", and the queries
+will then produce different results.  Therefore with this kind of operation,
+you will see a warning::
+
+    SAWarning: Got None for value of column user.id; this is unsupported
+    for a relationship comparison and will not currently produce an
+    IS comparison (but may in a future release)
+
+Note that this pattern was broken in most cases for release 1.0.0 including
+all of the betas; a value like ``SYMBOL('NEVER_SET')`` would be generated.
+This issue has been fixed, but as a result of identifying this pattern,
+the warning is now there so that we can more safely repair this broken
+behavior (now captured in :ticket:`3373`) in a future release.
+
+:ticket:`3371`
+
+.. _bug_3374:
+
+A "negated contains or equals" relationship comparison will use the current value of attributes, not the database value
+-------------------------------------------------------------------------------------------------------------------------
+
+This change is new as of 1.0.1; while we would have preferred for this to be in 1.0.0,
+it only became apparent as a result of :ticket`3371`.
+
+Given a mapping::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+        a = relationship("A")
+
+Given ``A``, with primary key of 7, but which we changed to be 10
+without committing::
+
+    s = Session(autoflush=False)
+    a1 = A(id=7)
+    s.add(a1)
+    s.commit()
+
+    a1.id = 10
+
+A query against a many-to-one relationship with this object as the target
+will use the value 10 in the bound parameters::
+
+    s.query(B).filter(B.a == a1)
+
+Produces::
+
+    SELECT b.id AS b_id, b.a_id AS b_a_id
+    FROM b
+    WHERE ? = b.a_id
+    (10,)
+
+However, before this change, the negation of this criteria would **not** use
+10, it would use 7, unless the object were flushed first::
+
+    s.query(B).filter(B.a != a1)
+
+Produces (in 0.9 and all versions prior to 1.0.1)::
+
+    SELECT b.id AS b_id, b.a_id AS b_a_id
+    FROM b
+    WHERE b.a_id != ? OR b.a_id IS NULL
+    (7,)
+
+For a transient object, it would produce a broken query::
+
+    SELECT b.id, b.a_id
+    FROM b
+    WHERE b.a_id != :a_id_1 OR b.a_id IS NULL
+    {u'a_id_1': symbol('NEVER_SET')}
+
+This inconsistency has been repaired, and in all queries the current attribute
+value, in this example ``10``, will now be used.
+
+:ticket:`3374`
+
 .. _migration_3061:
 
 Changes to attribute events and other operations regarding attributes that have no pre-existing value

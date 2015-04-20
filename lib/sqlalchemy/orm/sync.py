@@ -85,7 +85,7 @@ def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
             oldvalue = source_mapper._get_committed_attr_by_column(
                 source.obj(), l)
             value = source_mapper._get_state_attr_by_column(
-                source, source.dict, l)
+                source, source.dict, l, passive=attributes.PASSIVE_OFF)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
         dest[r.key] = value
@@ -96,7 +96,7 @@ def populate_dict(source, source_mapper, dict_, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
             value = source_mapper._get_state_attr_by_column(
-                source, source.dict, l)
+                source, source.dict, l, passive=attributes.PASSIVE_OFF)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
 

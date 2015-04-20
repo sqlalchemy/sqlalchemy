@@ -13,6 +13,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.assertions import expect_warnings
 
 class DictCollection(dict):
     @collection.appender
@@ -1300,16 +1301,18 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_filter_contains_nul_ul(self):
         User, Singular = self.classes.User, self.classes.Singular
 
-        self._equivalent(
-            self.session.query(User).filter(
-                            User.singular_keywords.contains(self.kw)
-            ),
-            self.session.query(User).filter(
-                            User.singular.has(
-                                Singular.keywords.contains(self.kw)
-                            )
-            ),
-        )
+        with expect_warnings(
+                "Got None for value of column keywords.singular_id;"):
+            self._equivalent(
+                self.session.query(User).filter(
+                                User.singular_keywords.contains(self.kw)
+                ),
+                self.session.query(User).filter(
+                                User.singular.has(
+                                    Singular.keywords.contains(self.kw)
+                                )
+                ),
+            )
 
     def test_filter_eq_nul_nul(self):
         Keyword = self.classes.Keyword
