@@ -2041,6 +2041,21 @@ columns regardless of how the object was constructed or its current
 state.
 
 
+.. _feature_3084:
+
+MetaData sorting of Tables is now fully deterministic
+-----------------------------------------------------
+
+The sorting of tables which results when emitting :meth:`.MetaData.create_all`,
+:meth:`.MetaData.drop_all`, and :meth:`.MetaData.sorted_tables` is now
+fully deterministic; that is, the :class:`.Table` objects are as always
+sorted by dependency, but the full ordering is generated in a deterministic
+way based on the set of tables first sorted alphabetically by name,
+then run through the foreign key sort, such that these methods will
+produce the identical topological ordering each time.
+
+:ticket:`3084`
+
 .. _bug_3170:
 
 null(), false() and true() constants are no longer singletons

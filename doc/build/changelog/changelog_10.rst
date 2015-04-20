@@ -142,6 +142,10 @@
         the incoming data in an ordered fashion.  Pull request
         courtesy Sebastian Bank.
 
+        .. seealso::
+
+            :ref:`feature_3084`
+
     .. change::
         :tags: feature, orm
         :pullreq: github:164
