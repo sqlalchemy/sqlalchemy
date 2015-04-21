@@ -15,6 +15,17 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3375
+        :versions: 1.0.1
+
+        Added the string value ``"none"`` to those accepted by the
+        :paramref:`.Pool.reset_on_return` parameter as a synonym for ``None``,
+        so that string values can be used for all settings, allowing
+        utilities like :func:`.engine_from_config` to be usable without
+        issue.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3362
         :versions: 1.0.0

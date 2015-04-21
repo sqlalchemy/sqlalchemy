@@ -138,6 +138,21 @@ class CreateEngineTest(fixtures.TestBase):
                             'z=somevalue')
         assert e.echo is True
 
+    def test_pool_reset_on_return_from_config(self):
+        dbapi = mock_dbapi
+
+        for value, expected in [
+            ("rollback", pool.reset_rollback),
+            ("commit", pool.reset_commit),
+            ("none", pool.reset_none)
+        ]:
+            config = {
+                'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
+                'sqlalchemy.pool_reset_on_return': value}
+
+            e = engine_from_config(config, module=dbapi, _initialize=False)
+            eq_(e.pool._reset_on_return, expected)
+
     def test_engine_from_config_custom(self):
         from sqlalchemy import util
         from sqlalchemy.dialects import registry
