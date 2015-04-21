@@ -811,6 +811,19 @@ class SingletonThreadPool(Pool):
     Maintains one connection per each thread, never moving a connection to a
     thread other than the one which it was created in.
 
+    .. warning::  the :class:`.SingletonThreadPool` will call ``.close()``
+       on arbitrary connections that exist beyond the size setting of
+       ``pool_size``, e.g. if more unique **thread identities**
+       than what ``pool_size`` states are used.   This cleanup is
+       non-deterministic and not sensitive to whether or not the connections
+       linked to those thread identities are currently in use.
+
+       :class:`.SingletonThreadPool` may be improved in a future release,
+       however in its current status it is generally used only for test
+       scenarios using a SQLite ``:memory:`` database and is not recommended
+       for production use.
+
+
     Options are the same as those of :class:`.Pool`, as well as:
 
     :param pool_size: The number of threads in which to maintain connections
