@@ -186,6 +186,10 @@ class Pool(log.Identified):
             database that supports transactions,
             as it will lead to deadlocks and stale
             state.
+          * ``"none"`` - same as ``None``
+
+            .. versionadded:: 0.9.10
+
           * ``False`` - same as None, this is here for
             backwards compatibility.
 
@@ -220,7 +224,7 @@ class Pool(log.Identified):
         self._use_threadlocal = use_threadlocal
         if reset_on_return in ('rollback', True, reset_rollback):
             self._reset_on_return = reset_rollback
-        elif reset_on_return in (None, False, reset_none):
+        elif reset_on_return in ('none', None, False, reset_none):
             self._reset_on_return = reset_none
         elif reset_on_return in ('commit', reset_commit):
             self._reset_on_return = reset_commit
