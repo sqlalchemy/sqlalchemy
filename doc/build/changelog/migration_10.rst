@@ -1006,7 +1006,7 @@ A "negated contains or equals" relationship comparison will use the current valu
 -------------------------------------------------------------------------------------------------------------------------
 
 This change is new as of 1.0.1; while we would have preferred for this to be in 1.0.0,
-it only became apparent as a result of :ticket`3371`.
+it only became apparent as a result of :ticket:`3371`.
 
 Given a mapping::
 
