@@ -19,6 +19,42 @@
     :version: 1.0.1
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3378
+
+        Fixed a regression due to :ticket:`3282`, where due to the fact that
+        we attempt to assume the availability of ALTER when creating/dropping
+        schemas, in the case of SQLite we simply said to not worry about
+        foreign keys at all, since ALTER is not available, when creating
+        and dropping tables.  This meant that the sorting of tables was
+        basically skipped in the case of SQLite, and for the vast majority
+        of SQLite use cases, this is not an issue.
+
+        However, users who were doing DROPs on SQLite
+        with tables that contained data and with referential integrity
+        turned on would then experience errors, as the
+        dependency sorting *does* matter in the case of DROP with
+        enforced constraints, when those tables have data (SQLite will still
+        happily let you create foreign keys to nonexistent tables and drop
+        tables referring to existing ones with constraints enabled, as long as
+        there's no data being referenced).
+
+        In order to maintain the new feature of :ticket:`3282` while still
+        allowing a SQLite DROP operation to maintain ordering, we now
+        do the sort with full FKs taken under consideration, and if we encounter
+        an unresolvable cycle, only *then* do we forego attempting to sort
+        the tables; we instead emit a warning and go with the unsorted list.
+        If an environment needs both ordered DROPs *and* has foreign key
+        cycles, then the warning notes they will need to restore the
+        ``use_alter`` flag to their :class:`.ForeignKey` and
+        :class:`.ForeignKeyConstraint` objects so that just those objects will
+        be omitted from the dependency sort.
+
+        .. seealso::
+
+            :ref:`feature_3282` - contains an updated note about SQLite.
+
+    .. change::
         :tags: bug, core
         :tickets: 3372
 

@@ -98,7 +98,14 @@ def drop_all_tables(metadata, bind):
     testing_reaper.close_all()
     if hasattr(bind, 'close'):
         bind.close()
-    metadata.drop_all(bind)
+
+    if not config.db.dialect.supports_alter:
+        from . import assertions
+        with assertions.expect_warnings(
+                "Can't sort tables", assert_=False):
+            metadata.drop_all(bind)
+    else:
+        metadata.drop_all(bind)
 
 
 @decorator

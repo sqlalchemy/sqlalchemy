@@ -609,8 +609,8 @@ than the integer value.
 
 .. _feature_3282:
 
-The ``use_alter`` flag on ``ForeignKeyConstraint`` is no longer needed
-----------------------------------------------------------------------
+The ``use_alter`` flag on ``ForeignKeyConstraint`` is (usually) no longer needed
+--------------------------------------------------------------------------------
 
 The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` methods will
 now make use of a system that automatically renders an ALTER statement
@@ -628,6 +628,16 @@ The :paramref:`.ForeignKeyConstraint.use_alter` and
 :paramref:`.ForeignKey.use_alter` flags remain in place, and continue to have
 the same effect of establishing those constraints for which ALTER is
 required during a CREATE/DROP scenario.
+
+As of version 1.0.1, special logic takes over in the case of SQLite, which
+does not support ALTER, in the case that during a DROP, the given tables have
+an unresolvable cycle; in this case a warning is emitted, and the tables
+are dropped with **no** ordering, which is usually fine on SQLite unless
+constraints are enabled. To resolve the warning and proceed with at least
+a partial ordering on a SQLite database, particuarly one where constraints
+are enabled, re-apply "use_alter" flags to those
+:class:`.ForeignKey` and :class:`.ForeignKeyConstraint` objects which should
+be explicitly omitted from the sort.
 
 .. seealso::
 

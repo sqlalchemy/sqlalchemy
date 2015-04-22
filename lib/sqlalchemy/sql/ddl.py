@@ -803,32 +803,50 @@ class SchemaDropper(DDLBase):
             tables = list(metadata.tables.values())
 
         try:
+            unsorted_tables = [t for t in tables if self._can_drop_table(t)]
             collection = reversed(
                 sort_tables_and_constraints(
-                    [t for t in tables if self._can_drop_table(t)],
-                    filter_fn=
-                    lambda constraint: True if not self.dialect.supports_alter
-                    else False if constraint.name is None
+                    unsorted_tables,
+                    filter_fn=lambda constraint: False
+                    if not self.dialect.supports_alter
+                    or constraint.name is None
                     else None
                 )
             )
         except exc.CircularDependencyError as err2:
-            util.raise_from_cause(
-                exc.CircularDependencyError(
-                    err2.args[0],
-                    err2.cycles, err2.edges,
-                    msg="Can't sort tables for DROP; an "
+            if not self.dialect.supports_alter:
+                util.warn(
+                    "Can't sort tables for DROP; an "
                     "unresolvable foreign key "
-                    "dependency exists between tables: %s.  Please ensure "
-                    "that the ForeignKey and ForeignKeyConstraint objects "
-                    "involved in the cycle have "
-                    "names so that they can be dropped using DROP CONSTRAINT."
+                    "dependency exists between tables: %s, and backend does "
+                    "not support ALTER.  To restore at least a partial sort, "
+                    "apply use_alter=True to ForeignKey and "
+                    "ForeignKeyConstraint "
+                    "objects involved in the cycle to mark these as known "
+                    "cycles that will be ignored."
                     % (
                         ", ".join(sorted([t.fullname for t in err2.cycles]))
                     )
-
                 )
-            )
+                collection = [(t, ()) for t in unsorted_tables]
+            else:
+                util.raise_from_cause(
+                    exc.CircularDependencyError(
+                        err2.args[0],
+                        err2.cycles, err2.edges,
+                        msg="Can't sort tables for DROP; an "
+                        "unresolvable foreign key "
+                        "dependency exists between tables: %s.  Please ensure "
+                        "that the ForeignKey and ForeignKeyConstraint objects "
+                        "involved in the cycle have "
+                        "names so that they can be dropped using "
+                        "DROP CONSTRAINT."
+                        % (
+                            ", ".join(sorted([t.fullname for t in err2.cycles]))
+                        )
+
+                    )
+                )
 
         seq_coll = [
             s
