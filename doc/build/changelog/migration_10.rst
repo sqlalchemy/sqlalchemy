@@ -2043,16 +2043,17 @@ state.
 
 .. _feature_3084:
 
-MetaData sorting of Tables is now fully deterministic
+MetaData.sorted_tables accessor is "deterministic"
 -----------------------------------------------------
 
-The sorting of tables which results when emitting :meth:`.MetaData.create_all`,
-:meth:`.MetaData.drop_all`, and :meth:`.MetaData.sorted_tables` is now
-fully deterministic; that is, the :class:`.Table` objects are as always
-sorted by dependency, but the full ordering is generated in a deterministic
-way based on the set of tables first sorted alphabetically by name,
-then run through the foreign key sort, such that these methods will
-produce the identical topological ordering each time.
+The sorting of tables resulting from the :attr:`.MetaData.sorted_tables`
+accessor is "deterministic"; the ordering should be the same in all cases
+regardless of Python hashing.   This is done by first sorting the tables
+by name before passing them to the topological algorithm, which maintains
+that ordering as it iterates.
+
+Note that this change does **not** yet apply to the ordering applied
+when emitting :meth:`.MetaData.create_all` or :meth:`.MetaData.drop_all`.
 
 :ticket:`3084`
 
