@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, released in April, 2015.
 
-    Document last updated: April 17, 2015
+    Document last updated: April 22, 2015
 
 Introduction
 ============

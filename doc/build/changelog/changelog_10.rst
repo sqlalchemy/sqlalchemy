@@ -72,7 +72,7 @@
             :ref:`feature_3282` - contains an updated note about SQLite.
 
     .. change::
-        :tags: bug, core
+        :tags: bug, sql
         :tickets: 3372
 
         Fixed issue where a straight SELECT EXISTS query would fail to
