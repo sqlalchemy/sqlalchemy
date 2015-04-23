@@ -1446,7 +1446,7 @@ class PGCompiler(compiler.SQLCompiler):
             raise exc.CompileError("Unrecognized hint: %r" % hint)
         return "ONLY " + sqltext
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         if select._distinct is not False:
             if select._distinct is True:
                 return "DISTINCT "
@@ -1455,7 +1455,8 @@ class PGCompiler(compiler.SQLCompiler):
                     [self.process(col) for col in select._distinct]
                 ) + ") "
             else:
-                return "DISTINCT ON (" + self.process(select._distinct) + ") "
+                return "DISTINCT ON (" + \
+                    self.process(select._distinct, **kw) + ") "
         else:
             return ""
 

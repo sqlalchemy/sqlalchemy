@@ -979,7 +979,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self.process(binary.left, **kw),
             self.process(binary.right, **kw))
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         """ MS-SQL puts TOP, it's version of LIMIT here """
 
         s = ""
@@ -995,7 +995,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if s:
             return s
         else:
-            return compiler.SQLCompiler.get_select_precolumns(self, select)
+            return compiler.SQLCompiler.get_select_precolumns(
+                self, select, **kw)
 
     def get_from_hint_text(self, table, text):
         return text

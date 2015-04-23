@@ -130,7 +130,7 @@ class DefaultRequirements(SuiteRequirements):
     def temporary_tables(self):
         """target database supports temporary tables"""
         return skip_if(
-                    ["mssql"], "sql server has some other syntax?"
+                    ["mssql", "firebird"], "not supported (?)"
                 )
 
     @property

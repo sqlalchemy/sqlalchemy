@@ -28,6 +28,14 @@
         Pull request courtesy effem-git.
 
     .. change::
+        :tags: bug, firebird
+        :tickets: 3381
+
+        Fixed support for "literal_binds" mode when using limit/offset
+        with Firebird, so that the values are again rendered inline when
+        this is selected.  Related to :ticket:`3034`.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 3378
 

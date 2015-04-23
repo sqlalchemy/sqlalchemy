@@ -260,16 +260,16 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         class MyCompiler(compiler.SQLCompiler):
 
-            def get_select_precolumns(self, select):
+            def get_select_precolumns(self, select, **kw):
                 result = ""
                 if select._limit:
                     result += "FIRST %s " % self.process(
                         literal(
-                            select._limit))
+                            select._limit), **kw)
                 if select._offset:
                     result += "SKIP %s " % self.process(
                         literal(
-                            select._offset))
+                            select._offset), **kw)
                 return result
 
             def limit_clause(self, select, **kw):

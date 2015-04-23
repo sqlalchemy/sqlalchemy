@@ -1568,7 +1568,7 @@ class SQLCompiler(Compiled):
             text += self._generate_prefixes(
                 select, select._prefixes, **kwargs)
 
-        text += self.get_select_precolumns(select)
+        text += self.get_select_precolumns(select, **kwargs)
 
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
@@ -1742,7 +1742,7 @@ class SQLCompiler(Compiled):
         else:
             return "WITH"
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         """Called when building a ``SELECT`` statement, position is just
         before column list.
 
