@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.1
+    :released: April 23, 2015
 
     .. change::
         :tags: bug, firebird
