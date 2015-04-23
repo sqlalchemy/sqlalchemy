@@ -79,7 +79,7 @@
         assign the proper result type of Boolean to the result mapping, and
         instead would leak column types from within the query into the
         result map.  This issue exists in 0.9 and earlier as well, however
-        has less of an impact in those versions.  In 1.0, due to #918
+        has less of an impact in those versions.  In 1.0, due to :ticket:`918`
         this becomes a regression in that we now rely upon the result mapping
         to be very accurate, else we can assign result-type processors to
         the wrong column.   In all versions, this issue also has the effect
@@ -93,17 +93,25 @@
         :tags: bug, orm
         :tickets: 3374
 
-        A query of the form ``query(B).filter(B.a != A(id=7))`` would
-        render the ``NEVER_SET`` symbol, even in older versions as far back
-        as 0.8, for a transient object; for a persistent object, it would
-        always use the persisisted database value and not the currently set
-        value.   Assuming autoflush is turned on, this usually would not be
-        apparent for persistent values, as the pending changes would be
-        flushed first.  However, this is inconsistent vs. the logic used for
-        the  non-negated comparison, ``query(B).filter(B.a == A(id=7))``, which
-        does use the current value and additionally allows comparisons
-        to transient objects.   The comparison now uses the current value
-        and not the database-persisted value.
+        Fixed issue where a query of the form
+        ``query(B).filter(B.a != A(id=7))`` would render the ``NEVER_SET``
+        symbol, when
+        given a transient object. For a persistent object, it would
+        always use the persisted database value and not the currently
+        set value.  Assuming autoflush is turned on, this usually would
+        not be apparent for persistent values, as any pending changes
+        would be flushed first in any case.  However, this is inconsistent
+        vs. the logic used for the  non-negated comparison,
+        ``query(B).filter(B.a == A(id=7))``, which does use the
+        current value and additionally allows comparisons to transient
+        objects.  The comparison now uses the current value and not
+        the database-persisted value.
+
+        Unlike the other ``NEVER_SET`` issues that are repaired as regressions
+        caused by :ticket:`3061` in this release, this particular issue is
+        present at least as far back as 0.8 and possibly earlier, however it
+        was discovered as a result of repairing the related ``NEVER_SET``
+        issues.
 
         .. seealso::
 
@@ -131,8 +139,8 @@
         :tags: bug, orm
         :tickets: 3368
 
-        Fixed a critical regression caused by :ticket:`3061` where the
-        NEVER_SET symbol could easily leak into a lazyload query, subsequent
+        Fixed a regression caused by :ticket:`3061` where the
+        NEVER_SET symbol could leak into a lazyload query, subsequent
         to the flush of a pending object.  This would occur typically
         for a many-to-one relationship that does not use a simple
         "get" strategy.   The good news is that the fix improves efficiency

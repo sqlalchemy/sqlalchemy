@@ -1031,7 +1031,7 @@ Given a mapping::
         a = relationship("A")
 
 Given ``A``, with primary key of 7, but which we changed to be 10
-without committing::
+without flushing::
 
     s = Session(autoflush=False)
     a1 = A(id=7)
