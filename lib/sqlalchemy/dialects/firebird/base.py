@@ -300,9 +300,9 @@ class FBCompiler(sql.compiler.SQLCompiler):
         """
 
         result = ""
-        if select._limit_clause:
+        if select._limit_clause is not None:
             result += "FIRST %s " % self.process(select._limit_clause)
-        if select._offset_clause:
+        if select._offset_clause is not None:
             result += "SKIP %s " % self.process(select._offset_clause)
         if select._distinct:
             result += "DISTINCT "
