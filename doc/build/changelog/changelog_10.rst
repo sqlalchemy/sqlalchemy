@@ -19,6 +19,15 @@
     :version: 1.0.1
 
     .. change::
+        :tags: bug, firebird
+        :tickets: 3380
+        :pullreq: github:168
+
+        Fixed a regression due to :ticket:`3034` where limit/offset
+        clauses were not properly interpreted by the Firebird dialect.
+        Pull request courtesy effem-git.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 3378
 
