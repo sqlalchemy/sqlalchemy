@@ -39,7 +39,7 @@ def _resolve_for_abstract(cls):
     if cls is object:
         return None
 
-    if _get_immediate_cls_attr(cls, '__abstract__'):
+    if _get_immediate_cls_attr(cls, '__abstract__', strict=True):
         for sup in cls.__bases__:
             sup = _resolve_for_abstract(sup)
             if sup is not None:
@@ -82,7 +82,7 @@ def _as_declarative(cls, classname, dict_):
         from .api import declared_attr
         declarative_props = (declared_attr, util.classproperty)
 
-    if _get_immediate_cls_attr(cls, '__abstract__'):
+    if _get_immediate_cls_attr(cls, '__abstract__', strict=True):
         return
 
     _MapperConfig.setup_mapping(cls, classname, dict_)
