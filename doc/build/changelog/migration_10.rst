@@ -1531,7 +1531,7 @@ join into a subquery as a join target on SQLite.
 
 :ticket:`3008`
 
-.. _change_3429:
+.. _change_3249:
 
 Subqueries no longer applied to uselist=False joined eager loads
 ----------------------------------------------------------------
