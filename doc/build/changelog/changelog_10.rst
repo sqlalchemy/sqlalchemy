@@ -16,6 +16,17 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.2
+
+    .. change::
+        :tags: bug, ext, declarative
+        :tickets: 3383
+
+        Fixed regression regarding the declarative ``__declare_first__``
+        and ``__declare_last__`` accessors where these would no longer be
+        called on the superclass of the declarative base.
+
+.. changelog::
     :version: 1.0.1
     :released: April 23, 2015
 

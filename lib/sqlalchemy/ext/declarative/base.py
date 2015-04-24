@@ -50,7 +50,7 @@ def _resolve_for_abstract(cls):
         return cls
 
 
-def _get_immediate_cls_attr(cls, attrname):
+def _get_immediate_cls_attr(cls, attrname, strict=False):
     """return an attribute of the class that is either present directly
     on the class, e.g. not on a superclass, or is from a superclass but
     this superclass is a mixin, that is, not a descendant of
@@ -66,11 +66,12 @@ def _get_immediate_cls_attr(cls, attrname):
 
     for base in cls.__mro__:
         _is_declarative_inherits = hasattr(base, '_decl_class_registry')
-        if attrname in base.__dict__:
-            value = getattr(base, attrname)
-            if (base is cls or
-                    (base in cls.__bases__ and not _is_declarative_inherits)):
-                return value
+        if attrname in base.__dict__ and (
+            base is cls or
+            ((base in cls.__bases__ if strict else True)
+                and not _is_declarative_inherits)
+        ):
+            return getattr(base, attrname)
     else:
         return None
 
@@ -92,7 +93,7 @@ class _MapperConfig(object):
     @classmethod
     def setup_mapping(cls, cls_, classname, dict_):
         defer_map = _get_immediate_cls_attr(
-            cls_, '_sa_decl_prepare_nocascade') or \
+            cls_, '_sa_decl_prepare_nocascade', strict=True) or \
             hasattr(cls_, '_sa_decl_prepare')
 
         if defer_map:
@@ -158,7 +159,8 @@ class _MapperConfig(object):
         for base in cls.__mro__:
             class_mapped = base is not cls and \
                 _declared_mapping_info(base) is not None and \
-                not _get_immediate_cls_attr(base, '_sa_decl_prepare_nocascade')
+                not _get_immediate_cls_attr(
+                    base, '_sa_decl_prepare_nocascade', strict=True)
 
             if not class_mapped and base is not cls:
                 self._produce_column_copies(base)
@@ -412,7 +414,7 @@ class _MapperConfig(object):
                 continue
             if _declared_mapping_info(c) is not None and \
                     not _get_immediate_cls_attr(
-                        c, '_sa_decl_prepare_nocascade'):
+                        c, '_sa_decl_prepare_nocascade', strict=True):
                 self.inherits = c
                 break
         else:

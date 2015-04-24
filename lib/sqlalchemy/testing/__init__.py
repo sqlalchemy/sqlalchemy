@@ -24,7 +24,8 @@ from .assertions import emits_warning, emits_warning_on, uses_deprecated, \
     AssertsExecutionResults, expect_deprecated, expect_warnings
 
 from .util import run_as_contextmanager, rowset, fail, \
-    provide_metadata, adict, force_drop_names
+    provide_metadata, adict, force_drop_names, \
+    teardown_events
 
 crashes = skip
 
