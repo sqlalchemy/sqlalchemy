@@ -1417,7 +1417,6 @@ class MSDialect(default.DefaultDialect):
     use_scope_identity = True
     max_identifier_length = 128
     schema_name = "dbo"
-    supports_simple_order_by_label = False
 
     colspecs = {
         sqltypes.DateTime: _MSDateTime,

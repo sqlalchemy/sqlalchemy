@@ -961,6 +961,19 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect
         )
 
+    def test_no_group_by_labels(self):
+        lab1 = (table1.c.myid + 12).label('foo')
+        lab2 = func.somefunc(table1.c.name).label('bar')
+        dialect = default.DefaultDialect()
+
+        self.assert_compile(
+            select([lab1, lab2]).group_by(lab1, lab2),
+            "SELECT mytable.myid + :myid_1 AS foo, somefunc(mytable.name) "
+            "AS bar FROM mytable GROUP BY mytable.myid + :myid_1, "
+            "somefunc(mytable.name)",
+            dialect=dialect
+        )
+
     def test_conjunctions(self):
         a, b, c = text('a'), text('b'), text('c')
         x = and_(a, b, c)

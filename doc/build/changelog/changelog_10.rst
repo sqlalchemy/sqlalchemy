@@ -19,6 +19,26 @@
     :version: 1.0.2
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3338, 3385
+
+        Fixed a regression that was incorrectly fixed in 1.0.0b4
+        (hence becoming two regressions); reports that
+        SELECT statements would GROUP BY a label name and fail was misconstrued
+        that certain backends such as SQL Server should not be emitting
+        ORDER BY or GROUP BY on a simple label name at all; when in fact,
+        we had forgotten that 0.9 was already emitting ORDER BY on a simple
+        label name for all backends, as described in :ref:`migration_1068`,
+        as 1.0 had rewritten this logic as part of :ticket:`2992`.
+
+        In 1.0.2, the bug is fixed both that SQL Server, Firebird and others
+        will again emit ORDER BY on a simple label name when passed a
+        :class:`.Label` construct that is expressed in the columns clause,
+        and no backend will emit GROUP BY on a simple label name in this case,
+        as even Postgresql can't reliably do GROUP BY on a simple name
+        in every case.
+
+    .. change::
         :tags: bug, ext, declarative
         :tickets: 3383
 

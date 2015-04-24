@@ -16,7 +16,7 @@ from .elements import _clone, \
     _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
     _select_iterables, _anonymous_label, _clause_element_as_expr,\
     _cloned_intersection, _cloned_difference, True_, \
-    _literal_as_label_reference
+    _literal_as_label_reference, _literal_and_labels_as_label_reference
 from .base import Immutable, Executable, _generative, \
     ColumnCollection, ColumnSet, _from_objects, Generative
 from . import type_api
@@ -1723,7 +1723,7 @@ class GenerativeSelect(SelectBase):
         if order_by is not None:
             self._order_by_clause = ClauseList(
                 *util.to_list(order_by),
-                _literal_as_text=_literal_as_label_reference)
+                _literal_as_text=_literal_and_labels_as_label_reference)
         if group_by is not None:
             self._group_by_clause = ClauseList(
                 *util.to_list(group_by),
@@ -1912,7 +1912,8 @@ class GenerativeSelect(SelectBase):
             if getattr(self, '_order_by_clause', None) is not None:
                 clauses = list(self._order_by_clause) + list(clauses)
             self._order_by_clause = ClauseList(
-                *clauses, _literal_as_text=_literal_as_label_reference)
+                *clauses,
+                _literal_as_text=_literal_and_labels_as_label_reference)
 
     def append_group_by(self, *clauses):
         """Append the given GROUP BY criterion applied to this selectable.

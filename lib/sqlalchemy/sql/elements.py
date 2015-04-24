@@ -3724,6 +3724,16 @@ def _literal_as_label_reference(element):
     elif hasattr(element, '__clause_element__'):
         element = element.__clause_element__()
 
+    return _literal_as_text(element)
+
+
+def _literal_and_labels_as_label_reference(element):
+    if isinstance(element, util.string_types):
+        return _textual_label_reference(element)
+
+    elif hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+
     if isinstance(element, ColumnElement) and \
             element._order_by_label_element is not None:
         return _label_reference(element)
