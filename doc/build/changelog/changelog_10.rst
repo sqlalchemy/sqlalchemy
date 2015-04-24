@@ -39,7 +39,7 @@
         in every case.
 
     .. change::
-        :tags: bug, ext, declarative
+        :tags: bug, orm, declarative
         :tickets: 3383
 
         Fixed regression regarding the declarative ``__declare_first__``
@@ -404,7 +404,7 @@
         courtesy Thomas Grainger.
 
     .. change::
-        :tags: change, ext, declarative
+        :tags: change, orm, declarative
         :tickets: 3331
 
         Loosened some restrictions that were added to ``@declared_attr``
@@ -456,7 +456,7 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
-        :tags: feature, extensions
+        :tags: feature, ext
         :tickets: 3054
 
         Added a new extension suite :mod:`sqlalchemy.ext.baked`.  This
@@ -531,7 +531,7 @@
         continued after the error raise occurred.
 
     .. change::
-        :tags: bug, ext
+        :tags: bug, orm, declarative
         :tickets: 3219, 3240
 
         Fixed bug where using an ``__abstract__`` mixin in the middle
@@ -1284,7 +1284,7 @@
         all transactional status and operations.
 
     .. change::
-        :tags: bug, declarative
+        :tags: bug, orm, declarative
         :tickets: 2670
 
         A relationship set up with :class:`.declared_attr` on
@@ -1297,7 +1297,7 @@
             :ref:`feature_3150`
 
     .. change::
-        :tags: feature, declarative
+        :tags: feature, orm, declarative
         :tickets: 3150
 
         The :class:`.declared_attr` construct has newly improved
