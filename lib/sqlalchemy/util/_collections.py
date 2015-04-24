@@ -743,15 +743,16 @@ _property_getters = PopulateDict(
 
 
 def unique_list(seq, hashfunc=None):
-    seen = {}
+    seen = set()
+    seen_add = seen.add
     if not hashfunc:
         return [x for x in seq
                 if x not in seen
-                and not seen.__setitem__(x, True)]
+                and not seen_add(x)]
     else:
         return [x for x in seq
                 if hashfunc(x) not in seen
-                and not seen.__setitem__(hashfunc(x), True)]
+                and not seen_add(hashfunc(x))]
 
 
 class UniqueAppender(object):
