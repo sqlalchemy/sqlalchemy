@@ -29,14 +29,18 @@
         ORDER BY or GROUP BY on a simple label name at all; when in fact,
         we had forgotten that 0.9 was already emitting ORDER BY on a simple
         label name for all backends, as described in :ref:`migration_1068`,
-        as 1.0 had rewritten this logic as part of :ticket:`2992`.
+        even though 1.0 includes a rewrite of this logic as part of 
+        :ticket:`2992`.  As far
+        as emitting GROUP BY against a simple label, even Postgresql has
+        cases where it will raise an error even though the label to group 
+        on should be apparent, so it is clear that GROUP BY should never
+        be rendered in this way automatically.
 
-        In 1.0.2, the bug is fixed both that SQL Server, Firebird and others
-        will again emit ORDER BY on a simple label name when passed a
-        :class:`.Label` construct that is expressed in the columns clause,
-        and no backend will emit GROUP BY on a simple label name in this case,
-        as even Postgresql can't reliably do GROUP BY on a simple name
-        in every case.
+        In 1.0.2, SQL Server, Firebird and others will again emit ORDER BY on 
+        a simple label name when passed a
+        :class:`.Label` construct that is also present in the columns clause.
+        Additionally, no backend will emit GROUP BY against the simple label
+        name only when passed a :class:`.Label` construct.
 
     .. change::
         :tags: bug, orm, declarative
