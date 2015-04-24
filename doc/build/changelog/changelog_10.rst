@@ -341,6 +341,9 @@
         GROUP BY expressions.  The flag is also turned off defensively
         for the Firebird and Sybase dialects.
 
+        .. note:: this resolution was incorrect, please see version 1.0.2
+           for a rework of this resolution.
+
     .. change::
         :tags: feature, schema
         :tickets: 3341
