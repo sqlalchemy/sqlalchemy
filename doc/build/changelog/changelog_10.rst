@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.2
+    :released: April 24, 2015
 
     .. change::
         :tags: bug, sql
