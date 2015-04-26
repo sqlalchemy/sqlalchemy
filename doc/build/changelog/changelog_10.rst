@@ -16,6 +16,18 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.3
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3387
+
+        Fixed issue in new :meth:`.QueryEvents.before_compile` event where
+        changes made to the :class:`.Query` object's collection of entities
+        to load within the event would render in the SQL, but would not
+        be reflected during the loading process.
+
+.. changelog::
     :version: 1.0.2
     :released: April 24, 2015
 
@@ -30,14 +42,14 @@
         ORDER BY or GROUP BY on a simple label name at all; when in fact,
         we had forgotten that 0.9 was already emitting ORDER BY on a simple
         label name for all backends, as described in :ref:`migration_1068`,
-        even though 1.0 includes a rewrite of this logic as part of 
+        even though 1.0 includes a rewrite of this logic as part of
         :ticket:`2992`.  As far
         as emitting GROUP BY against a simple label, even Postgresql has
-        cases where it will raise an error even though the label to group 
+        cases where it will raise an error even though the label to group
         on should be apparent, so it is clear that GROUP BY should never
         be rendered in this way automatically.
 
-        In 1.0.2, SQL Server, Firebird and others will again emit ORDER BY on 
+        In 1.0.2, SQL Server, Firebird and others will again emit ORDER BY on
         a simple label name when passed a
         :class:`.Label` construct that is also present in the columns clause.
         Additionally, no backend will emit GROUP BY against the simple label

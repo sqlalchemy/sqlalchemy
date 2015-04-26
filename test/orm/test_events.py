@@ -1886,7 +1886,6 @@ class SessionExtensionTest(_fixtures.FixtureTest):
 
 class QueryEventsTest(
         _RemoveListeners, _fixtures.FixtureTest, AssertsCompiledSQL):
-    run_inserts = None
     __dialect__ = 'default'
 
     @classmethod
@@ -1915,5 +1914,27 @@ class QueryEventsTest(
             "FROM users "
             "WHERE users.id = :id_1 AND users.id != :id_2",
             checkparams={'id_2': 10, 'id_1': 7}
+        )
+
+    def test_alters_entities(self):
+        User = self.classes.User
+
+        @event.listens_for(query.Query, "before_compile", retval=True)
+        def fn(query):
+            return query.add_columns(User.name)
+
+        s = Session()
+
+        q = s.query(User.id, ).filter_by(id=7)
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users "
+            "WHERE users.id = :id_1",
+            checkparams={'id_1': 7}
+        )
+        eq_(
+            q.all(),
+            [(7, 'jack')]
         )
 
