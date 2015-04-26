@@ -115,10 +115,10 @@ class _MapperConfig(object):
         self.column_copies = {}
         self._setup_declared_events()
 
-        # register up front, so that @declared_attr can memoize
-        # function evaluations in .info
-        manager = instrumentation.register_class(self.cls)
-        manager.info['declared_attr_reg'] = {}
+        # temporary registry.  While early 1.0 versions
+        # set up the ClassManager here, by API contract
+        # we can't do that until there's a mapper.
+        self.cls._sa_declared_attr_reg = {}
 
         self._scan_attributes()
 
@@ -529,7 +529,7 @@ class _MapperConfig(object):
             self.local_table,
             **self.mapper_args
         )
-        del mp_.class_manager.info['declared_attr_reg']
+        del self.cls._sa_declared_attr_reg
         return mp_
 
 

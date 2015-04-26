@@ -189,13 +189,13 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             ]
         )
 
-
     def test_merge(self):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
 
         canary = []
+
         def load(obj, ctx):
             canary.append('load')
         event.listen(mapper, 'load', load)
@@ -211,6 +211,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         s.commit()
         s.query(User).order_by(User.id).first()
         eq_(canary, ['load', 'load', 'load'])
+
 
     def test_inheritance(self):
         users, addresses, User = (self.tables.users,
@@ -384,6 +385,43 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(canary, [User])
         mapper(Address, addresses)
         eq_(canary, [User, Address])
+
+    def test_instrument_class_precedes_class_instrumentation(self):
+        users = self.tables.users
+
+        class MyClass(object):
+            pass
+
+        canary = Mock()
+
+        def my_init(self):
+            canary.init()
+
+        # mapper level event
+        @event.listens_for(mapper, "instrument_class")
+        def instrument_class(mp, class_):
+            canary.instrument_class(class_)
+            class_.__init__ = my_init
+
+        # instrumentationmanager event
+        @event.listens_for(object, "class_instrument")
+        def class_instrument(class_):
+            canary.class_instrument(class_)
+
+        mapper(MyClass, users)
+
+        m1 = MyClass()
+        assert attributes.instance_state(m1)
+
+        eq_(
+            [
+                call.instrument_class(MyClass),
+                call.class_instrument(MyClass),
+                call.init()
+            ],
+            canary.mock_calls
+        )
+
 
 class DeclarativeEventListenTest(_RemoveListeners, fixtures.DeclarativeMappedTest):
     run_setup_classes = "each"

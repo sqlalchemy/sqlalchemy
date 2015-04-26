@@ -20,6 +20,25 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3388
+
+        Fixed a regression regarding the :meth:`.MapperEvents.instrument_class`
+        event where its invocation was moved to be after the class manager's
+        instrumentation of the class, which is the opposite of what the
+        documentation for the event explicitly states.  The rationale for the
+        switch was due to Declarative taking the step of setting up
+        the full "instrumentation manager" for a class before it was mapped
+        for the purpose of the new ``@declared_attr`` features
+        described in :ref:`feature_3150`, but the change was also made
+        against the classical use of :func:`.mapper` for consistency.
+        However, SQLSoup relies upon the instrumentation event happening
+        before any instrumentation under classical mapping.
+        The behavior is reverted in the case of classical and declarative
+        mapping, the latter implemented by using a simple memoization
+        without using class manager.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3387
 
         Fixed issue in new :meth:`.QueryEvents.before_compile` event where

@@ -1096,8 +1096,6 @@ class Mapper(InspectionAttr):
 
         """
 
-        # when using declarative as of 1.0, the register_class has
-        # already happened from within declarative.
         manager = attributes.manager_of_class(self.class_)
 
         if self.non_primary:
@@ -1120,13 +1118,19 @@ class Mapper(InspectionAttr):
                     "create a non primary Mapper.  clear_mappers() will "
                     "remove *all* current mappers from all classes." %
                     self.class_)
-
-        if manager is None:
-            manager = instrumentation.register_class(self.class_)
+            # else:
+                # a ClassManager may already exist as
+                # ClassManager.instrument_attribute() creates
+                # new managers for each subclass if they don't yet exist.
 
         _mapper_registry[self] = True
 
+        # note: this *must be called before instrumentation.register_class*
+        # to maintain the documented behavior of instrument_class
         self.dispatch.instrument_class(self, self.class_)
+
+        if manager is None:
+            manager = instrumentation.register_class(self.class_)
 
         self.class_manager = manager
 
