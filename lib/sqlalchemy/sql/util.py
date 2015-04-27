@@ -16,7 +16,8 @@ from itertools import chain
 from collections import deque
 
 from .elements import BindParameter, ColumnClause, ColumnElement, \
-    Null, UnaryExpression, literal_column, Label, _label_reference
+    Null, UnaryExpression, literal_column, Label, _label_reference, \
+    _textual_label_reference
 from .selectable import ScalarSelect, Join, FromClause, FromGrouping
 from .schema import Column
 
@@ -163,6 +164,8 @@ def unwrap_order_by(clause):
         ):
             if isinstance(t, _label_reference):
                 t = t.element
+            if isinstance(t, (_textual_label_reference)):
+                continue
             cols.add(t)
         else:
             for c in t.get_children():

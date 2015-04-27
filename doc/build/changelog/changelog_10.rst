@@ -19,6 +19,39 @@
     :version: 1.0.3
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3392
+
+        Fixed regression due to :ticket:`2992` where textual elements placed
+        into the :meth:`.Query.order_by` clause in conjunction with joined
+        eager loading would be added to the columns clause of the inner query
+        in such a way that they were assumed to be table-bound column names,
+        in the case where the joined eager load needs to wrap the query
+        in a subquery to accommodate for a limit/offset.
+
+        Originally, the behavior here was intentional, in that a query such
+        as ``query(User).order_by('name').limit(1)``
+        would order by ``user.name`` even if the query was modified by
+        joined eager loading to be within a subquery, as ``'name'`` would
+        be interpreted as a symbol to be located within the FROM clauses,
+        in this case ``User.name``, which would then be copied into the
+        columns clause to ensure it were present for ORDER BY.  However, the
+        feature fails to anticipate the case where ``order_by("name")`` refers
+        to a specific label name present in the local columns clause already
+        and not a name bound to a selectable in the FROM clause.
+
+        Beyond that, the feature also fails for deprecated cases such as
+        ``order_by("name desc")``, which, while it emits a
+        warning that :func:`.text` should be used here (note that the issue
+        does not impact cases where :func:`.text` is used explicitly),
+        still produces a different query than previously where the "name desc"
+        expression is copied into the columns clause inappropriately.  The
+        resolution is such that the "joined eager loading" aspect of the
+        feature will skip over these so-called "label reference" expressions
+        when augmenting the inner columns clause, as though they were
+        :func:`.text` constructs already.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3391
 

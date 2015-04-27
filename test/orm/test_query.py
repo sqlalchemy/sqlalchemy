@@ -2860,43 +2860,142 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             [User(id=7), User(id=8), User(id=9), User(id=10)]
         )
 
-    def test_order_by_w_eager(self):
+    def test_order_by_w_eager_one(self):
+        User = self.classes.User
+        s = create_session()
+
+        # from 1.0.0 thru 1.0.2, the "name" symbol here was considered
+        # to be part of the things we need to ORDER BY and it was being
+        # placed into the inner query's columns clause, as part of
+        # query._compound_eager_statement where we add unwrap_order_by()
+        # to the columns clause.  However, as #3392 illustrates, unlocatable
+        # string expressions like "name desc" will only fail in this scenario,
+        # so in general the changing of the query structure with string labels
+        # is dangerous.
+        #
+        # the queries here are again "invalid" from a SQL perspective, as the
+        # "name" field isn't matched up to anything.
+        #
+        with expect_warnings("Can't resolve label reference 'name';"):
+            self.assert_compile(
+                s.query(User).options(joinedload("addresses")).
+                order_by(desc("name")).limit(1),
+                "SELECT anon_1.users_id AS anon_1_users_id, "
+                "anon_1.users_name AS anon_1_users_name, "
+                "addresses_1.id AS addresses_1_id, "
+                "addresses_1.user_id AS addresses_1_user_id, "
+                "addresses_1.email_address AS addresses_1_email_address "
+                "FROM (SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users ORDER BY users.name "
+                "DESC LIMIT :param_1) AS anon_1 "
+                "LEFT OUTER JOIN addresses AS addresses_1 "
+                "ON anon_1.users_id = addresses_1.user_id "
+                "ORDER BY name DESC, addresses_1.id"
+            )
+
+    def test_order_by_w_eager_two(self):
+        User = self.classes.User
+        s = create_session()
+
+        with expect_warnings("Can't resolve label reference 'name';"):
+            self.assert_compile(
+                s.query(User).options(joinedload("addresses")).
+                order_by("name").limit(1),
+                "SELECT anon_1.users_id AS anon_1_users_id, "
+                "anon_1.users_name AS anon_1_users_name, "
+                "addresses_1.id AS addresses_1_id, "
+                "addresses_1.user_id AS addresses_1_user_id, "
+                "addresses_1.email_address AS addresses_1_email_address "
+                "FROM (SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users ORDER BY users.name "
+                "LIMIT :param_1) AS anon_1 "
+                "LEFT OUTER JOIN addresses AS addresses_1 "
+                "ON anon_1.users_id = addresses_1.user_id "
+                "ORDER BY name, addresses_1.id"
+            )
+
+    def test_order_by_w_eager_three(self):
+        User = self.classes.User
+        s = create_session()
+
+        self.assert_compile(
+            s.query(User).options(joinedload("addresses")).
+            order_by("users_name").limit(1),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users ORDER BY users.name "
+            "LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.users_name, addresses_1.id"
+        )
+
+        # however! this works (again?)
+        eq_(
+            s.query(User).options(joinedload("addresses")).
+            order_by("users_name").first(),
+            User(name='chuck', addresses=[])
+        )
+
+    def test_order_by_w_eager_four(self):
         User = self.classes.User
         Address = self.classes.Address
         s = create_session()
 
-        # here, we are seeing how Query has to take the order by expressions
-        # of the query and then add them to the columns list, so that the
-        # outer subquery can order by that same label.  With the anonymous
-        # label, our column gets sucked up and restated again in the
-        # inner columns list!
-        # we could try to play games with making this "smarter" but it
-        # would add permanent overhead to Select._columns_plus_names,
-        # since that's where references would need to be resolved.
-        # so as it is, this query takes the _label_reference and makes a
-        # full blown proxy and all the rest of it.
         self.assert_compile(
             s.query(User).options(joinedload("addresses")).
-            order_by(desc("name")).limit(1),
+            order_by(desc("users_name")).limit(1),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
-            "anon_1.anon_2 AS anon_1_anon_2, "
             "addresses_1.id AS addresses_1_id, "
             "addresses_1.user_id AS addresses_1_user_id, "
             "addresses_1.email_address AS addresses_1_email_address "
-            "FROM (SELECT users.id AS users_id, users.name AS users_name, "
-            "users.name AS anon_2 FROM users ORDER BY users.name "
-            "DESC LIMIT :param_1) AS anon_1 "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users ORDER BY users.name DESC "
+            "LIMIT :param_1) AS anon_1 "
             "LEFT OUTER JOIN addresses AS addresses_1 "
             "ON anon_1.users_id = addresses_1.user_id "
-            "ORDER BY anon_1.anon_2 DESC, addresses_1.id"
+            "ORDER BY anon_1.users_name DESC, addresses_1.id"
         )
 
+        # however! this works (again?)
         eq_(
             s.query(User).options(joinedload("addresses")).
-                order_by(desc("name")).first(),
+            order_by(desc("users_name")).first(),
             User(name='jack', addresses=[Address()])
         )
+
+    def test_order_by_w_eager_five(self):
+        """essentially the same as test_eager_relations -> test_limit_3,
+        but test for textual label elements that are freeform.
+        this is again #3392."""
+
+        User = self.classes.User
+        Address = self.classes.Address
+        Order = self.classes.Order
+
+        sess = create_session()
+
+        q = sess.query(User, Address.email_address.label('email_address'))
+
+        l = q.join('addresses').options(joinedload(User.orders)).\
+            order_by(
+            "email_address desc").limit(1).offset(0)
+        with expect_warnings(
+                "Can't resolve label reference 'email_address desc'"):
+            eq_(
+                [
+                    (User(
+                        id=7,
+                        orders=[Order(id=1), Order(id=3), Order(id=5)],
+                        addresses=[Address(id=1)]
+                    ), 'jack@bean.com')
+                ],
+                l.all())
 
 
 class TextWarningTest(QueryTest, AssertsCompiledSQL):
