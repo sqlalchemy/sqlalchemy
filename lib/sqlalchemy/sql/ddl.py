@@ -711,8 +711,11 @@ class SchemaGenerator(DDLBase):
         seq_coll = [s for s in metadata._sequences.values()
                     if s.column is None and self._can_create_sequence(s)]
 
+        event_collection = [
+            t for (t, fks) in collection if t is not None
+        ]
         metadata.dispatch.before_create(metadata, self.connection,
-                                        tables=collection,
+                                        tables=event_collection,
                                         checkfirst=self.checkfirst,
                                         _ddl_runner=self)
 
@@ -730,7 +733,7 @@ class SchemaGenerator(DDLBase):
                     self.traverse_single(fkc)
 
         metadata.dispatch.after_create(metadata, self.connection,
-                                       tables=collection,
+                                       tables=event_collection,
                                        checkfirst=self.checkfirst,
                                        _ddl_runner=self)
 
@@ -804,7 +807,7 @@ class SchemaDropper(DDLBase):
 
         try:
             unsorted_tables = [t for t in tables if self._can_drop_table(t)]
-            collection = reversed(
+            collection = list(reversed(
                 sort_tables_and_constraints(
                     unsorted_tables,
                     filter_fn=lambda constraint: False
@@ -812,7 +815,7 @@ class SchemaDropper(DDLBase):
                     or constraint.name is None
                     else None
                 )
-            )
+            ))
         except exc.CircularDependencyError as err2:
             if not self.dialect.supports_alter:
                 util.warn(
@@ -854,8 +857,12 @@ class SchemaDropper(DDLBase):
             if s.column is None and self._can_drop_sequence(s)
         ]
 
+        event_collection = [
+            t for (t, fks) in collection if t is not None
+        ]
+
         metadata.dispatch.before_drop(
-            metadata, self.connection, tables=collection,
+            metadata, self.connection, tables=event_collection,
             checkfirst=self.checkfirst, _ddl_runner=self)
 
         for table, fkcs in collection:
@@ -870,7 +877,7 @@ class SchemaDropper(DDLBase):
             self.traverse_single(seq, drop_ok=True)
 
         metadata.dispatch.after_drop(
-            metadata, self.connection, tables=collection,
+            metadata, self.connection, tables=event_collection,
             checkfirst=self.checkfirst, _ddl_runner=self)
 
     def _can_drop_table(self, table):

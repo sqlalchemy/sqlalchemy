@@ -19,6 +19,25 @@
     :version: 1.0.3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3391
+
+        Fixed regression due to :ticket:`3282` where the ``tables`` collection
+        passed as a keyword argument to the :meth:`.DDLEvents.before_create`,
+        :meth:`.DDLEvents.after_create`, :meth:`.DDLEvents.before_drop`, and
+        :meth:`.DDLEvents.after_drop` events would no longer be a list
+        of tables, but instead a list of tuples which contained a second
+        entry with foreign keys to be added or dropped.  As the ``tables``
+        collection, while documented as not necessarily stable, has come
+        to be relied upon, this change is considered a regression.
+        Additionally, in some cases for "drop", this collection would
+        be an iterator that would cause the operation to fail if
+        prematurely iterated.   The collection is now a list of table
+        objects in all cases and test coverage for the format of this
+        collection is now added.
+
+
+    .. change::
         :tags: bug, orm
         :tickets: 3388
 

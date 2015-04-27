@@ -19,29 +19,45 @@ class DDLEventTest(fixtures.TestBase):
             self.state = None
             self.schema_item = schema_item
             self.bind = bind
+            if isinstance(schema_item, MetaData):
+                self.tables = set(schema_item.tables.values())
+            else:
+                self.tables = None
 
         def before_create(self, schema_item, bind, **kw):
             assert self.state is None
             assert schema_item is self.schema_item
             assert bind is self.bind
+            if self.tables:
+                eq_(self.tables, set(kw['tables']))
+                assert isinstance(kw['tables'], list)
             self.state = 'before-create'
 
         def after_create(self, schema_item, bind, **kw):
             assert self.state in ('before-create', 'skipped')
             assert schema_item is self.schema_item
             assert bind is self.bind
+            if self.tables:
+                eq_(self.tables, set(kw['tables']))
+                assert isinstance(kw['tables'], list)
             self.state = 'after-create'
 
         def before_drop(self, schema_item, bind, **kw):
-            assert self.state is None
+            assert self.state in (None, 'skipped')
             assert schema_item is self.schema_item
             assert bind is self.bind
+            if self.tables:
+                eq_(self.tables, set(kw['tables']))
+                assert isinstance(kw['tables'], list)
             self.state = 'before-drop'
 
         def after_drop(self, schema_item, bind, **kw):
             assert self.state in ('before-drop', 'skipped')
             assert schema_item is self.schema_item
             assert bind is self.bind
+            if self.tables:
+                eq_(self.tables, set(kw['tables']))
+                assert isinstance(kw['tables'], list)
             self.state = 'after-drop'
 
     def setup(self):
@@ -130,7 +146,7 @@ class DDLEventTest(fixtures.TestBase):
         table.drop(bind)
         assert canary.state == 'after-drop'
 
-    def test_table_create_before(self):
+    def test_metadata_create_before(self):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
         event.listen(metadata, 'before_create', canary.before_create)
@@ -162,6 +178,41 @@ class DDLEventTest(fixtures.TestBase):
         assert canary.state == 'after-create'
         metadata.drop_all(bind)
         assert canary.state == 'after-create'
+
+    def test_metadata_drop_before(self):
+        metadata, bind = self.metadata, self.bind
+        canary = self.Canary(metadata, bind)
+        event.listen(metadata, 'before_drop', canary.before_drop)
+
+        canary.state = 'skipped'
+        metadata.create_all(bind)
+        assert canary.state == 'skipped'
+        metadata.drop_all(bind)
+        assert canary.state == 'before-drop'
+
+    def test_metadata_drop_after(self):
+        metadata, bind = self.metadata, self.bind
+        canary = self.Canary(metadata, bind)
+        event.listen(metadata, 'after_drop', canary.after_drop)
+
+        canary.state = 'skipped'
+        metadata.create_all(bind)
+        assert canary.state == 'skipped'
+        metadata.drop_all(bind)
+        assert canary.state == 'after-drop'
+
+    def test_metadata_drop_both(self):
+        metadata, bind = self.metadata, self.bind
+        canary = self.Canary(metadata, bind)
+
+        event.listen(metadata, 'before_drop', canary.before_drop)
+        event.listen(metadata, 'after_drop', canary.after_drop)
+
+        canary.state = 'skipped'
+        metadata.create_all(bind)
+        assert canary.state == 'skipped'
+        metadata.drop_all(bind)
+        assert canary.state == 'after-drop'
 
     def test_metadata_table_isolation(self):
         metadata, table, bind = self.metadata, self.table, self.bind
