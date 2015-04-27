@@ -11,54 +11,10 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import AssertsCompiledSQL, eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 
 
 class DDLEventTest(fixtures.TestBase):
-    class Canary(object):
-        def __init__(self, schema_item, bind):
-            self.state = None
-            self.schema_item = schema_item
-            self.bind = bind
-            if isinstance(schema_item, MetaData):
-                self.tables = set(schema_item.tables.values())
-            else:
-                self.tables = None
-
-        def before_create(self, schema_item, bind, **kw):
-            assert self.state is None
-            assert schema_item is self.schema_item
-            assert bind is self.bind
-            if self.tables:
-                eq_(self.tables, set(kw['tables']))
-                assert isinstance(kw['tables'], list)
-            self.state = 'before-create'
-
-        def after_create(self, schema_item, bind, **kw):
-            assert self.state in ('before-create', 'skipped')
-            assert schema_item is self.schema_item
-            assert bind is self.bind
-            if self.tables:
-                eq_(self.tables, set(kw['tables']))
-                assert isinstance(kw['tables'], list)
-            self.state = 'after-create'
-
-        def before_drop(self, schema_item, bind, **kw):
-            assert self.state in (None, 'skipped')
-            assert schema_item is self.schema_item
-            assert bind is self.bind
-            if self.tables:
-                eq_(self.tables, set(kw['tables']))
-                assert isinstance(kw['tables'], list)
-            self.state = 'before-drop'
-
-        def after_drop(self, schema_item, bind, **kw):
-            assert self.state in ('before-drop', 'skipped')
-            assert schema_item is self.schema_item
-            assert bind is self.bind
-            if self.tables:
-                eq_(self.tables, set(kw['tables']))
-                assert isinstance(kw['tables'], list)
-            self.state = 'after-drop'
 
     def setup(self):
         self.bind = engines.mock_engine()
@@ -67,163 +23,276 @@ class DDLEventTest(fixtures.TestBase):
 
     def test_table_create_before(self):
         table, bind = self.table, self.bind
-        canary = self.Canary(table, bind)
+        canary = mock.Mock()
         event.listen(table, 'before_create', canary.before_create)
 
         table.create(bind)
-        assert canary.state == 'before-create'
         table.drop(bind)
-        assert canary.state == 'before-create'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_create(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY)
+            ]
+        )
 
     def test_table_create_after(self):
         table, bind = self.table, self.bind
-        canary = self.Canary(table, bind)
+        canary = mock.Mock()
         event.listen(table, 'after_create', canary.after_create)
 
-        canary.state = 'skipped'
         table.create(bind)
-        assert canary.state == 'after-create'
         table.drop(bind)
-        assert canary.state == 'after-create'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.after_create(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY)
+            ]
+        )
 
     def test_table_create_both(self):
         table, bind = self.table, self.bind
-        canary = self.Canary(table, bind)
+        canary = mock.Mock()
         event.listen(table, 'before_create', canary.before_create)
         event.listen(table, 'after_create', canary.after_create)
 
         table.create(bind)
-        assert canary.state == 'after-create'
         table.drop(bind)
-        assert canary.state == 'after-create'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_create(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+                mock.call.after_create(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY)
+            ]
+        )
 
     def test_table_drop_before(self):
         table, bind = self.table, self.bind
-        canary = self.Canary(table, bind)
+        canary = mock.Mock()
         event.listen(table, 'before_drop', canary.before_drop)
 
         table.create(bind)
-        assert canary.state is None
         table.drop(bind)
-        assert canary.state == 'before-drop'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_drop(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+            ]
+        )
 
     def test_table_drop_after(self):
         table, bind = self.table, self.bind
-        canary = self.Canary(table, bind)
+        canary = mock.Mock()
         event.listen(table, 'after_drop', canary.after_drop)
 
         table.create(bind)
-        assert canary.state is None
         canary.state = 'skipped'
         table.drop(bind)
-        assert canary.state == 'after-drop'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.after_drop(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+            ]
+        )
 
     def test_table_drop_both(self):
         table, bind = self.table, self.bind
-        canary = self.Canary(table, bind)
+        canary = mock.Mock()
 
         event.listen(table, 'before_drop', canary.before_drop)
         event.listen(table, 'after_drop', canary.after_drop)
 
         table.create(bind)
-        assert canary.state is None
         table.drop(bind)
-        assert canary.state == 'after-drop'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_drop(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+                mock.call.after_drop(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+            ]
+        )
 
     def test_table_all(self):
         table, bind = self.table, self.bind
-        canary = self.Canary(table, bind)
+        canary = mock.Mock()
 
         event.listen(table, 'before_create', canary.before_create)
         event.listen(table, 'after_create', canary.after_create)
         event.listen(table, 'before_drop', canary.before_drop)
         event.listen(table, 'after_drop', canary.after_drop)
 
-        assert canary.state is None
         table.create(bind)
-        assert canary.state == 'after-create'
-        canary.state = None
         table.drop(bind)
-        assert canary.state == 'after-drop'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_create(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+                mock.call.after_create(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+                mock.call.before_drop(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+                mock.call.after_drop(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+            ]
+        )
 
     def test_metadata_create_before(self):
         metadata, bind = self.metadata, self.bind
-        canary = self.Canary(metadata, bind)
+        canary = mock.Mock()
         event.listen(metadata, 'before_create', canary.before_create)
 
         metadata.create_all(bind)
-        assert canary.state == 'before-create'
         metadata.drop_all(bind)
-        assert canary.state == 'before-create'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_create(
+                    # checkfirst is False because of the MockConnection
+                    # used in the current testing strategy.
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+            ]
+        )
 
     def test_metadata_create_after(self):
         metadata, bind = self.metadata, self.bind
-        canary = self.Canary(metadata, bind)
+        canary = mock.Mock()
         event.listen(metadata, 'after_create', canary.after_create)
 
-        canary.state = 'skipped'
         metadata.create_all(bind)
-        assert canary.state == 'after-create'
         metadata.drop_all(bind)
-        assert canary.state == 'after-create'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.after_create(
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+            ]
+        )
 
     def test_metadata_create_both(self):
         metadata, bind = self.metadata, self.bind
-        canary = self.Canary(metadata, bind)
+        canary = mock.Mock()
 
         event.listen(metadata, 'before_create', canary.before_create)
         event.listen(metadata, 'after_create', canary.after_create)
 
         metadata.create_all(bind)
-        assert canary.state == 'after-create'
         metadata.drop_all(bind)
-        assert canary.state == 'after-create'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_create(
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+                mock.call.after_create(
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+            ]
+        )
 
     def test_metadata_drop_before(self):
         metadata, bind = self.metadata, self.bind
-        canary = self.Canary(metadata, bind)
+        canary = mock.Mock()
         event.listen(metadata, 'before_drop', canary.before_drop)
 
-        canary.state = 'skipped'
         metadata.create_all(bind)
-        assert canary.state == 'skipped'
         metadata.drop_all(bind)
-        assert canary.state == 'before-drop'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_drop(
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+            ]
+        )
 
     def test_metadata_drop_after(self):
         metadata, bind = self.metadata, self.bind
-        canary = self.Canary(metadata, bind)
+        canary = mock.Mock()
         event.listen(metadata, 'after_drop', canary.after_drop)
 
-        canary.state = 'skipped'
         metadata.create_all(bind)
-        assert canary.state == 'skipped'
         metadata.drop_all(bind)
-        assert canary.state == 'after-drop'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.after_drop(
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+            ]
+        )
 
     def test_metadata_drop_both(self):
         metadata, bind = self.metadata, self.bind
-        canary = self.Canary(metadata, bind)
+        canary = mock.Mock()
 
         event.listen(metadata, 'before_drop', canary.before_drop)
         event.listen(metadata, 'after_drop', canary.after_drop)
 
-        canary.state = 'skipped'
         metadata.create_all(bind)
-        assert canary.state == 'skipped'
         metadata.drop_all(bind)
-        assert canary.state == 'after-drop'
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_drop(
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+                mock.call.after_drop(
+                    metadata, self.bind, checkfirst=False,
+                    tables=list(metadata.tables.values()),
+                    _ddl_runner=mock.ANY),
+            ]
+        )
 
     def test_metadata_table_isolation(self):
-        metadata, table, bind = self.metadata, self.table, self.bind
-        table_canary = self.Canary(table, bind)
+        metadata, table = self.metadata, self.table
+        table_canary = mock.Mock()
+        metadata_canary = mock.Mock()
 
         event.listen(table, 'before_create', table_canary.before_create)
 
-        metadata_canary = self.Canary(metadata, bind)
         event.listen(metadata, 'before_create', metadata_canary.before_create)
         self.table.create(self.bind)
-        assert metadata_canary.state == None
+        eq_(
+            table_canary.mock_calls,
+            [
+                mock.call.before_create(
+                    table, self.bind, checkfirst=False,
+                    _ddl_runner=mock.ANY, _is_metadata_operation=mock.ANY),
+            ]
+        )
+        eq_(
+            metadata_canary.mock_calls,
+            []
+        )
 
     def test_append_listener(self):
         metadata, table, bind = self.metadata, self.table, self.bind
