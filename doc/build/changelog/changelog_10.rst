@@ -19,6 +19,15 @@
     :version: 1.0.3
 
     .. change::
+        :tags: bug, ext
+        :tickets: 3397
+
+        Fixed bug in association proxy where an any()/has()
+        on an relationship->scalar non-object attribute comparison would fail,
+        e.g.
+        ``filter(Parent.some_collection_to_attribute.any(Child.attr == 'foo'))``
+
+    .. change::
         :tags: bug, sql
         :tickets: 3396
 

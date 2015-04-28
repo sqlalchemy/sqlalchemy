@@ -365,13 +365,17 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         operators of the underlying proxied attributes.
 
         """
-
-        if self._value_is_scalar:
-            value_expr = getattr(
-                self.target_class, self.value_attr).has(criterion, **kwargs)
+        if self._target_is_object:
+            if self._value_is_scalar:
+                value_expr = getattr(
+                    self.target_class, self.value_attr).has(
+                    criterion, **kwargs)
+            else:
+                value_expr = getattr(
+                    self.target_class, self.value_attr).any(
+                    criterion, **kwargs)
         else:
-            value_expr = getattr(
-                self.target_class, self.value_attr).any(criterion, **kwargs)
+            value_expr = criterion
 
         # check _value_is_scalar here, otherwise
         # we're scalar->scalar - call .any() so that

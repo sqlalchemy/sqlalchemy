@@ -1089,7 +1089,8 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def define_tables(cls, metadata):
         Table('userkeywords', metadata,
           Column('keyword_id', Integer, ForeignKey('keywords.id'), primary_key=True),
-          Column('user_id', Integer, ForeignKey('users.id'))
+          Column('user_id', Integer, ForeignKey('users.id')),
+          Column('value', String(50))
         )
         Table('users', metadata,
             Column('id', Integer,
@@ -1127,6 +1128,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             # m2o -> scalar
             # nonuselist
             singular_value = association_proxy('singular', 'value')
+
+            # o2m -> scalar
+            singular_collection = association_proxy('user_keywords', 'value')
 
         class Keyword(cls.Comparable):
             def __init__(self, keyword):
@@ -1195,8 +1199,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             for jj in words[(ii % len(words)):((ii + 3) % len(words))]:
                 k = Keyword(jj)
                 user.keywords.append(k)
-                if ii % 3 == None:
+                if ii % 2 == 0:
                     user.singular.keywords.append(k)
+                    user.user_keywords[-1].value = "singular%d" % ii
 
         orphan = Keyword('orphan')
         orphan.user_keyword = UserKeyword(keyword=orphan, user=None)
@@ -1212,6 +1217,27 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def _equivalent(self, q_proxy, q_direct):
         eq_(q_proxy.all(), q_direct.all())
+
+    def test_filter_any_criterion_ul_scalar(self):
+        UserKeyword, User = self.classes.UserKeyword, self.classes.User
+
+        q1 = self.session.query(User).filter(
+            User.singular_collection.any(UserKeyword.value == 'singular8'))
+        self.assert_compile(
+            q1,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM userkeywords "
+            "WHERE users.id = userkeywords.user_id AND "
+            "userkeywords.value = :value_1)",
+            checkparams={'value_1': 'singular8'}
+        )
+
+        q2 = self.session.query(User).filter(
+            User.user_keywords.any(UserKeyword.value == 'singular8'))
+        self._equivalent(q1, q2)
 
     def test_filter_any_kwarg_ul_nul(self):
         UserKeyword, User = self.classes.UserKeyword, self.classes.User
