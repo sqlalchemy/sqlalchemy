@@ -193,7 +193,7 @@ class RelationshipProperty(StrategizedProperty):
 
           The :paramref:`~.relationship.secondary` keyword argument is
           typically applied in the case where the intermediary :class:`.Table`
-          is not otherwise exprssed in any direct class mapping. If the
+          is not otherwise expressed in any direct class mapping. If the
           "secondary" table is also explicitly mapped elsewhere (e.g. as in
           :ref:`association_pattern`), one should consider applying the
           :paramref:`~.relationship.viewonly` flag so that this
