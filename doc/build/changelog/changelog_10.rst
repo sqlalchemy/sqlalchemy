@@ -19,6 +19,18 @@
     :version: 1.0.3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3396
+
+        Fixed bug where the truncation of long labels in SQL could produce
+        a label that overlapped another label that is not truncated; this
+        because the length threshhold for truncation was greater than
+        the portion of the label that remains after truncation.  These
+        two values have now been made the same; label_length - 6.
+        The effect here is that shorter column labels will be "truncated"
+        where they would not have been truncated before.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3392
 

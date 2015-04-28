@@ -1133,7 +1133,7 @@ class SQLCompiler(Compiled):
 
         anonname = name.apply_map(self.anon_map)
 
-        if len(anonname) > self.label_length:
+        if len(anonname) > self.label_length - 6:
             counter = self.truncated_names.get(ident_class, 1)
             truncname = anonname[0:max(self.label_length - 6, 0)] + \
                 "_" + hex(counter)[2:]
