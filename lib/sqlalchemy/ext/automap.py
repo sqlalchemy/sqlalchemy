@@ -67,7 +67,7 @@ asking it to reflect the schema and produce mappings::
 Above, calling :meth:`.AutomapBase.prepare` while passing along the
 :paramref:`.AutomapBase.prepare.reflect` parameter indicates that the
 :meth:`.MetaData.reflect` method will be called on this declarative base
-classes' :class:`.MetaData` collection; then, each viable
+classes' :class:`.MetaData` collection; then, each **viable**
 :class:`.Table` within the :class:`.MetaData` will get a new mapped class
 generated automatically.  The :class:`.ForeignKeyConstraint` objects which
 link the various tables together will be used to produce new, bidirectional
@@ -75,6 +75,12 @@ link the various tables together will be used to produce new, bidirectional
 follow along a default naming scheme that we can customize.  At this point,
 our basic mapping consisting of related ``User`` and ``Address`` classes is
 ready to use in the traditional way.
+
+.. note:: By **viable**, we mean that for a table to be mapped, it must
+   specify a primary key.  Additionally, if the table is detected as being
+   a pure association table between two other tables, it will not be directly
+   mapped and will instead be configured as a many-to-many table between
+   the mappings for the two referring tables.
 
 Generating Mappings from an Existing MetaData
 =============================================
