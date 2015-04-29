@@ -19,6 +19,17 @@
     :version: 1.0.3
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3402
+
+        Fixed regression within the flush process when an attribute were
+        set to a SQL expression for an UPDATE, and the SQL expression when
+        compared to the previous value of the attribute would produce a SQL
+        comparison other than ``==`` or ``!=``, the exception "Boolean value
+        of this clause is not defined" would raise.   The fix ensures that
+        the unit of work will not interpret the SQL expression in this way.
+
+    .. change::
         :tags: bug, ext
         :tickets: 3397
 

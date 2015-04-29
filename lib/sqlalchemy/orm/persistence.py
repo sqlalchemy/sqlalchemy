@@ -452,12 +452,11 @@ def _collect_update_commands(
                 value = state_dict[propkey]
                 col = propkey_to_col[propkey]
 
-                if not state.manager[propkey].impl.is_equal(
+                if isinstance(value, sql.ClauseElement):
+                    value_params[col] = value
+                elif not state.manager[propkey].impl.is_equal(
                         value, state.committed_state[propkey]):
-                    if isinstance(value, sql.ClauseElement):
-                        value_params[col] = value
-                    else:
-                        params[col.key] = value
+                    params[col.key] = value
 
         if update_version_id is not None and \
                 mapper.version_id_col in mapper._cols_by_table[table]:
