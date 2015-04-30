@@ -2174,7 +2174,7 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
 
         conn.invalidate()
 
-        eng.pool._wrapped_creator = Mock(
+        eng.pool._creator = Mock(
             side_effect=self.ProgrammingError(
                 "Cannot operate on a closed database."))
 

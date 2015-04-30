@@ -1807,3 +1807,58 @@ class StaticPoolTest(PoolTestBase):
         p = pool.StaticPool(creator)
         p2 = p.recreate()
         assert p._creator is p2._creator
+
+
+class CreatorCompatibilityTest(PoolTestBase):
+    def test_creator_callable_outside_noarg(self):
+        e = testing_engine()
+
+        creator = e.pool._creator
+        try:
+            conn = creator()
+        finally:
+            conn.close()
+
+    def test_creator_callable_outside_witharg(self):
+        e = testing_engine()
+
+        creator = e.pool._creator
+        try:
+            conn = creator(Mock())
+        finally:
+            conn.close()
+
+    def test_creator_patching_arg_to_noarg(self):
+        e = testing_engine()
+        creator = e.pool._creator
+        try:
+            # the creator is the two-arg form
+            conn = creator(Mock())
+        finally:
+            conn.close()
+
+        def mock_create():
+            return creator()
+
+        conn = e.connect()
+        conn.invalidate()
+        conn.close()
+
+        # test that the 'should_wrap_creator' memoized attribute
+        # will dynamically switch if the _creator is monkeypatched.
+
+        is_(e.pool.__dict__.get("_should_wrap_creator")[0], False)
+
+        # patch it with a zero-arg form
+        with patch.object(e.pool, "_creator", mock_create):
+            conn = e.connect()
+            conn.invalidate()
+            conn.close()
+
+            is_(e.pool.__dict__.get("_should_wrap_creator")[0], True)
+
+        conn = e.connect()
+        conn.close()
+
+        is_(e.pool.__dict__.get("_should_wrap_creator")[0], False)
+
