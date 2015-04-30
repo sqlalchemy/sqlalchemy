@@ -19,6 +19,14 @@
     :version: 1.0.3
 
     .. change::
+        :tags: feature, sql
+
+        Added a placeholder method :meth:`.TypeEngine.compare_against_backend`
+        which is now consumed by Alembic migrations as of 0.7.6.  User-defined
+        types can implement this method to assist in the comparison of
+        a type against one reflected from the database.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3402
 
