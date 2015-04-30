@@ -19,6 +19,36 @@
     :version: 1.0.3
 
     .. change::
+        :tags: feature, engine
+        :tickets: 3379
+
+        New features added to support engine/pool plugins with advanced
+        functionality.   Added a new "soft invalidate" feature to the
+        connection pool at the level of the checked out connection wrapper
+        as well as the :class:`._ConnectionRecord`.  This works similarly
+        to a modern pool invalidation in that connections aren't actively
+        closed, but are recycled only on next checkout; this is essentially
+        a per-connection version of that feature.  A new event
+        :class:`.PoolEvents.soft_invalidate` is added to complement it.
+
+        Also added new flag
+        :attr:`.ExceptionContext.invalidate_pool_on_disconnect`.
+        Allows an error handler within :meth:`.ConnectionEvents.handle_error`
+        to maintain a "disconnect" condition, but to handle calling invalidate
+        on individual connections in a specific manner within the event.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 3355
+
+        Added new event :class:`.DialectEvents.do_connect`, which allows
+        interception / replacement of when the :meth:`.Dialect.connect`
+        hook is called to create a DBAPI connection.  Also added
+        dialect plugin hooks :meth:`.Dialect.get_dialect_cls` and
+        :meth:`.Dialect.engine_created` which allow external plugins to
+        add events to existing dialects using entry points.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3403, 3320
 

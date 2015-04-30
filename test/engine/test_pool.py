@@ -4,11 +4,11 @@ from sqlalchemy import pool, select, event
 import sqlalchemy as tsa
 from sqlalchemy import testing
 from sqlalchemy.testing.util import gc_collect, lazy_gc
-from sqlalchemy.testing import eq_, assert_raises, is_not_
+from sqlalchemy.testing import eq_, assert_raises, is_not_, is_
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing import fixtures
 import random
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.mock import Mock, call, patch
 import weakref
 
 join_timeout = 10
@@ -335,6 +335,13 @@ class PoolEventsTest(PoolTestBase):
 
         return p, canary
 
+    def _soft_invalidate_event_fixture(self):
+        p = self._queuepool_fixture()
+        canary = Mock()
+        event.listen(p, 'soft_invalidate', canary)
+
+        return p, canary
+
     def test_first_connect_event(self):
         p, canary = self._first_connect_event_fixture()
 
@@ -437,6 +444,31 @@ class PoolEventsTest(PoolTestBase):
         eq_(canary, [])
         c1.close()
         eq_(canary, ['reset'])
+
+    def test_soft_invalidate_event_no_exception(self):
+        p, canary = self._soft_invalidate_event_fixture()
+
+        c1 = p.connect()
+        c1.close()
+        assert not canary.called
+        c1 = p.connect()
+        dbapi_con = c1.connection
+        c1.invalidate(soft=True)
+        assert canary.call_args_list[0][0][0] is dbapi_con
+        assert canary.call_args_list[0][0][2] is None
+
+    def test_soft_invalidate_event_exception(self):
+        p, canary = self._soft_invalidate_event_fixture()
+
+        c1 = p.connect()
+        c1.close()
+        assert not canary.called
+        c1 = p.connect()
+        dbapi_con = c1.connection
+        exc = Exception("hi")
+        c1.invalidate(exc, soft=True)
+        assert canary.call_args_list[0][0][0] is dbapi_con
+        assert canary.call_args_list[0][0][2] is exc
 
     def test_invalidate_event_no_exception(self):
         p, canary = self._invalidate_event_fixture()
@@ -1130,6 +1162,44 @@ class QueuePoolTest(PoolTestBase):
 
         eq_(len(success), 12, "successes: %s" % success)
 
+    def test_connrec_invalidated_within_checkout_no_race(self):
+        """Test that a concurrent ConnectionRecord.invalidate() which
+        occurs after the ConnectionFairy has called _ConnectionRecord.checkout()
+        but before the ConnectionFairy tests "fairy.connection is None"
+        will not result in an InvalidRequestError.
+
+        This use case assumes that a listener on the checkout() event
+        will be raising DisconnectionError so that a reconnect attempt
+        may occur.
+
+        """
+        dbapi = MockDBAPI()
+
+        def creator():
+            return dbapi.connect()
+
+        p = pool.QueuePool(creator=creator, pool_size=1, max_overflow=0)
+
+        conn = p.connect()
+        conn.close()
+
+        _existing_checkout = pool._ConnectionRecord.checkout
+
+        @classmethod
+        def _decorate_existing_checkout(cls, *arg, **kw):
+            fairy = _existing_checkout(*arg, **kw)
+            connrec = fairy._connection_record
+            connrec.invalidate()
+            return fairy
+
+        with patch(
+                "sqlalchemy.pool._ConnectionRecord.checkout",
+                _decorate_existing_checkout):
+            conn = p.connect()
+            is_(conn._connection_record.connection, None)
+        conn.close()
+
+
     @testing.requires.threading_with_mock
     @testing.requires.timing_intensive
     def test_notify_waiters(self):
@@ -1323,11 +1393,35 @@ class QueuePoolTest(PoolTestBase):
         c2 = p.connect()
         assert id(c2.connection) == c_id
 
+        c2_rec = c2._connection_record
         p._invalidate(c2)
+        assert c2_rec.connection is None
         c2.close()
         time.sleep(.5)
         c3 = p.connect()
         assert id(c3.connection) != c_id
+
+    @testing.requires.timing_intensive
+    def test_recycle_on_soft_invalidate(self):
+        p = self._queuepool_fixture(pool_size=1,
+                           max_overflow=0)
+        c1 = p.connect()
+        c_id = id(c1.connection)
+        c1.close()
+        c2 = p.connect()
+        assert id(c2.connection) == c_id
+
+        c2_rec = c2._connection_record
+        c2.invalidate(soft=True)
+        assert c2_rec.connection is c2.connection
+
+        c2.close()
+        time.sleep(.5)
+        c3 = p.connect()
+        assert id(c3.connection) != c_id
+        assert c3._connection_record is c2_rec
+        assert c2_rec.connection is c3.connection
+
 
     def _assert_cleanup_on_pooled_reconnect(self, dbapi, p):
         # p is QueuePool with size=1, max_overflow=2,

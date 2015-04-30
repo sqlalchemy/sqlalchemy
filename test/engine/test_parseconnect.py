@@ -5,7 +5,7 @@ from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
-from sqlalchemy.testing.mock import Mock, MagicMock
+from sqlalchemy.testing.mock import Mock, MagicMock, call
 from sqlalchemy import event
 from sqlalchemy import select
 
@@ -339,6 +339,33 @@ class TestRegNewDBAPI(fixtures.TestBase):
 
         e = create_engine("mysql+my_mock_dialect://")
         assert isinstance(e.dialect, MockDialect)
+
+    @testing.requires.sqlite
+    def test_wrapper_hooks(self):
+        def get_dialect_cls(url):
+            url.drivername = "sqlite"
+            return url.get_dialect()
+
+        global WrapperFactory
+        WrapperFactory = Mock()
+        WrapperFactory.get_dialect_cls.side_effect = get_dialect_cls
+
+        from sqlalchemy.dialects import registry
+        registry.register("wrapperdialect", __name__, "WrapperFactory")
+
+        from sqlalchemy.dialects import sqlite
+        e = create_engine("wrapperdialect://")
+
+        eq_(e.dialect.name, "sqlite")
+        assert isinstance(e.dialect, sqlite.dialect)
+
+        eq_(
+            WrapperFactory.mock_calls,
+            [
+                call.get_dialect_cls(url.make_url("sqlite://")),
+                call.engine_created(e)
+            ]
+        )
 
 
 class MockDialect(DefaultDialect):

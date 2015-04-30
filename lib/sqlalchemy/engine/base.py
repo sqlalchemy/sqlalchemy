@@ -1254,6 +1254,8 @@ class Connection(Connectable):
             if context:
                 context.is_disconnect = self._is_disconnect
 
+        invalidate_pool_on_disconnect = True
+
         if self._reentrant_error:
             util.raise_from_cause(
                 exc.DBAPIError.instance(statement,
@@ -1316,6 +1318,11 @@ class Connection(Connectable):
                     sqlalchemy_exception.connection_invalidated = \
                         self._is_disconnect = ctx.is_disconnect
 
+                # set up potentially user-defined value for
+                # invalidate pool.
+                invalidate_pool_on_disconnect = \
+                    ctx.invalidate_pool_on_disconnect
+
             if should_wrap and context:
                 context.handle_dbapi_exception(e)
 
@@ -1340,7 +1347,8 @@ class Connection(Connectable):
                 del self._is_disconnect
                 if not self.invalidated:
                     dbapi_conn_wrapper = self.__connection
-                    self.engine.pool._invalidate(dbapi_conn_wrapper, e)
+                    if invalidate_pool_on_disconnect:
+                        self.engine.pool._invalidate(dbapi_conn_wrapper, e)
                     self.invalidate(e)
             if self.should_close_with_result:
                 self.close()

@@ -371,7 +371,9 @@ class PoolEvents(event.Events):
         """Called when a DBAPI connection is to be "invalidated".
 
         This event is called any time the :meth:`._ConnectionRecord.invalidate`
-        method is invoked, either from API usage or via "auto-invalidation".
+        method is invoked, either from API usage or via "auto-invalidation",
+        without the ``soft`` flag.
+
         The event occurs before a final attempt to call ``.close()`` on the
         connection occurs.
 
@@ -389,6 +391,21 @@ class PoolEvents(event.Events):
         .. seealso::
 
             :ref:`pool_connection_invalidation`
+
+        """
+
+    def soft_invalidate(self, dbapi_connection, connection_record, exception):
+        """Called when a DBAPI connection is to be "soft invalidated".
+
+        This event is called any time the :meth:`._ConnectionRecord.invalidate`
+        method is invoked with the ``soft`` flag.
+
+        Soft invalidation refers to when the connection record that tracks
+        this connection will force a reconnect after the current connection
+        is checked in.   It does not actively close the dbapi_connection
+        at the point at which it is called.
+
+        .. versionadded:: 1.0.3
 
         """
 
@@ -707,6 +724,16 @@ class ConnectionEvents(event.Events):
                     "failed" in str(context.original_exception):
                     raise MySpecialException("failed operation")
 
+        .. warning::  Because the :meth:`.ConnectionEvents.handle_error`
+           event specifically provides for exceptions to be re-thrown as
+           the ultimate exception raised by the failed statement,
+           **stack traces will be misleading** if the user-defined event
+           handler itself fails and throws an unexpected exception;
+           the stack trace may not illustrate the actual code line that
+           failed!  It is advised to code carefully here and use
+           logging and/or inline debugging if unexpected exceptions are
+           occurring.
+
         Alternatively, a "chained" style of event handling can be
         used, by configuring the handler with the ``retval=True``
         modifier and returning the new exception instance from the
@@ -1006,6 +1033,23 @@ class DialectEvents(event.Events):
             return target.dialect
         else:
             return target
+
+    def do_connect(self, dialect, conn_rec, cargs, cparams):
+        """Receive connection arguments before a connection is made.
+
+        Return a DBAPI connection to halt further events from invoking;
+        the returned connection will be used.
+
+        Alternatively, the event can manipulate the cargs and/or cparams
+        collections; cargs will always be a Python list that can be mutated
+        in-place and cparams a Python dictionary.  Return None to
+        allow control to pass to the next event handler and ultimately
+        to allow the dialect to connect normally, given the updated
+        arguments.
+
+        .. versionadded:: 1.0.3
+
+        """
 
     def do_executemany(self, cursor, statement, parameters, context):
         """Receive a cursor to have executemany() called.

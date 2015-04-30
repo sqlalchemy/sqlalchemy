@@ -219,6 +219,7 @@ class Pool(log.Identified):
         log.instance_logger(self, echoflag=echo)
         self._threadconns = threading.local()
         self._creator = creator
+        self._wrapped_creator = self._maybe_wrap_callable(creator)
         self._recycle = recycle
         self._invalidate_time = 0
         self._use_threadlocal = use_threadlocal
@@ -248,6 +249,32 @@ class Pool(log.Identified):
                 "create_engine()) is deprecated.  Use event.listen().")
             for l in listeners:
                 self.add_listener(l)
+
+    def _maybe_wrap_callable(self, fn):
+        """Detect if creator accepts a single argument, or is sent
+        as a legacy style no-arg function.
+
+        """
+
+        try:
+            argspec = util.get_callable_argspec(fn, no_self=True)
+        except TypeError:
+            return lambda ctx: fn()
+
+        defaulted = argspec[3] is not None and len(argspec[3]) or 0
+        positionals = len(argspec[0]) - defaulted
+
+        # look for the exact arg signature that DefaultStrategy
+        # sends us
+        if (argspec[0], argspec[3]) == (['connection_record'], (None,)):
+            return fn
+        # or just a single positional
+        elif positionals == 1:
+            return fn
+        # all other cases, just wrap and assume legacy "creator" callable
+        # thing
+        else:
+            return lambda ctx: fn()
 
     def _close_connection(self, connection):
         self.logger.debug("Closing connection %r", connection)
@@ -428,6 +455,8 @@ class _ConnectionRecord(object):
 
     """
 
+    _soft_invalidate_time = 0
+
     @util.memoized_property
     def info(self):
         """The ``.info`` dictionary associated with the DBAPI connection.
@@ -476,13 +505,20 @@ class _ConnectionRecord(object):
         if self.connection is not None:
             self.__close()
 
-    def invalidate(self, e=None):
+    def invalidate(self, e=None, soft=False):
         """Invalidate the DBAPI connection held by this :class:`._ConnectionRecord`.
 
         This method is called for all connection invalidations, including
         when the :meth:`._ConnectionFairy.invalidate` or
         :meth:`.Connection.invalidate` methods are called, as well as when any
         so-called "automatic invalidation" condition occurs.
+
+        :param e: an exception object indicating a reason for the invalidation.
+
+        :param soft: if True, the connection isn't closed; instead, this
+         connection will be recycled on next checkout.
+
+         .. versionadded:: 1.0.3
 
         .. seealso::
 
@@ -492,22 +528,31 @@ class _ConnectionRecord(object):
         # already invalidated
         if self.connection is None:
             return
-        self.__pool.dispatch.invalidate(self.connection, self, e)
+        if soft:
+            self.__pool.dispatch.soft_invalidate(self.connection, self, e)
+        else:
+            self.__pool.dispatch.invalidate(self.connection, self, e)
         if e is not None:
             self.__pool.logger.info(
-                "Invalidate connection %r (reason: %s:%s)",
+                "%sInvalidate connection %r (reason: %s:%s)",
+                "Soft " if soft else "",
                 self.connection, e.__class__.__name__, e)
         else:
             self.__pool.logger.info(
-                "Invalidate connection %r", self.connection)
-        self.__close()
-        self.connection = None
+                "%sInvalidate connection %r",
+                "Soft " if soft else "",
+                self.connection)
+        if soft:
+            self._soft_invalidate_time = time.time()
+        else:
+            self.__close()
+            self.connection = None
 
     def get_connection(self):
         recycle = False
         if self.connection is None:
-            self.connection = self.__connect()
             self.info.clear()
+            self.connection = self.__connect()
             if self.__pool.dispatch.connect:
                 self.__pool.dispatch.connect(self.connection, self)
         elif self.__pool._recycle > -1 and \
@@ -523,11 +568,18 @@ class _ConnectionRecord(object):
                 self.connection
             )
             recycle = True
+        elif self._soft_invalidate_time > self.starttime:
+            self.__pool.logger.info(
+                "Connection %r invalidated due to local soft invalidation; " +
+                "recycling",
+                self.connection
+            )
+            recycle = True
 
         if recycle:
             self.__close()
-            self.connection = self.__connect()
             self.info.clear()
+            self.connection = self.__connect()
             if self.__pool.dispatch.connect:
                 self.__pool.dispatch.connect(self.connection, self)
         return self.connection
@@ -539,7 +591,7 @@ class _ConnectionRecord(object):
     def __connect(self):
         try:
             self.starttime = time.time()
-            connection = self.__pool._creator()
+            connection = self.__pool._wrapped_creator(self)
             self.__pool.logger.debug("Created new connection %r", connection)
             return connection
         except Exception as e:
@@ -740,7 +792,7 @@ class _ConnectionFairy(object):
         """
         return self._connection_record.info
 
-    def invalidate(self, e=None):
+    def invalidate(self, e=None, soft=False):
         """Mark this connection as invalidated.
 
         This method can be called directly, and is also called as a result
@@ -748,6 +800,13 @@ class _ConnectionFairy(object):
         the DBAPI connection is immediately closed and discarded from
         further use by the pool.  The invalidation mechanism proceeds
         via the :meth:`._ConnectionRecord.invalidate` internal method.
+
+        :param e: an exception object indicating a reason for the invalidation.
+
+        :param soft: if True, the connection isn't closed; instead, this
+         connection will be recycled on next checkout.
+
+         .. versionadded:: 1.0.3
 
         .. seealso::
 
@@ -759,9 +818,10 @@ class _ConnectionFairy(object):
             util.warn("Can't invalidate an already-closed connection.")
             return
         if self._connection_record:
-            self._connection_record.invalidate(e=e)
-        self.connection = None
-        self._checkin()
+            self._connection_record.invalidate(e=e, soft=soft)
+        if not soft:
+            self.connection = None
+            self._checkin()
 
     def cursor(self, *args, **kwargs):
         """Return a new DBAPI cursor for the underlying connection.
