@@ -110,6 +110,9 @@
         Compared to the existing entry for ``"type"``, it will always be
         a mapped entity, even if extracted from a column expression, or
         None if the given expression is a pure core expression.
+        See also :ticket:`3403` which repaired a regression in this feature
+        which was unreleased in 0.9.10 but was released in the 1.0 version.
+
 
 .. changelog::
     :version: 0.9.9

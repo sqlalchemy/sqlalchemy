@@ -19,6 +19,15 @@
     :version: 1.0.3
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3403, 3320
+
+        Fixed regression from as yet unreleased 0.9.10 where the new addition
+        of ``entity`` to the :attr:`.Query.column_descriptions` accessor
+        would fail if the target entity was produced from a core selectable
+        such as a :class:`.Table` or :class:`.CTE` object.
+
+    .. change::
         :tags: feature, sql
 
         Added a placeholder method :meth:`.TypeEngine.compare_against_backend`
