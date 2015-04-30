@@ -68,6 +68,7 @@ class RowTupleTest(QueryTest):
         fn = func.count(User.id)
         name_label = User.name.label('uname')
         bundle = Bundle('b1', User.id, User.name)
+        cte = sess.query(User.id).cte()
         for q, asserted in [
             (
                 sess.query(User),
@@ -115,6 +116,26 @@ class RowTupleTest(QueryTest):
                     {
                         'name': None, 'type': fn.type, 'aliased': False,
                         'expr': fn, 'entity': User},
+                ]
+            ),
+            (
+                sess.query(cte),
+                [
+                {
+                    'aliased': False,
+                    'expr': cte.c.id, 'type': cte.c.id.type,
+                    'name': 'id', 'entity': None
+                }]
+            ),
+            (
+                sess.query(users),
+                [
+                    {'aliased': False,
+                     'expr': users.c.id, 'type': users.c.id.type,
+                     'name': 'id', 'entity': None},
+                    {'aliased': False,
+                     'expr': users.c.name, 'type': users.c.name.type,
+                     'name': 'name', 'entity': None}
                 ]
             ),
             (

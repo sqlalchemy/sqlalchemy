@@ -2487,6 +2487,7 @@ class Query(object):
                 'expr': ent.expr,
                 'entity':
                     ent.entity_zero.entity if ent.entity_zero is not None
+                    and not inspect(ent.entity_zero).is_selectable
                     else None
             }
             for ent in self._entities
