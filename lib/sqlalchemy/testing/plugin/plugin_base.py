@@ -19,6 +19,7 @@ try:
     # honor it unless nose is imported too...
     from nose import SkipTest
 except ImportError:
+    import pytest
     from _pytest.runner import Skipped as SkipTest
 
 import sys
