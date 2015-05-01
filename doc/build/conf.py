@@ -106,9 +106,9 @@ copyright = u'2007-2015, the SQLAlchemy authors and contributors'
 # The short X.Y version.
 version = "1.0"
 # The full version, including alpha/beta/rc tags.
-release = "1.0.2"
+release = "1.0.3"
 
-release_date = "April 24, 2015"
+release_date = "April 30, 2015"
 
 site_base = os.environ.get("RTD_SITE_BASE", "http://www.sqlalchemy.org")
 site_adapter_template = "docs_adapter.mako"

@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.3
+    :released: April 30, 2015
 
     .. change::
         :tags: bug, orm, pypy
