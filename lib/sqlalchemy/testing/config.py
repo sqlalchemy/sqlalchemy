@@ -15,6 +15,7 @@ file_config = None
 test_schema = None
 test_schema_2 = None
 _current = None
+_skip_test_exception = None
 
 
 class Config(object):
@@ -83,3 +84,9 @@ class Config(object):
         for cfg in cls.all_configs():
             yield cfg.db
 
+    def skip_test(self, msg):
+        skip_test(msg)
+
+
+def skip_test(msg):
+    raise _skip_test_exception(msg)

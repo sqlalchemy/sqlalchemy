@@ -12,7 +12,7 @@ import collections
 import itertools
 
 try:
-    import xdist
+    import xdist  # noqa
     has_xdist = True
 except ImportError:
     has_xdist = False
@@ -47,6 +47,8 @@ def pytest_configure(config):
 
     plugin_base.set_coverage_flag(bool(getattr(config.option,
                                                "cov_source", False)))
+
+    plugin_base.set_skip_test(pytest.skip.Exception)
 
 
 def pytest_sessionstart(session):
@@ -126,6 +128,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
         return []
 
 _current_class = None
+
 
 def pytest_runtest_setup(item):
     # here we seem to get called only based on what we collected

@@ -7,7 +7,6 @@
 
 
 import operator
-from .plugin.plugin_base import SkipTest
 from ..util import decorator
 from . import config
 from .. import util
@@ -116,7 +115,7 @@ class compound(object):
                     fn.__name__,
                     skip._as_string(config)
                 )
-                raise SkipTest(msg)
+                config.skip_test(msg)
 
         try:
             return_value = fn(*args, **kw)

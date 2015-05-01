@@ -16,7 +16,6 @@ import os
 import sys
 from .util import gc_collect
 from . import config
-from .plugin.plugin_base import SkipTest
 import pstats
 import collections
 import contextlib
@@ -205,10 +204,11 @@ def count_functions(variance=0.05):
         raise SkipTest("cProfile is not installed")
 
     if not _profile_stats.has_stats() and not _profile_stats.write:
-        raise SkipTest("No profiling stats available on this "
-                       "platform for this function.  Run tests with "
-                       "--write-profiles to add statistics to %s for "
-                       "this platform." % _profile_stats.short_fname)
+        config.skip_test(
+            "No profiling stats available on this "
+            "platform for this function.  Run tests with "
+            "--write-profiles to add statistics to %s for "
+            "this platform." % _profile_stats.short_fname)
 
     gc_collect()
 

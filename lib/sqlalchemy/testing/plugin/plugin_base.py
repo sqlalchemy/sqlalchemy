@@ -14,13 +14,6 @@ functionality via py.test.
 """
 
 from __future__ import absolute_import
-try:
-    # unitttest has a SkipTest also but pytest doesn't
-    # honor it unless nose is imported too...
-    from nose import SkipTest
-except ImportError:
-    import pytest
-    from _pytest.runner import Skipped as SkipTest
 
 import sys
 import re
@@ -157,6 +150,13 @@ def pre_begin(opt):
 def set_coverage_flag(value):
     options.has_coverage = value
 
+_skip_test_exception = None
+
+
+def set_skip_test(exc):
+    global _skip_test_exception
+    _skip_test_exception = exc
+
 
 def post_begin():
     """things to set up later, once we know coverage is running."""
@@ -232,6 +232,13 @@ def _monkeypatch_cdecimal(options, file_config):
     if options.cdecimal:
         import cdecimal
         sys.modules['decimal'] = cdecimal
+
+
+@post
+def _init_skiptest(options, file_config):
+    from sqlalchemy.testing import config
+
+    config._skip_test_exception = _skip_test_exception
 
 
 @post
@@ -507,7 +514,7 @@ def _do_skips(cls):
     if getattr(cls, '__skip_if__', False):
         for c in getattr(cls, '__skip_if__'):
             if c():
-                raise SkipTest("'%s' skipped by %s" % (
+                config.skip_test("'%s' skipped by %s" % (
                     cls.__name__, c.__name__)
                 )
 
@@ -530,7 +537,7 @@ def _do_skips(cls):
                 ),
                 ", ".join(reasons)
             )
-        raise SkipTest(msg)
+        config.skip_test(msg)
     elif hasattr(cls, '__prefer_backends__'):
         non_preferred = set()
         spec = exclusions.db_spec(*util.to_list(cls.__prefer_backends__))
