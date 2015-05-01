@@ -1844,10 +1844,8 @@ class CreatorCompatibilityTest(PoolTestBase):
         conn.invalidate()
         conn.close()
 
-        # test that the 'should_wrap_creator' memoized attribute
+        # test that the 'should_wrap_creator' status
         # will dynamically switch if the _creator is monkeypatched.
-
-        is_(e.pool.__dict__.get("_should_wrap_creator")[0], False)
 
         # patch it with a zero-arg form
         with patch.object(e.pool, "_creator", mock_create):
@@ -1855,10 +1853,7 @@ class CreatorCompatibilityTest(PoolTestBase):
             conn.invalidate()
             conn.close()
 
-            is_(e.pool.__dict__.get("_should_wrap_creator")[0], True)
-
         conn = e.connect()
         conn.close()
 
-        is_(e.pool.__dict__.get("_should_wrap_creator")[0], False)
 

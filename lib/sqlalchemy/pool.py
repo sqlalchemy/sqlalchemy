@@ -219,7 +219,6 @@ class Pool(log.Identified):
         log.instance_logger(self, echoflag=echo)
         self._threadconns = threading.local()
         self._creator = creator
-        self._set_should_wrap_creator()
         self._recycle = recycle
         self._invalidate_time = 0
         self._use_threadlocal = use_threadlocal
@@ -250,7 +249,16 @@ class Pool(log.Identified):
             for l in listeners:
                 self.add_listener(l)
 
-    def _set_should_wrap_creator(self):
+    @property
+    def _creator(self):
+        return self.__dict__['_creator']
+
+    @_creator.setter
+    def _creator(self, creator):
+        self.__dict__['_creator'] = creator
+        self._invoke_creator = self._should_wrap_creator(creator)
+
+    def _should_wrap_creator(self, creator):
         """Detect if creator accepts a single argument, or is sent
         as a legacy style no-arg function.
 
@@ -259,8 +267,7 @@ class Pool(log.Identified):
         try:
             argspec = util.get_callable_argspec(self._creator, no_self=True)
         except TypeError:
-            self._should_wrap_creator = (True, self._creator)
-            return
+            return lambda crec: creator()
 
         defaulted = argspec[3] is not None and len(argspec[3]) or 0
         positionals = len(argspec[0]) - defaulted
@@ -268,36 +275,14 @@ class Pool(log.Identified):
         # look for the exact arg signature that DefaultStrategy
         # sends us
         if (argspec[0], argspec[3]) == (['connection_record'], (None,)):
-            self._should_wrap_creator = (False, self._creator)
+            return creator
         # or just a single positional
         elif positionals == 1:
-            self._should_wrap_creator = (False, self._creator)
+            return creator
         # all other cases, just wrap and assume legacy "creator" callable
         # thing
         else:
-            self._should_wrap_creator = (True, self._creator)
-
-    def _invoke_creator(self, connection_record):
-        """adjust for old or new style "creator" callable.
-
-        This function is spending extra effort in order to accommodate
-        any degree of manipulation of the _creator callable by end-user
-        applications, including ad-hoc patching in test suites.
-
-        """
-
-        should_wrap, against_creator = self._should_wrap_creator
-        creator = self._creator
-
-        if creator is not against_creator:
-            # check if the _creator function has been patched since
-            # we last looked at it
-            self._set_should_wrap_creator()
-            return self._invoke_creator(connection_record)
-        elif should_wrap:
-            return self._creator()
-        else:
-            return self._creator(connection_record)
+            return lambda crec: creator()
 
     def _close_connection(self, connection):
         self.logger.debug("Closing connection %r", connection)
