@@ -15,6 +15,14 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, tests, pypy
+        :tickets: 3406
+        :versions: 1.0.4
+
+        Fixed an import that prevented "pypy setup.py test" from working
+        correctly.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3375
         :versions: 1.0.1
