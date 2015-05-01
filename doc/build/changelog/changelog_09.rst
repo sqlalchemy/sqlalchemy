@@ -57,6 +57,8 @@
         fields if methods like :meth:`.Query.join` or
         :meth:`.Query.select_from` has been called, a warning is emitted.
         As of 1.0.0b5 this will raise an error.
+        See also :ticket:`3405` which repaired a regression in this feature
+        which was unreleased in 0.9.10 but was released in the 1.0 version.
 
     .. change::
         :tags: bug, orm
