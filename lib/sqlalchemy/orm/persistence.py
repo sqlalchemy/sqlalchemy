@@ -1034,18 +1034,18 @@ class BulkUD(object):
         self._validate_query_state()
 
     def _validate_query_state(self):
-        for attr, methname, notset in (
-            ('_limit', 'limit()', None),
-            ('_offset', 'offset()', None),
-            ('_order_by', 'order_by()', False),
-            ('_group_by', 'group_by()', False),
-            ('_distinct', 'distinct()', False),
+        for attr, methname, notset, op in (
+            ('_limit', 'limit()', None, operator.is_),
+            ('_offset', 'offset()', None, operator.is_),
+            ('_order_by', 'order_by()', False, operator.is_),
+            ('_group_by', 'group_by()', False, operator.is_),
+            ('_distinct', 'distinct()', False, operator.is_),
             (
                 '_from_obj',
                 'join(), outerjoin(), select_from(), or from_self()',
-                ())
+                (), operator.eq)
         ):
-            if getattr(self.query, attr) is not notset:
+            if not op(getattr(self.query, attr), notset):
                 raise sa_exc.InvalidRequestError(
                     "Can't call Query.update() or Query.delete() "
                     "when %s has been called" %

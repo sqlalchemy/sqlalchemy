@@ -19,6 +19,16 @@
     :version: 1.0.3
 
     .. change::
+        :tags: bug, orm, pypy
+        :tickets: 3405
+
+        Fixed regression from 0.9.10 prior to release due to :ticket:`3349`
+        where the check for query state on :meth:`.Query.update` or
+        :meth:`.Query.delete` compared the empty tuple to itself using ``is``,
+        which fails on Pypy to produce ``True`` in this case; this would
+        erronously emit a warning in 0.9 and raise an exception in 1.0.
+
+    .. change::
         :tags: feature, engine
         :tickets: 3379
 
@@ -52,7 +62,7 @@
         :tags: bug, orm
         :tickets: 3403, 3320
 
-        Fixed regression from as yet unreleased 0.9.10 where the new addition
+        Fixed regression from 0.9.10 prior to release where the new addition
         of ``entity`` to the :attr:`.Query.column_descriptions` accessor
         would fail if the target entity was produced from a core selectable
         such as a :class:`.Table` or :class:`.CTE` object.
