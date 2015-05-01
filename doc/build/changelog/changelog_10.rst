@@ -16,6 +16,21 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.4
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3409, 3320
+
+        Repaired / added to tests yet more expressions that were reported
+        as failing with the new 'entity' key value added to
+        :attr:`.Query.column_descriptions`, the logic to discover the "from"
+        clause is again reworked to accommodate columns from aliased classes,
+        as well as to report the correct value for the "aliased" flag in these
+        cases.
+
+
+.. changelog::
     :version: 1.0.3
     :released: April 30, 2015
 

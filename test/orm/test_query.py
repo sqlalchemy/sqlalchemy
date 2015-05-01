@@ -69,6 +69,7 @@ class RowTupleTest(QueryTest):
         mapper(Address, addresses)
         sess = create_session()
         user_alias = aliased(User)
+        user_alias_id_label = user_alias.id.label('foo')
         address_alias = aliased(Address, name='aalias')
         fn = func.count(User.id)
         name_label = User.name.label('uname')
@@ -102,6 +103,24 @@ class RowTupleTest(QueryTest):
                     {
                         'name': None, 'type': User, 'aliased': True,
                         'expr': user_alias, 'entity': user_alias}
+                ]
+            ),
+            (
+                sess.query(user_alias.id),
+                [
+                    {
+                        'name': 'id', 'type': users.c.id.type,
+                        'aliased': True, 'expr': user_alias.id,
+                        'entity': user_alias},
+                ]
+            ),
+            (
+                sess.query(user_alias_id_label),
+                [
+                    {
+                        'name': 'foo', 'type': users.c.id.type,
+                        'aliased': True, 'expr': user_alias_id_label,
+                        'entity': user_alias},
                 ]
             ),
             (
