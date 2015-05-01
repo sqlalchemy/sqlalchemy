@@ -2479,18 +2479,27 @@ class Query(object):
             ]
 
         """
+
         return [
             {
                 'name': ent._label_name,
                 'type': ent.type,
-                'aliased': getattr(ent, 'is_aliased_class', False),
+                'aliased': getattr(insp_ent, 'is_aliased_class', False),
                 'expr': ent.expr,
                 'entity':
-                    ent.entity_zero.entity if ent.entity_zero is not None
-                    and not inspect(ent.entity_zero).is_selectable
+                    getattr(insp_ent, "entity", None)
+                    if ent.entity_zero is not None
+                    and not insp_ent.is_clause_element
                     else None
             }
-            for ent in self._entities
+            for ent, insp_ent in [
+                (
+                    _ent,
+                    (inspect(_ent.entity_zero)
+                        if _ent.entity_zero is not None else None)
+                )
+                for _ent in self._entities
+            ]
         ]
 
     def instances(self, cursor, __context=None):
