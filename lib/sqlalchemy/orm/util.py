@@ -849,7 +849,11 @@ class _ORMJoin(expression.Join):
         Given join(a, b) and join(b, c), return join(a, b).join(c)
 
         """
-        assert self.right is other.left
+        leftmost = other
+        while isinstance(leftmost, sql.Join):
+            leftmost = leftmost.left
+
+        assert self.right is leftmost
 
         left = _ORMJoin(
             self.left, other.left,

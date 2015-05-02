@@ -19,6 +19,16 @@
     :version: 1.0.4
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3412, 3347
+
+        Liberalized an assertion that was added as part of :ticket:`3347`
+        to protect against unknown conditions when splicing inner joins
+        together within joined eager loads with ``innerjoin=True``; if
+        some of the joins use a "secondary" table, the assertion needs to
+        unwrap further joins in order to pass.
+
+    .. change::
         :tags: bug, schema
         :tickets: 3411
 
