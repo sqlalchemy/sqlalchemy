@@ -19,6 +19,23 @@
     :version: 1.0.4
 
     .. change::
+        :tags: bug, schema
+        :tickets: 3411
+
+        Fixed bug in enhanced constraint-attachment logic introduced in
+        :ticket:`3341` where in the unusual case of a constraint that refers
+        to a mixture of :class:`.Column` objects and string column names
+        at the same time, the auto-attach-on-column-attach logic will be
+        skipped; for the constraint to be auto-attached in this case,
+        all columns must be assembled on the target table up front.
+        Added a new section to the migration document regarding the
+        original feature as well as this change.
+
+        .. seealso::
+
+            :ref:`change_3341`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3409, 3320
 
@@ -550,6 +567,10 @@
         columns themselves such that the constraint auto attaches at the
         same time the columns are associated with the table.  This in particular
         helps in some edge cases in declarative but is also of general use.
+
+        .. seealso::
+
+            :ref:`change_3341`
 
     .. change::
         :tags: bug, sql

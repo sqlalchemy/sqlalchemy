@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, released in April, 2015.
 
-    Document last updated: April 22, 2015
+    Document last updated: May 2, 2015
 
 Introduction
 ============
@@ -733,6 +733,95 @@ now make use of all CHECK constraint conventions.
 
 :ticket:`3299`
 
+.. _change_3341:
+
+Constraints referring to unattached Columns can auto-attach to the Table when their referred columns are attached
+-----------------------------------------------------------------------------------------------------------------
+
+Since at least version 0.8, a :class:`.Constraint` has had the ability to
+"auto-attach" itself to a :class:`.Table` based on being passed table-attached columns::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    t = Table('t', m,
+        Column('a', Integer),
+        Column('b', Integer)
+    )
+
+    uq = UniqueConstraint(t.c.a, t.c.b)  # will auto-attach to Table
+
+    assert uq in t.constraints
+
+In order to assist with some cases that tend to come up with declarative,
+this same auto-attachment logic can now function even if the :class:`.Column`
+objects are not yet associated with the :class:`.Table`; additional events
+are established such that when those :class:`.Column` objects are associated,
+the :class:`.Constraint` is also added::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    a = Column('a', Integer)
+    b = Column('b', Integer)
+
+    uq = UniqueConstraint(a, b)
+
+    t = Table('t', m, a, b)
+
+    assert uq in t.constraints  # constraint auto-attached
+
+The above feature was a late add as of version 1.0.0b3.  A fix as of
+version 1.0.4 for :ticket:`3411` ensures that this logic
+does not occur if the :class:`.Constraint` refers to a mixture of
+:class:`.Column` objects and string column names; as we do not yet have
+tracking for the addition of names to a :class:`.Table`::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    a = Column('a', Integer)
+    b = Column('b', Integer)
+
+    uq = UniqueConstraint(a, 'b')
+
+    t = Table('t', m, a, b)
+
+    # constraint *not* auto-attached, as we do not have tracking
+    # to locate when a name 'b' becomes available on the table
+    assert uq not in t.constraints
+
+Above, the attachment event for column "a" to table "t" will fire off before
+column "b" is attached (as "a" is stated in the :class:`.Table` constructor
+before "b"), and the constraint will fail to locate "b" if it were to attempt
+an attachment.  For consistency, if the constraint refers to any string names,
+the autoattach-on-column-attach logic is skipped.
+
+The original auto-attach logic of course remains in place, if the :class:`.Table`
+already contains all the target :class:`.Column` objects at the time
+the :class:`.Constraint` is constructed::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    a = Column('a', Integer)
+    b = Column('b', Integer)
+
+
+    t = Table('t', m, a, b)
+
+    uq = UniqueConstraint(a, 'b')
+
+    # constraint auto-attached normally as in older versions
+    assert uq in t.constraints
+
+
+:ticket:`3341`
+:ticket:`3411`
 
 .. _change_2051:
 

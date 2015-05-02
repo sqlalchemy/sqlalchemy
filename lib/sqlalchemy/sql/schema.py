@@ -2397,22 +2397,30 @@ class ColumnCollectionMixin(object):
             c for c in self._pending_colargs
             if isinstance(c, Column)
         ]
+
         cols_w_table = [
             c for c in col_objs if isinstance(c.table, Table)
         ]
+
         cols_wo_table = set(col_objs).difference(cols_w_table)
 
         if cols_wo_table:
+            # feature #3341 - place event listeners for Column objects
+            # such that when all those cols are attached, we autoattach.
             assert not evt, "Should not reach here on event call"
 
-            def _col_attached(column, table):
-                cols_wo_table.discard(column)
-                if not cols_wo_table:
-                    self._check_attach(evt=True)
-            self._cols_wo_table = cols_wo_table
-            for col in cols_wo_table:
-                col._on_table_attach(_col_attached)
-            return
+            # issue #3411 - don't do the per-column auto-attach if some of the
+            # columns are specified as strings.
+            has_string_cols = set(self._pending_colargs).difference(col_objs)
+            if not has_string_cols:
+                def _col_attached(column, table):
+                    cols_wo_table.discard(column)
+                    if not cols_wo_table:
+                        self._check_attach(evt=True)
+                self._cols_wo_table = cols_wo_table
+                for col in cols_wo_table:
+                    col._on_table_attach(_col_attached)
+                return
 
         columns = cols_w_table
 

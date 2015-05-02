@@ -1347,6 +1347,65 @@ class ConstraintAPITest(fixtures.TestBase):
             t2.append_column, c
         )
 
+    def test_auto_append_uq_on_col_attach_four(self):
+        """Test that a uniqueconstraint that names Column and string names
+        won't autoattach using deferred column attachment.
+
+        """
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        c = Column('c', Integer)
+        uq = UniqueConstraint(a, 'b', 'c')
+
+        t = Table('tbl', m, a)
+        assert uq not in t.constraints
+
+        t.append_column(b)
+        assert uq not in t.constraints
+
+        t.append_column(c)
+
+        # we don't track events for previously unknown columns
+        # named 'c' to be attached
+        assert uq not in t.constraints
+
+        t.append_constraint(uq)
+
+        assert uq in t.constraints
+
+        eq_(
+            [cn for cn in t.constraints if isinstance(cn, UniqueConstraint)],
+            [uq]
+        )
+
+    def test_auto_append_uq_on_col_attach_five(self):
+        """Test that a uniqueconstraint that names Column and string names
+        *will* autoattach if the table has all those names up front.
+
+        """
+        m = MetaData()
+
+        a = Column('a', Integer)
+        b = Column('b', Integer)
+        c = Column('c', Integer)
+
+        t = Table('tbl', m, a, c, b)
+
+        uq = UniqueConstraint(a, 'b', 'c')
+
+        assert uq in t.constraints
+
+        t.append_constraint(uq)
+
+        assert uq in t.constraints
+
+        eq_(
+            [cn for cn in t.constraints if isinstance(cn, UniqueConstraint)],
+            [uq]
+        )
+
     def test_index_asserts_cols_standalone(self):
         metadata = MetaData()
 
