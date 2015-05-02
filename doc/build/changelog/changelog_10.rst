@@ -127,7 +127,8 @@
         :tags: bug, orm
         :tickets: 3392
 
-        Fixed regression due to :ticket:`2992` where textual elements placed
+        Fixed unexpected use regression due to :ticket:`2992` where
+        textual elements placed
         into the :meth:`.Query.order_by` clause in conjunction with joined
         eager loading would be added to the columns clause of the inner query
         in such a way that they were assumed to be table-bound column names,
@@ -235,9 +236,9 @@
         :tags: bug, orm, declarative
         :tickets: 3383
 
-        Fixed regression regarding the declarative ``__declare_first__``
-        and ``__declare_last__`` accessors where these would no longer be
-        called on the superclass of the declarative base.
+        Fixed unexpected use regression regarding the declarative
+        ``__declare_first__`` and ``__declare_last__`` accessors where these
+        would no longer be called on the superclass of the declarative base.
 
 .. changelog::
     :version: 1.0.1
@@ -346,7 +347,8 @@
         :tags: bug, orm
         :tickets: 3371
 
-        Fixed a regression cause by :ticket:`3061` where the NEVER_SET
+        Fixed unexpected use regression cause by :ticket:`3061` where
+        the NEVER_SET
         symbol could leak into relationship-oriented queries, including
         ``filter()`` and ``with_parent()`` queries.  The ``None`` symbol
         is returned in all cases, however many of these queries have never
@@ -633,8 +635,8 @@
         :tickets: 3327
         :pullreq: github:160
 
-        Fixed 1.0 regression from pullreq github:137 where Py2K unicode
-        literals (e.g. ``u""``) would not be accepted by the
+        Fixed unexpected use regression from pullreq github:137 where
+        Py2K unicode literals (e.g. ``u""``) would not be accepted by the
         :paramref:`.relationship.cascade` option.
         Pull request courtesy Julien Castets.
 
