@@ -612,7 +612,7 @@ def generate_relationship(
     :param base: the :class:`.AutomapBase` class doing the prepare.
 
     :param direction: indicate the "direction" of the relationship; this will
-     be one of :data:`.ONETOMANY`, :data:`.MANYTOONE`, :data:`.MANYTOONE`.
+     be one of :data:`.ONETOMANY`, :data:`.MANYTOONE`, :data:`.MANYTOMANY`.
 
     :param return_fn: the function that is used by default to create the
      relationship.  This will be either :func:`.relationship` or
