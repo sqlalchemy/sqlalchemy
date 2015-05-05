@@ -2376,6 +2376,7 @@ class InnerJoinSplicingWSecondaryTest(
             A(
                 id=1,
                 b=B(
+                    id=1,
                     c=C(
                         id=1,
                         ds=[d1, d2]
@@ -2385,6 +2386,7 @@ class InnerJoinSplicingWSecondaryTest(
             A(
                 id=2,
                 b=B(
+                    id=2,
                     c=C(
                         id=2,
                         ds=[d2, d3]
