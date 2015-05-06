@@ -20,6 +20,18 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3416
+
+        Fixed unexpected-use regression where in the odd case that the
+        primaryjoin of a relationship involved comparison to an unhashable
+        type such as an HSTORE, lazy loads would fail due to a hash-oriented
+        check on the statement parameters, modified in 1.0 as a result of
+        :ticket:`3061` to use hashing and modified in :ticket:`3368`
+        to occur in cases more common than "load on pending".
+        The values are now checked for the ``__hash__`` attribute beforehand.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3412, 3347
 
         Liberalized an assertion that was added as part of :ticket:`3347`

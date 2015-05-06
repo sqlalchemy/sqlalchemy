@@ -9,6 +9,7 @@ from sqlalchemy import Integer, String, ForeignKey, SmallInteger, Boolean
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
+from sqlalchemy import orm
 from sqlalchemy.orm import mapper, relationship, create_session, Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -559,6 +560,58 @@ class GetterStateTest(_fixtures.FixtureTest):
 
     run_inserts = None
 
+    def _unhashable_fixture(self, metadata, load_on_pending=False):
+        class MyHashType(sa.TypeDecorator):
+            impl = sa.String(100)
+
+            def process_bind_param(self, value, dialect):
+                return ";".join(
+                    "%s=%s" % (k, v)
+                       for k, v in sorted(value.items(), lambda key: key[0]))
+
+            def process_result_value(self, value, dialect):
+                return dict(elem.split("=", 1) for elem in value.split(";"))
+
+        category = Table(
+            'category', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', MyHashType())
+        )
+        article = Table(
+            'article', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', MyHashType())
+        )
+
+        class Category(fixtures.ComparableEntity):
+            pass
+
+        class Article(fixtures.ComparableEntity):
+            pass
+
+        mapper(Category, category)
+        mapper(Article, article, properties={
+            "category": relationship(
+                Category,
+                primaryjoin=orm.foreign(article.c.data) == category.c.data,
+                load_on_pending=load_on_pending
+            )
+        })
+
+        metadata.create_all()
+        sess = Session(autoflush=False)
+        data = {"im": "unhashable"}
+        a1 = Article(id=1, data=data)
+        c1 = Category(id=1, data=data)
+        if load_on_pending:
+            sess.add(c1)
+        else:
+            sess.add_all([c1, a1])
+        sess.flush()
+        if load_on_pending:
+            sess.add(a1)
+        return Category, Article, sess, a1, c1
+
     def _u_ad_fixture(self, populate_user, dont_use_get=False):
         users, Address, addresses, User = (
             self.tables.users,
@@ -600,6 +653,34 @@ class GetterStateTest(_fixtures.FixtureTest):
             testing.db,
             go,
             0
+        )
+
+    @testing.provide_metadata
+    def test_no_use_get_params_not_hashable(self):
+        Category, Article, sess, a1, c1 = \
+            self._unhashable_fixture(self.metadata)
+
+        def go():
+            eq_(a1.category, c1)
+
+        self.assert_sql_count(
+            testing.db,
+            go,
+            1
+        )
+
+    @testing.provide_metadata
+    def test_no_use_get_params_not_hashable_on_pending(self):
+        Category, Article, sess, a1, c1 = \
+            self._unhashable_fixture(self.metadata, load_on_pending=True)
+
+        def go():
+            eq_(a1.category, c1)
+
+        self.assert_sql_count(
+            testing.db,
+            go,
+            1
         )
 
     def test_get_empty_passive_return_never_set(self):

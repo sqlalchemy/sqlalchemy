@@ -800,6 +800,19 @@ def to_list(x, default=None):
         return list(x)
 
 
+def has_intersection(set_, iterable):
+    """return True if any items of set_ are present in iterable.
+
+    Goes through special effort to ensure __hash__ is not called
+    on items in iterable that don't support it.
+
+    """
+    # TODO: optimize, write in C, etc.
+    return bool(
+        set_.intersection([i for i in iterable if i.__hash__])
+    )
+
+
 def to_set(x):
     if x is None:
         return set()
