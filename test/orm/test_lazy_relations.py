@@ -567,7 +567,8 @@ class GetterStateTest(_fixtures.FixtureTest):
             def process_bind_param(self, value, dialect):
                 return ";".join(
                     "%s=%s" % (k, v)
-                       for k, v in sorted(value.items(), lambda key: key[0]))
+                       for k, v in
+                       sorted(value.items(), key=lambda key: key[0]))
 
             def process_result_value(self, value, dialect):
                 return dict(elem.split("=", 1) for elem in value.split(";"))
