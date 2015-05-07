@@ -1,3 +1,3 @@
 changelog>=0.3.4
 sphinx-paramlinks>=0.2.2
-git+https://bitbucket.org/zzzeek/zzzeeksphinx.git@rel_20150507#egg=zzzeeksphinx
+git+https://bitbucket.org/zzzeek/zzzeeksphinx.git@rel_1_0_15#egg=zzzeeksphinx
