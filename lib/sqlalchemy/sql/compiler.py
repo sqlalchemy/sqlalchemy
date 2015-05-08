@@ -759,7 +759,8 @@ class SQLCompiler(Compiled):
             {
                 'correlate_froms': entry['correlate_froms'],
                 'iswrapper': toplevel,
-                'asfrom_froms': entry['asfrom_froms']
+                'asfrom_froms': entry['asfrom_froms'],
+                "selectable": cs
             })
 
         keyword = self.compound_keywords.get(cs.keyword)
@@ -1478,7 +1479,8 @@ class SQLCompiler(Compiled):
         new_entry = {
             'asfrom_froms': new_correlate_froms,
             'iswrapper': iswrapper,
-            'correlate_froms': all_correlate_froms
+            'correlate_froms': all_correlate_froms,
+            "selectable": select
         }
         self.stack.append(new_entry)
 
@@ -1572,7 +1574,7 @@ class SQLCompiler(Compiled):
             text += self.for_update_clause(select)
 
         if self.ctes and \
-                compound_index == 0 and toplevel:
+                compound_index == 0 and self._is_toplevel_select(select):
             text = self._render_cte_clause() + text
 
         self.stack.pop(-1)
@@ -1581,6 +1583,20 @@ class SQLCompiler(Compiled):
             return "(" + text + ")"
         else:
             return text
+
+    def _is_toplevel_select(self, select):
+        """Return True if the stack is placed at the given select, and
+        is also the outermost SELECT, meaning there is either no stack
+        before this one, or the enclosing stack is a topmost INSERT.
+
+        """
+        return (
+            self.stack[-1]['selectable'] is select and
+            (
+                len(self.stack) == 1 or self.isinsert and len(self.stack) == 2
+                and self.statement is self.stack[0]['selectable']
+            )
+        )
 
     def _generate_prefixes(self, stmt, prefixes, **kw):
         clause = " ".join(
@@ -1796,7 +1812,8 @@ class SQLCompiler(Compiled):
         self.stack.append(
             {'correlate_froms': set([update_stmt.table]),
              "iswrapper": False,
-             "asfrom_froms": set([update_stmt.table])})
+             "asfrom_froms": set([update_stmt.table]),
+             "selectable": update_stmt})
 
         self.isupdate = True
 
@@ -2251,7 +2268,8 @@ class SQLCompiler(Compiled):
     def visit_delete(self, delete_stmt, **kw):
         self.stack.append({'correlate_froms': set([delete_stmt.table]),
                            "iswrapper": False,
-                           "asfrom_froms": set([delete_stmt.table])})
+                           "asfrom_froms": set([delete_stmt.table]),
+                           "selectable": delete_stmt})
         self.isdelete = True
 
         text = "DELETE "
