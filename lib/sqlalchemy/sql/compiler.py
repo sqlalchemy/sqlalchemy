@@ -1613,7 +1613,7 @@ class SQLCompiler(Compiled):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        if self.ctes and toplevel:
+        if self.ctes and self._is_toplevel_select(select):
             text = self._render_cte_clause() + text
 
         if select._suffixes:
@@ -1626,6 +1626,20 @@ class SQLCompiler(Compiled):
             return "(" + text + ")"
         else:
             return text
+
+    def _is_toplevel_select(self, select):
+        """Return True if the stack is placed at the given select, and
+        is also the outermost SELECT, meaning there is either no stack
+        before this one, or the enclosing stack is a topmost INSERT.
+
+        """
+        return (
+            self.stack[-1]['selectable'] is select and
+            (
+                len(self.stack) == 1 or self.isinsert and len(self.stack) == 2
+                and self.statement is self.stack[0]['selectable']
+            )
+        )
 
     def _setup_select_hints(self, select):
         byfrom = dict([

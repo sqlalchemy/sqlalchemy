@@ -176,6 +176,41 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"name_1": "foo"}
         )
 
+    def test_insert_from_select_cte_one(self):
+        table1 = self.tables.mytable
+
+        cte = select([table1.c.name]).where(table1.c.name == 'bar').cte()
+
+        sel = select([table1.c.myid, table1.c.name]).where(
+            table1.c.name == cte.c.name)
+
+        ins = self.tables.myothertable.insert().\
+            from_select(("otherid", "othername"), sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (otherid, othername) WITH anon_1 AS "
+            "(SELECT mytable.name AS name FROM mytable "
+            "WHERE mytable.name = :name_1) "
+            "SELECT mytable.myid, mytable.name FROM mytable, anon_1 "
+            "WHERE mytable.name = anon_1.name",
+            checkparams={"name_1": "bar"}
+        )
+
+    def test_insert_from_select_cte_two(self):
+        table1 = self.tables.mytable
+
+        cte = table1.select().cte("c")
+        stmt = cte.select()
+        ins = table1.insert().from_select(table1.c, stmt)
+
+        self.assert_compile(
+            ins,
+            "INSERT INTO mytable (myid, name, description) "
+            "WITH c AS (SELECT mytable.myid AS myid, mytable.name AS name, "
+            "mytable.description AS description FROM mytable) "
+            "SELECT c.myid, c.name, c.description FROM c"
+        )
+
     def test_insert_from_select_select_alt_ordering(self):
         table1 = self.tables.mytable
         sel = select([table1.c.name, table1.c.myid]).where(

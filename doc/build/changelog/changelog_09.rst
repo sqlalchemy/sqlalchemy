@@ -15,6 +15,20 @@
     :version: 0.9.10
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3418
+        :versions: 1.0.5
+
+        Added official support for a CTE used by the SELECT present
+        inside of :meth:`.Insert.from_select`.  This behavior worked
+        accidentally up until 0.9.9, when it no longer worked due to
+        unrelated changes as part of :ticket:`3248`.   Note that this
+        is the rendering of the WITH clause after the INSERT, before the
+        SELECT; the full functionality of CTEs rendered at the top
+        level of INSERT, UPDATE, DELETE is a new feature targeted for a
+        later release.
+
+    .. change::
         :tags: bug, ext
         :tickets: 3408
         :versions: 1.0.4
