@@ -26,10 +26,12 @@ def MockDBAPI():
             db.connect = Mock(side_effect=Exception("connect failed"))
         else:
             db.connect = Mock(side_effect=connect)
+        db.is_shutdown = value
 
     db = Mock(
         connect=Mock(side_effect=connect),
-        shutdown=shutdown, _shutdown=False)
+        shutdown=shutdown,
+        is_shutdown=False)
     return db
 
 
@@ -1422,30 +1424,45 @@ class QueuePoolTest(PoolTestBase):
         assert c3._connection_record is c2_rec
         assert c2_rec.connection is c3.connection
 
+    def _no_wr_finalize(self):
+        finalize_fairy = pool._finalize_fairy
+
+        def assert_no_wr_callback(
+            connection, connection_record,
+                pool, ref, echo, fairy=None):
+            if fairy is None:
+                raise AssertionError(
+                    "finalize fairy was called as a weakref callback")
+            return finalize_fairy(
+                connection, connection_record, pool, ref, echo, fairy)
+        return patch.object(
+            pool, '_finalize_fairy', assert_no_wr_callback)
 
     def _assert_cleanup_on_pooled_reconnect(self, dbapi, p):
         # p is QueuePool with size=1, max_overflow=2,
         # and one connection in the pool that will need to
         # reconnect when next used (either due to recycle or invalidate)
-        eq_(p.checkedout(), 0)
-        eq_(p._overflow, 0)
-        dbapi.shutdown(True)
-        assert_raises(
-            Exception,
-            p.connect
-        )
-        eq_(p._overflow, 0)
-        eq_(p.checkedout(), 0)  # and not 1
 
-        dbapi.shutdown(False)
+        with self._no_wr_finalize():
+            eq_(p.checkedout(), 0)
+            eq_(p._overflow, 0)
+            dbapi.shutdown(True)
+            assert_raises(
+                Exception,
+                p.connect
+            )
+            eq_(p._overflow, 0)
+            eq_(p.checkedout(), 0)  # and not 1
 
-        c1 = self._with_teardown(p.connect())
-        assert p._pool.empty()  # poolsize is one, so we're empty OK
-        c2 = self._with_teardown(p.connect())
-        eq_(p._overflow, 1)  # and not 2
+            dbapi.shutdown(False)
 
-        # this hangs if p._overflow is 2
-        c3 = self._with_teardown(p.connect())
+            c1 = self._with_teardown(p.connect())
+            assert p._pool.empty()  # poolsize is one, so we're empty OK
+            c2 = self._with_teardown(p.connect())
+            eq_(p._overflow, 1)  # and not 2
+
+            # this hangs if p._overflow is 2
+            c3 = self._with_teardown(p.connect())
 
     def test_error_on_pooled_reconnect_cleanup_invalidate(self):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=2)
@@ -1461,6 +1478,20 @@ class QueuePoolTest(PoolTestBase):
         c1 = p.connect()
         c1.close()
         time.sleep(1.5)
+        self._assert_cleanup_on_pooled_reconnect(dbapi, p)
+
+    def test_error_on_pooled_reconnect_cleanup_wcheckout_event(self):
+        dbapi, p = self._queuepool_dbapi_fixture(pool_size=1,
+                                        max_overflow=2)
+
+        c1 = p.connect()
+        c1.close()
+
+        @event.listens_for(p, "checkout")
+        def handle_checkout_event(dbapi_con, con_record, con_proxy):
+            if dbapi.is_shutdown:
+                raise tsa.exc.DisconnectionError()
+
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
     @testing.requires.timing_intensive

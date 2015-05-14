@@ -18,6 +18,26 @@
 .. changelog::
     :version: 1.0.5
 
+    .. change::
+        :tags: bug, pool
+        :tickets: 3419
+
+        Fixed bug where in the case that a pool checkout event handler is used
+        and the database can no longer be connected towards, that the checkout
+        handler failure is caught, the attempt to re-acquire the connection
+        also raises an exception, but the underlying connection record
+        is not immediately re-checked in before the exception is propagated
+        outwards, having the effect that the checked-out record does not close
+        itself until the stack trace it's associated with is garbage collected,
+        preventing that record from being used for a new checkout until we
+        leave the scope of the stack trace.   This can lead to confusion
+        in the specific case of when the number of current stack traces
+        in memory exceeds the number of connections the pool can return,
+        as the pool will instead begin to raise errors about no more checkouts
+        available, rather than attempting a connection again.   The fix
+        applies a checkin of the record before re-raising.
+
+
 .. changelog::
     :version: 1.0.4
     :released: May 7, 2015

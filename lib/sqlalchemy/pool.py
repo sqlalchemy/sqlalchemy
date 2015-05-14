@@ -732,7 +732,13 @@ class _ConnectionFairy(object):
                 pool.logger.info(
                     "Disconnection detected on checkout: %s", e)
                 fairy._connection_record.invalidate(e)
-                fairy.connection = fairy._connection_record.get_connection()
+                try:
+                    fairy.connection = \
+                        fairy._connection_record.get_connection()
+                except:
+                    with util.safe_reraise():
+                        fairy._connection_record.checkin()
+
                 attempts -= 1
 
         pool.logger.info("Reconnection attempts exhausted on checkout")
