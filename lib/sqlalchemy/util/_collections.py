@@ -19,6 +19,8 @@ EMPTY_SET = frozenset()
 
 
 class AbstractKeyedTuple(tuple):
+    __slots__ = ()
+
     def keys(self):
         """Return a list of string key names for this :class:`.KeyedTuple`.
 

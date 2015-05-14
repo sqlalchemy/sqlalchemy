@@ -19,6 +19,16 @@
     :version: 1.0.5
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3420
+
+        The "lightweight named tuple" used when a :class:`.Query` returns
+        rows failed to implement ``__slots__`` correctly such that it still
+        had a ``__dict__``.    This is resolved, but in the extremely
+        unlikely case someone was assigning values to the returned tuples,
+        that will no longer work.
+
+    .. change::
         :tags: bug, pool
         :tickets: 3419
 
