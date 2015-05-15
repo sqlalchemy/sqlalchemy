@@ -150,6 +150,16 @@ class Dialect(object):
       This will prevent types.Boolean from generating a CHECK
       constraint when that type is used.
 
+    dbapi_exception_translation_map
+       A dictionary of names that will contain as values the names of
+       pep-249 exceptions ("IntegrityError", "OperationalError", etc)
+       keyed to alternate class names, to support the case where a
+       DBAPI has exception classes that aren't named as they are
+       referred to (e.g. IntegrityError = MyException).   In the vast
+       majority of cases this dictionary is empty.
+
+       .. versionadded:: 1.0.5
+
     """
 
     _has_events = False

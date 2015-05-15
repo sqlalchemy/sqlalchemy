@@ -13,8 +13,6 @@ raised as a result of DBAPI exceptions are all subclasses of
 
 """
 
-import traceback
-
 
 class SQLAlchemyError(Exception):
     """Generic error class."""
@@ -278,7 +276,8 @@ class DBAPIError(StatementError):
     @classmethod
     def instance(cls, statement, params,
                  orig, dbapi_base_err,
-                 connection_invalidated=False):
+                 connection_invalidated=False,
+                 dialect=None):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if (isinstance(orig, BaseException) and
@@ -300,6 +299,9 @@ class DBAPIError(StatementError):
             glob = globals()
             for super_ in orig.__class__.__mro__:
                 name = super_.__name__
+                if dialect:
+                    name = dialect.dbapi_exception_translation_map.get(
+                        name, name)
                 if name in glob and issubclass(glob[name], DBAPIError):
                     cls = glob[name]
                     break

@@ -19,6 +19,19 @@
     :version: 1.0.5
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3421
+
+        Added support for the case of the misbehaving DBAPI that has
+        pep-249 exception names linked to exception classes of an entirely
+        different name, preventing SQLAlchemy's own exception wrapping from
+        wrapping the error appropriately.
+        The SQLAlchemy dialect in use needs to implement a new
+        accessor :attr:`.DefaultDialect.dbapi_exception_translation_map`
+        to support this feature; this is implemented now for the py-postgresql
+        dialect.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3420
 

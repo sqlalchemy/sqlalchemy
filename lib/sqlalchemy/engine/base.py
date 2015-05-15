@@ -1261,7 +1261,8 @@ class Connection(Connectable):
                 exc.DBAPIError.instance(statement,
                                         parameters,
                                         e,
-                                        self.dialect.dbapi.Error),
+                                        self.dialect.dbapi.Error,
+                                        dialect=self.dialect),
                 exc_info
             )
         self._reentrant_error = True
@@ -1277,7 +1278,8 @@ class Connection(Connectable):
                     parameters,
                     e,
                     self.dialect.dbapi.Error,
-                    connection_invalidated=self._is_disconnect)
+                    connection_invalidated=self._is_disconnect,
+                    dialect=self.dialect)
             else:
                 sqlalchemy_exception = None
 

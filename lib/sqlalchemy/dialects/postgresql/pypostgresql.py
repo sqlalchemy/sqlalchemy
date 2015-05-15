@@ -65,6 +65,23 @@ class PGDialect_pypostgresql(PGDialect):
         from postgresql.driver import dbapi20
         return dbapi20
 
+    _DBAPI_ERROR_NAMES = [
+        "Error",
+        "InterfaceError", "DatabaseError", "DataError",
+        "OperationalError", "IntegrityError", "InternalError",
+        "ProgrammingError", "NotSupportedError"
+    ]
+
+    @util.memoized_property
+    def dbapi_exception_translation_map(self):
+        if self.dbapi is None:
+            return {}
+
+        return dict(
+            (getattr(self.dbapi, name).__name__, name)
+            for name in self._DBAPI_ERROR_NAMES
+        )
+
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
         if 'port' in opts:

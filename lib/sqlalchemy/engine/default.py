@@ -157,6 +157,15 @@ class DefaultDialect(interfaces.Dialect):
 
     reflection_options = ()
 
+    dbapi_exception_translation_map = util.immutabledict()
+    """mapping used in the extremely unusual case that a DBAPI's
+    published exceptions don't actually have the __name__ that they
+    are linked towards.
+
+    .. versionadded:: 1.0.5
+
+    """
+
     def __init__(self, convert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
                  implicit_returning=None,
