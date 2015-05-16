@@ -669,6 +669,10 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def duplicate_key_raises_integrity_error(self):
+        return fails_on("postgresql+pg8000")
+
+    @property
     def python2(self):
         return skip_if(
                 lambda: sys.version_info >= (3,),
