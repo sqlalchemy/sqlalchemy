@@ -66,23 +66,25 @@ class MyPoint(Point):
         return value
 
 
-class _MutableDictTestBase(object):
-    run_define_tables = 'each'
-
+class _MutableDictTestFixture(object):
     @classmethod
     def _type_fixture(cls):
         return MutableDict
-
-    def setup_mappers(cls):
-        foo = cls.tables.foo
-
-        mapper(Foo, foo)
 
     def teardown(self):
         # clear out mapper events
         Mapper.dispatch._clear()
         ClassManager.dispatch._clear()
-        super(_MutableDictTestBase, self).teardown()
+        super(_MutableDictTestFixture, self).teardown()
+
+
+class _MutableDictTestBase(_MutableDictTestFixture):
+    run_define_tables = 'each'
+
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+
+        mapper(Foo, foo)
 
     def test_coerce_none(self):
         sess = Session()
@@ -210,6 +212,40 @@ class _MutableDictTestBase(object):
         sess.commit()
 
         eq_(f1.non_mutable_data, {'a': 'b'})
+
+
+class MutableColumnDefaultTest(_MutableDictTestFixture, fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        MutableDict = cls._type_fixture()
+
+        mutable_pickle = MutableDict.as_mutable(PickleType)
+        Table(
+            'foo', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('data', mutable_pickle, default={}),
+        )
+
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+
+        mapper(Foo, foo)
+
+    def test_evt_on_flush_refresh(self):
+        # test for #3427
+
+        sess = Session()
+
+        f1 = Foo()
+        sess.add(f1)
+        sess.flush()
+        assert isinstance(f1.data, self._type_fixture())
+        assert f1 not in sess.dirty
+        f1.data['foo'] = 'bar'
+        assert f1 in sess.dirty
+
 
 
 class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
@@ -448,6 +484,43 @@ class _CompositeTestBase(object):
     def _type_fixture(cls):
 
         return Point
+
+
+class MutableCompositeColumnDefaultTest(_CompositeTestBase,
+                                        fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'foo', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('x', Integer, default=5),
+            Column('y', Integer, default=9),
+            Column('unrelated_data', String(50))
+        )
+
+    @classmethod
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+
+        cls.Point = cls._type_fixture()
+
+        mapper(Foo, foo, properties={
+            'data': composite(cls.Point, foo.c.x, foo.c.y)
+        })
+
+    def test_evt_on_flush_refresh(self):
+        # this still worked prior to #3427 being fixed in any case
+
+        sess = Session()
+
+        f1 = Foo(data=self.Point(None, None))
+        sess.add(f1)
+        sess.flush()
+        eq_(f1.data, self.Point(5, 9))
+        assert f1 not in sess.dirty
+        f1.data.x = 10
+        assert f1 in sess.dirty
 
 
 class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):

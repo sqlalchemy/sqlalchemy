@@ -950,6 +950,10 @@ def _postfetch(mapper, uowtransaction, table,
             mapper.version_id_col in mapper._cols_by_table[table]:
         prefetch_cols = list(prefetch_cols) + [mapper.version_id_col]
 
+    refresh_flush = bool(mapper.class_manager.dispatch.refresh_flush)
+    if refresh_flush:
+        load_evt_attrs = []
+
     if returning_cols:
         row = result.context.returned_defaults
         if row is not None:
@@ -957,10 +961,18 @@ def _postfetch(mapper, uowtransaction, table,
                 if col.primary_key:
                     continue
                 dict_[mapper._columntoproperty[col].key] = row[col]
+                if refresh_flush:
+                    load_evt_attrs.append(mapper._columntoproperty[col].key)
 
     for c in prefetch_cols:
         if c.key in params and c in mapper._columntoproperty:
             dict_[mapper._columntoproperty[c].key] = params[c.key]
+            if refresh_flush:
+                load_evt_attrs.append(mapper._columntoproperty[c].key)
+
+    if refresh_flush and load_evt_attrs:
+        mapper.class_manager.dispatch.refresh_flush(
+            state, uowtransaction, load_evt_attrs)
 
     if postfetch_cols:
         state._expire_attributes(state.dict,

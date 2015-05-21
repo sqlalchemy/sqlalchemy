@@ -19,6 +19,47 @@
     :version: 1.0.5
 
     .. change::
+        :tags: bug, ext
+        :tickets: 3427
+
+        Fixed regression in the :mod:`sqlalchemy.ext.mutable` extension
+        as a result of the bugfix for :ticket:`3167`,
+        where attribute and validation events are no longer
+        called within the flush process.  The mutable
+        extension was relying upon this behavior in the case where a column
+        level Python-side default were responsible for generating the new value
+        on INSERT or UPDATE, or when a value were fetched from the RETURNING
+        clause for "eager defaults" mode.  The new value would not be subject
+        to any event when populated and the mutable extension could not
+        establish proper coercion or history listening.  A new event
+        :meth:`.InstanceEvents.refresh_flush` is added which the mutable
+        extension now makes use of for this use case.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3427
+
+        Added new event :meth:`.InstanceEvents.refresh_flush`, invoked
+        when an INSERT or UPDATE level default value fetched via RETURNING
+        or Python-side default is invoked within the flush process.  This
+        is to provide a hook that is no longer present as a result of
+        :ticket:`3167`, where attribute and validation events are no longer
+        called within the flush process.
+
+    .. change::
+        :tags: feature, ext
+        :tickets: 3427
+
+        Added a new semi-public method to :class:`.MutableBase`
+        :meth:`.MutableBase._get_listen_keys`.  Overriding this method
+        is needed in the case where a :class:`.MutableBase` subclass needs
+        events to propagate for attribute keys other than the key to which
+        the mutable type is associated with, when intercepting the
+        :meth:`.InstanceEvents.refresh` or
+        :meth:`.InstanceEvents.refresh_flush` events.  The current example of
+        this is composites using :class:`.MutableComposite`.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3421
 

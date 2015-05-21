@@ -272,9 +272,32 @@ class InstanceEvents(event.Events):
          object associated with the instance.
         :param context: the :class:`.QueryContext` corresponding to the
          current :class:`.Query` in progress.
-        :param attrs: iterable collection of attribute names which
+        :param attrs: sequence of attribute names which
          were populated, or None if all column-mapped, non-deferred
          attributes were populated.
+
+        """
+
+    def refresh_flush(self, target, flush_context, attrs):
+        """Receive an object instance after one or more attributes have
+        been refreshed within the persistence of the object.
+
+        This event is the same as :meth:`.InstanceEvents.refresh` except
+        it is invoked within the unit of work flush process, and the values
+        here typically come from the process of handling an INSERT or
+        UPDATE, such as via the RETURNING clause or from Python-side default
+        values.
+
+        .. versionadded:: 1.0.5
+
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param flush_context: Internal :class:`.UOWTransaction` object
+         which handles the details of the flush.
+        :param attrs: sequence of attribute names which
+         were populated.
 
         """
 
@@ -289,7 +312,7 @@ class InstanceEvents(event.Events):
          the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
-        :param attrs: iterable collection of attribute
+        :param attrs: sequence of attribute
          names which were expired, or None if all attributes were
          expired.
 

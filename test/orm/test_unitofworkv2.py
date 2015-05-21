@@ -1800,7 +1800,13 @@ class LoadersUsingCommittedTest(UOWTest):
 
 
 class NoAttrEventInFlushTest(fixtures.MappedTest):
-    """test [ticket:3167]"""
+    """test [ticket:3167].
+
+    See also RefreshFlushInReturningTest in test/orm/test_events.py which
+    tests the positive case for the refresh_flush event, added in
+    [ticket:3427].
+
+    """
 
     __backend__ = True
 

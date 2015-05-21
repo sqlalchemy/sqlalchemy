@@ -15,7 +15,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 from sqlalchemy import event
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.mock import Mock, call, ANY
 
 
 class _RemoveListeners(object):
@@ -31,6 +31,13 @@ class _RemoveListeners(object):
 
 class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     run_inserts = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        super(MapperEventsTest, cls).define_tables(metadata)
+        metadata.tables['users'].append_column(
+            Column('extra', Integer, default=5, onupdate=10)
+        )
 
     def test_instance_event_listen(self):
         """test listen targets for instance events"""
@@ -92,6 +99,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'init_failure',
             'load',
             'refresh',
+            'refresh_flush',
             'expire',
             'before_insert',
             'after_insert',
@@ -132,10 +140,11 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         expected = [
             'init', 'before_insert',
+            'refresh_flush',
             'after_insert', 'expire',
             'refresh',
             'load',
-            'before_update', 'after_update', 'before_delete',
+            'before_update', 'refresh_flush', 'after_update', 'before_delete',
             'after_delete']
         eq_(canary, expected)
         eq_(named_canary, expected)
@@ -241,15 +250,17 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         sess.delete(am)
         sess.flush()
-        eq_(canary1, ['init', 'before_insert', 'after_insert',
+        eq_(canary1, ['init', 'before_insert', 'refresh_flush', 'after_insert',
                       'refresh', 'load',
-                      'before_update', 'after_update', 'before_delete',
+                      'before_update', 'refresh_flush',
+                      'after_update', 'before_delete',
                       'after_delete'])
         eq_(canary2, [])
-        eq_(canary3, ['init', 'before_insert', 'after_insert',
+        eq_(canary3, ['init', 'before_insert', 'refresh_flush', 'after_insert',
                       'refresh',
                       'load',
-                      'before_update', 'after_update', 'before_delete',
+                      'before_update', 'refresh_flush',
+                      'after_update', 'before_delete',
                       'after_delete'])
 
     def test_inheritance_subclass_deferred(self):
@@ -279,14 +290,16 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         sess.delete(am)
         sess.flush()
-        eq_(canary1, ['init', 'before_insert', 'after_insert',
+        eq_(canary1, ['init', 'before_insert', 'refresh_flush', 'after_insert',
                       'refresh', 'load',
-                      'before_update', 'after_update', 'before_delete',
+                      'before_update', 'refresh_flush',
+                      'after_update', 'before_delete',
                       'after_delete'])
         eq_(canary2, [])
-        eq_(canary3, ['init', 'before_insert', 'after_insert',
+        eq_(canary3, ['init', 'before_insert', 'refresh_flush', 'after_insert',
                       'refresh', 'load',
-                      'before_update', 'after_update', 'before_delete',
+                      'before_update', 'refresh_flush',
+                      'after_update', 'before_delete',
                       'after_delete'])
 
     def test_before_after_only_collection(self):
@@ -2016,3 +2029,65 @@ class QueryEventsTest(
             q.all(),
             [(7, 'jack')]
         )
+
+
+class RefreshFlushInReturningTest(fixtures.MappedTest):
+    """test [ticket:3427].
+
+    this is a rework of the test for [ticket:3167] stated
+    in test_unitofworkv2, which tests that returning doesn't trigger
+    attribute events; the test here is *reversed* so that we test that
+    it *does* trigger the new refresh_flush event.
+
+    """
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('prefetch_val', Integer, default=5),
+            Column('returning_val', Integer, server_default="5")
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test, eager_defaults=True)
+
+    def test_no_attr_events_flush(self):
+        Thing = self.classes.Thing
+        mock = Mock()
+        event.listen(Thing, "refresh_flush", mock)
+        t1 = Thing()
+        s = Session()
+        s.add(t1)
+        s.flush()
+
+        if testing.requires.returning.enabled:
+            # ordering is deterministic in this test b.c. the routine
+            # appends the "returning" params before the "prefetch"
+            # ones.  if there were more than one attribute in each category,
+            # then we'd have hash order issues.
+            eq_(
+                mock.mock_calls,
+                [call(t1, ANY, ['returning_val', 'prefetch_val'])]
+            )
+        else:
+            eq_(
+                mock.mock_calls,
+                [call(t1, ANY, ['prefetch_val'])]
+            )
+
+        eq_(t1.id, 1)
+        eq_(t1.prefetch_val, 5)
+        eq_(t1.returning_val, 5)

@@ -403,6 +403,27 @@ class MutableBase(object):
         raise ValueError(msg % (key, type(value)))
 
     @classmethod
+    def _get_listen_keys(cls, attribute):
+        """Given a descriptor attribute, return a ``set()`` of the attribute
+        keys which indicate a change in the state of this attribute.
+
+        This is normally just ``set([attribute.key])``, but can be overridden
+        to provide for additional keys.  E.g. a :class:`.MutableComposite`
+        augments this set with the attribute keys associated with the columns
+        that comprise the composite value.
+
+        This collection is consulted in the case of intercepting the
+        :meth:`.InstanceEvents.refresh` and
+        :meth:`.InstanceEvents.refresh_flush` events, which pass along a list
+        of attribute names that have been refreshed; the list is compared
+        against this set to determine if action needs to be taken.
+
+        .. versionadded:: 1.0.5
+
+        """
+        return set([attribute.key])
+
+    @classmethod
     def _listen_on_attribute(cls, attribute, coerce, parent_cls):
         """Establish this type as a mutation listener for the given
         mapped descriptor.
@@ -414,6 +435,8 @@ class MutableBase(object):
 
         # rely on "propagate" here
         parent_cls = attribute.class_
+
+        listen_keys = cls._get_listen_keys(attribute)
 
         def load(state, *args):
             """Listen for objects loaded or refreshed.
@@ -428,6 +451,10 @@ class MutableBase(object):
                     val = cls.coerce(key, val)
                     state.dict[key] = val
                 val._parents[state.obj()] = key
+
+        def load_attrs(state, ctx, attrs):
+            if not attrs or listen_keys.intersection(attrs):
+                load(state)
 
         def set(target, value, oldvalue, initiator):
             """Listen for set/replace events on the target
@@ -463,7 +490,9 @@ class MutableBase(object):
 
         event.listen(parent_cls, 'load', load,
                      raw=True, propagate=True)
-        event.listen(parent_cls, 'refresh', load,
+        event.listen(parent_cls, 'refresh', load_attrs,
+                     raw=True, propagate=True)
+        event.listen(parent_cls, 'refresh_flush', load_attrs,
                      raw=True, propagate=True)
         event.listen(attribute, 'set', set,
                      raw=True, retval=True, propagate=True)
@@ -573,6 +602,10 @@ class MutableComposite(MutableBase):
     See the example in :ref:`mutable_composites` for usage information.
 
     """
+
+    @classmethod
+    def _get_listen_keys(cls, attribute):
+        return set([attribute.key]).union(attribute.property._attribute_keys)
 
     def changed(self):
         """Subclasses should call this method whenever change events occur."""
