@@ -48,8 +48,7 @@ class DefaultEngineStrategy(EngineStrategy):
         # create url.URL object
         u = url.make_url(name_or_url)
 
-        entrypoint = u.get_dialect()
-        dialect_cls = entrypoint.get_dialect_cls(u)
+        entrypoint, dialect_cls = u._get_dialect_plus_entrypoint()
 
         if kwargs.pop('_coerce_config', False):
             def pop_kwarg(key, default=None):

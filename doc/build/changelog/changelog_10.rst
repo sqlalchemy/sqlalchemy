@@ -19,6 +19,17 @@
     :version: 1.0.5
 
     .. change::
+        :tags: feature, engine
+        :tickets: 3379
+
+        Adjustments to the engine plugin hook, such that the
+        :meth:`.URL.get_dialect` method will continue to return the
+        ultimate :class:`.Dialect` object when a dialect plugin is used,
+        without the need for the caller to be aware of the
+        :meth:`.Dialect.get_dialect_cls` method.
+
+
+    .. change::
         :tags: bug, ext
         :tickets: 3427
 

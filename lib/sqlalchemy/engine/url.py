@@ -117,11 +117,7 @@ class URL(object):
         else:
             return self.drivername.split('+')[1]
 
-    def get_dialect(self):
-        """Return the SQLAlchemy database dialect class corresponding
-        to this URL's driver name.
-        """
-
+    def _get_dialect_plus_entrypoint(self):
         if '+' not in self.drivername:
             name = self.drivername
         else:
@@ -133,9 +129,17 @@ class URL(object):
         if hasattr(cls, 'dialect') and \
                 isinstance(cls.dialect, type) and \
                 issubclass(cls.dialect, Dialect):
-            return cls.dialect
+            return cls.dialect, cls.dialect
         else:
-            return cls
+            dialect_cls = cls.get_dialect_cls(self)
+            return cls, dialect_cls
+
+    def get_dialect(self):
+        """Return the SQLAlchemy database dialect class corresponding
+        to this URL's driver name.
+        """
+        entrypoint, dialect_cls = self._get_dialect_plus_entrypoint()
+        return dialect_cls
 
     def translate_connect_args(self, names=[], **kw):
         """Translate url attributes into a dictionary of connection arguments.
