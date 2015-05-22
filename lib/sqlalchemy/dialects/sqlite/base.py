@@ -45,14 +45,20 @@ SQLite Auto Incrementing Behavior
 
 Background on SQLite's autoincrement is at: http://sqlite.org/autoinc.html
 
-Two things to note:
+Key concepts:
 
-* The AUTOINCREMENT keyword is **not** required for SQLite tables to
-  generate primary key values automatically. AUTOINCREMENT only means that the
-  algorithm used to generate ROWID values should be slightly different.
-* SQLite does **not** generate primary key (i.e. ROWID) values, even for
-  one column, if the table has a composite (i.e. multi-column) primary key.
-  This is regardless of the AUTOINCREMENT keyword being present or not.
+* SQLite has an implicit "auto increment" feature that takes place for any
+  non-composite primary-key column that is specifically created using
+  "INTEGER PRIMARY KEY" for the type + primary key.
+
+* SQLite also has an explicit "AUTOINCREMENT" keyword, that is **not**
+  equivalent to the implicit autoincrement feature; this keyword is not
+  recommended for general use.  SQLAlchemy does not render this keyword
+  unless a special SQLite-specific directive is used (see below).  However,
+  it still requires that the column's type is named "INTEGER".
+
+Using the AUTOINCREMENT Keyword
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To specifically render the AUTOINCREMENT keyword on the primary key column
 when rendering DDL, add the flag ``sqlite_autoincrement=True`` to the Table
@@ -62,6 +68,60 @@ construct::
             Column('id', Integer, primary_key=True),
             sqlite_autoincrement=True)
 
+Allowing autoincrement behavior SQLAlchemy types other than Integer/INTEGER
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLite's typing model is based on naming conventions.  Among
+other things, this means that any type name which contains the
+substring ``"INT"`` will be determined to be of "integer affinity".  A
+type named ``"BIGINT"``, ``"SPECIAL_INT"`` or even ``"XYZINTQPR"``, will be considered by
+SQLite to be of "integer" affinity.  However, **the SQLite
+autoincrement feature, whether implicitly or explicitly enabled,
+requires that the name of the column's type
+is exactly the string "INTEGER"**.  Therefore, if an
+application uses a type like :class:`.BigInteger` for a primary key, on
+SQLite this type will need to be rendered as the name ``"INTEGER"`` when
+emitting the initial ``CREATE TABLE`` statement in order for the autoincrement
+behavior to be available.
+
+One approach to achieve this is to use :class:`.Integer` on SQLite
+only using :meth:`.TypeEngine.with_variant`::
+
+    table = Table(
+        "my_table", metadata,
+        Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+    )
+
+Another is to use a subclass of :class:`.BigInteger` that overrides its DDL name
+to be ``INTEGER`` when compiled against SQLite::
+
+    from sqlalchemy import BigInteger
+    from sqlalchemy.ext.compiler import compiles
+
+    class SLBigInteger(BigInteger):
+        pass
+
+    @compiles(SLBigInteger, 'sqlite')
+    def bi_c(element, compiler, **kw):
+        return "INTEGER"
+
+    @compiles(SLBigInteger)
+    def bi_c(element, compiler, **kw):
+        return compiler.visit_BIGINT(element, **kw)
+
+
+    table = Table(
+        "my_table", metadata,
+        Column("id", SLBigInteger(), primary_key=True)
+    )
+
+.. seealso::
+
+    :meth:`.TypeEngine.with_variant`
+
+    :ref:`sqlalchemy.ext.compiler_toplevel`
+
+    `Datatypes In SQLite Version 3 <http://sqlite.org/datatype3.html>`_
 
 .. _sqlite_concurrency:
 
