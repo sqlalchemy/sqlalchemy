@@ -370,6 +370,9 @@ class MockReconnectTest(fixtures.TestBase):
         mock_dialect = Mock()
 
         class MyURL(URL):
+            def _get_entrypoint(self):
+                return Dialect
+
             def get_dialect(self):
                 return Dialect
 
@@ -420,6 +423,7 @@ class CursorErrTest(fixtures.TestBase):
         from sqlalchemy.engine import default
         url = Mock(
             get_dialect=lambda: default.DefaultDialect,
+            _get_entrypoint=lambda: default.DefaultDialect,
             translate_connect_args=lambda: {}, query={},)
         eng = testing_engine(
             url, options=dict(module=dbapi, _initialize=initialize))
