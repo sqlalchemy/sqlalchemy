@@ -204,6 +204,10 @@ class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'
 
+    # crashes on freetds 0.91, not worth it
+    __requires__ = ('no_mssql_freetds',)
+
+    @testing.requires.no_mssql_freetds
     def setup(self):
         self.col_num = 150
 

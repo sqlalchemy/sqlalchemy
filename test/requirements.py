@@ -764,10 +764,21 @@ class DefaultRequirements(SuiteRequirements):
             )
 
     @property
+    def no_mssql_freetds(self):
+        return skip_if([
+            LambdaPredicate(
+                lambda config: (
+                    (against(config, 'mssql+pyodbc') and
+                     config.db.dialect.freetds)
+                    or against(config, 'mssql+pymssql')
+                )
+            )
+        ])
+
+    @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
-
 
     @property
     def mysql_fully_case_sensitive(self):
