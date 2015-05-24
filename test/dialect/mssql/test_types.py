@@ -772,18 +772,6 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             pickled=testobj2,
         )
 
-        # TODO: pyodbc does not seem to accept "None" for a VARBINARY
-        # column (data=None). error:  [Microsoft][ODBC SQL Server
-        # Driver][SQL Server]Implicit conversion from data type varchar
-        # to varbinary is not allowed. Use the CONVERT function to run
-        # this query. (257) binary_table.insert().execute(primary_id=3,
-        # misc='binary_data_two.dat', data=None, data_image=None,
-        # data_slice=stream2[0:99], pickled=None)
-
-        binary_table.insert().execute(
-            primary_id=3,
-            misc='binary_data_two.dat', data_image=None,
-            data_slice=stream2[0:99], pickled=None)
         for stmt in \
             binary_table.select(order_by=binary_table.c.primary_id), \
                 text(
@@ -806,6 +794,43 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             eq_(testobj2, l[1]['pickled'])
             eq_(testobj3.moredata, l[0]['mypickle'].moredata)
             eq_(l[0]['mypickle'].stuff, 'this is the right stuff')
+
+    @testing.requires.no_mssql_freetds
+    def test_binary_none(self):
+        # TODO: pyodbc does not seem to accept "None" for a VARBINARY
+        # column (data=None). error:  [Microsoft][ODBC SQL Server
+        # Driver][SQL Server]Implicit conversion from data type varchar
+        # to varbinary is not allowed. Use the CONVERT function to run
+        # this query. (257) binary_table.insert().execute(primary_id=3,
+        # misc='binary_data_two.dat', data=None, data_image=None,
+        # data_slice=stream2[0:99], pickled=None)
+
+        stream2 = self.load_stream('binary_data_two.dat')
+
+        binary_table.insert().execute(
+            primary_id=3,
+            misc='binary_data_two.dat', data_image=None,
+            data_slice=stream2[0:99], pickled=None)
+        for stmt in \
+            binary_table.select(), \
+                text(
+                    'select * from binary_table',
+                    typemap=dict(
+                        data=mssql.MSVarBinary(8000),
+                        data_image=mssql.MSImage,
+                        data_slice=types.BINARY(100), pickled=PickleType,
+                        mypickle=MyPickleType),
+                    bind=testing.db):
+            row = stmt.execute().first()
+            eq_(
+                row['pickled'], None
+            )
+            eq_(
+                row['data_image'], None
+            )
+            eq_(
+                row['data_slice'], stream2[0:99]
+            )
 
     def load_stream(self, name, len=3000):
         fp = open(
