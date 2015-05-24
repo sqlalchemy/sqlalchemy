@@ -1,6 +1,5 @@
 # -*- encoding: utf-8
 from sqlalchemy.testing import eq_, engines
-from sqlalchemy import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
@@ -8,28 +7,35 @@ from sqlalchemy import testing
 from sqlalchemy.util import ue
 from sqlalchemy import util
 from sqlalchemy.testing.assertsql import CursorSQL
+from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
+    func, PrimaryKeyConstraint, desc, Sequence, DDL, ForeignKey, or_, and_
+from sqlalchemy import event
 
+metadata = None
+cattable = None
+matchtable = None
 
 
 class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
-    """SQL server cannot reference schema-qualified tables in a SELECT statement, they
-    must be aliased.
+
+    """SQL server cannot reference schema-qualified tables in a SELECT
+    statement, they must be aliased.
     """
     __dialect__ = mssql.dialect()
 
     def setup(self):
         metadata = MetaData()
         self.t1 = table('t1',
-            column('a', Integer),
-            column('b', String),
-            column('c', String),
-        )
+                        column('a', Integer),
+                        column('b', String),
+                        column('c', String),
+                        )
         self.t2 = Table(
             't2', metadata,
             Column("a", Integer),
             Column("b", Integer),
             Column("c", Integer),
-            schema = 'schema'
+            schema='schema'
         )
 
     def test_result_map(self):
@@ -43,7 +49,8 @@ class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         assert self.t2.c.a in set(c._create_result_map()['schema_t2_a'][1])
 
     def test_straight_select(self):
-        self.assert_compile(self.t2.select(),
+        self.assert_compile(
+            self.t2.select(),
             "SELECT t2_1.a, t2_1.b, t2_1.c FROM [schema].t2 AS t2_1"
         )
 
@@ -57,7 +64,7 @@ class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_join_to_schema(self):
         t1, t2 = self.t1, self.t2
         self.assert_compile(
-            t1.join(t2, t1.c.a==t2.c.a).select(),
+            t1.join(t2, t1.c.a == t2.c.a).select(),
             "SELECT t1.a, t1.b, t1.c, t2_1.a, t2_1.b, t2_1.c FROM t1 "
             "JOIN [schema].t2 AS t2_1 ON t2_1.a = t1.a"
         )
@@ -65,9 +72,9 @@ class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_union_schema_to_non(self):
         t1, t2 = self.t1, self.t2
         s = select([t2.c.a, t2.c.b]).apply_labels().\
-                union(
-                    select([t1.c.a, t1.c.b]).apply_labels()
-                ).alias().select()
+            union(
+            select([t1.c.a, t1.c.b]).apply_labels()
+        ).alias().select()
         self.assert_compile(
             s,
             "SELECT anon_1.schema_t2_a, anon_1.schema_t2_b FROM "
@@ -87,6 +94,7 @@ class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 
         )
 
+
 class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'
     __dialect__ = mssql.MSDialect()
@@ -97,10 +105,10 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData(testing.db)
 
         cattable = Table('cattable', metadata,
-            Column('id', Integer),
-            Column('description', String(50)),
-            PrimaryKeyConstraint('id', name='PK_cattable'),
-        )
+                         Column('id', Integer),
+                         Column('description', String(50)),
+                         PrimaryKeyConstraint('id', name='PK_cattable'),
+                         )
 
     def setup(self):
         metadata.create_all()
@@ -110,7 +118,7 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_compiled(self):
         self.assert_compile(cattable.insert().values(id=9,
-                            description='Python'),
+                                                     description='Python'),
                             'INSERT INTO cattable (id, description) '
                             'VALUES (:id, :description)')
 
@@ -127,17 +135,18 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_executemany(self):
         cattable.insert().execute([{'id': 89, 'description': 'Python'},
-                                  {'id': 8, 'description': 'Ruby'},
-                                  {'id': 3, 'description': 'Perl'},
-                                  {'id': 1, 'description': 'Java'}])
+                                   {'id': 8, 'description': 'Ruby'},
+                                   {'id': 3, 'description': 'Perl'},
+                                   {'id': 1, 'description': 'Java'}])
         cats = cattable.select().order_by(cattable.c.id).execute()
         eq_([(1, 'Java'), (3, 'Perl'), (8, 'Ruby'), (89, 'Python')],
             list(cats))
         cattable.insert().execute([{'description': 'PHP'},
-                                  {'description': 'Smalltalk'}])
+                                   {'description': 'Smalltalk'}])
         lastcats = \
             cattable.select().order_by(desc(cattable.c.id)).limit(2).execute()
         eq_([(91, 'Smalltalk'), (90, 'PHP')], list(lastcats))
+
 
 class QueryUnicodeTest(fixtures.TestBase):
 
@@ -145,9 +154,10 @@ class QueryUnicodeTest(fixtures.TestBase):
 
     def test_convert_unicode(self):
         meta = MetaData(testing.db)
-        t1 = Table('unitest_table', meta, Column('id', Integer,
-                   primary_key=True), Column('descr',
-                   mssql.MSText(convert_unicode=True)))
+        t1 = Table(
+            'unitest_table', meta,
+            Column('id', Integer, primary_key=True),
+            Column('descr', mssql.MSText(convert_unicode=True)))
         meta.create_all()
         con = testing.db.connect()
 
@@ -159,10 +169,12 @@ class QueryUnicodeTest(fixtures.TestBase):
         try:
             r = t1.select().execute().first()
             assert isinstance(r[1], util.text_type), \
-                '%s is %s instead of unicode, working on %s' % (r[1],
-                    type(r[1]), meta.bind)
+                '%s is %s instead of unicode, working on %s' % (
+                r[1],
+                type(r[1]), meta.bind)
         finally:
             meta.drop_all()
+
 
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = 'mssql'
@@ -194,27 +206,27 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         with the init parameter 'implicit_returning = False'.
         """
 
-        #todo: this same test needs to be tried in a multithreaded context
+        # todo: this same test needs to be tried in a multithreaded context
         #      with multiple threads inserting to the same table.
-        #todo: check whether this error also occurs with clients other
+        # todo: check whether this error also occurs with clients other
         #      than the SQL Server Native Client. Maybe an assert_raises
         #      test should be written.
         meta = MetaData(testing.db)
         t1 = Table('t1', meta,
-                Column('id', Integer, Sequence('fred', 100, 1),
-                                primary_key=True),
-                Column('descr', String(200)),
-                # the following flag will prevent the
-                # MSSQLCompiler.returning_clause from getting called,
-                # though the ExecutionContext will still have a
-                # _select_lastrowid, so the SELECT SCOPE_IDENTITY() will
-                # hopefully be called instead.
-                implicit_returning = False
-                )
+                   Column('id', Integer, Sequence('fred', 100, 1),
+                          primary_key=True),
+                   Column('descr', String(200)),
+                   # the following flag will prevent the
+                   # MSSQLCompiler.returning_clause from getting called,
+                   # though the ExecutionContext will still have a
+                   # _select_lastrowid, so the SELECT SCOPE_IDENTITY() will
+                   # hopefully be called instead.
+                   implicit_returning=False
+                   )
         t2 = Table('t2', meta,
-                Column('id', Integer, Sequence('fred', 200, 1),
-                                primary_key=True),
-                Column('descr', String(200)))
+                   Column('id', Integer, Sequence('fred', 200, 1),
+                          primary_key=True),
+                   Column('descr', String(200)))
         meta.create_all()
         con = testing.db.connect()
         con.execute("""create trigger paj on t1 for insert as
@@ -300,66 +312,70 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             ),
         )
 
+    @testing.provide_metadata
     def test_insertid_schema(self):
-        meta = MetaData(testing.db)
+        meta = self.metadata
         con = testing.db.connect()
         con.execute('create schema paj')
+
+        @event.listens_for(meta, "after_drop")
+        def cleanup(target, connection, **kw):
+            connection.execute('drop schema paj')
+
         tbl = Table('test', meta,
                     Column('id', Integer, primary_key=True), schema='paj')
         tbl.create()
-        try:
-            tbl.insert().execute({'id':1})
-        finally:
-            tbl.drop()
-            con.execute('drop schema paj')
+        tbl.insert().execute({'id': 1})
+        eq_(tbl.select().scalar(), 1)
 
+    @testing.provide_metadata
     def test_returning_no_autoinc(self):
-        meta = MetaData(testing.db)
-        table = Table('t1', meta, Column('id', Integer,
-                      primary_key=True), Column('data', String(50)))
+        meta = self.metadata
+        table = Table(
+            't1', meta,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)))
         table.create()
-        try:
-            result = table.insert().values(id=1,
-                    data=func.lower('SomeString'
-                    )).returning(table.c.id, table.c.data).execute()
-            eq_(result.fetchall(), [(1, 'somestring')])
-        finally:
+        result = table.insert().values(
+            id=1,
+            data=func.lower('SomeString')).\
+            returning(table.c.id, table.c.data).execute()
+        eq_(result.fetchall(), [(1, 'somestring')])
 
-            # this will hang if the "SET IDENTITY_INSERT t1 OFF" occurs
-            # before the result is fetched
-
-            table.drop()
-
+    @testing.provide_metadata
     def test_delete_schema(self):
-        meta = MetaData(testing.db)
+        meta = self.metadata
         con = testing.db.connect()
         con.execute('create schema paj')
-        tbl = Table('test', meta, Column('id', Integer,
-                    primary_key=True), schema='paj')
-        tbl.create()
-        try:
-            tbl.insert().execute({'id': 1})
-            tbl.delete(tbl.c.id == 1).execute()
-        finally:
-            tbl.drop()
-            con.execute('drop schema paj')
 
+        @event.listens_for(meta, "after_drop")
+        def cleanup(target, connection, **kw):
+            connection.execute('drop schema paj')
+
+        tbl = Table(
+            'test', meta,
+            Column('id', Integer, primary_key=True), schema='paj')
+        tbl.create()
+        tbl.insert().execute({'id': 1})
+        eq_(tbl.select().scalar(), 1)
+        tbl.delete(tbl.c.id == 1).execute()
+        eq_(tbl.select().scalar(), None)
+
+    @testing.provide_metadata
     def test_insertid_reserved(self):
-        meta = MetaData(testing.db)
+        meta = self.metadata
         table = Table(
             'select', meta,
             Column('col', Integer, primary_key=True)
         )
         table.create()
 
-        meta2 = MetaData(testing.db)
-        try:
-            table.insert().execute(col=7)
-        finally:
-            table.drop()
+        table.insert().execute(col=7)
+        eq_(table.select().scalar(), 7)
 
 
 class Foo(object):
+
     def __init__(self, **kw):
         for k in kw:
             setattr(self, k, kw[k])
@@ -380,6 +396,7 @@ def full_text_search_missing():
     finally:
         connection.close()
 
+
 class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'mssql'
@@ -399,29 +416,24 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
             Column('title', String(200)),
             Column('category_id', Integer, ForeignKey('cattable.id')),
             PrimaryKeyConstraint('id', name='PK_matchtable'),
-            )
+        )
         DDL("""CREATE FULLTEXT INDEX
                        ON cattable (description)
-                       KEY INDEX PK_cattable""").execute_at('after-create'
-                , matchtable)
+                       KEY INDEX PK_cattable""").\
+            execute_at('after-create', matchtable)
         DDL("""CREATE FULLTEXT INDEX
                        ON matchtable (title)
-                       KEY INDEX PK_matchtable""").execute_at('after-create'
-                , matchtable)
+                       KEY INDEX PK_matchtable""").\
+            execute_at('after-create', matchtable)
         metadata.create_all()
         cattable.insert().execute([{'id': 1, 'description': 'Python'},
-                                  {'id': 2, 'description': 'Ruby'}])
-        matchtable.insert().execute([{'id': 1, 'title'
-                                    : 'Agile Web Development with Rails'
-                                    , 'category_id': 2}, {'id': 2,
-                                    'title': 'Dive Into Python',
-                                    'category_id': 1}, {'id': 3, 'title'
-                                    : "Programming Matz's Ruby",
-                                    'category_id': 2}, {'id': 4, 'title'
-                                    : 'The Definitive Guide to Django',
-                                    'category_id': 1}, {'id': 5, 'title'
-                                    : 'Python in a Nutshell',
-                                    'category_id': 1}])
+                                   {'id': 2, 'description': 'Ruby'}])
+        matchtable.insert().execute([
+            {'id': 1, 'title': 'Web Development with Rails', 'category_id': 2},
+            {'id': 2, 'title': 'Dive Into Python', 'category_id': 1},
+            {'id': 3, 'title': "Programming Matz's Ruby", 'category_id': 2},
+            {'id': 4, 'title': 'Guide to Django', 'category_id': 1},
+            {'id': 5, 'title': 'Python in a Nutshell', 'category_id': 1}])
         DDL("WAITFOR DELAY '00:00:05'"
             ).execute(bind=engines.testing_engine())
 
@@ -438,59 +450,60 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_simple_match(self):
         results = \
-            matchtable.select().where(matchtable.c.title.match('python'
-                )).order_by(matchtable.c.id).execute().fetchall()
+            matchtable.select().where(
+                matchtable.c.title.match('python')).\
+            order_by(matchtable.c.id).execute().fetchall()
         eq_([2, 5], [r.id for r in results])
 
     def test_simple_match_with_apostrophe(self):
         results = \
-            matchtable.select().where(matchtable.c.title.match("Matz's"
-                )).execute().fetchall()
+            matchtable.select().where(
+                matchtable.c.title.match("Matz's")).execute().fetchall()
         eq_([3], [r.id for r in results])
 
     def test_simple_prefix_match(self):
         results = \
-            matchtable.select().where(matchtable.c.title.match('"nut*"'
-                )).execute().fetchall()
+            matchtable.select().where(
+                matchtable.c.title.match('"nut*"')).execute().fetchall()
         eq_([5], [r.id for r in results])
 
     def test_simple_inflectional_match(self):
         results = \
             matchtable.select().where(
                 matchtable.c.title.match('FORMSOF(INFLECTIONAL, "dives")'
-                )).execute().fetchall()
+                                         )).execute().fetchall()
         eq_([2], [r.id for r in results])
 
     def test_or_match(self):
         results1 = \
-            matchtable.select().where(or_(matchtable.c.title.match('nutshell'
-                ), matchtable.c.title.match('ruby'
-                ))).order_by(matchtable.c.id).execute().fetchall()
+            matchtable.select().where(or_(
+                matchtable.c.title.match('nutshell'),
+                matchtable.c.title.match('ruby'))).\
+            order_by(matchtable.c.id).execute().fetchall()
         eq_([3, 5], [r.id for r in results1])
         results2 = \
             matchtable.select().where(
-                matchtable.c.title.match('nutshell OR ruby'
-                )).order_by(matchtable.c.id).execute().fetchall()
+                matchtable.c.title.match(
+                    'nutshell OR ruby')).\
+            order_by(matchtable.c.id).execute().fetchall()
         eq_([3, 5], [r.id for r in results2])
 
     def test_and_match(self):
         results1 = \
-            matchtable.select().where(and_(matchtable.c.title.match('python'
-                ), matchtable.c.title.match('nutshell'
-                ))).execute().fetchall()
+            matchtable.select().where(and_(
+                matchtable.c.title.match('python'),
+                matchtable.c.title.match('nutshell'))).execute().fetchall()
         eq_([5], [r.id for r in results1])
         results2 = \
             matchtable.select().where(
                 matchtable.c.title.match('python AND nutshell'
-                )).execute().fetchall()
+                                         )).execute().fetchall()
         eq_([5], [r.id for r in results2])
 
     def test_match_across_joins(self):
-        results = matchtable.select().where(and_(cattable.c.id
-                == matchtable.c.category_id,
-                or_(cattable.c.description.match('Ruby'),
-                matchtable.c.title.match('nutshell'
-                )))).order_by(matchtable.c.id).execute().fetchall()
+        results = matchtable.select().where(
+            and_(cattable.c.id == matchtable.c.category_id,
+                 or_(cattable.c.description.match('Ruby'),
+                     matchtable.c.title.match('nutshell')))).\
+            order_by(matchtable.c.id).execute().fetchall()
         eq_([1, 3, 5], [r.id for r in results])
-
-
