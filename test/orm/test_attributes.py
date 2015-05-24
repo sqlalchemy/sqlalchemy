@@ -123,7 +123,7 @@ class AttributeImplAPITest(fixtures.MappedTest):
 
         assert_raises_message(
             ValueError,
-            r"list.remove\(x\): x not in list",
+            r"list.remove\(.*?\): .* not in list",
             A.b.impl.remove,
                 attributes.instance_state(a1),
                 attributes.instance_dict(a1), b2, None
