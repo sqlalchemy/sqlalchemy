@@ -19,7 +19,7 @@ def force_install_reqs():
     import logging
 
     log = logging.getLogger("pip")
-    handler = logging.StreamHandler(sys.stdout)
+    handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(logging.Formatter("[pip] %(message)s"))
     log.addHandler(handler)
     log.setLevel(logging.INFO)
