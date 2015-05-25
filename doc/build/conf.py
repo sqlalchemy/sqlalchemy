@@ -13,6 +13,25 @@
 
 import sys
 import os
+import traceback
+
+def force_install_reqs():
+    import logging
+
+    log = logging.getLogger("pip")
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("[pip] %(message)s"))
+    log.addHandler(handler)
+    log.setLevel(logging.INFO)
+
+    log.info("READTHEDOCS is set, force-installing requirements.txt")
+
+    from pip.commands import install
+    req = os.path.join(os.path.dirname(__file__), "requirements.txt")
+    cmd = install.InstallCommand()
+    options, args = cmd.parse_args(["-v", "-U", "-r", req])
+    cmd.run(options, args)
+
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -22,6 +41,19 @@ sys.path.insert(0, os.path.abspath('../..')) # examples
 sys.path.insert(0, os.path.abspath('.'))
 
 import sqlalchemy
+
+# attempt to force pip to definitely get the latest
+# versions of libraries, see
+# https://github.com/rtfd/readthedocs.org/issues/1293
+rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if rtd:
+    try:
+        force_install_reqs()
+    except:
+        traceback.print_exc()
+
+
+
 
 # -- General configuration -----------------------------------------------------
 
