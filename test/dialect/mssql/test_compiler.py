@@ -12,7 +12,7 @@ from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = mssql.dialect()
+    __dialect__ = mssql.dialect(legacy_schema_aliasing=False)
 
     def test_true_false(self):
         self.assert_compile(
@@ -33,6 +33,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             t.select().with_hint(t, 'WITH (NOLOCK)'),
             'SELECT sometable.somecolumn FROM sometable WITH (NOLOCK)')
+
+    def test_select_with_nolock_schema(self):
+        m = MetaData()
+        t = Table('sometable', m, Column('somecolumn', Integer),
+                  schema='test_schema')
+        self.assert_compile(
+            t.select().with_hint(t, 'WITH (NOLOCK)'),
+            'SELECT test_schema.sometable.somecolumn '
+            'FROM test_schema.sometable WITH (NOLOCK)')
 
     def test_join_with_hint(self):
         t1 = table('t1',
@@ -143,6 +152,39 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "WHERE sometable.somecolumn = othertable.somecolumn"
             )
 
+    def test_update_to_select_schema(self):
+        meta = MetaData()
+        table = Table(
+            "sometable", meta,
+            Column("sym", String),
+            Column("val", Integer),
+            schema="schema"
+        )
+        other = Table(
+            "#other", meta,
+            Column("sym", String),
+            Column("newval", Integer)
+        )
+        stmt = table.update().values(
+            val=select([other.c.newval]).
+            where(table.c.sym == other.c.sym).as_scalar())
+
+        self.assert_compile(
+            stmt,
+            "UPDATE [schema].sometable SET val="
+            "(SELECT [#other].newval FROM [#other] "
+            "WHERE [schema].sometable.sym = [#other].sym)",
+        )
+
+        stmt = table.update().values(val=other.c.newval).\
+            where(table.c.sym == other.c.sym)
+        self.assert_compile(
+            stmt,
+            "UPDATE [schema].sometable SET val="
+            "[#other].newval FROM [schema].sometable, "
+            "[#other] WHERE [schema].sometable.sym = [#other].sym",
+        )
+
     # TODO: not supported yet.
     # def test_delete_from_hint(self):
     #    t = table('sometable', column('somecolumn'))
@@ -236,8 +278,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([tbl.c.id]).where(tbl.c.id == 1)
         self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM paj.test WHERE paj.test.id IN '
-                            '(SELECT test_1.id FROM paj.test AS test_1 '
-                            'WHERE test_1.id = :id_1)')
+                            '(SELECT paj.test.id FROM paj.test '
+                            'WHERE paj.test.id = :id_1)')
 
     def test_delete_schema_multipart(self):
         metadata = MetaData()
@@ -252,9 +294,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([tbl.c.id]).where(tbl.c.id == 1)
         self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM banana.paj.test WHERE '
-                            'banana.paj.test.id IN (SELECT test_1.id '
-                            'FROM banana.paj.test AS test_1 WHERE '
-                            'test_1.id = :id_1)')
+                            'banana.paj.test.id IN (SELECT banana.paj.test.id '
+                            'FROM banana.paj.test WHERE '
+                            'banana.paj.test.id = :id_1)')
 
     def test_delete_schema_multipart_needs_quoting(self):
         metadata = MetaData()
@@ -268,9 +310,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([tbl.c.id]).where(tbl.c.id == 1)
         self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM [banana split].paj.test WHERE '
-                            '[banana split].paj.test.id IN (SELECT '
-                            'test_1.id FROM [banana split].paj.test AS '
-                            'test_1 WHERE test_1.id = :id_1)')
+                            '[banana split].paj.test.id IN ('
+
+                            'SELECT [banana split].paj.test.id FROM '
+                            '[banana split].paj.test WHERE '
+                            '[banana split].paj.test.id = :id_1)')
 
     def test_delete_schema_multipart_both_need_quoting(self):
         metadata = MetaData()
@@ -282,13 +326,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'space].test WHERE [banana split].[paj '
                             'with a space].test.id = :id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
-        self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
-                            'DELETE FROM [banana split].[paj with a '
-                            'space].test WHERE [banana split].[paj '
-                            'with a space].test.id IN (SELECT '
-                            'test_1.id FROM [banana split].[paj with a '
-                            'space].test AS test_1 WHERE test_1.id = '
-                            ':id_1)')
+        self.assert_compile(
+            tbl.delete().where(tbl.c.id.in_(s)),
+            "DELETE FROM [banana split].[paj with a space].test "
+            "WHERE [banana split].[paj with a space].test.id IN "
+            "(SELECT [banana split].[paj with a space].test.id "
+            "FROM [banana split].[paj with a space].test "
+            "WHERE [banana split].[paj with a space].test.id = :id_1)"
+        )
 
     def test_union(self):
         t1 = table(

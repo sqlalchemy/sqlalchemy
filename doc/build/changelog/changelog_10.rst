@@ -19,6 +19,34 @@
     :version: 1.0.5
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3424, 3430
+
+        Added a new dialect flag to the MSSQL dialect
+        ``legacy_schema_aliasing`` which when set to False will disable a
+        very old and obsolete behavior, that of the compiler's
+        attempt to turn all schema-qualified table names into alias names,
+        to work around old and no longer locatable issues where SQL
+        server could not parse a multi-part identifier name in all
+        circumstances.   The behavior prevented more
+        sophisticated statements from working correctly, including those which
+        use hints, as well as CRUD statements that embed correlated SELECT
+        statements.  Rather than continue to repair the feature to work
+        with more complex statements, it's better to just disable it
+        as it should no longer be needed for any modern SQL server
+        version.  The flag defaults to True for the 1.0.x series, leaving
+        current behavior unchanged for this version series.  In the 1.1
+        series, it will default to False.  For the 1.0 series,
+        when not set to either value explicitly, a warning is emitted
+        when a schema-qualified table is first used in a statement, which
+        suggests that the flag be set to False for all modern SQL Server
+        versions.
+
+        .. seealso::
+
+            :ref:`legacy_schema_rendering`
+
+    .. change::
         :tags: feature, engine
         :tickets: 3379
 
