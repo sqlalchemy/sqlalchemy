@@ -138,6 +138,23 @@ class CreateEngineTest(fixtures.TestBase):
                             'z=somevalue')
         assert e.echo is True
 
+    def test_pool_threadlocal_from_config(self):
+        dbapi = mock_dbapi
+
+        config = {
+            'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
+            'sqlalchemy.pool_threadlocal': "false"}
+
+        e = engine_from_config(config, module=dbapi, _initialize=False)
+        eq_(e.pool._use_threadlocal, False)
+
+        config = {
+            'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
+            'sqlalchemy.pool_threadlocal': "true"}
+
+        e = engine_from_config(config, module=dbapi, _initialize=False)
+        eq_(e.pool._use_threadlocal, True)
+
     def test_pool_reset_on_return_from_config(self):
         dbapi = mock_dbapi
 

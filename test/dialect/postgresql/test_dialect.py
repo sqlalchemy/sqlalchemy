@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
 import logging.handlers
 from sqlalchemy.testing.mock import Mock
+from sqlalchemy.engine import engine_from_config
 
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
@@ -119,6 +120,22 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         c = e.connect()
         new_encoding = c.execute("show client_encoding").fetchone()[0]
         eq_(new_encoding, test_encoding)
+
+    def test_pg_dialect_use_native_unicode_from_config(self):
+        config = {
+            'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
+            'sqlalchemy.use_native_unicode': "false"}
+
+        e = engine_from_config(config, _initialize=False)
+        eq_(e.dialect.use_native_unicode, False)
+
+        config = {
+            'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
+            'sqlalchemy.use_native_unicode': "true"}
+
+        e = engine_from_config(config, _initialize=False)
+        eq_(e.dialect.use_native_unicode, True)
+
 
     @testing.only_on(
         ['postgresql+psycopg2', 'postgresql+pg8000',

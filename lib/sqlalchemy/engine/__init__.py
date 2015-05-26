@@ -394,9 +394,9 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     'prefix' argument indicates the prefix to be searched for.
 
     A select set of keyword arguments will be "coerced" to their
-    expected type based on string values.  In a future release, this
-    functionality will be expanded and include dialect-specific
-    arguments.
+    expected type based on string values.    The set of arguments
+    is extensible per-dialect using the ``engine_config_types`` accessor.
+
     """
 
     options = dict((key[len(prefix):], configuration[key])

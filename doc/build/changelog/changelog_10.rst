@@ -19,6 +19,15 @@
     :version: 1.0.5
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3435
+
+        Fixed bug where known boolean values used by
+        :func:`.engine_from_config` were not being parsed correctly;
+        these included ``pool_threadlocal`` and the psycopg2 argument
+        ``use_native_unicode``.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3424, 3430
 

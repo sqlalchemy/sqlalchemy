@@ -1494,6 +1494,10 @@ class MSDialect(default.DefaultDialect):
         sqltypes.Time: TIME,
     }
 
+    engine_config_types = default.DefaultDialect.engine_config_types.union([
+        ('legacy_schema_aliasing', util.asbool),
+    ])
+
     ischema_names = ischema_names
 
     supports_native_boolean = False
