@@ -1375,11 +1375,15 @@ class MSDialect(default.DefaultDialect):
             # FreeTDS with version 4.2 seems to report here
             # a number like "95.10.255".  Don't know what
             # that is.  So emit warning.
+            # Use TDS Version 7.0 through 7.3, per the MS information here:
+            # https://msdn.microsoft.com/en-us/library/dd339982.aspx
+            # and FreeTDS information here (7.3 highest supported version):
+            # http://www.freetds.org/userguide/choosingtdsprotocol.htm
             util.warn(
                 "Unrecognized server version info '%s'.   Version specific "
                 "behaviors may not function properly.   If using ODBC "
-                "with FreeTDS, ensure server version 7.0 or 8.0, not 4.2, "
-                "is configured in the FreeTDS configuration." %
+                "with FreeTDS, ensure TDS_VERSION 7.0 through 7.3, not "
+                "4.2, is configured in the FreeTDS configuration." %
                 ".".join(str(x) for x in self.server_version_info))
         if self.server_version_info >= MS_2005_VERSION and \
                 'implicit_returning' not in self.__dict__:
