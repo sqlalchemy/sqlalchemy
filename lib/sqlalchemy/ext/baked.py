@@ -49,8 +49,8 @@ class BakedQuery(object):
 
         _bakery = util.LRUCache(size)
 
-        def call(initial_fn):
-            return cls(_bakery, initial_fn)
+        def call(initial_fn, args=()):
+            return cls(_bakery, initial_fn, args)
 
         return call
 
