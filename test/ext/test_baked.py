@@ -242,6 +242,26 @@ class ResultTest(BakedTest):
         })
         mapper(Address, cls.tables.addresses)
 
+    def test_cachekeys_on_constructor(self):
+        User = self.classes.User
+
+        queue = [7, 8]
+        fn = lambda s: s.query(User.id).filter_by(id=queue.pop(0))
+        bq1 = self.bakery(fn, 7)
+        bq2 = self.bakery(fn, 8)
+
+        for i in range(3):
+            session = Session(autocommit=True)
+            eq_(
+                bq1(session).all(),
+                [(7,)]
+            )
+
+            eq_(
+                bq2(session).all(),
+                [(8,)]
+            )
+
     def test_no_steps(self):
         User = self.classes.User
 

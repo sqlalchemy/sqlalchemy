@@ -19,6 +19,16 @@
     :version: 1.0.5
 
     .. change::
+        :tags: feature, ext
+        :pullreq: bitbucket:54
+
+        Added support for ``*args`` to be passed to the baked query
+        initial callable, in the same way that ``*args`` are supported
+        for the :meth:`.BakedQuery.add_criteria` and
+        :meth:`.BakedQuery.with_criteria` methods.  Initial PR courtesy
+        Naoki INADA.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3435
 
