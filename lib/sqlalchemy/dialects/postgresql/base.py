@@ -401,6 +401,15 @@ The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
+Index Storage Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+PostgreSQL allows storage parameters to be set on indexes. The storage
+parameters available depend on the index method used by the index. Storage
+parameters can be specified on :class:`.Index` using the ``postgresql_with``
+keyword argument::
+
+    Index('my_index', my_table.c.data, postgresql_with={"fillfactor": 50})
 
 .. _postgresql_index_concurrently:
 
@@ -1592,6 +1601,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     ])
                 )
 
+        withclause = index.dialect_options['postgresql']['with']
+
+        if withclause:
+            text += " WITH (%s)" % (', '.join(
+                ['%s = %s' % storage_parameter
+                 for storage_parameter in withclause.items()]))
+
         whereclause = index.dialect_options["postgresql"]["where"]
 
         if whereclause is not None:
@@ -1919,6 +1935,7 @@ class PGDialect(default.DefaultDialect):
             "where": None,
             "ops": {},
             "concurrently": False,
+            "with": {}
         }),
         (schema.Table, {
             "ignore_search_path": False,

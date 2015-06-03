@@ -369,6 +369,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'USING hash (data)',
                             dialect=postgresql.dialect())
 
+    def test_create_index_with_with(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String))
+
+        idx1 = Index('test_idx1', tbl.c.data)
+        idx2 = Index('test_idx2', tbl.c.data, postgresql_with={"fillfactor": 50})
+        idx3 = Index('test_idx3', tbl.c.data, postgresql_using="gist",
+                     postgresql_with={"buffering": "off"})
+
+        self.assert_compile(schema.CreateIndex(idx1),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(data)',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+                            'CREATE INDEX test_idx2 ON testtbl '
+                            '(data) '
+                            'WITH (fillfactor = 50)',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx3),
+                            'CREATE INDEX test_idx3 ON testtbl '
+                            'USING gist (data) '
+                            'WITH (buffering = off)',
+                            dialect=postgresql.dialect())
+
     def test_create_index_expr_gets_parens(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('x', Integer), Column('y', Integer))
