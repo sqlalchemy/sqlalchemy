@@ -176,7 +176,8 @@ class EngineFromConfigTest(fixtures.TestBase):
             "sqlalchemy.url": "mssql://foodsn",
             "sqlalchemy.legacy_schema_aliasing": "false"
         }
-        e = engine_from_config(cfg)
+        e = engine_from_config(
+            cfg, module=Mock(version="MS SQL Server 11.0.92"))
         eq_(e.dialect.legacy_schema_aliasing, False)
 
 
