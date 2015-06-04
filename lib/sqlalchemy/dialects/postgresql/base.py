@@ -2624,7 +2624,8 @@ class PGDialect(default.DefaultDialect):
               SELECT
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
-                  a.attname, a.attnum, NULL, ix.indkey%s
+                  a.attname, a.attnum, NULL, ix.indkey%s,
+                  i.reloptions
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -2651,7 +2652,8 @@ class PGDialect(default.DefaultDialect):
               SELECT
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
-                  a.attname, a.attnum, c.conrelid, ix.indkey::varchar
+                  a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
+                  i.reloptions
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -2680,7 +2682,7 @@ class PGDialect(default.DefaultDialect):
 
         sv_idx_name = None
         for row in c.fetchall():
-            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key = row
+            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key, options = row
 
             if expr:
                 if idx_name != sv_idx_name:
@@ -2706,6 +2708,8 @@ class PGDialect(default.DefaultDialect):
                 index['unique'] = unique
                 if conrelid is not None:
                     index['duplicates_constraint'] = idx_name
+                if options:
+                    index['options'] = dict([option.split("=") for option in options])
 
         result = []
         for name, idx in indexes.items():
@@ -2716,6 +2720,8 @@ class PGDialect(default.DefaultDialect):
             }
             if 'duplicates_constraint' in idx:
                 entry['duplicates_constraint'] = idx['duplicates_constraint']
+            if 'options' in idx:
+                entry.setdefault('dialect_options', {})["postgresql_with"] = idx['options']
             result.append(entry)
         return result
 

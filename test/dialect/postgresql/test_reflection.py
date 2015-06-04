@@ -673,6 +673,26 @@ class ReflectionTest(fixtures.TestBase):
         conn.close()
 
     @testing.provide_metadata
+    def test_index_reflection_with_storage_options(self):
+        """reflect indexes with storage options set"""
+
+        metadata = self.metadata
+
+        t1 = Table('t', metadata,
+                   Column('id', Integer, primary_key=True),
+                   Column('x', Integer)
+                   )
+        metadata.create_all()
+        conn = testing.db.connect().execution_options(autocommit=True)
+        conn.execute("CREATE INDEX idx1 ON t (x) WITH (fillfactor = 50)")
+
+        ind = testing.db.dialect.get_indexes(conn, "t", None)
+        eq_(ind, [{'unique': False, 'column_names': ['x'], 'name': 'idx1',
+                   'dialect_options': {"postgresql_with": {"fillfactor": "50"}}}])
+        conn.close()
+
+
+    @testing.provide_metadata
     def test_foreign_key_option_inspection(self):
         metadata = self.metadata
         Table(
