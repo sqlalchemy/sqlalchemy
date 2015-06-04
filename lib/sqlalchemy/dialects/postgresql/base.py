@@ -2625,7 +2625,7 @@ class PGDialect(default.DefaultDialect):
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, NULL, ix.indkey%s,
-                  i.reloptions
+                  i.reloptions, am.amname
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -2633,6 +2633,9 @@ class PGDialect(default.DefaultDialect):
                         left outer join
                             pg_attribute a
                             on t.oid = a.attrelid and %s
+                        left outer join
+                            pg_am am
+                            on i.relam = am.oid
               WHERE
                   t.relkind IN ('r', 'v', 'f', 'm')
                   and t.oid = :table_oid
@@ -2653,7 +2656,7 @@ class PGDialect(default.DefaultDialect):
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
-                  i.reloptions
+                  i.reloptions, am.amname
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -2666,6 +2669,9 @@ class PGDialect(default.DefaultDialect):
                             on (ix.indrelid = c.conrelid and
                                 ix.indexrelid = c.conindid and
                                 c.contype in ('p', 'u', 'x'))
+                        left outer join
+                            pg_am am
+                            on i.relam = am.oid
               WHERE
                   t.relkind IN ('r', 'v', 'f', 'm')
                   and t.oid = :table_oid
@@ -2682,7 +2688,7 @@ class PGDialect(default.DefaultDialect):
 
         sv_idx_name = None
         for row in c.fetchall():
-            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key, options = row
+            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key, options, amname = row
 
             if expr:
                 if idx_name != sv_idx_name:
@@ -2710,6 +2716,8 @@ class PGDialect(default.DefaultDialect):
                     index['duplicates_constraint'] = idx_name
                 if options:
                     index['options'] = dict([option.split("=") for option in options])
+                if amname and amname != 'btree':
+                    index['amname'] = amname
 
         result = []
         for name, idx in indexes.items():
@@ -2722,6 +2730,8 @@ class PGDialect(default.DefaultDialect):
                 entry['duplicates_constraint'] = idx['duplicates_constraint']
             if 'options' in idx:
                 entry.setdefault('dialect_options', {})["postgresql_with"] = idx['options']
+            if 'amname' in idx:
+                entry.setdefault('dialect_options', {})["postgresql_using"] = idx['amname']
             result.append(entry)
         return result
 
