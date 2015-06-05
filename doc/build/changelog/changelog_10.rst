@@ -19,6 +19,17 @@
     :version: 1.0.5
 
     .. change::
+        :tags: bug, postgresql, pypy
+        :tickets: 3439
+
+        Repaired some typing and test issues related to the pypy
+        psycopg2cffi dialect, in particular that the current 2.7.0 version
+        does not have native support for the JSONB type.  The version detection
+        for psycopg2 features has been tuned into a specific sub-version
+        for psycopg2cffi.  Additionally, test coverage has been enabled
+        for the full series of psycopg2 features under psycopg2cffi.
+
+    .. change::
         :tags: feature, ext
         :pullreq: bitbucket:54
 

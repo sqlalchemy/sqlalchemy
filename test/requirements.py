@@ -727,12 +727,12 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def range_types(self):
         def check_range_types(config):
-            if not against(config, "postgresql+psycopg2"):
+            if not against(
+                    config,
+                    ["postgresql+psycopg2", "postgresql+psycopg2cffi"]):
                 return False
             try:
-                config.db.execute("select '[1,2)'::int4range;")
-                # only supported in psycopg 2.5+
-                from psycopg2.extras import NumericRange
+                config.db.scalar("select '[1,2)'::int4range;")
                 return True
             except:
                 return False
@@ -762,6 +762,27 @@ class DefaultRequirements(SuiteRequirements):
             lambda config:
             config.db.dialect.driver == "pg8000" and
             config.db.dialect._dbapi_version <= (1, 10, 1)
+        )
+
+    @property
+    def psycopg2_native_json(self):
+        return self.psycopg2_compatibility
+
+    @property
+    def psycopg2_native_hstore(self):
+        return self.psycopg2_compatibility
+
+    @property
+    def psycopg2_compatibility(self):
+        return only_on(
+            ["postgresql+psycopg2", "postgresql+psycopg2cffi"]
+        )
+
+    @property
+    def psycopg2_or_pg8000_compatibility(self):
+        return only_on(
+            ["postgresql+psycopg2", "postgresql+psycopg2cffi",
+             "postgresql+pg8000"]
         )
 
     @property

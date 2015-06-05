@@ -1567,7 +1567,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         self._assert_data([{"k1": "r1v1", "k2": "r1v2"}])
 
     def _non_native_engine(self):
-        if testing.against("postgresql+psycopg2"):
+        if testing.requires.psycopg2_native_hstore.enabled:
             engine = engines.testing_engine(
                 options=dict(
                     use_native_hstore=False))
@@ -1581,7 +1581,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         cols = insp.get_columns('data_table')
         assert isinstance(cols[2]['type'], HSTORE)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_insert_native(self):
         engine = testing.db
         self._test_insert(engine)
@@ -1590,7 +1590,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_insert(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_criterion_native(self):
         engine = testing.db
         self._fixture_data(engine)
@@ -1624,7 +1624,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_fixed_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_fixed_round_trip_native(self):
         engine = testing.db
         self._test_fixed_round_trip(engine)
@@ -1645,12 +1645,12 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             }
         )
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_unicode_round_trip_python(self):
         engine = self._non_native_engine()
         self._test_unicode_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)
@@ -1659,7 +1659,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_escaped_quotes_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_escaped_quotes_round_trip_native(self):
         engine = testing.db
         self._test_escaped_quotes_round_trip(engine)
@@ -1691,14 +1691,16 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
 
 class _RangeTypeMixin(object):
-    __requires__ = 'range_types',
-    __dialect__ = 'postgresql+psycopg2'
+    __requires__ = 'range_types', 'psycopg2_compatibility'
     __backend__ = True
 
     def extras(self):
         # done this way so we don't get ImportErrors with
         # older psycopg2 versions.
-        from psycopg2 import extras
+        if testing.against("postgresql+psycopg2cffi"):
+            from psycopg2cffi import extras
+        else:
+            from psycopg2 import extras
         return extras
 
     @classmethod
@@ -1966,7 +1968,7 @@ class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     def tstzs(self):
         if self._tstzs is None:
-            lower = testing.db.connect().scalar(
+            lower = testing.db.scalar(
                 func.current_timestamp().select()
             )
             upper = lower + datetime.timedelta(1)
@@ -2216,17 +2218,17 @@ class JSONRoundTripTest(fixtures.TablesTest):
         cols = insp.get_columns('data_table')
         assert isinstance(cols[2]['type'], self.test_type)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_insert_native(self):
         engine = testing.db
         self._test_insert(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_insert_native_nulls(self):
         engine = testing.db
         self._test_insert_nulls(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_insert_native_none_as_null(self):
         engine = testing.db
         self._test_insert_none_as_null(engine)
@@ -2284,15 +2286,15 @@ class JSONRoundTripTest(fixtures.TablesTest):
             },
         )
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_custom_native(self):
         self._test_custom_serialize_deserialize(True)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_custom_python(self):
         self._test_custom_serialize_deserialize(False)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_criterion_native(self):
         engine = testing.db
         self._fixture_data(engine)
@@ -2364,7 +2366,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_fixed_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_fixed_round_trip_native(self):
         engine = testing.db
         self._test_fixed_round_trip(engine)
@@ -2391,7 +2393,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_unicode_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)

@@ -31,6 +31,18 @@ class PGDialect_psycopg2cffi(PGDialect_psycopg2):
     driver = 'psycopg2cffi'
     supports_unicode_statements = True
 
+    # psycopg2cffi's first release is 2.5.0, but reports
+    # __version__ as 2.4.4.  Subsequent releases seem to have
+    # fixed this.
+
+    FEATURE_VERSION_MAP = dict(
+        native_json=(2, 4, 4),
+        native_jsonb=(99, 99, 99),
+        sane_multi_rowcount=(2, 4, 4),
+        array_oid=(2, 4, 4),
+        hstore_adapter=(2, 4, 4)
+    )
+
     @classmethod
     def dbapi(cls):
         return __import__('psycopg2cffi')

@@ -817,7 +817,7 @@ class ReflectionTest(fixtures.TestBase):
             }])
 
     @testing.provide_metadata
-    @testing.only_on("postgresql>=8.5")
+    @testing.only_on("postgresql >= 8.5")
     def test_reflection_with_unique_constraint(self):
         insp = inspect(testing.db)
 

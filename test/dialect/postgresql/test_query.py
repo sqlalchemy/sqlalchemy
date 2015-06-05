@@ -549,7 +549,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
 class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
 
-    __only_on__ = 'postgresql+psycopg2'
+    __requires__ = 'psycopg2_compatibility',
 
     def _fixture(self, server_side_cursors):
         self.engine = engines.testing_engine(

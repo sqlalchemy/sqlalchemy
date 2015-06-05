@@ -501,6 +501,14 @@ class PGDialect_psycopg2(PGDialect):
     preparer = PGIdentifierPreparer_psycopg2
     psycopg2_version = (0, 0)
 
+    FEATURE_VERSION_MAP = dict(
+        native_json=(2, 5),
+        native_jsonb=(2, 5, 4),
+        sane_multi_rowcount=(2, 0, 9),
+        array_oid=(2, 4, 3),
+        hstore_adapter=(2, 4)
+    )
+
     _has_native_hstore = False
     _has_native_json = False
     _has_native_jsonb = False
@@ -547,11 +555,15 @@ class PGDialect_psycopg2(PGDialect):
         self._has_native_hstore = self.use_native_hstore and \
             self._hstore_oids(connection.connection) \
             is not None
-        self._has_native_json = self.psycopg2_version >= (2, 5)
-        self._has_native_jsonb = self.psycopg2_version >= (2, 5, 4)
+        self._has_native_json = \
+            self.psycopg2_version >= self.FEATURE_VERSION_MAP['native_json']
+        self._has_native_jsonb = \
+            self.psycopg2_version >= self.FEATURE_VERSION_MAP['native_jsonb']
 
         # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
-        self.supports_sane_multi_rowcount = self.psycopg2_version >= (2, 0, 9)
+        self.supports_sane_multi_rowcount = \
+            self.psycopg2_version >= \
+            self.FEATURE_VERSION_MAP['sane_multi_rowcount']
 
     @classmethod
     def dbapi(cls):
@@ -625,7 +637,8 @@ class PGDialect_psycopg2(PGDialect):
                     kw = {'oid': oid}
                     if util.py2k:
                         kw['unicode'] = True
-                    if self.psycopg2_version >= (2, 4, 3):
+                    if self.psycopg2_version >= \
+                            self.FEATURE_VERSION_MAP['array_oid']:
                         kw['array_oid'] = array_oid
                     extras.register_hstore(conn, **kw)
             fns.append(on_connect)
@@ -650,7 +663,7 @@ class PGDialect_psycopg2(PGDialect):
 
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
-        if self.psycopg2_version >= (2, 4):
+        if self.psycopg2_version >= self.FEATURE_VERSION_MAP['hstore_adapter']:
             extras = self._psycopg2_extras()
             oids = extras.HstoreAdapter.get_oids(conn)
             if oids is not None and oids[0]:
