@@ -19,6 +19,12 @@
     :version: 1.0.5
 
     .. change::
+        :tags: feature, engine
+
+        Added new engine event :meth:`.ConnectionEvents.engine_disposed`.
+        Called after the :meth:`.Engine.dispose` method is called.
+
+    .. change::
         :tags: bug, postgresql, pypy
         :tickets: 3439
 

@@ -484,6 +484,32 @@ class ExecuteTest(fixtures.TestBase):
         eq_(canary, ["l1", "l2", "l3", "l1", "l2"])
 
     @testing.requires.ad_hoc_engines
+    def test_dispose_event(self):
+        canary = Mock()
+        eng = create_engine(testing.db.url)
+        event.listen(eng, "engine_disposed", canary)
+
+        conn = eng.connect()
+        conn.close()
+        eng.dispose()
+
+
+        conn = eng.connect()
+        conn.close()
+
+        eq_(
+            canary.mock_calls,
+            [call(eng)]
+        )
+
+        eng.dispose()
+
+        eq_(
+            canary.mock_calls,
+            [call(eng), call(eng)]
+        )
+
+    @testing.requires.ad_hoc_engines
     def test_autocommit_option_no_issue_first_connect(self):
         eng = create_engine(testing.db.url)
         eng.update_execution_options(autocommit=True)

@@ -882,6 +882,23 @@ class ConnectionEvents(event.Events):
 
         """
 
+    def engine_disposed(self, engine):
+        """Intercept when the :meth:`.Engine.dispose` method is called.
+
+        The :meth:`.Engine.dispose` method instructs the engine to
+        "dispose" of it's connection pool (e.g. :class:`.Pool`), and
+        replaces it with a new one.  Disposing of the old pool has the
+        effect that existing checked-in connections are closed.  The new
+        pool does not establish any new connections until it is first used.
+
+        This event can be used to indicate that resources related to the
+        :class:`.Engine` should also be cleaned up, keeping in mind that the
+        :class:`.Engine` can still be used for new requests in which case
+        it re-acquires connection resources.
+
+        .. versionadded:: 1.0.5
+
+        """
     def begin(self, conn):
         """Intercept begin() events.
 
