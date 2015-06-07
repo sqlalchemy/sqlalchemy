@@ -9,7 +9,7 @@ from sqlalchemy.orm.instrumentation import is_instrumented
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.testing import fixtures
 from sqlalchemy.ext import instrumentation
-from sqlalchemy.orm.instrumentation import register_class
+from sqlalchemy.orm.instrumentation import register_class, manager_of_class
 from sqlalchemy.testing.util import decorator
 from sqlalchemy.orm import events
 from sqlalchemy import event
@@ -465,7 +465,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
         register_class(A)
 
         eq_(
-            type(instrumentation.manager_of_class(A)),
+            type(manager_of_class(A)),
             instrumentation.ClassManager)
 
     def test_nativeext_interfaceexact(self):
@@ -475,7 +475,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
 
         register_class(A)
         ne_(
-            type(instrumentation.manager_of_class(A)),
+            type(manager_of_class(A)),
             instrumentation.ClassManager)
 
     def test_nativeext_submanager(self):
@@ -486,7 +486,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
             __sa_instrumentation_manager__ = Mine
 
         register_class(A)
-        eq_(type(instrumentation.manager_of_class(A)), Mine)
+        eq_(type(manager_of_class(A)), Mine)
 
     @modifies_instrumentation_finders
     def test_customfinder_greedy(self):
@@ -501,7 +501,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
 
         instrumentation.instrumentation_finders.insert(0, find)
         register_class(A)
-        eq_(type(instrumentation.manager_of_class(A)), Mine)
+        eq_(type(manager_of_class(A)), Mine)
 
     @modifies_instrumentation_finders
     def test_customfinder_pass(self):
@@ -513,8 +513,9 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
 
         instrumentation.instrumentation_finders.insert(0, find)
         register_class(A)
+
         eq_(
-            type(instrumentation.manager_of_class(A)),
+            type(manager_of_class(A)),
             instrumentation.ClassManager)
 
 
