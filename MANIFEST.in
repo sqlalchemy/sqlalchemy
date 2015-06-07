@@ -9,5 +9,5 @@ recursive-include test *.py *.dat
 # don't come in if --with-cextensions isn't specified.
 recursive-include lib *.c *.txt
 
-include README* AUTHORS LICENSE distribute_setup.py sa2to3.py ez_setup.py sqla_nose.py CHANGES*
+include README* AUTHORS LICENSE distribute_setup.py sa2to3.py ez_setup.py sqla_nose.py CHANGES* tox.ini
 prune doc/build/output
