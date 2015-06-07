@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.5
+    :released: June 7, 2015
 
     .. change::
         :tags: feature, engine
