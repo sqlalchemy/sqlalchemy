@@ -755,7 +755,7 @@ class memoized_property(object):
         obj.__dict__.pop(name, None)
 
 
-class memoized_instancemethod(object):
+def memoized_instancemethod(fn):
     """Decorate a method memoize its return value.
 
     Best applied to no-arg methods: memoization is not sensitive to
@@ -764,26 +764,14 @@ class memoized_instancemethod(object):
 
     """
 
-    def __init__(self, fget, doc=None):
-        self.fget = fget
-        self.__doc__ = doc or fget.__doc__
-        self.__name__ = fget.__name__
-
-    def __get__(self, obj, cls):
-        if obj is None:
-            return self
-
-        def oneshot(*args, **kw):
-            result = self.fget(obj, *args, **kw)
-            memo = lambda *a, **kw: result
-            memo.__name__ = self.__name__
-            memo.__doc__ = self.__doc__
-            obj.__dict__[self.__name__] = memo
-            return result
-
-        oneshot.__name__ = self.__name__
-        oneshot.__doc__ = self.__doc__
-        return oneshot
+    def oneshot(self, *args, **kw):
+        result = fn(self, *args, **kw)
+        memo = lambda *a, **kw: result
+        memo.__name__ = fn.__name__
+        memo.__doc__ = fn.__doc__
+        self.__dict__[fn.__name__] = memo
+        return result
+    return update_wrapper(oneshot, fn)
 
 
 class group_expirable_memoized_property(object):

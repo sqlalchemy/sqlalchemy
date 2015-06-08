@@ -18,6 +18,14 @@
 .. changelog::
     :version: 1.0.6
 
+    .. change::
+        :tags: bug, documentation
+        :tickets: 2077
+
+        Fixed an internal "memoization" routine for method types such
+        that a Python descriptor is no longer used; repairs inspectability
+        of these methods including support for Sphinx documentation.
+
 .. changelog::
     :version: 1.0.5
     :released: June 7, 2015

@@ -7,7 +7,7 @@ from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
 from sqlalchemy.util import langhelpers
-
+import inspect
 
 class _KeyedTupleTest(object):
 
@@ -276,6 +276,7 @@ class MemoizedAttrTest(fixtures.TestBase):
                 val[0] += 1
                 return v
 
+        assert inspect.ismethod(Foo().bar)
         ne_(Foo.bar, None)
         f1 = Foo()
         assert 'bar' not in f1.__dict__
