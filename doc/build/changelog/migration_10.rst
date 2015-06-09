@@ -8,7 +8,7 @@ What's New in SQLAlchemy 1.0?
     undergoing maintenance releases as of May, 2014,
     and SQLAlchemy version 1.0, released in April, 2015.
 
-    Document last updated: May 2, 2015
+    Document last updated: June 9, 2015
 
 Introduction
 ============
@@ -1667,6 +1667,20 @@ has always emitted a warning here and ignored addtional results for
 ``uselist=False``, so the results in that error situation should not change.
 
 :ticket:`3249`
+
+
+query.update() / query.delete() raises if used with join(), select_from(), from_self()
+--------------------------------------------------------------------------------------
+
+A warning is emitted in SQLAlchemy 0.9.10 (not yet released as of
+June 9, 2015) when the :meth:`.Query.update` or :meth:`.Query.delete` methods
+are invoked against a query which has also called upon :meth:`.Query.join`,
+:meth:`.Query.outerjoin`,
+:meth:`.Query.select_from` or :meth:`.Query.from_self`.  These are unsupported
+use cases which silently fail in the 0.9 series up until 0.9.10 where it emits
+a warning.  In 1.0, these cases raise an exception.
+
+:ticket:`3349`
 
 
 query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
