@@ -3103,7 +3103,8 @@ class Label(ColumnElement):
         return self.element,
 
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
-        self.element = clone(self.element, **kw)
+        self._element = clone(self._element, **kw)
+        self.__dict__.pop('element', None)
         self.__dict__.pop('_allow_label_resolve', None)
         if anonymize_labels:
             self.name = self._resolve_label = _anonymous_label(

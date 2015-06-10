@@ -19,6 +19,20 @@
     :version: 1.0.6
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3445
+
+        Fixed a bug where clause adaption as applied to a :class:`.Label`
+        object would fail to accommodate the labeled SQL expression
+        in all cases, such that any SQL operation that made use of
+        :meth:`.Label.self_group` would use the original unadapted
+        expression.  One effect of this would be that an ORM :func:`.aliased`
+        construct would not fully accommodate attributes mapped by
+        :obj:`.column_property`, such that the un-aliased table could
+        leak out when the property were used in some kinds of SQL
+        comparisons.
+
+    .. change::
         :tags: bug, documentation
         :tickets: 2077
 

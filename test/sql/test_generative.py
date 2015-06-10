@@ -454,6 +454,27 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             str(f1), str(f2)
         )
 
+    def test_labeled_expression_adapt(self):
+        lbl_x = (t3.c.col1 == 1).label('x')
+        t3_alias = t3.alias()
+
+        adapter = sql_util.ColumnAdapter(t3_alias)
+
+        lblx_adapted = adapter.traverse(lbl_x)
+        is_not_(lblx_adapted._element, lbl_x._element)
+
+        lblx_adapted = adapter.traverse(lbl_x)
+        self.assert_compile(
+            select([lblx_adapted.self_group()]),
+            "SELECT (table3_1.col1 = :col1_1) AS x FROM table3 AS table3_1"
+        )
+
+        self.assert_compile(
+            select([lblx_adapted.is_(True)]),
+            "SELECT (table3_1.col1 = :col1_1) IS 1 AS anon_1 "
+            "FROM table3 AS table3_1"
+        )
+
     def test_text(self):
         clause = text(
             "select * from table where foo=:bar",
