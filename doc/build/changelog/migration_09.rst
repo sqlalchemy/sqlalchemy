@@ -9,7 +9,7 @@ What's New in SQLAlchemy 0.9?
     and SQLAlchemy version 0.9, which had its first production
     release on December 30, 2013.
 
-    Document last updated: February 28, 2014
+    Document last updated: June 10, 2015
 
 Introduction
 ============
@@ -401,6 +401,70 @@ This is a small change demonstrated as follows::
 
 Behavioral Changes - Core
 =========================
+
+Type objects no longer accept ignored keyword arguments
+-------------------------------------------------------
+
+Up through the 0.8 series, most type objects accepted arbitrary keyword
+arguments which were silently ignored::
+
+    from sqlalchemy import Date, Integer
+
+    # storage_format argument here has no effect on any backend;
+    # it needs to be on the SQLite-specific type
+    d = Date(storage_format="%(day)02d.%(month)02d.%(year)04d")
+
+    # display_width argument here has no effect on any backend;
+    # it needs to be on the MySQL-specific type
+    i = Integer(display_width=5)
+
+This was a very old bug for which a deprecation warning was added to the
+0.8 series, but because nobody ever runs Python with the "-W" flag, it
+was mostly never seen::
+
+
+    $ python -W always::DeprecationWarning ~/dev/sqlalchemy/test.py
+    /Users/classic/dev/sqlalchemy/test.py:5: SADeprecationWarning: Passing arguments to
+    type object constructor <class 'sqlalchemy.types.Date'> is deprecated
+      d = Date(storage_format="%(day)02d.%(month)02d.%(year)04d")
+    /Users/classic/dev/sqlalchemy/test.py:9: SADeprecationWarning: Passing arguments to
+    type object constructor <class 'sqlalchemy.types.Integer'> is deprecated
+      i = Integer(display_width=5)
+
+As of the 0.9 series the "catch all" constructor is removed from
+:class:`.TypeEngine`, and these meaningless arguments are no longer accepted.
+
+The correct way to make use of dialect-specific arguments such as
+``storage_format`` and ``display_width`` is to use the appropriate
+dialect-specific types::
+
+    from sqlalchemy.dialects.sqlite import DATE
+    from sqlalchemy.dialects.mysql import INTEGER
+
+    d = DATE(storage_format="%(day)02d.%(month)02d.%(year)04d")
+
+    i = INTEGER(display_width=5)
+
+What about the case where we want the dialect-agnostic type also?  We
+use the :meth:`.TypeEngine.with_variant` method::
+
+    from sqlalchemy import Date, Integer
+    from sqlalchemy.dialects.sqlite import DATE
+    from sqlalchemy.dialects.mysql import INTEGER
+
+    d = Date().with_variant(
+            DATE(storage_format="%(day)02d.%(month)02d.%(year)04d"),
+            "sqlite"
+        )
+
+    i = Integer().with_variant(
+            INTEGER(display_width=5),
+            "mysql"
+        )
+
+:meth:`.TypeEngine.with_variant` isn't new, it was added in SQLAlchemy
+0.7.2.  So code that is running on the 0.8 series can be corrected to use
+this approach and tested before upgrading to 0.9.
 
 ``None`` can no longer be used as a "partial AND" constructor
 --------------------------------------------------------------
