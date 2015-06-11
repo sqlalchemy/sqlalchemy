@@ -3539,11 +3539,13 @@ class _ColumnEntity(_QueryEntity):
         self.expr = column
         self.namespace = namespace
         search_entities = True
+        check_column = False
 
         if isinstance(column, util.string_types):
             column = sql.literal_column(column)
             self._label_name = column.name
             search_entities = False
+            check_column = True
             _entity = None
         elif isinstance(column, (
             attributes.QueryableAttribute,
@@ -3554,10 +3556,12 @@ class _ColumnEntity(_QueryEntity):
                 search_entities = False
             self._label_name = column.key
             column = column._query_clause_element()
+            check_column = True
             if isinstance(column, Bundle):
                 _BundleEntity(query, column)
                 return
-        elif not isinstance(column, sql.ColumnElement):
+
+        if not isinstance(column, sql.ColumnElement):
             if hasattr(column, '_select_iterable'):
                 # break out an object like Table into
                 # individual columns
@@ -3572,7 +3576,7 @@ class _ColumnEntity(_QueryEntity):
                 "SQL expression, column, or mapped entity "
                 "expected - got '%r'" % (column, )
             )
-        else:
+        elif not check_column:
             self._label_name = getattr(column, 'key', None)
             search_entities = True
 

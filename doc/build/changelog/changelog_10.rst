@@ -19,6 +19,19 @@
     :version: 1.0.6
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3448
+
+        Fixed an unexpected-use regression whereby custom :class:`.Comparator`
+        objects that made use of the ``__clause_element__()`` method and
+        returned an object that was an ORM-mapped
+        :class:`.InstrumentedAttribute` and not explicitly a
+        :class:`.ColumnElement` would fail to be correctly
+        handled when passed as an expression to :meth:`.Session.query`.
+        The logic in 0.9 happened to succeed on this, so this use case is now
+        supported.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3445
 

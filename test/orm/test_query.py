@@ -1718,6 +1718,25 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
 
+class ComparatorTest(QueryTest):
+    def test_clause_element_query_resolve(self):
+        from sqlalchemy.orm.properties import ColumnProperty
+        User = self.classes.User
+
+        class Comparator(ColumnProperty.Comparator):
+            def __init__(self, expr):
+                self.expr = expr
+
+            def __clause_element__(self):
+                return self.expr
+
+        sess = Session()
+        eq_(
+            sess.query(Comparator(User.id)).order_by(Comparator(User.id)).all(),
+            [(7, ), (8, ), (9, ), (10, )]
+        )
+
+
 # more slice tests are available in test/orm/generative.py
 class SliceTest(QueryTest):
     def test_first(self):
