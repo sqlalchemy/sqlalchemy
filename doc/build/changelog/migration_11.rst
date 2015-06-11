@@ -154,6 +154,31 @@ recipe illustrating how to replace the strong identity map.
 
 :ticket:`2677`
 
+.. _change_1311:
+
+New init_scalar() event intercepts default values at ORM level
+--------------------------------------------------------------
+
+The ORM produces a value of ``None`` when an attribute that has not been
+set is first accessed, for a non-persistent object::
+
+    >>> obj = MyObj()
+    >>> obj.some_value
+    None
+
+There's a use case for this in-Python value to correspond to that of a
+Core-generated default value, even before the object is persisted.
+To suit this use case a new event :meth:`.AttributeEvents.init_scalar`
+is added.   The new example ``active_column_defaults.py`` at
+:ref:`examples_instrumentation` illustrates a sample use, so the effect
+can instead be::
+
+    >>> obj = MyObj()
+    >>> obj.some_value
+    "my default"
+
+:ticket:`1311`
+
 .. _change_3499:
 
 Changes regarding "unhashable" types

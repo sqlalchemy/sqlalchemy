@@ -22,6 +22,19 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm
+        :tickets: 1311
+
+        Added new event :meth:`.AttributeEvents.init_scalar`, as well
+        as a new example suite illustrating its use.  This event can be used
+        to provide a Core-generated default value to a Python-side attribute
+        before the object is persisted.
+
+        .. seealso::
+
+            :ref:`change_1311`
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 3720
 

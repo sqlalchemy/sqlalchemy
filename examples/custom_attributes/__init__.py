@@ -1,5 +1,5 @@
 """
-Two examples illustrating modifications to SQLAlchemy's attribute management
+Examples illustrating modifications to SQLAlchemy's attribute management
 system.
 
 .. autosource::
