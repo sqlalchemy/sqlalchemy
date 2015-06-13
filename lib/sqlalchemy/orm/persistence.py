@@ -472,12 +472,11 @@ def _collect_update_commands(
             continue
 
         if bulk:
-            pk_params = dict(
-                (propkey_to_col[propkey]._label, state_dict.get(propkey))
-                for propkey in
-                set(propkey_to_col).
-                intersection(mapper._pk_keys_by_table[table])
-            )
+            pk_params = {}
+            for propkey in set(propkey_to_col).intersection(mapper._pk_keys_by_table[table]):
+              col = propkey_to_col[propkey]
+              pk_params[col._label] = state_dict.get(propkey)
+              params.pop(col.key, None)
         else:
             pk_params = {}
             for col in pks:
