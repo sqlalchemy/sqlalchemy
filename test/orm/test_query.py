@@ -2675,10 +2675,12 @@ class YieldTest(_fixtures.FixtureTest):
         User = self.classes.User
 
         sess = create_session()
-        q = sess.query(User).yield_per(1)
+        q = sess.query(User).yield_per(15)
         q = q.execution_options(foo='bar')
         assert q._yield_per
-        eq_(q._execution_options, {"stream_results": True, "foo": "bar"})
+        eq_(
+            q._execution_options,
+            {"stream_results": True, "foo": "bar", "max_row_buffer": 15})
 
     def test_no_joinedload_opt(self):
         self._eagerload_mappings()

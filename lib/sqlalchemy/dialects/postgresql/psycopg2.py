@@ -74,6 +74,8 @@ See also:
 `PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/\
 libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
+.. _psycopg2_execution_options:
+
 Per-Statement/Connection Execution Options
 -------------------------------------------
 
@@ -81,15 +83,22 @@ The following DBAPI-specific options are respected when used with
 :meth:`.Connection.execution_options`, :meth:`.Executable.execution_options`,
 :meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
 
-* isolation_level - Set the transaction isolation level for the lifespan of a
+* ``isolation_level`` - Set the transaction isolation level for the lifespan of a
   :class:`.Connection` (can only be set on a connection, not a statement
   or query).   See :ref:`psycopg2_isolation_level`.
 
-* stream_results - Enable or disable usage of psycopg2 server side cursors -
+* ``stream_results`` - Enable or disable usage of psycopg2 server side cursors -
   this feature makes use of "named" cursors in combination with special
   result handling methods so that result rows are not fully buffered.
   If ``None`` or not set, the ``server_side_cursors`` option of the
   :class:`.Engine` is used.
+
+* ``max_row_buffer`` - when using ``stream_results``, an integer value that
+  specifies the maximum number of rows to buffer at a time.  This is
+  interpreted by the :class:`.BufferedRowResultProxy`, and if omitted the
+  buffer will grow to ultimately store 1000 rows at a time.
+
+  .. versionadded:: 1.0.6
 
 .. _psycopg2_unicode:
 
