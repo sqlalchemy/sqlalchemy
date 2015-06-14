@@ -1189,18 +1189,6 @@ class AlternateResultProxyTest(fixtures.TablesTest):
                 conn.execute(self.table.insert(), [
                     {'x': i, 'y': "t_%d" % i} for i in range(15, 1200)
                 ])
-                result = conn.execute(self.table.select())
-                checks = {
-                    0: 5, 1: 10, 9: 20,
-                }
-                for idx, row in enumerate(result, 0):
-                    if idx in checks:
-                        eq_(result._bufsize, checks[idx])
-                    le_(
-                        len(result._BufferedRowResultProxy__rowbuffer),
-                        1000
-                    )
-
                 result = conn.execution_options(max_row_buffer=27).execute(
                     self.table.select()
                 )
