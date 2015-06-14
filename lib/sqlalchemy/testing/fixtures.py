@@ -134,13 +134,14 @@ class TablesTest(TestBase):
     def _teardown_each_tables(self):
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != 'each' and self.run_deletes == 'each':
-            for table in reversed(self.metadata.sorted_tables):
-                try:
-                    table.delete().execute().close()
-                except sa.exc.DBAPIError as ex:
-                    util.print_(
-                        ("Error emptying table %s: %r" % (table, ex)),
-                        file=sys.stderr)
+            with self.bind.connect() as conn:
+                for table in reversed(self.metadata.sorted_tables):
+                    try:
+                        conn.execute(table.delete())
+                    except sa.exc.DBAPIError as ex:
+                        util.print_(
+                            ("Error emptying table %s: %r" % (table, ex)),
+                            file=sys.stderr)
 
     def setup(self):
         self._setup_each_tables()
