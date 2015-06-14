@@ -45,8 +45,7 @@ def profile_memory(maxtimes=50):
             # tests under 50 iterations and ideally about ten, so
             # just filter them out so that we get a "flatline" more quickly.
 
-            if testing.against("sqlite+pysqlite") or \
-                    testing.against("sqlite+pysqlcipher"):
+            if testing.against("sqlite+pysqlite"):
                 return [o for o in gc.get_objects()
                         if not isinstance(o, weakref.ref)]
             else:
