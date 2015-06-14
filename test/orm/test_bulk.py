@@ -134,6 +134,27 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
             )
         )
 
+    def test_bulk_insert(self):
+        User, = self.classes("User",)
+
+        s = Session()
+        with self.sql_execution_asserter() as asserter:
+            s.bulk_insert_mappings(
+                User,
+                [{'id': 1, 'name': 'u1new'},
+                 {'id': 2, 'name': 'u2'},
+                 {'id': 3, 'name': 'u3new'}]
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO users (id, name) VALUES (:id, :name)",
+                [{'id': 1, 'name': 'u1new'},
+                 {'id': 2, 'name': 'u2'},
+                 {'id': 3, 'name': 'u3new'}]
+            )
+        )
+
 
 class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
     @classmethod

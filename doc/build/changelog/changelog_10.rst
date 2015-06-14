@@ -20,6 +20,16 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3451
+        :pullreq: github:181
+
+        Fixed bug in new :meth:`.Session.bulk_update_mappings` feature where
+        the primary key columns used in the WHERE clause to locate the row
+        would also be included in the SET clause, setting their value to
+        themselves unnecessarily.  Pull request courtesy Patrick Hayes.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3448
 
         Fixed an unexpected-use regression whereby custom :class:`.Comparator`
