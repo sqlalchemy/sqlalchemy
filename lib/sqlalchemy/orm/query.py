@@ -756,7 +756,8 @@ class Query(object):
         """
         self._yield_per = count
         self._execution_options = self._execution_options.union(
-            {"stream_results": True})
+            {"stream_results": True,
+             "max_row_buffer": count})
 
     def get(self, ident):
         """Return an instance based on the given primary key identifier,

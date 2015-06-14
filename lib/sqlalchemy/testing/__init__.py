@@ -19,7 +19,7 @@ def against(*queries):
     return _against(config._current, *queries)
 
 from .assertions import emits_warning, emits_warning_on, uses_deprecated, \
-    eq_, ne_, is_, is_not_, startswith_, assert_raises, \
+    eq_, ne_, le_, is_, is_not_, startswith_, assert_raises, \
     assert_raises_message, AssertsCompiledSQL, ComparesTables, \
     AssertsExecutionResults, expect_deprecated, expect_warnings
 

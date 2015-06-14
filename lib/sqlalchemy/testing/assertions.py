@@ -216,6 +216,11 @@ def ne_(a, b, msg=None):
     assert a != b, msg or "%r == %r" % (a, b)
 
 
+def le_(a, b, msg=None):
+    """Assert a <= b, with repr messaging on failure."""
+    assert a <= b, msg or "%r != %r" % (a, b)
+
+
 def is_(a, b, msg=None):
     """Assert a is b, with repr messaging on failure."""
     assert a is b, msg or "%r is not %r" % (a, b)

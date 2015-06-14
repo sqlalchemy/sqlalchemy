@@ -19,6 +19,17 @@
     :version: 1.0.6
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: github:182
+
+        Added new execution option ``max_row_buffer`` which is interpreted
+        by the psycopg2 dialect when the ``stream_results`` option is
+        used, which sets a limit on the size of the row buffer that may be
+        allocated.  This value is also provided based on the integer
+        value sent to :meth:`.Query.yield_per`.  Pull request courtesy
+        mcclurem.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3451
         :pullreq: github:181
