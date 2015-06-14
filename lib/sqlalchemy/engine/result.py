@@ -1067,7 +1067,7 @@ class BufferedRowResultProxy(ResultProxy):
 
     The pre-fetching behavior fetches only one row initially, and then
     grows its buffer size by a fixed amount with each successive need
-    for additional rows up to a size of 100.
+    for additional rows up to a size of 1000.
     """
 
     def _init_metadata(self):
@@ -1083,7 +1083,10 @@ class BufferedRowResultProxy(ResultProxy):
         5: 10,
         10: 20,
         20: 50,
-        50: 100
+        50: 100,
+        100: 250,
+        250: 500,
+        500: 1000
     }
 
     def __buffer_rows(self):
@@ -1092,6 +1095,8 @@ class BufferedRowResultProxy(ResultProxy):
         size = getattr(self, '_bufsize', 1)
         self.__rowbuffer = collections.deque(self.cursor.fetchmany(size))
         self._bufsize = self.size_growth.get(size, size)
+        if self.context.execution_options.get('max_row_buffer') is not None:
+            self._bufsize = min(self.context.execution_options['max_row_buffer'], self._bufsize)
 
     def _soft_close(self, **kw):
         self.__rowbuffer.clear()
