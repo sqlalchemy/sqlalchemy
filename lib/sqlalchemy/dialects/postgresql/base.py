@@ -1601,15 +1601,17 @@ class PGDDLCompiler(compiler.DDLCompiler):
             text += " WHERE " + where_compiled
         return text
 
-    def visit_exclude_constraint(self, constraint):
+    def visit_exclude_constraint(self, constraint, **kw):
         text = ""
         if constraint.name is not None:
             text += "CONSTRAINT %s " % \
                     self.preparer.format_constraint(constraint)
         elements = []
-        for c in constraint.columns:
-            op = constraint.operators[c.name]
-            elements.append(self.preparer.quote(c.name) + ' WITH ' + op)
+        for expr, name, op in constraint._render_exprs:
+            kw['include_table'] = False
+            elements.append(
+                "%s WITH %s" % (self.sql_compiler.process(expr, **kw), op)
+            )
         text += "EXCLUDE USING %s (%s)" % (constraint.using,
                                            ', '.join(elements))
         if constraint.where is not None:

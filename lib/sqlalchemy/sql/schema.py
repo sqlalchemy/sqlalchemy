@@ -2392,6 +2392,22 @@ class ColumnCollectionMixin(object):
         if _autoattach and self._pending_colargs:
             self._check_attach()
 
+    @classmethod
+    def _extract_col_expression_collection(cls, expressions):
+        for expr in expressions:
+            strname = None
+            column = None
+            if not isinstance(expr, ClauseElement):
+                # this assumes a string
+                strname = expr
+            else:
+                cols = []
+                visitors.traverse(expr, {}, {'column': cols.append})
+                if cols:
+                    column = cols[0]
+            add_element = column if column is not None else strname
+            yield expr, column, strname, add_element
+
     def _check_attach(self, evt=False):
         col_objs = [
             c for c in self._pending_colargs
@@ -3086,14 +3102,10 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.table = None
 
         columns = []
-        for expr in expressions:
-            if not isinstance(expr, ClauseElement):
-                columns.append(expr)
-            else:
-                cols = []
-                visitors.traverse(expr, {}, {'column': cols.append})
-                if cols:
-                    columns.append(cols[0])
+        for expr, column, strname, add_element in self.\
+                _extract_col_expression_collection(expressions):
+            if add_element is not None:
+                columns.append(add_element)
 
         self.expressions = expressions
         self.name = quoted_name(name, kw.pop("quote", None))

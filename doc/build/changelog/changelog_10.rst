@@ -19,6 +19,15 @@
     :version: 1.0.6
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3454
+
+        Repaired the :class:`.ExcludeConstraint` construct to support common
+        features that other objects like :class:`.Index` now do, that
+        the column expression may be specified as an arbitrary SQL
+        expression such as :obj:`.cast` or :obj:`.text`.
+
+    .. change::
         :tags: feature, postgresql
         :pullreq: github:182
 

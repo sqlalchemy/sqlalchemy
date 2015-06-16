@@ -5,7 +5,8 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL, is_, \
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
-    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text
+    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text, \
+    Text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -443,8 +444,47 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl.append_constraint(cons_copy)
         self.assert_compile(schema.AddConstraint(cons_copy),
                             'ALTER TABLE testtbl ADD EXCLUDE USING gist '
-                            '(room WITH =)',
-                            dialect=postgresql.dialect())
+                            '(room WITH =)')
+
+    def test_exclude_constraint_text(self):
+        m = MetaData()
+        cons = ExcludeConstraint((text('room::TEXT'), '='))
+        Table(
+            'testtbl', m,
+            Column('room', String),
+            cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(room::TEXT WITH =)')
+
+    def test_exclude_constraint_cast(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('room', String)
+        )
+        cons = ExcludeConstraint((cast(tbl.c.room, Text), '='))
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(CAST(room AS TEXT) WITH =)'
+        )
+
+    def test_exclude_constraint_cast_quote(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('Room', String)
+        )
+        cons = ExcludeConstraint((cast(tbl.c.Room, Text), '='))
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(CAST("Room" AS TEXT) WITH =)'
+        )
 
     def test_substring(self):
         self.assert_compile(func.substring('abc', 1, 2),
