@@ -11,12 +11,6 @@ schema, typically though not necessarily one which is reflected.
 
 .. versionadded:: 0.9.1 Added :mod:`sqlalchemy.ext.automap`.
 
-.. note::
-
-    The :mod:`sqlalchemy.ext.automap` extension should be considered
-    **experimental** as of 0.9.1.   Featureset and API stability is
-    not guaranteed at this time.
-
 It is hoped that the :class:`.AutomapBase` system provides a quick
 and modernized solution to the problem that the very famous
 `SQLSoup <https://sqlsoup.readthedocs.org/en/latest/>`_
