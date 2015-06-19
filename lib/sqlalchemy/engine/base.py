@@ -1811,25 +1811,21 @@ class Engine(Connectable, log.Identified):
     def dispose(self):
         """Dispose of the connection pool used by this :class:`.Engine`.
 
+        This has the effect of fully closing all **currently checked in**
+        database connections.  Connections that are still checked out
+        will **not** be closed, however they will no longer be associated
+        with this :class:`.Engine`, so when they are closed individually
+        they will close out fully.
+
         A new connection pool is created immediately after the old one has
         been disposed.   This new pool, like all SQLAlchemy connection pools,
         does not make any actual connections to the database until one is
-        first requested.
+        first requested, so as long as the :class:`.Engine` isn't used again,
+        no new connections will be made.
 
-        This method has two general use cases:
+        .. seealso::
 
-         * When a dropped connection is detected, it is assumed that all
-           connections held by the pool are potentially dropped, and
-           the entire pool is replaced.
-
-         * An application may want to use :meth:`dispose` within a test
-           suite that is creating multiple engines.
-
-        It is critical to note that :meth:`dispose` does **not** guarantee
-        that the application will release all open database connections - only
-        those connections that are checked into the pool are closed.
-        Connections which remain checked out or have been detached from
-        the engine are not affected.
+            :ref:`engine_disposal`
 
         """
         self.pool.dispose()

@@ -368,6 +368,60 @@ the SQL statement. When the :class:`.ResultProxy` is closed, the underlying
 :class:`.Connection` is closed for us, resulting in the
 DBAPI connection being returned to the pool with transactional resources removed.
 
+.. _engine_disposal:
+
+Engine Disposal
+===============
+
+The :class:`.Engine` refers to a connection pool, which means under normal
+circumstances, there are open database connections present while the
+:class:`.Engine` object is still resident in memory.   When an :class:`.Engine`
+is garbage collected, its connection pool is no longer referred to by
+that :class:`.Engine`, and assuming none of its connections are still checked
+out, the pool and its connections will also be checked in, which has the
+effect of closing out the actual database connections as well.
+
+The :class:`.Engine` is intended to be a **long lived, typically permanent
+fixture throughout the lifespan of an application**.  It is **not** intended
+to be created and disposed on a per-connection basis.    However,
+in those cases where it is desirable that all connection resources
+referred to by the :class:`.Engine` need to be completely closed out,
+the :class:`.Engine` can be disposed using the :meth:`.Engine.dispose`
+method.   This disposes of the engine's underlying connection pool and
+replaces it with a new one that's empty.   Provided that the :class:`.Engine`
+is discarded at this point and no longer used, all checked-in connections
+which it refers to will also be fully closed.
+
+Valid use cases for calling :meth:`.Engine.dispose` include::
+
+ * When a program wants to release any remaining checked-in connections
+   held by the connection pool and expects to no longer be connected
+   to that database at all for any future operations.
+
+ * When a program uses multiprocessing or ``fork()``, and an
+   :class:`.Engine` object is copied to the child process,
+   :meth:`.Engine.dispose` should be called so that the engine creates
+   brand new database connections local to that fork.   Database connections
+   generally do **not** travel across process boundaries.
+
+ * Within test suites or multitenancy scenarios where many
+   ad-hoc, short-lived :class:`.Engine` objects may be created and disposed.
+
+
+
+
+Connections that are **checked out** are **not** discarded when the
+engine is disposed or garbage collected, as these connections are still
+strongly referenced elsewhere by the application.
+However, after :meth:`.Engine.dispose` is called, those
+connections are no longer associated with that :class:`.Engine`; when they
+are closed, they will be returned to their now-orphned connection pool
+which will ultimately be garbage collected, once all connections are checked in.
+Since this process is not as clean, it is strongly recommended that
+:meth:`.Engine.dispose` is called only after all checked out connections
+are fully checked in.
+
+
 .. _threadlocal_strategy:
 
 Using the Threadlocal Execution Strategy
