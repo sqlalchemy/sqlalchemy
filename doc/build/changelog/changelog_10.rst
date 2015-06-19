@@ -19,6 +19,23 @@
     :version: 1.0.6
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 3455
+        :pullreq: github:179
+
+        Added support for storage parameters under CREATE INDEX, using
+        a new keyword argument ``postgresql_with``.  Also added support for
+        reflection to support both the ``postgresql_with`` flag as well
+        as the ``postgresql_using`` flag, which will now be set on
+        :class:`.Index` objects that are reflected, as well present
+        in a new "dialect_options" dictionary in the result of
+        :meth:`.Inspector.get_indexes`.  Pull request courtesy Pete Hollobon.
+
+        .. seealso::
+
+            :ref:`postgresql_index_storage`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3462
 

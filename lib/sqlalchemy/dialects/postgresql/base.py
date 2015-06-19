@@ -401,6 +401,8 @@ The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
+.. _postgresql_index_storage:
+
 Index Storage Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -410,6 +412,8 @@ parameters can be specified on :class:`.Index` using the ``postgresql_with``
 keyword argument::
 
     Index('my_index', my_table.c.data, postgresql_with={"fillfactor": 50})
+
+.. versionadded:: 1.0.6
 
 .. _postgresql_index_concurrently:
 
@@ -2690,7 +2694,8 @@ class PGDialect(default.DefaultDialect):
 
         sv_idx_name = None
         for row in c.fetchall():
-            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key, options, amname = row
+            (idx_name, unique, expr, prd, col,
+             col_num, conrelid, idx_key, options, amname) = row
 
             if expr:
                 if idx_name != sv_idx_name:
@@ -2717,7 +2722,13 @@ class PGDialect(default.DefaultDialect):
                 if conrelid is not None:
                     index['duplicates_constraint'] = idx_name
                 if options:
-                    index['options'] = dict([option.split("=") for option in options])
+                    index['options'] = dict(
+                        [option.split("=") for option in options])
+
+                # it *might* be nice to include that this is 'btree' in the
+                # reflection info.  But we don't want an Index object
+                # to have a ``postgresql_using`` in it that is just the
+                # default, so for the moment leaving this out.
                 if amname and amname != 'btree':
                     index['amname'] = amname
 
@@ -2731,9 +2742,11 @@ class PGDialect(default.DefaultDialect):
             if 'duplicates_constraint' in idx:
                 entry['duplicates_constraint'] = idx['duplicates_constraint']
             if 'options' in idx:
-                entry.setdefault('dialect_options', {})["postgresql_with"] = idx['options']
+                entry.setdefault(
+                    'dialect_options', {})["postgresql_with"] = idx['options']
             if 'amname' in idx:
-                entry.setdefault('dialect_options', {})["postgresql_using"] = idx['amname']
+                entry.setdefault(
+                    'dialect_options', {})["postgresql_using"] = idx['amname']
             result.append(entry)
         return result
 

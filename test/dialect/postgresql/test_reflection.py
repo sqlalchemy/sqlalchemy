@@ -679,18 +679,27 @@ class ReflectionTest(fixtures.TestBase):
 
         metadata = self.metadata
 
-        t1 = Table('t', metadata,
-                   Column('id', Integer, primary_key=True),
-                   Column('x', Integer)
-                   )
+        Table(
+            't', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer)
+        )
         metadata.create_all()
-        conn = testing.db.connect().execution_options(autocommit=True)
-        conn.execute("CREATE INDEX idx1 ON t (x) WITH (fillfactor = 50)")
 
-        ind = testing.db.dialect.get_indexes(conn, "t", None)
-        eq_(ind, [{'unique': False, 'column_names': ['x'], 'name': 'idx1',
-                   'dialect_options': {"postgresql_with": {"fillfactor": "50"}}}])
-        conn.close()
+        with testing.db.connect().execution_options(autocommit=True) as conn:
+            conn.execute("CREATE INDEX idx1 ON t (x) WITH (fillfactor = 50)")
+
+            ind = testing.db.dialect.get_indexes(conn, "t", None)
+            eq_(ind, [{'unique': False, 'column_names': ['x'], 'name': 'idx1',
+                       'dialect_options':
+                       {"postgresql_with": {"fillfactor": "50"}}}])
+
+            m = MetaData()
+            t1 = Table('t', m, autoload_with=conn)
+            eq_(
+                list(t1.indexes)[0].dialect_options['postgresql']['with'],
+                {"fillfactor": "50"}
+            )
 
     @testing.provide_metadata
     def test_index_reflection_with_access_method(self):
@@ -698,18 +707,24 @@ class ReflectionTest(fixtures.TestBase):
 
         metadata = self.metadata
 
-        t1 = Table('t', metadata,
-                   Column('id', Integer, primary_key=True),
-                   Column('x', ARRAY(Integer))
-                   )
+        Table(
+            't', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', ARRAY(Integer))
+        )
         metadata.create_all()
-        conn = testing.db.connect().execution_options(autocommit=True)
-        conn.execute("CREATE INDEX idx1 ON t USING gin (x)")
+        with testing.db.connect().execution_options(autocommit=True) as conn:
+            conn.execute("CREATE INDEX idx1 ON t USING gin (x)")
 
-        ind = testing.db.dialect.get_indexes(conn, "t", None)
-        eq_(ind, [{'unique': False, 'column_names': ['x'], 'name': 'idx1',
-                   'dialect_options': {'postgresql_using': 'gin'}}])
-        conn.close()
+            ind = testing.db.dialect.get_indexes(conn, "t", None)
+            eq_(ind, [{'unique': False, 'column_names': ['x'], 'name': 'idx1',
+                       'dialect_options': {'postgresql_using': 'gin'}}])
+            m = MetaData()
+            t1 = Table('t', m, autoload_with=conn)
+            eq_(
+                list(t1.indexes)[0].dialect_options['postgresql']['using'],
+                'gin'
+            )
 
     @testing.provide_metadata
     def test_foreign_key_option_inspection(self):
