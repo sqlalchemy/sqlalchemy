@@ -378,18 +378,26 @@ circumstances, there are open database connections present while the
 :class:`.Engine` object is still resident in memory.   When an :class:`.Engine`
 is garbage collected, its connection pool is no longer referred to by
 that :class:`.Engine`, and assuming none of its connections are still checked
-out, the pool and its connections will also be checked in, which has the
-effect of closing out the actual database connections as well.
+out, the pool and its connections will also be garbage collected, which has the
+effect of closing out the actual database connections as well.   But otherwise,
+the :class:`.Engine` will hold onto open database connections assuming
+it uses the normally default pool implementation of :class:`.QueuePool`.
 
-The :class:`.Engine` is intended to normally be a long lived, typically permanent
-fixture throughout the lifespan of an application.  It is **not** intended
-to be created and disposed on a per-connection basis; it is instead
-a registry of connections.    However,  in those cases where it is desirable
-that all connection resources
-referred to by the :class:`.Engine` need to be completely closed out,
-the :class:`.Engine` can be explicitly disposed using the :meth:`.Engine.dispose`
-method.   This disposes of the engine's underlying connection pool and
-replaces it with a new one that's empty.   Provided that the :class:`.Engine`
+The :class:`.Engine` is intended to normally be a permanent
+fixture established up-front and maintained throughout the lifespan of an
+application.  It is **not** intended to be created and disposed on a
+per-connection basis; it is instead a registry that maintains both a pool
+of connections as well as configurational information about the database
+and DBAPI in use, as well as some degree of internal caching of per-database
+resources.
+
+However, there are many cases where it is desirable that all connection resources
+referred to by the :class:`.Engine` be completely closed out.  It's
+generally not a good idea to rely on Python garbage collection for this
+to occur for these cases; instead, the :class:`.Engine` can be explicitly disposed using
+the :meth:`.Engine.dispose` method.   This disposes of the engine's
+underlying connection pool and replaces it with a new one that's empty.
+Provided that the :class:`.Engine`
 is discarded at this point and no longer used, all **checked-in** connections
 which it refers to will also be fully closed.
 
@@ -414,11 +422,12 @@ engine is disposed or garbage collected, as these connections are still
 strongly referenced elsewhere by the application.
 However, after :meth:`.Engine.dispose` is called, those
 connections are no longer associated with that :class:`.Engine`; when they
-are closed, they will be returned to their now-orphned connection pool
-which will ultimately be garbage collected, once all connections are checked in.
-Since this process is not as clean, it is strongly recommended that
+are closed, they will be returned to their now-orphaned connection pool
+which will ultimately be garbage collected, once all connections which refer
+to it are also no longer referenced anywhere.
+Since this process is not easy to control, it is strongly recommended that
 :meth:`.Engine.dispose` is called only after all checked out connections
-are fully checked in.
+are checked in or otherwise de-associated from their pool.
 
 An alternative for applications that are negatively impacted by the
 :class:`.Engine` object's use of connection pooling is to disable pooling
