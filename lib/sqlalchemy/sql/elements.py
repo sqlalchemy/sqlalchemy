@@ -837,6 +837,13 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
         else:
             return False
 
+    def cast(self, type_):
+        """Produce a type cast, i.e. ``CAST(<expression> AS <type>)``.
+
+        This is a shortcut to the :func:`.cast` function.
+        """
+        return Cast(self, type_)
+
     def label(self, name):
         """Produce a column label, i.e. ``<columnname> AS <name>``.
 
