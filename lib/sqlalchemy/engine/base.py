@@ -1689,8 +1689,10 @@ class Engine(Connectable, log.Identified):
         This has the effect of fully closing all **currently checked in**
         database connections.  Connections that are still checked out
         will **not** be closed, however they will no longer be associated
-        with this :class:`.Engine`, so when they are closed individually
-        they will close out fully.
+        with this :class:`.Engine`, so when they are closed individually,
+        eventually the :class:`.Pool` which they are associated with will
+        be garbage collected and they will be closed out fully, if
+        not already closed on checkin.
 
         A new connection pool is created immediately after the old one has
         been disposed.   This new pool, like all SQLAlchemy connection pools,
