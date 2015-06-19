@@ -839,9 +839,10 @@ class _ORMJoin(expression.Join):
             # or implicit ON clause, augment it the same way we'd augment the
             # WHERE.
             single_crit = right_info.mapper._single_table_criterion
-            if right_info.is_aliased_class:
-                single_crit = right_info._adapter.traverse(single_crit)
-            self.onclause = self.onclause & single_crit
+            if single_crit is not None:
+                if right_info.is_aliased_class:
+                    single_crit = right_info._adapter.traverse(single_crit)
+                self.onclause = self.onclause & single_crit
 
     def _splice_into_center(self, other):
         """Splice a join into the center.

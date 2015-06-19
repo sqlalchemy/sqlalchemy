@@ -410,6 +410,31 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "AND employees_1.type IN (:type_1)"
         )
 
+    def test_join_explicit_onclause_no_discriminator(self):
+        # test issue #3462
+        Company, Employee, Engineer = (
+            self.classes.Company,
+            self.classes.Employee,
+            self.classes.Engineer)
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies, properties={
+            'employees': relationship(Employee)
+        })
+        mapper(Employee, employees)
+        mapper(Engineer, inherits=Employee)
+
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Company, Engineer.name).join(
+                Engineer, Company.company_id == Engineer.company_id),
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, "
+            "employees.name AS employees_name "
+            "FROM companies JOIN "
+            "employees ON companies.company_id = employees.company_id"
+        )
+
     def test_outer_join_prop(self):
         Company, Employee, Engineer = self.classes.Company,\
                                 self.classes.Employee,\

@@ -19,6 +19,16 @@
     :version: 1.0.6
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3462
+
+        Fixed 1.0 regression where the enhanced behavior of single-inheritance
+        joins of :ticket:`3222` takes place inappropriately
+        for a JOIN along explicit join criteria with a single-inheritance
+        subclass that does not make use of any discriminator, resulting
+        in an additional "AND NULL" clause.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3454
 
