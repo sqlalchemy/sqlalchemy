@@ -56,6 +56,8 @@ queued up - the pool would only grow to that size if the application
 actually used five connections concurrently, in which case the usage of a
 small pool is an entirely appropriate default behavior.
 
+.. _pool_switching:
+
 Switching Pool Implementations
 ------------------------------
 

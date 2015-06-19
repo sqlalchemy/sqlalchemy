@@ -381,33 +381,32 @@ that :class:`.Engine`, and assuming none of its connections are still checked
 out, the pool and its connections will also be checked in, which has the
 effect of closing out the actual database connections as well.
 
-The :class:`.Engine` is intended to be a **long lived, typically permanent
-fixture throughout the lifespan of an application**.  It is **not** intended
-to be created and disposed on a per-connection basis.    However,
-in those cases where it is desirable that all connection resources
+The :class:`.Engine` is intended to normally be a long lived, typically permanent
+fixture throughout the lifespan of an application.  It is **not** intended
+to be created and disposed on a per-connection basis; it is instead
+a registry of connections.    However,  in those cases where it is desirable
+that all connection resources
 referred to by the :class:`.Engine` need to be completely closed out,
-the :class:`.Engine` can be disposed using the :meth:`.Engine.dispose`
+the :class:`.Engine` can be explicitly disposed using the :meth:`.Engine.dispose`
 method.   This disposes of the engine's underlying connection pool and
 replaces it with a new one that's empty.   Provided that the :class:`.Engine`
-is discarded at this point and no longer used, all checked-in connections
+is discarded at this point and no longer used, all **checked-in** connections
 which it refers to will also be fully closed.
 
-Valid use cases for calling :meth:`.Engine.dispose` include::
+Valid use cases for calling :meth:`.Engine.dispose` include:
 
- * When a program wants to release any remaining checked-in connections
-   held by the connection pool and expects to no longer be connected
-   to that database at all for any future operations.
+* When a program wants to release any remaining checked-in connections
+  held by the connection pool and expects to no longer be connected
+  to that database at all for any future operations.
 
- * When a program uses multiprocessing or ``fork()``, and an
-   :class:`.Engine` object is copied to the child process,
-   :meth:`.Engine.dispose` should be called so that the engine creates
-   brand new database connections local to that fork.   Database connections
-   generally do **not** travel across process boundaries.
+* When a program uses multiprocessing or ``fork()``, and an
+  :class:`.Engine` object is copied to the child process,
+  :meth:`.Engine.dispose` should be called so that the engine creates
+  brand new database connections local to that fork.   Database connections
+  generally do **not** travel across process boundaries.
 
- * Within test suites or multitenancy scenarios where many
-   ad-hoc, short-lived :class:`.Engine` objects may be created and disposed.
-
-
+* Within test suites or multitenancy scenarios where many
+  ad-hoc, short-lived :class:`.Engine` objects may be created and disposed.
 
 
 Connections that are **checked out** are **not** discarded when the
@@ -421,6 +420,12 @@ Since this process is not as clean, it is strongly recommended that
 :meth:`.Engine.dispose` is called only after all checked out connections
 are fully checked in.
 
+An alternative for applications that are negatively impacted by the
+:class:`.Engine` object's use of connection pooling is to disable pooling
+entirely.  This typically incurs only a modest performance impact upon the
+use of new connections, and means that when a connection is checked in,
+it is entirely closed out and is not held in memory.  See :ref:`pool_switching`
+for guidelines on how to disable pooling.
 
 .. _threadlocal_strategy:
 
