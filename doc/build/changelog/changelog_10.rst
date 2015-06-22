@@ -19,6 +19,17 @@
     :version: 1.0.6
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3464
+
+        Fixed issue when using :class:`.VARBINARY` type in conjunction with
+        an INSERT of NULL + pyodbc; pyodbc requires a special
+        object be passed in order to persist NULL.  As the :class:`.VARBINARY`
+        type is now usually the default for :class:`.LargeBinary` due to
+        :ticket:`3039`, this issue is partially a regression in 1.0.
+        The pymssql driver appears to be unaffected.
+
+    .. change::
         :tags: bug, postgresql, pypy
         :tickets: 3439
 
