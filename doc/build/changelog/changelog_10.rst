@@ -19,6 +19,16 @@
     :version: 1.0.6
 
     .. change::
+        :tags: bug, postgresql, pypy
+        :tickets: 3439
+
+        Re-fixed this issue first released in 1.0.5 to fix psycopg2cffi
+        JSONB support once again, as they suddenly
+        switched on unconditional decoding of JSONB types in version 2.7.1.
+        Version detection now specifies 2.7.1 as where we should expect
+        the DBAPI to do json encoding for us.
+
+    .. change::
         :tags: feature, postgresql
         :tickets: 3455
         :pullreq: github:179

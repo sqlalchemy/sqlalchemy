@@ -37,7 +37,7 @@ class PGDialect_psycopg2cffi(PGDialect_psycopg2):
 
     FEATURE_VERSION_MAP = dict(
         native_json=(2, 4, 4),
-        native_jsonb=(99, 99, 99),
+        native_jsonb=(2, 7, 1),
         sane_multi_rowcount=(2, 4, 4),
         array_oid=(2, 4, 4),
         hstore_adapter=(2, 4, 4)
