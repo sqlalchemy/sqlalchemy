@@ -71,7 +71,7 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
             eq_(names, ['testtable'])
 
 
-class MaterialiedViewReflectionTest(
+class MaterializedViewReflectionTest(
         fixtures.TablesTest, AssertsExecutionResults):
     """Test reflection on materialized views"""
 
