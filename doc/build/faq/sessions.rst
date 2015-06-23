@@ -11,37 +11,41 @@ I'm re-loading data with my Session but it isn't seeing changes that I committed
 ------------------------------------------------------------------------------------------
 
 The main issue regarding this behavior is that the session acts as though
-the transaction is in the *serializable *isolation state, even if it's not
+the transaction is in the *serializable* isolation state, even if it's not
 (and it usually is not).   In practical terms, this means that the session
 does not alter any data that it's already read within the scope of a transaction.
 
-If the term "isolation level" made no sense to you, then you first need to read this link:
+If the term "isolation level" is unfamiliar, then you first need to read this link:
 
-* https://en.wikipedia.org/wiki/Isolation_%28database_systems%29
+`Isolation Level <https://en.wikipedia.org/wiki/Isolation_%28database_systems%29>`_
 
-Now we know what database isolation is, and what serializable means;
-it means that once you SELECT a series of rows in a transaction, you will get
-*the identical data* each time you re-emit that SELECT.   If you are in
+In short, serializable isolation level generally means
+that once you SELECT a series of rows in a transaction, you will get
+*the identical data* back each time you re-emit that SELECT.   If you are in
 the next-lower isolation level, "repeatable read", you'll
-see new rows, but for rows that you've *already* loaded, you won't see
-any change.   Only if you are in a lower isolation level, e.g. "read committed",
-does it become possible to see a row of data change its value.
+see newly added rows (and no longer see deleted rows), but for rows that
+you've *already* loaded, you won't see any change.   Only if you are in a
+lower isolation level, e.g. "read committed", does it become possible to
+see a row of data change its value.
 
-For information on controlling the isolation level from SQLAlchemy,
-see :ref:`session_transaction_isolation`.
+For information on controlling the isolation level when using the
+SQLAlchemy ORM, see :ref:`session_transaction_isolation`.
 
 To simplify things dramatically, the :class:`.Session` itself works in
-terms of an  isolated transaction, and doesn't overwrite any mapped attributes
-it's already read unless you tell it to; because the use case of trying to re-read
+terms of a completely isolated transaction, and doesn't overwrite any mapped attributes
+it's already read unless you tell it to.  The use case of trying to re-read
 data you've already loaded in an ongoing transaction is an *uncommon* use
-case that in many cases has no effect.
+case that in many cases has no effect, so this is considered to be the
+exception, not the norm; to work within this exception, several methods
+are provided to allow specific data to be reloaded within the context
+of an ongoing transaction.
 
 To understand what we mean by "the transaction" when we talk about the
 :class:`.Session`, your :class:`.Session` is intended to only work within
 a transaction.  An overview of this is at :ref:`unitofwork_transaction`.
 
 Once we've figured out what our isolation level is, and we think that
-our isolation level is set at a low level so that if we re-SELECT a row,
+our isolation level is set at a low enough level so that if we re-SELECT a row,
 we should see new data in our :class:`.Session`, how do we see it?
 
 Three ways, from most common to least:
