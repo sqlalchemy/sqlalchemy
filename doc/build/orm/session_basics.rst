@@ -192,9 +192,15 @@ When do I construct a :class:`.Session`, when do I commit it, and when do I clos
 
 .. topic:: tl;dr;
 
-    As a general rule, keep the lifecycle of the session **separate and
-    external** from functions and objects that access and/or manipulate
-    database data.
+    1. As a general rule, keep the lifecycle of the session **separate and
+       external** from functions and objects that access and/or manipulate
+       database data.  This will greatly help with achieving a predictable
+       and consistent transactional scope.
+
+    2. Make sure you have a **clean and clear** notion of where transactions
+       begin and end, and keep transactions **short**, meaning, they end
+       at the series of a sequence of operations, instead of being held
+       open indefinitely.
 
 A :class:`.Session` is typically constructed at the beginning of a logical
 operation where database access is potentially anticipated.
