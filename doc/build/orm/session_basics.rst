@@ -197,7 +197,7 @@ When do I construct a :class:`.Session`, when do I commit it, and when do I clos
        database data.  This will greatly help with achieving a predictable
        and consistent transactional scope.
 
-    2. Make sure you have a **clean and clear** notion of where transactions
+    2. Make sure you have a clear notion of where transactions
        begin and end, and keep transactions **short**, meaning, they end
        at the series of a sequence of operations, instead of being held
        open indefinitely.
