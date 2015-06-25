@@ -19,6 +19,21 @@
     :version: 1.0.6
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3465
+
+        Fixed a major regression in the 1.0 series where the version_id_counter
+        feature would cause an object's version counter to be incremented
+        when there was no net change to the object's row, but instead an object
+        related to it via relationship (e.g. typically many-to-one)
+        were associated or de-associated with it, resulting in an UPDATE
+        statement that updates the object's version counter and nothing else.
+        In the use case where the relatively recent "server side" and/or
+        "programmatic/conditional" version counter feature were used
+        (e.g. setting version_id_generator to False), the bug could cause an
+        UPDATE without a valid SET clause to be emitted.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3464
 

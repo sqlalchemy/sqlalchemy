@@ -461,6 +461,23 @@ def _collect_update_commands(
 
         if update_version_id is not None and \
                 mapper.version_id_col in mapper._cols_by_table[table]:
+
+            if not bulk and not (params or value_params):
+                # HACK: check for history in other tables, in case the
+                # history is only in a different table than the one
+                # where the version_id_col is.  This logic was lost
+                # from 0.9 -> 1.0.0 and restored in 1.0.6.
+                for prop in mapper._columntoproperty.values():
+                    history = (
+                        state.manager[prop.key].impl.get_history(
+                            state, state_dict,
+                            attributes.PASSIVE_NO_INITIALIZE))
+                    if history.added:
+                        break
+                else:
+                    # no net change, break
+                    continue
+
             col = mapper.version_id_col
             params[col._label] = update_version_id
 
@@ -469,7 +486,7 @@ def _collect_update_commands(
                 val = mapper.version_id_generator(update_version_id)
                 params[col.key] = val
 
-        if not (params or value_params):
+        elif not (params or value_params):
             continue
 
         if bulk:
