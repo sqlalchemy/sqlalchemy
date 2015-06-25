@@ -362,12 +362,16 @@ class NoBumpOnRelationshipTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table(
             'a', metadata,
-            Column('id', Integer, primary_key=True),
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
             Column('version_id', Integer)
         )
         Table(
             'b', metadata,
-            Column('id', Integer, primary_key=True),
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
             Column('a_id', ForeignKey('a.id'))
         )
 
