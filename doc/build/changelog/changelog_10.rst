@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.6
+    :released: June 25, 2015
 
     .. change::
         :tags: bug, orm
