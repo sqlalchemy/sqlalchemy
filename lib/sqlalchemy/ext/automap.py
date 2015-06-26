@@ -188,7 +188,7 @@ scheme for class names and a "pluralizer" for collection names using the
         "'words_and_underscores' -> 'WordsAndUnderscores'"
 
         return str(tablename[0].upper() + \\
-                re.sub(r'_(\w)', lambda m: m.group(1).upper(), tablename[1:]))
+                re.sub(r'_([a-z])', lambda m: m.group(1).upper(), tablename[1:]))
 
     _pluralizer = inflect.engine()
     def pluralize_collection(base, local_cls, referred_cls, constraint):
@@ -196,10 +196,9 @@ scheme for class names and a "pluralizer" for collection names using the
         "'SomeTerm' -> 'some_terms'"
 
         referred_name = referred_cls.__name__
-        uncamelized = referred_name[0].lower() + \\
-                        re.sub(r'\W',
-                                lambda m: "_%s" % m.group(0).lower(),
-                                referred_name[1:])
+        uncamelized = re.sub(r'[A-Z]',
+                             lambda m: "_%s" % m.group(0).lower(),
+                             referred_name)[1:]
         pluralized = _pluralizer.plural(uncamelized)
         return pluralized
 
