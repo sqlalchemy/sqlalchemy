@@ -805,6 +805,18 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', increment=2, start=1, nomaxvalue=True)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 NO MAXVALUE",
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', increment=2, start=0, nominvalue=True)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 NO MINVALUE",
+        )
+
+        self.assert_compile(
             DropSequence(Sequence('foo_seq')),
             "DROP SEQUENCE foo_seq",
         )

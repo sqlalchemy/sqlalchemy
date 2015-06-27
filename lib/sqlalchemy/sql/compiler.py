@@ -2303,6 +2303,10 @@ class DDLCompiler(Compiled):
             text += " MINVALUE %d" % create.element.minvalue
         if create.element.maxvalue is not None:
             text += " MAXVALUE %d" % create.element.maxvalue
+        if create.element.nominvalue is not None:
+            text += " NO MINVALUE" % create.element.nominvalue
+        if create.element.nomaxvalue is not None:
+            text += " NO MAXVALUE" % create.element.nomaxvalue
         return text
 
     def visit_drop_sequence(self, drop):

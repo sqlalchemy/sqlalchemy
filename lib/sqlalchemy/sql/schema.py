@@ -2041,8 +2041,8 @@ class Sequence(DefaultGenerator):
     is_sequence = True
 
     def __init__(self, name, start=None, increment=None, minvalue=None,
-                 maxvalue=None, schema=None, optional=False, quote=None,
-                 metadata=None, quote_schema=None,
+                 maxvalue=None, nominvalue=None, nomaxvalue=None, schema=None,
+                 optional=False, quote=None, metadata=None, quote_schema=None,
                  for_update=False):
         """Construct a :class:`.Sequence` object.
 
