@@ -2304,9 +2304,11 @@ class DDLCompiler(Compiled):
         if create.element.maxvalue is not None:
             text += " MAXVALUE %d" % create.element.maxvalue
         if create.element.nominvalue is not None:
-            text += " NO MINVALUE" % create.element.nominvalue
+            text += " NO MINVALUE"
         if create.element.nomaxvalue is not None:
-            text += " NO MAXVALUE" % create.element.nomaxvalue
+            text += " NO MAXVALUE"
+        if create.element.cycle is not None:
+            text += " CYCLE"
         return text
 
     def visit_drop_sequence(self, drop):
