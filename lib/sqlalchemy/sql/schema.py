@@ -2040,8 +2040,8 @@ class Sequence(DefaultGenerator):
 
     is_sequence = True
 
-    def __init__(self, name, start=None, increment=None, schema=None,
-                 optional=False, quote=None, metadata=None,
+    def __init__(self, name, start=None, increment=None, minvalue=None,
+                 schema=None, optional=False, quote=None, metadata=None,
                  quote_schema=None,
                  for_update=False):
         """Construct a :class:`.Sequence` object.
@@ -2057,6 +2057,11 @@ class Sequence(DefaultGenerator):
          the database as the value of the "INCREMENT BY" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates an
          increment of 1.
+        :param minvalue: the minimum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "MINVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         minvalue of 1.
         :param schema: Optional schema name for the sequence, if located
          in a schema other than the default.
         :param optional: boolean value, when ``True``, indicates that this
@@ -2101,6 +2106,7 @@ class Sequence(DefaultGenerator):
         self.name = quoted_name(name, quote)
         self.start = start
         self.increment = increment
+        self.minvalue = minvalue
         self.optional = optional
         if metadata is not None and schema is None and metadata.schema:
             self.schema = schema = metadata.schema

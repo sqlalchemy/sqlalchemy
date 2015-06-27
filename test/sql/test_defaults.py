@@ -793,6 +793,11 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            CreateSequence(Sequence('foo_seq', increment=2, start=0, minvalue=0)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 MINVALUE 0",
+        )
+
+        self.assert_compile(
             DropSequence(Sequence('foo_seq')),
             "DROP SEQUENCE foo_seq",
         )

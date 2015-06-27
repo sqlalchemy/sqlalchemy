@@ -2299,6 +2299,8 @@ class DDLCompiler(Compiled):
             text += " INCREMENT BY %d" % create.element.increment
         if create.element.start is not None:
             text += " START WITH %d" % create.element.start
+        if create.element.minvalue is not None:
+            text += " MINVALUE %d" % create.element.minvalue
         return text
 
     def visit_drop_sequence(self, drop):
