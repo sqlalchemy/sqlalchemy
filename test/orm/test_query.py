@@ -3390,7 +3390,8 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
 
-class SynonymTest(QueryTest):
+class SynonymTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     @classmethod
     def setup_mappers(cls):
@@ -3509,6 +3510,20 @@ class SynonymTest(QueryTest):
             assert [
                 Order(description="order 1"), Order(description="order 3"),
                 Order(description="order 5")] == o
+
+    def test_froms_aliased_col(self):
+        Address, User = self.classes.Address, self.classes.User
+
+        sess = create_session()
+        ua = aliased(User)
+
+        q = sess.query(ua.name_syn).join(
+            Address, ua.id == Address.user_id)
+        self.assert_compile(
+            q,
+            "SELECT users_1.name AS users_1_name FROM "
+            "users AS users_1 JOIN addresses ON users_1.id = addresses.user_id"
+        )
 
 
 class ImmediateTest(_fixtures.FixtureTest):

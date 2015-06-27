@@ -530,7 +530,7 @@ class AliasedInsp(InspectionAttr):
     def _adapt_element(self, elem):
         return self._adapter.traverse(elem).\
             _annotate({
-                'parententity': self.entity,
+                'parententity': self,
                 'parentmapper': self.mapper}
         )
 

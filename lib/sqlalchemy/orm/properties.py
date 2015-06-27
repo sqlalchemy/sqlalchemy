@@ -245,6 +245,8 @@ class ColumnProperty(StrategizedProperty):
             if self.adapter:
                 return self.adapter(self.prop.columns[0])
             else:
+                # no adapter, so we aren't aliased
+                # assert self._parententity is self._parentmapper
                 return self.prop.columns[0]._annotate({
                     "parententity": self._parententity,
                     "parentmapper": self._parententity})

@@ -16,6 +16,21 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.7
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3466
+
+        Fixed 1.0 regression where the "parent entity" of a synonym-
+        mapped attribute on top of an :func:`.aliased` object would
+        resolve to the original mapper, not the :func:`.aliased`
+        version of it, thereby causing problems for a :class:`.Query`
+        that relies on this attribute (e.g. it's the only representative
+        attribute given in the constructor) to figure out the correct FROM
+        clause for the query.
+
+.. changelog::
     :version: 1.0.6
     :released: June 25, 2015
 
