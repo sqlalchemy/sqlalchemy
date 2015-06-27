@@ -252,7 +252,7 @@ class Dialect(object):
 
         sequence
           a dictionary of the form
-              {'name' : str, 'start' :int, 'increment': int, 'minvalue': int}
+              {'name' : str, 'start' :int, 'increment': int, 'minvalue': int, 'maxvalue': int}
 
         Additional column attributes may be present.
         """

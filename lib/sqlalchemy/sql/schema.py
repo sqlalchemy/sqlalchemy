@@ -2041,8 +2041,8 @@ class Sequence(DefaultGenerator):
     is_sequence = True
 
     def __init__(self, name, start=None, increment=None, minvalue=None,
-                 schema=None, optional=False, quote=None, metadata=None,
-                 quote_schema=None,
+                 maxvalue=None, schema=None, optional=False, quote=None,
+                 metadata=None, quote_schema=None,
                  for_update=False):
         """Construct a :class:`.Sequence` object.
 
@@ -2061,7 +2061,14 @@ class Sequence(DefaultGenerator):
          value is used when the CREATE SEQUENCE command is emitted to
          the database as the value of the "MINVALUE" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates a
-         minvalue of 1.
+         minvalue of 1 and -2^63-1 for ascending and descending sequences,
+         respectively.
+        :param maxvalue: the maximum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "MAXVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         maxvalue of 2^63-1 and -1 for ascending and descending sequences,
+         respectively.
         :param schema: Optional schema name for the sequence, if located
          in a schema other than the default.
         :param optional: boolean value, when ``True``, indicates that this
