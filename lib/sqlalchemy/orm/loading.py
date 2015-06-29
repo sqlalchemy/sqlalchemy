@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from .. import util
 from . import attributes, exc as orm_exc
 from ..sql import util as sql_util
+from . import strategy_options
+
 from .util import _none_set, state_str
 from .base import _SET_DEFERRED_EXPIRED, _DEFER_FOR_STATE
 from .. import exc as sa_exc
@@ -612,10 +614,17 @@ def load_scalar_attributes(mapper, state, attribute_names):
     result = False
 
     if mapper.inherits and not mapper.concrete:
+        # because we are using Core to produce a select() that we
+        # pass to the Query, we aren't calling setup() for mapped
+        # attributes; in 1.0 this means deferred attrs won't get loaded
+        # by default
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
             result = load_on_ident(
-                session.query(mapper).from_statement(statement),
+                session.query(mapper).
+                options(
+                    strategy_options.Load(mapper).undefer("*")
+                ).from_statement(statement),
                 None,
                 only_load_props=attribute_names,
                 refresh_state=state

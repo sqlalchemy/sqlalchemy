@@ -20,6 +20,18 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3468
+
+        Fixed 1.0 regression where a "deferred" attribute would not populate
+        correctly if it were loaded within the "optimized inheritance load",
+        which is a special SELECT emitted in the case of joined table
+        inheritance used to populate expired or unloaded attributes against
+        a joined table without loading the base table.  This is related to
+        the fact that SQLA 1.0 no longer guesses about loading deferred
+        columns and must be directed explicitly.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3466
 
         Fixed 1.0 regression where the "parent entity" of a synonym-
