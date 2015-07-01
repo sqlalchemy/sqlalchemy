@@ -1887,7 +1887,7 @@ class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
             Column('value', MyType),
-            Column('unrelated', String(10))
+            Column('unrelated', String(50))
         )
 
     @classmethod
