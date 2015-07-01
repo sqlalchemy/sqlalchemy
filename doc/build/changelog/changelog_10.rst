@@ -20,6 +20,17 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3469
+
+        Fixed 1.0 regression where value objects that override
+        ``__eq__()`` to return a non-boolean-capable object, such as
+        some geoalchemy types as well as numpy types, were being tested
+        for ``bool()`` during a unit of work update operation, where in
+        0.9 the return value of ``__eq__()`` was tested against "is True"
+        to guard against this.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3468
 
         Fixed 1.0 regression where a "deferred" attribute would not populate

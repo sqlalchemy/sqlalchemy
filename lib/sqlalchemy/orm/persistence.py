@@ -455,8 +455,10 @@ def _collect_update_commands(
 
                 if isinstance(value, sql.ClauseElement):
                     value_params[col] = value
-                elif not state.manager[propkey].impl.is_equal(
-                        value, state.committed_state[propkey]):
+                # guard against values that generate non-__nonzero__
+                # objects for __eq__()
+                elif state.manager[propkey].impl.is_equal(
+                        value, state.committed_state[propkey]) is not True:
                     params[col.key] = value
 
         if update_version_id is not None and \
