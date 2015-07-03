@@ -158,7 +158,7 @@ Session Frequently Asked Questions
 ===================================
 
 By this point, many users already have questions about sessions.
-This section presents a mini-FAQ (note that we have also a `real FAQ </faq/index>`)
+This section presents a mini-FAQ (note that we have also a :doc:`real FAQ </faq/index>`)
 of the most basic issues one is presented with when using a :class:`.Session`.
 
 When do I make a :class:`.sessionmaker`?
