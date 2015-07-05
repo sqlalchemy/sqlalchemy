@@ -2038,6 +2038,17 @@ class Mapper(InspectionAttr):
         returned, inclding :attr:`.synonyms`, :attr:`.column_attrs`,
         :attr:`.relationships`, and :attr:`.composites`.
 
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
+
         .. seealso::
 
             :attr:`.Mapper.all_orm_descriptors`
@@ -2072,6 +2083,17 @@ class Mapper(InspectionAttr):
         :class:`.MapperProperty` property, which is what you get when
         referring to the collection of mapped properties via
         :attr:`.Mapper.attrs`.
+
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
 
         .. versionadded:: 0.8.0
 
@@ -2113,6 +2135,17 @@ class Mapper(InspectionAttr):
     def relationships(self):
         """Return a namespace of all :class:`.RelationshipProperty`
         properties maintained by this :class:`.Mapper`.
+
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
 
         .. seealso::
 
