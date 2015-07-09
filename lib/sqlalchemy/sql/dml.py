@@ -262,10 +262,14 @@ class ValuesBase(UpdateBase):
              has the effect of using the DBAPI
              `executemany() <http://www.python.org/dev/peps/pep-0249/#id18>`_
              method, which provides a high-performance system of invoking
-             a single-row INSERT statement many times against a series
+             a single-row INSERT or single-criteria UPDATE or DELETE statement
+             many times against a series
              of parameter sets.   The "executemany" style is supported by
-             all database backends, as it does not depend on a special SQL
-             syntax.
+             all database backends, and works equally well for INSERT,
+             UPDATE, and DELETE, as it does not depend on a special SQL
+             syntax.  See :ref:`execute_multiple` for an introduction to
+             the traditional Core method of multiple parameter set invocation
+             using this system.
 
          .. versionadded:: 0.8
              Support for multiple-VALUES INSERT statements.
