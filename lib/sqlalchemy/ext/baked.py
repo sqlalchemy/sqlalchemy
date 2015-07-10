@@ -34,11 +34,8 @@ class BakedQuery(object):
     __slots__ = 'steps', '_bakery', '_cache_key', '_spoiled'
 
     def __init__(self, bakery, initial_fn, args=()):
-        if args:
-            self._cache_key = tuple(args)
-        else:
-            self._cache_key = ()
-        self._update_cache_key(initial_fn)
+        self._cache_key = ()
+        self._update_cache_key(initial_fn, args)
         self.steps = [initial_fn]
         self._spoiled = False
         self._bakery = bakery
@@ -49,8 +46,8 @@ class BakedQuery(object):
 
         _bakery = util.LRUCache(size)
 
-        def call(initial_fn):
-            return cls(_bakery, initial_fn)
+        def call(initial_fn, *args):
+            return cls(_bakery, initial_fn, args)
 
         return call
 

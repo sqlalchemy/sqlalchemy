@@ -355,6 +355,97 @@ class VersioningTest(fixtures.MappedTest):
         )
 
 
+class NoBumpOnRelationshipTest(fixtures.MappedTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('version_id', Integer)
+        )
+        Table(
+            'b', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('a_id', ForeignKey('a.id'))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(cls.Basic):
+            pass
+
+    def _run_test(self, auto_version_counter=True):
+        A, B = self.classes('A', 'B')
+        s = Session()
+        if auto_version_counter:
+            a1 = A()
+        else:
+            a1 = A(version_id=1)
+        s.add(a1)
+        s.commit()
+        eq_(a1.version_id, 1)
+
+        b1 = B()
+        b1.a = a1
+        s.add(b1)
+        s.commit()
+
+        eq_(a1.version_id, 1)
+
+    def test_plain_counter(self):
+        A, B = self.classes('A', 'B')
+        a, b = self.tables('a', 'b')
+
+        mapper(
+            A, a, properties={
+                'bs': relationship(B, backref='a')
+            },
+            version_id_col=a.c.version_id,
+        )
+        mapper(B, b)
+
+        self._run_test()
+
+    def test_functional_counter(self):
+        A, B = self.classes('A', 'B')
+        a, b = self.tables('a', 'b')
+
+        mapper(
+            A, a, properties={
+                'bs': relationship(B, backref='a')
+            },
+            version_id_col=a.c.version_id,
+            version_id_generator=lambda num: (num or 0) + 1
+        )
+        mapper(B, b)
+
+        self._run_test()
+
+    def test_no_counter(self):
+        A, B = self.classes('A', 'B')
+        a, b = self.tables('a', 'b')
+
+        mapper(
+            A, a, properties={
+                'bs': relationship(B, backref='a')
+            },
+            version_id_col=a.c.version_id,
+            version_id_generator=False
+        )
+        mapper(B, b)
+
+        self._run_test(False)
+
+
 class ColumnTypeTest(fixtures.MappedTest):
     __backend__ = True
 
@@ -585,6 +676,53 @@ class AlternateGeneratorTest(fixtures.MappedTest):
             )
         else:
             sess2.commit
+
+
+class PlainInheritanceTest(fixtures.MappedTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'base', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('version_id', Integer, nullable=True),
+            Column('data', String(50))
+        )
+        Table(
+            'sub', metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('sub_data', String(50))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+
+        class Base(cls.Basic):
+            pass
+
+        class Sub(Base):
+            pass
+
+    def test_update_child_table_only(self):
+        Base, sub, base, Sub = (
+            self.classes.Base, self.tables.sub, self.tables.base,
+            self.classes.Sub)
+
+        mapper(Base, base, version_id_col=base.c.version_id)
+        mapper(Sub, sub, inherits=Base)
+
+        s = Session()
+        s1 = Sub(data='b', sub_data='s')
+        s.add(s1)
+        s.commit()
+
+        s1.sub_data = 's2'
+        s.commit()
+
+        eq_(s1.version_id, 2)
 
 
 class InheritanceTwoVersionIdsTest(fixtures.MappedTest):

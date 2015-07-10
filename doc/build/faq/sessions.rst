@@ -7,6 +7,72 @@ Sessions / Queries
     :backlinks: none
 
 
+I'm re-loading data with my Session but it isn't seeing changes that I committed elsewhere
+------------------------------------------------------------------------------------------
+
+The main issue regarding this behavior is that the session acts as though
+the transaction is in the *serializable* isolation state, even if it's not
+(and it usually is not).   In practical terms, this means that the session
+does not alter any data that it's already read within the scope of a transaction.
+
+If the term "isolation level" is unfamiliar, then you first need to read this link:
+
+`Isolation Level <https://en.wikipedia.org/wiki/Isolation_%28database_systems%29>`_
+
+In short, serializable isolation level generally means
+that once you SELECT a series of rows in a transaction, you will get
+*the identical data* back each time you re-emit that SELECT.   If you are in
+the next-lower isolation level, "repeatable read", you'll
+see newly added rows (and no longer see deleted rows), but for rows that
+you've *already* loaded, you won't see any change.   Only if you are in a
+lower isolation level, e.g. "read committed", does it become possible to
+see a row of data change its value.
+
+For information on controlling the isolation level when using the
+SQLAlchemy ORM, see :ref:`session_transaction_isolation`.
+
+To simplify things dramatically, the :class:`.Session` itself works in
+terms of a completely isolated transaction, and doesn't overwrite any mapped attributes
+it's already read unless you tell it to.  The use case of trying to re-read
+data you've already loaded in an ongoing transaction is an *uncommon* use
+case that in many cases has no effect, so this is considered to be the
+exception, not the norm; to work within this exception, several methods
+are provided to allow specific data to be reloaded within the context
+of an ongoing transaction.
+
+To understand what we mean by "the transaction" when we talk about the
+:class:`.Session`, your :class:`.Session` is intended to only work within
+a transaction.  An overview of this is at :ref:`unitofwork_transaction`.
+
+Once we've figured out what our isolation level is, and we think that
+our isolation level is set at a low enough level so that if we re-SELECT a row,
+we should see new data in our :class:`.Session`, how do we see it?
+
+Three ways, from most common to least:
+
+1. We simply end our transaction and start a new one on next access
+   with our :class:`.Session` by calling :meth:`.Session.commit` (note
+   that if the :class:`.Session` is in the lesser-used "autocommit"
+   mode, there would be a call to :meth:`.Session.begin` as well). The
+   vast majority of applications and use cases do not have any issues
+   with not being able to "see" data in other transactions because
+   they stick to this pattern, which is at the core of the best practice of
+   **short lived transactions**.
+   See :ref:`session_faq_whentocreate` for some thoughts on this.
+
+2. We tell our :class:`.Session` to re-read rows that it has already read,
+   either when we next query for them using :meth:`.Session.expire_all`
+   or :meth:`.Session.expire`, or immediately on an object using
+   :class:`.Session.refresh`.  See :ref:`session_expire` for detail on this.
+
+3. We can run whole queries while setting them to definitely overwrite
+   already-loaded objects as they read rows by using
+   :meth:`.Query.populate_existing`.
+
+But remember, **the ORM cannot see changes in rows if our isolation
+level is repeatable read or higher, unless we start a new transaction**.
+
+
 "This Session's transaction has been rolled back due to a previous exception during flush." (or similar)
 ---------------------------------------------------------------------------------------------------------
 

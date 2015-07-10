@@ -171,8 +171,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             (util.u('réveillé'), util.u('drôle'), util.u('S’il'))
         )
 
-    def test_non_native_type(self):
-        metadata = MetaData()
+    @testing.provide_metadata
+    def test_non_native_enum(self):
+        metadata = self.metadata
         t1 = Table(
             'foo',
             metadata,
@@ -188,14 +189,53 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         def go():
             t1.create(testing.db)
 
-        try:
-            self.assert_sql(
-                testing.db, go, [
-                    ("CREATE TABLE foo (\tbar "
-                     "VARCHAR(5), \tCONSTRAINT myenum CHECK "
-                     "(bar IN ('one', 'two', 'three')))", {})])
-        finally:
-            metadata.drop_all(testing.db)
+        self.assert_sql(
+            testing.db, go, [
+                ("CREATE TABLE foo (\tbar "
+                 "VARCHAR(5), \tCONSTRAINT myenum CHECK "
+                 "(bar IN ('one', 'two', 'three')))", {})])
+        with testing.db.begin() as conn:
+            conn.execute(
+                t1.insert(), {'bar': 'two'}
+            )
+            eq_(
+                conn.scalar(select([t1.c.bar])), 'two'
+            )
+
+    @testing.provide_metadata
+    def test_non_native_enum_w_unicode(self):
+        metadata = self.metadata
+        t1 = Table(
+            'foo',
+            metadata,
+            Column(
+                'bar',
+                Enum('B', util.u('Ü'), name='myenum', native_enum=False)))
+
+        def go():
+            t1.create(testing.db)
+
+        self.assert_sql(
+            testing.db,
+            go,
+            [
+                (
+                    util.u(
+                        "CREATE TABLE foo (\tbar "
+                        "VARCHAR(1), \tCONSTRAINT myenum CHECK "
+                        "(bar IN ('B', 'Ü')))"
+                    ),
+                    {}
+                )
+            ])
+
+        with testing.db.begin() as conn:
+            conn.execute(
+                t1.insert(), {'bar': util.u('Ü')}
+            )
+            eq_(
+                conn.scalar(select([t1.c.bar])), util.u('Ü')
+            )
 
     @testing.provide_metadata
     def test_disable_create(self):
@@ -1527,7 +1567,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         self._assert_data([{"k1": "r1v1", "k2": "r1v2"}])
 
     def _non_native_engine(self):
-        if testing.against("postgresql+psycopg2"):
+        if testing.requires.psycopg2_native_hstore.enabled:
             engine = engines.testing_engine(
                 options=dict(
                     use_native_hstore=False))
@@ -1541,7 +1581,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         cols = insp.get_columns('data_table')
         assert isinstance(cols[2]['type'], HSTORE)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_insert_native(self):
         engine = testing.db
         self._test_insert(engine)
@@ -1550,7 +1590,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_insert(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_criterion_native(self):
         engine = testing.db
         self._fixture_data(engine)
@@ -1584,7 +1624,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_fixed_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_fixed_round_trip_native(self):
         engine = testing.db
         self._test_fixed_round_trip(engine)
@@ -1605,12 +1645,12 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             }
         )
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_unicode_round_trip_python(self):
         engine = self._non_native_engine()
         self._test_unicode_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)
@@ -1619,7 +1659,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_escaped_quotes_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_hstore
     def test_escaped_quotes_round_trip_native(self):
         engine = testing.db
         self._test_escaped_quotes_round_trip(engine)
@@ -1651,14 +1691,16 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
 
 class _RangeTypeMixin(object):
-    __requires__ = 'range_types',
-    __dialect__ = 'postgresql+psycopg2'
+    __requires__ = 'range_types', 'psycopg2_compatibility'
     __backend__ = True
 
     def extras(self):
         # done this way so we don't get ImportErrors with
         # older psycopg2 versions.
-        from psycopg2 import extras
+        if testing.against("postgresql+psycopg2cffi"):
+            from psycopg2cffi import extras
+        else:
+            from psycopg2 import extras
         return extras
 
     @classmethod
@@ -1926,7 +1968,7 @@ class DateTimeTZRangeTests(_RangeTypeMixin, fixtures.TablesTest):
 
     def tstzs(self):
         if self._tstzs is None:
-            lower = testing.db.connect().scalar(
+            lower = testing.db.scalar(
                 func.current_timestamp().select()
             )
             upper = lower + datetime.timedelta(1)
@@ -2176,17 +2218,17 @@ class JSONRoundTripTest(fixtures.TablesTest):
         cols = insp.get_columns('data_table')
         assert isinstance(cols[2]['type'], self.test_type)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_insert_native(self):
         engine = testing.db
         self._test_insert(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_insert_native_nulls(self):
         engine = testing.db
         self._test_insert_nulls(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_insert_native_none_as_null(self):
         engine = testing.db
         self._test_insert_none_as_null(engine)
@@ -2244,15 +2286,15 @@ class JSONRoundTripTest(fixtures.TablesTest):
             },
         )
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_custom_native(self):
         self._test_custom_serialize_deserialize(True)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_custom_python(self):
         self._test_custom_serialize_deserialize(False)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_criterion_native(self):
         engine = testing.db
         self._fixture_data(engine)
@@ -2324,7 +2366,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_fixed_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_fixed_round_trip_native(self):
         engine = testing.db
         self._test_fixed_round_trip(engine)
@@ -2351,7 +2393,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         engine = self._non_native_engine()
         self._test_unicode_round_trip(engine)
 
-    @testing.only_on("postgresql+psycopg2")
+    @testing.requires.psycopg2_native_json
     def test_unicode_round_trip_native(self):
         engine = testing.db
         self._test_unicode_round_trip(engine)

@@ -19,6 +19,8 @@ EMPTY_SET = frozenset()
 
 
 class AbstractKeyedTuple(tuple):
+    __slots__ = ()
+
     def keys(self):
         """Return a list of string key names for this :class:`.KeyedTuple`.
 
@@ -743,15 +745,16 @@ _property_getters = PopulateDict(
 
 
 def unique_list(seq, hashfunc=None):
-    seen = {}
+    seen = set()
+    seen_add = seen.add
     if not hashfunc:
         return [x for x in seq
                 if x not in seen
-                and not seen.__setitem__(x, True)]
+                and not seen_add(x)]
     else:
         return [x for x in seq
                 if hashfunc(x) not in seen
-                and not seen.__setitem__(hashfunc(x), True)]
+                and not seen_add(hashfunc(x))]
 
 
 class UniqueAppender(object):
@@ -797,6 +800,19 @@ def to_list(x, default=None):
         return x
     else:
         return list(x)
+
+
+def has_intersection(set_, iterable):
+    """return True if any items of set_ are present in iterable.
+
+    Goes through special effort to ensure __hash__ is not called
+    on items in iterable that don't support it.
+
+    """
+    # TODO: optimize, write in C, etc.
+    return bool(
+        set_.intersection([i for i in iterable if i.__hash__])
+    )
 
 
 def to_set(x):

@@ -123,7 +123,7 @@ class AttributeImplAPITest(fixtures.MappedTest):
 
         assert_raises_message(
             ValueError,
-            r"list.remove\(x\): x not in list",
+            r"list.remove\(.*?\): .* not in list",
             A.b.impl.remove,
                 attributes.instance_state(a1),
                 attributes.instance_dict(a1), b2, None
@@ -1520,6 +1520,13 @@ class HistoryTest(fixtures.TestBase):
     def test_committed_value_set(self):
         Foo = self._fixture(uselist=False, useobject=False,
                                 active_history=False)
+        f = Foo()
+        f.someattr = 3
+        eq_(self._someattr_committed_state(f), None)
+
+    def test_committed_value_set_active_hist(self):
+        Foo = self._fixture(uselist=False, useobject=False,
+                                active_history=True)
         f = Foo()
         f.someattr = 3
         eq_(self._someattr_committed_state(f), None)

@@ -1096,8 +1096,6 @@ class Mapper(InspectionAttr):
 
         """
 
-        # when using declarative as of 1.0, the register_class has
-        # already happened from within declarative.
         manager = attributes.manager_of_class(self.class_)
 
         if self.non_primary:
@@ -1120,13 +1118,19 @@ class Mapper(InspectionAttr):
                     "create a non primary Mapper.  clear_mappers() will "
                     "remove *all* current mappers from all classes." %
                     self.class_)
-
-        if manager is None:
-            manager = instrumentation.register_class(self.class_)
+            # else:
+                # a ClassManager may already exist as
+                # ClassManager.instrument_attribute() creates
+                # new managers for each subclass if they don't yet exist.
 
         _mapper_registry[self] = True
 
+        # note: this *must be called before instrumentation.register_class*
+        # to maintain the documented behavior of instrument_class
         self.dispatch.instrument_class(self, self.class_)
+
+        if manager is None:
+            manager = instrumentation.register_class(self.class_)
 
         self.class_manager = manager
 
@@ -2034,6 +2038,17 @@ class Mapper(InspectionAttr):
         returned, inclding :attr:`.synonyms`, :attr:`.column_attrs`,
         :attr:`.relationships`, and :attr:`.composites`.
 
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
+
         .. seealso::
 
             :attr:`.Mapper.all_orm_descriptors`
@@ -2068,6 +2083,17 @@ class Mapper(InspectionAttr):
         :class:`.MapperProperty` property, which is what you get when
         referring to the collection of mapped properties via
         :attr:`.Mapper.attrs`.
+
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
 
         .. versionadded:: 0.8.0
 
@@ -2109,6 +2135,17 @@ class Mapper(InspectionAttr):
     def relationships(self):
         """Return a namespace of all :class:`.RelationshipProperty`
         properties maintained by this :class:`.Mapper`.
+
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
 
         .. seealso::
 
@@ -2377,15 +2414,15 @@ class Mapper(InspectionAttr):
 
         """
         state = attributes.instance_state(instance)
-        return self._primary_key_from_state(state)
+        return self._primary_key_from_state(state, attributes.PASSIVE_OFF)
 
-    def _primary_key_from_state(self, state):
+    def _primary_key_from_state(
+            self, state, passive=attributes.PASSIVE_RETURN_NEVER_SET):
         dict_ = state.dict
         manager = state.manager
         return [
             manager[prop.key].
-            impl.get(state, dict_,
-                     attributes.PASSIVE_RETURN_NEVER_SET)
+            impl.get(state, dict_, passive)
             for prop in self._identity_key_props
         ]
 
@@ -2428,7 +2465,8 @@ class Mapper(InspectionAttr):
     def _get_committed_attr_by_column(self, obj, column):
         state = attributes.instance_state(obj)
         dict_ = attributes.instance_dict(obj)
-        return self._get_committed_state_attr_by_column(state, dict_, column)
+        return self._get_committed_state_attr_by_column(
+            state, dict_, column, passive=attributes.PASSIVE_OFF)
 
     def _get_committed_state_attr_by_column(
             self, state, dict_, column,

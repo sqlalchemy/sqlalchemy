@@ -61,14 +61,13 @@ class DefaultDialect(interfaces.Dialect):
 
     engine_config_types = util.immutabledict([
         ('convert_unicode', util.bool_or_str('force')),
-        ('pool_timeout', int),
+        ('pool_timeout', util.asint),
         ('echo', util.bool_or_str('debug')),
         ('echo_pool', util.bool_or_str('debug')),
-        ('pool_recycle', int),
-        ('pool_size', int),
-        ('max_overflow', int),
-        ('pool_threadlocal', bool),
-        ('use_native_unicode', bool),
+        ('pool_recycle', util.asint),
+        ('pool_size', util.asint),
+        ('max_overflow', util.asint),
+        ('pool_threadlocal', util.asbool),
     ])
 
     # if the NUMERIC type
@@ -156,6 +155,15 @@ class DefaultDialect(interfaces.Dialect):
     requires_name_normalize = False
 
     reflection_options = ()
+
+    dbapi_exception_translation_map = util.immutabledict()
+    """mapping used in the extremely unusual case that a DBAPI's
+    published exceptions don't actually have the __name__ that they
+    are linked towards.
+
+    .. versionadded:: 1.0.5
+
+    """
 
     def __init__(self, convert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
@@ -840,18 +848,26 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         compiled_params = self.compiled_parameters[0]
 
         lastrowid = self.get_lastrowid()
-        autoinc_col = table._autoincrement_column
-        if autoinc_col is not None:
-            # apply type post processors to the lastrowid
-            proc = autoinc_col.type._cached_result_processor(
-                self.dialect, None)
-            if proc is not None:
-                lastrowid = proc(lastrowid)
-        self.inserted_primary_key = [
-            lastrowid if c is autoinc_col else
-            compiled_params.get(key_getter(c), None)
-            for c in table.primary_key
-        ]
+        if lastrowid is not None:
+            autoinc_col = table._autoincrement_column
+            if autoinc_col is not None:
+                # apply type post processors to the lastrowid
+                proc = autoinc_col.type._cached_result_processor(
+                    self.dialect, None)
+                if proc is not None:
+                    lastrowid = proc(lastrowid)
+            self.inserted_primary_key = [
+                lastrowid if c is autoinc_col else
+                compiled_params.get(key_getter(c), None)
+                for c in table.primary_key
+            ]
+        else:
+            # don't have a usable lastrowid, so
+            # do the same as _setup_ins_pk_from_empty
+            self.inserted_primary_key = [
+                compiled_params.get(key_getter(c), None)
+                for c in table.primary_key
+            ]
 
     def _setup_ins_pk_from_empty(self):
         key_getter = self.compiled._key_getters_for_crud_column[2]

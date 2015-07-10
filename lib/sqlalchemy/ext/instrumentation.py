@@ -166,7 +166,13 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
     def manager_of_class(self, cls):
         if cls is None:
             return None
-        return self._manager_finders.get(cls, _default_manager_getter)(cls)
+        try:
+            finder = self._manager_finders.get(cls, _default_manager_getter)
+        except TypeError:
+            # due to weakref lookup on invalid object
+            return None
+        else:
+            return finder(cls)
 
     def state_of(self, instance):
         if instance is None:
@@ -392,6 +398,7 @@ def _reinstall_default_lookups():
             manager_of_class=_default_manager_getter
         )
     )
+    _instrumentation_factory._extended = False
 
 
 def _install_lookups(lookups):

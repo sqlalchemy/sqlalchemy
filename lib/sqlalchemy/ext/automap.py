@@ -11,12 +11,6 @@ schema, typically though not necessarily one which is reflected.
 
 .. versionadded:: 0.9.1 Added :mod:`sqlalchemy.ext.automap`.
 
-.. note::
-
-    The :mod:`sqlalchemy.ext.automap` extension should be considered
-    **experimental** as of 0.9.1.   Featureset and API stability is
-    not guaranteed at this time.
-
 It is hoped that the :class:`.AutomapBase` system provides a quick
 and modernized solution to the problem that the very famous
 `SQLSoup <https://sqlsoup.readthedocs.org/en/latest/>`_
@@ -67,7 +61,7 @@ asking it to reflect the schema and produce mappings::
 Above, calling :meth:`.AutomapBase.prepare` while passing along the
 :paramref:`.AutomapBase.prepare.reflect` parameter indicates that the
 :meth:`.MetaData.reflect` method will be called on this declarative base
-classes' :class:`.MetaData` collection; then, each viable
+classes' :class:`.MetaData` collection; then, each **viable**
 :class:`.Table` within the :class:`.MetaData` will get a new mapped class
 generated automatically.  The :class:`.ForeignKeyConstraint` objects which
 link the various tables together will be used to produce new, bidirectional
@@ -75,6 +69,12 @@ link the various tables together will be used to produce new, bidirectional
 follow along a default naming scheme that we can customize.  At this point,
 our basic mapping consisting of related ``User`` and ``Address`` classes is
 ready to use in the traditional way.
+
+.. note:: By **viable**, we mean that for a table to be mapped, it must
+   specify a primary key.  Additionally, if the table is detected as being
+   a pure association table between two other tables, it will not be directly
+   mapped and will instead be configured as a many-to-many table between
+   the mappings for the two referring tables.
 
 Generating Mappings from an Existing MetaData
 =============================================
@@ -188,7 +188,7 @@ scheme for class names and a "pluralizer" for collection names using the
         "'words_and_underscores' -> 'WordsAndUnderscores'"
 
         return str(tablename[0].upper() + \\
-                re.sub(r'_(\w)', lambda m: m.group(1).upper(), tablename[1:]))
+                re.sub(r'_([a-z])', lambda m: m.group(1).upper(), tablename[1:]))
 
     _pluralizer = inflect.engine()
     def pluralize_collection(base, local_cls, referred_cls, constraint):
@@ -196,10 +196,9 @@ scheme for class names and a "pluralizer" for collection names using the
         "'SomeTerm' -> 'some_terms'"
 
         referred_name = referred_cls.__name__
-        uncamelized = referred_name[0].lower() + \\
-                        re.sub(r'\W',
-                                lambda m: "_%s" % m.group(0).lower(),
-                                referred_name[1:])
+        uncamelized = re.sub(r'[A-Z]',
+                             lambda m: "_%s" % m.group(0).lower(),
+                             referred_name)[1:]
         pluralized = _pluralizer.plural(uncamelized)
         return pluralized
 
@@ -625,7 +624,7 @@ def generate_relationship(
     :param base: the :class:`.AutomapBase` class doing the prepare.
 
     :param direction: indicate the "direction" of the relationship; this will
-     be one of :data:`.ONETOMANY`, :data:`.MANYTOONE`, :data:`.MANYTOONE`.
+     be one of :data:`.ONETOMANY`, :data:`.MANYTOONE`, :data:`.MANYTOMANY`.
 
     :param return_fn: the function that is used by default to create the
      relationship.  This will be either :func:`.relationship` or

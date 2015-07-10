@@ -30,10 +30,10 @@ The remaining positional arguments are mostly
 :class:`~sqlalchemy.schema.Column` objects describing each column::
 
     user = Table('user', metadata,
-        Column('user_id', Integer, primary_key = True),
-        Column('user_name', String(16), nullable = False),
+        Column('user_id', Integer, primary_key=True),
+        Column('user_name', String(16), nullable=False),
         Column('email_address', String(60)),
-        Column('password', String(20), nullable = False)
+        Column('password', String(20), nullable=False)
     )
 
 Above, a table called ``user`` is described, which contains four columns. The
@@ -151,10 +151,10 @@ will issue the CREATE statements:
         metadata = MetaData()
 
         user = Table('user', metadata,
-            Column('user_id', Integer, primary_key = True),
-            Column('user_name', String(16), nullable = False),
+            Column('user_id', Integer, primary_key=True),
+            Column('user_name', String(16), nullable=False),
             Column('email_address', String(60), key='email'),
-            Column('password', String(20), nullable = False)
+            Column('password', String(20), nullable=False)
         )
 
         user_prefs = Table('user_prefs', metadata,
@@ -291,7 +291,7 @@ example, MySQL has different table backend types, including "MyISAM" and
 ``mysql_engine``::
 
     addresses = Table('engine_email_addresses', meta,
-        Column('address_id', Integer, primary_key = True),
+        Column('address_id', Integer, primary_key=True),
         Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
         Column('email_address', String(20)),
         mysql_engine='InnoDB'

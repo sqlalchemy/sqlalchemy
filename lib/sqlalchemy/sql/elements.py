@@ -2407,13 +2407,14 @@ class UnaryExpression(ColumnElement):
     __visit_name__ = 'unary'
 
     def __init__(self, element, operator=None, modifier=None,
-                 type_=None, negate=None):
+                 type_=None, negate=None, wraps_column_expression=False):
         self.operator = operator
         self.modifier = modifier
         self.element = element.self_group(
             against=self.operator or self.modifier)
         self.type = type_api.to_instance(type_)
         self.negate = negate
+        self.wraps_column_expression = wraps_column_expression
 
     @classmethod
     def _create_nullsfirst(cls, column):
@@ -2455,7 +2456,8 @@ class UnaryExpression(ColumnElement):
         """
         return UnaryExpression(
             _literal_as_label_reference(column),
-            modifier=operators.nullsfirst_op)
+            modifier=operators.nullsfirst_op,
+            wraps_column_expression=False)
 
     @classmethod
     def _create_nullslast(cls, column):
@@ -2496,7 +2498,8 @@ class UnaryExpression(ColumnElement):
         """
         return UnaryExpression(
             _literal_as_label_reference(column),
-            modifier=operators.nullslast_op)
+            modifier=operators.nullslast_op,
+            wraps_column_expression=False)
 
     @classmethod
     def _create_desc(cls, column):
@@ -2534,7 +2537,9 @@ class UnaryExpression(ColumnElement):
 
         """
         return UnaryExpression(
-            _literal_as_label_reference(column), modifier=operators.desc_op)
+            _literal_as_label_reference(column),
+            modifier=operators.desc_op,
+            wraps_column_expression=False)
 
     @classmethod
     def _create_asc(cls, column):
@@ -2571,7 +2576,9 @@ class UnaryExpression(ColumnElement):
 
         """
         return UnaryExpression(
-            _literal_as_label_reference(column), modifier=operators.asc_op)
+            _literal_as_label_reference(column),
+            modifier=operators.asc_op,
+            wraps_column_expression=False)
 
     @classmethod
     def _create_distinct(cls, expr):
@@ -2611,7 +2618,8 @@ class UnaryExpression(ColumnElement):
         """
         expr = _literal_as_binds(expr)
         return UnaryExpression(
-            expr, operator=operators.distinct_op, type_=expr.type)
+            expr, operator=operators.distinct_op,
+            type_=expr.type, wraps_column_expression=False)
 
     @property
     def _order_by_label_element(self):
@@ -2648,7 +2656,8 @@ class UnaryExpression(ColumnElement):
                 operator=self.negate,
                 negate=self.operator,
                 modifier=self.modifier,
-                type_=self.type)
+                type_=self.type,
+                wraps_column_expression=self.wraps_column_expression)
         else:
             return ClauseElement._negate(self)
 
@@ -2667,6 +2676,7 @@ class AsBoolean(UnaryExpression):
         self.operator = operator
         self.negate = negate
         self.modifier = None
+        self.wraps_column_expression = True
 
     def self_group(self, against=None):
         return self
@@ -3093,7 +3103,8 @@ class Label(ColumnElement):
         return self.element,
 
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
-        self.element = clone(self.element, **kw)
+        self._element = clone(self._element, **kw)
+        self.__dict__.pop('element', None)
         self.__dict__.pop('_allow_label_resolve', None)
         if anonymize_labels:
             self.name = self._resolve_label = _anonymous_label(
@@ -3708,6 +3719,16 @@ def _clause_element_as_expr(element):
 
 
 def _literal_as_label_reference(element):
+    if isinstance(element, util.string_types):
+        return _textual_label_reference(element)
+
+    elif hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+
+    return _literal_as_text(element)
+
+
+def _literal_and_labels_as_label_reference(element):
     if isinstance(element, util.string_types):
         return _textual_label_reference(element)
 

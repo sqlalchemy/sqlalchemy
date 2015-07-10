@@ -195,7 +195,7 @@ class RelationshipProperty(StrategizedProperty):
 
           The :paramref:`~.relationship.secondary` keyword argument is
           typically applied in the case where the intermediary :class:`.Table`
-          is not otherwise exprssed in any direct class mapping. If the
+          is not otherwise expressed in any direct class mapping. If the
           "secondary" table is also explicitly mapped elsewhere (e.g. as in
           :ref:`association_pattern`), one should consider applying the
           :paramref:`~.relationship.viewonly` flag so that this
@@ -1233,11 +1233,15 @@ class RelationshipProperty(StrategizedProperty):
                 state = attributes.instance_state(other)
 
                 def state_bindparam(x, state, col):
-                    o = state.obj()  # strong ref
+                    dict_ = state.dict
                     return sql.bindparam(
-                        x, unique=True, callable_=lambda:
-                        self.property.mapper.
-                        _get_committed_attr_by_column(o, col))
+                        x, unique=True,
+                        callable_=self.property._get_attr_w_warn_on_none(
+                            col,
+                            self.property.mapper._get_state_attr_by_column,
+                            state, dict_, col, passive=attributes.PASSIVE_OFF
+                        )
+                    )
 
                 def adapt(col):
                     if self.adapter:
@@ -1252,13 +1256,14 @@ class RelationshipProperty(StrategizedProperty):
                             adapt(x) == None)
                         for (x, y) in self.property.local_remote_pairs])
 
-            criterion = sql.and_(*[x == y for (x, y) in
-                                   zip(
-                self.property.mapper.primary_key,
-                self.property.
-                mapper.
-                primary_key_from_instance(other))
+            criterion = sql.and_(*[
+                x == y for (x, y) in
+                zip(
+                    self.property.mapper.primary_key,
+                    self.property.mapper.primary_key_from_instance(other)
+                )
             ])
+
             return ~self._criterion_exists(criterion)
 
         def __ne__(self, other):
@@ -1357,10 +1362,12 @@ class RelationshipProperty(StrategizedProperty):
 
         def visit_bindparam(bindparam):
             if bindparam._identifying_key in bind_to_col:
-                bindparam.callable = \
-                    lambda: mapper._get_state_attr_by_column(
-                        state, dict_,
-                        bind_to_col[bindparam._identifying_key])
+                bindparam.callable = self._get_attr_w_warn_on_none(
+                    bind_to_col[bindparam._identifying_key],
+                    mapper._get_state_attr_by_column,
+                    state, dict_,
+                    bind_to_col[bindparam._identifying_key],
+                    passive=attributes.PASSIVE_OFF)
 
         if self.secondary is not None and alias_secondary:
             criterion = ClauseAdapter(
@@ -1373,6 +1380,18 @@ class RelationshipProperty(StrategizedProperty):
         if adapt_source:
             criterion = adapt_source(criterion)
         return criterion
+
+    def _get_attr_w_warn_on_none(self, column, fn, *arg, **kw):
+        def _go():
+            value = fn(*arg, **kw)
+            if value is None:
+                util.warn(
+                    "Got None for value of column %s; this is unsupported "
+                    "for a relationship comparison and will not "
+                    "currently produce an IS comparison "
+                    "(but may in a future release)" % column)
+            return value
+        return _go
 
     def _lazy_none_clause(self, reverse_direction=False, adapt_source=None):
         if not reverse_direction:
@@ -2329,12 +2348,21 @@ class JoinCondition(object):
             binary.right, binary.left = proc_left_right(binary.right,
                                                         binary.left)
 
+        check_entities = self.prop is not None and \
+            self.prop.mapper is not self.prop.parent
+
         def proc_left_right(left, right):
             if isinstance(left, expression.ColumnClause) and \
                     isinstance(right, expression.ColumnClause):
                 if self.child_selectable.c.contains_column(right) and \
                         self.parent_selectable.c.contains_column(left):
                     right = right._annotate({"remote": True})
+            elif check_entities and \
+                    right._annotations.get('parentmapper') is self.prop.mapper:
+                right = right._annotate({"remote": True})
+            elif check_entities and \
+                    left._annotations.get('parentmapper') is self.prop.mapper:
+                left = left._annotate({"remote": True})
             else:
                 self._warn_non_column_elements()
 

@@ -13,7 +13,10 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     column_property, composite, Session, properties
 from sqlalchemy.util import with_metaclass
 from sqlalchemy.ext.declarative import declared_attr, synonym_for
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures, mock
+from sqlalchemy.orm.events import MapperEvents
+from sqlalchemy.orm import mapper
+from sqlalchemy import event
 
 Base = None
 
@@ -1669,6 +1672,32 @@ class DeclarativeTest(DeclarativeTestBase):
                 __tablename__='b',
                 id=Column(Integer, primary_key=True)
             ))
+        )
+
+    @testing.teardown_events(MapperEvents)
+    def test_instrument_class_before_instrumentation(self):
+        # test #3388
+
+        canary = mock.Mock()
+
+        @event.listens_for(mapper, "instrument_class")
+        def instrument_class(mp, cls):
+            canary.instrument_class(mp, cls)
+
+        @event.listens_for(object, "class_instrument")
+        def class_instrument(cls):
+            canary.class_instrument(cls)
+
+        class Test(Base):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+        # MARKMARK
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.instrument_class(Test.__mapper__, Test),
+                mock.call.class_instrument(Test)
+            ]
         )
 
 

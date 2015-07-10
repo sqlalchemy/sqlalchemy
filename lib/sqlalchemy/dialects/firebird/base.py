@@ -293,22 +293,22 @@ class FBCompiler(sql.compiler.SQLCompiler):
     def visit_sequence(self, seq):
         return "gen_id(%s, 1)" % self.preparer.format_sequence(seq)
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         """Called when building a ``SELECT`` statement, position is just
         before column list Firebird puts the limit and offset right
         after the ``SELECT``...
         """
 
         result = ""
-        if select._limit_clause:
-            result += "FIRST %s " % self.process(select._limit_clause)
-        if select._offset_clause:
-            result += "SKIP %s " % self.process(select._offset_clause)
+        if select._limit_clause is not None:
+            result += "FIRST %s " % self.process(select._limit_clause, **kw)
+        if select._offset_clause is not None:
+            result += "SKIP %s " % self.process(select._offset_clause, **kw)
         if select._distinct:
             result += "DISTINCT "
         return result
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         """Already taken care of in the `get_select_precolumns` method."""
 
         return ""
@@ -393,8 +393,6 @@ class FBDialect(default.DefaultDialect):
 
     requires_name_normalize = True
     supports_empty_insert = False
-
-    supports_simple_order_by_label = False
 
     statement_compiler = FBCompiler
     ddl_compiler = FBDDLCompiler

@@ -1254,12 +1254,15 @@ class Connection(Connectable):
             if context:
                 context.is_disconnect = self._is_disconnect
 
+        invalidate_pool_on_disconnect = True
+
         if self._reentrant_error:
             util.raise_from_cause(
                 exc.DBAPIError.instance(statement,
                                         parameters,
                                         e,
-                                        self.dialect.dbapi.Error),
+                                        self.dialect.dbapi.Error,
+                                        dialect=self.dialect),
                 exc_info
             )
         self._reentrant_error = True
@@ -1275,7 +1278,8 @@ class Connection(Connectable):
                     parameters,
                     e,
                     self.dialect.dbapi.Error,
-                    connection_invalidated=self._is_disconnect)
+                    connection_invalidated=self._is_disconnect,
+                    dialect=self.dialect)
             else:
                 sqlalchemy_exception = None
 
@@ -1316,6 +1320,11 @@ class Connection(Connectable):
                     sqlalchemy_exception.connection_invalidated = \
                         self._is_disconnect = ctx.is_disconnect
 
+                # set up potentially user-defined value for
+                # invalidate pool.
+                invalidate_pool_on_disconnect = \
+                    ctx.invalidate_pool_on_disconnect
+
             if should_wrap and context:
                 context.handle_dbapi_exception(e)
 
@@ -1340,7 +1349,8 @@ class Connection(Connectable):
                 del self._is_disconnect
                 if not self.invalidated:
                     dbapi_conn_wrapper = self.__connection
-                    self.engine.pool._invalidate(dbapi_conn_wrapper, e)
+                    if invalidate_pool_on_disconnect:
+                        self.engine.pool._invalidate(dbapi_conn_wrapper, e)
                     self.invalidate(e)
             if self.should_close_with_result:
                 self.close()
@@ -1801,29 +1811,28 @@ class Engine(Connectable, log.Identified):
     def dispose(self):
         """Dispose of the connection pool used by this :class:`.Engine`.
 
+        This has the effect of fully closing all **currently checked in**
+        database connections.  Connections that are still checked out
+        will **not** be closed, however they will no longer be associated
+        with this :class:`.Engine`, so when they are closed individually,
+        eventually the :class:`.Pool` which they are associated with will
+        be garbage collected and they will be closed out fully, if
+        not already closed on checkin.
+
         A new connection pool is created immediately after the old one has
         been disposed.   This new pool, like all SQLAlchemy connection pools,
         does not make any actual connections to the database until one is
-        first requested.
+        first requested, so as long as the :class:`.Engine` isn't used again,
+        no new connections will be made.
 
-        This method has two general use cases:
+        .. seealso::
 
-         * When a dropped connection is detected, it is assumed that all
-           connections held by the pool are potentially dropped, and
-           the entire pool is replaced.
-
-         * An application may want to use :meth:`dispose` within a test
-           suite that is creating multiple engines.
-
-        It is critical to note that :meth:`dispose` does **not** guarantee
-        that the application will release all open database connections - only
-        those connections that are checked into the pool are closed.
-        Connections which remain checked out or have been detached from
-        the engine are not affected.
+            :ref:`engine_disposal`
 
         """
         self.pool.dispose()
         self.pool = self.pool.recreate()
+        self.dispatch.engine_disposed(self)
 
     def _execute_default(self, default):
         with self.contextual_connect() as conn:

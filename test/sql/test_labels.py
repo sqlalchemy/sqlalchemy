@@ -138,8 +138,9 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             issuperset(['this_is_the_data_column',
                         s.c.this_is_the_data_column])
         assert \
-            set(compiled._create_result_map()['this_is_the_primarykey_column'][1]).\
+            set(compiled._create_result_map()['this_is_the_primarykey__1'][1]).\
             issuperset(['this_is_the_primarykey_column',
+                        'this_is_the_primarykey__1',
                         s.c.this_is_the_primarykey_column])
 
     def test_result_map_anon_alias(self):
@@ -150,29 +151,28 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([q]).apply_labels()
 
         self.assert_compile(
-            s, 'SELECT '
-            'anon_1.this_is_the_primarykey_column '
-            'AS anon_1_this_is_the_prim_1, '
-            'anon_1.this_is_the_data_column '
-            'AS anon_1_this_is_the_data_2 '
-            'FROM ('
-            'SELECT '
-            'some_large_named_table.'
-            'this_is_the_primarykey_column '
-            'AS this_is_the_primarykey_column, '
-            'some_large_named_table.this_is_the_data_column '
-            'AS this_is_the_data_column '
-            'FROM '
-            'some_large_named_table '
-            'WHERE '
-            'some_large_named_table.this_is_the_primarykey_column '
-            '= :this_is_the_primarykey__1'
-            ') '
-            'AS anon_1', dialect=dialect)
+            s,
+            "SELECT "
+            "anon_1.this_is_the_primarykey__2 AS anon_1_this_is_the_prim_1, "
+            "anon_1.this_is_the_data_column AS anon_1_this_is_the_data_3 "
+            "FROM ("
+            "SELECT "
+            "some_large_named_table."
+            "this_is_the_primarykey_column AS this_is_the_primarykey__2, "
+            "some_large_named_table."
+            "this_is_the_data_column AS this_is_the_data_column "
+            "FROM "
+            "some_large_named_table "
+            "WHERE "
+            "some_large_named_table.this_is_the_primarykey_column "
+            "= :this_is_the_primarykey__1"
+            ") "
+            "AS anon_1", dialect=dialect)
+
         compiled = s.compile(dialect=dialect)
-        assert set(compiled._create_result_map()['anon_1_this_is_the_data_2'][1]).\
+        assert set(compiled._create_result_map()['anon_1_this_is_the_data_3'][1]).\
             issuperset([
-                'anon_1_this_is_the_data_2',
+                'anon_1_this_is_the_data_3',
                 q.corresponding_column(
                     table1.c.this_is_the_data_column)
             ])
@@ -542,3 +542,26 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         compiled = s.compile(dialect=dialect)
         assert set(compiled._create_result_map()['_1'][1]).issuperset([
             'asdf_abcde', a1.c.abcde, '_1'])
+
+    def test_label_overlap_unlabeled(self):
+        """test that an anon col can't overlap with a fixed name, #3396"""
+
+        table1 = table(
+            "tablename", column('columnname_one'), column('columnn_1'))
+
+        stmt = select([table1]).apply_labels()
+
+        dialect = default.DefaultDialect(label_length=23)
+        self.assert_compile(
+            stmt,
+            "SELECT tablename.columnname_one AS tablename_columnn_1, "
+            "tablename.columnn_1 AS tablename_columnn_2 FROM tablename",
+            dialect=dialect
+        )
+        compiled = stmt.compile(dialect=dialect)
+        eq_(
+            set(compiled._create_result_map()),
+            set(['tablename_columnn_1', 'tablename_columnn_2'])
+        )
+
+

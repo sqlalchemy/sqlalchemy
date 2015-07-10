@@ -10,7 +10,8 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 """
 
 from .base import Executable, _generative, _from_objects, DialectKWArgs
-from .elements import ClauseElement, _literal_as_text, Null, and_, _clone
+from .elements import ClauseElement, _literal_as_text, Null, and_, _clone, \
+    _column_as_key
 from .selectable import _interpret_as_from, _interpret_as_select, HasPrefixes
 from .. import util
 from .. import exc
@@ -261,10 +262,14 @@ class ValuesBase(UpdateBase):
              has the effect of using the DBAPI
              `executemany() <http://www.python.org/dev/peps/pep-0249/#id18>`_
              method, which provides a high-performance system of invoking
-             a single-row INSERT statement many times against a series
+             a single-row INSERT or single-criteria UPDATE or DELETE statement
+             many times against a series
              of parameter sets.   The "executemany" style is supported by
-             all database backends, as it does not depend on a special SQL
-             syntax.
+             all database backends, and works equally well for INSERT,
+             UPDATE, and DELETE, as it does not depend on a special SQL
+             syntax.  See :ref:`execute_multiple` for an introduction to
+             the traditional Core method of multiple parameter set invocation
+             using this system.
 
          .. versionadded:: 0.8
              Support for multiple-VALUES INSERT statements.
@@ -544,7 +549,8 @@ class Insert(ValuesBase):
                 "This construct already inserts value expressions")
 
         self.parameters, self._has_multi_parameters = \
-            self._process_colparams(dict((n, Null()) for n in names))
+            self._process_colparams(
+                dict((_column_as_key(n), Null()) for n in names))
 
         self.select_names = names
         self.inline = True

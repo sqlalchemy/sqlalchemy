@@ -49,6 +49,7 @@ def configure_follower(follower_ident):
 def setup_config(db_url, db_opts, options, file_config, follower_ident):
     if follower_ident:
         db_url = _follower_url_from_main(db_url, follower_ident)
+    _update_db_opts(db_url, db_opts)
     eng = engines.testing_engine(db_url, db_opts)
     eng.connect().close()
     cfg = config.Config.register(eng, db_opts, options, file_config)
@@ -94,6 +95,11 @@ def _drop_db(cfg, eng, ident):
 
 
 @register.init
+def _update_db_opts(db_url, db_opts):
+    pass
+
+
+@register.init
 def _configure_follower(cfg, ident):
     pass
 
@@ -103,6 +109,11 @@ def _follower_url_from_main(url, ident):
     url = sa_url.make_url(url)
     url.database = ident
     return url
+
+
+@_update_db_opts.for_db("mssql")
+def _mssql_update_db_opts(db_url, db_opts):
+    db_opts['legacy_schema_aliasing'] = False
 
 
 @_follower_url_from_main.for_db("sqlite")

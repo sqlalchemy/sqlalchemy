@@ -484,7 +484,9 @@ everything is rolled back.
 
       from sqlalchemy import event
 
+
       class SomeTest(TestCase):
+
           def setUp(self):
               # connect to the database
               self.connection = engine.connect()
@@ -502,7 +504,12 @@ everything is rolled back.
               @event.listens_for(self.session, "after_transaction_end")
               def restart_savepoint(session, transaction):
                   if transaction.nested and not transaction._parent.nested:
-                      session.begin_nested()
 
+                      # ensure that state is expired the way
+                      # session.commit() at the top level normally does
+                      # (optional step)
+                      session.expire_all()
+
+                      session.begin_nested()
 
           # ... the tearDown() method stays the same

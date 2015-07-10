@@ -2301,6 +2301,142 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         )
 
 
+class InnerJoinSplicingWSecondaryTest(
+        fixtures.MappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+    __backend__ = True  # exercise hardcore join nesting on backends
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('bid', ForeignKey('b.id'))
+        )
+
+        Table(
+            'b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('cid', ForeignKey('c.id'))
+        )
+
+        Table(
+            'c', metadata,
+            Column('id', Integer, primary_key=True),
+        )
+
+        Table('ctod', metadata,
+              Column('cid', ForeignKey('c.id'), primary_key=True),
+              Column('did', ForeignKey('d.id'), primary_key=True),
+              )
+        Table('d', metadata,
+              Column('id', Integer, primary_key=True),
+              )
+
+    @classmethod
+    def setup_classes(cls):
+
+        class A(cls.Comparable):
+            pass
+
+        class B(cls.Comparable):
+            pass
+
+        class C(cls.Comparable):
+            pass
+
+        class D(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C, D = (
+            cls.classes.A, cls.classes.B, cls.classes.C,
+            cls.classes.D)
+        mapper(A, cls.tables.a, properties={
+            'b': relationship(B)
+        })
+        mapper(B, cls.tables.b, properties=odict([
+            ('c', relationship(C)),
+        ]))
+        mapper(C, cls.tables.c, properties=odict([
+            ('ds', relationship(D, secondary=cls.tables.ctod,
+                                order_by=cls.tables.d.c.id)),
+        ]))
+        mapper(D, cls.tables.d)
+
+    @classmethod
+    def _fixture_data(cls):
+        A, B, C, D = (
+            cls.classes.A, cls.classes.B, cls.classes.C,
+            cls.classes.D)
+
+        d1, d2, d3 = D(id=1), D(id=2), D(id=3)
+        return [
+            A(
+                id=1,
+                b=B(
+                    id=1,
+                    c=C(
+                        id=1,
+                        ds=[d1, d2]
+                    )
+                )
+            ),
+            A(
+                id=2,
+                b=B(
+                    id=2,
+                    c=C(
+                        id=2,
+                        ds=[d2, d3]
+                    )
+                )
+            )
+        ]
+
+    @classmethod
+    def insert_data(cls):
+        s = Session(testing.db)
+        s.add_all(cls._fixture_data())
+        s.commit()
+
+    def _assert_result(self, query):
+        def go():
+            eq_(
+                query.all(),
+                self._fixture_data()
+            )
+
+        self.assert_sql_count(
+            testing.db,
+            go,
+            1
+        )
+
+    def test_joined_across(self):
+        A = self.classes.A
+
+        s = Session()
+        q = s.query(A) \
+            .options(
+                joinedload('b').
+                joinedload('c', innerjoin=True).
+                joinedload('ds', innerjoin=True))
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, a.bid AS a_bid, d_1.id AS d_1_id, "
+            "c_1.id AS c_1_id, b_1.id AS b_1_id, b_1.cid AS b_1_cid "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN "
+            "(c AS c_1 JOIN ctod AS ctod_1 ON c_1.id = ctod_1.cid) "
+            "ON c_1.id = b_1.cid "
+            "JOIN d AS d_1 ON d_1.id = ctod_1.did) ON b_1.id = a.bid "
+            "ORDER BY d_1.id"
+        )
+        self._assert_result(q)
+
+
 class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
     """test #2188"""

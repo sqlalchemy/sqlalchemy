@@ -242,6 +242,26 @@ class ResultTest(BakedTest):
         })
         mapper(Address, cls.tables.addresses)
 
+    def test_cachekeys_on_constructor(self):
+        User = self.classes.User
+
+        queue = [7, 8]
+        fn = lambda s: s.query(User.id).filter_by(id=queue.pop(0))
+        bq1 = self.bakery(fn, 7)
+        bq2 = self.bakery(fn, 8)
+
+        for i in range(3):
+            session = Session(autocommit=True)
+            eq_(
+                bq1(session).all(),
+                [(7,)]
+            )
+
+            eq_(
+                bq2(session).all(),
+                [(8,)]
+            )
+
     def test_no_steps(self):
         User = self.classes.User
 
@@ -249,7 +269,7 @@ class ResultTest(BakedTest):
             lambda s: s.query(User.id, User.name).order_by(User.id))
 
         for i in range(3):
-            session = Session()
+            session = Session(autocommit=True)
             eq_(
                 bq(session).all(),
                 [(7, 'jack'), (8, 'ed'), (9, 'fred'), (10, 'chuck')]
@@ -262,7 +282,7 @@ class ResultTest(BakedTest):
             lambda s: s.query(User.id, User.name).order_by(User.id))
 
         bq += lambda q: q.limit(bindparam('limit')).offset(bindparam('offset'))
-        session = Session()
+        session = Session(autocommit=True)
 
         for i in range(4):
             for limit, offset, exp in [
@@ -297,7 +317,7 @@ class ResultTest(BakedTest):
 
             bq += fn2
 
-            sess = Session()
+            sess = Session(autocommit=True)
             eq_(
                 bq.spoil(full=True).add_criteria(fn3)(sess).params(id=7).all(),
                 [(7, 'jack')]
@@ -336,7 +356,7 @@ class ResultTest(BakedTest):
 
             bq += fn2
 
-            sess = Session()
+            sess = Session(autocommit=True)
             eq_(
                 bq.spoil().add_criteria(fn3)(sess).params(id=7).all(),
                 [(7, 'jack')]
@@ -363,7 +383,7 @@ class ResultTest(BakedTest):
             func.count(User.id))
 
         for i in range(3):
-            session = Session()
+            session = Session(autocommit=True)
             eq_(
                 bq(session).all(),
                 [(4, )]
@@ -400,7 +420,7 @@ class ResultTest(BakedTest):
                 if cond4:
                     bq += lambda q: q.from_self().with_entities(
                         func.count(User.id))
-                sess = Session()
+                sess = Session(autocommit=True)
                 result = bq(sess).all()
                 if cond4:
                     if cond1:
@@ -448,7 +468,7 @@ class ResultTest(BakedTest):
                 # we were using (filename, firstlineno) as cache key,
                 # which fails for this kind of thing!
                 bq += (lambda q: q.filter(User.name != 'jack')) if cond1 else (lambda q: q.filter(User.name == 'jack'))  # noqa
-                sess = Session()
+                sess = Session(autocommit=True)
                 result = bq(sess).all()
 
                 if cond1:

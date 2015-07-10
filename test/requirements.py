@@ -130,7 +130,7 @@ class DefaultRequirements(SuiteRequirements):
     def temporary_tables(self):
         """target database supports temporary tables"""
         return skip_if(
-                    ["mssql"], "sql server has some other syntax?"
+                    ["mssql", "firebird"], "not supported (?)"
                 )
 
     @property
@@ -669,6 +669,10 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def duplicate_key_raises_integrity_error(self):
+        return fails_on("postgresql+pg8000")
+
+    @property
     def python2(self):
         return skip_if(
                 lambda: sys.version_info >= (3,),
@@ -723,12 +727,12 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def range_types(self):
         def check_range_types(config):
-            if not against(config, "postgresql+psycopg2"):
+            if not against(
+                    config,
+                    ["postgresql+psycopg2", "postgresql+psycopg2cffi"]):
                 return False
             try:
-                config.db.execute("select '[1,2)'::int4range;")
-                # only supported in psycopg 2.5+
-                from psycopg2.extras import NumericRange
+                config.db.scalar("select '[1,2)'::int4range;")
                 return True
             except:
                 return False
@@ -758,6 +762,27 @@ class DefaultRequirements(SuiteRequirements):
             lambda config:
             config.db.dialect.driver == "pg8000" and
             config.db.dialect._dbapi_version <= (1, 10, 1)
+        )
+
+    @property
+    def psycopg2_native_json(self):
+        return self.psycopg2_compatibility
+
+    @property
+    def psycopg2_native_hstore(self):
+        return self.psycopg2_compatibility
+
+    @property
+    def psycopg2_compatibility(self):
+        return only_on(
+            ["postgresql+psycopg2", "postgresql+psycopg2cffi"]
+        )
+
+    @property
+    def psycopg2_or_pg8000_compatibility(self):
+        return only_on(
+            ["postgresql+psycopg2", "postgresql+psycopg2cffi",
+             "postgresql+pg8000"]
         )
 
     @property
@@ -807,10 +832,13 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def no_mssql_freetds(self):
+        return self.mssql_freetds.not_()
+
+    @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
-
 
     @property
     def mysql_fully_case_sensitive(self):

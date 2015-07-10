@@ -69,10 +69,12 @@ class RowTupleTest(QueryTest):
         mapper(Address, addresses)
         sess = create_session()
         user_alias = aliased(User)
+        user_alias_id_label = user_alias.id.label('foo')
         address_alias = aliased(Address, name='aalias')
         fn = func.count(User.id)
         name_label = User.name.label('uname')
         bundle = Bundle('b1', User.id, User.name)
+        cte = sess.query(User.id).cte()
         for q, asserted in [
             (
                 sess.query(User),
@@ -104,6 +106,24 @@ class RowTupleTest(QueryTest):
                 ]
             ),
             (
+                sess.query(user_alias.id),
+                [
+                    {
+                        'name': 'id', 'type': users.c.id.type,
+                        'aliased': True, 'expr': user_alias.id,
+                        'entity': user_alias},
+                ]
+            ),
+            (
+                sess.query(user_alias_id_label),
+                [
+                    {
+                        'name': 'foo', 'type': users.c.id.type,
+                        'aliased': True, 'expr': user_alias_id_label,
+                        'entity': user_alias},
+                ]
+            ),
+            (
                 sess.query(address_alias),
                 [
                     {
@@ -120,6 +140,26 @@ class RowTupleTest(QueryTest):
                     {
                         'name': None, 'type': fn.type, 'aliased': False,
                         'expr': fn, 'entity': User},
+                ]
+            ),
+            (
+                sess.query(cte),
+                [
+                {
+                    'aliased': False,
+                    'expr': cte.c.id, 'type': cte.c.id.type,
+                    'name': 'id', 'entity': None
+                }]
+            ),
+            (
+                sess.query(users),
+                [
+                    {'aliased': False,
+                     'expr': users.c.id, 'type': users.c.id.type,
+                     'name': 'id', 'entity': None},
+                    {'aliased': False,
+                     'expr': users.c.name, 'type': users.c.name.type,
+                     'name': 'name', 'entity': None}
                 ]
             ),
             (
@@ -742,7 +782,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
     __dialect__ = 'default'
 
-    def _test(self, clause, expected, entity=None):
+    def _test(self, clause, expected, entity=None, checkparams=None):
         dialect = default.DefaultDialect()
         if entity is not None:
             # specify a lead entity, so that when we are testing
@@ -754,9 +794,11 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             lead = context.statement.compile(dialect=dialect)
             expected = (str(lead) + " WHERE " + expected).replace("\n", "")
             clause = sess.query(entity).filter(clause)
-        self.assert_compile(clause, expected)
+        self.assert_compile(clause, expected, checkparams=checkparams)
 
-    def _test_filter_aliases(self, clause, expected, from_, onclause):
+    def _test_filter_aliases(
+            self,
+            clause, expected, from_, onclause, checkparams=None):
         dialect = default.DefaultDialect()
         sess = Session()
         lead = sess.query(from_).join(onclause, aliased=True)
@@ -766,7 +808,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         lead = context.statement.compile(dialect=dialect)
         expected = (str(lead) + " WHERE " + expected).replace("\n", "")
 
-        self.assert_compile(full, expected)
+        self.assert_compile(full, expected, checkparams=checkparams)
 
     def test_arithmetic(self):
         User = self.classes.User
@@ -933,65 +975,126 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
     def test_m2o_compare_instance(self):
         User, Address = self.classes.User, self.classes.Address
-        u7 = User(id=7)
+        u7 = User(id=5)
         attributes.instance_state(u7)._commit_all(attributes.instance_dict(u7))
+        u7.id = 7
 
         self._test(Address.user == u7, ":param_1 = addresses.user_id")
 
     def test_m2o_compare_instance_negated(self):
         User, Address = self.classes.User, self.classes.Address
-        u7 = User(id=7)
+        u7 = User(id=5)
         attributes.instance_state(u7)._commit_all(attributes.instance_dict(u7))
+        u7.id = 7
 
         self._test(
             Address.user != u7,
-            "addresses.user_id != :user_id_1 OR addresses.user_id IS NULL")
+            "addresses.user_id != :user_id_1 OR addresses.user_id IS NULL",
+            checkparams={'user_id_1': 7})
 
     def test_m2o_compare_instance_orm_adapt(self):
         User, Address = self.classes.User, self.classes.Address
-        u7 = User(id=7)
+        u7 = User(id=5)
         attributes.instance_state(u7)._commit_all(attributes.instance_dict(u7))
+        u7.id = 7
 
         self._test_filter_aliases(
             Address.user == u7,
-            ":param_1 = addresses_1.user_id", User, User.addresses
+            ":param_1 = addresses_1.user_id", User, User.addresses,
+            checkparams={'param_1': 7}
         )
+
+    def test_m2o_compare_instance_negated_warn_on_none(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u7_transient = User(id=None)
+
+        with expect_warnings("Got None for value of column users.id; "):
+            self._test_filter_aliases(
+                Address.user != u7_transient,
+                "addresses_1.user_id != :user_id_1 "
+                "OR addresses_1.user_id IS NULL",
+                User, User.addresses,
+                checkparams={'user_id_1': None}
+            )
 
     def test_m2o_compare_instance_negated_orm_adapt(self):
         User, Address = self.classes.User, self.classes.Address
-        u7 = User(id=7)
+        u7 = User(id=5)
         attributes.instance_state(u7)._commit_all(attributes.instance_dict(u7))
+        u7.id = 7
+
+        u7_transient = User(id=7)
 
         self._test_filter_aliases(
             Address.user != u7,
             "addresses_1.user_id != :user_id_1 OR addresses_1.user_id IS NULL",
-            User, User.addresses
+            User, User.addresses,
+            checkparams={'user_id_1': 7}
         )
 
         self._test_filter_aliases(
             ~(Address.user == u7), ":param_1 != addresses_1.user_id",
-            User, User.addresses
+            User, User.addresses,
+            checkparams={'param_1': 7}
         )
 
         self._test_filter_aliases(
             ~(Address.user != u7),
             "NOT (addresses_1.user_id != :user_id_1 "
-            "OR addresses_1.user_id IS NULL)", User, User.addresses
+            "OR addresses_1.user_id IS NULL)", User, User.addresses,
+            checkparams={'user_id_1': 7}
+        )
+
+        self._test_filter_aliases(
+            Address.user != u7_transient,
+            "addresses_1.user_id != :user_id_1 OR addresses_1.user_id IS NULL",
+            User, User.addresses,
+            checkparams={'user_id_1': 7}
+        )
+
+        self._test_filter_aliases(
+            ~(Address.user == u7_transient), ":param_1 != addresses_1.user_id",
+            User, User.addresses,
+            checkparams={'param_1': 7}
+        )
+
+        self._test_filter_aliases(
+            ~(Address.user != u7_transient),
+            "NOT (addresses_1.user_id != :user_id_1 "
+            "OR addresses_1.user_id IS NULL)", User, User.addresses,
+            checkparams={'user_id_1': 7}
         )
 
     def test_m2o_compare_instance_aliased(self):
         User, Address = self.classes.User, self.classes.Address
-        u7 = User(id=7)
+        u7 = User(id=5)
         attributes.instance_state(u7)._commit_all(attributes.instance_dict(u7))
+        u7.id = 7
+
+        u7_transient = User(id=7)
 
         a1 = aliased(Address)
         self._test(
             a1.user == u7,
-            ":param_1 = addresses_1.user_id")
+            ":param_1 = addresses_1.user_id",
+            checkparams={'param_1': 7})
 
         self._test(
             a1.user != u7,
-            "addresses_1.user_id != :user_id_1 OR addresses_1.user_id IS NULL")
+            "addresses_1.user_id != :user_id_1 OR addresses_1.user_id IS NULL",
+            checkparams={'user_id_1': 7})
+
+        a1 = aliased(Address)
+        self._test(
+            a1.user == u7_transient,
+            ":param_1 = addresses_1.user_id",
+            checkparams={'param_1': 7})
+
+        self._test(
+            a1.user != u7_transient,
+            "addresses_1.user_id != :user_id_1 OR addresses_1.user_id IS NULL",
+            checkparams={'user_id_1': 7})
 
     def test_selfref_relationship(self):
 
@@ -1004,7 +1107,8 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             Node.children.any(Node.data == 'n1'),
             "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
             "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)",
-            entity=Node
+            entity=Node,
+            checkparams={'data_1': 'n1'}
         )
 
         # needs autoaliasing
@@ -1012,36 +1116,43 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             Node.children == None,
             "NOT (EXISTS (SELECT 1 FROM nodes AS nodes_1 "
             "WHERE nodes.id = nodes_1.parent_id))",
-            entity=Node
+            entity=Node,
+            checkparams={}
         )
 
         self._test(
             Node.parent == None,
-            "nodes.parent_id IS NULL"
+            "nodes.parent_id IS NULL",
+            checkparams={}
         )
 
         self._test(
             nalias.parent == None,
-            "nodes_1.parent_id IS NULL"
+            "nodes_1.parent_id IS NULL",
+            checkparams={}
         )
 
         self._test(
             nalias.parent != None,
-            "nodes_1.parent_id IS NOT NULL"
+            "nodes_1.parent_id IS NOT NULL",
+            checkparams={}
         )
 
         self._test(
             nalias.children == None,
             "NOT (EXISTS ("
             "SELECT 1 FROM nodes WHERE nodes_1.id = nodes.parent_id))",
-            entity=nalias
+            entity=nalias,
+            checkparams={}
         )
 
         self._test(
             nalias.children.any(Node.data == 'some data'),
             "EXISTS (SELECT 1 FROM nodes WHERE "
             "nodes_1.id = nodes.parent_id AND nodes.data = :data_1)",
-            entity=nalias)
+            entity=nalias,
+            checkparams={'data_1': 'some data'}
+            )
 
         # this fails because self-referential any() is auto-aliasing;
         # the fact that we use "nalias" here means we get two aliases.
@@ -1056,33 +1167,48 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             nalias.parent.has(Node.data == 'some data'),
             "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id "
             "AND nodes.data = :data_1)",
-            entity=nalias
+            entity=nalias,
+            checkparams={'data_1': 'some data'}
         )
 
         self._test(
             Node.parent.has(Node.data == 'some data'),
             "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
             "nodes_1.id = nodes.parent_id AND nodes_1.data = :data_1)",
-            entity=Node
+            entity=Node,
+            checkparams={'data_1': 'some data'}
         )
 
         self._test(
             Node.parent == Node(id=7),
-            ":param_1 = nodes.parent_id"
+            ":param_1 = nodes.parent_id",
+            checkparams={"param_1": 7}
         )
 
         self._test(
             nalias.parent == Node(id=7),
-            ":param_1 = nodes_1.parent_id"
+            ":param_1 = nodes_1.parent_id",
+            checkparams={"param_1": 7}
         )
 
         self._test(
             nalias.parent != Node(id=7),
-            'nodes_1.parent_id != :parent_id_1 OR nodes_1.parent_id IS NULL'
+            'nodes_1.parent_id != :parent_id_1 '
+            'OR nodes_1.parent_id IS NULL',
+            checkparams={"parent_id_1": 7}
         )
 
         self._test(
-            nalias.children.contains(Node(id=7)), "nodes_1.id = :param_1"
+            nalias.parent != Node(id=7),
+            'nodes_1.parent_id != :parent_id_1 '
+            'OR nodes_1.parent_id IS NULL',
+            checkparams={"parent_id_1": 7}
+        )
+
+        self._test(
+            nalias.children.contains(Node(id=7, parent_id=12)),
+            "nodes_1.id = :param_1",
+            checkparams={"param_1": 12}
         )
 
     def test_multilevel_any(self):
@@ -1589,6 +1715,25 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "FROM users ORDER BY (SELECT max(addresses.email_address) AS max_1 "
             "FROM addresses "
             "WHERE addresses.user_id = users.id)"
+        )
+
+
+class ComparatorTest(QueryTest):
+    def test_clause_element_query_resolve(self):
+        from sqlalchemy.orm.properties import ColumnProperty
+        User = self.classes.User
+
+        class Comparator(ColumnProperty.Comparator):
+            def __init__(self, expr):
+                self.expr = expr
+
+            def __clause_element__(self):
+                return self.expr
+
+        sess = Session()
+        eq_(
+            sess.query(Comparator(User.id)).order_by(Comparator(User.id)).all(),
+            [(7, ), (8, ), (9, ), (10, )]
         )
 
 
@@ -2530,10 +2675,12 @@ class YieldTest(_fixtures.FixtureTest):
         User = self.classes.User
 
         sess = create_session()
-        q = sess.query(User).yield_per(1)
+        q = sess.query(User).yield_per(15)
         q = q.execution_options(foo='bar')
         assert q._yield_per
-        eq_(q._execution_options, {"stream_results": True, "foo": "bar"})
+        eq_(
+            q._execution_options,
+            {"stream_results": True, "foo": "bar", "max_row_buffer": 15})
 
     def test_no_joinedload_opt(self):
         self._eagerload_mappings()
@@ -2774,43 +2921,142 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             [User(id=7), User(id=8), User(id=9), User(id=10)]
         )
 
-    def test_order_by_w_eager(self):
+    def test_order_by_w_eager_one(self):
+        User = self.classes.User
+        s = create_session()
+
+        # from 1.0.0 thru 1.0.2, the "name" symbol here was considered
+        # to be part of the things we need to ORDER BY and it was being
+        # placed into the inner query's columns clause, as part of
+        # query._compound_eager_statement where we add unwrap_order_by()
+        # to the columns clause.  However, as #3392 illustrates, unlocatable
+        # string expressions like "name desc" will only fail in this scenario,
+        # so in general the changing of the query structure with string labels
+        # is dangerous.
+        #
+        # the queries here are again "invalid" from a SQL perspective, as the
+        # "name" field isn't matched up to anything.
+        #
+        with expect_warnings("Can't resolve label reference 'name';"):
+            self.assert_compile(
+                s.query(User).options(joinedload("addresses")).
+                order_by(desc("name")).limit(1),
+                "SELECT anon_1.users_id AS anon_1_users_id, "
+                "anon_1.users_name AS anon_1_users_name, "
+                "addresses_1.id AS addresses_1_id, "
+                "addresses_1.user_id AS addresses_1_user_id, "
+                "addresses_1.email_address AS addresses_1_email_address "
+                "FROM (SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users ORDER BY users.name "
+                "DESC LIMIT :param_1) AS anon_1 "
+                "LEFT OUTER JOIN addresses AS addresses_1 "
+                "ON anon_1.users_id = addresses_1.user_id "
+                "ORDER BY name DESC, addresses_1.id"
+            )
+
+    def test_order_by_w_eager_two(self):
+        User = self.classes.User
+        s = create_session()
+
+        with expect_warnings("Can't resolve label reference 'name';"):
+            self.assert_compile(
+                s.query(User).options(joinedload("addresses")).
+                order_by("name").limit(1),
+                "SELECT anon_1.users_id AS anon_1_users_id, "
+                "anon_1.users_name AS anon_1_users_name, "
+                "addresses_1.id AS addresses_1_id, "
+                "addresses_1.user_id AS addresses_1_user_id, "
+                "addresses_1.email_address AS addresses_1_email_address "
+                "FROM (SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users ORDER BY users.name "
+                "LIMIT :param_1) AS anon_1 "
+                "LEFT OUTER JOIN addresses AS addresses_1 "
+                "ON anon_1.users_id = addresses_1.user_id "
+                "ORDER BY name, addresses_1.id"
+            )
+
+    def test_order_by_w_eager_three(self):
+        User = self.classes.User
+        s = create_session()
+
+        self.assert_compile(
+            s.query(User).options(joinedload("addresses")).
+            order_by("users_name").limit(1),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users ORDER BY users.name "
+            "LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.users_name, addresses_1.id"
+        )
+
+        # however! this works (again?)
+        eq_(
+            s.query(User).options(joinedload("addresses")).
+            order_by("users_name").first(),
+            User(name='chuck', addresses=[])
+        )
+
+    def test_order_by_w_eager_four(self):
         User = self.classes.User
         Address = self.classes.Address
         s = create_session()
 
-        # here, we are seeing how Query has to take the order by expressions
-        # of the query and then add them to the columns list, so that the
-        # outer subquery can order by that same label.  With the anonymous
-        # label, our column gets sucked up and restated again in the
-        # inner columns list!
-        # we could try to play games with making this "smarter" but it
-        # would add permanent overhead to Select._columns_plus_names,
-        # since that's where references would need to be resolved.
-        # so as it is, this query takes the _label_reference and makes a
-        # full blown proxy and all the rest of it.
         self.assert_compile(
             s.query(User).options(joinedload("addresses")).
-            order_by(desc("name")).limit(1),
+            order_by(desc("users_name")).limit(1),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
-            "anon_1.anon_2 AS anon_1_anon_2, "
             "addresses_1.id AS addresses_1_id, "
             "addresses_1.user_id AS addresses_1_user_id, "
             "addresses_1.email_address AS addresses_1_email_address "
-            "FROM (SELECT users.id AS users_id, users.name AS users_name, "
-            "users.name AS anon_2 FROM users ORDER BY users.name "
-            "DESC LIMIT :param_1) AS anon_1 "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users ORDER BY users.name DESC "
+            "LIMIT :param_1) AS anon_1 "
             "LEFT OUTER JOIN addresses AS addresses_1 "
             "ON anon_1.users_id = addresses_1.user_id "
-            "ORDER BY anon_1.anon_2 DESC, addresses_1.id"
+            "ORDER BY anon_1.users_name DESC, addresses_1.id"
         )
 
+        # however! this works (again?)
         eq_(
             s.query(User).options(joinedload("addresses")).
-                order_by(desc("name")).first(),
+            order_by(desc("users_name")).first(),
             User(name='jack', addresses=[Address()])
         )
+
+    def test_order_by_w_eager_five(self):
+        """essentially the same as test_eager_relations -> test_limit_3,
+        but test for textual label elements that are freeform.
+        this is again #3392."""
+
+        User = self.classes.User
+        Address = self.classes.Address
+        Order = self.classes.Order
+
+        sess = create_session()
+
+        q = sess.query(User, Address.email_address.label('email_address'))
+
+        l = q.join('addresses').options(joinedload(User.orders)).\
+            order_by(
+            "email_address desc").limit(1).offset(0)
+        with expect_warnings(
+                "Can't resolve label reference 'email_address desc'"):
+            eq_(
+                [
+                    (User(
+                        id=7,
+                        orders=[Order(id=1), Order(id=3), Order(id=5)],
+                        addresses=[Address(id=1)]
+                    ), 'jack@bean.com')
+                ],
+                l.all())
 
 
 class TextWarningTest(QueryTest, AssertsCompiledSQL):
@@ -2944,6 +3190,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             o.all()
         )
 
+
     def test_with_pending_autoflush(self):
         Order, User = self.classes.Order, self.classes.User
 
@@ -3018,7 +3265,133 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         )
 
 
-class SynonymTest(QueryTest):
+class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
+    run_inserts = None
+    __dialect__ = 'default'
+
+    def _fixture1(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user': relationship(User),
+            'special_user': relationship(
+                User, primaryjoin=and_(
+                    users.c.id == addresses.c.user_id,
+                    users.c.name == addresses.c.email_address))
+        })
+
+    def test_filter_with_transient_assume_pk(self):
+        self._fixture1()
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = Session()
+
+        q = sess.query(Address).filter(Address.user == User())
+        with expect_warnings("Got None for value of column "):
+            self.assert_compile(
+                q,
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id",
+                checkparams={'param_1': None}
+            )
+
+    def test_filter_with_transient_warn_for_none_against_non_pk(self):
+        self._fixture1()
+        User, Address = self.classes.User, self.classes.Address
+
+        s = Session()
+        q = s.query(Address).filter(Address.special_user == User())
+        with expect_warnings("Got None for value of column"):
+
+            self.assert_compile(
+                q,
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND :param_2 = addresses.email_address",
+                checkparams={"param_1": None, "param_2": None}
+            )
+
+    def test_with_parent_with_transient_assume_pk(self):
+        self._fixture1()
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = Session()
+
+        q = sess.query(User).with_parent(Address(), "user")
+        with expect_warnings("Got None for value of column"):
+            self.assert_compile(
+                q,
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = :param_1",
+                checkparams={'param_1': None}
+            )
+
+    def test_with_parent_with_transient_warn_for_none_against_non_pk(self):
+        self._fixture1()
+        User, Address = self.classes.User, self.classes.Address
+
+        s = Session()
+        q = s.query(User).with_parent(Address(), "special_user")
+        with expect_warnings("Got None for value of column"):
+
+            self.assert_compile(
+                q,
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = :param_1 "
+                "AND users.name = :param_2",
+                checkparams={"param_1": None, "param_2": None}
+            )
+
+    def test_negated_contains_or_equals_plain_m2o(self):
+        self._fixture1()
+        User, Address = self.classes.User, self.classes.Address
+
+        s = Session()
+        q = s.query(Address).filter(Address.user != User())
+        with expect_warnings("Got None for value of column"):
+            self.assert_compile(
+                q,
+
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses "
+                "WHERE addresses.user_id != :user_id_1 "
+                "OR addresses.user_id IS NULL",
+                checkparams={'user_id_1': None}
+            )
+
+    def test_negated_contains_or_equals_complex_rel(self):
+        self._fixture1()
+        User, Address = self.classes.User, self.classes.Address
+
+        s = Session()
+
+        # this one does *not* warn because we do the criteria
+        # without deferral
+        q = s.query(Address).filter(Address.special_user != User())
+        self.assert_compile(
+            q,
+            "SELECT addresses.id AS addresses_id, "
+            "addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM addresses "
+            "WHERE NOT (EXISTS (SELECT 1 "
+            "FROM users "
+            "WHERE users.id = addresses.user_id AND "
+            "users.name = addresses.email_address AND users.id IS NULL))",
+            checkparams={}
+        )
+
+
+class SynonymTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     @classmethod
     def setup_mappers(cls):
@@ -3137,6 +3510,20 @@ class SynonymTest(QueryTest):
             assert [
                 Order(description="order 1"), Order(description="order 3"),
                 Order(description="order 5")] == o
+
+    def test_froms_aliased_col(self):
+        Address, User = self.classes.Address, self.classes.User
+
+        sess = create_session()
+        ua = aliased(User)
+
+        q = sess.query(ua.name_syn).join(
+            Address, ua.id == Address.user_id)
+        self.assert_compile(
+            q,
+            "SELECT users_1.name AS users_1_name FROM "
+            "users AS users_1 JOIN addresses ON users_1.id = addresses.user_id"
+        )
 
 
 class ImmediateTest(_fixtures.FixtureTest):

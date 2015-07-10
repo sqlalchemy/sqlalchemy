@@ -1800,7 +1800,13 @@ class LoadersUsingCommittedTest(UOWTest):
 
 
 class NoAttrEventInFlushTest(fixtures.MappedTest):
-    """test [ticket:3167]"""
+    """test [ticket:3167].
+
+    See also RefreshFlushInReturningTest in test/orm/test_events.py which
+    tests the positive case for the refresh_flush event, added in
+    [ticket:3427].
+
+    """
 
     __backend__ = True
 
@@ -1840,3 +1846,111 @@ class NoAttrEventInFlushTest(fixtures.MappedTest):
         eq_(t1.id, 1)
         eq_(t1.prefetch_val, 5)
         eq_(t1.returning_val, 5)
+
+
+class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
+    """test support for custom datatypes that return a non-__bool__ value
+    when compared via __eq__(), eg. ticket 3469"""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy import TypeDecorator
+
+        class NoBool(object):
+            def __nonzero__(self):
+                raise NotImplementedError("not supported")
+
+        class MyWidget(object):
+            def __init__(self, text):
+                self.text = text
+
+            def __eq__(self, other):
+                return NoBool()
+
+        cls.MyWidget = MyWidget
+
+        class MyType(TypeDecorator):
+            impl = String(50)
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    value = value.text
+                return value
+
+            def process_result_value(self, value, dialect):
+                if value is not None:
+                    value = MyWidget(value)
+                return value
+
+        Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('value', MyType),
+            Column('unrelated', String(50))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test)
+
+    def test_update_against_none(self):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.add(Thing(value=self.MyWidget("foo")))
+        s.commit()
+
+        t1 = s.query(Thing).first()
+        t1.value = None
+        s.commit()
+
+        eq_(
+            s.query(Thing.value).scalar(), None
+        )
+
+    def test_update_against_something_else(self):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.add(Thing(value=self.MyWidget("foo")))
+        s.commit()
+
+        t1 = s.query(Thing).first()
+        t1.value = self.MyWidget("bar")
+        s.commit()
+
+        eq_(
+            s.query(Thing.value).scalar().text, "bar"
+        )
+
+    def test_no_update_no_change(self):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.add(Thing(value=self.MyWidget("foo"), unrelated='unrelated'))
+        s.commit()
+
+        t1 = s.query(Thing).first()
+        t1.unrelated = 'something else'
+
+        self.assert_sql_execution(
+            testing.db,
+            s.commit,
+            CompiledSQL(
+                "UPDATE test SET unrelated=:unrelated "
+                "WHERE test.id = :test_id",
+                [{'test_id': 1, 'unrelated': 'something else'}]
+            ),
+        )
+
+        eq_(
+            s.query(Thing.value).scalar().text, "foo"
+        )

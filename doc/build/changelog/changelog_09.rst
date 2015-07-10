@@ -15,6 +15,71 @@
     :version: 0.9.10
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3418
+        :versions: 1.0.5
+
+        Added official support for a CTE used by the SELECT present
+        inside of :meth:`.Insert.from_select`.  This behavior worked
+        accidentally up until 0.9.9, when it no longer worked due to
+        unrelated changes as part of :ticket:`3248`.   Note that this
+        is the rendering of the WITH clause after the INSERT, before the
+        SELECT; the full functionality of CTEs rendered at the top
+        level of INSERT, UPDATE, DELETE is a new feature targeted for a
+        later release.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 3408
+        :versions: 1.0.4
+
+        Fixed bug where when using extended attribute instrumentation system,
+        the correct exception would not be raised when :func:`.class_mapper`
+        were called with an invalid input that also happened to not
+        be weak referencable, such as an integer.
+
+    .. change::
+        :tags: bug, tests, pypy
+        :tickets: 3406
+        :versions: 1.0.4
+
+        Fixed an import that prevented "pypy setup.py test" from working
+        correctly.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3375
+        :versions: 1.0.1
+
+        Added the string value ``"none"`` to those accepted by the
+        :paramref:`.Pool.reset_on_return` parameter as a synonym for ``None``,
+        so that string values can be used for all settings, allowing
+        utilities like :func:`.engine_from_config` to be usable without
+        issue.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3362
+        :versions: 1.0.0
+
+        Fixed issue where a :class:`.MetaData` object that used a naming
+        convention would not properly work with pickle.  The attribute was
+        skipped leading to inconsistencies and failures if the unpickled
+        :class:`.MetaData` object were used to base additional tables
+        from.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 3354
+        :versions: 1.0.0
+
+        Fixed a long-standing bug where the :class:`.Enum` type as used
+        with the psycopg2 dialect in conjunction with non-ascii values
+        and ``native_enum=False`` would fail to decode return results properly.
+        This stemmed from when the PG :class:`.postgresql.ENUM` type used
+        to be a standalone type without a "non native" option.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3349
 
@@ -77,6 +142,9 @@
         Compared to the existing entry for ``"type"``, it will always be
         a mapped entity, even if extracted from a column expression, or
         None if the given expression is a pure core expression.
+        See also :ticket:`3403` which repaired a regression in this feature
+        which was unreleased in 0.9.10 but was released in the 1.0 version.
+
 
 .. changelog::
     :version: 0.9.9

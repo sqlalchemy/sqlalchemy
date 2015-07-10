@@ -443,7 +443,8 @@ def _collect_update_commands(
             params = dict(
                 (propkey_to_col[propkey].key, state_dict[propkey])
                 for propkey in
-                set(propkey_to_col).intersection(state_dict)
+                set(propkey_to_col).intersection(state_dict).difference(
+                    mapper._pk_keys_by_table[table])
             )
         else:
             params = {}
@@ -452,15 +453,33 @@ def _collect_update_commands(
                 value = state_dict[propkey]
                 col = propkey_to_col[propkey]
 
-                if not state.manager[propkey].impl.is_equal(
-                        value, state.committed_state[propkey]):
-                    if isinstance(value, sql.ClauseElement):
-                        value_params[col] = value
-                    else:
-                        params[col.key] = value
+                if isinstance(value, sql.ClauseElement):
+                    value_params[col] = value
+                # guard against values that generate non-__nonzero__
+                # objects for __eq__()
+                elif state.manager[propkey].impl.is_equal(
+                        value, state.committed_state[propkey]) is not True:
+                    params[col.key] = value
 
         if update_version_id is not None and \
                 mapper.version_id_col in mapper._cols_by_table[table]:
+
+            if not bulk and not (params or value_params):
+                # HACK: check for history in other tables, in case the
+                # history is only in a different table than the one
+                # where the version_id_col is.  This logic was lost
+                # from 0.9 -> 1.0.0 and restored in 1.0.6.
+                for prop in mapper._columntoproperty.values():
+                    history = (
+                        state.manager[prop.key].impl.get_history(
+                            state, state_dict,
+                            attributes.PASSIVE_NO_INITIALIZE))
+                    if history.added:
+                        break
+                else:
+                    # no net change, break
+                    continue
+
             col = mapper.version_id_col
             params[col._label] = update_version_id
 
@@ -469,7 +488,7 @@ def _collect_update_commands(
                 val = mapper.version_id_generator(update_version_id)
                 params[col.key] = val
 
-        if not (params or value_params):
+        elif not (params or value_params):
             continue
 
         if bulk:
@@ -531,7 +550,7 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
                 params[col._label] = \
                     mapper._get_state_attr_by_column(
                         state,
-                        state_dict, col)
+                        state_dict, col, passive=attributes.PASSIVE_OFF)
 
             elif col in post_update_cols:
                 prop = mapper._columntoproperty[col]
@@ -951,6 +970,10 @@ def _postfetch(mapper, uowtransaction, table,
             mapper.version_id_col in mapper._cols_by_table[table]:
         prefetch_cols = list(prefetch_cols) + [mapper.version_id_col]
 
+    refresh_flush = bool(mapper.class_manager.dispatch.refresh_flush)
+    if refresh_flush:
+        load_evt_attrs = []
+
     if returning_cols:
         row = result.context.returned_defaults
         if row is not None:
@@ -958,10 +981,18 @@ def _postfetch(mapper, uowtransaction, table,
                 if col.primary_key:
                     continue
                 dict_[mapper._columntoproperty[col].key] = row[col]
+                if refresh_flush:
+                    load_evt_attrs.append(mapper._columntoproperty[col].key)
 
     for c in prefetch_cols:
         if c.key in params and c in mapper._columntoproperty:
             dict_[mapper._columntoproperty[c].key] = params[c.key]
+            if refresh_flush:
+                load_evt_attrs.append(mapper._columntoproperty[c].key)
+
+    if refresh_flush and load_evt_attrs:
+        mapper.class_manager.dispatch.refresh_flush(
+            state, uowtransaction, load_evt_attrs)
 
     if postfetch_cols:
         state._expire_attributes(state.dict,
@@ -1035,18 +1066,18 @@ class BulkUD(object):
         self._validate_query_state()
 
     def _validate_query_state(self):
-        for attr, methname, notset in (
-            ('_limit', 'limit()', None),
-            ('_offset', 'offset()', None),
-            ('_order_by', 'order_by()', False),
-            ('_group_by', 'group_by()', False),
-            ('_distinct', 'distinct()', False),
+        for attr, methname, notset, op in (
+            ('_limit', 'limit()', None, operator.is_),
+            ('_offset', 'offset()', None, operator.is_),
+            ('_order_by', 'order_by()', False, operator.is_),
+            ('_group_by', 'group_by()', False, operator.is_),
+            ('_distinct', 'distinct()', False, operator.is_),
             (
                 '_from_obj',
                 'join(), outerjoin(), select_from(), or from_self()',
-                ())
+                (), operator.eq)
         ):
-            if getattr(self.query, attr) is not notset:
+            if not op(getattr(self.query, attr), notset):
                 raise sa_exc.InvalidRequestError(
                     "Can't call Query.update() or Query.delete() "
                     "when %s has been called" %
@@ -1170,17 +1201,18 @@ class BulkFetch(BulkUD):
 class BulkUpdate(BulkUD):
     """BulkUD which handles UPDATEs."""
 
-    def __init__(self, query, values):
+    def __init__(self, query, values, update_kwargs):
         super(BulkUpdate, self).__init__(query)
         self.values = values
+        self.update_kwargs = update_kwargs
 
     @classmethod
-    def factory(cls, query, synchronize_session, values):
+    def factory(cls, query, synchronize_session, values, update_kwargs):
         return BulkUD._factory({
             "evaluate": BulkUpdateEvaluate,
             "fetch": BulkUpdateFetch,
             False: BulkUpdate
-        }, synchronize_session, query, values)
+        }, synchronize_session, query, values, update_kwargs)
 
     def _resolve_string_to_expr(self, key):
         if self.mapper and isinstance(key, util.string_types):
@@ -1215,7 +1247,8 @@ class BulkUpdate(BulkUD):
             for k, v in self.values.items()
         )
         update_stmt = sql.update(self.primary_table,
-                                 self.context.whereclause, values)
+                                 self.context.whereclause, values,
+                                 **self.update_kwargs)
 
         self.result = self.query.session.execute(
             update_stmt, params=self.query._params,

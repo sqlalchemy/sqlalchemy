@@ -3,7 +3,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, or_, exc, \
     select, func, Boolean, case, text, column
 from sqlalchemy.orm import mapper, relationship, backref, Session, \
-    joinedload, synonym
+    joinedload, synonym, query
 from sqlalchemy import testing
 
 from sqlalchemy.testing.schema import Table, Column
@@ -906,6 +906,18 @@ class ExpressionUpdateTest(fixtures.MappedTest):
 
         eq_(d1.cnt, 2)
         sess.close()
+
+    def test_update_args(self):
+        Data = self.classes.Data
+        session = testing.mock.Mock(wraps=Session())
+        update_args = {"mysql_limit": 1}
+        query.Query(Data, session).update({Data.cnt: Data.cnt + 1},
+                                          update_args=update_args)
+        eq_(session.execute.call_count, 1)
+        args, kwargs = session.execute.call_args
+        eq_(len(args), 1)
+        update_stmt = args[0]
+        eq_(update_stmt.dialect_kwargs, update_args)
 
 
 class InheritTest(fixtures.DeclarativeMappedTest):

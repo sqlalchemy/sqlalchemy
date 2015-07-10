@@ -181,6 +181,8 @@ NOT_EXTENSION = util.symbol(
 
     """)
 
+_never_set = frozenset([NEVER_SET])
+
 _none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
 
 _SET_DEFERRED_EXPIRED = util.symbol("SET_DEFERRED_EXPIRED")

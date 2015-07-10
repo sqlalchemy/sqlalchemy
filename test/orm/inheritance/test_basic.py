@@ -1148,6 +1148,62 @@ class FlushTest(fixtures.MappedTest):
         sess.flush()
         assert user_roles.count().scalar() == 1
 
+
+class OptimizedGetOnDeferredTest(fixtures.MappedTest):
+    """test that the 'optimized get' path accommodates deferred columns."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a", metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True)
+        )
+        Table(
+            "b", metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+            Column('data', String(10))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(A):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B = cls.classes("A", "B")
+        a, b = cls.tables("a", "b")
+
+        mapper(A, a)
+        mapper(B, b, inherits=A, properties={
+            'data': deferred(b.c.data),
+            'expr': column_property(b.c.data + 'q', deferred=True)
+        })
+
+    def test_column_property(self):
+        A, B = self.classes("A", "B")
+        sess = Session()
+        b1 = B(data='x')
+        sess.add(b1)
+        sess.flush()
+
+        eq_(b1.expr, 'xq')
+
+    def test_expired_column(self):
+        A, B = self.classes("A", "B")
+        sess = Session()
+        b1 = B(data='x')
+        sess.add(b1)
+        sess.flush()
+        sess.expire(b1, ['data'])
+
+        eq_(b1.data, 'x')
+
+
 class JoinedNoFKSortingTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

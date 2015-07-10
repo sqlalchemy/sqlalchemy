@@ -1452,3 +1452,4 @@ class ConcreteExtensionConfigTest(
             "actual_documents.id AS id, 'actual' AS type "
             "FROM actual_documents) AS pjoin"
         )
+

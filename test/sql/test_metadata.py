@@ -18,6 +18,7 @@ from sqlalchemy.testing import eq_, is_, mock
 from contextlib import contextmanager
 from sqlalchemy import util
 
+
 class MetaDataTest(fixtures.TestBase, ComparesTables):
 
     def test_metadata_connect(self):
@@ -393,7 +394,6 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         assert t.c.x.default is s2
         assert m1._sequences['x_seq'] is s2
 
-
     def test_sequence_attach_to_table(self):
         m1 = MetaData()
         s1 = Sequence("s")
@@ -490,6 +490,21 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(
             meta.sorted_tables,
             [d, b, a, c, e]
+        )
+
+    def test_deterministic_order(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('foo', Integer))
+        b = Table('b', meta, Column('foo', Integer))
+        c = Table('c', meta, Column('foo', Integer))
+        d = Table('d', meta, Column('foo', Integer))
+        e = Table('e', meta, Column('foo', Integer))
+
+        e.add_is_dependent_on(c)
+        a.add_is_dependent_on(b)
+        eq_(
+            meta.sorted_tables,
+            [b, c, d, a, e]
         )
 
     def test_nonexistent(self):
@@ -3560,3 +3575,16 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         u1.append_constraint(ck1)
 
         eq_(ck1.name, "ck_user_foo")
+
+    def test_pickle_metadata(self):
+        m = MetaData(naming_convention={"pk": "%(table_name)s_pk"})
+
+        m2 = pickle.loads(pickle.dumps(m))
+
+        eq_(m2.naming_convention, {"pk": "%(table_name)s_pk"})
+
+        t2a = Table('t2', m, Column('id', Integer, primary_key=True))
+        t2b = Table('t2', m2, Column('id', Integer, primary_key=True))
+
+        eq_(t2a.primary_key.name, t2b.primary_key.name)
+        eq_(t2b.primary_key.name, "t2_pk")

@@ -13,7 +13,7 @@ from . import attributes
 import re
 
 from .base import instance_str, state_str, state_class_str, attribute_str, \
-    state_attribute_str, object_mapper, object_state, _none_set
+    state_attribute_str, object_mapper, object_state, _none_set, _never_set
 from .base import class_mapper, _class_to_mapper
 from .base import InspectionAttr
 from .path_registry import PathRegistry
@@ -530,7 +530,7 @@ class AliasedInsp(InspectionAttr):
     def _adapt_element(self, elem):
         return self._adapter.traverse(elem).\
             _annotate({
-                'parententity': self.entity,
+                'parententity': self,
                 'parentmapper': self.mapper}
         )
 
@@ -839,9 +839,10 @@ class _ORMJoin(expression.Join):
             # or implicit ON clause, augment it the same way we'd augment the
             # WHERE.
             single_crit = right_info.mapper._single_table_criterion
-            if right_info.is_aliased_class:
-                single_crit = right_info._adapter.traverse(single_crit)
-            self.onclause = self.onclause & single_crit
+            if single_crit is not None:
+                if right_info.is_aliased_class:
+                    single_crit = right_info._adapter.traverse(single_crit)
+                self.onclause = self.onclause & single_crit
 
     def _splice_into_center(self, other):
         """Splice a join into the center.
@@ -849,7 +850,11 @@ class _ORMJoin(expression.Join):
         Given join(a, b) and join(b, c), return join(a, b).join(c)
 
         """
-        assert self.right is other.left
+        leftmost = other
+        while isinstance(leftmost, sql.Join):
+            leftmost = leftmost.left
+
+        assert self.right is leftmost
 
         left = _ORMJoin(
             self.left, other.left,

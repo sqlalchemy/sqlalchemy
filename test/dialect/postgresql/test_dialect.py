@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
 import logging.handlers
 from sqlalchemy.testing.mock import Mock
+from sqlalchemy.engine import engine_from_config
 
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
@@ -59,16 +60,19 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             eq_(testing.db.dialect._get_server_version_info(mock_conn(string)),
                 version)
 
-    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    @testing.requires.psycopg2_compatibility
     def test_psycopg2_version(self):
         v = testing.db.dialect.psycopg2_version
         assert testing.db.dialect.dbapi.__version__.\
             startswith(".".join(str(x) for x in v))
 
-    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    @testing.requires.psycopg2_compatibility
     def test_psycopg2_non_standard_err(self):
-        from psycopg2.extensions import TransactionRollbackError
-        import psycopg2
+        # under pypy the name here is psycopg2cffi
+        psycopg2 = testing.db.dialect.dbapi
+        TransactionRollbackError = __import__(
+            "%s.extensions" % psycopg2.__name__
+        ).extensions.TransactionRollbackError
 
         exception = exc.DBAPIError.instance(
             "some statement", {}, TransactionRollbackError("foo"),
@@ -78,7 +82,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     # currently not passing with pg 9.3 that does not seem to generate
     # any notices here, would rather find a way to mock this
     @testing.requires.no_coverage
-    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    @testing.requires.psycopg2_compatibility
     def _test_notice_logging(self):
         log = logging.getLogger('sqlalchemy.dialects.postgresql')
         buf = logging.handlers.BufferingHandler(100)
@@ -99,9 +103,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert 'will create implicit sequence' in msgs
         assert 'will create implicit index' in msgs
 
-    @testing.only_on(
-        ['postgresql+psycopg2', 'postgresql+pg8000'],
-        'psycopg2/pg8000-specific feature')
+    @testing.requires.psycopg2_or_pg8000_compatibility
     @engines.close_open_connections
     def test_client_encoding(self):
         c = testing.db.connect()
@@ -120,10 +122,23 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         new_encoding = c.execute("show client_encoding").fetchone()[0]
         eq_(new_encoding, test_encoding)
 
-    @testing.only_on(
-        ['postgresql+psycopg2', 'postgresql+pg8000',
-         'postgresql+psycopg2cffi'],
-        'psycopg2 / pg8000 - specific feature')
+    @testing.requires.psycopg2_compatibility
+    def test_pg_dialect_use_native_unicode_from_config(self):
+        config = {
+            'sqlalchemy.url': testing.db.url,
+            'sqlalchemy.use_native_unicode': "false"}
+
+        e = engine_from_config(config, _initialize=False)
+        eq_(e.dialect.use_native_unicode, False)
+
+        config = {
+            'sqlalchemy.url': testing.db.url,
+            'sqlalchemy.use_native_unicode': "true"}
+
+        e = engine_from_config(config, _initialize=False)
+        eq_(e.dialect.use_native_unicode, True)
+
+    @testing.requires.psycopg2_or_pg8000_compatibility
     @engines.close_open_connections
     def test_autocommit_isolation_level(self):
         c = testing.db.connect().execution_options(
@@ -217,8 +232,7 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             testing.db.execute('drop table speedy_users')
 
     @testing.fails_on('+zxjdbc', 'psycopg2/pg8000 specific assertion')
-    @testing.fails_on('pypostgresql',
-                      'psycopg2/pg8000 specific assertion')
+    @testing.requires.psycopg2_or_pg8000_compatibility
     def test_numeric_raise(self):
         stmt = text(
             "select cast('hi' as char) as hi", typemap={'hi': Numeric})

@@ -45,14 +45,20 @@ SQLite Auto Incrementing Behavior
 
 Background on SQLite's autoincrement is at: http://sqlite.org/autoinc.html
 
-Two things to note:
+Key concepts:
 
-* The AUTOINCREMENT keyword is **not** required for SQLite tables to
-  generate primary key values automatically. AUTOINCREMENT only means that the
-  algorithm used to generate ROWID values should be slightly different.
-* SQLite does **not** generate primary key (i.e. ROWID) values, even for
-  one column, if the table has a composite (i.e. multi-column) primary key.
-  This is regardless of the AUTOINCREMENT keyword being present or not.
+* SQLite has an implicit "auto increment" feature that takes place for any
+  non-composite primary-key column that is specifically created using
+  "INTEGER PRIMARY KEY" for the type + primary key.
+
+* SQLite also has an explicit "AUTOINCREMENT" keyword, that is **not**
+  equivalent to the implicit autoincrement feature; this keyword is not
+  recommended for general use.  SQLAlchemy does not render this keyword
+  unless a special SQLite-specific directive is used (see below).  However,
+  it still requires that the column's type is named "INTEGER".
+
+Using the AUTOINCREMENT Keyword
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To specifically render the AUTOINCREMENT keyword on the primary key column
 when rendering DDL, add the flag ``sqlite_autoincrement=True`` to the Table
@@ -62,6 +68,60 @@ construct::
             Column('id', Integer, primary_key=True),
             sqlite_autoincrement=True)
 
+Allowing autoincrement behavior SQLAlchemy types other than Integer/INTEGER
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLite's typing model is based on naming conventions.  Among
+other things, this means that any type name which contains the
+substring ``"INT"`` will be determined to be of "integer affinity".  A
+type named ``"BIGINT"``, ``"SPECIAL_INT"`` or even ``"XYZINTQPR"``, will be considered by
+SQLite to be of "integer" affinity.  However, **the SQLite
+autoincrement feature, whether implicitly or explicitly enabled,
+requires that the name of the column's type
+is exactly the string "INTEGER"**.  Therefore, if an
+application uses a type like :class:`.BigInteger` for a primary key, on
+SQLite this type will need to be rendered as the name ``"INTEGER"`` when
+emitting the initial ``CREATE TABLE`` statement in order for the autoincrement
+behavior to be available.
+
+One approach to achieve this is to use :class:`.Integer` on SQLite
+only using :meth:`.TypeEngine.with_variant`::
+
+    table = Table(
+        "my_table", metadata,
+        Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+    )
+
+Another is to use a subclass of :class:`.BigInteger` that overrides its DDL name
+to be ``INTEGER`` when compiled against SQLite::
+
+    from sqlalchemy import BigInteger
+    from sqlalchemy.ext.compiler import compiles
+
+    class SLBigInteger(BigInteger):
+        pass
+
+    @compiles(SLBigInteger, 'sqlite')
+    def bi_c(element, compiler, **kw):
+        return "INTEGER"
+
+    @compiles(SLBigInteger)
+    def bi_c(element, compiler, **kw):
+        return compiler.visit_BIGINT(element, **kw)
+
+
+    table = Table(
+        "my_table", metadata,
+        Column("id", SLBigInteger(), primary_key=True)
+    )
+
+.. seealso::
+
+    :meth:`.TypeEngine.with_variant`
+
+    :ref:`sqlalchemy.ext.compiler_toplevel`
+
+    `Datatypes In SQLite Version 3 <http://sqlite.org/datatype3.html>`_
 
 .. _sqlite_concurrency:
 
@@ -291,6 +351,107 @@ The index will be rendered at create time as::
     WHERE data > 5 AND data < 10
 
 .. versionadded:: 0.9.9
+
+Dotted Column Names
+-------------------
+
+Using table or column names that explicitly have periods in them is
+**not recommended**.   While this is generally a bad idea for relational
+databases in general, as the dot is a syntactically significant character,
+the SQLite driver has a bug which requires that SQLAlchemy filter out these
+dots in result sets.
+
+The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
+
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+
+    cursor.execute("create table x (a integer, b integer)")
+    cursor.execute("insert into x (a, b) values (1, 1)")
+    cursor.execute("insert into x (a, b) values (2, 2)")
+
+    cursor.execute("select x.a, x.b from x")
+    assert [c[0] for c in cursor.description] == ['a', 'b']
+
+    cursor.execute('''
+        select x.a, x.b from x where a=1
+        union
+        select x.a, x.b from x where a=2
+    ''')
+    assert [c[0] for c in cursor.description] == ['a', 'b'], \\
+        [c[0] for c in cursor.description]
+
+The second assertion fails::
+
+    Traceback (most recent call last):
+      File "test.py", line 19, in <module>
+        [c[0] for c in cursor.description]
+    AssertionError: ['x.a', 'x.b']
+
+Where above, the driver incorrectly reports the names of the columns
+including the name of the table, which is entirely inconsistent vs.
+when the UNION is not present.
+
+SQLAlchemy relies upon column names being predictable in how they match
+to the original statement, so the SQLAlchemy dialect has no choice but
+to filter these out::
+
+
+    from sqlalchemy import create_engine
+
+    eng = create_engine("sqlite://")
+    conn = eng.connect()
+
+    conn.execute("create table x (a integer, b integer)")
+    conn.execute("insert into x (a, b) values (1, 1)")
+    conn.execute("insert into x (a, b) values (2, 2)")
+
+    result = conn.execute("select x.a, x.b from x")
+    assert result.keys() == ["a", "b"]
+
+    result = conn.execute('''
+        select x.a, x.b from x where a=1
+        union
+        select x.a, x.b from x where a=2
+    ''')
+    assert result.keys() == ["a", "b"]
+
+Note that above, even though SQLAlchemy filters out the dots, *both
+names are still addressable*::
+
+    >>> row = result.first()
+    >>> row["a"]
+    1
+    >>> row["x.a"]
+    1
+    >>> row["b"]
+    1
+    >>> row["x.b"]
+    1
+
+Therefore, the workaround applied by SQLAlchemy only impacts
+:meth:`.ResultProxy.keys` and :meth:`.RowProxy.keys()` in the public API.
+In the very specific case where
+an application is forced to use column names that contain dots, and the
+functionality of :meth:`.ResultProxy.keys` and :meth:`.RowProxy.keys()`
+is required to return these dotted names unmodified, the ``sqlite_raw_colnames``
+execution option may be provided, either on a per-:class:`.Connection` basis::
+
+    result = conn.execution_options(sqlite_raw_colnames=True).execute('''
+        select x.a, x.b from x where a=1
+        union
+        select x.a, x.b from x where a=2
+    ''')
+    assert result.keys() == ["x.a", "x.b"]
+
+or on a per-:class:`.Engine` basis::
+
+    engine = create_engine("sqlite://", execution_options={"sqlite_raw_colnames": True})
+
+When using the per-:class:`.Engine` execution option, note that
+**Core and ORM queries that use UNION may not function properly**.
 
 """
 

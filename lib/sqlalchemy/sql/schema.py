@@ -2392,27 +2392,51 @@ class ColumnCollectionMixin(object):
         if _autoattach and self._pending_colargs:
             self._check_attach()
 
+    @classmethod
+    def _extract_col_expression_collection(cls, expressions):
+        for expr in expressions:
+            strname = None
+            column = None
+            if not isinstance(expr, ClauseElement):
+                # this assumes a string
+                strname = expr
+            else:
+                cols = []
+                visitors.traverse(expr, {}, {'column': cols.append})
+                if cols:
+                    column = cols[0]
+            add_element = column if column is not None else strname
+            yield expr, column, strname, add_element
+
     def _check_attach(self, evt=False):
         col_objs = [
             c for c in self._pending_colargs
             if isinstance(c, Column)
         ]
+
         cols_w_table = [
             c for c in col_objs if isinstance(c.table, Table)
         ]
+
         cols_wo_table = set(col_objs).difference(cols_w_table)
 
         if cols_wo_table:
+            # feature #3341 - place event listeners for Column objects
+            # such that when all those cols are attached, we autoattach.
             assert not evt, "Should not reach here on event call"
 
-            def _col_attached(column, table):
-                cols_wo_table.discard(column)
-                if not cols_wo_table:
-                    self._check_attach(evt=True)
-            self._cols_wo_table = cols_wo_table
-            for col in cols_wo_table:
-                col._on_table_attach(_col_attached)
-            return
+            # issue #3411 - don't do the per-column auto-attach if some of the
+            # columns are specified as strings.
+            has_string_cols = set(self._pending_colargs).difference(col_objs)
+            if not has_string_cols:
+                def _col_attached(column, table):
+                    cols_wo_table.discard(column)
+                    if not cols_wo_table:
+                        self._check_attach(evt=True)
+                self._cols_wo_table = cols_wo_table
+                for col in cols_wo_table:
+                    col._on_table_attach(_col_attached)
+                return
 
         columns = cols_w_table
 
@@ -3078,14 +3102,10 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.table = None
 
         columns = []
-        for expr in expressions:
-            if not isinstance(expr, ClauseElement):
-                columns.append(expr)
-            else:
-                cols = []
-                visitors.traverse(expr, {}, {'column': cols.append})
-                if cols:
-                    columns.append(cols[0])
+        for expr, column, strname, add_element in self.\
+                _extract_col_expression_collection(expressions):
+            if add_element is not None:
+                columns.append(add_element)
 
         self.expressions = expressions
         self.name = quoted_name(name, kw.pop("quote", None))
@@ -3359,11 +3379,14 @@ class MetaData(SchemaItem):
                 'schema': self.schema,
                 'schemas': self._schemas,
                 'sequences': self._sequences,
-                'fk_memos': self._fk_memos}
+                'fk_memos': self._fk_memos,
+                'naming_convention': self.naming_convention
+                }
 
     def __setstate__(self, state):
         self.tables = state['tables']
         self.schema = state['schema']
+        self.naming_convention = state['naming_convention']
         self._bind = None
         self._sequences = state['sequences']
         self._schemas = state['schemas']
@@ -3450,7 +3473,7 @@ class MetaData(SchemaItem):
 
 
         """
-        return ddl.sort_tables(self.tables.values())
+        return ddl.sort_tables(sorted(self.tables.values(), key=lambda t: t.key))
 
     def reflect(self, bind=None, schema=None, views=False, only=None,
                 extend_existing=False,

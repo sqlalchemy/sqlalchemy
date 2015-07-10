@@ -120,7 +120,7 @@ user-defined class, linked together with a :func:`.mapper`.  When we talk about
 "the behavior of :func:`.mapper`", this includes when using the Declarative system
 as well - it's still used, just behind the scenes.
 
-Runtime Intropsection of Mappings, Objects
+Runtime Introspection of Mappings, Objects
 ==========================================
 
 The :class:`.Mapper` object is available from any mapped class, regardless

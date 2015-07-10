@@ -11,10 +11,10 @@ from __future__ import absolute_import
 from ..util import py33
 
 if py33:
-    from unittest.mock import MagicMock, Mock, call, patch
+    from unittest.mock import MagicMock, Mock, call, patch, ANY
 else:
     try:
-        from mock import MagicMock, Mock, call, patch
+        from mock import MagicMock, Mock, call, patch, ANY
     except ImportError:
         raise ImportError(
             "SQLAlchemy's test suite requires the "

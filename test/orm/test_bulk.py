@@ -96,11 +96,62 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
         asserter.assert_(
             CompiledSQL(
-                "UPDATE users SET id=:id, name=:name WHERE "
+                "UPDATE users SET name=:name WHERE "
                 "users.id = :users_id",
-                [{'users_id': 1, 'id': 1, 'name': 'u1new'},
-                 {'users_id': 2, 'id': 2, 'name': 'u2'},
-                 {'users_id': 3, 'id': 3, 'name': 'u3new'}]
+                [{'users_id': 1, 'name': 'u1new'},
+                 {'users_id': 2, 'name': 'u2'},
+                 {'users_id': 3, 'name': 'u3new'}]
+            )
+        )
+
+    def test_bulk_update(self):
+        User, = self.classes("User",)
+
+        s = Session(expire_on_commit=False)
+        objects = [
+            User(name="u1"),
+            User(name="u2"),
+            User(name="u3")
+        ]
+        s.add_all(objects)
+        s.commit()
+
+        s = Session()
+        with self.sql_execution_asserter() as asserter:
+            s.bulk_update_mappings(
+                User,
+                [{'id': 1, 'name': 'u1new'},
+                 {'id': 2, 'name': 'u2'},
+                 {'id': 3, 'name': 'u3new'}]
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE users SET name=:name WHERE users.id = :users_id",
+                [{'users_id': 1, 'name': 'u1new'},
+                 {'users_id': 2, 'name': 'u2'},
+                 {'users_id': 3, 'name': 'u3new'}]
+            )
+        )
+
+    def test_bulk_insert(self):
+        User, = self.classes("User",)
+
+        s = Session()
+        with self.sql_execution_asserter() as asserter:
+            s.bulk_insert_mappings(
+                User,
+                [{'id': 1, 'name': 'u1new'},
+                 {'id': 2, 'name': 'u2'},
+                 {'id': 3, 'name': 'u3new'}]
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO users (id, name) VALUES (:id, :name)",
+                [{'id': 1, 'name': 'u1new'},
+                 {'id': 2, 'name': 'u2'},
+                 {'id': 3, 'name': 'u3new'}]
             )
         )
 

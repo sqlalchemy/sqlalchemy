@@ -342,6 +342,14 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def duplicate_key_raises_integrity_error(self):
+        """target dialect raises IntegrityError when reporting an INSERT
+        with a primary key violation.  (hint: it should)
+
+        """
+        return exclusions.open()
+
+    @property
     def unbounded_varchar(self):
         """Target database must support VARCHAR with no length"""
 

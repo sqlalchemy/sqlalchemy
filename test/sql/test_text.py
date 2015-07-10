@@ -761,4 +761,3 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable_1.name AS t1name, foo(:foo_1) AS x "
             "FROM mytable AS mytable_1 ORDER BY mytable_1.myid, t1name, x"
         )
-

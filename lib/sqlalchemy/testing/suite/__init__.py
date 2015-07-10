@@ -1,4 +1,5 @@
 
+from sqlalchemy.testing.suite.test_dialect import *
 from sqlalchemy.testing.suite.test_ddl import *
 from sqlalchemy.testing.suite.test_insert import *
 from sqlalchemy.testing.suite.test_sequence import *

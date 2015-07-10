@@ -323,7 +323,7 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
             'milliseconds': 'millisecond'
         })
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         s = select._distinct and "DISTINCT " or ""
         # TODO: don't think Sybase supports
         # bind params for FIRST / TOP
@@ -435,7 +435,6 @@ class SybaseDialect(default.DefaultDialect):
     supports_native_boolean = False
     supports_unicode_binds = False
     postfetch_lastrowid = True
-    supports_simple_order_by_label = False
 
     colspecs = {}
     ischema_names = ischema_names

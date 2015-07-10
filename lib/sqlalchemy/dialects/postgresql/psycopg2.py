@@ -74,6 +74,8 @@ See also:
 `PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/\
 libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
+.. _psycopg2_execution_options:
+
 Per-Statement/Connection Execution Options
 -------------------------------------------
 
@@ -81,15 +83,22 @@ The following DBAPI-specific options are respected when used with
 :meth:`.Connection.execution_options`, :meth:`.Executable.execution_options`,
 :meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
 
-* isolation_level - Set the transaction isolation level for the lifespan of a
+* ``isolation_level`` - Set the transaction isolation level for the lifespan of a
   :class:`.Connection` (can only be set on a connection, not a statement
   or query).   See :ref:`psycopg2_isolation_level`.
 
-* stream_results - Enable or disable usage of psycopg2 server side cursors -
+* ``stream_results`` - Enable or disable usage of psycopg2 server side cursors -
   this feature makes use of "named" cursors in combination with special
   result handling methods so that result rows are not fully buffered.
   If ``None`` or not set, the ``server_side_cursors`` option of the
   :class:`.Engine` is used.
+
+* ``max_row_buffer`` - when using ``stream_results``, an integer value that
+  specifies the maximum number of rows to buffer at a time.  This is
+  interpreted by the :class:`.BufferedRowResultProxy`, and if omitted the
+  buffer will grow to ultimately store 1000 rows at a time.
+
+  .. versionadded:: 1.0.6
 
 .. _psycopg2_unicode:
 
@@ -354,7 +363,7 @@ class _PGNumeric(sqltypes.Numeric):
 
 class _PGEnum(ENUM):
     def result_processor(self, dialect, coltype):
-        if util.py2k and self.convert_unicode is True:
+        if self.native_enum and util.py2k and self.convert_unicode is True:
             # we can't easily use PG's extensions here because
             # the OID is on the fly, and we need to give it a python
             # function anyway - not really worth it.
@@ -501,9 +510,21 @@ class PGDialect_psycopg2(PGDialect):
     preparer = PGIdentifierPreparer_psycopg2
     psycopg2_version = (0, 0)
 
+    FEATURE_VERSION_MAP = dict(
+        native_json=(2, 5),
+        native_jsonb=(2, 5, 4),
+        sane_multi_rowcount=(2, 0, 9),
+        array_oid=(2, 4, 3),
+        hstore_adapter=(2, 4)
+    )
+
     _has_native_hstore = False
     _has_native_json = False
     _has_native_jsonb = False
+
+    engine_config_types = PGDialect.engine_config_types.union([
+        ('use_native_unicode', util.asbool),
+    ])
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -543,11 +564,15 @@ class PGDialect_psycopg2(PGDialect):
         self._has_native_hstore = self.use_native_hstore and \
             self._hstore_oids(connection.connection) \
             is not None
-        self._has_native_json = self.psycopg2_version >= (2, 5)
-        self._has_native_jsonb = self.psycopg2_version >= (2, 5, 4)
+        self._has_native_json = \
+            self.psycopg2_version >= self.FEATURE_VERSION_MAP['native_json']
+        self._has_native_jsonb = \
+            self.psycopg2_version >= self.FEATURE_VERSION_MAP['native_jsonb']
 
         # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
-        self.supports_sane_multi_rowcount = self.psycopg2_version >= (2, 0, 9)
+        self.supports_sane_multi_rowcount = \
+            self.psycopg2_version >= \
+            self.FEATURE_VERSION_MAP['sane_multi_rowcount']
 
     @classmethod
     def dbapi(cls):
@@ -621,7 +646,8 @@ class PGDialect_psycopg2(PGDialect):
                     kw = {'oid': oid}
                     if util.py2k:
                         kw['unicode'] = True
-                    if self.psycopg2_version >= (2, 4, 3):
+                    if self.psycopg2_version >= \
+                            self.FEATURE_VERSION_MAP['array_oid']:
                         kw['array_oid'] = array_oid
                     extras.register_hstore(conn, **kw)
             fns.append(on_connect)
@@ -646,7 +672,7 @@ class PGDialect_psycopg2(PGDialect):
 
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
-        if self.psycopg2_version >= (2, 4):
+        if self.psycopg2_version >= self.FEATURE_VERSION_MAP['hstore_adapter']:
             extras = self._psycopg2_extras()
             oids = extras.HstoreAdapter.get_oids(conn)
             if oids is not None and oids[0]:

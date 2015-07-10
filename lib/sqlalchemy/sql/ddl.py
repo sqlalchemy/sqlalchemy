@@ -711,8 +711,11 @@ class SchemaGenerator(DDLBase):
         seq_coll = [s for s in metadata._sequences.values()
                     if s.column is None and self._can_create_sequence(s)]
 
+        event_collection = [
+            t for (t, fks) in collection if t is not None
+        ]
         metadata.dispatch.before_create(metadata, self.connection,
-                                        tables=collection,
+                                        tables=event_collection,
                                         checkfirst=self.checkfirst,
                                         _ddl_runner=self)
 
@@ -730,7 +733,7 @@ class SchemaGenerator(DDLBase):
                     self.traverse_single(fkc)
 
         metadata.dispatch.after_create(metadata, self.connection,
-                                       tables=collection,
+                                       tables=event_collection,
                                        checkfirst=self.checkfirst,
                                        _ddl_runner=self)
 
@@ -803,32 +806,50 @@ class SchemaDropper(DDLBase):
             tables = list(metadata.tables.values())
 
         try:
-            collection = reversed(
+            unsorted_tables = [t for t in tables if self._can_drop_table(t)]
+            collection = list(reversed(
                 sort_tables_and_constraints(
-                    [t for t in tables if self._can_drop_table(t)],
-                    filter_fn=
-                    lambda constraint: True if not self.dialect.supports_alter
-                    else False if constraint.name is None
+                    unsorted_tables,
+                    filter_fn=lambda constraint: False
+                    if not self.dialect.supports_alter
+                    or constraint.name is None
                     else None
                 )
-            )
+            ))
         except exc.CircularDependencyError as err2:
-            util.raise_from_cause(
-                exc.CircularDependencyError(
-                    err2.args[0],
-                    err2.cycles, err2.edges,
-                    msg="Can't sort tables for DROP; an "
+            if not self.dialect.supports_alter:
+                util.warn(
+                    "Can't sort tables for DROP; an "
                     "unresolvable foreign key "
-                    "dependency exists between tables: %s.  Please ensure "
-                    "that the ForeignKey and ForeignKeyConstraint objects "
-                    "involved in the cycle have "
-                    "names so that they can be dropped using DROP CONSTRAINT."
+                    "dependency exists between tables: %s, and backend does "
+                    "not support ALTER.  To restore at least a partial sort, "
+                    "apply use_alter=True to ForeignKey and "
+                    "ForeignKeyConstraint "
+                    "objects involved in the cycle to mark these as known "
+                    "cycles that will be ignored."
                     % (
                         ", ".join(sorted([t.fullname for t in err2.cycles]))
                     )
-
                 )
-            )
+                collection = [(t, ()) for t in unsorted_tables]
+            else:
+                util.raise_from_cause(
+                    exc.CircularDependencyError(
+                        err2.args[0],
+                        err2.cycles, err2.edges,
+                        msg="Can't sort tables for DROP; an "
+                        "unresolvable foreign key "
+                        "dependency exists between tables: %s.  Please ensure "
+                        "that the ForeignKey and ForeignKeyConstraint objects "
+                        "involved in the cycle have "
+                        "names so that they can be dropped using "
+                        "DROP CONSTRAINT."
+                        % (
+                            ", ".join(sorted([t.fullname for t in err2.cycles]))
+                        )
+
+                    )
+                )
 
         seq_coll = [
             s
@@ -836,8 +857,12 @@ class SchemaDropper(DDLBase):
             if s.column is None and self._can_drop_sequence(s)
         ]
 
+        event_collection = [
+            t for (t, fks) in collection if t is not None
+        ]
+
         metadata.dispatch.before_drop(
-            metadata, self.connection, tables=collection,
+            metadata, self.connection, tables=event_collection,
             checkfirst=self.checkfirst, _ddl_runner=self)
 
         for table, fkcs in collection:
@@ -852,7 +877,7 @@ class SchemaDropper(DDLBase):
             self.traverse_single(seq, drop_ok=True)
 
         metadata.dispatch.after_drop(
-            metadata, self.connection, tables=collection,
+            metadata, self.connection, tables=event_collection,
             checkfirst=self.checkfirst, _ddl_runner=self)
 
     def _can_drop_table(self, table):
@@ -1041,7 +1066,8 @@ def sort_tables_and_constraints(
     try:
         candidate_sort = list(
             topological.sort(
-                fixed_dependencies.union(mutable_dependencies), tables
+                fixed_dependencies.union(mutable_dependencies), tables,
+                deterministic_order=True
             )
         )
     except exc.CircularDependencyError as err:
@@ -1058,7 +1084,8 @@ def sort_tables_and_constraints(
                         mutable_dependencies.discard((dependent_on, table))
         candidate_sort = list(
             topological.sort(
-                fixed_dependencies.union(mutable_dependencies), tables
+                fixed_dependencies.union(mutable_dependencies), tables,
+                deterministic_order=True
             )
         )
 

@@ -50,8 +50,6 @@ def expect_warnings_on(db, *messages, **kw):
 
     if isinstance(db, util.string_types) and not spec(config._current):
         yield
-    elif not _is_excluded(*db):
-        yield
     else:
         with expect_warnings(*messages, **kw):
             yield
@@ -90,7 +88,7 @@ def emits_warning_on(db, *messages):
     """
     @decorator
     def decorate(fn, *args, **kw):
-        with expect_warnings_on(db, *messages):
+        with expect_warnings_on(db, assert_=False, *messages):
             return fn(*args, **kw)
 
     return decorate
@@ -214,6 +212,11 @@ def eq_(a, b, msg=None):
 def ne_(a, b, msg=None):
     """Assert a != b, with repr messaging on failure."""
     assert a != b, msg or "%r == %r" % (a, b)
+
+
+def le_(a, b, msg=None):
+    """Assert a <= b, with repr messaging on failure."""
+    assert a <= b, msg or "%r != %r" % (a, b)
 
 
 def is_(a, b, msg=None):

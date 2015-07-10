@@ -364,6 +364,10 @@ statement is compiled against the **first** dictionary in the list, and it's
 assumed that all subsequent argument dictionaries are compatible with that
 statement.
 
+The "executemany" style of invocation is available for each of the
+:func:`.insert`, :func:`.update` and :func:`.delete` constructs.
+
+
 .. _coretutorial_selecting:
 
 Selecting
@@ -1754,7 +1758,7 @@ that can be specified:
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
-When using :meth:`~.TableClause.update` in an "execute many" context,
+When using :meth:`~.TableClause.update` in an "executemany" context,
 we may wish to also use explicitly named bound parameters in the
 WHERE clause.  Again, :func:`~.expression.bindparam` is the construct
 used to achieve this:

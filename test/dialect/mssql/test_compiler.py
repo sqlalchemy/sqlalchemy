@@ -1,16 +1,18 @@
 # -*- encoding: utf-8
 from sqlalchemy.testing import eq_
-from sqlalchemy import *
 from sqlalchemy import schema
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import mxodbc
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import sql
+from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
+    update, delete, insert, extract, union, func, PrimaryKeyConstraint, \
+    UniqueConstraint, Index, Sequence, literal
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = mssql.dialect()
+    __dialect__ = mssql.dialect(legacy_schema_aliasing=False)
 
     def test_true_false(self):
         self.assert_compile(
@@ -28,22 +30,32 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_with_nolock(self):
         t = table('sometable', column('somecolumn'))
-        self.assert_compile(t.select().with_hint(t, 'WITH (NOLOCK)'),
-                            'SELECT sometable.somecolumn FROM sometable WITH (NOLOCK)')
+        self.assert_compile(
+            t.select().with_hint(t, 'WITH (NOLOCK)'),
+            'SELECT sometable.somecolumn FROM sometable WITH (NOLOCK)')
+
+    def test_select_with_nolock_schema(self):
+        m = MetaData()
+        t = Table('sometable', m, Column('somecolumn', Integer),
+                  schema='test_schema')
+        self.assert_compile(
+            t.select().with_hint(t, 'WITH (NOLOCK)'),
+            'SELECT test_schema.sometable.somecolumn '
+            'FROM test_schema.sometable WITH (NOLOCK)')
 
     def test_join_with_hint(self):
         t1 = table('t1',
-            column('a', Integer),
-            column('b', String),
-            column('c', String),
-        )
+                   column('a', Integer),
+                   column('b', String),
+                   column('c', String),
+                   )
         t2 = table('t2',
-            column("a", Integer),
-            column("b", Integer),
-            column("c", Integer),
-        )
-        join = t1.join(t2, t1.c.a==t2.c.a).\
-                        select().with_hint(t1, 'WITH (NOLOCK)')
+                   column("a", Integer),
+                   column("b", Integer),
+                   column("c", Integer),
+                   )
+        join = t1.join(t2, t1.c.a == t2.c.a).\
+            select().with_hint(t1, 'WITH (NOLOCK)')
         self.assert_compile(
             join,
             'SELECT t1.a, t1.b, t1.c, t2.a, t2.b, t2.c '
@@ -69,10 +81,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             for darg in ("*", "mssql"):
                 self.assert_compile(
                     t.insert().
-                        values(somecolumn="x").
-                        with_hint("WITH (PAGLOCK)",
-                            selectable=targ,
-                            dialect_name=darg),
+                    values(somecolumn="x").
+                    with_hint("WITH (PAGLOCK)",
+                              selectable=targ,
+                              dialect_name=darg),
                     "INSERT INTO sometable WITH (PAGLOCK) "
                     "(somecolumn) VALUES (:somecolumn)"
                 )
@@ -82,11 +94,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         for targ in (None, t):
             for darg in ("*", "mssql"):
                 self.assert_compile(
-                    t.update().where(t.c.somecolumn=="q").
-                            values(somecolumn="x").
-                            with_hint("WITH (PAGLOCK)",
-                                    selectable=targ,
-                                    dialect_name=darg),
+                    t.update().where(t.c.somecolumn == "q").
+                    values(somecolumn="x").
+                    with_hint("WITH (PAGLOCK)",
+                              selectable=targ,
+                              dialect_name=darg),
                     "UPDATE sometable WITH (PAGLOCK) "
                     "SET somecolumn=:somecolumn "
                     "WHERE sometable.somecolumn = :somecolumn_1"
@@ -95,9 +107,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_update_exclude_hint(self):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(
-            t.update().where(t.c.somecolumn=="q").
-                values(somecolumn="x").
-                with_hint("XYZ", "mysql"),
+            t.update().where(t.c.somecolumn == "q").
+            values(somecolumn="x").
+            with_hint("XYZ", "mysql"),
             "UPDATE sometable SET somecolumn=:somecolumn "
             "WHERE sometable.somecolumn = :somecolumn_1"
         )
@@ -107,10 +119,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         for targ in (None, t):
             for darg in ("*", "mssql"):
                 self.assert_compile(
-                    t.delete().where(t.c.somecolumn=="q").
-                            with_hint("WITH (PAGLOCK)",
-                                    selectable=targ,
-                                    dialect_name=darg),
+                    t.delete().where(t.c.somecolumn == "q").
+                    with_hint("WITH (PAGLOCK)",
+                              selectable=targ,
+                              dialect_name=darg),
                     "DELETE FROM sometable WITH (PAGLOCK) "
                     "WHERE sometable.somecolumn = :somecolumn_1"
                 )
@@ -118,9 +130,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_delete_exclude_hint(self):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(
-            t.delete().\
-                where(t.c.somecolumn=="q").\
-                with_hint("XYZ", dialect_name="mysql"),
+            t.delete().
+            where(t.c.somecolumn == "q").
+            with_hint("XYZ", dialect_name="mysql"),
             "DELETE FROM sometable WHERE "
             "sometable.somecolumn = :somecolumn_1"
         )
@@ -130,18 +142,51 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t2 = table('othertable', column('somecolumn'))
         for darg in ("*", "mssql"):
             self.assert_compile(
-                t.update().where(t.c.somecolumn==t2.c.somecolumn).
-                        values(somecolumn="x").
-                        with_hint("WITH (PAGLOCK)",
-                                selectable=t2,
-                                dialect_name=darg),
+                t.update().where(t.c.somecolumn == t2.c.somecolumn).
+                values(somecolumn="x").
+                with_hint("WITH (PAGLOCK)",
+                          selectable=t2,
+                          dialect_name=darg),
                 "UPDATE sometable SET somecolumn=:somecolumn "
                 "FROM sometable, othertable WITH (PAGLOCK) "
                 "WHERE sometable.somecolumn = othertable.somecolumn"
             )
 
+    def test_update_to_select_schema(self):
+        meta = MetaData()
+        table = Table(
+            "sometable", meta,
+            Column("sym", String),
+            Column("val", Integer),
+            schema="schema"
+        )
+        other = Table(
+            "#other", meta,
+            Column("sym", String),
+            Column("newval", Integer)
+        )
+        stmt = table.update().values(
+            val=select([other.c.newval]).
+            where(table.c.sym == other.c.sym).as_scalar())
+
+        self.assert_compile(
+            stmt,
+            "UPDATE [schema].sometable SET val="
+            "(SELECT [#other].newval FROM [#other] "
+            "WHERE [schema].sometable.sym = [#other].sym)",
+        )
+
+        stmt = table.update().values(val=other.c.newval).\
+            where(table.c.sym == other.c.sym)
+        self.assert_compile(
+            stmt,
+            "UPDATE [schema].sometable SET val="
+            "[#other].newval FROM [schema].sometable, "
+            "[#other] WHERE [schema].sometable.sym = [#other].sym",
+        )
+
     # TODO: not supported yet.
-    #def test_delete_from_hint(self):
+    # def test_delete_from_hint(self):
     #    t = table('sometable', column('somecolumn'))
     #    t2 = table('othertable', column('somecolumn'))
     #    for darg in ("*", "mssql"):
@@ -173,8 +218,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "IN ('x', 'y', 'z')",
             ),
             (
-                    t.c.foo.in_([None]),
-                    "sometable.foo IN (NULL)"
+                t.c.foo.in_([None]),
+                "sometable.foo IN (NULL)"
             )
         ]:
             self.assert_compile(expr, compile, dialect=mxodbc_dialect)
@@ -187,13 +232,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         t = table('sometable', column('somecolumn'))
         self.assert_compile(t.select().where(t.c.somecolumn
-                            == t.select()),
+                                             == t.select()),
                             'SELECT sometable.somecolumn FROM '
                             'sometable WHERE sometable.somecolumn = '
                             '(SELECT sometable.somecolumn FROM '
                             'sometable)')
         self.assert_compile(t.select().where(t.c.somecolumn
-                            != t.select()),
+                                             != t.select()),
                             'SELECT sometable.somecolumn FROM '
                             'sometable WHERE sometable.somecolumn != '
                             '(SELECT sometable.somecolumn FROM '
@@ -210,10 +255,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         subqueries"""
 
         table1 = table('mytable',
-            column('myid', Integer),
-            column('name', String),
-            column('description', String),
-        )
+                       column('myid', Integer),
+                       column('name', String),
+                       column('description', String),
+                       )
 
         q = select([table1.c.myid],
                    order_by=[table1.c.myid]).alias('foo')
@@ -223,74 +268,83 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "myid FROM mytable) AS foo, mytable WHERE "
                             "foo.myid = mytable.myid")
 
-
-
     def test_delete_schema(self):
         metadata = MetaData()
         tbl = Table('test', metadata, Column('id', Integer,
-                    primary_key=True), schema='paj')
+                                             primary_key=True), schema='paj')
         self.assert_compile(tbl.delete(tbl.c.id == 1),
                             'DELETE FROM paj.test WHERE paj.test.id = '
                             ':id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
         self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM paj.test WHERE paj.test.id IN '
-                            '(SELECT test_1.id FROM paj.test AS test_1 '
-                            'WHERE test_1.id = :id_1)')
+                            '(SELECT paj.test.id FROM paj.test '
+                            'WHERE paj.test.id = :id_1)')
 
     def test_delete_schema_multipart(self):
         metadata = MetaData()
-        tbl = Table('test', metadata, Column('id', Integer,
-                    primary_key=True), schema='banana.paj')
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer,
+                   primary_key=True),
+            schema='banana.paj')
         self.assert_compile(tbl.delete(tbl.c.id == 1),
                             'DELETE FROM banana.paj.test WHERE '
                             'banana.paj.test.id = :id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
         self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM banana.paj.test WHERE '
-                            'banana.paj.test.id IN (SELECT test_1.id '
-                            'FROM banana.paj.test AS test_1 WHERE '
-                            'test_1.id = :id_1)')
+                            'banana.paj.test.id IN (SELECT banana.paj.test.id '
+                            'FROM banana.paj.test WHERE '
+                            'banana.paj.test.id = :id_1)')
 
     def test_delete_schema_multipart_needs_quoting(self):
         metadata = MetaData()
-        tbl = Table('test', metadata, Column('id', Integer,
-                    primary_key=True), schema='banana split.paj')
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            schema='banana split.paj')
         self.assert_compile(tbl.delete(tbl.c.id == 1),
                             'DELETE FROM [banana split].paj.test WHERE '
                             '[banana split].paj.test.id = :id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
         self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM [banana split].paj.test WHERE '
-                            '[banana split].paj.test.id IN (SELECT '
-                            'test_1.id FROM [banana split].paj.test AS '
-                            'test_1 WHERE test_1.id = :id_1)')
+                            '[banana split].paj.test.id IN ('
+
+                            'SELECT [banana split].paj.test.id FROM '
+                            '[banana split].paj.test WHERE '
+                            '[banana split].paj.test.id = :id_1)')
 
     def test_delete_schema_multipart_both_need_quoting(self):
         metadata = MetaData()
         tbl = Table('test', metadata, Column('id', Integer,
-                    primary_key=True),
+                                             primary_key=True),
                     schema='banana split.paj with a space')
         self.assert_compile(tbl.delete(tbl.c.id == 1),
                             'DELETE FROM [banana split].[paj with a '
                             'space].test WHERE [banana split].[paj '
                             'with a space].test.id = :id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
-        self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
-                            'DELETE FROM [banana split].[paj with a '
-                            'space].test WHERE [banana split].[paj '
-                            'with a space].test.id IN (SELECT '
-                            'test_1.id FROM [banana split].[paj with a '
-                            'space].test AS test_1 WHERE test_1.id = '
-                            ':id_1)')
+        self.assert_compile(
+            tbl.delete().where(tbl.c.id.in_(s)),
+            "DELETE FROM [banana split].[paj with a space].test "
+            "WHERE [banana split].[paj with a space].test.id IN "
+            "(SELECT [banana split].[paj with a space].test.id "
+            "FROM [banana split].[paj with a space].test "
+            "WHERE [banana split].[paj with a space].test.id = :id_1)"
+        )
 
     def test_union(self):
-        t1 = table('t1', column('col1'), column('col2'), column('col3'
-                   ), column('col4'))
-        t2 = table('t2', column('col1'), column('col2'), column('col3'
-                   ), column('col4'))
-        s1, s2 = select([t1.c.col3.label('col3'), t1.c.col4.label('col4'
-                        )], t1.c.col2.in_(['t1col2r1', 't1col2r2'])), \
+        t1 = table(
+            't1', column('col1'), column('col2'),
+            column('col3'), column('col4'))
+        t2 = table(
+            't2', column('col1'), column('col2'),
+            column('col3'), column('col4'))
+        s1, s2 = select(
+            [t1.c.col3.label('col3'), t1.c.col4.label('col4')],
+            t1.c.col2.in_(['t1col2r1', 't1col2r2'])), \
             select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
                    t2.c.col2.in_(['t2col2r2', 't2col2r3']))
         u = union(s1, s2, order_by=['col3', 'col4'])
@@ -313,8 +367,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(func.current_time(), 'CURRENT_TIME')
         self.assert_compile(func.foo(), 'foo()')
         m = MetaData()
-        t = Table('sometable', m, Column('col1', Integer), Column('col2'
-                  , Integer))
+        t = Table(
+            'sometable', m, Column('col1', Integer), Column('col2', Integer))
         self.assert_compile(select([func.max(t.c.col1)]),
                             'SELECT max(sometable.col1) AS max_1 FROM '
                             'sometable')
@@ -332,11 +386,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 'SELECT DATEPART("%s", t.col1) AS anon_1 FROM t' % field)
 
     def test_update_returning(self):
-        table1 = table('mytable', column('myid', Integer), column('name'
-                       , String(128)), column('description',
-                       String(128)))
-        u = update(table1, values=dict(name='foo'
-                   )).returning(table1.c.myid, table1.c.name)
+        table1 = table(
+            'mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)))
+        u = update(
+            table1,
+            values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(u,
                             'UPDATE mytable SET name=:name OUTPUT '
                             'inserted.myid, inserted.name')
@@ -345,40 +402,43 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'UPDATE mytable SET name=:name OUTPUT '
                             'inserted.myid, inserted.name, '
                             'inserted.description')
-        u = update(table1, values=dict(name='foo'
-                   )).returning(table1).where(table1.c.name == 'bar')
+        u = update(
+            table1,
+            values=dict(
+                name='foo')).returning(table1).where(table1.c.name == 'bar')
         self.assert_compile(u,
                             'UPDATE mytable SET name=:name OUTPUT '
                             'inserted.myid, inserted.name, '
                             'inserted.description WHERE mytable.name = '
                             ':name_1')
         u = update(table1, values=dict(name='foo'
-                   )).returning(func.length(table1.c.name))
+                                       )).returning(func.length(table1.c.name))
         self.assert_compile(u,
                             'UPDATE mytable SET name=:name OUTPUT '
                             'LEN(inserted.name) AS length_1')
 
     def test_delete_returning(self):
-        table1 = table('mytable', column('myid', Integer), column('name'
-                       , String(128)), column('description',
-                       String(128)))
+        table1 = table(
+            'mytable', column('myid', Integer),
+            column('name', String(128)), column('description', String(128)))
         d = delete(table1).returning(table1.c.myid, table1.c.name)
         self.assert_compile(d,
                             'DELETE FROM mytable OUTPUT deleted.myid, '
                             'deleted.name')
         d = delete(table1).where(table1.c.name == 'bar'
                                  ).returning(table1.c.myid,
-                table1.c.name)
+                                             table1.c.name)
         self.assert_compile(d,
                             'DELETE FROM mytable OUTPUT deleted.myid, '
                             'deleted.name WHERE mytable.name = :name_1')
 
     def test_insert_returning(self):
-        table1 = table('mytable', column('myid', Integer), column('name'
-                       , String(128)), column('description',
-                       String(128)))
-        i = insert(table1, values=dict(name='foo'
-                   )).returning(table1.c.myid, table1.c.name)
+        table1 = table(
+            'mytable', column('myid', Integer),
+            column('name', String(128)), column('description', String(128)))
+        i = insert(
+            table1,
+            values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(i,
                             'INSERT INTO mytable (name) OUTPUT '
                             'inserted.myid, inserted.name VALUES '
@@ -389,7 +449,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'inserted.myid, inserted.name, '
                             'inserted.description VALUES (:name)')
         i = insert(table1, values=dict(name='foo'
-                   )).returning(func.length(table1.c.name))
+                                       )).returning(func.length(table1.c.name))
         self.assert_compile(i,
                             'INSERT INTO mytable (name) OUTPUT '
                             'LEN(inserted.name) AS length_1 VALUES '
@@ -398,7 +458,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_using_top(self):
         t = table('t', column('x', Integer), column('y', Integer))
 
-        s = select([t]).where(t.c.x==5).order_by(t.c.y).limit(10)
+        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(10)
 
         self.assert_compile(
             s,
@@ -409,7 +469,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_zero_using_top(self):
         t = table('t', column('x', Integer), column('y', Integer))
 
-        s = select([t]).where(t.c.x==5).order_by(t.c.y).limit(0)
+        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(0)
 
         self.assert_compile(
             s,
@@ -444,7 +504,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))
 
-        s = select([t]).where(t.c.x==5).order_by(t.c.y).limit(10).offset(20)
+        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
 
         self.assert_compile(
             s,
@@ -490,7 +550,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_zero_offset_using_window(self):
         t = table('t', column('x', Integer), column('y', Integer))
 
-        s = select([t]).where(t.c.x==5).order_by(t.c.y).limit(0).offset(0)
+        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(0).offset(0)
 
         # render the LIMIT of zero, but not the OFFSET
         # of zero, so produces TOP 0
@@ -505,26 +565,29 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData()
         tbl = Table('test', metadata,
                     Column('id', Integer, Sequence('', 0), primary_key=True))
-        self.assert_compile(schema.CreateTable(tbl),
-                            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(0,1), "
-                            "PRIMARY KEY (id))"
-                            )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(0,1), "
+            "PRIMARY KEY (id))"
+        )
 
     def test_sequence_non_primary_key(self):
         metadata = MetaData()
         tbl = Table('test', metadata,
                     Column('id', Integer, Sequence(''), primary_key=False))
-        self.assert_compile(schema.CreateTable(tbl),
-                            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
-                            )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
+        )
 
     def test_sequence_ignore_nullability(self):
         metadata = MetaData()
         tbl = Table('test', metadata,
                     Column('id', Integer, Sequence(''), nullable=True))
-        self.assert_compile(schema.CreateTable(tbl),
-                            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
-                            )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
+        )
 
     def test_table_pkc_clustering(self):
         metadata = MetaData()
@@ -532,10 +595,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     Column('x', Integer, autoincrement=False),
                     Column('y', Integer, autoincrement=False),
                     PrimaryKeyConstraint("x", "y", mssql_clustered=True))
-        self.assert_compile(schema.CreateTable(tbl),
-                            "CREATE TABLE test (x INTEGER NOT NULL, y INTEGER NOT NULL, "
-                            "PRIMARY KEY CLUSTERED (x, y))"
-                            )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (x INTEGER NOT NULL, y INTEGER NOT NULL, "
+            "PRIMARY KEY CLUSTERED (x, y))"
+        )
 
     def test_table_uc_clustering(self):
         metadata = MetaData()
@@ -544,10 +608,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     Column('y', Integer, autoincrement=False),
                     PrimaryKeyConstraint("x"),
                     UniqueConstraint("y", mssql_clustered=True))
-        self.assert_compile(schema.CreateTable(tbl),
-                            "CREATE TABLE test (x INTEGER NOT NULL, y INTEGER NULL, "
-                            "PRIMARY KEY (x), UNIQUE CLUSTERED (y))"
-                            )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (x INTEGER NOT NULL, y INTEGER NULL, "
+            "PRIMARY KEY (x), UNIQUE CLUSTERED (y))"
+        )
 
     def test_index_clustering(self):
         metadata = MetaData()
@@ -560,8 +625,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_index_ordering(self):
         metadata = MetaData()
-        tbl = Table('test', metadata,
-                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        tbl = Table(
+            'test', metadata,
+            Column('x', Integer), Column('y', Integer), Column('z', Integer))
         idx = Index("foo", tbl.c.x.desc(), "y")
         self.assert_compile(schema.CreateIndex(idx),
                             "CREATE INDEX foo ON test (x DESC, y)"
@@ -570,8 +636,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_create_index_expr(self):
         m = MetaData()
         t1 = Table('foo', m,
-                Column('x', Integer)
-            )
+                   Column('x', Integer)
+                   )
         self.assert_compile(
             schema.CreateIndex(Index("bar", t1.c.x > 5)),
             "CREATE INDEX bar ON foo (x > 5)"
@@ -580,9 +646,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_drop_index_w_schema(self):
         m = MetaData()
         t1 = Table('foo', m,
-                Column('x', Integer),
-                schema='bar'
-            )
+                   Column('x', Integer),
+                   schema='bar'
+                   )
         self.assert_compile(
             schema.DropIndex(Index("idx_foo", t1.c.x)),
             "DROP INDEX idx_foo ON bar.foo"
@@ -590,8 +656,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_index_extra_include_1(self):
         metadata = MetaData()
-        tbl = Table('test', metadata,
-                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        tbl = Table(
+            'test', metadata,
+            Column('x', Integer), Column('y', Integer), Column('z', Integer))
         idx = Index("foo", tbl.c.x, mssql_include=['y'])
         self.assert_compile(schema.CreateIndex(idx),
                             "CREATE INDEX foo ON test (x) INCLUDE (y)"
@@ -599,8 +666,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_index_extra_include_2(self):
         metadata = MetaData()
-        tbl = Table('test', metadata,
-                    Column('x', Integer), Column('y', Integer), Column('z', Integer))
+        tbl = Table(
+            'test', metadata,
+            Column('x', Integer), Column('y', Integer), Column('z', Integer))
         idx = Index("foo", tbl.c.x, mssql_include=[tbl.c.y])
         self.assert_compile(schema.CreateIndex(idx),
                             "CREATE INDEX foo ON test (x) INCLUDE (y)"
@@ -611,14 +679,14 @@ class SchemaTest(fixtures.TestBase):
 
     def setup(self):
         t = Table('sometable', MetaData(),
-            Column('pk_column', Integer),
-            Column('test_column', String)
-        )
+                  Column('pk_column', Integer),
+                  Column('test_column', String)
+                  )
         self.column = t.c.test_column
 
         dialect = mssql.dialect()
         self.ddl_compiler = dialect.ddl_compiler(dialect,
-                schema.CreateTable(t))
+                                                 schema.CreateTable(t))
 
     def _column_spec(self):
         return self.ddl_compiler.get_column_specification(self.column)

@@ -170,6 +170,17 @@ class ParseConnectTest(fixtures.TestBase):
                               engine.connect)
 
 
+class EngineFromConfigTest(fixtures.TestBase):
+    def test_legacy_schema_flag(self):
+        cfg = {
+            "sqlalchemy.url": "mssql://foodsn",
+            "sqlalchemy.legacy_schema_aliasing": "false"
+        }
+        e = engine_from_config(
+            cfg, module=Mock(version="MS SQL Server 11.0.92"))
+        eq_(e.dialect.legacy_schema_aliasing, False)
+
+
 class VersionDetectionTest(fixtures.TestBase):
     def test_pymssql_version(self):
         dialect = pymssql.MSDialect_pymssql()

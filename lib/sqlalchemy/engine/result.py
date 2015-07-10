@@ -1067,10 +1067,27 @@ class BufferedRowResultProxy(ResultProxy):
 
     The pre-fetching behavior fetches only one row initially, and then
     grows its buffer size by a fixed amount with each successive need
-    for additional rows up to a size of 100.
+    for additional rows up to a size of 1000.
+
+    The size argument is configurable using the ``max_row_buffer``
+    execution option::
+
+        with psycopg2_engine.connect() as conn:
+
+            result = conn.execution_options(
+                stream_results=True, max_row_buffer=50
+                ).execute("select * from table")
+
+    .. versionadded:: 1.0.6 Added the ``max_row_buffer`` option.
+
+    .. seealso::
+
+        :ref:`psycopg2_execution_options`
     """
 
     def _init_metadata(self):
+        self._max_row_buffer = self.context.execution_options.get(
+            'max_row_buffer', None)
         self.__buffer_rows()
         super(BufferedRowResultProxy, self)._init_metadata()
 
@@ -1095,6 +1112,8 @@ class BufferedRowResultProxy(ResultProxy):
         size = getattr(self, '_bufsize', 1)
         self.__rowbuffer = collections.deque(self.cursor.fetchmany(size))
         self._bufsize = self.size_growth.get(size, size)
+        if self._max_row_buffer is not None:
+            self._bufsize = min(self._max_row_buffer, self._bufsize)
 
     def _soft_close(self, **kw):
         self.__rowbuffer.clear()

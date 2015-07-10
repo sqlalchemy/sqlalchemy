@@ -456,15 +456,18 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         o = state.obj()  # strong ref
         dict_ = attributes.instance_dict(o)
 
+        if passive & attributes.INIT_OK:
+            passive ^= attributes.INIT_OK
+
         params = {}
         for key, ident, value in param_keys:
             if ident is not None:
                 if passive and passive & attributes.LOAD_AGAINST_COMMITTED:
                     value = mapper._get_committed_state_attr_by_column(
-                        state, dict_, ident)
+                        state, dict_, ident, passive)
                 else:
                     value = mapper._get_state_attr_by_column(
-                        state, dict_, ident)
+                        state, dict_, ident, passive)
 
             params[key] = value
 
@@ -583,7 +586,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         lazy_clause, params = self._generate_lazy_clause(
             state, passive=passive)
 
-        if pending and orm_util._none_set.intersection(params.values()):
+        if pending:
+            if util.has_intersection(
+                    orm_util._none_set, params.values()):
+                return None
+        elif util.has_intersection(orm_util._never_set, params.values()):
             return None
 
         q = q.filter(lazy_clause).params(params)

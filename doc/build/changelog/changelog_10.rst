@@ -16,7 +16,821 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.7
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3469
+
+        Fixed 1.0 regression where value objects that override
+        ``__eq__()`` to return a non-boolean-capable object, such as
+        some geoalchemy types as well as numpy types, were being tested
+        for ``bool()`` during a unit of work update operation, where in
+        0.9 the return value of ``__eq__()`` was tested against "is True"
+        to guard against this.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3468
+
+        Fixed 1.0 regression where a "deferred" attribute would not populate
+        correctly if it were loaded within the "optimized inheritance load",
+        which is a special SELECT emitted in the case of joined table
+        inheritance used to populate expired or unloaded attributes against
+        a joined table without loading the base table.  This is related to
+        the fact that SQLA 1.0 no longer guesses about loading deferred
+        columns and must be directed explicitly.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3466
+
+        Fixed 1.0 regression where the "parent entity" of a synonym-
+        mapped attribute on top of an :func:`.aliased` object would
+        resolve to the original mapper, not the :func:`.aliased`
+        version of it, thereby causing problems for a :class:`.Query`
+        that relies on this attribute (e.g. it's the only representative
+        attribute given in the constructor) to figure out the correct FROM
+        clause for the query.
+
+.. changelog::
+    :version: 1.0.6
+    :released: June 25, 2015
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3465
+
+        Fixed a major regression in the 1.0 series where the version_id_counter
+        feature would cause an object's version counter to be incremented
+        when there was no net change to the object's row, but instead an object
+        related to it via relationship (e.g. typically many-to-one)
+        were associated or de-associated with it, resulting in an UPDATE
+        statement that updates the object's version counter and nothing else.
+        In the use case where the relatively recent "server side" and/or
+        "programmatic/conditional" version counter feature were used
+        (e.g. setting version_id_generator to False), the bug could cause an
+        UPDATE without a valid SET clause to be emitted.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 3464
+
+        Fixed issue when using :class:`.VARBINARY` type in conjunction with
+        an INSERT of NULL + pyodbc; pyodbc requires a special
+        object be passed in order to persist NULL.  As the :class:`.VARBINARY`
+        type is now usually the default for :class:`.LargeBinary` due to
+        :ticket:`3039`, this issue is partially a regression in 1.0.
+        The pymssql driver appears to be unaffected.
+
+    .. change::
+        :tags: bug, postgresql, pypy
+        :tickets: 3439
+
+        Re-fixed this issue first released in 1.0.5 to fix psycopg2cffi
+        JSONB support once again, as they suddenly
+        switched on unconditional decoding of JSONB types in version 2.7.1.
+        Version detection now specifies 2.7.1 as where we should expect
+        the DBAPI to do json encoding for us.
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 3455
+        :pullreq: github:179
+
+        Added support for storage parameters under CREATE INDEX, using
+        a new keyword argument ``postgresql_with``.  Also added support for
+        reflection to support both the ``postgresql_with`` flag as well
+        as the ``postgresql_using`` flag, which will now be set on
+        :class:`.Index` objects that are reflected, as well present
+        in a new "dialect_options" dictionary in the result of
+        :meth:`.Inspector.get_indexes`.  Pull request courtesy Pete Hollobon.
+
+        .. seealso::
+
+            :ref:`postgresql_index_storage`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3462
+
+        Fixed 1.0 regression where the enhanced behavior of single-inheritance
+        joins of :ticket:`3222` takes place inappropriately
+        for a JOIN along explicit join criteria with a single-inheritance
+        subclass that does not make use of any discriminator, resulting
+        in an additional "AND NULL" clause.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 3454
+
+        Repaired the :class:`.ExcludeConstraint` construct to support common
+        features that other objects like :class:`.Index` now do, that
+        the column expression may be specified as an arbitrary SQL
+        expression such as :obj:`.cast` or :obj:`.text`.
+
+    .. change::
+        :tags: feature, postgresql
+        :pullreq: github:182
+
+        Added new execution option ``max_row_buffer`` which is interpreted
+        by the psycopg2 dialect when the ``stream_results`` option is
+        used, which sets a limit on the size of the row buffer that may be
+        allocated.  This value is also provided based on the integer
+        value sent to :meth:`.Query.yield_per`.  Pull request courtesy
+        mcclurem.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3451
+        :pullreq: github:181
+
+        Fixed bug in new :meth:`.Session.bulk_update_mappings` feature where
+        the primary key columns used in the WHERE clause to locate the row
+        would also be included in the SET clause, setting their value to
+        themselves unnecessarily.  Pull request courtesy Patrick Hayes.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3448
+
+        Fixed an unexpected-use regression whereby custom :class:`.Comparator`
+        objects that made use of the ``__clause_element__()`` method and
+        returned an object that was an ORM-mapped
+        :class:`.InstrumentedAttribute` and not explicitly a
+        :class:`.ColumnElement` would fail to be correctly
+        handled when passed as an expression to :meth:`.Session.query`.
+        The logic in 0.9 happened to succeed on this, so this use case is now
+        supported.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3445
+
+        Fixed a bug where clause adaption as applied to a :class:`.Label`
+        object would fail to accommodate the labeled SQL expression
+        in all cases, such that any SQL operation that made use of
+        :meth:`.Label.self_group` would use the original unadapted
+        expression.  One effect of this would be that an ORM :func:`.aliased`
+        construct would not fully accommodate attributes mapped by
+        :obj:`.column_property`, such that the un-aliased table could
+        leak out when the property were used in some kinds of SQL
+        comparisons.
+
+    .. change::
+        :tags: bug, documentation
+        :tickets: 2077
+
+        Fixed an internal "memoization" routine for method types such
+        that a Python descriptor is no longer used; repairs inspectability
+        of these methods including support for Sphinx documentation.
+
+.. changelog::
+    :version: 1.0.5
+    :released: June 7, 2015
+
+    .. change::
+        :tags: feature, engine
+
+        Added new engine event :meth:`.ConnectionEvents.engine_disposed`.
+        Called after the :meth:`.Engine.dispose` method is called.
+
+    .. change::
+        :tags: bug, postgresql, pypy
+        :tickets: 3439
+
+        Repaired some typing and test issues related to the pypy
+        psycopg2cffi dialect, in particular that the current 2.7.0 version
+        does not have native support for the JSONB type.  The version detection
+        for psycopg2 features has been tuned into a specific sub-version
+        for psycopg2cffi.  Additionally, test coverage has been enabled
+        for the full series of psycopg2 features under psycopg2cffi.
+
+    .. change::
+        :tags: feature, ext
+        :pullreq: bitbucket:54
+
+        Added support for ``*args`` to be passed to the baked query
+        initial callable, in the same way that ``*args`` are supported
+        for the :meth:`.BakedQuery.add_criteria` and
+        :meth:`.BakedQuery.with_criteria` methods.  Initial PR courtesy
+        Naoki INADA.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3435
+
+        Fixed bug where known boolean values used by
+        :func:`.engine_from_config` were not being parsed correctly;
+        these included ``pool_threadlocal`` and the psycopg2 argument
+        ``use_native_unicode``.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 3424, 3430
+
+        Added a new dialect flag to the MSSQL dialect
+        ``legacy_schema_aliasing`` which when set to False will disable a
+        very old and obsolete behavior, that of the compiler's
+        attempt to turn all schema-qualified table names into alias names,
+        to work around old and no longer locatable issues where SQL
+        server could not parse a multi-part identifier name in all
+        circumstances.   The behavior prevented more
+        sophisticated statements from working correctly, including those which
+        use hints, as well as CRUD statements that embed correlated SELECT
+        statements.  Rather than continue to repair the feature to work
+        with more complex statements, it's better to just disable it
+        as it should no longer be needed for any modern SQL server
+        version.  The flag defaults to True for the 1.0.x series, leaving
+        current behavior unchanged for this version series.  In the 1.1
+        series, it will default to False.  For the 1.0 series,
+        when not set to either value explicitly, a warning is emitted
+        when a schema-qualified table is first used in a statement, which
+        suggests that the flag be set to False for all modern SQL Server
+        versions.
+
+        .. seealso::
+
+            :ref:`legacy_schema_rendering`
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 3379
+
+        Adjustments to the engine plugin hook, such that the
+        :meth:`.URL.get_dialect` method will continue to return the
+        ultimate :class:`.Dialect` object when a dialect plugin is used,
+        without the need for the caller to be aware of the
+        :meth:`.Dialect.get_dialect_cls` method.
+
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 3427
+
+        Fixed regression in the :mod:`sqlalchemy.ext.mutable` extension
+        as a result of the bugfix for :ticket:`3167`,
+        where attribute and validation events are no longer
+        called within the flush process.  The mutable
+        extension was relying upon this behavior in the case where a column
+        level Python-side default were responsible for generating the new value
+        on INSERT or UPDATE, or when a value were fetched from the RETURNING
+        clause for "eager defaults" mode.  The new value would not be subject
+        to any event when populated and the mutable extension could not
+        establish proper coercion or history listening.  A new event
+        :meth:`.InstanceEvents.refresh_flush` is added which the mutable
+        extension now makes use of for this use case.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3427
+
+        Added new event :meth:`.InstanceEvents.refresh_flush`, invoked
+        when an INSERT or UPDATE level default value fetched via RETURNING
+        or Python-side default is invoked within the flush process.  This
+        is to provide a hook that is no longer present as a result of
+        :ticket:`3167`, where attribute and validation events are no longer
+        called within the flush process.
+
+    .. change::
+        :tags: feature, ext
+        :tickets: 3427
+
+        Added a new semi-public method to :class:`.MutableBase`
+        :meth:`.MutableBase._get_listen_keys`.  Overriding this method
+        is needed in the case where a :class:`.MutableBase` subclass needs
+        events to propagate for attribute keys other than the key to which
+        the mutable type is associated with, when intercepting the
+        :meth:`.InstanceEvents.refresh` or
+        :meth:`.InstanceEvents.refresh_flush` events.  The current example of
+        this is composites using :class:`.MutableComposite`.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3421
+
+        Added support for the case of the misbehaving DBAPI that has
+        pep-249 exception names linked to exception classes of an entirely
+        different name, preventing SQLAlchemy's own exception wrapping from
+        wrapping the error appropriately.
+        The SQLAlchemy dialect in use needs to implement a new
+        accessor :attr:`.DefaultDialect.dbapi_exception_translation_map`
+        to support this feature; this is implemented now for the py-postgresql
+        dialect.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3420
+
+        The "lightweight named tuple" used when a :class:`.Query` returns
+        rows failed to implement ``__slots__`` correctly such that it still
+        had a ``__dict__``.    This is resolved, but in the extremely
+        unlikely case someone was assigning values to the returned tuples,
+        that will no longer work.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3419
+
+        Fixed bug involving the case when pool checkout event handlers are used
+        and connection attempts are made in the handler itself which fail,
+        the owning connection record would not be freed until the stack trace
+        of the connect error itself were freed.   For the case where a test
+        pool of only a single connection were used, this means the pool would
+        be fully checked out until that stack trace were freed.  This mostly
+        impacts very specific debugging scenarios and is unlikely to have been
+        noticable in any production application.  The fix applies an
+        explicit checkin of the record before re-raising the caught exception.
+
+
+.. changelog::
+    :version: 1.0.4
+    :released: May 7, 2015
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3416
+
+        Fixed unexpected-use regression where in the odd case that the
+        primaryjoin of a relationship involved comparison to an unhashable
+        type such as an HSTORE, lazy loads would fail due to a hash-oriented
+        check on the statement parameters, modified in 1.0 as a result of
+        :ticket:`3061` to use hashing and modified in :ticket:`3368`
+        to occur in cases more common than "load on pending".
+        The values are now checked for the ``__hash__`` attribute beforehand.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3412, 3347
+
+        Liberalized an assertion that was added as part of :ticket:`3347`
+        to protect against unknown conditions when splicing inner joins
+        together within joined eager loads with ``innerjoin=True``; if
+        some of the joins use a "secondary" table, the assertion needs to
+        unwrap further joins in order to pass.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 3411
+
+        Fixed bug in enhanced constraint-attachment logic introduced in
+        :ticket:`3341` where in the unusual case of a constraint that refers
+        to a mixture of :class:`.Column` objects and string column names
+        at the same time, the auto-attach-on-column-attach logic will be
+        skipped; for the constraint to be auto-attached in this case,
+        all columns must be assembled on the target table up front.
+        Added a new section to the migration document regarding the
+        original feature as well as this change.
+
+        .. seealso::
+
+            :ref:`change_3341`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3409, 3320
+
+        Repaired / added to tests yet more expressions that were reported
+        as failing with the new 'entity' key value added to
+        :attr:`.Query.column_descriptions`, the logic to discover the "from"
+        clause is again reworked to accommodate columns from aliased classes,
+        as well as to report the correct value for the "aliased" flag in these
+        cases.
+
+
+.. changelog::
+    :version: 1.0.3
+    :released: April 30, 2015
+
+    .. change::
+        :tags: bug, orm, pypy
+        :tickets: 3405
+
+        Fixed regression from 0.9.10 prior to release due to :ticket:`3349`
+        where the check for query state on :meth:`.Query.update` or
+        :meth:`.Query.delete` compared the empty tuple to itself using ``is``,
+        which fails on Pypy to produce ``True`` in this case; this would
+        erronously emit a warning in 0.9 and raise an exception in 1.0.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 3379
+
+        New features added to support engine/pool plugins with advanced
+        functionality.   Added a new "soft invalidate" feature to the
+        connection pool at the level of the checked out connection wrapper
+        as well as the :class:`._ConnectionRecord`.  This works similarly
+        to a modern pool invalidation in that connections aren't actively
+        closed, but are recycled only on next checkout; this is essentially
+        a per-connection version of that feature.  A new event
+        :class:`.PoolEvents.soft_invalidate` is added to complement it.
+
+        Also added new flag
+        :attr:`.ExceptionContext.invalidate_pool_on_disconnect`.
+        Allows an error handler within :meth:`.ConnectionEvents.handle_error`
+        to maintain a "disconnect" condition, but to handle calling invalidate
+        on individual connections in a specific manner within the event.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 3355
+
+        Added new event :class:`.DialectEvents.do_connect`, which allows
+        interception / replacement of when the :meth:`.Dialect.connect`
+        hook is called to create a DBAPI connection.  Also added
+        dialect plugin hooks :meth:`.Dialect.get_dialect_cls` and
+        :meth:`.Dialect.engine_created` which allow external plugins to
+        add events to existing dialects using entry points.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3403, 3320
+
+        Fixed regression from 0.9.10 prior to release where the new addition
+        of ``entity`` to the :attr:`.Query.column_descriptions` accessor
+        would fail if the target entity was produced from a core selectable
+        such as a :class:`.Table` or :class:`.CTE` object.
+
+    .. change::
+        :tags: feature, sql
+
+        Added a placeholder method :meth:`.TypeEngine.compare_against_backend`
+        which is now consumed by Alembic migrations as of 0.7.6.  User-defined
+        types can implement this method to assist in the comparison of
+        a type against one reflected from the database.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3402
+
+        Fixed regression within the flush process when an attribute were
+        set to a SQL expression for an UPDATE, and the SQL expression when
+        compared to the previous value of the attribute would produce a SQL
+        comparison other than ``==`` or ``!=``, the exception "Boolean value
+        of this clause is not defined" would raise.   The fix ensures that
+        the unit of work will not interpret the SQL expression in this way.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 3397
+
+        Fixed bug in association proxy where an any()/has()
+        on an relationship->scalar non-object attribute comparison would fail,
+        e.g.
+        ``filter(Parent.some_collection_to_attribute.any(Child.attr == 'foo'))``
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3396
+
+        Fixed bug where the truncation of long labels in SQL could produce
+        a label that overlapped another label that is not truncated; this
+        because the length threshhold for truncation was greater than
+        the portion of the label that remains after truncation.  These
+        two values have now been made the same; label_length - 6.
+        The effect here is that shorter column labels will be "truncated"
+        where they would not have been truncated before.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3392
+
+        Fixed unexpected use regression due to :ticket:`2992` where
+        textual elements placed
+        into the :meth:`.Query.order_by` clause in conjunction with joined
+        eager loading would be added to the columns clause of the inner query
+        in such a way that they were assumed to be table-bound column names,
+        in the case where the joined eager load needs to wrap the query
+        in a subquery to accommodate for a limit/offset.
+
+        Originally, the behavior here was intentional, in that a query such
+        as ``query(User).order_by('name').limit(1)``
+        would order by ``user.name`` even if the query was modified by
+        joined eager loading to be within a subquery, as ``'name'`` would
+        be interpreted as a symbol to be located within the FROM clauses,
+        in this case ``User.name``, which would then be copied into the
+        columns clause to ensure it were present for ORDER BY.  However, the
+        feature fails to anticipate the case where ``order_by("name")`` refers
+        to a specific label name present in the local columns clause already
+        and not a name bound to a selectable in the FROM clause.
+
+        Beyond that, the feature also fails for deprecated cases such as
+        ``order_by("name desc")``, which, while it emits a
+        warning that :func:`.text` should be used here (note that the issue
+        does not impact cases where :func:`.text` is used explicitly),
+        still produces a different query than previously where the "name desc"
+        expression is copied into the columns clause inappropriately.  The
+        resolution is such that the "joined eager loading" aspect of the
+        feature will skip over these so-called "label reference" expressions
+        when augmenting the inner columns clause, as though they were
+        :func:`.text` constructs already.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3391
+
+        Fixed regression due to :ticket:`3282` where the ``tables`` collection
+        passed as a keyword argument to the :meth:`.DDLEvents.before_create`,
+        :meth:`.DDLEvents.after_create`, :meth:`.DDLEvents.before_drop`, and
+        :meth:`.DDLEvents.after_drop` events would no longer be a list
+        of tables, but instead a list of tuples which contained a second
+        entry with foreign keys to be added or dropped.  As the ``tables``
+        collection, while documented as not necessarily stable, has come
+        to be relied upon, this change is considered a regression.
+        Additionally, in some cases for "drop", this collection would
+        be an iterator that would cause the operation to fail if
+        prematurely iterated.   The collection is now a list of table
+        objects in all cases and test coverage for the format of this
+        collection is now added.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3388
+
+        Fixed a regression regarding the :meth:`.MapperEvents.instrument_class`
+        event where its invocation was moved to be after the class manager's
+        instrumentation of the class, which is the opposite of what the
+        documentation for the event explicitly states.  The rationale for the
+        switch was due to Declarative taking the step of setting up
+        the full "instrumentation manager" for a class before it was mapped
+        for the purpose of the new ``@declared_attr`` features
+        described in :ref:`feature_3150`, but the change was also made
+        against the classical use of :func:`.mapper` for consistency.
+        However, SQLSoup relies upon the instrumentation event happening
+        before any instrumentation under classical mapping.
+        The behavior is reverted in the case of classical and declarative
+        mapping, the latter implemented by using a simple memoization
+        without using class manager.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3387
+
+        Fixed issue in new :meth:`.QueryEvents.before_compile` event where
+        changes made to the :class:`.Query` object's collection of entities
+        to load within the event would render in the SQL, but would not
+        be reflected during the loading process.
+
+.. changelog::
+    :version: 1.0.2
+    :released: April 24, 2015
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3338, 3385
+
+        Fixed a regression that was incorrectly fixed in 1.0.0b4
+        (hence becoming two regressions); reports that
+        SELECT statements would GROUP BY a label name and fail was misconstrued
+        that certain backends such as SQL Server should not be emitting
+        ORDER BY or GROUP BY on a simple label name at all; when in fact,
+        we had forgotten that 0.9 was already emitting ORDER BY on a simple
+        label name for all backends, as described in :ref:`migration_1068`,
+        even though 1.0 includes a rewrite of this logic as part of
+        :ticket:`2992`.  As far
+        as emitting GROUP BY against a simple label, even Postgresql has
+        cases where it will raise an error even though the label to group
+        on should be apparent, so it is clear that GROUP BY should never
+        be rendered in this way automatically.
+
+        In 1.0.2, SQL Server, Firebird and others will again emit ORDER BY on
+        a simple label name when passed a
+        :class:`.Label` construct that is also present in the columns clause.
+        Additionally, no backend will emit GROUP BY against the simple label
+        name only when passed a :class:`.Label` construct.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 3383
+
+        Fixed unexpected use regression regarding the declarative
+        ``__declare_first__`` and ``__declare_last__`` accessors where these
+        would no longer be called on the superclass of the declarative base.
+
+.. changelog::
+    :version: 1.0.1
+    :released: April 23, 2015
+
+    .. change::
+        :tags: bug, firebird
+        :tickets: 3380
+        :pullreq: github:168
+
+        Fixed a regression due to :ticket:`3034` where limit/offset
+        clauses were not properly interpreted by the Firebird dialect.
+        Pull request courtesy effem-git.
+
+    .. change::
+        :tags: bug, firebird
+        :tickets: 3381
+
+        Fixed support for "literal_binds" mode when using limit/offset
+        with Firebird, so that the values are again rendered inline when
+        this is selected.  Related to :ticket:`3034`.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 3378
+
+        Fixed a regression due to :ticket:`3282`, where due to the fact that
+        we attempt to assume the availability of ALTER when creating/dropping
+        schemas, in the case of SQLite we simply said to not worry about
+        foreign keys at all, since ALTER is not available, when creating
+        and dropping tables.  This meant that the sorting of tables was
+        basically skipped in the case of SQLite, and for the vast majority
+        of SQLite use cases, this is not an issue.
+
+        However, users who were doing DROPs on SQLite
+        with tables that contained data and with referential integrity
+        turned on would then experience errors, as the
+        dependency sorting *does* matter in the case of DROP with
+        enforced constraints, when those tables have data (SQLite will still
+        happily let you create foreign keys to nonexistent tables and drop
+        tables referring to existing ones with constraints enabled, as long as
+        there's no data being referenced).
+
+        In order to maintain the new feature of :ticket:`3282` while still
+        allowing a SQLite DROP operation to maintain ordering, we now
+        do the sort with full FKs taken under consideration, and if we encounter
+        an unresolvable cycle, only *then* do we forego attempting to sort
+        the tables; we instead emit a warning and go with the unsorted list.
+        If an environment needs both ordered DROPs *and* has foreign key
+        cycles, then the warning notes they will need to restore the
+        ``use_alter`` flag to their :class:`.ForeignKey` and
+        :class:`.ForeignKeyConstraint` objects so that just those objects will
+        be omitted from the dependency sort.
+
+        .. seealso::
+
+            :ref:`feature_3282` - contains an updated note about SQLite.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3372
+
+        Fixed issue where a straight SELECT EXISTS query would fail to
+        assign the proper result type of Boolean to the result mapping, and
+        instead would leak column types from within the query into the
+        result map.  This issue exists in 0.9 and earlier as well, however
+        has less of an impact in those versions.  In 1.0, due to :ticket:`918`
+        this becomes a regression in that we now rely upon the result mapping
+        to be very accurate, else we can assign result-type processors to
+        the wrong column.   In all versions, this issue also has the effect
+        that a simple EXISTS will not apply the Boolean type handler, leading
+        to simple 1/0 values for backends without native boolean instead of
+        True/False.   The fix includes that an EXISTS columns argument
+        will be anon-labeled like other column expressions; a similar fix is
+        implemented for pure-boolean expressions like ``not_(True())``.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3374
+
+        Fixed issue where a query of the form
+        ``query(B).filter(B.a != A(id=7))`` would render the ``NEVER_SET``
+        symbol, when
+        given a transient object. For a persistent object, it would
+        always use the persisted database value and not the currently
+        set value.  Assuming autoflush is turned on, this usually would
+        not be apparent for persistent values, as any pending changes
+        would be flushed first in any case.  However, this is inconsistent
+        vs. the logic used for the  non-negated comparison,
+        ``query(B).filter(B.a == A(id=7))``, which does use the
+        current value and additionally allows comparisons to transient
+        objects.  The comparison now uses the current value and not
+        the database-persisted value.
+
+        Unlike the other ``NEVER_SET`` issues that are repaired as regressions
+        caused by :ticket:`3061` in this release, this particular issue is
+        present at least as far back as 0.8 and possibly earlier, however it
+        was discovered as a result of repairing the related ``NEVER_SET``
+        issues.
+
+        .. seealso::
+
+            :ref:`bug_3374`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3371
+
+        Fixed unexpected use regression cause by :ticket:`3061` where
+        the NEVER_SET
+        symbol could leak into relationship-oriented queries, including
+        ``filter()`` and ``with_parent()`` queries.  The ``None`` symbol
+        is returned in all cases, however many of these queries have never
+        been correctly supported in any case, and produce comparisons
+        to NULL without using the IS operator.  For this reason, a warning
+        is also added to that subset of relationship queries that don't
+        currently provide for ``IS NULL``.
+
+        .. seealso::
+
+            :ref:`bug_3371`
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3368
+
+        Fixed a regression caused by :ticket:`3061` where the
+        NEVER_SET symbol could leak into a lazyload query, subsequent
+        to the flush of a pending object.  This would occur typically
+        for a many-to-one relationship that does not use a simple
+        "get" strategy.   The good news is that the fix improves efficiency
+        vs. 0.9, because we can now skip the SELECT statement entirely
+        when we detect NEVER_SET symbols present in the parameters; prior to
+        :ticket:`3061`, we couldn't discern if the None here were set or not.
+
+
+.. changelog::
+    :version: 1.0.0
+    :released: April 16, 2015
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3367
+
+        Identified an inconsistency when handling :meth:`.Query.join` to the
+        same target more than once; it implicitly dedupes only in the case of
+        a relationship join, and due to :ticket:`3233`, in 1.0 a join
+        to the same table twice behaves differently than 0.9 in that it no
+        longer erroneously aliases.   To help document this change,
+        the verbiage regarding :ticket:`3233` in the migration notes has
+        been generalized, and a warning has been added when :meth:`.Query.join`
+        is called against the same target relationship more than once.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3364
+
+        Made a small improvement to the heuristics of relationship when
+        determining remote side with semi-self-referential (e.g. two joined
+        inh subclasses referring to each other), non-simple join conditions
+        such that the parententity is taken into account and can reduce the
+        need for using the ``remote()`` annotation; this can restore some
+        cases that might have worked without the annotation prior to 0.9.4
+        via :ticket:`2948`.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 3360
+
+        Fixed a regression where the "last inserted id" mechanics would
+        fail to store the correct value for MSSQL on an INSERT where the
+        primary key value was present in the insert params before execution,
+        as well as in the case where an INSERT from SELECT would state the
+        target columns as column objects, instead of string keys.
+
+
+    .. change::
+        :tags: bug, mssql
+        :pullreq: github:166
+
+        Using the ``Binary`` constructor now present in pymssql rather than
+        patching one in.  Pull request courtesy Ramiro Morales.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 3356
+
+        Fixed the pathing used when tests run; for sqla_nose.py and py.test,
+        the "./lib" prefix is again inserted at the head of sys.path but
+        only if sys.flags.no_user_site isn't set; this makes it act just
+        like the way Python puts "." in the current path by default.
+        For tox, we are setting the PYTHONNOUSERSITE flag now.
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3084
+        :pullreq: bitbucket:47
+
+        The topological sorting used to sort :class:`.Table` objects
+        and available via the :attr:`.MetaData.sorted_tables` collection
+        will now produce a **deterministic** ordering; that is, the same
+        ordering each time given a set of tables with particular names
+        and dependencies.  This is to help with comparison of DDL scripts
+        and other use cases.  The tables are sent to the topological sort
+        sorted by name, and the topological sort itself will process
+        the incoming data in an ordered fashion.  Pull request
+        courtesy Sebastian Bank.
+
+        .. seealso::
+
+            :ref:`feature_3084`
+
+    .. change::
+        :tags: feature, orm
+        :pullreq: github:164
+
+        Added new argument :paramref:`.Query.update.update_args` which allows
+        kw arguments such as ``mysql_limit`` to be passed to the underlying
+        :class:`.Update` construct.  Pull request courtesy Amir Sadoughi.
+
+.. changelog::
     :version: 1.0.0b5
+    :released: April 3, 2015
 
     .. change::
         :tags: bug, orm
@@ -90,6 +904,9 @@
         GROUP BY expressions.  The flag is also turned off defensively
         for the Firebird and Sybase dialects.
 
+        .. note:: this resolution was incorrect, please see version 1.0.2
+           for a rework of this resolution.
+
     .. change::
         :tags: feature, schema
         :tickets: 3341
@@ -101,6 +918,10 @@
         columns themselves such that the constraint auto attaches at the
         same time the columns are associated with the table.  This in particular
         helps in some edge cases in declarative but is also of general use.
+
+        .. seealso::
+
+            :ref:`change_3341`
 
     .. change::
         :tags: bug, sql
@@ -150,7 +971,7 @@
         courtesy Thomas Grainger.
 
     .. change::
-        :tags: change, ext, declarative
+        :tags: change, orm, declarative
         :tickets: 3331
 
         Loosened some restrictions that were added to ``@declared_attr``
@@ -186,8 +1007,8 @@
         :tickets: 3327
         :pullreq: github:160
 
-        Fixed 1.0 regression from pullreq github:137 where Py2K unicode
-        literals (e.g. ``u""``) would not be accepted by the
+        Fixed unexpected use regression from pullreq github:137 where
+        Py2K unicode literals (e.g. ``u""``) would not be accepted by the
         :paramref:`.relationship.cascade` option.
         Pull request courtesy Julien Castets.
 
@@ -202,7 +1023,7 @@
     on compatibility concerns, see :doc:`/changelog/migration_10`.
 
     .. change::
-        :tags: feature, extensions
+        :tags: feature, ext
         :tickets: 3054
 
         Added a new extension suite :mod:`sqlalchemy.ext.baked`.  This
@@ -277,7 +1098,7 @@
         continued after the error raise occurred.
 
     .. change::
-        :tags: bug, ext
+        :tags: bug, orm, declarative
         :tickets: 3219, 3240
 
         Fixed bug where using an ``__abstract__`` mixin in the middle
@@ -1030,7 +1851,7 @@
         all transactional status and operations.
 
     .. change::
-        :tags: bug, declarative
+        :tags: bug, orm, declarative
         :tickets: 2670
 
         A relationship set up with :class:`.declared_attr` on
@@ -1043,7 +1864,7 @@
             :ref:`feature_3150`
 
     .. change::
-        :tags: feature, declarative
+        :tags: feature, orm, declarative
         :tickets: 3150
 
         The :class:`.declared_attr` construct has newly improved

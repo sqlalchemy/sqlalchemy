@@ -756,7 +756,8 @@ class Query(object):
         """
         self._yield_per = count
         self._execution_options = self._execution_options.union(
-            {"stream_results": True})
+            {"stream_results": True,
+             "max_row_buffer": count})
 
     def get(self, ident):
         """Return an instance based on the given primary key identifier,
@@ -1815,7 +1816,8 @@ class Query(object):
             # convert to a tuple.
             keys = (keys,)
 
-        for arg1 in util.to_list(keys):
+        keylist = util.to_list(keys)
+        for idx, arg1 in enumerate(keylist):
             if isinstance(arg1, tuple):
                 # "tuple" form of join, multiple
                 # tuples are accepted as well.   The simpler
@@ -1894,6 +1896,11 @@ class Query(object):
                         jp = self._joinpoint[edge].copy()
                         jp['prev'] = (edge, self._joinpoint)
                         self._update_joinpoint(jp)
+
+                        if idx == len(keylist) - 1:
+                            util.warn(
+                                "Pathed join target %s has already "
+                                "been joined to; skipping" % prop)
                         continue
 
             elif onclause is not None and right_entity is None:
@@ -2522,7 +2529,7 @@ class Query(object):
             close_with_result=True)
 
         result = conn.execute(querycontext.statement, self._params)
-        return loading.instances(self, result, querycontext)
+        return loading.instances(querycontext.query, result, querycontext)
 
     @property
     def column_descriptions(self):
@@ -2563,17 +2570,27 @@ class Query(object):
             ]
 
         """
+
         return [
             {
                 'name': ent._label_name,
                 'type': ent.type,
-                'aliased': getattr(ent, 'is_aliased_class', False),
+                'aliased': getattr(insp_ent, 'is_aliased_class', False),
                 'expr': ent.expr,
                 'entity':
-                    ent.entity_zero.entity if ent.entity_zero is not None
+                    getattr(insp_ent, "entity", None)
+                    if ent.entity_zero is not None
+                    and not insp_ent.is_clause_element
                     else None
             }
-            for ent in self._entities
+            for ent, insp_ent in [
+                (
+                    _ent,
+                    (inspect(_ent.entity_zero)
+                        if _ent.entity_zero is not None else None)
+                )
+                for _ent in self._entities
+            ]
         ]
 
     def instances(self, cursor, __context=None):
@@ -2811,7 +2828,7 @@ class Query(object):
         delete_op.exec_()
         return delete_op.rowcount
 
-    def update(self, values, synchronize_session='evaluate'):
+    def update(self, values, synchronize_session='evaluate', update_args=None):
         """Perform a bulk update query.
 
         Updates rows matched by this query in the database.
@@ -2859,6 +2876,13 @@ class Query(object):
 
             The expression evaluator currently doesn't account for differing
             string collations between the database and Python.
+
+        :param update_args: Optional dictionary, if present will be passed
+         to the underlying :func:`.update` construct as the ``**kw`` for
+         the object.  May be used to pass dialect-specific arguments such
+         as ``mysql_limit``.
+
+         .. versionadded:: 1.0.0
 
         :return: the count of rows matched as returned by the database's
          "row count" feature.
@@ -2920,8 +2944,9 @@ class Query(object):
 
         """
 
+        update_args = update_args or {}
         update_op = persistence.BulkUpdate.factory(
-            self, synchronize_session, values)
+            self, synchronize_session, values, update_args)
         update_op.exec_()
         return update_op.rowcount
 
@@ -3515,11 +3540,13 @@ class _ColumnEntity(_QueryEntity):
         self.expr = column
         self.namespace = namespace
         search_entities = True
+        check_column = False
 
         if isinstance(column, util.string_types):
             column = sql.literal_column(column)
             self._label_name = column.name
             search_entities = False
+            check_column = True
             _entity = None
         elif isinstance(column, (
             attributes.QueryableAttribute,
@@ -3530,10 +3557,12 @@ class _ColumnEntity(_QueryEntity):
                 search_entities = False
             self._label_name = column.key
             column = column._query_clause_element()
+            check_column = True
             if isinstance(column, Bundle):
                 _BundleEntity(query, column)
                 return
-        elif not isinstance(column, sql.ColumnElement):
+
+        if not isinstance(column, sql.ColumnElement):
             if hasattr(column, '_select_iterable'):
                 # break out an object like Table into
                 # individual columns
@@ -3548,7 +3577,7 @@ class _ColumnEntity(_QueryEntity):
                 "SQL expression, column, or mapped entity "
                 "expected - got '%r'" % (column, )
             )
-        else:
+        elif not check_column:
             self._label_name = getattr(column, 'key', None)
             search_entities = True
 
@@ -3606,7 +3635,6 @@ class _ColumnEntity(_QueryEntity):
                 if 'parententity' in elem._annotations
                 and actual_froms.intersection(elem._from_objects)
             ])
-
             if self.entities:
                 self.entity_zero = self.entities[0]
             elif self.namespace is not None:

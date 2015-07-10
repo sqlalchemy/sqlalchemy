@@ -185,6 +185,7 @@ def provide_metadata(fn, *args, **kw):
     """Provide bound MetaData for a single test, dropping afterwards."""
 
     from . import config
+    from . import engines
     from sqlalchemy import schema
 
     metadata = schema.MetaData(config.db)
@@ -194,7 +195,7 @@ def provide_metadata(fn, *args, **kw):
     try:
         return fn(*args, **kw)
     finally:
-        metadata.drop_all()
+        engines.drop_all_tables(metadata, config.db)
         self.metadata = prev_meta
 
 
@@ -266,3 +267,14 @@ def drop_all_tables(engine, inspector, schema=None, include_names=None):
                         ForeignKeyConstraint(
                             [tb.c.x], [tb.c.y], name=fkc)
                     ))
+
+
+def teardown_events(event_cls):
+    @decorator
+    def decorate(fn, *arg, **kw):
+        try:
+            return fn(*arg, **kw)
+        finally:
+            event_cls._clear()
+    return decorate
+

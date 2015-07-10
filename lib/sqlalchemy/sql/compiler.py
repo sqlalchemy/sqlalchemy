@@ -1133,7 +1133,7 @@ class SQLCompiler(Compiled):
 
         anonname = name.apply_map(self.anon_map)
 
-        if len(anonname) > self.label_length:
+        if len(anonname) > self.label_length - 6:
             counter = self.truncated_names.get(ident_class, 1)
             truncname = anonname[0:max(self.label_length - 6, 0)] + \
                 "_" + hex(counter)[2:]
@@ -1324,10 +1324,17 @@ class SQLCompiler(Compiled):
             result_expr = _CompileLabel(col_expr,
                                         elements._as_truncated(column.name),
                                         alt_names=(column.key,))
-        elif not isinstance(column,
-                            (elements.UnaryExpression, elements.TextClause)) \
-                and (not hasattr(column, 'name') or
-                     isinstance(column, functions.Function)):
+        elif (
+            not isinstance(column, elements.TextClause) and
+            (
+                not isinstance(column, elements.UnaryExpression) or
+                column.wraps_column_expression
+            ) and
+            (
+                not hasattr(column, 'name') or
+                isinstance(column, functions.Function)
+            )
+        ):
             result_expr = _CompileLabel(col_expr, column.anon_label)
         elif col_expr is not column:
             # TODO: are we sure "column" has a .name and .key here ?
@@ -1528,6 +1535,12 @@ class SQLCompiler(Compiled):
                     'need_result_map_for_compound', False)
             ) or entry.get('need_result_map_for_nested', False)
 
+        # this was first proposed as part of #3372; however, it is not
+        # reached in current tests and could possibly be an assertion
+        # instead.
+        if not populate_result_map and 'add_to_result_map' in kwargs:
+            del kwargs['add_to_result_map']
+
         if needs_nested_translation:
             if populate_result_map:
                 self._transform_result_map_for_nested_joins(
@@ -1555,7 +1568,7 @@ class SQLCompiler(Compiled):
             text += self._generate_prefixes(
                 select, select._prefixes, **kwargs)
 
-        text += self.get_select_precolumns(select)
+        text += self.get_select_precolumns(select, **kwargs)
 
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
@@ -1600,7 +1613,7 @@ class SQLCompiler(Compiled):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        if self.ctes and toplevel:
+        if self.ctes and self._is_toplevel_select(select):
             text = self._render_cte_clause() + text
 
         if select._suffixes:
@@ -1613,6 +1626,20 @@ class SQLCompiler(Compiled):
             return "(" + text + ")"
         else:
             return text
+
+    def _is_toplevel_select(self, select):
+        """Return True if the stack is placed at the given select, and
+        is also the outermost SELECT, meaning there is either no stack
+        before this one, or the enclosing stack is a topmost INSERT.
+
+        """
+        return (
+            self.stack[-1]['selectable'] is select and
+            (
+                len(self.stack) == 1 or self.isinsert and len(self.stack) == 2
+                and self.statement is self.stack[0]['selectable']
+            )
+        )
 
     def _setup_select_hints(self, select):
         byfrom = dict([
@@ -1729,7 +1756,7 @@ class SQLCompiler(Compiled):
         else:
             return "WITH"
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         """Called when building a ``SELECT`` statement, position is just
         before column list.
 

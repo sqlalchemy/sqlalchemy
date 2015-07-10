@@ -1829,7 +1829,7 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_false(self, element, **kw):
         return "false"
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         """Add special MySQL keywords in place of DISTINCT.
 
         .. note::

@@ -2113,7 +2113,7 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_result_keys(sel, ['t1_a', 't2_b'])
 
 
-class SelectProxyTest(fixtures.TestBase):
+class ResultMapTest(fixtures.TestBase):
 
     def _fixture(self):
         m = MetaData()
@@ -2183,6 +2183,35 @@ class SelectProxyTest(fixtures.TestBase):
         assert l1 in mapping
         assert ta.c.x not in mapping
 
+    def test_column_subquery_exists(self):
+        t = self._fixture()
+        s = exists().where(t.c.x == 5).select()
+        mapping = self._mapping(s)
+        assert t.c.x not in mapping
+        eq_(
+            [type(entry[-1]) for entry in s.compile()._result_columns],
+            [Boolean]
+        )
+
+    def test_column_subquery_plain(self):
+        t = self._fixture()
+        s1 = select([t.c.x]).where(t.c.x > 5).as_scalar()
+        s2 = select([s1])
+        mapping = self._mapping(s2)
+        assert t.c.x not in mapping
+        assert s1 in mapping
+        eq_(
+            [type(entry[-1]) for entry in s2.compile()._result_columns],
+            [Integer]
+        )
+
+    def test_unary_boolean(self):
+
+        s1 = select([not_(True)], use_labels=True)
+        eq_(
+            [type(entry[-1]) for entry in s1.compile()._result_columns],
+            [Boolean]
+        )
 
 class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"

@@ -401,6 +401,19 @@ The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX command, so it *must* be a valid index type for your
 version of PostgreSQL.
 
+.. _postgresql_index_storage:
+
+Index Storage Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+PostgreSQL allows storage parameters to be set on indexes. The storage
+parameters available depend on the index method used by the index. Storage
+parameters can be specified on :class:`.Index` using the ``postgresql_with``
+keyword argument::
+
+    Index('my_index', my_table.c.data, postgresql_with={"fillfactor": 50})
+
+.. versionadded:: 1.0.6
 
 .. _postgresql_index_concurrently:
 
@@ -1446,7 +1459,7 @@ class PGCompiler(compiler.SQLCompiler):
             raise exc.CompileError("Unrecognized hint: %r" % hint)
         return "ONLY " + sqltext
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         if select._distinct is not False:
             if select._distinct is True:
                 return "DISTINCT "
@@ -1455,7 +1468,8 @@ class PGCompiler(compiler.SQLCompiler):
                     [self.process(col) for col in select._distinct]
                 ) + ") "
             else:
-                return "DISTINCT ON (" + self.process(select._distinct) + ") "
+                return "DISTINCT ON (" + \
+                    self.process(select._distinct, **kw) + ") "
         else:
             return ""
 
@@ -1591,6 +1605,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     ])
                 )
 
+        withclause = index.dialect_options['postgresql']['with']
+
+        if withclause:
+            text += " WITH (%s)" % (', '.join(
+                ['%s = %s' % storage_parameter
+                 for storage_parameter in withclause.items()]))
+
         whereclause = index.dialect_options["postgresql"]["where"]
 
         if whereclause is not None:
@@ -1600,15 +1621,17 @@ class PGDDLCompiler(compiler.DDLCompiler):
             text += " WHERE " + where_compiled
         return text
 
-    def visit_exclude_constraint(self, constraint):
+    def visit_exclude_constraint(self, constraint, **kw):
         text = ""
         if constraint.name is not None:
             text += "CONSTRAINT %s " % \
                     self.preparer.format_constraint(constraint)
         elements = []
-        for c in constraint.columns:
-            op = constraint.operators[c.name]
-            elements.append(self.preparer.quote(c.name) + ' WITH ' + op)
+        for expr, name, op in constraint._render_exprs:
+            kw['include_table'] = False
+            elements.append(
+                "%s WITH %s" % (self.sql_compiler.process(expr, **kw), op)
+            )
         text += "EXCLUDE USING %s (%s)" % (constraint.using,
                                            ', '.join(elements))
         if constraint.where is not None:
@@ -1918,6 +1941,7 @@ class PGDialect(default.DefaultDialect):
             "where": None,
             "ops": {},
             "concurrently": False,
+            "with": {}
         }),
         (schema.Table, {
             "ignore_search_path": False,
@@ -2606,7 +2630,8 @@ class PGDialect(default.DefaultDialect):
               SELECT
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
-                  a.attname, a.attnum, NULL, ix.indkey%s
+                  a.attname, a.attnum, NULL, ix.indkey%s,
+                  i.reloptions, am.amname
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -2614,6 +2639,9 @@ class PGDialect(default.DefaultDialect):
                         left outer join
                             pg_attribute a
                             on t.oid = a.attrelid and %s
+                        left outer join
+                            pg_am am
+                            on i.relam = am.oid
               WHERE
                   t.relkind IN ('r', 'v', 'f', 'm')
                   and t.oid = :table_oid
@@ -2633,7 +2661,8 @@ class PGDialect(default.DefaultDialect):
               SELECT
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
-                  a.attname, a.attnum, c.conrelid, ix.indkey::varchar
+                  a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
+                  i.reloptions, am.amname
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -2646,6 +2675,9 @@ class PGDialect(default.DefaultDialect):
                             on (ix.indrelid = c.conrelid and
                                 ix.indexrelid = c.conindid and
                                 c.contype in ('p', 'u', 'x'))
+                        left outer join
+                            pg_am am
+                            on i.relam = am.oid
               WHERE
                   t.relkind IN ('r', 'v', 'f', 'm')
                   and t.oid = :table_oid
@@ -2662,7 +2694,8 @@ class PGDialect(default.DefaultDialect):
 
         sv_idx_name = None
         for row in c.fetchall():
-            idx_name, unique, expr, prd, col, col_num, conrelid, idx_key = row
+            (idx_name, unique, expr, prd, col,
+             col_num, conrelid, idx_key, options, amname) = row
 
             if expr:
                 if idx_name != sv_idx_name:
@@ -2688,6 +2721,16 @@ class PGDialect(default.DefaultDialect):
                 index['unique'] = unique
                 if conrelid is not None:
                     index['duplicates_constraint'] = idx_name
+                if options:
+                    index['options'] = dict(
+                        [option.split("=") for option in options])
+
+                # it *might* be nice to include that this is 'btree' in the
+                # reflection info.  But we don't want an Index object
+                # to have a ``postgresql_using`` in it that is just the
+                # default, so for the moment leaving this out.
+                if amname and amname != 'btree':
+                    index['amname'] = amname
 
         result = []
         for name, idx in indexes.items():
@@ -2698,6 +2741,12 @@ class PGDialect(default.DefaultDialect):
             }
             if 'duplicates_constraint' in idx:
                 entry['duplicates_constraint'] = idx['duplicates_constraint']
+            if 'options' in idx:
+                entry.setdefault(
+                    'dialect_options', {})["postgresql_with"] = idx['options']
+            if 'amname' in idx:
+                entry.setdefault(
+                    'dialect_options', {})["postgresql_using"] = idx['amname']
             result.append(entry)
         return result
 

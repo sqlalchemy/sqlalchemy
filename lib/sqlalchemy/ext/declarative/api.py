@@ -163,20 +163,15 @@ class declared_attr(interfaces._MappedAttribute, property):
         self._cascading = cascading
 
     def __get__(desc, self, cls):
-        # use the ClassManager for memoization of values.  This is better than
-        # adding yet another attribute onto the class, or using weakrefs
-        # here which are slow and take up memory.  It also allows us to
-        # warn for non-mapped use of declared_attr.
-
-        manager = attributes.manager_of_class(cls)
-        if manager is None:
-            util.warn(
-                "Unmanaged access of declarative attribute %s from "
-                "non-mapped class %s" %
-                (desc.fget.__name__, cls.__name__))
+        reg = cls.__dict__.get('_sa_declared_attr_reg', None)
+        if reg is None:
+            manager = attributes.manager_of_class(cls)
+            if manager is None:
+                util.warn(
+                    "Unmanaged access of declarative attribute %s from "
+                    "non-mapped class %s" %
+                    (desc.fget.__name__, cls.__name__))
             return desc.fget(cls)
-
-        reg = manager.info.get('declared_attr_reg', None)
 
         if reg is None:
             return desc.fget(cls)

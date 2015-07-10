@@ -6,9 +6,9 @@ What's New in SQLAlchemy 1.0?
 
     This document describes changes between SQLAlchemy version 0.9,
     undergoing maintenance releases as of May, 2014,
-    and SQLAlchemy version 1.0, as of yet unreleased.
+    and SQLAlchemy version 1.0, released in April, 2015.
 
-    Document last updated: March 17, 2015
+    Document last updated: June 9, 2015
 
 Introduction
 ============
@@ -609,8 +609,8 @@ than the integer value.
 
 .. _feature_3282:
 
-The ``use_alter`` flag on ``ForeignKeyConstraint`` is no longer needed
-----------------------------------------------------------------------
+The ``use_alter`` flag on ``ForeignKeyConstraint`` is (usually) no longer needed
+--------------------------------------------------------------------------------
 
 The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` methods will
 now make use of a system that automatically renders an ALTER statement
@@ -628,6 +628,16 @@ The :paramref:`.ForeignKeyConstraint.use_alter` and
 :paramref:`.ForeignKey.use_alter` flags remain in place, and continue to have
 the same effect of establishing those constraints for which ALTER is
 required during a CREATE/DROP scenario.
+
+As of version 1.0.1, special logic takes over in the case of SQLite, which
+does not support ALTER, in the case that during a DROP, the given tables have
+an unresolvable cycle; in this case a warning is emitted, and the tables
+are dropped with **no** ordering, which is usually fine on SQLite unless
+constraints are enabled. To resolve the warning and proceed with at least
+a partial ordering on a SQLite database, particuarly one where constraints
+are enabled, re-apply "use_alter" flags to those
+:class:`.ForeignKey` and :class:`.ForeignKeyConstraint` objects which should
+be explicitly omitted from the sort.
 
 .. seealso::
 
@@ -723,6 +733,95 @@ now make use of all CHECK constraint conventions.
 
 :ticket:`3299`
 
+.. _change_3341:
+
+Constraints referring to unattached Columns can auto-attach to the Table when their referred columns are attached
+-----------------------------------------------------------------------------------------------------------------
+
+Since at least version 0.8, a :class:`.Constraint` has had the ability to
+"auto-attach" itself to a :class:`.Table` based on being passed table-attached columns::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    t = Table('t', m,
+        Column('a', Integer),
+        Column('b', Integer)
+    )
+
+    uq = UniqueConstraint(t.c.a, t.c.b)  # will auto-attach to Table
+
+    assert uq in t.constraints
+
+In order to assist with some cases that tend to come up with declarative,
+this same auto-attachment logic can now function even if the :class:`.Column`
+objects are not yet associated with the :class:`.Table`; additional events
+are established such that when those :class:`.Column` objects are associated,
+the :class:`.Constraint` is also added::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    a = Column('a', Integer)
+    b = Column('b', Integer)
+
+    uq = UniqueConstraint(a, b)
+
+    t = Table('t', m, a, b)
+
+    assert uq in t.constraints  # constraint auto-attached
+
+The above feature was a late add as of version 1.0.0b3.  A fix as of
+version 1.0.4 for :ticket:`3411` ensures that this logic
+does not occur if the :class:`.Constraint` refers to a mixture of
+:class:`.Column` objects and string column names; as we do not yet have
+tracking for the addition of names to a :class:`.Table`::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    a = Column('a', Integer)
+    b = Column('b', Integer)
+
+    uq = UniqueConstraint(a, 'b')
+
+    t = Table('t', m, a, b)
+
+    # constraint *not* auto-attached, as we do not have tracking
+    # to locate when a name 'b' becomes available on the table
+    assert uq not in t.constraints
+
+Above, the attachment event for column "a" to table "t" will fire off before
+column "b" is attached (as "a" is stated in the :class:`.Table` constructor
+before "b"), and the constraint will fail to locate "b" if it were to attempt
+an attachment.  For consistency, if the constraint refers to any string names,
+the autoattach-on-column-attach logic is skipped.
+
+The original auto-attach logic of course remains in place, if the :class:`.Table`
+already contains all the target :class:`.Column` objects at the time
+the :class:`.Constraint` is constructed::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
+
+    m = MetaData()
+
+    a = Column('a', Integer)
+    b = Column('b', Integer)
+
+
+    t = Table('t', m, a, b)
+
+    uq = UniqueConstraint(a, 'b')
+
+    # constraint auto-attached normally as in older versions
+    assert uq in t.constraints
+
+
+:ticket:`3341`
+:ticket:`3411`
 
 .. _change_2051:
 
@@ -955,6 +1054,117 @@ to by string name as well::
 
 :ticket:`3228`
 
+.. _bug_3371:
+
+Warnings emitted when comparing objects with None values to relationships
+-------------------------------------------------------------------------
+
+This change is new as of 1.0.1.  Some users are performing
+queries that are essentially of this form::
+
+    session.query(Address).filter(Address.user == User(id=None))
+
+This pattern is not currently supported in SQLAlchemy.  For all versions,
+it emits SQL resembling::
+
+    SELECT address.id AS address_id, address.user_id AS address_user_id,
+    address.email_address AS address_email_address
+    FROM address WHERE ? = address.user_id
+    (None,)
+
+Note above, there is a comparison ``WHERE ? = address.user_id`` where the
+bound value ``?`` is receving ``None``, or ``NULL`` in SQL.  **This will
+always return False in SQL**.  The comparison here would in theory
+generate SQL as follows::
+
+    SELECT address.id AS address_id, address.user_id AS address_user_id,
+    address.email_address AS address_email_address
+    FROM address WHERE address.user_id IS NULL
+
+But right now, **it does not**.   Applications which are relying upon the
+fact that "NULL = NULL" produces False in all cases run the risk that
+someday, SQLAlchemy might fix this issue to generate "IS NULL", and the queries
+will then produce different results.  Therefore with this kind of operation,
+you will see a warning::
+
+    SAWarning: Got None for value of column user.id; this is unsupported
+    for a relationship comparison and will not currently produce an
+    IS comparison (but may in a future release)
+
+Note that this pattern was broken in most cases for release 1.0.0 including
+all of the betas; a value like ``SYMBOL('NEVER_SET')`` would be generated.
+This issue has been fixed, but as a result of identifying this pattern,
+the warning is now there so that we can more safely repair this broken
+behavior (now captured in :ticket:`3373`) in a future release.
+
+:ticket:`3371`
+
+.. _bug_3374:
+
+A "negated contains or equals" relationship comparison will use the current value of attributes, not the database value
+-------------------------------------------------------------------------------------------------------------------------
+
+This change is new as of 1.0.1; while we would have preferred for this to be in 1.0.0,
+it only became apparent as a result of :ticket:`3371`.
+
+Given a mapping::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+        a = relationship("A")
+
+Given ``A``, with primary key of 7, but which we changed to be 10
+without flushing::
+
+    s = Session(autoflush=False)
+    a1 = A(id=7)
+    s.add(a1)
+    s.commit()
+
+    a1.id = 10
+
+A query against a many-to-one relationship with this object as the target
+will use the value 10 in the bound parameters::
+
+    s.query(B).filter(B.a == a1)
+
+Produces::
+
+    SELECT b.id AS b_id, b.a_id AS b_a_id
+    FROM b
+    WHERE ? = b.a_id
+    (10,)
+
+However, before this change, the negation of this criteria would **not** use
+10, it would use 7, unless the object were flushed first::
+
+    s.query(B).filter(B.a != a1)
+
+Produces (in 0.9 and all versions prior to 1.0.1)::
+
+    SELECT b.id AS b_id, b.a_id AS b_a_id
+    FROM b
+    WHERE b.a_id != ? OR b.a_id IS NULL
+    (7,)
+
+For a transient object, it would produce a broken query::
+
+    SELECT b.id, b.a_id
+    FROM b
+    WHERE b.a_id != :a_id_1 OR b.a_id IS NULL
+    {u'a_id_1': symbol('NEVER_SET')}
+
+This inconsistency has been repaired, and in all queries the current attribute
+value, in this example ``10``, will now be used.
+
+:ticket:`3374`
+
 .. _migration_3061:
 
 Changes to attribute events and other operations regarding attributes that have no pre-existing value
@@ -1014,7 +1224,8 @@ INSERT statement in relational databases considers a missing value to be
 the same as NULL in most cases.   Whether SQLAlchemy received a history
 event for a particular attribute set to None or not would usually not matter;
 as the difference between sending None/NULL or not wouldn't have an impact.
-However, as :ticket:`3060` illustrates, there are some seldom edge cases
+However, as :ticket:`3060` (described here in :ref:`migration_3060`)
+illustrates, there are some seldom edge cases
 where we do in fact want to positively have ``None`` set.  Also, allowing
 the attribute event here means it's now possible to create "default value"
 functions for ORM mapped attributes.
@@ -1031,6 +1242,58 @@ would be ``None`` before, it will now be the :data:`.orm.attributes.NEVER_SET`
 symbol, and no change to the object's state occurs.
 
 :ticket:`3061`
+
+.. _migration_3060:
+
+Priority of attribute changes on relationship-bound attributes vs. FK-bound may appear to change
+------------------------------------------------------------------------------------------------
+
+As a side effect of :ticket:`3060`, setting a relationship-bound attribute to ``None``
+is now a tracked history event which refers to the intention of persisting
+``None`` to that attribute.   As it has always been the case that setting a
+relationship-bound attribute will trump direct assignment to the foreign key
+attributes, a change in behavior can be seen here when assigning None.
+Given a mapping::
+
+    class A(Base):
+        __tablename__ = 'table_a'
+
+        id = Column(Integer, primary_key=True)
+
+    class B(Base):
+        __tablename__ = 'table_b'
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('table_a.id'))
+        a = relationship(A)
+
+In 1.0, the relationship-bound attribute takes precedence over the FK-bound
+attribute in all cases, whether or not
+the value we assign is a reference to an ``A`` object or is ``None``.
+In 0.9, the behavior is inconsistent and
+only takes effect if a value is assigned; the None is not considered::
+
+    a1 = A(id=1)
+    a2 = A(id=2)
+    session.add_all([a1, a2])
+    session.flush()
+
+    b1 = B()
+    b1.a = a1   # we expect a_id to be '1'; takes precedence in 0.9 and 1.0
+
+    b2 = B()
+    b2.a = None  # we expect a_id to be None; takes precedence only in 1.0
+
+    b1.a_id = 2
+    b2.a_id = 2
+
+    session.add_all([b1, b2])
+    session.commit()
+
+    assert b1.a is a1  # passes in both 0.9 and 1.0
+    assert b2.a is None  # passes in 1.0, in 0.9 it's a2
+
+:ticket:`3060`
 
 .. _bug_3139:
 
@@ -1092,18 +1355,83 @@ joined loader options can still be used::
 
 .. _bug_3233:
 
-Single inheritance join targets will no longer sometimes implicitly alias themselves
-------------------------------------------------------------------------------------
+Changes and fixes in handling of duplicate join targets
+--------------------------------------------------------
 
-This is a bug where an unexpected and inconsistent behavior would occur
-in some scenarios when joining to a single-table-inheritance entity.  The
-difficulty this might cause is that the query is supposed to raise an error,
-as it is invalid SQL, however the bug would cause an alias to be added which
-makes the query "work".   The issue is confusing because this aliasing
-is not applied consistently and could change based on the nature of the query
-preceding the join.
+Changes here encompass bugs where an unexpected and inconsistent
+behavior would occur in some scenarios when joining to an entity
+twice, or to multple single-table entities against the same table,
+without using a relationship-based ON clause, as well as when joining
+multiple times to the same target relationship.
 
-A simple example is::
+Starting with a mapping as::
+
+    from sqlalchemy import Integer, Column, String, ForeignKey
+    from sqlalchemy.orm import Session, relationship
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B")
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+
+A query that joins to ``A.bs`` twice::
+
+    print s.query(A).join(A.bs).join(A.bs)
+
+Will render::
+
+    SELECT a.id AS a_id
+    FROM a JOIN b ON a.id = b.a_id
+
+The query deduplicates the redundant ``A.bs`` because it is attempting
+to support a case like the following::
+
+    s.query(A).join(A.bs).\
+        filter(B.foo == 'bar').\
+        reset_joinpoint().join(A.bs, B.cs).filter(C.bar == 'bat')
+
+That is, the ``A.bs`` is part of a "path".  As part of :ticket:`3367`,
+arriving at the same endpoint twice without it being part of a
+larger path will now emit a warning::
+
+    SAWarning: Pathed join target A.bs has already been joined to; skipping
+
+The bigger change involves when joining to an entity without using a
+relationship-bound path.  If we join to ``B`` twice::
+
+    print s.query(A).join(B, B.a_id == A.id).join(B, B.a_id == A.id)
+
+In 0.9, this would render as follows::
+
+    SELECT a.id AS a_id
+    FROM a JOIN b ON b.a_id = a.id JOIN b AS b_1 ON b_1.a_id = a.id
+
+This is problematic since the aliasing is implicit and in the case of different
+ON clauses can lead to unpredictable results.
+
+In 1.0, no automatic aliasing is applied and we get::
+
+    SELECT a.id AS a_id
+    FROM a JOIN b ON b.a_id = a.id JOIN b ON b.a_id = a.id
+
+This will raise an error from the database.  While it might be nice if
+the "duplicate join target" acted identically if we joined both from
+redundant relationships vs. redundant non-relationship based targets,
+for now we are only changing the behavior in the more serious case where
+implicit aliasing would have occurred previously, and only emitting a warning
+in the relationship case.  Ultimately, joining to the same thing twice without
+any aliasing to disambiguate should raise an error in all cases.
+
+The change also has an impact on single-table inheritance targets.  Using
+a mapping as follows::
 
     from sqlalchemy import Integer, Column, String, ForeignKey
     from sqlalchemy.orm import Session, relationship
@@ -1151,7 +1479,8 @@ the identical SQL::
     WHERE a.type IN (:type_2)
 
 The above SQL is invalid, as it renders "a" within the FROM list twice.
-The bug however would occur with the second query only and render this instead::
+However, the implicit aliasing bug would occur with the second query only
+and render this instead::
 
     SELECT a.id AS a_id, a.type AS a_type
     FROM a JOIN b ON b.a_id = a.id JOIN a AS a_1
@@ -1173,6 +1502,7 @@ as all the subclasses normally refer to the same table::
     print s.query(ASub1).join(B, ASub1.b).join(asub2_alias, B.a.of_type(asub2_alias))
 
 :ticket:`3233`
+:ticket:`3367`
 
 
 Deferred Columns No Longer Implicitly Undefer
@@ -1290,7 +1620,7 @@ join into a subquery as a join target on SQLite.
 
 :ticket:`3008`
 
-.. _change_3429:
+.. _change_3249:
 
 Subqueries no longer applied to uselist=False joined eager loads
 ----------------------------------------------------------------
@@ -1337,6 +1667,20 @@ has always emitted a warning here and ignored addtional results for
 ``uselist=False``, so the results in that error situation should not change.
 
 :ticket:`3249`
+
+
+query.update() / query.delete() raises if used with join(), select_from(), from_self()
+--------------------------------------------------------------------------------------
+
+A warning is emitted in SQLAlchemy 0.9.10 (not yet released as of
+June 9, 2015) when the :meth:`.Query.update` or :meth:`.Query.delete` methods
+are invoked against a query which has also called upon :meth:`.Query.join`,
+:meth:`.Query.outerjoin`,
+:meth:`.Query.select_from` or :meth:`.Query.from_self`.  These are unsupported
+use cases which silently fail in the 0.9 series up until 0.9.10 where it emits
+a warning.  In 1.0, these cases raise an exception.
+
+:ticket:`3349`
 
 
 query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
@@ -1809,6 +2153,22 @@ is added to unconditionally return string keys for the local set of
 columns regardless of how the object was constructed or its current
 state.
 
+
+.. _feature_3084:
+
+MetaData.sorted_tables accessor is "deterministic"
+-----------------------------------------------------
+
+The sorting of tables resulting from the :attr:`.MetaData.sorted_tables`
+accessor is "deterministic"; the ordering should be the same in all cases
+regardless of Python hashing.   This is done by first sorting the tables
+by name before passing them to the topological algorithm, which maintains
+that ordering as it iterates.
+
+Note that this change does **not** yet apply to the ordering applied
+when emitting :meth:`.MetaData.create_all` or :meth:`.MetaData.drop_all`.
+
+:ticket:`3084`
 
 .. _bug_3170:
 

@@ -12,6 +12,7 @@ from sqlalchemy import Table, Column, MetaData, Integer, String, \
 from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects.postgresql import ARRAY
 
 
 class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -70,7 +71,7 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
             eq_(names, ['testtable'])
 
 
-class MaterialiedViewReflectionTest(
+class MaterializedViewReflectionTest(
         fixtures.TablesTest, AssertsExecutionResults):
     """Test reflection on materialized views"""
 
@@ -673,6 +674,59 @@ class ReflectionTest(fixtures.TestBase):
         conn.close()
 
     @testing.provide_metadata
+    def test_index_reflection_with_storage_options(self):
+        """reflect indexes with storage options set"""
+
+        metadata = self.metadata
+
+        Table(
+            't', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer)
+        )
+        metadata.create_all()
+
+        with testing.db.connect().execution_options(autocommit=True) as conn:
+            conn.execute("CREATE INDEX idx1 ON t (x) WITH (fillfactor = 50)")
+
+            ind = testing.db.dialect.get_indexes(conn, "t", None)
+            eq_(ind, [{'unique': False, 'column_names': ['x'], 'name': 'idx1',
+                       'dialect_options':
+                       {"postgresql_with": {"fillfactor": "50"}}}])
+
+            m = MetaData()
+            t1 = Table('t', m, autoload_with=conn)
+            eq_(
+                list(t1.indexes)[0].dialect_options['postgresql']['with'],
+                {"fillfactor": "50"}
+            )
+
+    @testing.provide_metadata
+    def test_index_reflection_with_access_method(self):
+        """reflect indexes with storage options set"""
+
+        metadata = self.metadata
+
+        Table(
+            't', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', ARRAY(Integer))
+        )
+        metadata.create_all()
+        with testing.db.connect().execution_options(autocommit=True) as conn:
+            conn.execute("CREATE INDEX idx1 ON t USING gin (x)")
+
+            ind = testing.db.dialect.get_indexes(conn, "t", None)
+            eq_(ind, [{'unique': False, 'column_names': ['x'], 'name': 'idx1',
+                       'dialect_options': {'postgresql_using': 'gin'}}])
+            m = MetaData()
+            t1 = Table('t', m, autoload_with=conn)
+            eq_(
+                list(t1.indexes)[0].dialect_options['postgresql']['using'],
+                'gin'
+            )
+
+    @testing.provide_metadata
     def test_foreign_key_option_inspection(self):
         metadata = self.metadata
         Table(
@@ -817,7 +871,7 @@ class ReflectionTest(fixtures.TestBase):
             }])
 
     @testing.provide_metadata
-    @testing.only_on("postgresql>=8.5")
+    @testing.only_on("postgresql >= 8.5")
     def test_reflection_with_unique_constraint(self):
         insp = inspect(testing.db)
 

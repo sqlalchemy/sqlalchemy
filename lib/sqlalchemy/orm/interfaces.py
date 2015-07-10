@@ -338,7 +338,7 @@ class PropComparator(operators.ColumnOperators):
 
     def __init__(self, prop, parentmapper, adapt_to_entity=None):
         self.prop = self.property = prop
-        self._parententity = parentmapper
+        self._parententity = adapt_to_entity or parentmapper
         self._adapt_to_entity = adapt_to_entity
 
     def __clause_element__(self):

@@ -150,6 +150,16 @@ class Dialect(object):
       This will prevent types.Boolean from generating a CHECK
       constraint when that type is used.
 
+    dbapi_exception_translation_map
+       A dictionary of names that will contain as values the names of
+       pep-249 exceptions ("IntegrityError", "OperationalError", etc)
+       keyed to alternate class names, to support the case where a
+       DBAPI has exception classes that aren't named as they are
+       referred to (e.g. IntegrityError = MyException).   In the vast
+       majority of cases this dictionary is empty.
+
+       .. versionadded:: 1.0.5
+
     """
 
     _has_events = False
@@ -733,6 +743,41 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    @classmethod
+    def get_dialect_cls(cls, url):
+        """Given a URL, return the :class:`.Dialect` that will be used.
+
+        This is a hook that allows an external plugin to provide functionality
+        around an existing dialect, by allowing the plugin to be loaded
+        from the url based on an entrypoint, and then the plugin returns
+        the actual dialect to be used.
+
+        By default this just returns the cls.
+
+        .. versionadded:: 1.0.3
+
+        """
+        return cls
+
+    @classmethod
+    def engine_created(cls, engine):
+        """A convenience hook called before returning the final :class:`.Engine`.
+
+        If the dialect returned a different class from the
+        :meth:`.get_dialect_cls`
+        method, then the hook is called on both classes, first on
+        the dialect class returned by the :meth:`.get_dialect_cls` method and
+        then on the class on which the method was called.
+
+        The hook should be used by dialects and/or wrappers to apply special
+        events to the engine or its components.   In particular, it allows
+        a dialect-wrapping class to apply dialect-level events.
+
+        .. versionadded:: 1.0.3
+
+        """
+        pass
+
 
 class ExecutionContext(object):
     """A messenger object for a Dialect that corresponds to a single
@@ -1083,5 +1128,23 @@ class ExceptionContext(object):
     assigning to this flag, a "disconnect" event which then results in
     a connection and pool invalidation can be invoked or prevented by
     changing this flag.
+
+    """
+
+    invalidate_pool_on_disconnect = True
+    """Represent whether all connections in the pool should be invalidated
+    when a "disconnect" condition is in effect.
+
+    Setting this flag to False within the scope of the
+    :meth:`.ConnectionEvents.handle_error` event will have the effect such
+    that the full collection of connections in the pool will not be
+    invalidated during a disconnect; only the current connection that is the
+    subject of the error will actually be invalidated.
+
+    The purpose of this flag is for custom disconnect-handling schemes where
+    the invalidation of other connections in the pool is to be performed
+    based on other conditions, or even on a per-connection basis.
+
+    .. versionadded:: 1.0.3
 
     """

@@ -325,6 +325,46 @@ executed standalone like a SQL expression, which has the effect of calling its
     seq = Sequence('some_sequence')
     nextid = connection.execute(seq)
 
+Associating a Sequence as the Server Side Default
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When we associate a :class:`.Sequence` with a :class:`.Column` as above,
+this association is an **in-Python only** association.    The CREATE TABLE
+that would be generated for our :class:`.Table` would not refer to this
+sequence.  If we want the sequence to be used as a server-side default,
+meaning it takes place even if we emit INSERT commands to the table from
+the SQL commandline, we can use the :paramref:`.Column.server_default`
+parameter in conjunction with the value-generation function of the
+sequence, available from the :meth:`.Sequence.next_value` method::
+
+    cart_id_seq = Sequence('cart_id_seq')
+    table = Table("cartitems", meta,
+        Column(
+            "cart_id", Integer, cart_id_seq,
+            server_default=cart_id_seq.next_value(), primary_key=True),
+        Column("description", String(40)),
+        Column("createdate", DateTime())
+    )
+
+The above metadata will generate a CREATE TABLE statement on Postgresql as::
+
+    CREATE TABLE cartitems (
+        cart_id INTEGER DEFAULT nextval('cart_id_seq') NOT NULL,
+        description VARCHAR(40),
+        createdate TIMESTAMP WITHOUT TIME ZONE,
+        PRIMARY KEY (cart_id)
+    )
+
+We place the :class:`.Sequence` also as a Python-side default above, that
+is, it is mentioned twice in the :class:`.Column` definition.   Depending
+on the backend in use, this may not be strictly necessary, for example
+on the Postgresql backend the Core will use ``RETURNING`` to access the
+newly generated primary key value in any case.   However, for the best
+compatibility, :class:`.Sequence` was originally intended to be a Python-side
+directive first and foremost so it's probably a good idea to specify it
+in this way as well.
+
+
 Default Objects API
 -------------------
 

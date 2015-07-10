@@ -128,6 +128,33 @@ class TypeEngine(Visitable):
 
     """
 
+    def compare_against_backend(self, dialect, conn_type):
+        """Compare this type against the given backend type.
+
+        This function is currently not implemented for SQLAlchemy
+        types, and for all built in types will return ``None``.  However,
+        it can be implemented by a user-defined type
+        where it can be consumed by schema comparison tools such as
+        Alembic autogenerate.
+
+        A future release of SQLAlchemy will potentially impement this method
+        for builtin types as well.
+
+        The function should return True if this type is equivalent to the
+        given type; the type is typically reflected from the database
+        so should be database specific.  The dialect in use is also
+        passed.   It can also return False to assert that the type is
+        not equivalent.
+
+        :param dialect: a :class:`.Dialect` that is involved in the comparison.
+
+        :param conn_type: the type object reflected from the backend.
+
+        .. versionadded:: 1.0.3
+
+        """
+        return None
+
     def copy_value(self, value):
         return value
 

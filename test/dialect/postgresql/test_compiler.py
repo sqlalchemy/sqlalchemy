@@ -5,7 +5,8 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL, is_, \
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
-    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text
+    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text, \
+    Text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -369,6 +370,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'USING hash (data)',
                             dialect=postgresql.dialect())
 
+    def test_create_index_with_with(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String))
+
+        idx1 = Index('test_idx1', tbl.c.data)
+        idx2 = Index(
+            'test_idx2', tbl.c.data, postgresql_with={"fillfactor": 50})
+        idx3 = Index('test_idx3', tbl.c.data, postgresql_using="gist",
+                     postgresql_with={"buffering": "off"})
+
+        self.assert_compile(schema.CreateIndex(idx1),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(data)')
+        self.assert_compile(schema.CreateIndex(idx2),
+                            'CREATE INDEX test_idx2 ON testtbl '
+                            '(data) '
+                            'WITH (fillfactor = 50)')
+        self.assert_compile(schema.CreateIndex(idx3),
+                            'CREATE INDEX test_idx3 ON testtbl '
+                            'USING gist (data) '
+                            'WITH (buffering = off)')
+
     def test_create_index_expr_gets_parens(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('x', Integer), Column('y', Integer))
@@ -443,8 +466,47 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl.append_constraint(cons_copy)
         self.assert_compile(schema.AddConstraint(cons_copy),
                             'ALTER TABLE testtbl ADD EXCLUDE USING gist '
-                            '(room WITH =)',
-                            dialect=postgresql.dialect())
+                            '(room WITH =)')
+
+    def test_exclude_constraint_text(self):
+        m = MetaData()
+        cons = ExcludeConstraint((text('room::TEXT'), '='))
+        Table(
+            'testtbl', m,
+            Column('room', String),
+            cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(room::TEXT WITH =)')
+
+    def test_exclude_constraint_cast(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('room', String)
+        )
+        cons = ExcludeConstraint((cast(tbl.c.room, Text), '='))
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(CAST(room AS TEXT) WITH =)'
+        )
+
+    def test_exclude_constraint_cast_quote(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('Room', String)
+        )
+        cons = ExcludeConstraint((cast(tbl.c.Room, Text), '='))
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(CAST("Room" AS TEXT) WITH =)'
+        )
 
     def test_substring(self):
         self.assert_compile(func.substring('abc', 1, 2),

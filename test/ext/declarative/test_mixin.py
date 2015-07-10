@@ -9,7 +9,8 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     configure_mappers, clear_mappers, \
     deferred, column_property, Session, base as orm_base
 from sqlalchemy.util import classproperty
-from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.declarative import declared_attr, declarative_base
+from sqlalchemy.orm import events as orm_events
 from sqlalchemy.testing import fixtures, mock
 from sqlalchemy.testing.util import gc_collect
 
@@ -437,6 +438,90 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
 
         eq_(MyModel.__table__.kwargs, {'mysql_engine': 'InnoDB'})
+
+    @testing.teardown_events(orm_events.MapperEvents)
+    def test_declare_first_mixin(self):
+        canary = mock.Mock()
+
+        class MyMixin(object):
+            @classmethod
+            def __declare_first__(cls):
+                canary.declare_first__(cls)
+
+            @classmethod
+            def __declare_last__(cls):
+                canary.declare_last__(cls)
+
+        class MyModel(Base, MyMixin):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+
+        configure_mappers()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.declare_first__(MyModel),
+                mock.call.declare_last__(MyModel),
+            ]
+        )
+
+    @testing.teardown_events(orm_events.MapperEvents)
+    def test_declare_first_base(self):
+        canary = mock.Mock()
+
+        class MyMixin(object):
+            @classmethod
+            def __declare_first__(cls):
+                canary.declare_first__(cls)
+
+            @classmethod
+            def __declare_last__(cls):
+                canary.declare_last__(cls)
+
+        class Base(MyMixin):
+            pass
+        Base = declarative_base(cls=Base)
+
+        class MyModel(Base):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+
+        configure_mappers()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.declare_first__(MyModel),
+                mock.call.declare_last__(MyModel),
+            ]
+        )
+
+    @testing.teardown_events(orm_events.MapperEvents)
+    def test_declare_first_direct(self):
+        canary = mock.Mock()
+
+        class MyOtherModel(Base):
+            __tablename__ = 'test2'
+            id = Column(Integer, primary_key=True)
+
+            @classmethod
+            def __declare_first__(cls):
+                canary.declare_first__(cls)
+
+            @classmethod
+            def __declare_last__(cls):
+                canary.declare_last__(cls)
+
+        configure_mappers()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.declare_first__(MyOtherModel),
+                mock.call.declare_last__(MyOtherModel)
+            ]
+        )
 
     def test_mapper_args_declared_attr(self):
 
