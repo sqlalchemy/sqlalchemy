@@ -19,6 +19,17 @@
     :version: 1.0.7
 
     .. change::
+        :tags: bug, orm, declarative
+        :tickets: 3480
+
+        Fixed bug in :class:`.AbstractConcreteBase` extension where
+        a column setup on the ABC base which had a different attribute
+        name vs. column name would not be correctly mapped on the final
+        base class.   The failure on 0.9 would be silent whereas on
+        1.0 it raised an ArgumentError, so may not have been noticed
+        prior to 1.0.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3469
 

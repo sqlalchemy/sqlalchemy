@@ -7,7 +7,7 @@
 """Public API functions and helpers for declarative."""
 
 
-from ...schema import Table, MetaData
+from ...schema import Table, MetaData, Column
 from ...orm import synonym as _orm_synonym, \
     comparable_property,\
     interfaces, properties, attributes
@@ -524,6 +524,17 @@ class AbstractConcreteBase(ConcreteBase):
             if mn is not None:
                 mappers.append(mn)
         pjoin = cls._create_polymorphic_union(mappers)
+
+        # For columns that were declared on the class, these
+        # are normally ignored with the "__no_table__" mapping,
+        # unless they have a different attribute key vs. col name
+        # and are in the properties argument.
+        # In that case, ensure we update the properties entry
+        # to the correct column from the pjoin target table.
+        declared_cols = set(to_map.declared_columns)
+        for k, v in list(to_map.properties.items()):
+            if v in declared_cols:
+                to_map.properties[k] = pjoin.c[v.key]
 
         to_map.local_table = pjoin
 
