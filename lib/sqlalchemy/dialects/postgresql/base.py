@@ -883,6 +883,16 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
             mytable.c.data[2:7]: [1, 2, 3]
         })
 
+    .. note::
+
+        Multi-dimensional support for the ``[]`` operator is not supported
+        in SQLAlchemy 1.0.  Please use the :func:`.type_coerce` function
+        to cast an intermediary expression to ARRAY again as a workaround::
+
+            expr = type_coerce(my_array_column[5], ARRAY(Integer))[6]
+
+        Multi-dimensional support will be provided in a future release.
+
     :class:`.ARRAY` provides special methods for containment operations,
     e.g.::
 
