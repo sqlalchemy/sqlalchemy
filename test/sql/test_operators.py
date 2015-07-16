@@ -1327,6 +1327,9 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             self._test_math_op(operator.div, '/')
 
+    def test_math_op_mod(self):
+        self._test_math_op(operator.mod, '%')
+
 
 class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
