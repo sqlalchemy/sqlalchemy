@@ -801,13 +801,13 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             CreateSequence(Sequence(
                             'foo_seq', increment=2, start=1, maxvalue=5)),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 MAXVALUE 5",
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 MAXVALUE 5",
         )
 
         self.assert_compile(
             CreateSequence(Sequence(
                             'foo_seq', increment=2, start=1, nomaxvalue=True)),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 NO MAXVALUE",
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 NO MAXVALUE",
         )
 
         self.assert_compile(
