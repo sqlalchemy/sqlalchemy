@@ -19,6 +19,14 @@
     :version: 1.0.7
 
     .. change::
+        :tags: bug, sql
+        :pullreq: github:188
+
+        Fixed bug where the modulus SQL operator wouldn't work in reverse
+        due to a missing ``__rmod__`` method.  Pull request courtesy
+        dan-gittik.
+
+    .. change::
         :tags: feature, schema
         :pullreq: github:186
 
