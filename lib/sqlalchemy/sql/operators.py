@@ -597,6 +597,14 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(div, other)
 
+    def __rmod__(self, other):
+        """Implement the ``%`` operator in reverse.
+
+        See :meth:`.ColumnOperators.__mod__`.
+
+        """
+        return self.reverse_operate(mod, other)
+
     def between(self, cleft, cright, symmetric=False):
         """Produce a :func:`~.expression.between` clause against
         the parent object, given the lower and upper range.
