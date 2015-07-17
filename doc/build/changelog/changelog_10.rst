@@ -19,6 +19,14 @@
     :version: 1.0.7
 
     .. change::
+        :tags: feature, schema
+        :pullreq: github:186
+
+        Added support for the MINVALUE, MAXVALUE, NO MINVALUE, NO MAXVALUE,
+        and CYCLE arguments for CREATE SEQUENCE as supported by Postgresql
+        and Oracle.  Pull request courtesy jakeogh.
+
+    .. change::
         :tags: bug, orm, declarative
         :tickets: 3480
 

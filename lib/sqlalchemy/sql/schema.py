@@ -2064,24 +2064,36 @@ class Sequence(DefaultGenerator):
          the clause is omitted, which on most platforms indicates a
          minvalue of 1 and -2^63-1 for ascending and descending sequences,
          respectively.
+
+         .. versionadded:: 1.0.7
+
         :param maxvalue: the maximum value of the sequence.  This
          value is used when the CREATE SEQUENCE command is emitted to
          the database as the value of the "MAXVALUE" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates a
          maxvalue of 2^63-1 and -1 for ascending and descending sequences,
          respectively.
+
+         .. versionadded:: 1.0.7
+
         :param nominvalue: no minimum value of the sequence.  This
          value is used when the CREATE SEQUENCE command is emitted to
          the database as the value of the "NO MINVALUE" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates a
          minvalue of 1 and -2^63-1 for ascending and descending sequences,
          respectively.
+
+         .. versionadded:: 1.0.7
+
         :param nomaxvalue: no maximum value of the sequence.  This
          value is used when the CREATE SEQUENCE command is emitted to
          the database as the value of the "NO MAXVALUE" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates a
          maxvalue of 2^63-1 and -1 for ascending and descending sequences,
          respectively.
+
+         .. versionadded:: 1.0.7
+
         :param cycle: allows the sequence to wrap around when the maxvalue
          or minvalue has been reached by an ascending or descending sequence
          respectively.  This value is used when the CREATE SEQUENCE command
@@ -2090,6 +2102,9 @@ class Sequence(DefaultGenerator):
          respectively.  If cycle=False (the default) any calls to nextval
          after the sequence has reached its maximum value will return an
          error.
+
+         .. versionadded:: 1.0.7
+
         :param schema: Optional schema name for the sequence, if located
          in a schema other than the default.
         :param optional: boolean value, when ``True``, indicates that this
