@@ -46,9 +46,10 @@ def configure_follower(follower_ident):
         _configure_follower(cfg, follower_ident)
 
 
-def setup_config(db_url, db_opts, options, file_config, follower_ident):
+def setup_config(db_url, options, file_config, follower_ident):
     if follower_ident:
         db_url = _follower_url_from_main(db_url, follower_ident)
+    db_opts = {}
     _update_db_opts(db_url, db_opts)
     eng = engines.testing_engine(db_url, db_opts)
     eng.connect().close()
