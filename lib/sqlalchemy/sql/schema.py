@@ -2040,8 +2040,9 @@ class Sequence(DefaultGenerator):
 
     is_sequence = True
 
-    def __init__(self, name, start=None, increment=None, schema=None,
-                 optional=False, quote=None, metadata=None,
+    def __init__(self, name, start=None, increment=None, minvalue=None,
+                 maxvalue=None, nominvalue=None, nomaxvalue=None, cycle=None,
+                 schema=None, optional=False, quote=None, metadata=None,
                  quote_schema=None,
                  for_update=False):
         """Construct a :class:`.Sequence` object.
@@ -2057,6 +2058,38 @@ class Sequence(DefaultGenerator):
          the database as the value of the "INCREMENT BY" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates an
          increment of 1.
+        :param minvalue: the minimum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "MINVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         minvalue of 1 and -2^63-1 for ascending and descending sequences,
+         respectively.
+        :param maxvalue: the maximum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "MAXVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         maxvalue of 2^63-1 and -1 for ascending and descending sequences,
+         respectively.
+        :param nominvalue: no minimum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "NO MINVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         minvalue of 1 and -2^63-1 for ascending and descending sequences,
+         respectively.
+        :param nomaxvalue: no maximum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "NO MAXVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         maxvalue of 2^63-1 and -1 for ascending and descending sequences,
+         respectively.
+        :param cycle: allows the sequence to wrap around when the maxvalue
+         or minvalue has been reached by an ascending or descending sequence
+         respectively.  This value is used when the CREATE SEQUENCE command
+         is emitted to the database as the "CYCLE" clause.  If the limit is
+         reached, the next number generated will be the minvalue or maxvalue,
+         respectively.  If cycle=False (the default) any calls to nextval
+         after the sequence has reached its maximum value will return an
+         error.
         :param schema: Optional schema name for the sequence, if located
          in a schema other than the default.
         :param optional: boolean value, when ``True``, indicates that this
@@ -2101,6 +2134,11 @@ class Sequence(DefaultGenerator):
         self.name = quoted_name(name, quote)
         self.start = start
         self.increment = increment
+        self.minvalue = minvalue
+        self.maxvalue = maxvalue
+        self.nominvalue = nominvalue
+        self.nomaxvalue = nomaxvalue
+        self.cycle = cycle
         self.optional = optional
         if metadata is not None and schema is None and metadata.schema:
             self.schema = schema = metadata.schema
