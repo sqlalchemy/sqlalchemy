@@ -495,10 +495,20 @@ class ResultProxy(object):
         self._init_metadata()
 
     def _getter(self, key):
-        return self._metadata._getter(key)
+        try:
+            getter = self._metadata._getter
+        except AttributeError:
+            return self._non_result(None)
+        else:
+            return getter(key)
 
     def _has_key(self, key):
-        return self._metadata._has_key(key)
+        try:
+            has_key = self._metadata._has_key
+        except AttributeError:
+            return self._non_result(None)
+        else:
+            return has_key(key)
 
     def _init_metadata(self):
         metadata = self._cursor_description()

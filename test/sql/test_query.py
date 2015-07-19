@@ -976,14 +976,22 @@ class QueryTest(fixtures.TestBase):
         # result.BufferedColumnResultProxy
 
         conn = testing.db.connect()
-        for meth in ('fetchone', 'fetchall', 'first', 'scalar', 'fetchmany'):
+        for meth in [
+            lambda r: r.fetchone(),
+            lambda r: r.fetchall(),
+            lambda r: r.first(),
+            lambda r: r.scalar(),
+            lambda r: r.fetchmany(),
+            lambda r: r._getter('user'),
+            lambda r: r._has_key('user'),
+        ]:
             trans = conn.begin()
             result = conn.execute(users.insert(), user_id=1)
             assert_raises_message(
                 exc.ResourceClosedError,
                 "This result object does not return rows. "
                 "It has been closed automatically.",
-                getattr(result, meth),
+                meth, result,
             )
             trans.rollback()
 

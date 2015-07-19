@@ -20,6 +20,17 @@
 
     .. change::
         :tags: bug, engine
+        :tickets: 3481
+
+        Fixed regression where new methods on :class:`.ResultProxy` used
+        by the ORM :class:`.Query` object (part of the performance
+        enhancements of :ticket:`3175`) would not raise the "this result
+        does not return rows" exception in the case where the driver
+        (typically MySQL) fails to generate cursor.description correctly;
+        an AttributeError against NoneType would be raised instead.
+
+    .. change::
+        :tags: bug, engine
         :tickets: 3483
 
         Fixed regression where :meth:`.ResultProxy.keys` would return
