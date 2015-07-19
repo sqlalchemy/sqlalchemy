@@ -221,7 +221,7 @@ class ResultMetaData(object):
                 in enumerate(result_columns)
             ]
             self.keys = [
-                elem[1] for elem in result_columns
+                elem[0] for elem in result_columns
             ]
         else:
             # case 2 - raw string, or number of columns in result does
@@ -236,7 +236,8 @@ class ResultMetaData(object):
             # that SQLAlchemy has used up through 0.9.
 
             if num_ctx_cols:
-                result_map = self._create_result_map(result_columns)
+                result_map = self._create_result_map(
+                    result_columns, case_sensitive)
 
             raw = []
             self.keys = []
@@ -329,10 +330,12 @@ class ResultMetaData(object):
                 ])
 
     @classmethod
-    def _create_result_map(cls, result_columns):
+    def _create_result_map(cls, result_columns, case_sensitive=True):
         d = {}
         for elem in result_columns:
             key, rec = elem[0], elem[1:]
+            if not case_sensitive:
+                key = key.lower()
             if key in d:
                 # conflicting keyname, just double up the list
                 # of objects.  this will cause an "ambiguous name"

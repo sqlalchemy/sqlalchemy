@@ -229,6 +229,16 @@ def is_not_(a, b, msg=None):
     assert a is not b, msg or "%r is %r" % (a, b)
 
 
+def in_(a, b, msg=None):
+    """Assert a in b, with repr messaging on failure."""
+    assert a in b, msg or "%r not in %r" % (a, b)
+
+
+def not_in_(a, b, msg=None):
+    """Assert a in not b, with repr messaging on failure."""
+    assert a not in b, msg or "%r is in %r" % (a, b)
+
+
 def startswith_(a, fragment, msg=None):
     """Assert a.startswith(fragment), with repr messaging on failure."""
     assert a.startswith(fragment), msg or "%r does not start with %r" % (

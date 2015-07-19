@@ -19,6 +19,17 @@
     :version: 1.0.7
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3483
+
+        Fixed regression where :meth:`.ResultProxy.keys` would return
+        un-adjusted internal symbol names for "anonymous" labels, which
+        are the "foo_1" types of labels we see generated for SQL functions
+        without labels and similar.  This was a side effect of the
+        performance enhancements implemented as part of #918.
+
+
+    .. change::
         :tags: bug, sql
         :tickets: 3490
 

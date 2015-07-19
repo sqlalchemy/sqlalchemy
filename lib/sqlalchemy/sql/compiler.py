@@ -1270,9 +1270,6 @@ class SQLCompiler(Compiled):
         return " AS " + alias_name_text
 
     def _add_to_result_map(self, keyname, name, objects, type_):
-        if not self.dialect.case_sensitive:
-            keyname = keyname.lower()
-
         self._result_columns.append((keyname, name, objects, type_))
 
     def _label_select_column(self, select, column,
