@@ -1321,7 +1321,8 @@ class QueryTest(fixtures.TestBase):
         result = testing.db.execute(
             select([
                 users.c.user_id,
-                users.c.user_name.label(None), func.count(1)]).
+                users.c.user_name.label(None),
+                func.count(literal_column('1'))]).
             group_by(users.c.user_id, users.c.user_name)
         )
 
