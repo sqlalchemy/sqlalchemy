@@ -20,6 +20,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3485
+
+        Fixed potential issue where a custom subclass
+        of :class:`.FunctionElement` or other column element that incorrectly
+        states 'None' or any other invalid object as the ``.type``
+        attribute will report this exception instead of recursion overflow.
+
+    .. change::
+        :tags: bug, sql
         :pullreq: github:188
 
         Fixed bug where the modulus SQL operator wouldn't work in reverse

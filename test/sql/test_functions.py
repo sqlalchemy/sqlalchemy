@@ -9,12 +9,12 @@ from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.testing.engines import all_dialects
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import functions
-from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.sql.functions import GenericFunction, FunctionElement
 import decimal
 from sqlalchemy import testing
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, engines
 from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
-
+from sqlalchemy.testing import assert_raises_message
 
 table1 = table('mytable',
                column('myid', Integer),
@@ -475,6 +475,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
             "OVER (PARTITION BY mytable.description ORDER BY mytable.name) "
             "AS anon_1 FROM mytable"
+        )
+
+    def test_incorrect_none_type(self):
+        class MissingType(FunctionElement):
+            name = 'mt'
+            type = None
+
+        assert_raises_message(
+            TypeError,
+            "Object None associated with '.type' attribute is "
+            "not a TypeEngine class or object",
+            MissingType().compile
         )
 
 

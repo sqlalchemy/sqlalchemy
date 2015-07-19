@@ -715,7 +715,14 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
 
     @util.memoized_property
     def comparator(self):
-        return self.type.comparator_factory(self)
+        try:
+            comparator_factory = self.type.comparator_factory
+        except AttributeError:
+            raise TypeError(
+                "Object %r associated with '.type' attribute "
+                "is not a TypeEngine class or object" % self.type)
+        else:
+            return comparator_factory(self)
 
     def __getattr__(self, key):
         try:
