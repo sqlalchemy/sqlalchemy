@@ -19,6 +19,15 @@
     :version: 1.0.7
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3459
+        :pullreq: bitbucket:56
+
+        Added a :meth:`.ColumnElement.cast` method which performs the same
+        purpose as the standalone :func:`.cast` function.  Pull request
+        courtesy Sebastian Bank.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3481
 

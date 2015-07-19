@@ -2040,6 +2040,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 'Incorrect number of expected results')
             eq_(str(cast(tbl.c.v1, Numeric).compile(dialect=dialect)),
                 'CAST(casttest.v1 AS %s)' % expected_results[0])
+            eq_(str(tbl.c.v1.cast(Numeric).compile(dialect=dialect)),
+                'CAST(casttest.v1 AS %s)' % expected_results[0])
             eq_(str(cast(tbl.c.v1, Numeric(12, 9)).compile(dialect=dialect)),
                 'CAST(casttest.v1 AS %s)' % expected_results[1])
             eq_(str(cast(tbl.c.ts, Date).compile(dialect=dialect)),

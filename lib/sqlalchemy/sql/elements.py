@@ -847,7 +847,10 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     def cast(self, type_):
         """Produce a type cast, i.e. ``CAST(<expression> AS <type>)``.
 
-        This is a shortcut to the :func:`.cast` function.
+        This is a shortcut to the :func:`~.expression.cast` function.
+
+        .. versionadded:: 1.0.7
+
         """
         return Cast(self, type_)
 
