@@ -20,6 +20,14 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3490
+
+        Fixed bug where coersion of literal ``True`` or ``False`` constant
+        in conjunction with :func:`.and_` or :func:`.or_` would fail
+        with an AttributeError.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3485
 
         Fixed potential issue where a custom subclass
