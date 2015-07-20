@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.7
+    :released: July 20, 2015
 
     .. change::
         :tags: feature, sql
