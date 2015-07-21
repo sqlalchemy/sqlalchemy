@@ -15,6 +15,15 @@
     :version: 0.9.10
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3495
+        :versions: 1.0.8
+
+        Fixed bug in SQLite dialect where reflection of UNIQUE constraints
+        that included non-alphabetic characters in the names, like dots or
+        spaces, would not be reflected with their name.
+
+    .. change::
         :tags: feature, sql
         :tickets: 3418
         :versions: 1.0.5
