@@ -16,6 +16,21 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.8
+
+    .. change::
+        :tags: bug, misc
+        :tickets: 3494
+
+        Fixed an issue where a particular base class within utils
+        didn't implement ``__slots__``, and therefore meant all subclasses
+        of that class didn't either, negating the rationale for ``__slots__``
+        to be in use.  Didn't cause any issue except on IronPython
+        which apparently does not implement ``__slots__`` behavior compatibly
+        with cPython.
+
+
+.. changelog::
     :version: 1.0.7
     :released: July 20, 2015
 

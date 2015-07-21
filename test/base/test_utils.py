@@ -2,12 +2,13 @@ import copy
 
 from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
-from sqlalchemy.testing import eq_, is_, ne_, fails_if
+from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock
 from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
 from sqlalchemy.util import langhelpers
 import inspect
+
 
 class _KeyedTupleTest(object):
 
@@ -283,6 +284,33 @@ class MemoizedAttrTest(fixtures.TestBase):
         eq_(f1.bar(), 20)
         eq_(f1.bar(), 20)
         eq_(val[0], 21)
+
+    def test_memoized_slots(self):
+        canary = mock.Mock()
+
+        class Foob(util.MemoizedSlots):
+            __slots__ = ('foo_bar', 'gogo')
+
+            def _memoized_method_gogo(self):
+                canary.method()
+                return "gogo"
+
+            def _memoized_attr_foo_bar(self):
+                canary.attr()
+                return "foobar"
+
+        f1 = Foob()
+        assert_raises(AttributeError, setattr, f1, "bar", "bat")
+
+        eq_(f1.foo_bar, "foobar")
+
+        eq_(f1.foo_bar, "foobar")
+
+        eq_(f1.gogo(), "gogo")
+
+        eq_(f1.gogo(), "gogo")
+
+        eq_(canary.mock_calls, [mock.call.attr(), mock.call.method()])
 
 
 class ToListTest(fixtures.TestBase):

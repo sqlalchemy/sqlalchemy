@@ -805,6 +805,8 @@ class MemoizedSlots(object):
 
     """
 
+    __slots__ = ()
+
     def _fallback_getattr(self, key):
         raise AttributeError(key)
 

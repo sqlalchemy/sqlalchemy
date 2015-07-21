@@ -39,7 +39,7 @@ class ColumnProperty(StrategizedProperty):
         'instrument', 'comparator_factory', 'descriptor', 'extension',
         'active_history', 'expire_on_flush', 'info', 'doc',
         'strategy_class', '_creation_order', '_is_polymorphic_discriminator',
-        '_mapped_by_synonym', '_deferred_loader')
+        '_mapped_by_synonym', '_deferred_column_loader')
 
     def __init__(self, *columns, **kwargs):
         """Provide a column-level property for use with a Mapper.

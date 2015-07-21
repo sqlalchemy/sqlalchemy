@@ -361,7 +361,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
     __slots__ = (
         '_lazywhere', '_rev_lazywhere', 'use_get', '_bind_to_col',
-        '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns')
+        '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns',
+        '_simple_lazy_clause')
 
     def __init__(self, parent):
         super(LazyLoader, self).__init__(parent)
