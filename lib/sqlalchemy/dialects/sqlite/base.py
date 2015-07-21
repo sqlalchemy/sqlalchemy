@@ -1387,7 +1387,7 @@ class SQLiteDialect(default.DefaultDialect):
         unique_constraints = []
 
         def parse_uqs():
-            UNIQUE_PATTERN = '(?:CONSTRAINT (\w+) +)?UNIQUE *\((.+?)\)'
+            UNIQUE_PATTERN = '(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
                 '(?:(".+?")|([a-z0-9]+)) '
                 '+[a-z0-9_ ]+? +UNIQUE')

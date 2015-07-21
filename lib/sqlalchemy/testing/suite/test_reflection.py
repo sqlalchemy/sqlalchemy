@@ -531,12 +531,20 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.provide_metadata
     def _test_get_unique_constraints(self, schema=None):
+        # SQLite dialect needs to parse the names of the constraints
+        # separately from what it gets from PRAGMA index_list(), and
+        # then matches them up.  so same set of column_names in two
+        # constraints will confuse it.    Perhaps we should no longer
+        # bother with index_list() here since we have the whole
+        # CREATE TABLE?
         uniques = sorted(
             [
                 {'name': 'unique_a', 'column_names': ['a']},
                 {'name': 'unique_a_b_c', 'column_names': ['a', 'b', 'c']},
                 {'name': 'unique_c_a_b', 'column_names': ['c', 'a', 'b']},
                 {'name': 'unique_asc_key', 'column_names': ['asc', 'key']},
+                {'name': 'i.have.dots', 'column_names': ['b']},
+                {'name': 'i have spaces', 'column_names': ['c']},
             ],
             key=operator.itemgetter('name')
         )
