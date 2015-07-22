@@ -13,6 +13,7 @@
 
 .. changelog::
     :version: 0.9.10
+    :released: July 22, 2015
 
     .. change::
         :tags: bug, sqlite
