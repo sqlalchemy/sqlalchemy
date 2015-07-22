@@ -8,8 +8,9 @@ from sqlalchemy.testing import eq_, assert_raises, is_not_, is_
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing import fixtures
 import random
-from sqlalchemy.testing.mock import Mock, call, patch
+from sqlalchemy.testing.mock import Mock, call, patch, ANY
 import weakref
+import collections
 
 join_timeout = 10
 
@@ -1479,6 +1480,98 @@ class QueuePoolTest(PoolTestBase):
         c1.close()
         time.sleep(1.5)
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
+
+    def test_connect_handler_not_called_for_recycled(self):
+        """test [ticket:3497]"""
+
+        dbapi, p = self._queuepool_dbapi_fixture(
+            pool_size=2, max_overflow=2)
+
+        canary = Mock()
+
+        c1 = p.connect()
+        c2 = p.connect()
+
+        c1.close()
+        c2.close()
+
+        dbapi.shutdown(True)
+
+        bad = p.connect()
+        p._invalidate(bad)
+        bad.close()
+        assert p._invalidate_time
+
+        event.listen(p, "connect", canary.connect)
+        event.listen(p, "checkout", canary.checkout)
+
+        assert_raises(
+            Exception,
+            p.connect
+        )
+
+        p._pool.queue = collections.deque(
+            [
+                c for c in p._pool.queue
+                if c.connection is not None
+            ]
+        )
+
+        dbapi.shutdown(False)
+        c = p.connect()
+        c.close()
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.connect(ANY, ANY),
+                call.checkout(ANY, ANY, ANY)
+            ]
+        )
+
+    def test_connect_checkout_handler_always_gets_info(self):
+        """test [ticket:3497]"""
+
+        dbapi, p = self._queuepool_dbapi_fixture(
+            pool_size=2, max_overflow=2)
+
+        c1 = p.connect()
+        c2 = p.connect()
+
+        c1.close()
+        c2.close()
+
+        dbapi.shutdown(True)
+
+        bad = p.connect()
+        p._invalidate(bad)
+        bad.close()
+        assert p._invalidate_time
+
+        @event.listens_for(p, "connect")
+        def connect(conn, conn_rec):
+            conn_rec.info['x'] = True
+
+        @event.listens_for(p, "checkout")
+        def checkout(conn, conn_rec, conn_f):
+            assert 'x' in conn_rec.info
+
+        assert_raises(
+            Exception,
+            p.connect
+        )
+
+        p._pool.queue = collections.deque(
+            [
+                c for c in p._pool.queue
+                if c.connection is not None
+            ]
+        )
+
+        dbapi.shutdown(False)
+        c = p.connect()
+        c.close()
+
 
     def test_error_on_pooled_reconnect_cleanup_wcheckout_event(self):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1,
