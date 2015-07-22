@@ -527,6 +527,9 @@ class _ConnectionRecord(object):
 
         if recycle:
             self.__close()
+            # ensure that if self.__connect() fails,
+            # we are not referring to the previous stale connection here
+            self.connection = None
             self.connection = self.__connect()
             self.info.clear()
             if self.__pool.dispatch.connect:

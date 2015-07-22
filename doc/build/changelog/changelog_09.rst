@@ -12,6 +12,24 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.11
+
+    .. change::
+        :tags: bug, pool
+        :tickets: 3497
+        :versions: 1.0.8
+
+        Fixed critical issue whereby the pool "checkout" event handler
+        may be called against a stale connection without the "connect"
+        event handler having been called, in the case where the pool
+        attempted to reconnect after being invalidated and failed; the stale
+        connection would remain present and would be used on a subsequent
+        attempt.  This issue has a greater impact in the 1.0 series subsequent
+        to 1.0.2, as it also delivers a blanked-out ``.info`` dictionary to
+        the event handler; prior to 1.0.2 the ``.info`` dictionary is still
+        the previous one.
+
+.. changelog::
     :version: 0.9.10
     :released: July 22, 2015
 
