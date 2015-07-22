@@ -15,7 +15,7 @@
     :version: 0.9.11
 
     .. change::
-        :tags: bug, pool
+        :tags: bug, engine
         :tickets: 3497
         :versions: 1.0.8
 
