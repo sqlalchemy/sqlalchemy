@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.8
+    :released: July 22, 2015
 
     .. change::
         :tags: bug, misc
