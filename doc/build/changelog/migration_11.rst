@@ -28,8 +28,40 @@ their applications from the 1.0 series of SQLAlchemy to 1.1.
 Please carefully review the sections on behavioral changes for
 potentially backwards-incompatible changes in behavior.
 
-Platform Changes
-================
+Platform / Installer Changes
+============================
+
+Setuptools is now required for install
+--------------------------------------
+
+SQLAlchemy's ``setup.py`` file has for many years supported operation
+both with Setuptools installed and without; supporting a "fallback" mode
+that uses straight Distutils.  As a Setuptools-less Python environment is
+now unheard of, and in order to support the featureset of Setuptools
+more fully, in particular to support py.test's integration with it,
+``setup.py`` now depends on Setuptools fully.
+
+.. seealso::
+
+	:ref:`installation`
+
+:ticket:`3489`
+
+Enabling / Disabling C Extension builds is only via environment variable
+------------------------------------------------------------------------
+
+The C Extensions build by default during install as long as it is possible.
+To disable C extension builds, the ``DISABLE_SQLALCHEMY_CEXT`` environment
+variable was made available as of SQLAlchemy 0.8.6 / 0.9.4.  The previous
+approach of using the ``--without-cextensions`` argument has been removed,
+as it relies on deprecated features of setuptools.
+
+.. seealso::
+
+	:ref:`c_extensions`
+
+:ticket:`3500`
+
 
 New Features and Improvements - ORM
 ===================================

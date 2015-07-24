@@ -1,29 +1,14 @@
-"""setup.py
-
-Please see README for basic installation instructions.
-
-"""
-
 import os
+import platform
 import re
 import sys
 from distutils.command.build_ext import build_ext
-from distutils.errors import (CCompilerError, DistutilsExecError,
-                              DistutilsPlatformError)
-
-has_feature = False
-try:
-    from setuptools import setup, Extension
-    try:
-        # see
-        # https://bitbucket.org/pypa/setuptools/issue/65/deprecate-and-remove-features,
-        # where they may remove Feature.
-        from setuptools import Feature
-        has_feature = True
-    except ImportError:
-        pass
-except ImportError:
-    from distutils.core import setup, Extension
+from distutils.errors import CCompilerError
+from distutils.errors import DistutilsExecError
+from distutils.errors import DistutilsPlatformError
+from setuptools import Extension
+from setuptools import setup
+from setuptools.command.test import test as TestCommand
 
 py3k = False
 
@@ -34,7 +19,6 @@ if sys.version_info < (2, 6):
 elif sys.version_info >= (3, 0):
     py3k = True
 
-import platform
 cpython = platform.python_implementation() == 'CPython'
 
 ext_modules = [
@@ -44,7 +28,7 @@ ext_modules = [
               sources=['lib/sqlalchemy/cextension/resultproxy.c']),
     Extension('sqlalchemy.cutils',
               sources=['lib/sqlalchemy/cextension/utils.c'])
-    ]
+]
 
 ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 if sys.platform == 'win32':
@@ -82,6 +66,31 @@ class ve_build_ext(build_ext):
 cmdclass['build_ext'] = ve_build_ext
 
 
+class PyTest(TestCommand):
+    # from https://pytest.org/latest/goodpractises.html#integration-with-setuptools-test-commands
+    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
+
+    default_options = ["-n", "4", "-q"]
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = ""
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(
+            " ".join(self.default_options) + " " + self.pytest_args)
+        sys.exit(errno)
+
+cmdclass['test'] = PyTest
+
+
 def status_msgs(*msgs):
     print('*' * 75)
     for msg in msgs:
@@ -113,42 +122,35 @@ r_file.close()
 def run_setup(with_cext):
     kwargs = extra.copy()
     if with_cext:
-        if has_feature:
-            kwargs['features'] = {'cextensions': Feature(
-                "optional C speed-enhancements",
-                standard=True,
-                ext_modules=ext_modules
-                )}
-        else:
-            kwargs['ext_modules'] = ext_modules
+        kwargs['ext_modules'] = ext_modules
 
-    setup(name="SQLAlchemy",
-          version=VERSION,
-          description="Database Abstraction Library",
-          author="Mike Bayer",
-          author_email="mike_mp@zzzcomputing.com",
-          url="http://www.sqlalchemy.org",
-          packages=find_packages('lib'),
-          package_dir={'': 'lib'},
-          license="MIT License",
-          cmdclass=cmdclass,
-          tests_require=['pytest >= 2.5.2', 'mock', 'pytest-xdist'],
-          test_suite="sqlalchemy.testing.distutils_run",
-          long_description=readme,
-          classifiers=[
-              "Development Status :: 5 - Production/Stable",
-              "Intended Audience :: Developers",
-              "License :: OSI Approved :: MIT License",
-              "Programming Language :: Python",
-              "Programming Language :: Python :: 3",
-              "Programming Language :: Python :: Implementation :: CPython",
-              "Programming Language :: Python :: Implementation :: Jython",
-              "Programming Language :: Python :: Implementation :: PyPy",
-              "Topic :: Database :: Front-Ends",
-              "Operating System :: OS Independent",
-              ],
-          **kwargs
-          )
+    setup(
+        name="SQLAlchemy",
+        version=VERSION,
+        description="Database Abstraction Library",
+        author="Mike Bayer",
+        author_email="mike_mp@zzzcomputing.com",
+        url="http://www.sqlalchemy.org",
+        packages=find_packages('lib'),
+        package_dir={'': 'lib'},
+        license="MIT License",
+        cmdclass=cmdclass,
+        tests_require=['pytest >= 2.5.2', 'mock', 'pytest-xdist'],
+        long_description=readme,
+        classifiers=[
+            "Development Status :: 5 - Production/Stable",
+            "Intended Audience :: Developers",
+            "License :: OSI Approved :: MIT License",
+            "Programming Language :: Python",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: Implementation :: CPython",
+            "Programming Language :: Python :: Implementation :: Jython",
+            "Programming Language :: Python :: Implementation :: PyPy",
+            "Topic :: Database :: Front-Ends",
+            "Operating System :: OS Independent",
+        ],
+        **kwargs
+    )
 
 if not cpython:
     run_setup(False)
