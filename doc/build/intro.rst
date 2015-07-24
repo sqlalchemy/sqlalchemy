@@ -108,7 +108,7 @@ downloaded from Pypi and installed in one step::
 This command will download the latest **released** version of SQLAlchemy from the `Python
 Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
 
-In order to install the latest **prerelease** version, such as ``1.0.0b1``,
+In order to install the latest **prerelease** version, such as ``1.1.0b1``,
 pip requires that the ``--pre`` flag be used::
 
     pip install --pre SQLAlchemy
@@ -189,7 +189,7 @@ the available DBAPIs for each database, including external links.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 1.0. If you're working on a
+This documentation covers SQLAlchemy version 1.1. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this:
 
@@ -197,11 +197,11 @@ Python prompt like this:
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     1.0.0
+     1.1.0
 
 .. _migration:
 
-0.9 to 1.0 Migration
+1.0 to 1.1 Migration
 =====================
 
-Notes on what's changed from 0.9 to 1.0 is available here at :doc:`changelog/migration_10`.
+Notes on what's changed from 1.0 to 1.1 is available here at :doc:`changelog/migration_11`.
