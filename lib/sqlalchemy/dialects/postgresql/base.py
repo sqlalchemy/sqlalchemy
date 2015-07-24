@@ -2641,7 +2641,7 @@ class PGDialect(default.DefaultDialect):
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, NULL, ix.indkey%s,
-                  i.reloptions, am.amname
+                  %s, am.amname
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -2664,6 +2664,8 @@ class PGDialect(default.DefaultDialect):
                 # cast does not work in PG 8.2.4, does work in 8.3.0.
                 # nothing in PG changelogs regarding this.
                 "::varchar" if self.server_version_info >= (8, 3) else "",
+                "i.reloptions" if self.server_version_info >= (8, 2)
+                else "NULL",
                 self._pg_index_any("a.attnum", "ix.indkey")
             )
         else:

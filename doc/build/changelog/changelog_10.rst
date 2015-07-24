@@ -16,6 +16,21 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.9
+
+    .. change::
+        :tags: bug, postgresql
+        :pullreq: github:190
+
+        An adjustment to the new Postgresql feature of reflecting storage
+        options and USING of :ticket:`3455` released in 1.0.6,
+        to disable the feature for Postgresql versions < 8.2 where the
+        ``reloptions`` column is not provided; this allows Amazon Redshift
+        to again work as it is based on an 8.0.x version of Postgresql.
+        Fix courtesy Pete Hollobon.
+
+
+.. changelog::
     :version: 1.0.8
     :released: July 22, 2015
 

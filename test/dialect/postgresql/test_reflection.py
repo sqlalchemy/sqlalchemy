@@ -673,6 +673,7 @@ class ReflectionTest(fixtures.TestBase):
         eq_(ind, [{'unique': False, 'column_names': ['y'], 'name': 'idx1'}])
         conn.close()
 
+    @testing.fails_if("postgresql < 8.2", "reloptions not supported")
     @testing.provide_metadata
     def test_index_reflection_with_storage_options(self):
         """reflect indexes with storage options set"""
