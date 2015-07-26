@@ -968,23 +968,8 @@ mapper (below illustrated using an asterisk):
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
 
-You can use :meth:`~sqlalchemy.orm.query.Query.from_statement()` to go
-completely "raw", using string names to identify desired columns:
-
-.. sourcecode:: python+sql
-
-    {sql}>>> session.query("id", "name", "thenumber12").\
-    ...         from_statement(text("SELECT id, name, 12 as "
-    ...                 "thenumber12 FROM users where name=:name")).\
-    ...                 params(name='ed').all()
-    SELECT id, name, 12 as thenumber12 FROM users where name=?
-    ('ed',)
-    {stop}[(1, u'ed', 12)]
-
-The :func:`.text` construct also supports the :meth:`.TextClause.columns`
-method, which can be used to associate ORM-mapped columns explicitly.
-This is useful to make an explicit mapping of columns in the string
-statement to those that are mapped:
+Or alternatively, specify how the columns map to the :func:`.text` construct
+explicitly using the :meth:`.TextClause.columns` method:
 
 .. sourcecode:: python+sql
 
@@ -995,12 +980,17 @@ statement to those that are mapped:
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
 
+We can choose columns to return individually as well, as in any other case:
 
-.. versionchanged:: 1.0.0
-   The :class:`.Query` construct emits warnings when string SQL
-   fragments are coerced to :func:`.text`, and :func:`.text` should
-   be used explicitly.  See :ref:`migration_2992` for background.
+.. sourcecode:: python+sql
 
+    >>> stmt = text("SELECT name, id FROM users where name=:name")
+    >>> stmt = stmt.columns(User.name, User.id)
+    {sql}>>> session.query(User.id, User.name).\
+    ...          from_statement(stmt).params(name='ed').all()
+    SELECT name, id FROM users where name=?
+    ('ed',)
+    {stop}[(1, u'ed')]
 
 .. seealso::
 
@@ -1008,6 +998,11 @@ statement to those that are mapped:
     behavior of the ORM :class:`.Query` object with regards to
     :func:`.text` and related constructs is very similar to that of the
     Core :func:`.select` object.
+
+.. versionchanged:: 1.0.0
+   The :class:`.Query` construct emits warnings when string SQL
+   fragments are coerced to :func:`.text`, and :func:`.text` should
+   be used explicitly.  See :ref:`migration_2992` for background.
 
 Counting
 --------
