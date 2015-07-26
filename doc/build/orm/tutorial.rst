@@ -908,7 +908,7 @@ database results.  Here's a brief tour:
 
 .. _orm_tutorial_literal_sql:
 
-Using Literal SQL
+Using Textual SQL
 -----------------
 
 Literal strings can be used flexibly with
@@ -994,10 +994,8 @@ We can choose columns to return individually as well, as in any other case:
 
 .. seealso::
 
-    :ref:`sqlexpression_text` - Core description of textual segments.  The
-    behavior of the ORM :class:`.Query` object with regards to
-    :func:`.text` and related constructs is very similar to that of the
-    Core :func:`.select` object.
+    :ref:`sqlexpression_text` - The :func:`.text` construct explained
+    from the perspective of Core-only queries.
 
 .. versionchanged:: 1.0.0
    The :class:`.Query` construct emits warnings when string SQL
