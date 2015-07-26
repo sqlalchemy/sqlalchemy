@@ -984,7 +984,7 @@ completely "raw", using string names to identify desired columns:
 The :func:`.text` construct also supports the :meth:`.TextClause.columns`
 method, which can be used to associate ORM-mapped columns explicitly.
 This is useful to make an explicit mapping of columns in the string
-statement to those that are mapped::
+statement to those that are mapped:
 
 .. sourcecode:: python+sql
 
