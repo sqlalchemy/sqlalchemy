@@ -902,10 +902,9 @@ database results.  Here's a brief tour:
       {sql}>>> query.scalar() #doctest: +NORMALIZE_WHITESPACE
       SELECT users.id AS users_id
       FROM users
-      WHERE users.name LIKE ? ORDER BY users.id
-       LIMIT ? OFFSET ?
-      ('%ed', 1, 0)
-      {stop}7
+      WHERE users.name = ? ORDER BY users.id
+      ('ed',)
+      {stop}1
 
 .. _orm_tutorial_literal_sql:
 
@@ -969,18 +968,30 @@ mapper (below illustrated using an asterisk):
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
 
-You can use :meth:`~sqlalchemy.orm.query.Query.from_statement()` to go
-completely "raw", using string names to identify desired columns:
+Or alternatively, specify how the columns map to the :func:`.text` construct
+explicitly using the :meth:`.TextClause.columns` method:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query("id", "name", "thenumber12").\
-    ...         from_statement(text("SELECT id, name, 12 as "
-    ...                 "thenumber12 FROM users where name=:name")).\
-    ...                 params(name='ed').all()
-    SELECT id, name, 12 as thenumber12 FROM users where name=?
+    >>> stmt = text("SELECT name, id FROM users where name=:name")
+    >>> stmt = stmt.columns(User.name, User.id)
+    {sql}>>> session.query(User).from_statement(stmt).params(name='ed').all()
+    SELECT name, id FROM users where name=?
     ('ed',)
-    {stop}[(1, u'ed', 12)]
+    {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
+
+We can choose columns to return individually as well, as in any other case:
+
+.. sourcecode:: python+sql
+
+    >>> stmt = text("SELECT name, id FROM users where name=:name")
+    >>> stmt = stmt.columns(User.name, User.id)
+    {sql}>>> session.query(User.id, User.name).\
+    ...          from_statement(stmt).params(name='ed').all()
+    SELECT name, id FROM users where name=?
+    ('ed',)
+    {stop}[(1, u'ed')]
+
 
 .. seealso::
 
