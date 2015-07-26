@@ -902,10 +902,9 @@ database results.  Here's a brief tour:
       {sql}>>> query.scalar() #doctest: +NORMALIZE_WHITESPACE
       SELECT users.id AS users_id
       FROM users
-      WHERE users.name LIKE ? ORDER BY users.id
-       LIMIT ? OFFSET ?
-      ('%ed', 1, 0)
-      {stop}7
+      WHERE users.name = ? ORDER BY users.id
+      ('ed',)
+      {stop}1
 
 .. _orm_tutorial_literal_sql:
 
@@ -982,10 +981,26 @@ completely "raw", using string names to identify desired columns:
     ('ed',)
     {stop}[(1, u'ed', 12)]
 
+The :func:`.text` construct also supports the :meth:`.TextClause.columns`
+method, which can be used to associate ORM-mapped columns explicitly.
+This is useful to make an explicit mapping of columns in the string
+statement to those that are mapped::
+
+.. sourcecode:: python+sql
+
+    >>> stmt = text("SELECT name, id FROM users where name=:name")
+    >>> stmt = stmt.columns(User.name, User.id)
+    {sql}>>> session.query(User).from_statement(stmt).params(name='ed').all()
+    SELECT name, id FROM users where name=?
+    ('ed',)
+    {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
+
+
 .. versionchanged:: 1.0.0
    The :class:`.Query` construct emits warnings when string SQL
    fragments are coerced to :func:`.text`, and :func:`.text` should
    be used explicitly.  See :ref:`migration_2992` for background.
+
 
 .. seealso::
 
