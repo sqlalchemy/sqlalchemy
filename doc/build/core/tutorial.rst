@@ -754,8 +754,8 @@ method calls is called :term:`method chaining`.
 
 .. _sqlexpression_text:
 
-Using Text
-===========
+Using Textual SQL
+=================
 
 Our last example really became a handful to type. Going from what one
 understands to be a textual SQL expression into a Python construct which
@@ -794,7 +794,27 @@ construct using the :meth:`~.TextClause.bindparams` method; if we are
 using datatypes that need special handling as they are received in Python,
 or we'd like to compose our :func:`~.expression.text` object into a larger
 expression, we may also wish to use the :meth:`~.TextClause.columns` method
-in order to specify column return types and names.
+in order to specify column return types and names:
+
+.. sourcecode:: pycon+sql
+
+    >>> s = text(
+    ...     "SELECT users.fullname || ', ' || addresses.email_address AS title "
+    ...         "FROM users, addresses "
+    ...         "WHERE users.id = addresses.user_id "
+    ...         "AND users.name BETWEEN :x AND :y "
+    ...         "AND (addresses.email_address LIKE :e1 "
+    ...             "OR addresses.email_address LIKE :e2)")
+    >>> s = s.columns(title=String)
+    >>> s = s.bindparams(x='m', y='z', e1='%@aol.com', e2='%@msn.com')
+    >>> conn.execute(s).fetchall() # doctest:+NORMALIZE_WHITESPACE
+    SELECT users.fullname || ', ' || addresses.email_address AS title
+    FROM users, addresses
+    WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
+    (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
+    ('m', 'z', '%@aol.com', '%@msn.com')
+    {stop}[(u'Wendy Williams, wendy@aol.com',)]
+
 
 :func:`~.expression.text` can also be used freely within a
 :func:`~.expression.select` object, which accepts :func:`~.expression.text`
@@ -840,6 +860,11 @@ need to refer to any pre-established :class:`.Table` metadata:
     Python and the database.  Overall, the more :func:`.text` we use,
     the less flexibility and ability for manipulation/transformation
     the statement will have.
+
+.. seealso::
+
+    :ref:`orm_tutorial_literal_sql` - integrating ORM-level queries with
+    :func:`.text`
 
 .. versionchanged:: 1.0.0
    The :func:`.select` construct emits warnings when string SQL
