@@ -968,30 +968,6 @@ mapper (below illustrated using an asterisk):
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
 
-Or alternatively, specify how the columns map to the :func:`.text` construct
-explicitly using the :meth:`.TextClause.columns` method:
-
-.. sourcecode:: python+sql
-
-    >>> stmt = text("SELECT name, id FROM users where name=:name")
-    >>> stmt = stmt.columns(User.name, User.id)
-    {sql}>>> session.query(User).from_statement(stmt).params(name='ed').all()
-    SELECT name, id FROM users where name=?
-    ('ed',)
-    {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
-
-We can choose columns to return individually as well, as in any other case:
-
-.. sourcecode:: python+sql
-
-    >>> stmt = text("SELECT name, id FROM users where name=:name")
-    >>> stmt = stmt.columns(User.name, User.id)
-    {sql}>>> session.query(User.id, User.name).\
-    ...          from_statement(stmt).params(name='ed').all()
-    SELECT name, id FROM users where name=?
-    ('ed',)
-    {stop}[(1, u'ed')]
-
 .. seealso::
 
     :ref:`sqlexpression_text` - The :func:`.text` construct explained
