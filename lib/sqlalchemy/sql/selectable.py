@@ -224,7 +224,7 @@ class HasSuffixes(object):
             stmt = select([col1, col2]).cte().suffix_with(
                 "cycle empno set y_cycle to 1 default 0", dialect="oracle")
 
-        Multiple prefixes can be specified by multiple calls
+        Multiple suffixes can be specified by multiple calls
         to :meth:`.suffix_with`.
 
         :param \*expr: textual or :class:`.ClauseElement` construct which
