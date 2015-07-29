@@ -15,6 +15,17 @@
     :version: 0.9.11
 
     .. change::
+        :tags: bug, oracle, py3k
+        :tickets: 3491
+        :versions: 1.1.0b1, 1.0.9
+
+        Fixed support for cx_Oracle version 5.2, which was tripping
+        up SQLAlchemy's version detection under Python 3 and inadvertently
+        not using the correct unicode mode for Python 3.  This would cause
+        issues such as bound variables mis-interpreted as NULL and rows
+        silently not being returned.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3497
         :versions: 1.0.8
