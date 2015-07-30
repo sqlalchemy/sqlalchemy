@@ -1,5 +1,5 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_, in_
 from sqlalchemy import *
 from sqlalchemy import types, schema, event
 from sqlalchemy.databases import mssql
@@ -24,14 +24,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             Column('user_name', types.VARCHAR(20), nullable=False),
             Column('test1', types.CHAR(5), nullable=False),
             Column('test2', types.Float(5), nullable=False),
-            Column('test3', types.Text('max')),
+            Column('test3', types.Text()),
             Column('test4', types.Numeric, nullable=False),
             Column('test5', types.DateTime),
             Column('parent_user_id', types.Integer,
                    ForeignKey('engine_users.user_id')),
             Column('test6', types.DateTime, nullable=False),
-            Column('test7', types.Text('max')),
-            Column('test8', types.LargeBinary('max')),
+            Column('test7', types.Text()),
+            Column('test8', types.LargeBinary()),
             Column('test_passivedefault2', types.Integer,
                    server_default='5'),
             Column('test9', types.BINARY(100)),
@@ -170,6 +170,32 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             set(list(t2.indexes)[0].columns),
             set([t2.c['x col'], t2.c.y])
         )
+
+    @testing.provide_metadata
+    def test_max_ident_in_varchar_not_present(self):
+        """test [ticket:3504].
+
+        Here we are testing not just that the "max" token comes back
+        as None, but also that these types accept "max" as the value
+        of "length" on construction, which isn't a directly documented
+        pattern however is likely in common use.
+
+        """
+        metadata = self.metadata
+
+        Table(
+            't', metadata,
+            Column('t1', types.String),
+            Column('t2', types.Text('max')),
+            Column('t3', types.Text('max')),
+            Column('t4', types.LargeBinary('max')),
+            Column('t5', types.VARBINARY('max')),
+        )
+        metadata.create_all()
+        for col in inspect(testing.db).get_columns('t'):
+            is_(col['type'].length, None)
+            in_('max', str(col['type'].compile(dialect=testing.db.dialect)))
+
 
 from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode, tables
 from sqlalchemy.dialects.mssql import base

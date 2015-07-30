@@ -1772,7 +1772,7 @@ class MSDialect(default.DefaultDialect):
                            MSNText, MSBinary, MSVarBinary,
                            sqltypes.LargeBinary):
                 if charlen == -1:
-                    charlen = 'max'
+                    charlen = None
                 kwargs['length'] = charlen
                 if collation:
                     kwargs['collation'] = collation

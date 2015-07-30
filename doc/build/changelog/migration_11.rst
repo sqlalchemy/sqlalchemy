@@ -94,6 +94,41 @@ Dialect Improvements and Changes - SQLite
 Dialect Improvements and Changes - SQL Server
 =============================================
 
+.. _change_3504:
+
+String / varlength types no longer represent "max" explicitly on reflection
+---------------------------------------------------------------------------
+
+When reflecting a type such as :class:`.String`, :class:`.Text`, etc.
+which includes a length, an "un-lengthed" type under SQL Server would
+copy the "length" parameter as the value ``"max"``::
+
+    >>> from sqlalchemy import create_engine, inspect
+    >>> engine = create_engine('mssql+pyodbc://scott:tiger@ms_2008', echo=True)
+    >>> engine.execute("create table s (x varchar(max), y varbinary(max))")
+    >>> insp = inspect(engine)
+    >>> for col in insp.get_columns("s"):
+    ...     print col['type'].__class__, col['type'].length
+    ...
+    <class 'sqlalchemy.sql.sqltypes.VARCHAR'> max
+    <class 'sqlalchemy.dialects.mssql.base.VARBINARY'> max
+
+The "length" parameter in the base types is expected to be an integer value
+or None only; None indicates unbounded length which the SQL Server dialect
+interprets as "max".   The fix then is so that these lengths come
+out as None, so that the type objects work in non-SQL Server contexts::
+
+    >>> for col in insp.get_columns("s"):
+    ...     print col['type'].__class__, col['type'].length
+    ...
+    <class 'sqlalchemy.sql.sqltypes.VARCHAR'> None
+    <class 'sqlalchemy.dialects.mssql.base.VARBINARY'> None
+
+Applications which may have been relying on a direct comparison of the "length"
+value to the string "max" should consider the value of ``None`` to mean
+the same thing.
+
+:ticket:`3504`
 
 Dialect Improvements and Changes - Oracle
 =============================================
