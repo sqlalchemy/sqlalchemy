@@ -608,6 +608,16 @@ class Query(object):
         When the `Query` actually issues SQL to load rows, it always
         uses column labeling.
 
+        .. note:: The :meth:`.Query.with_labels` method *only* applies
+           the output of :attr:`.Query.statement`, and *not* to any of
+           the result-row invoking systems of :class:`.Query` itself, e.g.
+           :meth:`.Query.first`, :meth:`.Query.all`, etc.   To execute
+           a query using :meth:`.Query.with_labels`, invoke the
+           :attr:`.Query.statement` using :meth:`.Session.execute`::
+
+                result = session.execute(query.with_labels().statement)
+
+
         """
         self._with_labels = True
 
