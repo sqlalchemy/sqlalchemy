@@ -215,9 +215,6 @@ class String(Concatenable, TypeEngine):
             self.convert_unicode != 'force_nocheck'
         )
         if needs_convert:
-            to_unicode = processors.to_unicode_processor_factory(
-                dialect.encoding, self.unicode_error)
-
             if needs_isinstance:
                 return processors.to_conditional_unicode_processor_factory(
                     dialect.encoding, self.unicode_error)
