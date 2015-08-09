@@ -1983,7 +1983,7 @@ class Session(_SessionClassMethods):
 
         For ``autocommit`` Sessions with no active manual transaction, flush()
         will create a transaction on the fly that surrounds the entire set of
-        operations int the flush.
+        operations into the flush.
 
         :param objects: Optional; restricts the flush operation to operate
           only on elements that are in the given collection.
