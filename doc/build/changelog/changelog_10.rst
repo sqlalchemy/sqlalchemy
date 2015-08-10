@@ -19,6 +19,17 @@
     :version: 1.0.9
 
     .. change::
+        :tags: bug, sybase
+        :tickets: 3508, 3509
+
+        Fixed two issues regarding Sybase reflection, allowing tables
+        without primary keys to be reflected as well as ensured that
+        a SQL statement involved in foreign key detection is pre-fetched up
+        front to avoid driver issues upon nested queries.  Fixes here
+        courtesy Eugene Zapolsky; note that we cannot currently test
+        Sybase to locally verify these changes.
+
+    .. change::
         :tags: bug, postgresql
         :pullreq: github:190
 
