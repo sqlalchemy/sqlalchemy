@@ -346,7 +346,10 @@ class NoLoader(AbstractRelationshipLoader):
             self, context, path, loadopt, mapper,
             result, adapter, populators):
         def invoke_no_load(state, dict_, row):
-            state._initialize(self.key)
+            if self.uselist:
+                state.manager.get_impl(self.key).initialize(state, dict_)
+            else:
+                dict_[self.key] = None
         populators["new"].append((self.key, invoke_no_load))
 
 
