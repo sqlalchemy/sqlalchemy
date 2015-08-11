@@ -374,12 +374,6 @@ class InstanceState(interfaces.InspectionAttr):
 
         state_dict['manager'](self, inst, state_dict)
 
-    def _initialize(self, key):
-        """Set this attribute to an empty value or collection,
-           based on the AttributeImpl in use."""
-
-        self.manager.get_impl(key).initialize(self, self.dict)
-
     def _reset(self, dict_, key):
         """Remove the given attribute and any
            callables associated with it."""

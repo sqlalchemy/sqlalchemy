@@ -551,6 +551,11 @@ class AttributeImpl(object):
     def initialize(self, state, dict_):
         """Initialize the given state's attribute with an empty value."""
 
+        # As of 1.0, we don't actually set a value in
+        # dict_.  This is so that the state of the object does not get
+        # modified without emitting the appropriate events.
+
+
         return None
 
     def get(self, state, dict_, passive=PASSIVE_OFF):

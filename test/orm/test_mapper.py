@@ -2698,6 +2698,24 @@ class NoLoadTest(_fixtures.FixtureTest):
             {'id': 7, 'addresses': (Address, [{'id': 1}])},
         )
 
+    def test_m2o_noload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+        mapper(Address, addresses, properties={
+            'user': relationship(User)
+        })
+        mapper(User, users)
+        s = Session()
+        a1 = s.query(Address).filter_by(id=1).options(
+            sa.orm.noload('user')).first()
+
+        def go():
+            eq_(a1.user, None)
+        self.sql_count_(0, go)
+
 
 class RequirementsTest(fixtures.MappedTest):
 
