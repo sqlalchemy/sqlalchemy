@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2528
+
+        The behavior of the :func:`.union` construct and related constructs
+        such as :meth:`.Query.union` now handle the case where the embedded
+        SELECT statements need to be parenthesized due to the fact that they
+        include LIMIT, OFFSET and/or ORDER BY.   These queries **do not work
+        on SQLite**, and will fail on that backend as they did before, but
+        should now work on all other backends.
+
+        .. seealso::
+
+            :ref:`change_2528`
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3504
 

@@ -111,6 +111,17 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def parens_in_union_contained_select(self):
+        """Target database must support parenthesized SELECT in UNION.
+
+        E.g. (SELECT ...) UNION (SELECT ..)
+
+        This is known to fail on SQLite.
+
+        """
+        return exclusions.open()
+
+    @property
     def boolean_col_expressions(self):
         """Target database must support boolean expressions as columns"""
 

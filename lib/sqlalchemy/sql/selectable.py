@@ -1101,6 +1101,14 @@ class Alias(FromClause):
                                                     or 'anon'))
         self.name = name
 
+    def self_group(self, target=None):
+        if isinstance(target, CompoundSelect) and \
+            isinstance(self.original, Select) and \
+                self.original._needs_parens_for_grouping():
+            return FromGrouping(self)
+
+        return super(Alias, self).self_group(target)
+
     @property
     def description(self):
         if util.py3k:
@@ -3208,6 +3216,13 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 return None
         return None
 
+    def _needs_parens_for_grouping(self):
+        return (
+            self._limit_clause is not None or
+            self._offset_clause is not None or
+            bool(self._order_by_clause.clauses)
+        )
+
     def self_group(self, against=None):
         """return a 'grouping' construct as per the ClauseElement
         specification.
@@ -3217,7 +3232,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         expressions and should not require explicit use.
 
         """
-        if isinstance(against, CompoundSelect):
+        if isinstance(against, CompoundSelect) and \
+                not self._needs_parens_for_grouping():
             return self
         return FromGrouping(self)
 

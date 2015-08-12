@@ -71,6 +71,61 @@ New Features and Improvements - Core
 ====================================
 
 
+.. _change_2528:
+
+A UNION or similar of SELECTs with LIMIT/OFFSET/ORDER BY now parenthesizes the embedded selects
+-----------------------------------------------------------------------------------------------
+
+An issue that, like others, was long driven by SQLite's lack of capabilities
+has now been enhanced to work on all supporting backends.   We refer to a query that
+is a UNION of SELECT statements that themselves contain row-limiting or ordering
+features which include LIMIT, OFFSET, and/or ORDER BY::
+
+    (SELECT x FROM table1 ORDER BY y LIMIT 1) UNION
+    (SELECT x FROM table2 ORDER BY y LIMIT 2)
+
+The above query requires parenthesis within each sub-select in order to
+group the sub-results correctly.  Production of the above statement in
+SQLAlchemy Core looks like::
+
+    stmt1 = select([table1.c.x]).order_by(table1.c.y).limit(1)
+    stmt2 = select([table1.c.x]).order_by(table2.c.y).limit(2)
+
+    stmt = union(stmt1, stmt2)
+
+Previously, the above construct would not produce parenthesization for the
+inner SELECT statements, producing a query that fails on all backends.
+
+The above formats will **continue to fail on SQLite**.
+This is not a backwards-incompatible change, because the queries fail without
+the parentheses as well; with the fix, the queries at least work on all other
+databases.
+
+In all cases, in order to produce a UNION of limited SELECT statements that
+also works on SQLite, the subqueries must be a SELECT of an ALIAS::
+
+    stmt1 = select([table1.c.x]).order_by(table1.c.y).limit(1).alias().select()
+    stmt2 = select([table2.c.x]).order_by(table2.c.y).limit(2).alias().select()
+
+    stmt = union(stmt1, stmt2)
+
+This workaround works on all SQLAlchemy versions.  In the ORM, it looks like::
+
+    stmt1 = session.query(Model1).order_by(Model1.y).limit(1).subquery().select()
+    stmt2 = session.query(Model2).order_by(Model2.y).limit(1).subquery().select()
+
+    stmt = session.query(Model1).from_statement(stmt1.union(stmt2))
+
+The behavior here has many parallels to the "join rewriting" behavior
+introduced in SQLAlchemy 0.9 in :ref:`feature_joins_09`; however in this case
+we have opted not to add new rewriting behavior to accommodate this
+case for SQLite.
+The existing rewriting behavior is very complicated already, and the case of
+UNIONs with parenthesized SELECT statements is much less common than the
+"right-nested-join" use case of that feature.
+
+:ticket:`2528`
+
 Key Behavioral Changes - ORM
 ============================
 

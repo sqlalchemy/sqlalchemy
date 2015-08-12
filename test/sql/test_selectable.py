@@ -458,6 +458,26 @@ class SelectableTest(
         assert u1.corresponding_column(table2.c.col1) is u1.c._all_columns[0]
         assert u1.corresponding_column(table2.c.col3) is u1.c._all_columns[2]
 
+    @testing.emits_warning("Column 'col1'")
+    def test_union_alias_dupe_keys_grouped(self):
+        s1 = select([table1.c.col1, table1.c.col2, table2.c.col1]).\
+            limit(1).alias()
+        s2 = select([table2.c.col1, table2.c.col2, table2.c.col3]).limit(1)
+        u1 = union(s1, s2)
+
+        assert u1.corresponding_column(
+            s1.c._all_columns[0]) is u1.c._all_columns[0]
+        assert u1.corresponding_column(s2.c.col1) is u1.c._all_columns[0]
+        assert u1.corresponding_column(s1.c.col2) is u1.c.col2
+        assert u1.corresponding_column(s2.c.col2) is u1.c.col2
+
+        assert u1.corresponding_column(s2.c.col3) is u1.c._all_columns[2]
+
+        # this differs from the non-alias test because table2.c.col1 is
+        # more directly at s2.c.col1 than it is s1.c.col1.
+        assert u1.corresponding_column(table2.c.col1) is u1.c._all_columns[0]
+        assert u1.corresponding_column(table2.c.col3) is u1.c._all_columns[2]
+
     def test_select_union(self):
 
         # like testaliasunion, but off a Select off the union.

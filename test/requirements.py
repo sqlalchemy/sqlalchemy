@@ -362,6 +362,15 @@ class DefaultRequirements(SuiteRequirements):
             ], 'no support for EXCEPT')
 
     @property
+    def parens_in_union_contained_select(self):
+        """Target database must support parenthesized SELECT in UNION.
+
+        E.g. (SELECT ...) UNION (SELECT ..)
+
+        """
+        return fails_if('sqlite')
+
+    @property
     def offset(self):
         """Target database must support some method of adding OFFSET or
         equivalent to a result set."""

@@ -1643,14 +1643,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select([column('foo'), column('bar')])
 
-        # ORDER BY's even though not supported by
-        # all DB's, are rendered if requested
         self.assert_compile(
             union(
                 s.order_by("foo"),
                 s.order_by("bar")),
-            "SELECT foo, bar ORDER BY foo UNION SELECT foo, bar ORDER BY bar")
-        # self_group() is honored
+            "(SELECT foo, bar ORDER BY foo) UNION "
+            "(SELECT foo, bar ORDER BY bar)")
         self.assert_compile(
             union(s.order_by("foo").self_group(),
                   s.order_by("bar").limit(10).self_group()),
@@ -1757,6 +1755,67 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT foo, bar FROM bat INTERSECT SELECT foo, bar FROM bat) "
             "UNION (SELECT foo, bar FROM bat INTERSECT "
             "SELECT foo, bar FROM bat)"
+        )
+
+        # tests for [ticket:2528]
+        # sqlite hates all of these.
+        self.assert_compile(
+            union(
+                s.limit(1),
+                s.offset(2)
+            ),
+            "(SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT -1 OFFSET :param_2)"
+        )
+
+        self.assert_compile(
+            union(
+                s.order_by(column('bar')),
+                s.offset(2)
+            ),
+            "(SELECT foo, bar FROM bat ORDER BY bar) "
+            "UNION (SELECT foo, bar FROM bat LIMIT -1 OFFSET :param_1)"
+        )
+
+        self.assert_compile(
+            union(
+                s.limit(1).alias('a'),
+                s.limit(2).alias('b')
+            ),
+            "(SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT :param_2)"
+        )
+
+        self.assert_compile(
+            union(
+                s.limit(1).self_group(),
+                s.limit(2).self_group()
+            ),
+            "(SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT :param_2)"
+        )
+
+        self.assert_compile(
+            union(s.limit(1), s.limit(2).offset(3)).alias().select(),
+            "SELECT anon_1.foo, anon_1.bar FROM "
+            "((SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT :param_2 OFFSET :param_3)) "
+            "AS anon_1"
+        )
+
+        # this version works for SQLite
+        self.assert_compile(
+            union(
+                s.limit(1).alias().select(),
+                s.offset(2).alias().select(),
+            ),
+            "SELECT anon_1.foo, anon_1.bar "
+            "FROM (SELECT foo, bar FROM bat"
+            " LIMIT :param_1) AS anon_1 "
+            "UNION SELECT anon_2.foo, anon_2.bar "
+            "FROM (SELECT foo, bar "
+            "FROM bat"
+            " LIMIT -1 OFFSET :param_2) AS anon_2"
         )
 
     def test_binds(self):
