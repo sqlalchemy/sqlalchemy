@@ -6,7 +6,7 @@ from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError
 from distutils.errors import DistutilsExecError
 from distutils.errors import DistutilsPlatformError
-from setuptools import Extension
+from setuptools import Distribution as _Distribution, Extension
 from setuptools import setup
 from setuptools import find_packages
 from setuptools.command.test import test as TestCommand
@@ -62,6 +62,18 @@ class ve_build_ext(build_ext):
 cmdclass['build_ext'] = ve_build_ext
 
 
+class Distribution(_Distribution):
+
+    def has_ext_modules(self):
+        # We want to always claim that we have ext_modules. This will be fine
+        # if we don't actually have them (such as on PyPy) because nothing
+        # will get built, however we don't want to provide an overally broad
+        # Wheel package when building a wheel without C support. This will
+        # ensure that Wheel knows to treat us as if the build output is
+        # platform specific.
+        return True
+
+
 class PyTest(TestCommand):
     # from https://pytest.org/latest/goodpractises.html\
     # #integration-with-setuptools-test-commands
@@ -111,6 +123,8 @@ def run_setup(with_cext):
     kwargs = {}
     if with_cext:
         kwargs['ext_modules'] = ext_modules
+    else:
+        kwargs['ext_modules'] = []
 
     setup(
         name="SQLAlchemy",
@@ -137,6 +151,7 @@ def run_setup(with_cext):
             "Topic :: Database :: Front-Ends",
             "Operating System :: OS Independent",
         ],
+        distclass=Distribution,
         **kwargs
     )
 
