@@ -8,16 +8,12 @@ from distutils.errors import DistutilsExecError
 from distutils.errors import DistutilsPlatformError
 from setuptools import Extension
 from setuptools import setup
+from setuptools import find_packages
 from setuptools.command.test import test as TestCommand
 
-py3k = False
-
 cmdclass = {}
-extra = {}
 if sys.version_info < (2, 6):
     raise Exception("SQLAlchemy requires Python 2.6 or higher.")
-elif sys.version_info >= (3, 0):
-    py3k = True
 
 cpython = platform.python_implementation() == 'CPython'
 
@@ -67,7 +63,8 @@ cmdclass['build_ext'] = ve_build_ext
 
 
 class PyTest(TestCommand):
-    # from https://pytest.org/latest/goodpractises.html#integration-with-setuptools-test-commands
+    # from https://pytest.org/latest/goodpractises.html\
+    # #integration-with-setuptools-test-commands
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
 
     default_options = ["-n", "4", "-q"]
@@ -98,29 +95,20 @@ def status_msgs(*msgs):
     print('*' * 75)
 
 
-def find_packages(location):
-    packages = []
-    for pkg in ['sqlalchemy']:
-        for _dir, subdirectories, files in (
-                os.walk(os.path.join(location, pkg))):
-            if '__init__.py' in files:
-                tokens = _dir.split(os.sep)[len(location.split(os.sep)):]
-                packages.append(".".join(tokens))
-    return packages
+with open(
+        os.path.join(
+            os.path.dirname(__file__),
+            'lib', 'sqlalchemy', '__init__.py')) as v_file:
+    VERSION = re.compile(
+        r".*__version__ = '(.*?)'",
+        re.S).match(v_file.read()).group(1)
 
-v_file = open(os.path.join(os.path.dirname(__file__),
-                           'lib', 'sqlalchemy', '__init__.py'))
-VERSION = re.compile(r".*__version__ = '(.*?)'",
-                     re.S).match(v_file.read()).group(1)
-v_file.close()
-
-r_file = open(os.path.join(os.path.dirname(__file__), 'README.rst'))
-readme = r_file.read()
-r_file.close()
+with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as r_file:
+    readme = r_file.read()
 
 
 def run_setup(with_cext):
-    kwargs = extra.copy()
+    kwargs = {}
     if with_cext:
         kwargs['ext_modules'] = ext_modules
 
