@@ -294,7 +294,7 @@ class InstanceState(interfaces.InspectionAttr):
             return {}
 
     def _initialize_instance(*mixed, **kwargs):
-        self, instance, args = mixed[0], mixed[1], mixed[2:]
+        self, instance, args = mixed[0], mixed[1], mixed[2:]  # noqa
         manager = self.manager
 
         manager.dispatch.init(self, args, kwargs)
