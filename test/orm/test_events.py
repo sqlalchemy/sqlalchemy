@@ -111,6 +111,43 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             event.listen(mapper, meth, evt(meth), **kw)
         return canary
 
+    def test_init_allow_kw_modify(self):
+        User, users = self.classes.User, self.tables.users
+        mapper(User, users)
+
+        @event.listens_for(User, 'init')
+        def add_name(obj, args, kwargs):
+            kwargs['name'] = 'ed'
+
+        u1 = User()
+        eq_(u1.name, 'ed')
+
+    def test_init_failure_hook(self):
+        users = self.tables.users
+
+        class Thing(object):
+            def __init__(self, **kw):
+                if kw.get('fail'):
+                    raise Exception("failure")
+
+        mapper(Thing, users)
+
+        canary = Mock()
+        event.listen(Thing, 'init_failure', canary)
+
+        Thing()
+        eq_(canary.mock_calls, [])
+
+        assert_raises_message(
+            Exception,
+            "failure",
+            Thing, fail=True
+        )
+        eq_(
+            canary.mock_calls,
+            [call(ANY, (), {'fail': True})]
+        )
+
     def test_listen_doesnt_force_compile(self):
         User, users = self.classes.User, self.tables.users
         m = mapper(User, users, properties={

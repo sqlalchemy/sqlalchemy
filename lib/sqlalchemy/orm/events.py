@@ -216,14 +216,41 @@ class InstanceEvents(event.Events):
     def first_init(self, manager, cls):
         """Called when the first instance of a particular mapping is called.
 
+        This event is called when the ``__init__`` method of a class
+        is called the first time for that particular class.    The event
+        invokes before ``__init__`` actually proceeds as well as before
+        the :meth:`.InstanceEvents.init` event is invoked.
+
         """
 
     def init(self, target, args, kwargs):
         """Receive an instance when its constructor is called.
 
         This method is only called during a userland construction of
-        an object.  It is not called when an object is loaded from the
-        database.
+        an object, in conjunction with the object's constructor, e.g.
+        its ``__init__`` method.  It is not called when an object is
+        loaded from the database; see the :meth:`.InstanceEvents.load`
+        event in order to intercept a database load.
+
+        The event is called before the actual ``__init__`` constructor
+        of the object is called.  The ``kwargs`` dictionary may be
+        modified in-place in order to affect what is passed to
+        ``__init__``.
+
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param args: positional arguments passed to the ``__init__`` method.
+         This is passed as a tuple and is currently immutable.
+        :param kwargs: keyword arguments passed to the ``__init__`` method.
+         This structure *can* be altered in place.
+
+        .. seealso::
+
+            :meth:`.InstanceEvents.init_failure`
+
+            :meth:`.InstanceEvents.load`
 
         """
 
@@ -232,8 +259,31 @@ class InstanceEvents(event.Events):
         and raised an exception.
 
         This method is only called during a userland construction of
-        an object.  It is not called when an object is loaded from the
-        database.
+        an object, in conjunction with the object's constructor, e.g.
+        its ``__init__`` method. It is not called when an object is loaded
+        from the database.
+
+        The event is invoked after an exception raised by the ``__init__``
+        method is caught.  After the event
+        is invoked, the original exception is re-raised outwards, so that
+        the construction of the object still raises an exception.   The
+        actual exception and stack trace raised should be present in
+        ``sys.exc_info()``.
+
+        :param target: the mapped instance.  If
+         the event is configured with ``raw=True``, this will
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param args: positional arguments that were passed to the ``__init__``
+         method.
+        :param kwargs: keyword arguments that were passed to the ``__init__``
+         method.
+
+        .. seealso::
+
+            :meth:`.InstanceEvents.init`
+
+            :meth:`.InstanceEvents.load`
 
         """
 
@@ -260,11 +310,20 @@ class InstanceEvents(event.Events):
          ``None`` if the load does not correspond to a :class:`.Query`,
          such as during :meth:`.Session.merge`.
 
+        .. seealso::
+
+            :meth:`.InstanceEvents.init`
+
+            :meth:`.InstanceEvents.refresh`
+
         """
 
     def refresh(self, target, context, attrs):
         """Receive an object instance after one or more attributes have
         been refreshed from a query.
+
+        Contrast this to the :meth:`.InstanceEvents.load` method, which
+        is invoked when the object is first loaded from a query.
 
         :param target: the mapped instance.  If
          the event is configured with ``raw=True``, this will
@@ -275,6 +334,10 @@ class InstanceEvents(event.Events):
         :param attrs: sequence of attribute names which
          were populated, or None if all column-mapped, non-deferred
          attributes were populated.
+
+        .. seealso::
+
+            :meth:`.InstanceEvents.load`
 
         """
 
