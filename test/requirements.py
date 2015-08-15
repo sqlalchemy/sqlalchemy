@@ -385,7 +385,7 @@ class DefaultRequirements(SuiteRequirements):
         creates an additional subquery.
 
         """
-        return fails_if('sqlite', 'oracle')
+        return fails_if(['sqlite', 'oracle'])
 
     @property
     def offset(self):
