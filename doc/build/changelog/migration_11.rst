@@ -96,13 +96,15 @@ SQLAlchemy Core looks like::
 Previously, the above construct would not produce parenthesization for the
 inner SELECT statements, producing a query that fails on all backends.
 
-The above formats will **continue to fail on SQLite**.
+The above formats will **continue to fail on SQLite**; additionally, the format
+that includes ORDER BY but no LIMIT/SELECT will **continue to fail on Oracle**.
 This is not a backwards-incompatible change, because the queries fail without
 the parentheses as well; with the fix, the queries at least work on all other
 databases.
 
 In all cases, in order to produce a UNION of limited SELECT statements that
-also works on SQLite, the subqueries must be a SELECT of an ALIAS::
+also works on SQLite and in all cases on Oracle, the
+subqueries must be a SELECT of an ALIAS::
 
     stmt1 = select([table1.c.x]).order_by(table1.c.y).limit(1).alias().select()
     stmt2 = select([table2.c.x]).order_by(table2.c.y).limit(2).alias().select()

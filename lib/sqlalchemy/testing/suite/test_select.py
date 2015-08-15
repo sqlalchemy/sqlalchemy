@@ -242,7 +242,7 @@ class CompoundSelectTest(fixtures.TablesTest):
             [(2, 2, 3), (3, 3, 4)]
         )
 
-    @testing.requires.parens_in_union_contained_select
+    @testing.requires.parens_in_union_contained_select_w_limit_offset
     def test_limit_offset_selectable_in_unions(self):
         table = self.tables.some_table
         s1 = select([table]).where(table.c.id == 2).\
@@ -256,7 +256,7 @@ class CompoundSelectTest(fixtures.TablesTest):
             [(2, 2, 3), (3, 3, 4)]
         )
 
-    @testing.requires.parens_in_union_contained_select
+    @testing.requires.parens_in_union_contained_select_wo_limit_offset
     def test_order_by_selectable_in_unions(self):
         table = self.tables.some_table
         s1 = select([table]).where(table.c.id == 2).\
@@ -283,7 +283,7 @@ class CompoundSelectTest(fixtures.TablesTest):
             [(2, 2, 3), (3, 3, 4)]
         )
 
-    @testing.requires.parens_in_union_contained_select
+    @testing.requires.parens_in_union_contained_select_w_limit_offset
     def test_limit_offset_in_unions_from_alias(self):
         table = self.tables.some_table
         s1 = select([table]).where(table.c.id == 2).\
