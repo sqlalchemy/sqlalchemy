@@ -193,6 +193,22 @@ class AdaptTest(fixtures.TestBase):
                 t1 = typ()
             repr(t1)
 
+    def test_adapt_constructor_copy_override_kw(self):
+        """test that adapt() can accept kw args that override
+        the state of the original object.
+
+        This essentially is testing the behavior of util.constructor_copy().
+
+        """
+        t1 = String(length=50, convert_unicode=False)
+        t2 = t1.adapt(Text, convert_unicode=True)
+        eq_(
+            t2.length, 50
+        )
+        eq_(
+            t2.convert_unicode, True
+        )
+
 
 class TypeAffinityTest(fixtures.TestBase):
 

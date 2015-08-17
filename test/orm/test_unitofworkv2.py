@@ -1954,3 +1954,4 @@ class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         eq_(
             s.query(Thing.value).scalar().text, "foo"
         )
+

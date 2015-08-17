@@ -16,7 +16,8 @@ __all__ = ['TypeEngine', 'TypeDecorator', 'UserDefinedType',
            'SMALLINT', 'INTEGER', 'DATE', 'TIME', 'String', 'Integer',
            'SmallInteger', 'BigInteger', 'Numeric', 'Float', 'DateTime',
            'Date', 'Time', 'LargeBinary', 'Binary', 'Boolean', 'Unicode',
-           'Concatenable', 'UnicodeText', 'PickleType', 'Interval', 'Enum']
+           'Concatenable', 'UnicodeText', 'PickleType', 'Interval', 'Enum',
+           'Indexable']
 
 from .sql.type_api import (
     adapt_type,
@@ -46,6 +47,7 @@ from .sql.sqltypes import (
     Enum,
     FLOAT,
     Float,
+    Indexable,
     INT,
     INTEGER,
     Integer,

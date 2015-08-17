@@ -1019,7 +1019,9 @@ def constructor_copy(obj, cls, *args, **kw):
     """
 
     names = get_cls_kwargs(cls)
-    kw.update((k, obj.__dict__[k]) for k in names if k in obj.__dict__)
+    kw.update(
+        (k, obj.__dict__[k]) for k in names.difference(kw)
+        if k in obj.__dict__)
     return cls(*args, **kw)
 
 

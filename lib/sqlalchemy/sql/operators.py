@@ -214,10 +214,13 @@ class custom_op(object):
     """
     __name__ = 'custom_op'
 
-    def __init__(self, opstring, precedence=0, is_comparison=False):
+    def __init__(
+            self, opstring, precedence=0, is_comparison=False,
+            natural_self_precedent=False):
         self.opstring = opstring
         self.precedence = precedence
         self.is_comparison = is_comparison
+        self.natural_self_precedent = natural_self_precedent
 
     def __eq__(self, other):
         return isinstance(other, custom_op) and \
@@ -826,6 +829,11 @@ def is_ordering_modifier(op):
     return op in (asc_op, desc_op,
                   nullsfirst_op, nullslast_op)
 
+
+def is_natural_self_precedent(op):
+    return op in _natural_self_precedent or \
+        isinstance(op, custom_op) and op.natural_self_precedent
+
 _associative = _commutative.union([concat_op, and_, or_])
 
 _natural_self_precedent = _associative.union([getitem])
@@ -893,7 +901,7 @@ _PRECEDENCE = {
 
 
 def is_precedent(operator, against):
-    if operator is against and operator in _natural_self_precedent:
+    if operator is against and is_natural_self_precedent(operator):
         return False
     else:
         return (_PRECEDENCE.get(operator,

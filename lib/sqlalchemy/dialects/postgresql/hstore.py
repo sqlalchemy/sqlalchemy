@@ -7,110 +7,43 @@
 
 import re
 
-from .base import ARRAY, ischema_names
+from .base import ischema_names
+from .array import ARRAY
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
+from ...sql import operators
 from ...sql.operators import custom_op
 from ... import util
 
 __all__ = ('HSTORE', 'hstore')
 
-# My best guess at the parsing rules of hstore literals, since no formal
-# grammar is given.  This is mostly reverse engineered from PG's input parser
-# behavior.
-HSTORE_PAIR_RE = re.compile(r"""
-(
-  "(?P<key> (\\ . | [^"])* )"       # Quoted key
+
+INDEX = custom_op(
+    "->", precedence=5, natural_self_precedent=True
 )
-[ ]* => [ ]*    # Pair operator, optional adjoining whitespace
-(
-    (?P<value_null> NULL )          # NULL value
-  | "(?P<value> (\\ . | [^"])* )"   # Quoted value
+
+HAS_KEY = operators.custom_op(
+    "?", precedence=5, natural_self_precedent=True
 )
-""", re.VERBOSE)
 
-HSTORE_DELIMITER_RE = re.compile(r"""
-[ ]* , [ ]*
-""", re.VERBOSE)
+HAS_ALL = operators.custom_op(
+    "?&", precedence=5, natural_self_precedent=True
+)
 
+HAS_ANY = operators.custom_op(
+    "?|", precedence=5, natural_self_precedent=True
+)
 
-def _parse_error(hstore_str, pos):
-    """format an unmarshalling error."""
+CONTAINS = operators.custom_op(
+    "@>", precedence=5, natural_self_precedent=True
+)
 
-    ctx = 20
-    hslen = len(hstore_str)
-
-    parsed_tail = hstore_str[max(pos - ctx - 1, 0):min(pos, hslen)]
-    residual = hstore_str[min(pos, hslen):min(pos + ctx + 1, hslen)]
-
-    if len(parsed_tail) > ctx:
-        parsed_tail = '[...]' + parsed_tail[1:]
-    if len(residual) > ctx:
-        residual = residual[:-1] + '[...]'
-
-    return "After %r, could not parse residual at position %d: %r" % (
-        parsed_tail, pos, residual)
+CONTAINED_BY = operators.custom_op(
+    "<@", precedence=5, natural_self_precedent=True
+)
 
 
-def _parse_hstore(hstore_str):
-    """Parse an hstore from its literal string representation.
-
-    Attempts to approximate PG's hstore input parsing rules as closely as
-    possible. Although currently this is not strictly necessary, since the
-    current implementation of hstore's output syntax is stricter than what it
-    accepts as input, the documentation makes no guarantees that will always
-    be the case.
-
-
-
-    """
-    result = {}
-    pos = 0
-    pair_match = HSTORE_PAIR_RE.match(hstore_str)
-
-    while pair_match is not None:
-        key = pair_match.group('key').replace(r'\"', '"').replace(
-            "\\\\", "\\")
-        if pair_match.group('value_null'):
-            value = None
-        else:
-            value = pair_match.group('value').replace(
-                r'\"', '"').replace("\\\\", "\\")
-        result[key] = value
-
-        pos += pair_match.end()
-
-        delim_match = HSTORE_DELIMITER_RE.match(hstore_str[pos:])
-        if delim_match is not None:
-            pos += delim_match.end()
-
-        pair_match = HSTORE_PAIR_RE.match(hstore_str[pos:])
-
-    if pos != len(hstore_str):
-        raise ValueError(_parse_error(hstore_str, pos))
-
-    return result
-
-
-def _serialize_hstore(val):
-    """Serialize a dictionary into an hstore literal.  Keys and values must
-    both be strings (except None for values).
-
-    """
-    def esc(s, position):
-        if position == 'value' and s is None:
-            return 'NULL'
-        elif isinstance(s, util.string_types):
-            return '"%s"' % s.replace("\\", "\\\\").replace('"', r'\"')
-        else:
-            raise ValueError("%r in %s position is not a string." %
-                             (s, position))
-
-    return ', '.join('%s=>%s' % (esc(k, 'key'), esc(v, 'value'))
-                     for k, v in val.items())
-
-
-class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
+class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     """Represent the Postgresql HSTORE type.
 
     The :class:`.HSTORE` type stores dictionaries containing strings, e.g.::
@@ -185,51 +118,61 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
 
     __visit_name__ = 'HSTORE'
     hashable = False
+    text_type = sqltypes.Text()
 
-    class comparator_factory(sqltypes.Concatenable.Comparator):
+    def __init__(self, text_type=None):
+        """Construct a new :class:`.HSTORE`.
+
+        :param text_type: the type that should be used for indexed values.
+         Defaults to :class:`.types.Text`.
+
+         .. versionadded:: 1.1.0
+
+        """
+        if text_type is not None:
+            self.text_type = text_type
+
+    class Comparator(
+            sqltypes.Indexable.Comparator, sqltypes.Concatenable.Comparator):
         """Define comparison operations for :class:`.HSTORE`."""
 
         def has_key(self, other):
             """Boolean expression.  Test for presence of a key.  Note that the
             key may be a SQLA expression.
             """
-            return self.expr.op('?')(other)
+            return self.operate(HAS_KEY, other, result_type=sqltypes.Boolean)
 
         def has_all(self, other):
-            """Boolean expression.  Test for presence of all keys in the PG
-            array.
+            """Boolean expression.  Test for presence of all keys in jsonb
             """
-            return self.expr.op('?&')(other)
+            return self.operate(HAS_ALL, other, result_type=sqltypes.Boolean)
 
         def has_any(self, other):
-            """Boolean expression.  Test for presence of any key in the PG
-            array.
+            """Boolean expression.  Test for presence of any key in jsonb
             """
-            return self.expr.op('?|')(other)
+            return self.operate(HAS_ANY, other, result_type=sqltypes.Boolean)
+
+        def contains(self, other, **kwargs):
+            """Boolean expression.  Test if keys (or array) are a superset
+            of/contained the keys of the argument jsonb expression.
+            """
+            return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
+
+        def contained_by(self, other):
+            """Boolean expression.  Test if keys are a proper subset of the
+            keys of the argument jsonb expression.
+            """
+            return self.operate(
+                CONTAINED_BY, other, result_type=sqltypes.Boolean)
+
+        def _setup_getitem(self, index):
+            return INDEX, index, self.type.text_type
 
         def defined(self, key):
             """Boolean expression.  Test for presence of a non-NULL value for
             the key.  Note that the key may be a SQLA expression.
             """
             return _HStoreDefinedFunction(self.expr, key)
-
-        def contains(self, other, **kwargs):
-            """Boolean expression.  Test if keys are a superset of the keys of
-            the argument hstore expression.
-            """
-            return self.expr.op('@>')(other)
-
-        def contained_by(self, other):
-            """Boolean expression.  Test if keys are a proper subset of the
-            keys of the argument hstore expression.
-            """
-            return self.expr.op('<@')(other)
-
-        def __getitem__(self, other):
-            """Text expression.  Get the value at a given key.  Note that the
-            key may be a SQLA expression.
-            """
-            return self.expr.op('->', precedence=5)(other)
 
         def delete(self, key):
             """HStore expression.  Returns the contents of this hstore with the
@@ -263,14 +206,7 @@ class HSTORE(sqltypes.Concatenable, sqltypes.TypeEngine):
             """Text array expression.  Returns array of [key, value] pairs."""
             return _HStoreMatrixFunction(self.expr)
 
-        def _adapt_expression(self, op, other_comparator):
-            if isinstance(op, custom_op):
-                if op.opstring in ['?', '?&', '?|', '@>', '<@']:
-                    return op, sqltypes.Boolean
-                elif op.opstring == '->':
-                    return op, sqltypes.Text
-            return sqltypes.Concatenable.Comparator.\
-                _adapt_expression(self, op, other_comparator)
+    comparator_factory = Comparator
 
     def bind_processor(self, dialect):
         if util.py2k:
@@ -374,3 +310,105 @@ class _HStoreArrayFunction(sqlfunc.GenericFunction):
 class _HStoreMatrixFunction(sqlfunc.GenericFunction):
     type = ARRAY(sqltypes.Text)
     name = 'hstore_to_matrix'
+
+
+#
+# parsing.  note that none of this is used with the psycopg2 backend,
+# which provides its own native extensions.
+#
+
+# My best guess at the parsing rules of hstore literals, since no formal
+# grammar is given.  This is mostly reverse engineered from PG's input parser
+# behavior.
+HSTORE_PAIR_RE = re.compile(r"""
+(
+  "(?P<key> (\\ . | [^"])* )"       # Quoted key
+)
+[ ]* => [ ]*    # Pair operator, optional adjoining whitespace
+(
+    (?P<value_null> NULL )          # NULL value
+  | "(?P<value> (\\ . | [^"])* )"   # Quoted value
+)
+""", re.VERBOSE)
+
+HSTORE_DELIMITER_RE = re.compile(r"""
+[ ]* , [ ]*
+""", re.VERBOSE)
+
+
+def _parse_error(hstore_str, pos):
+    """format an unmarshalling error."""
+
+    ctx = 20
+    hslen = len(hstore_str)
+
+    parsed_tail = hstore_str[max(pos - ctx - 1, 0):min(pos, hslen)]
+    residual = hstore_str[min(pos, hslen):min(pos + ctx + 1, hslen)]
+
+    if len(parsed_tail) > ctx:
+        parsed_tail = '[...]' + parsed_tail[1:]
+    if len(residual) > ctx:
+        residual = residual[:-1] + '[...]'
+
+    return "After %r, could not parse residual at position %d: %r" % (
+        parsed_tail, pos, residual)
+
+
+def _parse_hstore(hstore_str):
+    """Parse an hstore from its literal string representation.
+
+    Attempts to approximate PG's hstore input parsing rules as closely as
+    possible. Although currently this is not strictly necessary, since the
+    current implementation of hstore's output syntax is stricter than what it
+    accepts as input, the documentation makes no guarantees that will always
+    be the case.
+
+
+
+    """
+    result = {}
+    pos = 0
+    pair_match = HSTORE_PAIR_RE.match(hstore_str)
+
+    while pair_match is not None:
+        key = pair_match.group('key').replace(r'\"', '"').replace(
+            "\\\\", "\\")
+        if pair_match.group('value_null'):
+            value = None
+        else:
+            value = pair_match.group('value').replace(
+                r'\"', '"').replace("\\\\", "\\")
+        result[key] = value
+
+        pos += pair_match.end()
+
+        delim_match = HSTORE_DELIMITER_RE.match(hstore_str[pos:])
+        if delim_match is not None:
+            pos += delim_match.end()
+
+        pair_match = HSTORE_PAIR_RE.match(hstore_str[pos:])
+
+    if pos != len(hstore_str):
+        raise ValueError(_parse_error(hstore_str, pos))
+
+    return result
+
+
+def _serialize_hstore(val):
+    """Serialize a dictionary into an hstore literal.  Keys and values must
+    both be strings (except None for values).
+
+    """
+    def esc(s, position):
+        if position == 'value' and s is None:
+            return 'NULL'
+        elif isinstance(s, util.string_types):
+            return '"%s"' % s.replace("\\", "\\\\").replace('"', r'\"')
+        else:
+            raise ValueError("%r in %s position is not a string." %
+                             (s, position))
+
+    return ', '.join('%s=>%s' % (esc(k, 'key'), esc(v, 'value'))
+                     for k, v in val.items())
+
+

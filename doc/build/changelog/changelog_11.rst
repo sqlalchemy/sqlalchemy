@@ -22,6 +22,82 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3499
+
+        The "hashable" flag on special datatypes such as :class:`.postgresql.ARRAY`,
+        :class:`.postgresql.JSON` and :class:`.postgresql.HSTORE` is now
+        set to False, which allows these types to be fetchable in ORM
+        queries that include entities within the row.
+
+        .. seealso::
+
+            :ref:`change_3499`
+
+            :ref:`change_3499_postgresql`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 3487
+
+        The Postgresql :class:`.postgresql.ARRAY` type now supports multidimensional
+        indexed access, e.g. expressions such as ``somecol[5][6]`` without
+        any need for explicit casts or type coercions, provided
+        that the :paramref:`.postgresql.ARRAY.dimensions` parameter is set to the
+        desired number of dimensions.
+
+        .. seealso::
+
+            :ref:`change_3503`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 3503
+
+        The return type for the :class:`.postgresql.JSON` and :class:`.postgresql.JSONB`
+        when using indexed access has been fixed to work like Postgresql itself,
+        and returns an expression that itself is of type :class:`.postgresql.JSON`
+        or :class:`.postgresql.JSONB`.  Previously, the accessor would return
+        :class:`.NullType` which disallowed subsequent JSON-like operators to be
+        used.
+
+        .. seealso::
+
+            :ref:`change_3503`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 3503
+
+        The :class:`.postgresql.JSON`, :class:`.postgresql.JSONB` and
+        :class:`.postgresql.HSTORE` datatypes now allow full control over the
+        return type from an indexed textual access operation, either ``column[someindex].astext``
+        for a JSON type or ``column[someindex]`` for an HSTORE type,
+        via the :paramref:`.postgresql.JSON.astext_type` and
+        :paramref:`.postgresql.HSTORE.text_type` parameters.
+
+        .. seealso::
+
+            :ref:`change_3503`
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 3503
+
+        The :attr:`.postgresql.JSON.Comparator.astext` modifier no longer
+        calls upon :meth:`.ColumnElement.cast` implicitly, as PG's JSON/JSONB
+        types allow cross-casting between each other as well.  Code that
+        makes use of :meth:`.ColumnElement.cast` on JSON indexed access,
+        e.g. ``col[someindex].cast(Integer)``, will need to be changed
+        to call :attr:`.postgresql.JSON.Comparator.astext` explicitly.
+
+        .. seealso::
+
+            :ref:`change_3503_cast`
+
+
+    .. change::
         :tags: bug, sql
         :tickets: 2528
 

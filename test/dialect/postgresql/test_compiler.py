@@ -9,7 +9,7 @@ from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
     Text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
-from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.orm import mapper, aliased, Session
 from sqlalchemy.sql import table, column, operators
@@ -21,7 +21,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_format(self):
         seq = Sequence('my_seq_no_schema')
-        dialect = postgresql.PGDialect()
+        dialect = postgresql.dialect()
         assert dialect.identifier_preparer.format_sequence(seq) \
             == 'my_seq_no_schema'
         seq = Sequence('my_seq', schema='some_schema')

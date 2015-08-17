@@ -2799,6 +2799,28 @@ class BinaryExpression(ColumnElement):
             return super(BinaryExpression, self)._negate()
 
 
+class Slice(ColumnElement):
+    """Represent SQL for a Python array-slice object.
+
+    This is not a specific SQL construct at this level, but
+    may be interpreted by specific dialects, e.g. Postgresql.
+
+    """
+    __visit_name__ = 'slice'
+
+    def __init__(self, start, stop, step):
+        self.start = start
+        self.stop = stop
+        self.step = step
+        self.type = type_api.NULLTYPE
+
+
+class IndexExpression(BinaryExpression):
+    """Represent the class of expressions that are like an "index" operation.
+    """
+    pass
+
+
 class Grouping(ColumnElement):
     """Represent a grouping within a column expression"""
 

@@ -20,6 +20,7 @@ INTEGERTYPE = None
 NULLTYPE = None
 STRINGTYPE = None
 MATCHTYPE = None
+INDEXABLE = None
 
 
 class TypeEngine(Visitable):

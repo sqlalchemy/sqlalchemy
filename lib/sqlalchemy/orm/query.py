@@ -103,6 +103,7 @@ class Query(object):
     _orm_only_adapt = True
     _orm_only_from_obj_alias = True
     _current_path = _path_registry
+    _has_mapper_entities = False
 
     def __init__(self, entities, session=None):
         self.session = session
@@ -114,6 +115,7 @@ class Query(object):
             entity_wrapper = _QueryEntity
         self._entities = []
         self._primary_entity = None
+        self._has_mapper_entities = False
         for ent in util.to_list(entities):
             entity_wrapper(self, ent)
 
@@ -3191,11 +3193,13 @@ class _MapperEntity(_QueryEntity):
         if not query._primary_entity:
             query._primary_entity = self
         query._entities.append(self)
-
+        query._has_mapper_entities = True
         self.entities = [entity]
         self.expr = entity
 
     supports_single_entity = True
+
+    use_id_for_hash = True
 
     def setup_entity(self, ext_info, aliased_adapter):
         self.mapper = ext_info.mapper
@@ -3241,8 +3245,6 @@ class _MapperEntity(_QueryEntity):
         query._mapper_loads_polymorphically_with(
             self.mapper, sql_util.ColumnAdapter(
                 from_obj, self.mapper._equivalent_columns))
-
-    filter_fn = id
 
     @property
     def type(self):
@@ -3472,6 +3474,8 @@ class Bundle(InspectionAttr):
 
 
 class _BundleEntity(_QueryEntity):
+    use_id_for_hash = False
+
     def __init__(self, query, bundle, setup_entities=True):
         query._entities.append(self)
         self.bundle = self.expr = bundle
@@ -3487,8 +3491,6 @@ class _BundleEntity(_QueryEntity):
                     _ColumnEntity(self, expr, namespace=self)
 
         self.entities = ()
-
-        self.filter_fn = lambda item: item
 
         self.supports_single_entity = self.bundle.single_entity
 
@@ -3592,11 +3594,7 @@ class _ColumnEntity(_QueryEntity):
             search_entities = True
 
         self.type = type_ = column.type
-        if type_.hashable:
-            self.filter_fn = lambda item: item
-        else:
-            counter = util.counter()
-            self.filter_fn = lambda item: counter()
+        self.use_id_for_hash = not type_.hashable
 
         # If the Column is unnamed, give it a
         # label() so that mutable column expressions

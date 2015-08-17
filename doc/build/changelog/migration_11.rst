@@ -66,6 +66,43 @@ as it relies on deprecated features of setuptools.
 New Features and Improvements - ORM
 ===================================
 
+.. _change_3499:
+
+Changes regarding "unhashable" types
+------------------------------------
+
+The :class:`.Query` object has a well-known behavior of "deduping"
+returned rows that contain at least one ORM-mapped entity (e.g., a
+full mapped object, as opposed to individual column values). The
+primary purpose of this is so that the handling of entities works
+smoothly in conjunction with the identity map, including to
+accommodate for the duplicate entities normally represented within
+joined eager loading, as well as when joins are used for the purposes
+of filtering on additional columns.
+
+This deduplication relies upon the hashability of the elements within
+the row.  With the introduction of Postgresql's special types like
+:class:`.postgresql.ARRAY`, :class:`.postgresql.HSTORE` and
+:class:`.postgresql.JSON`, the experience of types within rows being
+unhashable and encountering problems here is more prevalent than
+it was previously.
+
+In fact, SQLAlchemy has since version 0.8 included a flag on datatypes that
+are noted as "unhashable", however this flag was not used consistently
+on built in types.  As described in :ref:`change_3499_postgresql`, this
+flag is now set consistently for all of Postgresql's "structural" types.
+
+The "unhashable" flag is also set on the :class:`.NullType` type,
+as :class:`.NullType` is used to refer to any expression of unknown
+type.
+
+Additionally, the treatment of a so-called "unhashable" type is slightly
+different than its been in previous releases; internally we are using
+the ``id()`` function to get a "hash value" from these structures, just
+as we would any ordinary mapped object.   This replaces the previous
+approach which applied a counter to the object.
+
+:ticket:`3499`
 
 New Features and Improvements - Core
 ====================================
@@ -138,6 +175,101 @@ Key Behavioral Changes - Core
 
 Dialect Improvements and Changes - Postgresql
 =============================================
+
+.. _change_3499_postgresql:
+
+ARRAY and JSON types now correctly specify "unhashable"
+-------------------------------------------------------
+
+As described in :ref:`change_3499`, the ORM relies upon being able to
+produce a hash function for column values when a query's selected entities
+mixes full ORM entities with column expressions.   The ``hashable=False``
+flag is now correctly set on all of PG's "data structure" types, including
+:class:`.ARRAY` and :class:`.JSON`.  The :class:`.JSONB` and :class:`.HSTORE`
+types already included this flag.  For :class:`.ARRAY`,
+this is conditional based on the :paramref:`.postgresql.ARRAY.as_tuple`
+flag, however it should no longer be necessary to set this flag
+in order to have an array value present in a composed ORM row.
+
+.. seealso::
+
+    :ref:`change_3499`
+
+    :ref:`change_3503`
+
+:ticket:`3499`
+
+.. _change_3503:
+
+Correct SQL Types are Established from Indexed Access of ARRAY, JSON, HSTORE
+-----------------------------------------------------------------------------
+
+For all three of :class:`~.postgresql.ARRAY`, :class:`~.postgresql.JSON` and :class:`.HSTORE`,
+the SQL type assigned to the expression returned by indexed access, e.g.
+``col[someindex]``, should be correct in all cases.
+
+This includes:
+
+* The SQL type assigned to indexed access of an :class:`~.postgresql.ARRAY` takes into
+  account the number of dimensions configured.   An :class:`~.postgresql.ARRAY` with three
+  dimensions will return a SQL expression with a type of :class:`~.postgresql.ARRAY` of
+  one less dimension.  Given a column with type ``ARRAY(Integer, dimensions=3)``,
+  we can now perform this expression::
+
+      int_expr = col[5][6][7]   # returns an Integer expression object
+
+  Previously, the indexed access to ``col[5]`` would return an expression of
+  type :class:`.Integer` where we could no longer perform indexed access
+  for the remaining dimensions, unless we used :func:`.cast` or :func:`.type_coerce`.
+
+* The :class:`~.postgresql.JSON` and :class:`~.postgresql.JSONB` types now mirror what Postgresql
+  itself does for indexed access.  This means that all indexed access for
+  a :class:`~.postgresql.JSON` or :class:`~.postgresql.JSONB` type returns an expression that itself
+  is *always* :class:`~.postgresql.JSON` or :class:`~.postgresql.JSONB` itself, unless the
+  :attr:`~.postgresql.JSON.Comparator.astext` modifier is used.   This means that whether
+  the indexed access of the JSON structure ultimately refers to a string,
+  list, number, or other JSON structure, Postgresql always considers it
+  to be JSON itself unless it is explicitly cast differently.   Like
+  the :class:`~.postgresql.ARRAY` type, this means that it is now straightforward
+  to produce JSON expressions with multiple levels of indexed access::
+
+    json_expr = json_col['key1']['attr1'][5]
+
+* The "textual" type that is returned by indexed access of :class:`.HSTORE`
+  as well as the "textual" type that is returned by indexed access of
+  :class:`~.postgresql.JSON` and :class:`~.postgresql.JSONB` in conjunction with the
+  :attr:`~.postgresql.JSON.Comparator.astext` modifier is now configurable; it defaults
+  to :class:`.Text` in both cases but can be set to a user-defined
+  type using the :paramref:`.postgresql.JSON.astext_type` or
+  :paramref:`.postgresql.HSTORE.text_type` parameters.
+
+.. seealso::
+
+  :ref:`change_3503_cast`
+
+:ticket:`3499`
+:ticket:`3487`
+
+.. _change_3503_cast:
+
+The JSON cast() operation now requires ``.astext`` is called explicitly
+------------------------------------------------------------------------
+
+As part of the changes in :ref:`change_3503`, the workings of the
+:meth:`.ColumnElement.cast` operator on :class:`.postgresql.JSON` and
+:class:`.postgresql.JSONB` no longer implictly invoke the
+:attr:`.JSON.Comparator.astext` modifier; Postgresql's JSON/JSONB types
+support CAST operations to each other without the "astext" aspect.
+
+This means that in most cases, an application that was doing this::
+
+    expr = json_col['somekey'].cast(Integer)
+
+Will now need to change to this::
+
+    expr = json_col['somekey'].astext.cast(Integer)
+
+
 
 
 Dialect Improvements and Changes - MySQL

@@ -32,8 +32,7 @@ def instances(query, cursor, context):
 
     context.runid = _new_runid()
 
-    filter_fns = [ent.filter_fn for ent in query._entities]
-    filtered = id in filter_fns
+    filtered = query._has_mapper_entities
 
     single_entity = len(query._entities) == 1 and \
         query._entities[0].supports_single_entity
@@ -43,7 +42,12 @@ def instances(query, cursor, context):
             filter_fn = id
         else:
             def filter_fn(row):
-                return tuple(fn(x) for x, fn in zip(row, filter_fns))
+                return tuple(
+                    id(item)
+                    if ent.use_id_for_hash
+                    else item
+                    for ent, item in zip(query._entities, row)
+                )
 
     try:
         (process, labels) = \
