@@ -129,6 +129,19 @@ class TypeEngine(Visitable):
 
     """
 
+    evaluates_none = False
+    """If True, the Python constant ``None`` is considered to be handled
+    explicitly by this type.
+
+    The ORM will use this flag to ensure that a positive value of ``None``
+    is definitely passed to the backend, ignoring whether or not there
+    are Python or server side defaults on this column.
+
+    .. versionadded:: 1.1
+
+
+    """
+
     def compare_against_backend(self, dialect, conn_type):
         """Compare this type against the given backend type.
 

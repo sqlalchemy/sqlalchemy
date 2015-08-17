@@ -98,6 +98,35 @@
 
 
     .. change::
+        :tags: bug, orm, postgresql
+        :tickets: 3514
+
+        Additional fixes have been made regarding the value of ``None``
+        in conjunction with the Postgresql :class:`.JSON` type.  When
+        the :paramref:`.JSON.none_as_null` flag is left at its default
+        value of ``False``, the ORM will now correctly insert the Json
+        "'null'" string into the column whenever the value on the ORM
+        object is set to the value ``None`` or when the value ``None``
+        is used with :meth:`.Session.bulk_insert_mappings`,
+        **including** if the column has a default or server default on it.
+
+        .. seealso::
+
+            :ref:`change_3514`
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 3514
+
+        Added a new constant :attr:`.postgresql.JSON.NULL`, indicating
+        that the JSON NULL value should be used for a value
+        regardless of other settings.
+
+        .. seealso::
+
+            :ref:`change_3514_jsonnull`
+
+    .. change::
         :tags: bug, sql
         :tickets: 2528
 

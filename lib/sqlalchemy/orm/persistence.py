@@ -375,10 +375,12 @@ def _collect_insert_commands(
 
         propkey_to_col = mapper._propkey_to_col[table]
 
+        eval_none = mapper._insert_cols_evaluating_none[table]
+
         for propkey in set(propkey_to_col).intersection(state_dict):
             value = state_dict[propkey]
             col = propkey_to_col[propkey]
-            if value is None:
+            if value is None and propkey not in eval_none:
                 continue
             elif not bulk and isinstance(value, sql.ClauseElement):
                 value_params[col.key] = value

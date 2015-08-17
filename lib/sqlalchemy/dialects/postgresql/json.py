@@ -115,6 +115,29 @@ class JSON(sqltypes.Indexable, sqltypes.TypeEngine):
     will be detected by the unit of work.  See the example at :class:`.HSTORE`
     for a simple example involving a dictionary.
 
+    When working with NULL values, the :class:`.JSON` type recommends the
+    use of two specific constants in order to differentiate between a column
+    that evaluates to SQL NULL, e.g. no value, vs. the JSON-encoded string
+    of ``"null"``.   To insert or select against a value that is SQL NULL,
+    use the constant :func:`.null`::
+
+        conn.execute(table.insert(), json_value=null())
+
+    To insert or select against a value that is JSON ``"null"``, use the
+    constant :attr:`.JSON.NULL`::
+
+        conn.execute(table.insert(), json_value=JSON.NULL)
+
+    The :class:`.JSON` type supports a flag
+    :paramref:`.JSON.none_as_null` which when set to True will result
+    in the Python constant ``None`` evaluating to the value of SQL
+    NULL, and when set to False results in the Python constant
+    ``None`` evaluating to the value of JSON ``"null"``.    The Python
+    value ``None`` may be used in conjunction with either
+    :attr:`.JSON.NULL` and :func:`.null` in order to indicate NULL
+    values, but care must be taken as to the value of the
+    :paramref:`.JSON.none_as_null` in these cases.
+
     Custom serializers and deserializers are specified at the dialect level,
     that is using :func:`.create_engine`.  The reason for this is that when
     using psycopg2, the DBAPI only allows serializers at the per-cursor
@@ -141,6 +164,30 @@ class JSON(sqltypes.Indexable, sqltypes.TypeEngine):
     hashable = False
     astext_type = sqltypes.Text()
 
+    NULL = util.symbol('JSON_NULL')
+    """Describe the json value of NULL.
+
+    This value is used to force the JSON value of ``"null"`` to be
+    used as the value.   A value of Python ``None`` will be recognized
+    either as SQL NULL or JSON ``"null"``, based on the setting
+    of the :paramref:`.JSON.none_as_null` flag; the :attr:`.JSON.NULL`
+    constant can be used to always resolve to JSON ``"null"`` regardless
+    of this setting.  This is in contrast to the :func:`.sql.null` construct,
+    which always resolves to SQL NULL.  E.g.::
+
+        from sqlalchemy import null
+        from sqlalchemy.dialects.postgresql import JSON
+
+        obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
+        obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
+
+        session.add_all([obj1, obj2])
+        session.commit()
+
+    .. versionadded:: 1.1
+
+    """
+
     def __init__(self, none_as_null=False, astext_type=None):
         """Construct a :class:`.JSON` type.
 
@@ -154,6 +201,10 @@ class JSON(sqltypes.Indexable, sqltypes.TypeEngine):
 
          .. versionchanged:: 0.9.8 - Added ``none_as_null``, and :func:`.null`
             is now supported in order to persist a NULL value.
+
+         .. seealso::
+
+              :attr:`.JSON.NULL`
 
         :param astext_type: the type to use for the
          :attr:`.JSON.Comparator.astext`
@@ -206,13 +257,19 @@ class JSON(sqltypes.Indexable, sqltypes.TypeEngine):
 
     comparator_factory = Comparator
 
+    @property
+    def evaluates_none(self):
+        return not self.none_as_null
+
     def bind_processor(self, dialect):
         json_serializer = dialect._json_serializer or json.dumps
         if util.py2k:
             encoding = dialect.encoding
 
             def process(value):
-                if isinstance(value, elements.Null) or (
+                if value is self.NULL:
+                    value = None
+                elif isinstance(value, elements.Null) or (
                     value is None and self.none_as_null
                 ):
                     return None

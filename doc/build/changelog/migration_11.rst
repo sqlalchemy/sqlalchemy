@@ -271,6 +271,83 @@ Will now need to change to this::
 
 
 
+.. _change_3514:
+
+Postgresql JSON "null" is inserted as expected with ORM operations, regardless of column default present
+-----------------------------------------------------------------------------------------------------------
+
+The :class:`.JSON` type has a flag :paramref:`.JSON.none_as_null` which
+when set to True indicates that the Python value ``None`` should translate
+into a SQL NULL rather than a JSON NULL value.  This flag defaults to False,
+which means that the column should *never* insert SQL NULL or fall back
+to a default unless the :func:`.null` constant were used.  However, this would
+fail in the ORM under two circumstances; one is when the column also contained
+a default or server_default value, a positive value of ``None`` on the mapped
+attribute would still result in the column-level default being triggered,
+replacing the ``None`` value::
+
+    obj = MyObject(json_value=None)
+    session.add(obj)
+    session.commit()   # would fire off default / server_default, not encode "'none'"
+
+The other is when the :meth:`.Session.bulk_insert_mappings`
+method were used, ``None`` would be ignored in all cases::
+
+    session.bulk_insert_mappings(
+        MyObject,
+        [{"json_value": None}])  # would insert SQL NULL and/or trigger defaults
+
+The :class:`.JSON` type now adds a new flag :attr:`.TypeEngine.evaluates_none`
+indicating that ``None`` should not be ignored here; it is configured
+automatically based on the value of :paramref:`.JSON.none_as_null`.
+Thanks to :ticket:`3061`, we can differentiate when the value ``None`` is actively
+set by the user versus when it was never set at all.
+
+If the attribute is not set at all, then column level defaults *will*
+fire off and/or SQL NULL will be inserted as expected, as was the behavior
+previously.  Below, the two variants are illustrated::
+
+    obj = MyObject(json_value=None)
+    session.add(obj)
+    session.commit()   # *will not* fire off column defaults, will insert JSON 'null'
+
+    obj = MyObject()
+    session.add(obj)
+    session.commit()   # *will* fire off column defaults, and/or insert SQL NULL
+
+:ticket:`3514`
+
+.. seealso::
+
+  :ref:`change_3514_jsonnull`
+
+.. _change_3514_jsonnull:
+
+New JSON.NULL Constant Added
+----------------------------
+
+To ensure that an application can always have full control at the value level
+of whether a :class:`.postgresql.JSON` or :class:`.postgresql.JSONB` column
+should receive a SQL NULL or JSON ``"null"`` value, the constant
+:attr:`.postgresql.JSON.NULL` has been added, which in conjunction with
+:func:`.null` can be used to determine fully between SQL NULL and
+JSON ``"null"``, regardless of what :paramref:`.JSON.none_as_null` is set
+to::
+
+    from sqlalchemy import null
+    from sqlalchemy.dialects.postgresql import JSON
+
+    obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
+    obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
+
+    session.add_all([obj1, obj2])
+    session.commit()
+
+.. seealso::
+
+    :ref:`change_3514`
+
+:ticket:`3514`
 
 Dialect Improvements and Changes - MySQL
 =============================================
