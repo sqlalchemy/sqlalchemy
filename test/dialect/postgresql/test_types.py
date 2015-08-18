@@ -2576,6 +2576,9 @@ class JSONRoundTripTest(fixtures.TablesTest):
         )
         eq_(result.scalar(), 'r6')
 
+    @testing.fails_on(
+        "postgresql < 9.4",
+        "Improvement in Postgresql behavior?")
     def test_multi_index_query(self):
         engine = testing.db
         self._fixture_data(engine)
@@ -2746,7 +2749,6 @@ class JSONBTest(JSONTest):
 
 
 class JSONBRoundTripTest(JSONRoundTripTest):
-    __only_on__ = ('postgresql >= 9.4',)
     __requires__ = ('postgresql_jsonb', )
 
     test_type = JSONB

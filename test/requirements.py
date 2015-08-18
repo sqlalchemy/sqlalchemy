@@ -784,7 +784,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def postgresql_jsonb(self):
-        return skip_if(
+        return only_on("postgresql >= 9.4") + skip_if(
             lambda config:
             config.db.dialect.driver == "pg8000" and
             config.db.dialect._dbapi_version <= (1, 10, 1)

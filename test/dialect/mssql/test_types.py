@@ -313,9 +313,7 @@ class TypeRoundTripTest(
     def teardown(self):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except(
-        'mssql+pyodbc',
-        'this is some pyodbc-specific feature')
+    @testing.fails_on_everything_except('mssql+pyodbc')
     def test_decimal_notation(self):
         numeric_table = Table(
             'numeric_table', metadata,
