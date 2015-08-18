@@ -265,38 +265,36 @@ class JSON(sqltypes.Indexable, sqltypes.TypeEngine):
         json_serializer = dialect._json_serializer or json.dumps
         if util.py2k:
             encoding = dialect.encoding
-
-            def process(value):
-                if value is self.NULL:
-                    value = None
-                elif isinstance(value, elements.Null) or (
-                    value is None and self.none_as_null
-                ):
-                    return None
-                return json_serializer(value).encode(encoding)
         else:
-            def process(value):
-                if isinstance(value, elements.Null) or (
-                    value is None and self.none_as_null
-                ):
-                    return None
+            encoding = None
+
+        def process(value):
+            if value is self.NULL:
+                value = None
+            elif isinstance(value, elements.Null) or (
+                value is None and self.none_as_null
+            ):
+                return None
+            if encoding:
+                return json_serializer(value).encode(encoding)
+            else:
                 return json_serializer(value)
+
         return process
 
     def result_processor(self, dialect, coltype):
         json_deserializer = dialect._json_deserializer or json.loads
         if util.py2k:
             encoding = dialect.encoding
-
-            def process(value):
-                if value is None:
-                    return None
-                return json_deserializer(value.decode(encoding))
         else:
-            def process(value):
-                if value is None:
-                    return None
-                return json_deserializer(value)
+            encoding = None
+
+        def process(value):
+            if value is None:
+                return None
+            if encoding:
+                value = value.decode(encoding)
+            return json_deserializer(value)
         return process
 
 
