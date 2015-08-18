@@ -13,7 +13,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 from sqlalchemy import event
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.mock import Mock, call, ANY
 
 ImNotAClass = None
 
