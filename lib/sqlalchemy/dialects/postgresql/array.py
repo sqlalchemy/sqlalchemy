@@ -203,6 +203,10 @@ class ARRAY(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     The :class:`.ARRAY` type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000.
 
+    Additionally, the :class:`.ARRAY` type does not work directly in
+    conjunction with the :class:`.ENUM` type.  For a workaround, see the
+    special type at :ref:`postgresql_array_of_enum`.
+
     See also:
 
     :class:`.postgresql.array` - produce a literal array value.
