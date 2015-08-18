@@ -1584,7 +1584,10 @@ class SET(_EnumeratedValues):
 
     def column_expression(self, colexpr):
         if self.retrieve_as_bitwise:
-            return colexpr + 0
+            return sql.type_coerce(
+                sql.type_coerce(colexpr, sqltypes.Integer) + 0,
+                self
+            )
         else:
             return colexpr
 

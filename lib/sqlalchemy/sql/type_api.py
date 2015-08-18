@@ -91,7 +91,7 @@ class TypeEngine(Visitable):
             boolean comparison or special SQL keywords like MATCH or BETWEEN.
 
             """
-            return op, other_comparator.type
+            return op, self.type
 
         def __reduce__(self):
             return _reconstitute_comparator, (self.expr, )

@@ -14,7 +14,7 @@ from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.sql import compiler
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
-    Boolean, NullType, MatchType, Indexable
+    Boolean, NullType, MatchType, Indexable, Concatenable
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -209,6 +209,60 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_concat(self):
         self._do_operate_test(operators.concat_op)
+
+    def test_default_adapt(self):
+        class TypeOne(TypeEngine):
+            pass
+
+        class TypeTwo(TypeEngine):
+            pass
+
+        expr = column('x', TypeOne()) - column('y', TypeTwo())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+
+    def test_concatenable_adapt(self):
+        class TypeOne(Concatenable, TypeEngine):
+            pass
+
+        class TypeTwo(Concatenable, TypeEngine):
+            pass
+
+        class TypeThree(TypeEngine):
+            pass
+
+        expr = column('x', TypeOne()) - column('y', TypeTwo())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operator.sub
+        )
+
+        expr = column('x', TypeOne()) + column('y', TypeTwo())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operators.concat_op
+        )
+
+        expr = column('x', TypeOne()) - column('y', TypeThree())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operator.sub
+        )
+
+        expr = column('x', TypeOne()) + column('y', TypeThree())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operator.add
+        )
 
 
 class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
