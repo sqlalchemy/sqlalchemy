@@ -524,6 +524,47 @@ entity.   The following sections should be consulted:
 * :meth:`.postgresql.ENUM.create` , :meth:`.postgresql.ENUM.drop` - individual
   CREATE and DROP commands for ENUM.
 
+.. _postgresql_array_of_enum:
+
+Using ENUM with ARRAY
+^^^^^^^^^^^^^^^^^^^^^
+
+The combination of ENUM and ARRAY is not directly supported by backend
+DBAPIs at this time.   In order to send and receive an ARRAY of ENUM,
+use the following workaround type::
+
+    class ArrayOfEnum(ARRAY):
+
+        def bind_expression(self, bindvalue):
+            return sa.cast(bindvalue, self)
+
+        def result_processor(self, dialect, coltype):
+            super_rp = super(ArrayOfEnum, self).result_processor(
+                dialect, coltype)
+
+            def handle_raw_string(value):
+                inner = re.match(r"^{(.*)}$", value).group(1)
+                return inner.split(",")
+
+            def process(value):
+                if value is None:
+                    return None
+                return super_rp(handle_raw_string(value))
+            return process
+
+E.g.::
+
+    Table(
+        'mydata', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', ArrayOfEnum(ENUM('a', 'b, 'c', name='myenum')))
+
+    )
+
+This type is not included as a built-in type as it would be incompatible
+with a DBAPI that suddenly decides to support ARRAY of ENUM directly in
+a new version.
+
 """
 from collections import defaultdict
 import re
@@ -906,6 +947,10 @@ class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
 
     The :class:`.ARRAY` type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000.
+
+    Additionally, the :class:`.ARRAY` type does not work directly in
+    conjunction with the :class:`.ENUM` type.  For a workaround, see the
+    special type at :ref:`postgresql_array_of_enum`.
 
     See also:
 
