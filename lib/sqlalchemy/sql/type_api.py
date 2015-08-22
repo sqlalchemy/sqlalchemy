@@ -21,6 +21,7 @@ NULLTYPE = None
 STRINGTYPE = None
 MATCHTYPE = None
 INDEXABLE = None
+_resolve_value_to_type = None
 
 
 class TypeEngine(Visitable):
@@ -454,7 +455,7 @@ class TypeEngine(Visitable):
         end-user customization of this behavior.
 
         """
-        _coerced_type = _type_map.get(type(value), NULLTYPE)
+        _coerced_type = _resolve_value_to_type(value)
         if _coerced_type is NULLTYPE or _coerced_type._type_affinity \
                 is self._type_affinity:
             return self

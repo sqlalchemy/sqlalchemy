@@ -9,7 +9,6 @@
 
 """
 
-import collections
 import datetime as dt
 import codecs
 
@@ -18,6 +17,7 @@ from .elements import quoted_name, type_coerce, _defer_name
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
 from . import operators
+from .. import inspection
 from .. import event
 from ..util import pickle
 import decimal
@@ -1736,6 +1736,21 @@ else:
     _type_map[unicode] = Unicode()
     _type_map[str] = String()
 
+_type_map_get = _type_map.get
+
+
+def _resolve_value_to_type(value):
+    _result_type = _type_map_get(type(value), False)
+    if _result_type is False:
+        # use inspect() to detect SQLAlchemy built-in
+        # objects.
+        insp = inspection.inspect(value, False)
+        if insp is not None:
+            raise exc.ArgumentError(
+                "Object %r is not legal as a SQL literal value" % value)
+        return NULLTYPE
+    else:
+        return _result_type
 
 # back-assign to type_api
 from . import type_api
@@ -1745,6 +1760,5 @@ type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
 type_api.MATCHTYPE = MATCHTYPE
 type_api.INDEXABLE = Indexable
-type_api._type_map = _type_map
-
+type_api._resolve_value_to_type = _resolve_value_to_type
 TypeEngine.Comparator.BOOLEANTYPE = BOOLEANTYPE

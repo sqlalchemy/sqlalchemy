@@ -22,6 +22,18 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3321
+
+        Added new checks for the common error case of passing mapped classes
+        or mapped instances into contexts where they are interpreted as
+        SQL bound parameters; a new exception is raised for this.
+
+        .. seealso::
+
+            :ref:`change_3321`
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3499
 

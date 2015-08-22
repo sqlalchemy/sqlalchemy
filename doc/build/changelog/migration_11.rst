@@ -104,6 +104,47 @@ approach which applied a counter to the object.
 
 :ticket:`3499`
 
+.. _change_3321:
+
+Specific checks added for passing mapped classes, instances as SQL literals
+---------------------------------------------------------------------------
+
+The typing system now has specific checks for passing of SQLAlchemy
+"inspectable" objects in contexts where they would otherwise be handled as
+literal values.   Any SQLAlchemy built-in object that is legal to pass as a
+SQL value includes a method ``__clause_element__()`` which provides a
+valid SQL expression for that object.  For SQLAlchemy objects that
+don't provide this, such as mapped classes, mappers, and mapped
+instances, a more informative error message is emitted rather than
+allowing the DBAPI to receive the object and fail later.  An example
+is illustrated below, where a string-based attribute ``User.name`` is
+compared to a full instance of ``User()``, rather than against a
+string value::
+
+    >>> some_user = User()
+    >>> q = s.query(User).filter(User.name == some_user)
+    ...
+    sqlalchemy.exc.ArgumentError: Object <__main__.User object at 0x103167e90> is not legal as a SQL literal value
+
+The exception is now immediate when the comparison is made between
+``User.name == some_user``.  Previously, a comparison like the above
+would produce a SQL expression that would only fail once resolved
+into a DBAPI execution call; the mapped ``User`` object would
+ultimately become a bound parameter that would be rejected by the
+DBAPI.
+
+Note that in the above example, the expression fails because
+``User.name`` is a string-based (e.g. column oriented) attribute.
+The change does *not* impact the usual case of comparing a many-to-one
+relationship attribute to an object, which is handled distinctly::
+
+    >>> # Address.user refers to the User mapper, so
+    >>> # this is of course still OK!
+    >>> q = s.query(Address).filter(Address.user == some_user)
+
+
+:ticket:`3321`
+
 New Features and Improvements - Core
 ====================================
 

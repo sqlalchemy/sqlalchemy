@@ -281,6 +281,8 @@ class _CompileLabel(visitors.Visitable):
     def type(self):
         return self.element.type
 
+    def self_group(self, **kw):
+        return self
 
 class SQLCompiler(Compiled):
 

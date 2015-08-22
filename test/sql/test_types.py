@@ -1,5 +1,6 @@
 # coding: utf-8
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, expect_warnings
+from sqlalchemy.testing import eq_, is_, assert_raises, \
+    assert_raises_message, expect_warnings
 import decimal
 import datetime
 import os
@@ -11,7 +12,7 @@ from sqlalchemy import (
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
     INTEGER, DECIMAL, NUMERIC, FLOAT, REAL)
 from sqlalchemy.sql import ddl
-
+from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
@@ -1646,6 +1647,26 @@ class ExpressionTest(
 
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
+
+    def test_detect_coercion_of_builtins(self):
+        @inspection._self_inspects
+        class SomeSQLAThing(object):
+            def __repr__(self):
+                return "some_sqla_thing()"
+
+        class SomeOtherThing(object):
+            pass
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Object some_sqla_thing\(\) is not legal as a SQL literal value",
+            lambda: column('a', String) == SomeSQLAThing()
+        )
+
+        is_(
+            bindparam('x', SomeOtherThing()).type,
+            types.NULLTYPE
+        )
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

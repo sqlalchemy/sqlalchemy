@@ -1145,8 +1145,7 @@ class BindParameter(ColumnElement):
                     _compared_to_type.coerce_compared_value(
                         _compared_to_operator, value)
             else:
-                self.type = type_api._type_map.get(type(value),
-                                                   type_api.NULLTYPE)
+                self.type = type_api._resolve_value_to_type(value)
         elif isinstance(type_, type):
             self.type = type_()
         else:
@@ -1161,8 +1160,7 @@ class BindParameter(ColumnElement):
         cloned.callable = None
         cloned.required = False
         if cloned.type is type_api.NULLTYPE:
-            cloned.type = type_api._type_map.get(type(value),
-                                                 type_api.NULLTYPE)
+            cloned.type = type_api._resolve_value_to_type(value)
         return cloned
 
     @property

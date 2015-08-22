@@ -15,7 +15,7 @@ from .elements import BindParameter, True_, False_, BinaryExpression, \
     Null, _const_expr, _clause_element_as_expr, \
     ClauseList, ColumnElement, TextClause, UnaryExpression, \
     collate, _is_literal, _literal_as_text, ClauseElement, and_, or_, \
-    Slice
+    Slice, Visitable
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 
@@ -304,7 +304,7 @@ def _check_literal(expr, operator, other):
 
     if isinstance(other, (SelectBase, Alias)):
         return other.as_scalar()
-    elif not isinstance(other, (ColumnElement, TextClause)):
+    elif not isinstance(other, Visitable):
         return expr._bind_param(operator, other)
     else:
         return other

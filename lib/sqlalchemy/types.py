@@ -76,5 +76,4 @@ from .sql.sqltypes import (
     UnicodeText,
     VARBINARY,
     VARCHAR,
-    _type_map
     )
