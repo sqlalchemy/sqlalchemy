@@ -1745,7 +1745,12 @@ def _resolve_value_to_type(value):
         # use inspect() to detect SQLAlchemy built-in
         # objects.
         insp = inspection.inspect(value, False)
-        if insp is not None:
+        if (
+                insp is not None and
+                # foil mock.Mock() and other impostors by ensuring
+                # the inspection target itself self-inspects
+                insp.__class__ in inspection._registrars
+        ):
             raise exc.ArgumentError(
                 "Object %r is not legal as a SQL literal value" % value)
         return NULLTYPE

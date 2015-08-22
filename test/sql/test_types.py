@@ -26,7 +26,7 @@ from sqlalchemy.testing import AssertsCompiledSQL, AssertsExecutionResults, \
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.testing import fixtures
-
+from sqlalchemy.testing import mock
 
 class AdaptTest(fixtures.TestBase):
 
@@ -1667,6 +1667,14 @@ class ExpressionTest(
             bindparam('x', SomeOtherThing()).type,
             types.NULLTYPE
         )
+
+    def test_detect_coercion_not_fooled_by_mock(self):
+        m1 = mock.Mock()
+        is_(
+            bindparam('x', m1).type,
+            types.NULLTYPE
+        )
+
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

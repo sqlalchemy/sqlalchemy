@@ -14,6 +14,7 @@ defines a large part of the ORM's interactivity.
 
 import weakref
 from .. import util
+from .. import inspection
 from . import exc as orm_exc, interfaces
 from .path_registry import PathRegistry
 from .base import PASSIVE_NO_RESULT, SQL_OK, NEVER_SET, ATTR_WAS_SET, \
@@ -21,6 +22,7 @@ from .base import PASSIVE_NO_RESULT, SQL_OK, NEVER_SET, ATTR_WAS_SET, \
 from . import base
 
 
+@inspection._self_inspects
 class InstanceState(interfaces.InspectionAttr):
     """tracks state information at the instance level.
 
