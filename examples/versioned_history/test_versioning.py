@@ -614,3 +614,68 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         sess.commit()
 
         assert sc.version == 1
+
+    def test_create_double_flush(self):
+
+        class SomeClass(Versioned, self.Base, ComparableEntity):
+            __tablename__ = 'sometable'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(30))
+            other = Column(String(30))
+
+        self.create_tables()
+
+        sc = SomeClass()
+        self.session.add(sc)
+        self.session.flush()
+        sc.name = 'Foo'
+        self.session.flush()
+
+        assert sc.version == 2
+
+    def test_mutate_plain_column(self):
+        class Document(self.Base, Versioned):
+            __tablename__ = 'document'
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            name = Column(String, nullable=True)
+            description_ = Column('description', String, nullable=True)
+
+        self.create_tables()
+
+        document = Document()
+        self.session.add(document)
+        document.name = 'Foo'
+        self.session.commit()
+        document.name = 'Bar'
+        self.session.commit()
+
+        DocumentHistory = Document.__history_mapper__.class_
+        v2 = self.session.query(Document).one()
+        v1 = self.session.query(DocumentHistory).one()
+        self.assertEqual(v1.id, v2.id)
+        self.assertEqual(v2.name, 'Bar')
+        self.assertEqual(v1.name, 'Foo')
+
+    def test_mutate_named_column(self):
+        class Document(self.Base, Versioned):
+            __tablename__ = 'document'
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            name = Column(String, nullable=True)
+            description_ = Column('description', String, nullable=True)
+
+        self.create_tables()
+
+        document = Document()
+        self.session.add(document)
+        document.description_ = 'Foo'
+        self.session.commit()
+        document.description_ = 'Bar'
+        self.session.commit()
+
+        DocumentHistory = Document.__history_mapper__.class_
+        v2 = self.session.query(Document).one()
+        v1 = self.session.query(DocumentHistory).one()
+        self.assertEqual(v1.id, v2.id)
+        self.assertEqual(v2.description_, 'Bar')
+        self.assertEqual(v1.description_, 'Foo')

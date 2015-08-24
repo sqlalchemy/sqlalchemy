@@ -19,6 +19,15 @@
     :version: 1.0.9
 
     .. change::
+        :tags: bug, examples
+        :versions: 1.1.0b1
+
+        Fixed two issues in the "history_meta" example where history tracking
+        could encounter empty history, and where a column keyed to an alternate
+        attribute name would fail to track properly.  Fixes courtesy
+        Alex Fraser.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3510
         :versions: 1.1.0b1
