@@ -22,6 +22,24 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3516
+
+        Added a new type to core :class:`.types.Array`.  This is the
+        base of the PostgreSQL :class:`.ARRAY` type, and is now part of Core
+        to begin supporting various SQL-standard array-supporting features
+        including some functions and eventual support for native arrays
+        on other databases that have an "array" concept, such as DB2 or Oracle.
+        Additionally, new operators :func:`.expression.any_` and
+        :func:`.expression.all_` have been added.  These support not just
+        array constructs on Postgresql, but also subqueries that are usable
+        on MySQL (but sadly not on Postgresql).
+
+        .. seealso::
+
+            :ref:`change_3516`
+
+    .. change::
         :tags: feature, orm
         :tickets: 3321
 

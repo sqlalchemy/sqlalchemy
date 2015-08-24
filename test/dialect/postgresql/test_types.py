@@ -7,7 +7,7 @@ from sqlalchemy import testing
 import datetime
 from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
     func, DateTime, Numeric, exc, String, cast, REAL, TypeDecorator, Unicode, \
-    Text, null, text, column
+    Text, null, text, column, Array, any_, all_
 from sqlalchemy.sql import operators
 from sqlalchemy import types
 import sqlalchemy as sa
@@ -754,7 +754,6 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             checkparams={'param_1': 4, 'param_3': 6, 'param_2': 5}
         )
 
-
     def test_array_slice_index(self):
         col = column('x', postgresql.ARRAY(Integer))
         self.assert_compile(
@@ -784,13 +783,19 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_index_map_dimensions(self):
         col = column('x', postgresql.ARRAY(Integer, dimensions=3))
         is_(
-            col[5].type._type_affinity, postgresql.ARRAY
+            col[5].type._type_affinity, Array
+        )
+        assert isinstance(
+            col[5].type, postgresql.ARRAY
         )
         eq_(
             col[5].type.dimensions, 2
         )
         is_(
-            col[5][6].type._type_affinity, postgresql.ARRAY
+            col[5][6].type._type_affinity, Array
+        )
+        assert isinstance(
+            col[5][6].type, postgresql.ARRAY
         )
         eq_(
             col[5][6].type.dimensions, 1
@@ -816,8 +821,43 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             Column('intarr', postgresql.ARRAY(Integer)),
             Column('strarr', postgresql.ARRAY(String)),
         )
-        is_(arrtable.c.intarr[1:3].type._type_affinity, postgresql.ARRAY)
-        is_(arrtable.c.strarr[1:3].type._type_affinity, postgresql.ARRAY)
+
+        # type affinity is Array...
+        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+
+        # but the slice returns the actual type
+        assert isinstance(arrtable.c.intarr[1:3].type, postgresql.ARRAY)
+        assert isinstance(arrtable.c.strarr[1:3].type, postgresql.ARRAY)
+
+    def test_array_functions_plus_getitem(self):
+        """test parenthesizing of functions plus indexing, which seems
+        to be required by Postgresql.
+
+        """
+        stmt = select([
+            func.array_cat(
+                array([1, 2, 3]),
+                array([4, 5, 6]),
+                type_=postgresql.ARRAY(Integer)
+            )[2:5]
+        ])
+        self.assert_compile(
+            stmt,
+            "SELECT (array_cat(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s], "
+            "ARRAY[%(param_4)s, %(param_5)s, %(param_6)s]))"
+            "[%(param_7)s:%(param_8)s] AS anon_1"
+        )
+
+        self.assert_compile(
+            func.array_cat(
+                array([1, 2, 3]),
+                array([4, 5, 6]),
+                type_=postgresql.ARRAY(Integer)
+            )[3],
+            "(array_cat(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s], "
+            "ARRAY[%(param_4)s, %(param_5)s, %(param_6)s]))[%(param_7)s]"
+        )
 
 
 class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -875,6 +915,62 @@ class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
         assert isinstance(tbl.c.strarr.type, postgresql.ARRAY)
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
+
+    def test_array_index_slice_exprs(self):
+        """test a variety of expressions that sometimes need parenthesizing"""
+
+        stmt = select([array([1, 2, 3, 4])[2:3]])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            [2, 3]
+        )
+
+        stmt = select([array([1, 2, 3, 4])[2]])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            2
+        )
+
+        stmt = select([(array([1, 2]) + array([3, 4]))[2:3]])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            [2, 3]
+        )
+
+        stmt = select([array([1, 2]) + array([3, 4])[2:3]])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            [1, 2, 4]
+        )
+
+        stmt = select([array([1, 2])[2:3] + array([3, 4])])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            [2, 3, 4]
+        )
+
+        stmt = select([
+            func.array_cat(
+                array([1, 2, 3]),
+                array([4, 5, 6]),
+                type_=postgresql.ARRAY(Integer)
+            )[2:5]
+        ])
+        eq_(
+            testing.db.execute(stmt).scalar(), [2, 3, 4, 5]
+        )
+
+    def test_any_all_exprs(self):
+        stmt = select([
+            3 == any_(func.array_cat(
+                array([1, 2, 3]),
+                array([4, 5, 6]),
+                type_=postgresql.ARRAY(Integer)
+            ))
+        ])
+        eq_(
+            testing.db.execute(stmt).scalar(), True
+        )
 
     def test_insert_array(self):
         arrtable = self.tables.arrtable

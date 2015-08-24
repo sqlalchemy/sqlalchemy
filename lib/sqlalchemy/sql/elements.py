@@ -700,6 +700,8 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
                 self.type._type_affinity
                 is type_api.BOOLEANTYPE._type_affinity):
             return AsBoolean(self, operators.istrue, operators.isfalse)
+        elif (against in (operators.any_op, operators.all_op)):
+            return Grouping(self)
         else:
             return self
 
@@ -2686,6 +2688,91 @@ class UnaryExpression(ColumnElement):
             return self
 
 
+class CollectionAggregate(UnaryExpression):
+    """Forms the basis for right-hand collection operator modifiers
+    ANY and ALL.
+
+    The ANY and ALL keywords are available in different ways on different
+    backends.  On Postgresql, they only work for an ARRAY type.  On
+    MySQL, they only work for subqueries.
+
+    """
+    @classmethod
+    def _create_any(cls, expr):
+        """Produce an ANY expression.
+
+        This may apply to an array type for some dialects (e.g. postgresql),
+        or to a subquery for others (e.g. mysql).  e.g.::
+
+            # postgresql '5 = ANY (somearray)'
+            expr = 5 == any_(mytable.c.somearray)
+
+            # mysql '5 = ANY (SELECT value FROM table)'
+            expr = 5 == any_(select([table.c.value]))
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :func:`.expression.all_`
+
+        """
+
+        expr = _literal_as_binds(expr)
+
+        if expr.is_selectable and hasattr(expr, 'as_scalar'):
+            expr = expr.as_scalar()
+        expr = expr.self_group()
+        return CollectionAggregate(
+            expr, operator=operators.any_op,
+            type_=type_api.NULLTYPE, wraps_column_expression=False)
+
+    @classmethod
+    def _create_all(cls, expr):
+        """Produce an ALL expression.
+
+        This may apply to an array type for some dialects (e.g. postgresql),
+        or to a subquery for others (e.g. mysql).  e.g.::
+
+            # postgresql '5 = ALL (somearray)'
+            expr = 5 == all_(mytable.c.somearray)
+
+            # mysql '5 = ALL (SELECT value FROM table)'
+            expr = 5 == all_(select([table.c.value]))
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :func:`.expression.any_`
+
+        """
+
+        expr = _literal_as_binds(expr)
+        if expr.is_selectable and hasattr(expr, 'as_scalar'):
+            expr = expr.as_scalar()
+        expr = expr.self_group()
+        return CollectionAggregate(
+            expr, operator=operators.all_op,
+            type_=type_api.NULLTYPE, wraps_column_expression=False)
+
+    # operate and reverse_operate are hardwired to
+    # dispatch onto the type comparator directly, so that we can
+    # ensure "reversed" behavior.
+    def operate(self, op, *other, **kwargs):
+        if not operators.is_comparison(op):
+            raise exc.ArgumentError(
+                "Only comparison operators may be used with ANY/ALL")
+        kwargs['reverse'] = True
+        return self.comparator.operate(operators.mirror(op), *other, **kwargs)
+
+    def reverse_operate(self, op, other, **kwargs):
+        # comparison operators should never call reverse_operate
+        assert not operators.is_comparison(op)
+        raise exc.ArgumentError(
+            "Only comparison operators may be used with ANY/ALL")
+
+
 class AsBoolean(UnaryExpression):
 
     def __init__(self, element, operator, negate):
@@ -2811,6 +2898,10 @@ class Slice(ColumnElement):
         self.stop = stop
         self.step = step
         self.type = type_api.NULLTYPE
+
+    def self_group(self, against=None):
+        assert against is operator.getitem
+        return self
 
 
 class IndexExpression(BinaryExpression):

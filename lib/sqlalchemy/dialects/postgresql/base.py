@@ -1045,20 +1045,6 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(element.stop, **kw),
         )
 
-    def visit_any(self, element, **kw):
-        return "%s%sANY (%s)" % (
-            self.process(element.left, **kw),
-            compiler.OPERATORS[element.operator],
-            self.process(element.right, **kw)
-        )
-
-    def visit_all(self, element, **kw):
-        return "%s%sALL (%s)" % (
-            self.process(element.left, **kw),
-            compiler.OPERATORS[element.operator],
-            self.process(element.right, **kw)
-        )
-
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (
             self.process(binary.left, **kw),

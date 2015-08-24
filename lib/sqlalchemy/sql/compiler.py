@@ -97,6 +97,8 @@ OPERATORS = {
     operators.exists: 'EXISTS ',
     operators.distinct_op: 'DISTINCT ',
     operators.inv: 'NOT ',
+    operators.any_op: 'ANY ',
+    operators.all_op: 'ALL ',
 
     # modifiers
     operators.desc_op: ' DESC',

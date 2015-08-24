@@ -38,6 +38,9 @@ database column type available on the target database when issuing a
 type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see `SQL
 Standard Types`_ and the other sections of this chapter.
 
+.. autoclass:: Array
+   :members:
+
 .. autoclass:: BigInteger
    :members:
 

@@ -15,46 +15,32 @@ except ImportError:
     _python_UUID = None
 
 
-class Any(expression.ColumnElement):
+def Any(other, arrexpr, operator=operators.eq):
+    """A synonym for the :meth:`.ARRAY.Comparator.any` method.
 
-    """Represent the clause ``left operator ANY (right)``.  ``right`` must be
-    an array expression.
-
-    .. seealso::
-
-        :class:`.postgresql.ARRAY`
-
-        :meth:`.postgresql.ARRAY.Comparator.any` - ARRAY-bound method
-
-    """
-    __visit_name__ = 'any'
-
-    def __init__(self, left, right, operator=operators.eq):
-        self.type = sqltypes.Boolean()
-        self.left = expression._literal_as_binds(left)
-        self.right = right
-        self.operator = operator
-
-
-class All(expression.ColumnElement):
-
-    """Represent the clause ``left operator ALL (right)``.  ``right`` must be
-    an array expression.
+    This method is legacy and is here for backwards-compatiblity.
 
     .. seealso::
 
-        :class:`.postgresql.ARRAY`
-
-        :meth:`.postgresql.ARRAY.Comparator.all` - ARRAY-bound method
+        :func:`.expression.any`
 
     """
-    __visit_name__ = 'all'
 
-    def __init__(self, left, right, operator=operators.eq):
-        self.type = sqltypes.Boolean()
-        self.left = expression._literal_as_binds(left)
-        self.right = right
-        self.operator = operator
+    return arrexpr.any(other, operator)
+
+
+def All(other, arrexpr, operator=operators.eq):
+    """A synonym for the :meth:`.ARRAY.Comparator.all` method.
+
+    This method is legacy and is here for backwards-compatiblity.
+
+    .. seealso::
+
+        :func:`.expression.all`
+
+    """
+
+    return arrexpr.all(other, operator)
 
 
 class array(expression.Tuple):
@@ -105,7 +91,11 @@ class array(expression.Tuple):
         ])
 
     def self_group(self, against=None):
-        return self
+        if (against in (
+                operators.any_op, operators.all_op, operators.getitem)):
+            return expression.Grouping(self)
+        else:
+            return self
 
 
 CONTAINS = operators.custom_op("@>", precedence=5)
@@ -115,180 +105,60 @@ CONTAINED_BY = operators.custom_op("<@", precedence=5)
 OVERLAP = operators.custom_op("&&", precedence=5)
 
 
-class ARRAY(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
+class ARRAY(sqltypes.Array):
 
     """Postgresql ARRAY type.
 
-    Represents values as Python lists.
+    .. versionchanged:: 1.1 The :class:`.postgresql.ARRAY` type is now
+       a subclass of the core :class:`.Array` type.
 
-    An :class:`.ARRAY` type is constructed given the "type"
-    of element::
+    The :class:`.postgresql.ARRAY` type is constructed in the same way
+    as the core :class:`.Array` type; a member type is required, and a
+    number of dimensions is recommended if the type is to be used for more
+    than one dimension::
 
-        mytable = Table("mytable", metadata,
-                Column("data", ARRAY(Integer))
-            )
-
-    The above type represents an N-dimensional array,
-    meaning Postgresql will interpret values with any number
-    of dimensions automatically.   To produce an INSERT
-    construct that passes in a 1-dimensional array of integers::
-
-        connection.execute(
-                mytable.insert(),
-                data=[1,2,3]
-        )
-
-    The :class:`.ARRAY` type can be constructed given a fixed number
-    of dimensions::
+        from sqlalchemy.dialects import postgresql
 
         mytable = Table("mytable", metadata,
-                Column("data", ARRAY(Integer, dimensions=2))
+                Column("data", postgresql.ARRAY(Integer, dimensions=2))
             )
 
-    This has the effect of the :class:`.ARRAY` type
-    specifying that number of bracketed blocks when a :class:`.Table`
-    is used in a CREATE TABLE statement, or when the type is used
-    within a :func:`.expression.cast` construct; it also causes
-    the bind parameter and result set processing of the type
-    to optimize itself to expect exactly that number of dimensions.
-    Note that Postgresql itself still allows N dimensions with such a type.
-
-    SQL expressions of type :class:`.ARRAY` have support for "index" and
-    "slice" behavior.  The Python ``[]`` operator works normally here, given
-    integer indexes or slices.  Note that Postgresql arrays default
-    to 1-based indexing.  The operator produces binary expression
-    constructs which will produce the appropriate SQL, both for
-    SELECT statements::
-
-        select([mytable.c.data[5], mytable.c.data[2:7]])
-
-    as well as UPDATE statements when the :meth:`.Update.values` method
-    is used::
-
-        mytable.update().values({
-            mytable.c.data[5]: 7,
-            mytable.c.data[2:7]: [1, 2, 3]
-        })
-
-    Multi-dimensional array index support is provided automatically based on
-    either the value specified for the :paramref:`.ARRAY.dimensions` parameter.
-    E.g. an :class:`.ARRAY` with dimensions set to 2 would return an expression
-    of type :class:`.ARRAY` for a single index operation::
-
-        type = ARRAY(Integer, dimensions=2)
-
-        expr = column('x', type)  # expr is of type ARRAY(Integer, dimensions=2)
-
-        expr = column('x', type)[5]  # expr is of type ARRAY(Integer, dimensions=1)
-
-    An index expression from ``expr`` above would then return an expression
-    of type Integer::
-
-        sub_expr = expr[10]  # expr is of type Integer
-
-    .. versionadded:: 1.1 support for index operations on multi-dimensional
-       :class:`.postgresql.ARRAY` objects is added.
-
-    :class:`.ARRAY` provides special methods for containment operations,
-    e.g.::
+    The :class:`.postgresql.ARRAY` type provides all operations defined on the
+    core :class:`.Array` type, including support for "dimensions", indexed
+    access, and simple matching such as :meth:`.Array.Comparator.any`
+    and :meth:`.Array.Comparator.all`.  :class:`.postgresql.ARRAY` class also
+    provides PostgreSQL-specific methods for containment operations, including
+    :meth:`.postgresql.ARRAY.Comparator.contains`
+    :meth:`.postgresql.ARRAY.Comparator.contained_by`,
+    and :meth:`.postgresql.ARRAY.Comparator.overlap`, e.g.::
 
         mytable.c.data.contains([1, 2])
 
-    For a full list of special methods see :class:`.ARRAY.Comparator`.
+    The :class:`.postgresql.ARRAY` type may not be supported on all
+    PostgreSQL DBAPIs; it is currently known to work on psycopg2 only.
 
-    .. versionadded:: 0.8 Added support for index and slice operations
-       to the :class:`.ARRAY` type, including support for UPDATE
-       statements, and special array containment operations.
-
-    The :class:`.ARRAY` type may not be supported on all DBAPIs.
-    It is known to work on psycopg2 and not pg8000.
-
-    Additionally, the :class:`.ARRAY` type does not work directly in
+    Additionally, the :class:`.postgresql.ARRAY` type does not work directly in
     conjunction with the :class:`.ENUM` type.  For a workaround, see the
     special type at :ref:`postgresql_array_of_enum`.
 
-    See also:
+    .. seealso::
 
-    :class:`.postgresql.array` - produce a literal array value.
+        :class:`.types.Array` - base array type
+
+        :class:`.postgresql.array` - produces a literal array value.
 
     """
-    __visit_name__ = 'ARRAY'
 
-    class Comparator(
-            sqltypes.Indexable.Comparator, sqltypes.Concatenable.Comparator):
+    class Comparator(sqltypes.Array.Comparator):
 
-        """Define comparison operations for :class:`.ARRAY`."""
+        """Define comparison operations for :class:`.ARRAY`.
 
-        def _setup_getitem(self, index):
-            if isinstance(index, slice):
-                return_type = self.type
-            elif self.type.dimensions is None or self.type.dimensions == 1:
-                return_type = self.type.item_type
-            else:
-                adapt_kw = {'dimensions': self.type.dimensions - 1}
-                return_type = self.type.adapt(self.type.__class__, **adapt_kw)
+        Note that these operations are in addition to those provided
+        by the base :class:`.types.Array.Comparator` class, including
+        :meth:`.types.Array.Comparator.any` and
+        :meth:`.types.Array.Comparator.all`.
 
-            return operators.getitem, index, return_type
-
-        def any(self, other, operator=operators.eq):
-            """Return ``other operator ANY (array)`` clause.
-
-            Argument places are switched, because ANY requires array
-            expression to be on the right hand-side.
-
-            E.g.::
-
-                from sqlalchemy.sql import operators
-
-                conn.execute(
-                    select([table.c.data]).where(
-                            table.c.data.any(7, operator=operators.lt)
-                        )
-                )
-
-            :param other: expression to be compared
-            :param operator: an operator object from the
-             :mod:`sqlalchemy.sql.operators`
-             package, defaults to :func:`.operators.eq`.
-
-            .. seealso::
-
-                :class:`.postgresql.Any`
-
-                :meth:`.postgresql.ARRAY.Comparator.all`
-
-            """
-            return Any(other, self.expr, operator=operator)
-
-        def all(self, other, operator=operators.eq):
-            """Return ``other operator ALL (array)`` clause.
-
-            Argument places are switched, because ALL requires array
-            expression to be on the right hand-side.
-
-            E.g.::
-
-                from sqlalchemy.sql import operators
-
-                conn.execute(
-                    select([table.c.data]).where(
-                            table.c.data.all(7, operator=operators.lt)
-                        )
-                )
-
-            :param other: expression to be compared
-            :param operator: an operator object from the
-             :mod:`sqlalchemy.sql.operators`
-             package, defaults to :func:`.operators.eq`.
-
-            .. seealso::
-
-                :class:`.postgresql.All`
-
-                :meth:`.postgresql.ARRAY.Comparator.any`
-
-            """
-            return All(other, self.expr, operator=operator)
+        """
 
         def contains(self, other, **kwargs):
             """Boolean expression.  Test if elements are a superset of the

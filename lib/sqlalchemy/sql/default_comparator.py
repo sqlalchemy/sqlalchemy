@@ -15,7 +15,7 @@ from .elements import BindParameter, True_, False_, BinaryExpression, \
     Null, _const_expr, _clause_element_as_expr, \
     ClauseList, ColumnElement, TextClause, UnaryExpression, \
     collate, _is_literal, _literal_as_text, ClauseElement, and_, or_, \
-    Slice, Visitable
+    Slice, Visitable, _literal_as_binds
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 
@@ -172,14 +172,19 @@ def _getitem_impl(expr, op, other, **kw):
                     other.step
                 )
             other = Slice(
-                _check_literal(expr, op, other.start),
-                _check_literal(expr, op, other.stop),
-                _check_literal(expr, op, other.step),
+                _literal_as_binds(
+                    other.start, name=expr.key, type_=type_api.INTEGERTYPE),
+                _literal_as_binds(
+                    other.stop, name=expr.key, type_=type_api.INTEGERTYPE),
+                _literal_as_binds(
+                    other.step, name=expr.key, type_=type_api.INTEGERTYPE)
             )
         else:
             if expr.type.zero_indexes:
                 other += 1
 
+        other = _literal_as_binds(
+            other, name=expr.key, type_=type_api.INTEGERTYPE)
         return _binary_operate(expr, op, other, **kw)
     else:
         _unsupported_impl(expr, op, other, **kw)

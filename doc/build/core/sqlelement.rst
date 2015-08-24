@@ -9,7 +9,11 @@ constructs is the :class:`.ClauseElement`, which is the base for several
 sub-branches.  The :class:`.ColumnElement` class is the fundamental unit
 used to construct any kind of typed SQL expression.
 
+.. autofunction:: all_
+
 .. autofunction:: and_
+
+.. autofunction:: any_
 
 .. autofunction:: asc
 

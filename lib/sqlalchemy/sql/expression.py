@@ -15,7 +15,7 @@ class.
 """
 
 __all__ = [
-    'Alias', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
+    'Alias', 'Any', 'All', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
     'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 'Select',
     'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc', 'between',
     'bindparam', 'case', 'cast', 'column', 'delete', 'desc', 'distinct',
@@ -31,7 +31,7 @@ from .visitors import Visitable
 from .functions import func, modifier, FunctionElement, Function
 from ..util.langhelpers import public_factory
 from .elements import ClauseElement, ColumnElement,\
-    BindParameter, UnaryExpression, BooleanClauseList, \
+    BindParameter, CollectionAggregate, UnaryExpression, BooleanClauseList, \
     Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
     True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
     Grouping, not_, \
@@ -57,6 +57,8 @@ from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
 # the functions to be available in the sqlalchemy.sql.* namespace and
 # to be auto-cross-documenting from the function to the class itself.
 
+all_ = public_factory(CollectionAggregate._create_all, ".expression.all_")
+any_ = public_factory(CollectionAggregate._create_any, ".expression.any_")
 and_ = public_factory(BooleanClauseList.and_, ".expression.and_")
 or_ = public_factory(BooleanClauseList.or_, ".expression.or_")
 bindparam = public_factory(BindParameter, ".expression.bindparam")

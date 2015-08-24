@@ -622,6 +622,24 @@ class ColumnOperators(Operators):
         """
         return self.operate(distinct_op)
 
+    def any_(self):
+        """Produce a :func:`~.expression.any_` clause against the
+        parent object.
+
+        .. versionadded:: 1.1
+
+        """
+        return self.operate(any_op)
+
+    def all_(self):
+        """Produce a :func:`~.expression.all_` clause against the
+        parent object.
+
+        .. versionadded:: 1.1
+
+        """
+        return self.operate(all_op)
+
     def __add__(self, other):
         """Implement the ``+`` operator.
 
@@ -755,6 +773,14 @@ def distinct_op(a):
     return a.distinct()
 
 
+def any_op(a):
+    return a.any_()
+
+
+def all_op(a):
+    return a.all_()
+
+
 def startswith_op(a, b, escape=None):
     return a.startswith(b, escape=escape)
 
@@ -834,6 +860,23 @@ def is_natural_self_precedent(op):
     return op in _natural_self_precedent or \
         isinstance(op, custom_op) and op.natural_self_precedent
 
+_mirror = {
+    gt: lt,
+    ge: le,
+    lt: gt,
+    le: ge
+}
+
+
+def mirror(op):
+    """rotate a comparison operator 180 degrees.
+
+    Note this is not the same as negation.
+
+    """
+    return _mirror.get(op, op)
+
+
 _associative = _commutative.union([concat_op, and_, or_])
 
 _natural_self_precedent = _associative.union([getitem])
@@ -842,12 +885,15 @@ parenthesize (a op b).
 
 """
 
+
 _asbool = util.symbol('_asbool', canonical=-10)
 _smallest = util.symbol('_smallest', canonical=-100)
 _largest = util.symbol('_largest', canonical=100)
 
 _PRECEDENCE = {
     from_: 15,
+    any_op: 15,
+    all_op: 15,
     getitem: 15,
     mul: 8,
     truediv: 8,

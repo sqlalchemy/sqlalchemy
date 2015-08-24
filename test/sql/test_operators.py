@@ -1,7 +1,8 @@
 from sqlalchemy.testing import fixtures, eq_, is_, is_not_
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.sql import column, desc, asc, literal, collate, null, true, false
+from sqlalchemy.sql import column, desc, asc, literal, collate, null, \
+    true, false, any_, all_
 from sqlalchemy.sql.expression import BinaryExpression, \
     ClauseList, Grouping, \
     UnaryExpression, select, union, func, tuple_
@@ -14,7 +15,7 @@ from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.sql import compiler
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
-    Boolean, NullType, MatchType, Indexable, Concatenable
+    Boolean, NullType, MatchType, Indexable, Concatenable, Array
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -2262,3 +2263,154 @@ class TupleTypingTest(fixtures.TestBase):
         eq_(len(expr.right.clauses), 2)
         for elem in expr.right.clauses:
             self._assert_types(elem)
+
+
+class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _fixture(self):
+        m = MetaData()
+
+        t = Table(
+            'tab1', m,
+            Column('arrval', Array(Integer)),
+            Column('data', Integer)
+        )
+        return t
+
+    def test_any_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == any_(t.c.arrval),
+            ":param_1 = ANY (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_all_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == all_(t.c.arrval),
+            ":param_1 = ALL (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_any_comparator_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 > any_(t.c.arrval),
+            ":param_1 > ANY (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_all_comparator_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 > all_(t.c.arrval),
+            ":param_1 > ALL (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_any_comparator_array_wexpr(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.data > any_(t.c.arrval),
+            "tab1.data > ANY (tab1.arrval)",
+            checkparams={}
+        )
+
+    def test_all_comparator_array_wexpr(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.data > all_(t.c.arrval),
+            "tab1.data > ALL (tab1.arrval)",
+            checkparams={}
+        )
+
+    def test_illegal_ops(self):
+        t = self._fixture()
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Only comparison operators may be used with ANY/ALL",
+            lambda: 5 + all_(t.c.arrval)
+        )
+
+        # TODO:
+        # this is invalid but doesn't raise an error,
+        # as the left-hand side just does its thing.  Types
+        # would need to reject their right-hand side.
+        self.assert_compile(
+            t.c.data + all_(t.c.arrval),
+            "tab1.data + ALL (tab1.arrval)"
+        )
+
+    def test_any_array_comparator_accessor(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.arrval.any(5, operator.gt),
+            ":param_1 > ANY (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_all_array_comparator_accessor(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.arrval.all(5, operator.gt),
+            ":param_1 > ALL (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_any_array_expression(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == any_(t.c.arrval[5:6] + postgresql.array([3, 4])),
+            "%(param_1)s = ANY (tab1.arrval[%(arrval_1)s:%(arrval_2)s] || "
+            "ARRAY[%(param_2)s, %(param_3)s])",
+            checkparams={
+                'arrval_2': 6, 'param_1': 5, 'param_3': 4,
+                'arrval_1': 5, 'param_2': 3},
+            dialect='postgresql'
+        )
+
+    def test_all_array_expression(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == all_(t.c.arrval[5:6] + postgresql.array([3, 4])),
+            "%(param_1)s = ALL (tab1.arrval[%(arrval_1)s:%(arrval_2)s] || "
+            "ARRAY[%(param_2)s, %(param_3)s])",
+            checkparams={
+                'arrval_2': 6, 'param_1': 5, 'param_3': 4,
+                'arrval_1': 5, 'param_2': 3},
+            dialect='postgresql'
+        )
+
+    def test_any_subq(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == any_(select([t.c.data]).where(t.c.data < 10)),
+            ":param_1 = ANY (SELECT tab1.data "
+            "FROM tab1 WHERE tab1.data < :data_1)",
+            checkparams={'data_1': 10, 'param_1': 5}
+        )
+
+    def test_all_subq(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == all_(select([t.c.data]).where(t.c.data < 10)),
+            ":param_1 = ALL (SELECT tab1.data "
+            "FROM tab1 WHERE tab1.data < :data_1)",
+            checkparams={'data_1': 10, 'param_1': 5}
+        )
+

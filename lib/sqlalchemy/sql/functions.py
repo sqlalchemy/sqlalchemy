@@ -12,7 +12,7 @@ from . import sqltypes, schema
 from .base import Executable, ColumnCollection
 from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
     literal_column, _type_from_args, ColumnElement, _clone,\
-    Over, BindParameter, FunctionFilter
+    Over, BindParameter, FunctionFilter, Grouping
 from .selectable import FromClause, Select, Alias
 
 from . import operators
@@ -232,6 +232,16 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def _bind_param(self, operator, obj):
         return BindParameter(None, obj, _compared_to_operator=operator,
                              _compared_to_type=self.type, unique=True)
+
+    def self_group(self, against=None):
+        # for the moment, we are parenthesizing all array-returning
+        # expressions against getitem.  This may need to be made
+        # more portable if in the future we support other DBs
+        # besides postgresql.
+        if against is operators.getitem:
+            return Grouping(self)
+        else:
+            return super(FunctionElement, self).self_group(against=against)
 
 
 class _FunctionGenerator(object):
