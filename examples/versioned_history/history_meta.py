@@ -210,13 +210,13 @@ def create_version(obj, session, deleted=False):
             a, u, d = attributes.get_history(obj, prop.key)
 
             if d:
-                attr[hist_col.key] = d[0]
+                attr[prop.key] = d[0]
                 obj_changed = True
             elif u:
-                attr[hist_col.key] = u[0]
-            else:
+                attr[prop.key] = u[0]
+            elif a:
                 # if the attribute had no value.
-                attr[hist_col.key] = a[0]
+                attr[prop.key] = a[0]
                 obj_changed = True
 
     if not obj_changed:
