@@ -2696,7 +2696,33 @@ def configure_mappers():
     have been constructed thus far.
 
     This function can be called any number of times, but in
-    most cases is handled internally.
+    most cases is invoked automatically, the first time mappings are used,
+    as well as whenever mappings are used and additional not-yet-configured
+    mappers have been constructed.
+
+    Points at which this occur include when a mapped class is instantiated
+    into an instance, as well as when the :meth:`.Session.query` method
+    is used.
+
+    The :func:`.configure_mappers` function provides several event hooks
+    that can be used to augment its functionality.  These methods include:
+
+    * :meth:`.MapperEvents.before_configured` - called once before
+      :func:`.configure_mappers` does any work; this can be used to establish
+      additional options, properties, or related mappings before the operation
+      proceeds.
+
+    * :meth:`.MapperEvents.mapper_configured` - called as each indivudal
+      :class:`.Mapper` is configured within the process; will include all
+      mapper state except for backrefs set up by other mappers that are still
+      to be configured.
+
+    * :meth:`.MapperEvents.after_configured` - called once after
+      :func:`.configure_mappers` is complete; at this stage, all
+      :class:`.Mapper` objects that are known  to SQLAlchemy will be fully
+      configured.  Note that the calling application may still have other
+      mappings that haven't been produced yet, such as if they are in modules
+      as yet unimported.
 
     """
 
