@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 1370
+
+        Added support for "set-aggregate" functions of the form
+        ``<function> WITHIN GROUP (ORDER BY <criteria>)``, using the
+        method :meth:`.FunctionElement.within_group`.  A series of common
+        set-aggregate functions with return types derived from the set have
+        been added. This includes functions like :class:`.percentile_cont`,
+        :class:`.dense_rank` and others.
+
+        .. seealso::
+
+            :ref:`change_3132`
+
+    .. change::
         :tags: feature, sql, postgresql
         :tickets: 3132
 
@@ -30,6 +45,10 @@
         and supports index / slice operations.   As arrays are only
         supported on Postgresql at the moment, only actually works on
         Postgresql.
+
+        .. seealso::
+
+            :ref:`change_3132`
 
     .. change::
         :tags: feature, sql

@@ -69,6 +69,8 @@ used to construct any kind of typed SQL expression.
 
 .. autofunction:: type_coerce
 
+.. autofunction:: within_group
+
 .. autoclass:: BinaryExpression
    :members:
 
@@ -131,6 +133,9 @@ used to construct any kind of typed SQL expression.
    :members:
 
 .. autoclass:: Tuple
+   :members:
+
+.. autoclass:: WithinGroup
    :members:
 
 .. autoclass:: sqlalchemy.sql.elements.True_

@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: July 24, 2015.
+    Document last updated: August 26, 2015
 
 Introduction
 ============
@@ -262,6 +262,43 @@ such as::
 
 
 :ticket:`3516`
+
+.. _change_3132:
+
+New Function features, "WITHIN GROUP", array_agg and set aggregate functions
+----------------------------------------------------------------------------
+
+With the new :class:`.Array` type we can also implement a pre-typed
+function for the ``array_agg()`` SQL function that returns an array,
+which is now available using :class:`.array_agg`::
+
+    from sqlalchemy import func
+    stmt = select([func.array_agg(table.c.value)])
+
+Additionally, functions like ``percentile_cont()``, ``percentile_disc()``,
+``rank()``, ``dense_rank()`` and others that require an ordering via
+``WITHIN GROUP (ORDER BY <expr>)`` are now available via the
+:meth:`.FunctionElement.within_group` modifier::
+
+    from sqlalchemy import func
+    stmt = select([
+        department.c.id,
+        func.percentile_cont(0.5).within_group(
+            department.c.salary.desc()
+        )
+    ])
+
+The above statement would produce SQL similar to::
+
+  SELECT department.id, percentile_cont(0.5)
+  WITHIN GROUP (ORDER BY department.salary DESC)
+
+Placeholders with correct return types are now provided for these functions,
+and include :class:`.percentile_cont`, :class:`.percentile_disc`,
+:class:`.rank`, :class:`.dense_rank`, :class:`.mode`, :class:`.percent_rank`,
+and :class:`.cume_dist`.
+
+:ticket:`3132` :ticket:`1370`
 
 Key Behavioral Changes - ORM
 ============================

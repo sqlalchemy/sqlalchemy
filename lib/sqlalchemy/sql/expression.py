@@ -24,7 +24,7 @@ __all__ = [
     'literal', 'literal_column', 'not_', 'null', 'nullsfirst', 'nullslast',
     'or_', 'outparam', 'outerjoin', 'over', 'select', 'subquery',
     'table', 'text',
-    'tuple_', 'type_coerce', 'union', 'union_all', 'update']
+    'tuple_', 'type_coerce', 'union', 'union_all', 'update', 'within_group']
 
 
 from .visitors import Visitable
@@ -34,7 +34,7 @@ from .elements import ClauseElement, ColumnElement,\
     BindParameter, CollectionAggregate, UnaryExpression, BooleanClauseList, \
     Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
     True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
-    Grouping, not_, \
+    Grouping, WithinGroup, not_, \
     collate, literal_column, between,\
     literal, outparam, type_coerce, ClauseList, FunctionFilter
 
@@ -67,6 +67,7 @@ text = public_factory(TextClause._create_text, ".expression.text")
 table = public_factory(TableClause, ".expression.table")
 column = public_factory(ColumnClause, ".expression.column")
 over = public_factory(Over, ".expression.over")
+within_group = public_factory(WithinGroup, ".expression.within_group")
 label = public_factory(Label, ".expression.label")
 case = public_factory(Case, ".expression.case")
 cast = public_factory(Cast, ".expression.cast")

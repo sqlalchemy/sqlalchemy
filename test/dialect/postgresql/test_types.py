@@ -1710,7 +1710,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_defined(self):
         self._test_where(
             self.hashcol.defined('foo'),
-            "defined(test_table.hash, %(param_1)s)"
+            "defined(test_table.hash, %(defined_1)s)"
         )
 
     def test_where_contains(self):
@@ -1741,7 +1741,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_cols_delete_single_key(self):
         self._test_cols(
             self.hashcol.delete('foo'),
-            "delete(test_table.hash, %(param_1)s) AS delete_1",
+            "delete(test_table.hash, %(delete_2)s) AS delete_1",
             True
         )
 
@@ -1756,7 +1756,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_cols_delete_matching_pairs(self):
         self._test_cols(
             self.hashcol.delete(hstore('1', '2')),
-            ("delete(test_table.hash, hstore(%(param_1)s, %(param_2)s)) "
+            ("delete(test_table.hash, hstore(%(hstore_1)s, %(hstore_2)s)) "
              "AS delete_1"),
             True
         )
@@ -1772,7 +1772,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_cols_hstore_pair_text(self):
         self._test_cols(
             hstore('foo', '3')['foo'],
-            "hstore(%(param_1)s, %(param_2)s) -> %(hstore_1)s AS anon_1",
+            "hstore(%(hstore_1)s, %(hstore_2)s) -> %(hstore_3)s AS anon_1",
             False
         )
 
@@ -1797,14 +1797,14 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         self._test_cols(
             self.hashcol.concat(hstore(cast(self.test_table.c.id, Text), '3')),
             ("test_table.hash || hstore(CAST(test_table.id AS TEXT), "
-             "%(param_1)s) AS anon_1"),
+             "%(hstore_1)s) AS anon_1"),
             True
         )
 
     def test_cols_concat_op(self):
         self._test_cols(
             hstore('foo', 'bar') + self.hashcol,
-            "hstore(%(param_1)s, %(param_2)s) || test_table.hash AS anon_1",
+            "hstore(%(hstore_1)s, %(hstore_2)s) || test_table.hash AS anon_1",
             True
         )
 
