@@ -1,8 +1,8 @@
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_
 import datetime
 from sqlalchemy import func, select, Integer, literal, DateTime, Table, \
     Column, Sequence, MetaData, extract, Date, String, bindparam, \
-    literal_column
+    literal_column, Array, Numeric
 from sqlalchemy.sql import table, column
 from sqlalchemy import sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
@@ -52,7 +52,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             self.assert_compile(
                 fake_func('foo'),
                 "fake_func(%s)" %
-                bindtemplate % {'name': 'param_1', 'position': 1},
+                bindtemplate % {'name': 'fake_func_1', 'position': 1},
                 dialect=dialect)
 
     def test_use_labels(self):
@@ -89,7 +89,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_generic_annotation(self):
         fn = func.coalesce('x', 'y')._annotate({"foo": "bar"})
         self.assert_compile(
-            fn, "coalesce(:param_1, :param_2)"
+            fn, "coalesce(:coalesce_1, :coalesce_2)"
         )
 
     def test_custom_default_namespace(self):
@@ -140,7 +140,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             func.my_func(1, 2),
-            "my_func(:param_1, :param_2, :param_3)"
+            "my_func(:my_func_1, :my_func_2, :my_func_3)"
         )
 
     def test_custom_registered_identifier(self):
@@ -178,7 +178,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             myfunc(1, 2, 3),
-            "myfunc(:param_1, :param_2, :param_3)"
+            "myfunc(:myfunc_1, :myfunc_2, :myfunc_3)"
         )
 
     def test_namespacing_conflicts(self):
@@ -188,7 +188,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert isinstance(func.count().type, sqltypes.Integer)
 
         self.assert_compile(func.count(), 'count(*)')
-        self.assert_compile(func.count(1), 'count(:param_1)')
+        self.assert_compile(func.count(1), 'count(:count_1)')
         c = column('abc')
         self.assert_compile(func.count(c), 'count(abc)')
 
@@ -378,7 +378,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_empty(self):
         self.assert_compile(
             func.count(1).filter(),
-            "count(:param_1)"
+            "count(:count_1)"
         )
 
     def test_funcfilter_criterion(self):
@@ -386,7 +386,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             func.count(1).filter(
                 table1.c.name != None
             ),
-            "count(:param_1) FILTER (WHERE mytable.name IS NOT NULL)"
+            "count(:count_1) FILTER (WHERE mytable.name IS NOT NULL)"
         )
 
     def test_funcfilter_compound_criterion(self):
@@ -395,7 +395,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.name == None,
                 table1.c.myid > 0
             ),
-            "count(:param_1) FILTER (WHERE mytable.name IS NULL AND "
+            "count(:count_1) FILTER (WHERE mytable.name IS NULL AND "
             "mytable.myid > :myid_1)"
         )
 
@@ -404,7 +404,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             select([func.count(1).filter(
                 table1.c.description != None
             ).label('foo')]),
-            "SELECT count(:param_1) FILTER (WHERE mytable.description "
+            "SELECT count(:count_1) FILTER (WHERE mytable.description "
             "IS NOT NULL) AS foo FROM mytable"
         )
 
@@ -429,7 +429,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     table1.c.name == 'name'
                 )
             ]),
-            "SELECT count(:param_1) FILTER (WHERE mytable.name = :name_1) "
+            "SELECT count(:count_1) FILTER (WHERE mytable.name = :name_1) "
             "AS anon_1 FROM mytable"
         )
 
@@ -443,7 +443,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     table1.c.description == 'description'
                 )
             ]),
-            "SELECT count(:param_1) FILTER (WHERE "
+            "SELECT count(:count_1) FILTER (WHERE "
             "mytable.name = :name_1 AND mytable.description = :description_1) "
             "AS anon_1 FROM mytable"
         )
@@ -477,6 +477,70 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM mytable"
         )
 
+    def test_funcfilter_within_group(self):
+        stmt = select([
+            table1.c.myid,
+            func.percentile_cont(0.5).within_group(
+                table1.c.name
+            )
+        ])
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name) "
+            "AS anon_1 "
+            "FROM mytable",
+            {'percentile_cont_1': 0.5}
+        )
+
+    def test_funcfilter_within_group_multi(self):
+        stmt = select([
+            table1.c.myid,
+            func.percentile_cont(0.5).within_group(
+                table1.c.name, table1.c.description
+            )
+        ])
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name, mytable.description) "
+            "AS anon_1 "
+            "FROM mytable",
+            {'percentile_cont_1': 0.5}
+        )
+
+    def test_funcfilter_within_group_desc(self):
+        stmt = select([
+            table1.c.myid,
+            func.percentile_cont(0.5).within_group(
+                table1.c.name.desc()
+            )
+        ])
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name DESC) "
+            "AS anon_1 "
+            "FROM mytable",
+            {'percentile_cont_1': 0.5}
+        )
+
+    def test_funcfilter_within_group_w_over(self):
+        stmt = select([
+            table1.c.myid,
+            func.percentile_cont(0.5).within_group(
+                table1.c.name.desc()
+            ).over(partition_by=table1.c.description)
+        ])
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name DESC) "
+            "OVER (PARTITION BY mytable.description) AS anon_1 "
+            "FROM mytable",
+            {'percentile_cont_1': 0.5}
+        )
+
     def test_incorrect_none_type(self):
         class MissingType(FunctionElement):
             name = 'mt'
@@ -488,6 +552,45 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "not a TypeEngine class or object",
             MissingType().compile
         )
+
+
+class ReturnTypeTest(fixtures.TestBase):
+
+    def test_array_agg(self):
+        expr = func.array_agg(column('data', Integer))
+        is_(expr.type._type_affinity, Array)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_mode(self):
+        expr = func.mode(0.5).within_group(
+            column('data', Integer).desc())
+        is_(expr.type._type_affinity, Integer)
+
+    def test_percentile_cont(self):
+        expr = func.percentile_cont(0.5).within_group(column('data', Integer))
+        is_(expr.type._type_affinity, Integer)
+
+    def test_percentile_cont_array(self):
+        expr = func.percentile_cont(0.5, 0.7).within_group(
+            column('data', Integer))
+        is_(expr.type._type_affinity, Array)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_percentile_cont_array_desc(self):
+        expr = func.percentile_cont(0.5, 0.7).within_group(
+            column('data', Integer).desc())
+        is_(expr.type._type_affinity, Array)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_cume_dist(self):
+        expr = func.cume_dist(0.5).within_group(
+            column('data', Integer).desc())
+        is_(expr.type._type_affinity, Numeric)
+
+    def test_percent_rank(self):
+        expr = func.percent_rank(0.5).within_group(
+            column('data', Integer))
+        is_(expr.type._type_affinity, Numeric)
 
 
 class ExecuteTest(fixtures.TestBase):

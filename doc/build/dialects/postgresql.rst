@@ -30,9 +30,9 @@ construction arguments, are as follows:
     :members: __init__, Comparator
 
 
-.. autoclass:: Any
+.. autofunction:: Any
 
-.. autoclass:: All
+.. autofunction:: All
 
 .. autoclass:: BIT
     :members: __init__

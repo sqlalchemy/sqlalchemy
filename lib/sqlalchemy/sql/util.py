@@ -154,6 +154,7 @@ def unwrap_order_by(clause):
     without DESC/ASC/NULLS FIRST/NULLS LAST"""
 
     cols = util.column_set()
+    result = []
     stack = deque([clause])
     while stack:
         t = stack.popleft()
@@ -166,11 +167,13 @@ def unwrap_order_by(clause):
                 t = t.element
             if isinstance(t, (_textual_label_reference)):
                 continue
-            cols.add(t)
+            if t not in cols:
+                cols.add(t)
+                result.append(t)
         else:
             for c in t.get_children():
                 stack.append(c)
-    return cols
+    return result
 
 
 def clause_is_present(clause, search):

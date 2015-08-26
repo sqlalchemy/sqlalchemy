@@ -22,6 +22,53 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 1370
+
+        Added support for "set-aggregate" functions of the form
+        ``<function> WITHIN GROUP (ORDER BY <criteria>)``, using the
+        method :meth:`.FunctionElement.within_group`.  A series of common
+        set-aggregate functions with return types derived from the set have
+        been added. This includes functions like :class:`.percentile_cont`,
+        :class:`.dense_rank` and others.
+
+        .. seealso::
+
+            :ref:`change_3132`
+
+    .. change::
+        :tags: feature, sql, postgresql
+        :tickets: 3132
+
+        Added support for the SQL-standard function :class:`.array_agg`,
+        which automatically returns an :class:`.Array` of the correct type
+        and supports index / slice operations.   As arrays are only
+        supported on Postgresql at the moment, only actually works on
+        Postgresql.
+
+        .. seealso::
+
+            :ref:`change_3132`
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3516
+
+        Added a new type to core :class:`.types.Array`.  This is the
+        base of the PostgreSQL :class:`.ARRAY` type, and is now part of Core
+        to begin supporting various SQL-standard array-supporting features
+        including some functions and eventual support for native arrays
+        on other databases that have an "array" concept, such as DB2 or Oracle.
+        Additionally, new operators :func:`.expression.any_` and
+        :func:`.expression.all_` have been added.  These support not just
+        array constructs on Postgresql, but also subqueries that are usable
+        on MySQL (but sadly not on Postgresql).
+
+        .. seealso::
+
+            :ref:`change_3516`
+
+    .. change::
         :tags: feature, orm
         :tickets: 3321
 

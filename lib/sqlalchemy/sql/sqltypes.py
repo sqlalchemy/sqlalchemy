@@ -1496,6 +1496,246 @@ class Interval(_DateAffinity, TypeDecorator):
         return self.impl.coerce_compared_value(op, value)
 
 
+class Array(Indexable, Concatenable, TypeEngine):
+    """Represent a SQL Array type.
+
+    .. note::  This type serves as the basis for all ARRAY operations.
+       However, currently **only the Postgresql backend has support
+       for SQL arrays in SQLAlchemy**.  It is recommended to use the
+       :class:`.postgresql.ARRAY` type directly when using ARRAY types
+       with PostgreSQL, as it provides additional operators specific
+       to that backend.
+
+    :class:`.Array` is part of the Core in support of various SQL standard
+    functions such as :class:`.array_agg` which explicitly involve arrays;
+    however, with the exception of the PostgreSQL backend and possibly
+    some third-party dialects, no other SQLAlchemy built-in dialect has
+    support for this type.
+
+    An :class:`.Array` type is constructed given the "type"
+    of element::
+
+        mytable = Table("mytable", metadata,
+                Column("data", Array(Integer))
+            )
+
+    The above type represents an N-dimensional array,
+    meaning a supporting backend such as Postgresql will interpret values
+    with any number of dimensions automatically.   To produce an INSERT
+    construct that passes in a 1-dimensional array of integers::
+
+        connection.execute(
+                mytable.insert(),
+                data=[1,2,3]
+        )
+
+    The :class:`.Array` type can be constructed given a fixed number
+    of dimensions::
+
+        mytable = Table("mytable", metadata,
+                Column("data", Array(Integer, dimensions=2))
+            )
+
+    Sending a number of dimensions is optional, but recommended if the
+    datatype is to represent arrays of more than one dimension.  This number
+    is used:
+
+    * When emitting the type declaration itself to the database, e.g.
+      ``INTEGER[][]``
+
+    * When translating Python values to database values, and vice versa, e.g.
+      an ARRAY of :class:`.Unicode` objects uses this number to efficiently
+      access the string values inside of array structures without resorting
+      to per-row type inspection
+
+    * When used with the Python ``getitem`` accessor, the number of dimensions
+      serves to define the kind of type that the ``[]`` operator should
+      return, e.g. for an ARRAY of INTEGER with two dimensions::
+
+            >>> expr = table.c.column[5]  # returns ARRAY(Integer, dimensions=1)
+            >>> expr = expr[6]  # returns Integer
+
+    For 1-dimensional arrays, an :class:`.Array` instance with no
+    dimension parameter will generally assume single-dimensional behaviors.
+
+    SQL expressions of type :class:`.Array` have support for "index" and
+    "slice" behavior.  The Python ``[]`` operator works normally here, given
+    integer indexes or slices.  Arrays default to 1-based indexing.
+    The operator produces binary expression
+    constructs which will produce the appropriate SQL, both for
+    SELECT statements::
+
+        select([mytable.c.data[5], mytable.c.data[2:7]])
+
+    as well as UPDATE statements when the :meth:`.Update.values` method
+    is used::
+
+        mytable.update().values({
+            mytable.c.data[5]: 7,
+            mytable.c.data[2:7]: [1, 2, 3]
+        })
+
+    The :class:`.Array` type also provides for the operators
+    :meth:`.Array.Comparator.any` and :meth:`.Array.Comparator.all`.
+    The PostgreSQL-specific version of :class:`.Array` also provides additional
+    operators.
+
+    .. versionadded:: 1.1.0
+
+    .. seealso::
+
+        :class:`.postgresql.ARRAY`
+
+    """
+    __visit_name__ = 'ARRAY'
+
+    class Comparator(Indexable.Comparator, Concatenable.Comparator):
+
+        """Define comparison operations for :class:`.Array`.
+
+        More operators are available on the dialect-specific form
+        of this type.  See :class:`.postgresql.ARRAY.Comparator`.
+
+        """
+
+        def _setup_getitem(self, index):
+            if isinstance(index, slice):
+                return_type = self.type
+            elif self.type.dimensions is None or self.type.dimensions == 1:
+                return_type = self.type.item_type
+            else:
+                adapt_kw = {'dimensions': self.type.dimensions - 1}
+                return_type = self.type.adapt(self.type.__class__, **adapt_kw)
+
+            return operators.getitem, index, return_type
+
+        @util.dependencies("sqlalchemy.sql.elements")
+        def any(self, elements, other, operator=None):
+            """Return ``other operator ANY (array)`` clause.
+
+            Argument places are switched, because ANY requires array
+            expression to be on the right hand-side.
+
+            E.g.::
+
+                from sqlalchemy.sql import operators
+
+                conn.execute(
+                    select([table.c.data]).where(
+                            table.c.data.any(7, operator=operators.lt)
+                        )
+                )
+
+            :param other: expression to be compared
+            :param operator: an operator object from the
+             :mod:`sqlalchemy.sql.operators`
+             package, defaults to :func:`.operators.eq`.
+
+            .. seealso::
+
+                :func:`.sql.expression.any_`
+
+                :meth:`.Array.Comparator.all`
+
+            """
+            operator = operator if operator else operators.eq
+            return operator(
+                elements._literal_as_binds(other),
+                elements.CollectionAggregate._create_any(self.expr)
+            )
+
+        @util.dependencies("sqlalchemy.sql.elements")
+        def all(self, elements, other, operator=None):
+            """Return ``other operator ALL (array)`` clause.
+
+            Argument places are switched, because ALL requires array
+            expression to be on the right hand-side.
+
+            E.g.::
+
+                from sqlalchemy.sql import operators
+
+                conn.execute(
+                    select([table.c.data]).where(
+                            table.c.data.all(7, operator=operators.lt)
+                        )
+                )
+
+            :param other: expression to be compared
+            :param operator: an operator object from the
+             :mod:`sqlalchemy.sql.operators`
+             package, defaults to :func:`.operators.eq`.
+
+            .. seealso::
+
+                :func:`.sql.expression.all_`
+
+                :meth:`.Array.Comparator.any`
+
+            """
+            operator = operator if operator else operators.eq
+            return operator(
+                elements._literal_as_binds(other),
+                elements.CollectionAggregate._create_all(self.expr)
+            )
+
+    comparator_factory = Comparator
+
+    def __init__(self, item_type, as_tuple=False, dimensions=None,
+                 zero_indexes=False):
+        """Construct an :class:`.Array`.
+
+        E.g.::
+
+          Column('myarray', Array(Integer))
+
+        Arguments are:
+
+        :param item_type: The data type of items of this array. Note that
+          dimensionality is irrelevant here, so multi-dimensional arrays like
+          ``INTEGER[][]``, are constructed as ``Array(Integer)``, not as
+          ``Array(Array(Integer))`` or such.
+
+        :param as_tuple=False: Specify whether return results
+          should be converted to tuples from lists.  This parameter is
+          not generally needed as a Python list corresponds well
+          to a SQL array.
+
+        :param dimensions: if non-None, the ARRAY will assume a fixed
+         number of dimensions.   This impacts how the array is declared
+         on the database, how it goes about interpreting Python and
+         result values, as well as how expression behavior in conjunction
+         with the "getitem" operator works.  See the description at
+         :class:`.Array` for additional detail.
+
+        :param zero_indexes=False: when True, index values will be converted
+         between Python zero-based and SQL one-based indexes, e.g.
+         a value of one will be added to all index values before passing
+         to the database.
+
+        """
+        if isinstance(item_type, Array):
+            raise ValueError("Do not nest ARRAY types; ARRAY(basetype) "
+                             "handles multi-dimensional arrays of basetype")
+        if isinstance(item_type, type):
+            item_type = item_type()
+        self.item_type = item_type
+        self.as_tuple = as_tuple
+        self.dimensions = dimensions
+        self.zero_indexes = zero_indexes
+
+    @property
+    def hashable(self):
+        return self.as_tuple
+
+    @property
+    def python_type(self):
+        return list
+
+    def compare_values(self, x, y):
+        return x == y
+
+
 class REAL(Float):
 
     """The SQL REAL type."""

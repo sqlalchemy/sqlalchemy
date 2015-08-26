@@ -5,7 +5,6 @@ from sqlalchemy import *
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 
-
 class IdiosyncrasyTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mysql'
     __backend__ = True
@@ -176,4 +175,58 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                    fetchall())
         eq_([1, 3, 5], [r.id for r in results])
 
+
+class AnyAllTest(fixtures.TablesTest, AssertsCompiledSQL):
+    __only_on__ = 'mysql'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'stuff', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', Integer)
+        )
+
+    @classmethod
+    def insert_data(cls):
+        stuff = cls.tables.stuff
+        testing.db.execute(
+            stuff.insert(),
+            [
+                {'id': 1, 'value': 1},
+                {'id': 2, 'value': 2},
+                {'id': 3, 'value': 3},
+                {'id': 4, 'value': 4},
+                {'id': 5, 'value': 5},
+            ]
+        )
+
+    def test_any_w_comparator(self):
+        stuff = self.tables.stuff
+        stmt = select([stuff.c.id]).where(
+            stuff.c.value > any_(select([stuff.c.value])))
+
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [(2,), (3,), (4,), (5,)]
+        )
+
+    def test_all_w_comparator(self):
+        stuff = self.tables.stuff
+        stmt = select([stuff.c.id]).where(
+            stuff.c.value >= all_(select([stuff.c.value])))
+
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [(5,)]
+        )
+
+    def test_any_literal(self):
+        stuff = self.tables.stuff
+        stmt = select([4 == any_(select([stuff.c.value]))])
+
+        is_(
+            testing.db.execute(stmt).scalar(), True
+        )
 

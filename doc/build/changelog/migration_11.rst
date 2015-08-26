@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: July 24, 2015.
+    Document last updated: August 26, 2015
 
 Introduction
 ============
@@ -205,6 +205,100 @@ UNIONs with parenthesized SELECT statements is much less common than the
 "right-nested-join" use case of that feature.
 
 :ticket:`2528`
+
+.. _change_3516:
+
+Array support added to Core; new ANY and ALL operators
+------------------------------------------------------
+
+Along with the enhancements made to the Postgresql :class:`.ARRAY`
+type described in :ref:`change_3503`, the base class of :class:`.ARRAY`
+itself has been moved to Core in a new class :class:`.types.Array`.
+
+Arrays are part of the SQL standard, as are several array-oriented functions
+such as ``array_agg()`` and ``unnest()``.  In support of these constructs
+for not just PostgreSQL but also potentially for other array-capable backends
+in the future such as DB2, the majority of array logic for SQL expressions
+is now in Core.   The :class:`.Array` type still **only works on
+Postgresql**, however it can be used directly, supporting special array
+use cases such as indexed access, as well as support for the ANY and ALL::
+
+    mytable = Table("mytable", metadata,
+            Column("data", Array(Integer, dimensions=2))
+        )
+
+    expr = mytable.c.data[5][6]
+
+    expr = mytable.c.data[5].any(12)
+
+In support of ANY and ALL, the :class:`.Array` type retains the same
+:meth:`.Array.Comparator.any` and :meth:`.Array.Comparator.all` methods
+from the PostgreSQL type, but also exports these operations to new
+standalone operator functions :func:`.sql.expression.any_` and
+:func:`.sql.expression.all_`.  These two functions work in more
+of the traditional SQL way, allowing a right-side expression form such
+as::
+
+    from sqlalchemy import any_, all_
+
+    select([mytable]).where(12 == any_(mytable.c.data[5]))
+
+For the PostgreSQL-specific operators "contains", "contained_by", and
+"overlaps", one should continue to use the :class:`.postgresql.ARRAY`
+type directly, which provides all functionality of the :class:`.Array`
+type as well.
+
+The :func:`.sql.expression.any_` and :func:`.sql.expression.all_` operators
+are open-ended at the Core level, however their interpretation by backend
+databases is limited.  On the Postgresql backend, the two operators
+**only accept array values**.  Whereas on the MySQL backend, they
+**only accept subquery values**.  On MySQL, one can use an expression
+such as::
+
+    from sqlalchemy import any_, all_
+
+    subq = select([mytable.c.value])
+    select([mytable]).where(12 > any_(subq))
+
+
+:ticket:`3516`
+
+.. _change_3132:
+
+New Function features, "WITHIN GROUP", array_agg and set aggregate functions
+----------------------------------------------------------------------------
+
+With the new :class:`.Array` type we can also implement a pre-typed
+function for the ``array_agg()`` SQL function that returns an array,
+which is now available using :class:`.array_agg`::
+
+    from sqlalchemy import func
+    stmt = select([func.array_agg(table.c.value)])
+
+Additionally, functions like ``percentile_cont()``, ``percentile_disc()``,
+``rank()``, ``dense_rank()`` and others that require an ordering via
+``WITHIN GROUP (ORDER BY <expr>)`` are now available via the
+:meth:`.FunctionElement.within_group` modifier::
+
+    from sqlalchemy import func
+    stmt = select([
+        department.c.id,
+        func.percentile_cont(0.5).within_group(
+            department.c.salary.desc()
+        )
+    ])
+
+The above statement would produce SQL similar to::
+
+  SELECT department.id, percentile_cont(0.5)
+  WITHIN GROUP (ORDER BY department.salary DESC)
+
+Placeholders with correct return types are now provided for these functions,
+and include :class:`.percentile_cont`, :class:`.percentile_disc`,
+:class:`.rank`, :class:`.dense_rank`, :class:`.mode`, :class:`.percent_rank`,
+and :class:`.cume_dist`.
+
+:ticket:`3132` :ticket:`1370`
 
 Key Behavioral Changes - ORM
 ============================

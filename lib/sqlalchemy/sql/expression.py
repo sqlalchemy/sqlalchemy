@@ -15,7 +15,7 @@ class.
 """
 
 __all__ = [
-    'Alias', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
+    'Alias', 'Any', 'All', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
     'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 'Select',
     'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc', 'between',
     'bindparam', 'case', 'cast', 'column', 'delete', 'desc', 'distinct',
@@ -24,17 +24,17 @@ __all__ = [
     'literal', 'literal_column', 'not_', 'null', 'nullsfirst', 'nullslast',
     'or_', 'outparam', 'outerjoin', 'over', 'select', 'subquery',
     'table', 'text',
-    'tuple_', 'type_coerce', 'union', 'union_all', 'update']
+    'tuple_', 'type_coerce', 'union', 'union_all', 'update', 'within_group']
 
 
 from .visitors import Visitable
 from .functions import func, modifier, FunctionElement, Function
 from ..util.langhelpers import public_factory
 from .elements import ClauseElement, ColumnElement,\
-    BindParameter, UnaryExpression, BooleanClauseList, \
+    BindParameter, CollectionAggregate, UnaryExpression, BooleanClauseList, \
     Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
     True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
-    Grouping, not_, \
+    Grouping, WithinGroup, not_, \
     collate, literal_column, between,\
     literal, outparam, type_coerce, ClauseList, FunctionFilter
 
@@ -57,6 +57,8 @@ from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
 # the functions to be available in the sqlalchemy.sql.* namespace and
 # to be auto-cross-documenting from the function to the class itself.
 
+all_ = public_factory(CollectionAggregate._create_all, ".expression.all_")
+any_ = public_factory(CollectionAggregate._create_any, ".expression.any_")
 and_ = public_factory(BooleanClauseList.and_, ".expression.and_")
 or_ = public_factory(BooleanClauseList.or_, ".expression.or_")
 bindparam = public_factory(BindParameter, ".expression.bindparam")
@@ -65,6 +67,7 @@ text = public_factory(TextClause._create_text, ".expression.text")
 table = public_factory(TableClause, ".expression.table")
 column = public_factory(ColumnClause, ".expression.column")
 over = public_factory(Over, ".expression.over")
+within_group = public_factory(WithinGroup, ".expression.within_group")
 label = public_factory(Label, ".expression.label")
 case = public_factory(Case, ".expression.case")
 cast = public_factory(Cast, ".expression.cast")

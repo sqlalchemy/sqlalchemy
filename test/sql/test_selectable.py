@@ -932,10 +932,10 @@ class AnonLabelTest(fixtures.TestBase):
         c1 = func.count('*')
         assert c1.label(None) is not c1
 
-        eq_(str(select([c1])), "SELECT count(:param_1) AS count_1")
+        eq_(str(select([c1])), "SELECT count(:count_2) AS count_1")
         c2 = select([c1]).compile()
 
-        eq_(str(select([c1.label(None)])), "SELECT count(:param_1) AS count_1")
+        eq_(str(select([c1.label(None)])), "SELECT count(:count_2) AS count_1")
 
     def test_named_labels_named_column(self):
         c1 = column('x')

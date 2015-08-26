@@ -10,7 +10,7 @@ from sqlalchemy import (
     and_, func, Date, LargeBinary, literal, cast, text, Enum,
     type_coerce, VARCHAR, Time, DateTime, BigInteger, SmallInteger, BOOLEAN,
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
-    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL)
+    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL, Array)
 from sqlalchemy.sql import ddl
 from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
@@ -27,6 +27,7 @@ from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+
 
 class AdaptTest(fixtures.TestBase):
 
@@ -138,7 +139,7 @@ class AdaptTest(fixtures.TestBase):
         for is_down_adaption, typ, target_adaptions in adaptions():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif typ is dialects.postgresql.ARRAY:
+            elif issubclass(typ, Array):
                 t1 = typ(String)
             else:
                 t1 = typ()
@@ -188,7 +189,7 @@ class AdaptTest(fixtures.TestBase):
         for typ in self._all_types():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif typ is dialects.postgresql.ARRAY:
+            elif issubclass(typ, Array):
                 t1 = typ(String)
             else:
                 t1 = typ()
@@ -1342,6 +1343,68 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         f = os.path.join(os.path.dirname(__file__), "..", name)
         with open(f, mode='rb') as o:
             return o.read()
+
+
+class ArrayTest(fixtures.TestBase):
+
+    def _myarray_fixture(self):
+        class MyArray(Array):
+            pass
+        return MyArray
+
+    def test_array_index_map_dimensions(self):
+        col = column('x', Array(Integer, dimensions=3))
+        is_(
+            col[5].type._type_affinity, Array
+        )
+        eq_(
+            col[5].type.dimensions, 2
+        )
+        is_(
+            col[5][6].type._type_affinity, Array
+        )
+        eq_(
+            col[5][6].type.dimensions, 1
+        )
+        is_(
+            col[5][6][7].type._type_affinity, Integer
+        )
+
+    def test_array_getitem_single_type(self):
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', Array(Integer)),
+            Column('strarr', Array(String)),
+        )
+        is_(arrtable.c.intarr[1].type._type_affinity, Integer)
+        is_(arrtable.c.strarr[1].type._type_affinity, String)
+
+    def test_array_getitem_slice_type(self):
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', Array(Integer)),
+            Column('strarr', Array(String)),
+        )
+        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+
+    def test_array_getitem_slice_type_dialect_level(self):
+        MyArray = self._myarray_fixture()
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', MyArray(Integer)),
+            Column('strarr', MyArray(String)),
+        )
+        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+
+        # but the slice returns the actual type
+        assert isinstance(arrtable.c.intarr[1:3].type, MyArray)
+        assert isinstance(arrtable.c.strarr[1:3].type, MyArray)
+
 
 test_table = meta = MyCustomType = MyTypeDec = None
 

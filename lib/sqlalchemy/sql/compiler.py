@@ -97,6 +97,8 @@ OPERATORS = {
     operators.exists: 'EXISTS ',
     operators.distinct_op: 'DISTINCT ',
     operators.inv: 'NOT ',
+    operators.any_op: 'ANY ',
+    operators.all_op: 'ALL ',
 
     # modifiers
     operators.desc_op: ' DESC',
@@ -770,7 +772,7 @@ class SQLCompiler(Compiled):
 
     def visit_over(self, over, **kwargs):
         return "%s OVER (%s)" % (
-            over.func._compiler_dispatch(self, **kwargs),
+            over.element._compiler_dispatch(self, **kwargs),
             ' '.join(
                 '%s BY %s' % (word, clause._compiler_dispatch(self, **kwargs))
                 for word, clause in (
@@ -779,6 +781,12 @@ class SQLCompiler(Compiled):
                 )
                 if clause is not None and len(clause)
             )
+        )
+
+    def visit_withingroup(self, withingroup, **kwargs):
+        return "%s WITHIN GROUP (ORDER BY %s)" % (
+            withingroup.element._compiler_dispatch(self, **kwargs),
+            withingroup.order_by._compiler_dispatch(self, **kwargs)
         )
 
     def visit_funcfilter(self, funcfilter, **kwargs):

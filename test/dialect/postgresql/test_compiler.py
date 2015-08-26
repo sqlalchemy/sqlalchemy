@@ -693,7 +693,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self._test_array_zero_indexes(False)
 
     def test_array_literal_type(self):
-        is_(postgresql.array([1, 2]).type._type_affinity, postgresql.ARRAY)
+        isinstance(postgresql.array([1, 2]).type, postgresql.ARRAY)
         is_(postgresql.array([1, 2]).type.item_type._type_affinity, Integer)
 
         is_(postgresql.array([1, 2], type_=String).
