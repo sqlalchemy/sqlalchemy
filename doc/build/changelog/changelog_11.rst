@@ -22,6 +22,16 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql, postgresql
+        :tickets: 3132
+
+        Added support for the SQL-standard function :class:`.array_agg`,
+        which automatically returns an :class:`.Array` of the correct type
+        and supports index / slice operations.   As arrays are only
+        supported on Postgresql at the moment, only actually works on
+        Postgresql.
+
+    .. change::
         :tags: feature, sql
         :tickets: 3516
 

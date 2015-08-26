@@ -626,3 +626,25 @@ class sysdate(AnsiFunction):
 
 class user(AnsiFunction):
     type = sqltypes.String
+
+
+class array_agg(GenericFunction):
+    """support for the ARRAY_AGG function.
+
+    The ``func.array_agg(expr)`` construct returns an expression of
+    type :class:`.Array`.
+
+    e.g.
+
+        stmt = select([func.array_agg(table.c.values)[2:5]])
+
+    .. versionadded:: 1.1
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        args = [_literal_as_binds(c) for c in args]
+        kwargs.setdefault('type_', sqltypes.Array(_type_from_args(args)))
+        kwargs['_parsed_args'] = args
+        GenericFunction.__init__(self, *args, **kwargs)
+

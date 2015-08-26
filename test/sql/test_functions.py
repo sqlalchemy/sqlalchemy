@@ -1,8 +1,8 @@
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_
 import datetime
 from sqlalchemy import func, select, Integer, literal, DateTime, Table, \
     Column, Sequence, MetaData, extract, Date, String, bindparam, \
-    literal_column
+    literal_column, Array
 from sqlalchemy.sql import table, column
 from sqlalchemy import sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
@@ -488,6 +488,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "not a TypeEngine class or object",
             MissingType().compile
         )
+
+    def test_array_agg(self):
+        m = MetaData()
+        t = Table('t', m, Column('data', Integer))
+        expr = func.array_agg(t.c.data)
+        is_(expr.type._type_affinity, Array)
+        is_(expr.type.item_type._type_affinity, Integer)
+
 
 
 class ExecuteTest(fixtures.TestBase):

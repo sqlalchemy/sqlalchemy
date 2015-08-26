@@ -916,6 +916,33 @@ class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
 
+    @testing.provide_metadata
+    def test_array_agg(self):
+        values_table = Table('values', self.metadata, Column('value', Integer))
+        self.metadata.create_all(testing.db)
+        testing.db.execute(
+            values_table.insert(),
+            [{'value': i} for i in range(1, 10)]
+        )
+
+        stmt = select([func.array_agg(values_table.c.value)])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            list(range(1, 10))
+        )
+
+        stmt = select([func.array_agg(values_table.c.value)[3]])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            3
+        )
+
+        stmt = select([func.array_agg(values_table.c.value)[2:4]])
+        eq_(
+            testing.db.execute(stmt).scalar(),
+            [2, 3, 4]
+        )
+
     def test_array_index_slice_exprs(self):
         """test a variety of expressions that sometimes need parenthesizing"""
 
