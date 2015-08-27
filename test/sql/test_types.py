@@ -1178,15 +1178,12 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
             def __init__(self, name):
                 self.name = name
 
-        class MyEnum(types.SchemaType, TypeDecorator):
+        class MyEnum(TypeDecorator):
 
             def __init__(self, values):
                 self.impl = Enum(
                     *[v.name for v in values], name="myenum",
                     native_enum=False)
-
-            def _set_table(self, table, column):
-                self.impl._set_table(table, column)
 
             # future method
             def process_literal_param(self, value, dialect):
@@ -2007,11 +2004,8 @@ class BooleanTest(
             def __init__(self, value):
                 self.value = value
 
-        class MyBool(types.SchemaType, TypeDecorator):
+        class MyBool(TypeDecorator):
             impl = Boolean()
-
-            def _set_table(self, table, column):
-                self.impl._set_table(table, column)
 
             # future method
             def process_literal_param(self, value, dialect):

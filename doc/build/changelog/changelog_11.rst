@@ -22,6 +22,23 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sql
+        :tickets: 2919
+
+        The :class:`.TypeDecorator` type extender will now work in conjunction
+        with a :class:`.SchemaType` implementation, typically :class:`.Enum`
+        or :class:`.Boolean` with regards to ensuring that the per-table
+        events are propagated from the implementation type to the outer type.
+        These events are used
+        to ensure that the constraints or Postgresql types (e.g. ENUM)
+        are correctly created (and possibly dropped) along with the parent
+        table.
+
+        .. seealso::
+
+            :ref:`change_2919`
+
+    .. change::
         :tags: feature, sql
         :tickets: 1370
 

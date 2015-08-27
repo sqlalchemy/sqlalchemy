@@ -499,6 +499,34 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             metadata.drop_all()
 
+    @testing.provide_metadata
+    def test_custom_subclass(self):
+        class MyEnum(TypeDecorator):
+            impl = Enum('oneHI', 'twoHI', 'threeHI', name='myenum')
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    value += "HI"
+                return value
+
+            def process_result_value(self, value, dialect):
+                if value is not None:
+                    value += "THERE"
+                return value
+
+        t1 = Table(
+            'table1', self.metadata,
+            Column('data', MyEnum())
+        )
+        self.metadata.create_all(testing.db)
+
+        with testing.db.connect() as conn:
+            conn.execute(t1.insert(), {"data": "two"})
+            eq_(
+                conn.scalar(select([t1.c.data])),
+                "twoHITHERE"
+            )
+
 
 class OIDTest(fixtures.TestBase):
     __only_on__ = 'postgresql'

@@ -13,6 +13,7 @@
 from .. import exc, util
 from . import operators
 from .visitors import Visitable, VisitableType
+from .base import SchemaEventTarget
 
 # these are back-assigned by sqltypes.
 BOOLEANTYPE = None
@@ -592,7 +593,7 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
         return self
 
 
-class TypeDecorator(TypeEngine):
+class TypeDecorator(SchemaEventTarget, TypeEngine):
     """Allows the creation of types which add additional functionality
     to an existing type.
 
@@ -771,6 +772,18 @@ class TypeDecorator(TypeEngine):
         #todo
         """
         return self.impl._type_affinity
+
+    def _set_parent(self, column):
+        """Support SchemaEentTarget"""
+
+        if isinstance(self.impl, SchemaEventTarget):
+            self.impl._set_parent(column)
+
+    def _set_parent_with_dispatch(self, parent):
+        """Support SchemaEentTarget"""
+
+        if isinstance(self.impl, SchemaEventTarget):
+            self.impl._set_parent_with_dispatch(parent)
 
     def type_engine(self, dialect):
         """Return a dialect-specific :class:`.TypeEngine` instance

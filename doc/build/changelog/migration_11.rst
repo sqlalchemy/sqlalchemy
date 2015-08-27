@@ -318,6 +318,35 @@ and :class:`.cume_dist`.
 
 :ticket:`3132` :ticket:`1370`
 
+.. _change_2919:
+
+TypeDecorator now works with Enum, Boolean, "schema" types automatically
+------------------------------------------------------------------------
+
+The :class:`.SchemaType` types include types such as :class:`.Enum`
+and :class:`.Boolean` which, in addition to corresponding to a database
+type, also generate either a CHECK constraint or in the case of Postgresql
+ENUM a new CREATE TYPE statement, will now work automatically with
+:class:`.TypeDecorator` recipes.  Previously, a :class:`.TypeDecorator` for
+an :class:`.postgresql.ENUM` had to look like this::
+
+    # old way
+    class MyEnum(TypeDecorator, SchemaType):
+        impl = postgresql.ENUM('one', 'two', 'three', name='myenum')
+
+        def _set_table(self, table):
+            self.impl._set_table(table)
+
+The :class:`.TypeDecorator` now propagates those additional events so it
+can be done like any other type::
+
+    # new way
+    class MyEnum(TypeDecorator):
+        impl = postgresql.ENUM('one', 'two', 'three', name='myenum')
+
+
+:ticket:`2919`
+
 Key Behavioral Changes - ORM
 ============================
 
