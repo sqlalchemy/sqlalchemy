@@ -14,11 +14,10 @@ from .base import \
     INET, CIDR, UUID, BIT, MACADDR, OID, DOUBLE_PRECISION, TIMESTAMP, TIME, \
     DATE, BYTEA, BOOLEAN, INTERVAL, ENUM, dialect, TSVECTOR, DropEnumType, \
     CreateEnumType
-from .constraints import ExcludeConstraint
 from .hstore import HSTORE, hstore
 from .json import JSON, JSONB
 from .array import array, ARRAY, Any, All
-from .ext import aggregate_order_by
+from .ext import aggregate_order_by, ExcludeConstraint
 
 from .ranges import INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, \
     TSTZRANGE
