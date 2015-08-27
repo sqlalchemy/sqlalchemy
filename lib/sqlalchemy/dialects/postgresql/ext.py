@@ -7,7 +7,9 @@
 
 from ...sql import expression
 from ...sql import elements
+from ...sql import functions
 from ...sql.schema import ColumnCollectionConstraint
+from .array import ARRAY
 
 
 class aggregate_order_by(expression.ColumnElement):
@@ -152,3 +154,15 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
                            initially=self.initially)
         c.dispatch._update(self.dispatch)
         return c
+
+
+def array_agg(*arg, **kw):
+    """Postgresql-specific form of :class:`.array_agg`, ensures
+    return type is :class:`.postgresql.ARRAY` and not
+    the plain :class:`.types.Array`.
+
+    .. versionadded:: 1.1
+
+    """
+    kw['type_'] = ARRAY(functions._type_from_args(arg))
+    return functions.func.array_agg(*arg, **kw)

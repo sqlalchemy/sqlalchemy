@@ -275,7 +275,7 @@ which is now available using :class:`.array_agg`::
     from sqlalchemy import func
     stmt = select([func.array_agg(table.c.value)])
 
-A Postgresql element for an aggreagte ORDER BY is also added via
+A Postgresql element for an aggregate ORDER BY is also added via
 :class:`.postgresql.aggregate_order_by`::
 
     from sqlalchemy.dialects.postgresql import aggregate_order_by
@@ -285,6 +285,13 @@ A Postgresql element for an aggreagte ORDER BY is also added via
 Producing::
 
     SELECT array_agg(table1.a ORDER BY table1.b DESC) AS array_agg_1 FROM table1
+
+The PG dialect itself also provides an :func:`.postgresql.array_agg` wrapper to
+ensure the :class:`.postgresql.ARRAY` type::
+
+    from sqlalchemy.dialects.postgresql import array_agg
+    stmt = select([array_agg(table.c.value).contains('foo')])
+
 
 Additionally, functions like ``percentile_cont()``, ``percentile_disc()``,
 ``rank()``, ``dense_rank()`` and others that require an ordering via

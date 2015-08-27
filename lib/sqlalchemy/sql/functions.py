@@ -661,17 +661,24 @@ class array_agg(GenericFunction):
     The ``func.array_agg(expr)`` construct returns an expression of
     type :class:`.Array`.
 
-    e.g.
+    e.g.::
 
         stmt = select([func.array_agg(table.c.values)[2:5]])
 
     .. versionadded:: 1.1
 
+    .. seealso::
+
+        :func:`.postgresql.array_agg` - PostgreSQL-specific version that
+        returns :class:`.ARRAY`, which has PG-specific operators added.
+
     """
+
+    type = sqltypes.Array
 
     def __init__(self, *args, **kwargs):
         args = [_literal_as_binds(c) for c in args]
-        kwargs.setdefault('type_', sqltypes.Array(_type_from_args(args)))
+        kwargs.setdefault('type_', self.type(_type_from_args(args)))
         kwargs['_parsed_args'] = args
         super(array_agg, self).__init__(*args, **kwargs)
 

@@ -22,7 +22,7 @@ def Any(other, arrexpr, operator=operators.eq):
 
     .. seealso::
 
-        :func:`.expression.any`
+        :func:`.expression.any_`
 
     """
 
@@ -36,7 +36,7 @@ def All(other, arrexpr, operator=operators.eq):
 
     .. seealso::
 
-        :func:`.expression.all`
+        :func:`.expression.all_`
 
     """
 

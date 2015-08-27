@@ -859,6 +859,17 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             "ARRAY[%(param_4)s, %(param_5)s, %(param_6)s]))[%(param_7)s]"
         )
 
+    def test_array_agg_generic(self):
+        expr = func.array_agg(column('q', Integer))
+        is_(expr.type.__class__, types.Array)
+        is_(expr.type.item_type.__class__, Integer)
+
+    def test_array_agg_specific(self):
+        from sqlalchemy.dialects.postgresql import array_agg
+        expr = array_agg(column('q', Integer))
+        is_(expr.type.__class__, postgresql.ARRAY)
+        is_(expr.type.item_type.__class__, Integer)
+
 
 class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
 

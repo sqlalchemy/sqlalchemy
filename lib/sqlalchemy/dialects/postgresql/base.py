@@ -518,6 +518,11 @@ as well as array literals:
 
 * :class:`.postgresql.array` - array literal
 
+* :func:`.postgresql.array_agg` - ARRAY_AGG SQL function
+
+* :class:`.postgresql.aggregate_order_by` - helper for PG's ORDER BY aggregate
+  function syntax.
+
 JSON Types
 ----------
 

@@ -31,6 +31,7 @@ construction arguments, are as follows:
 .. autoclass:: ARRAY
     :members: __init__, Comparator
 
+.. autofunction:: array_agg
 
 .. autofunction:: Any
 

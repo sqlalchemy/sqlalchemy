@@ -42,7 +42,9 @@
 
         Added support for the SQL-standard function :class:`.array_agg`,
         which automatically returns an :class:`.Array` of the correct type
-        and supports index / slice operations.   As arrays are only
+        and supports index / slice operations, as well as
+        :func:`.postgresql.array_agg`, which returns a :class:`.postgresql.ARRAY`
+        with additional comparison features.   As arrays are only
         supported on Postgresql at the moment, only actually works on
         Postgresql.  Also added a new construct
         :class:`.postgresql.aggregate_order_by` in support of PG's
