@@ -44,7 +44,9 @@
         which automatically returns an :class:`.Array` of the correct type
         and supports index / slice operations.   As arrays are only
         supported on Postgresql at the moment, only actually works on
-        Postgresql.
+        Postgresql.  Also added a new construct
+        :class:`.postgresql.aggregate_order_by` in support of PG's
+        "ORDER BY" extension.
 
         .. seealso::
 

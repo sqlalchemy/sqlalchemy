@@ -24,6 +24,8 @@ construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.postgresql
 
+.. autoclass:: aggregate_order_by
+
 .. autoclass:: array
 
 .. autoclass:: ARRAY

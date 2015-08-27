@@ -275,6 +275,17 @@ which is now available using :class:`.array_agg`::
     from sqlalchemy import func
     stmt = select([func.array_agg(table.c.value)])
 
+A Postgresql element for an aggreagte ORDER BY is also added via
+:class:`.postgresql.aggregate_order_by`::
+
+    from sqlalchemy.dialects.postgresql import aggregate_order_by
+    expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+    stmt = select([expr])
+
+Producing::
+
+    SELECT array_agg(table1.a ORDER BY table1.b DESC) AS array_agg_1 FROM table1
+
 Additionally, functions like ``percentile_cont()``, ``percentile_disc()``,
 ``rank()``, ``dense_rank()`` and others that require an ordering via
 ``WITHIN GROUP (ORDER BY <expr>)`` are now available via the

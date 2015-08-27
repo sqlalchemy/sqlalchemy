@@ -18,6 +18,7 @@ from .constraints import ExcludeConstraint
 from .hstore import HSTORE, hstore
 from .json import JSON, JSONB
 from .array import array, ARRAY, Any, All
+from .ext import aggregate_order_by
 
 from .ranges import INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, \
     TSTZRANGE
@@ -29,5 +30,5 @@ __all__ = (
     'INTERVAL', 'ARRAY', 'ENUM', 'dialect', 'array', 'HSTORE',
     'hstore', 'INT4RANGE', 'INT8RANGE', 'NUMRANGE', 'DATERANGE',
     'TSRANGE', 'TSTZRANGE', 'json', 'JSON', 'JSONB', 'Any', 'All',
-    'DropEnumType', 'CreateEnumType', 'ExcludeConstraint'
+    'DropEnumType', 'CreateEnumType', 'ExcludeConstraint', 'aggregate_order_by'
 )

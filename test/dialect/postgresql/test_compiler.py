@@ -12,8 +12,10 @@ from sqlalchemy import exc, schema
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.orm import mapper, aliased, Session
-from sqlalchemy.sql import table, column, operators
+from sqlalchemy.sql import table, column, operators, literal_column
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.util import u
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -798,6 +800,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.CompileError,
             tbl3.select().with_hint(tbl3, "FAKE", "postgresql").compile,
             dialect=postgresql.dialect()
+        )
+
+    def test_aggregate_order_by_one(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select([expr])
+
+        # note this tests that the object exports FROM objects
+        # correctly
+        self.assert_compile(
+            stmt,
+            "SELECT array_agg(table1.a ORDER BY table1.b DESC) "
+            "AS array_agg_1 FROM table1"
+        )
+
+    def test_aggregate_order_by_two(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.string_agg(
+            table.c.a,
+            aggregate_order_by(literal_column("','"), table.c.a)
+        )
+        stmt = select([expr])
+
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(table1.a, ',' ORDER BY table1.a) "
+            "AS string_agg_1 FROM table1"
+        )
+
+    def test_aggregate_order_by_adapt(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select([expr])
+
+        a1 = table.alias('foo')
+        stmt2 = sql_util.ClauseAdapter(a1).traverse(stmt)
+        self.assert_compile(
+            stmt2,
+            "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 FROM table1 AS foo"
         )
 
 

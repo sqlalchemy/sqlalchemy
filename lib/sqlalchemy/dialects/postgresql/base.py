@@ -1051,6 +1051,12 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw)
         )
 
+    def visit_aggregate_order_by(self, element, **kw):
+        return "%s ORDER BY %s" % (
+            self.process(element.target, **kw),
+            self.process(element.order_by, **kw)
+        )
+
     def visit_match_op_binary(self, binary, operator, **kw):
         if "postgresql_regconfig" in binary.modifiers:
             regconfig = self.render_literal_value(
