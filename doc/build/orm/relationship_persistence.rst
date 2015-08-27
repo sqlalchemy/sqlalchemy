@@ -172,25 +172,70 @@ Mutable Primary Keys / Update Cascades
 When the primary key of an entity changes, related items
 which reference the primary key must also be updated as
 well. For databases which enforce referential integrity,
-it's required to use the database's ON UPDATE CASCADE
+the best strategy is to use the database's ON UPDATE CASCADE
 functionality in order to propagate primary key changes
 to referenced foreign keys - the values cannot be out
-of sync for any moment.
+of sync for any moment unless the constraints are marked as "deferrable",
+that is, not enforced until the transaction completes.
 
-For databases that don't support this, such as SQLite and
-MySQL without their referential integrity options turned
-on, the :paramref:`~.relationship.passive_updates` flag can
-be set to ``False``, most preferably on a one-to-many or
-many-to-many :func:`.relationship`, which instructs
-SQLAlchemy to issue UPDATE statements individually for
-objects referenced in the collection, loading them into
-memory if not already locally present. The
-:paramref:`~.relationship.passive_updates` flag can also be ``False`` in
-conjunction with ON UPDATE CASCADE functionality,
-although in that case the unit of work will be issuing
-extra SELECT and UPDATE statements unnecessarily.
+It is **highly recommended** that an application which seeks to employ
+natural primary keys with mutable values to use the ``ON UPDATE CASCADE``
+capabilities of the database.   An example mapping which
+illustrates this is::
 
-A typical mutable primary key setup might look like::
+    class User(Base):
+        __tablename__ = 'user'
+        __table_args__ = {'mysql_engine': 'InnoDB'}
+
+        username = Column(String(50), primary_key=True)
+        fullname = Column(String(100))
+
+        addresses = relationship("Address")
+
+
+    class Address(Base):
+        __tablename__ = 'address'
+        __table_args__ = {'mysql_engine': 'InnoDB'}
+
+        email = Column(String(50), primary_key=True)
+        username = Column(String(50),
+                    ForeignKey('user.username', onupdate="cascade")
+                )
+
+Above, we illustrate ``onupdate="cascade"`` on the :class:`.ForeignKey`
+object, and we also illustrate the ``mysql_engine='InnoDB'`` setting
+which, on a MySQL backend, ensures that the ``InnoDB`` engine supporting
+referential integrity is used.  When using SQLite, referential integrity
+should be enabled, using the configuration described at
+:ref:`sqlite_foreign_keys`.
+
+Simulating limited ON UPDATE CASCADE without foreign key support
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In those cases when a database that does not support referential integrity
+is used, and natural primary keys with mutable values are in play,
+SQLAlchemy offers a feature in order to allow propagation of primary key
+values to already-referenced foreign keys to a **limited** extent,
+by emitting an UPDATE statement against foreign key columns that immediately
+reference a primary key column whose value has changed.
+The primary platforms without referential integrity features are
+MySQL when the ``MyISAM`` storage engine is used, and SQLite when the
+``PRAGMA foreign_keys=ON`` pragma is not used.  The Oracle database also
+has no support for ``ON UPDATE CASCADE``, but because it still enforces
+referential integrity, needs constraints to be marked as deferrable
+so that SQLAlchemy can emit UPDATE statements.
+
+The feature is enabled by setting the
+:paramref:`~.relationship.passive_updates` flag to ``False``,
+most preferably on a one-to-many or
+many-to-many :func:`.relationship`.  When "updates" are no longer
+"passive" this indicates that SQLAlchemy will
+issue UPDATE statements individually for
+objects referenced in the collection referred to by the parent object
+with a changing primary key value.  This also implies that collections
+will be fully loaded into memory if not already locally present.
+
+Our previous mapping using ``passive_updates=False`` looks like::
 
     class User(Base):
         __tablename__ = 'user'
@@ -206,22 +251,29 @@ A typical mutable primary key setup might look like::
         __tablename__ = 'address'
 
         email = Column(String(50), primary_key=True)
-        username = Column(String(50),
-                    ForeignKey('user.username', onupdate="cascade")
-                )
+        username = Column(String(50), ForeignKey('user.username'))
 
-:paramref:`~.relationship.passive_updates` is set to ``True`` by default,
-indicating that ON UPDATE CASCADE is expected to be in
-place in the usual case for foreign keys that expect
-to have a mutating parent key.
+Key limitations of ``passive_updates=False`` include:
 
-A :paramref:`~.relationship.passive_updates` setting of False may be configured on any
-direction of relationship, i.e. one-to-many, many-to-one,
-and many-to-many, although it is much more effective when
-placed just on the one-to-many or many-to-many side.
-Configuring the :paramref:`~.relationship.passive_updates`
-to False only on the
-many-to-one side will have only a partial effect, as the
-unit of work searches only through the current identity
-map for objects that may be referencing the one with a
-mutating primary key, not throughout the database.
+* it performs much more poorly than direct database ON UPDATE CASCADE,
+  because it needs to fully pre-load affected collections using SELECT
+  and also must emit  UPDATE statements against those values, which it
+  will attempt to run  in "batches" but still runs on a per-row basis
+  at the DBAPI level.
+
+* the feature cannot "cascade" more than one level.  That is,
+  if mapping X has a foreign key which refers to the primary key
+  of mapping Y, but then mapping Y's primary key is itself a foreign key
+  to mapping Z, ``passive_updates=False`` cannot cascade a change in
+  primary key value from ``Z`` to ``X``.
+
+* Configuring ``passive_updates=False`` only on the many-to-one
+  side of a relationship will not have a full effect, as the
+  unit of work searches only through the current identity
+  map for objects that may be referencing the one with a
+  mutating primary key, not throughout the database.
+
+As virtually all databases other than Oracle now support ``ON UPDATE CASCADE``,
+it is highly recommended that traditional ``ON UPDATE CASCADE`` support be used
+in the case that natural and mutable primary key values are in use.
+
