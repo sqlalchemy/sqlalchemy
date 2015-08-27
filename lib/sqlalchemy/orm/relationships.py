@@ -604,30 +604,26 @@ class RelationshipProperty(StrategizedProperty):
                 and examples.
 
         :param passive_updates=True:
-          Indicates loading and INSERT/UPDATE/DELETE behavior when the
-          source of a foreign key value changes (i.e. an "on update"
-          cascade), which are typically the primary key columns of the
-          source row.
+          Indicates the persistence behavior to take when a referenced
+          primary key value changes in place, indicating that the referencing
+          foreign key columns will also need their value changed.
 
-          When True, it is assumed that ON UPDATE CASCADE is configured on
+          When True, it is assumed that ``ON UPDATE CASCADE`` is configured on
           the foreign key in the database, and that the database will
           handle propagation of an UPDATE from a source column to
-          dependent rows.  Note that with databases which enforce
-          referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
-          ON UPDATE CASCADE is required for this operation.  The
-          relationship() will update the value of the attribute on related
-          items which are locally present in the session during a flush.
+          dependent rows.  When False, the SQLAlchemy :func:`.relationship`
+          construct will attempt to emit its own UPDATE statements to
+          modify related targets.  However note that SQLAlchemy **cannot**
+          emit an UPDATE for more than one level of cascade.  Also,
+          setting this flag to False is not compatible in the case where
+          the database is in fact enforcing referential integrity, unless
+          those constraints are explicitly "deferred", if the target backend
+          supports it.
 
-          When False, it is assumed that the database does not enforce
-          referential integrity and will not be issuing its own CASCADE
-          operation for an update.  The relationship() will issue the
-          appropriate UPDATE statements to the database in response to the
-          change of a referenced key, and items locally present in the
-          session during a flush will also be refreshed.
-
-          This flag should probably be set to False if primary key changes
-          are expected and the database in use doesn't support CASCADE
-          (i.e. SQLite, MySQL MyISAM tables).
+          It is highly advised that an application which is employing
+          mutable primary keys keeps ``passive_updates`` set to True,
+          and instead uses the referential integrity features of the database
+          itself in order to handle the change efficiently and fully.
 
           .. seealso::
 
