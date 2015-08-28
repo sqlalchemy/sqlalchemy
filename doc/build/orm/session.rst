@@ -20,6 +20,7 @@ configured, the primary usage interface for persistence operations is the
     session_transaction
     persistence_techniques
     contextual
+    session_events
     session_api
 
 
