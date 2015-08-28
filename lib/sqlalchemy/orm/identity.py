@@ -208,6 +208,18 @@ class WeakInstanceDict(IdentityMap):
 
 
 class StrongInstanceDict(IdentityMap):
+    """A 'strong-referencing' version of the identity map.
+
+    .. deprecated:: this object is present in order to fulfill
+       the ``weak_identity_map=False`` option of the Session.
+       This option is present to allow compatibility with older applications,
+       but it is recommended that strong references to objects
+       be maintained by the calling application
+       externally to the :class:`.Session` itself, to the degree
+       that is needed by the application.
+
+    """
+
     if util.py2k:
         def itervalues(self):
             return self._dict.itervalues()

@@ -630,15 +630,26 @@ class Session(_SessionClassMethods):
            ``False``, objects placed in the :class:`.Session` will be
            strongly referenced until explicitly removed or the
            :class:`.Session` is closed.  **Deprecated** - this option
-           is obsolete.
+           is present to allow compatibility with older applications, but
+           it is recommended that strong references to objects
+           be maintained by the calling application
+           externally to the :class:`.Session` itself,
+           to the extent that is required by the application.
 
         """
 
         if weak_identity_map:
             self._identity_cls = identity.WeakInstanceDict
         else:
-            util.warn_deprecated("weak_identity_map=False is deprecated.  "
-                                 "This feature is not needed.")
+            util.warn_deprecated(
+                "weak_identity_map=False is deprecated.  "
+                "It is present to allow compatibility with older "
+                "applications, but "
+                "it is recommended that strong references to "
+                "objects be maintained by the calling application "
+                "externally to the :class:`.Session` itself, "
+                "to the extent that is required by the application.")
+
             self._identity_cls = identity.StrongInstanceDict
         self.identity_map = self._identity_cls()
 
