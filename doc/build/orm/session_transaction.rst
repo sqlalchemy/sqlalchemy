@@ -414,6 +414,12 @@ on the target connection, a warning is emitted::
     :paramref:`.Session.connection.execution_options`
     parameter to :meth:`.Session.connection`.
 
+Tracking Transaction State with Events
+--------------------------------------
+
+See the section :ref:`session_transaction_events` for an overview
+of the available event hooks for session transaction state changes.
+
 .. _session_external_transaction:
 
 Joining a Session into an External Transaction (such as for test suites)
@@ -513,3 +519,4 @@ everything is rolled back.
                       session.begin_nested()
 
           # ... the tearDown() method stays the same
+

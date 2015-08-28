@@ -86,6 +86,8 @@ Versioning with a History Table
 
 .. automodule:: examples.versioned_history
 
+.. _examples_versioned_rows:
+
 Versioning using Temporal Rows
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
