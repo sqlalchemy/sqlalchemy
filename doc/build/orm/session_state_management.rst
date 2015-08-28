@@ -23,11 +23,25 @@ It's helpful to know the states which an instance can have within a session:
   existing instances (or moving persistent instances from other sessions into
   your local session).
 
-* **Detached** - an instance which has a record in the database, but is not in
-  any session. There's nothing wrong with this, and you can use objects
-  normally when they're detached, **except** they will not be able to issue
-  any SQL in order to load collections or attributes which are not yet loaded,
-  or were marked as "expired".
+  .. note::
+
+    An object that is marked as deleted, e.g. via the
+    :meth:`.Session.delete` method, is still considered persistent.  The
+    object remains in the identity map until the flush proceeds and a DELETE
+    state is emitted, at which point the object moves to the state that is
+    for most practical purposes "detached" - after the session's transaction
+    is committed, the object becomes fully detached.   SQLAlchemy 1.1 will
+    introduce a new object state called "deleted" which represents
+    this "deleted but not quite detached" state explicitly.
+
+* **Detached** - an instance which corresponds, or previously corresponded,
+  to a record in the database, but is not currently in any session.
+  The detached object will contain a database identity marker, however
+  because it is not associated with a session, it is unknown whether or not
+  this database identity actually exists in a target database.  Detached
+  objects are safe to use normally, except that they have no ability to
+  load unloaded attributes or attributes that were previously marked
+  as "expired".
 
 Knowing these states is important, since the
 :class:`.Session` tries to be strict about ambiguous
@@ -54,6 +68,8 @@ the :func:`.inspect` system::
     :attr:`.InstanceState.persistent`
 
     :attr:`.InstanceState.detached`
+
+.. _session_attributes:
 
 Session Attributes
 ------------------
@@ -121,8 +137,9 @@ referenced.
   or into lists or sets for the span of time that they need to remain referenced.
   These collections can be associated with a :class:`.Session`, if desired,
   by placing them into the :attr:`.Session.info` dictionary.  Events such
-  as the :meth:`.SessionEvents.after_attach` event may also be of use for
-  intercepting objects as they are associated with a :class:`.Session`.
+  as the :meth:`.SessionEvents.after_attach` and :meth:`.MapperEvents.load`
+  event may also be of use for intercepting objects as they are associated
+  with a :class:`.Session`.
 
 .. _unitofwork_merging:
 
