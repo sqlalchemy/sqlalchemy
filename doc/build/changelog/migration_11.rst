@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: August 26, 2015
+    Document last updated: September 2, 2015
 
 Introduction
 ============
@@ -65,6 +65,94 @@ as it relies on deprecated features of setuptools.
 
 New Features and Improvements - ORM
 ===================================
+
+.. _change_2677:
+
+New Session lifecycle events
+----------------------------
+
+The :class:`.Session` has long supported events that allow some degree
+of tracking of state changes to objects, including
+:meth:`.SessionEvents.before_attach`, :meth:`.SessionEvents.after_attach`,
+and :meth:`.SessionEvents.before_flush`.  The Session documentation also
+documents major object states at :ref:`session_object_states`.  However,
+there has never been system of tracking objects specifically as they
+pass through these transitions.  Additionally, the status of "deleted" objects
+has historically been murky as the objects act somewhere between
+the "persistent" and "detached" states.
+
+To clean up this area and allow the realm of session state transition
+to be fully transparent, a new series of events have been added that
+are intended to cover every possible way that an object might transition
+between states, and additionally the "deleted" status has been given
+its own official state name within the realm of session object states.
+
+New State Transition Events
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Transitions between all states of an object such as :term:`persistent`,
+:term:`pending` and others can now be intercepted in terms of a
+session-level event intended to cover a specific transition.
+Transitions as objects move into a :class:`.Session`, move out of a
+:class:`.Session`, and even all the transitions which occur when the
+transaction is rolled back using :meth:`.Session.rollback`
+are explicitly present in the interface of :class:`.SessionEvents`.
+
+In total, there are **ten new events**.  A summary of these events is in a
+newly written documentation section :ref:`session_lifecycle_events`.
+
+
+New Object State "deleted" is added, deleted objects no longer "persistent"
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :term:`persistent` state of an object in the :class:`.Session` has
+always been documented as an object that has a valid database identity;
+however in the case of objects that were deleted within a flush, they
+have always been in a grey area where they are not really "detached"
+from the :class:`.Session` yet, because they can still be restored
+within a rollback, but are not really "persistent" because their database
+identity has been deleted and they aren't present in the identity map.
+
+To resolve this grey area given the new events, a new object state
+:term:`deleted` is introduced.  This state exists between the "persistent" and
+"detached" states.  An object that is marked for deletion via
+:meth:`.Session.delete` remains in the "persistent" state until a flush
+proceeds; at that point, it is removed from the identity map, moves
+to the "deleted" state, and the :meth:`.SessionEvents.persistent_to_deleted`
+hook is invoked.  If the :class:`.Session` object's transaction is rolled
+back, the object is restored as persistent; the
+:meth:`.SessionEvents.deleted_to_persistent` transition is called.  Otherwise
+if the :class:`.Session` object's transaction is committed,
+the :meth:`.SessionEvents.deleted_to_detached` transition is invoked.
+
+Additionally, the :attr:`.InstanceState.persistent` accessor **no longer returns
+True** for an object that is in the new "deleted" state; instead, the
+:attr:`.InstanceState.deleted` accessor has been enhanced to reliably
+report on this new state.   When the object is detached, the :attr:`.InstanceState.deleted`
+returns False and the :attr:`.InstanceState.detached` accessor is True
+instead.  To determine if an object was deleted either in the current
+transaction or in a previous transaction, use the
+:attr:`.InstanceState.was_deleted` accessor.
+
+Strong Identity Map is Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+One of the inspirations for the new series of transition events was to enable
+leak-proof tracking of objects as they move in and out of the identity map,
+so that a "strong reference" may be maintained mirroring the object
+moving in and out of this map.  With this new capability, there is no longer
+any need for the :paramref:`.Session.weak_identity_map` parameter and the
+corresponding :class:`.StrongIdentityMap` object.  This option has remained
+in SQLAlchemy for many years as the "strong-referencing" behavior used to be
+the only behavior available, and many applications were written to assume
+this behavior.   It has long been recommended that strong-reference tracking
+of objects not be an intrinsic job of the :class:`.Session` and instead
+be an application-level construct built as needed by the application; the
+new event model allows even the exact behavior of the strong identity map
+to be replicated.   See :ref:`session_referencing_behavior` for a new
+recipe illustrating how to replace the strong identity map.
+
+:ticket:`2677`
 
 .. _change_3499:
 

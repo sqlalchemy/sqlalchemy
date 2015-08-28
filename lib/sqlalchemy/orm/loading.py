@@ -339,6 +339,9 @@ def _instance_processor(
     populate_existing = context.populate_existing or mapper.always_refresh
     load_evt = bool(mapper.class_manager.dispatch.load)
     refresh_evt = bool(mapper.class_manager.dispatch.refresh)
+    persistent_evt = bool(context.session.dispatch.loaded_as_persistent)
+    if persistent_evt:
+        loaded_as_persistent = context.session.dispatch.loaded_as_persistent
     instance_state = attributes.instance_state
     instance_dict = attributes.instance_dict
     session_id = context.session.hash_key
@@ -432,8 +435,11 @@ def _instance_processor(
                 loaded_instance, populate_existing, populators)
 
             if isnew:
-                if loaded_instance and load_evt:
-                    state.manager.dispatch.load(state, context)
+                if loaded_instance:
+                    if load_evt:
+                        state.manager.dispatch.load(state, context)
+                    if persistent_evt:
+                        loaded_as_persistent(context.session, state.obj())
                 elif refresh_evt:
                     state.manager.dispatch.refresh(
                         state, context, only_load_props)

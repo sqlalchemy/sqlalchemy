@@ -985,12 +985,19 @@ def was_deleted(object):
     """Return True if the given object was deleted
     within a session flush.
 
+    This is regardless of whether or not the object is
+    persistent or detached.
+
     .. versionadded:: 0.8.0
+
+    .. seealso::
+
+        :attr:`.InstanceState.was_deleted`
 
     """
 
     state = attributes.instance_state(object)
-    return state.deleted
+    return state.was_deleted
 
 
 def randomize_unitofwork():

@@ -1617,6 +1617,506 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         )
 
 
+class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
+    run_inserts = None
+
+    def _fixture(self, include_address=False):
+        users, User = self.tables.users, self.classes.User
+
+        if include_address:
+            addresses, Address = self.tables.addresses, self.classes.Address
+            mapper(User, users, properties={
+                "addresses": relationship(
+                    Address, cascade="all, delete-orphan")
+            })
+            mapper(Address, addresses)
+        else:
+            mapper(User, users)
+
+        listener = Mock()
+
+        sess = Session()
+
+        def start_events():
+            event.listen(
+                sess, "transient_to_pending", listener.transient_to_pending)
+            event.listen(
+                sess, "pending_to_transient", listener.pending_to_transient)
+            event.listen(
+                sess, "persistent_to_transient",
+                listener.persistent_to_transient)
+            event.listen(
+                sess, "pending_to_persistent", listener.pending_to_persistent)
+            event.listen(
+                sess, "detached_to_persistent",
+                listener.detached_to_persistent)
+            event.listen(
+                sess, "loaded_as_persistent", listener.loaded_as_persistent)
+
+            event.listen(
+                sess, "persistent_to_detached",
+                listener.persistent_to_detached)
+            event.listen(
+                sess, "deleted_to_detached", listener.deleted_to_detached)
+
+            event.listen(
+                sess, "persistent_to_deleted", listener.persistent_to_deleted)
+            event.listen(
+                sess, "deleted_to_persistent", listener.deleted_to_persistent)
+            return listener
+
+        if include_address:
+            return sess, User, Address, start_events
+        else:
+            return sess, User, start_events
+
+    def test_transient_to_pending(self):
+        sess, User, start_events = self._fixture()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "transient_to_pending")
+        def trans_to_pending(session, instance):
+            assert instance in session
+            listener.flag_checked(instance)
+
+        u1 = User(name='u1')
+        sess.add(u1)
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.transient_to_pending(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_pending_to_transient_via_rollback(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+
+        listener = start_events()
+
+        @event.listens_for(sess, "pending_to_transient")
+        def test_deleted_flag(session, instance):
+            assert instance not in session
+            listener.flag_checked(instance)
+
+        sess.rollback()
+        assert u1 not in sess
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.pending_to_transient(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_pending_to_transient_via_expunge(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+
+        listener = start_events()
+
+        @event.listens_for(sess, "pending_to_transient")
+        def test_deleted_flag(session, instance):
+            assert instance not in session
+            listener.flag_checked(instance)
+
+        sess.expunge(u1)
+        assert u1 not in sess
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.pending_to_transient(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_pending_to_persistent(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+
+        listener = start_events()
+
+        @event.listens_for(sess, "pending_to_persistent")
+        def test_flag(session, instance):
+            assert instance in session
+            assert instance._sa_instance_state.persistent
+            assert instance._sa_instance_state.key in session.identity_map
+            listener.flag_checked(instance)
+
+        sess.flush()
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.pending_to_persistent(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_detached_to_persistent(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+
+        sess.expunge(u1)
+
+        listener = start_events()
+
+        @event.listens_for(sess, "detached_to_persistent")
+        def test_deleted_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance in session
+            listener.flag_checked()
+
+        sess.add(u1)
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.detached_to_persistent(sess, u1),
+                call.flag_checked()
+            ]
+        )
+
+    def test_loaded_as_persistent(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "loaded_as_persistent")
+        def test_identity_flag(session, instance):
+            assert instance in session
+            assert instance._sa_instance_state.persistent
+            assert instance._sa_instance_state.key in session.identity_map
+            assert not instance._sa_instance_state.deleted
+            assert not instance._sa_instance_state.detached
+            assert instance._sa_instance_state.persistent
+            listener.flag_checked(instance)
+
+        u1 = sess.query(User).filter_by(name='u1').one()
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.loaded_as_persistent(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_detached_to_persistent_via_deleted(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "detached_to_persistent")
+        def test_deleted_flag_persistent(session, instance):
+            assert instance not in session.deleted
+            assert instance in session
+            assert not instance._sa_instance_state.deleted
+            assert not instance._sa_instance_state.detached
+            assert instance._sa_instance_state.persistent
+            listener.dtp_flag_checked(instance)
+
+        @event.listens_for(sess, "persistent_to_deleted")
+        def test_deleted_flag_detached(session, instance):
+            assert instance not in session.deleted
+            assert instance not in session
+            assert not instance._sa_instance_state.persistent
+            assert instance._sa_instance_state.deleted
+            assert not instance._sa_instance_state.detached
+            listener.ptd_flag_checked(instance)
+
+        sess.delete(u1)
+        assert u1 in sess.deleted
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.detached_to_persistent(sess, u1),
+                call.dtp_flag_checked(u1)
+            ]
+        )
+
+        sess.flush()
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.detached_to_persistent(sess, u1),
+                call.dtp_flag_checked(u1),
+                call.persistent_to_deleted(sess, u1),
+                call.ptd_flag_checked(u1),
+            ]
+        )
+
+    def test_detached_to_persistent_via_cascaded_delete(self):
+        sess, User, Address, start_events = self._fixture(include_address=True)
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        a1 = Address(email_address='e1')
+        u1.addresses.append(a1)
+        sess.commit()
+        u1.addresses  # ensure u1.addresses refers to a1 before detachment
+        sess.close()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "detached_to_persistent")
+        def test_deleted_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance in session
+            assert not instance._sa_instance_state.deleted
+            assert not instance._sa_instance_state.detached
+            assert instance._sa_instance_state.persistent
+            listener.flag_checked(instance)
+
+        sess.delete(u1)
+        assert u1 in sess.deleted
+        assert a1 in sess.deleted
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.detached_to_persistent(sess, u1),
+                call.flag_checked(u1),
+                call.detached_to_persistent(sess, a1),
+                call.flag_checked(a1),
+            ]
+        )
+
+        sess.flush()
+
+    def test_persistent_to_deleted(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "persistent_to_deleted")
+        def test_deleted_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance not in session
+            assert instance._sa_instance_state.deleted
+            assert not instance._sa_instance_state.detached
+            assert not instance._sa_instance_state.persistent
+            listener.flag_checked(instance)
+
+        sess.delete(u1)
+        assert u1 in sess.deleted
+
+        eq_(
+            listener.mock_calls,
+            []
+        )
+
+        sess.flush()
+        assert u1 not in sess
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.persistent_to_deleted(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_persistent_to_detached_via_expunge(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "persistent_to_detached")
+        def test_deleted_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance not in session
+            assert not instance._sa_instance_state.deleted
+            assert instance._sa_instance_state.detached
+            assert not instance._sa_instance_state.persistent
+            listener.flag_checked(instance)
+
+        assert u1 in sess
+        sess.expunge(u1)
+        assert u1 not in sess
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.persistent_to_detached(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_persistent_to_detached_via_expunge_all(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "persistent_to_detached")
+        def test_deleted_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance not in session
+            assert not instance._sa_instance_state.deleted
+            assert instance._sa_instance_state.detached
+            assert not instance._sa_instance_state.persistent
+            listener.flag_checked(instance)
+
+        assert u1 in sess
+        sess.expunge_all()
+        assert u1 not in sess
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.persistent_to_detached(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_persistent_to_transient_via_rollback(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "persistent_to_transient")
+        def test_deleted_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance not in session
+            assert not instance._sa_instance_state.deleted
+            assert not instance._sa_instance_state.detached
+            assert not instance._sa_instance_state.persistent
+            assert instance._sa_instance_state.transient
+            listener.flag_checked(instance)
+
+        sess.rollback()
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.persistent_to_transient(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_deleted_to_persistent_via_rollback(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        sess.delete(u1)
+        sess.flush()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "deleted_to_persistent")
+        def test_deleted_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance in session
+            assert not instance._sa_instance_state.deleted
+            assert not instance._sa_instance_state.detached
+            assert instance._sa_instance_state.persistent
+            listener.flag_checked(instance)
+
+        assert u1 not in sess
+        assert u1._sa_instance_state.deleted
+        assert not u1._sa_instance_state.persistent
+        assert not u1._sa_instance_state.detached
+
+        sess.rollback()
+
+        assert u1 in sess
+        assert u1._sa_instance_state.persistent
+        assert not u1._sa_instance_state.deleted
+        assert not u1._sa_instance_state.detached
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.deleted_to_persistent(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+    def test_deleted_to_detached_via_commit(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        sess.delete(u1)
+        sess.flush()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "deleted_to_detached")
+        def test_detached_flag(session, instance):
+            assert instance not in session.deleted
+            assert instance not in session
+            assert not instance._sa_instance_state.deleted
+            assert instance._sa_instance_state.detached
+            listener.flag_checked(instance)
+
+        assert u1 not in sess
+        assert u1._sa_instance_state.deleted
+        assert not u1._sa_instance_state.persistent
+        assert not u1._sa_instance_state.detached
+
+        sess.commit()
+
+        assert u1 not in sess
+        assert not u1._sa_instance_state.deleted
+        assert u1._sa_instance_state.detached
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.deleted_to_detached(sess, u1),
+                call.flag_checked(u1)
+            ]
+        )
+
+
 class MapperExtensionTest(_fixtures.FixtureTest):
 
     """Superseded by MapperEventsTest - test backwards

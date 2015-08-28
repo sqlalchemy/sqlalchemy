@@ -148,24 +148,239 @@ Object Lifecycle Events
 Another use case for events is to track the lifecycle of objects.  This
 refers to the states first introduced at :ref:`session_object_states`.
 
-As of SQLAlchemy 1.0, there is no direct event interface for tracking of
-these states.  Events that can be used at the moment to track the state of
-objects include:
+.. versionadded:: 1.1 added a system of events that intercept all possible
+   state transitions of an object within the :class:`.Session`.
 
-* :meth:`.InstanceEvents.init`
+All the states above can be tracked fully with events.   Each event
+represents a distinct state transition, meaning, the starting state
+and the destination state are both part of what are tracked.   With the
+exception of the initial transient event, all the events are in terms of
+the :class:`.Session` object or class, meaning they can be associated either
+with a specific :class:`.Session` object::
 
-* :meth:`.InstanceEvents.load`
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session
 
-* :meth:`.SessionEvents.before_attach`
+    session = Session()
 
-* :meth:`.SessionEvents.after_attach`
+    @event.listens_for(session, 'transient_to_pending')
+    def object_is_pending(session, obj):
+        print("new pending: %s" % obj)
 
-* :meth:`.SessionEvents.before_flush` - by scanning the session's collections
+Or with the :class:`.Session` class itself, as well as with a specific
+:class:`.sessionmaker`, which is likely the most useful form::
 
-* :meth:`.SessionEvents.after_flush` - by scanning the session's collections
+    from sqlalchemy import event
+    from sqlalchemy.orm import sessionmaker
 
-SQLAlchemy 1.1 will introduce a comprehensive event system to track
-the object persistence states fully and unambiguously.
+    maker = sessionmaker()
+
+    @event.listens_for(maker, 'transient_to_pending')
+    def object_is_pending(session, obj):
+        print("new pending: %s" % obj)
+
+The listeners can of course be stacked on top of one function, as is
+likely to be common.   For example, to track all objects that are
+entering the persistent state::
+
+        @event.listens_for(maker, "pending_to_persistent")
+        @event.listens_for(maker, "deleted_to_persistent")
+        @event.listens_for(maker, "detached_to_persistent")
+        @event.listens_for(maker, "loaded_as_persistent")
+        def detect_all_persistent(session, instance):
+            print("object is now persistent: %s" % instance)
+
+Transient
+^^^^^^^^^
+
+All mapped objects when first constructed start out as :term:`transient`.
+In this state, the object exists alone and doesn't have an association with
+any :class:`.Session`.   For this initial state, there's no specific
+"transition" event since there is no :class:`.Session`, however if one
+wanted to intercept when any transient object is created, the
+:meth:`.InstanceEvents.init` method is probably the best event.  This
+event is applied to a specific class or superclass.  For example, to
+intercept all new objects for a particular declarative base::
+
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy import event
+
+    Base = declarative_base()
+
+    @event.listens_for(Base, "init", propagate=True)
+    def intercept_init(instance, args, kwargs):
+        print("new transient: %s" % instance)
+
+
+Transient to Pending
+^^^^^^^^^^^^^^^^^^^^
+
+The transient object becomes :term:`pending` when it is first associated
+with a :class:`.Session` via the :meth:`.Session.add` or :meth:`.Session.add_all`
+method.  An object may also become part of a :class:`.Session` as a result
+of a :ref:`"cascade" <unitofwork_cascades>` from a referencing object that was
+explicitly added.   The transient to pending transition is detectable using
+the :meth:`.SessionEvents.transient_to_pending` event::
+
+    @event.listens_for(sessionmaker, "transient_to_pending")
+    def intercept_transient_to_pending(session, object_):
+        print("transient to pending: %s" % object_)
+
+
+Pending to Persistent
+^^^^^^^^^^^^^^^^^^^^^
+
+The :term:`pending` object becomes :term:`persistent` when a flush
+proceeds and an INSERT statement takes place for the instance.  The object
+now has an identity key.   Track pending to persistent with the
+:meth:`.SessionEvents.pending_to_persistent` event::
+
+    @event.listens_for(sessionmaker, "pending_to_persistent")
+    def intercept_pending_to_persistent(session, object_):
+        print("pending to persistent: %s" % object_)
+
+Pending to Transient
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The :term:`pending` object can revert back to :term:`transient` if the
+:meth:`.Session.rollback` method is called before the pending object
+has been flushed, or if the :meth:`.Session.expunge` method is called
+for the object before it is flushed.  Track pending to transient with the
+:meth:`.SessionEvents.pending_to_transient` event::
+
+    @event.listens_for(sessionmaker, "pending_to_transient")
+    def intercept_pending_to_transient(session, object_):
+        print("transient to pending: %s" % object_)
+
+Loaded as Persistent
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Objects can appear in the :class:`.Session` directly in the :term:`persistent`
+state when they are loaded from the database.   Tracking this state transition
+is synonymous with tracking objects as they are loaded, and is synonomous
+with using the :meth:`.InstanceEvents.load` instance-level event.  However, the
+:meth:`.SessionEvents.loaded_as_persistent` event is provided as a
+session-centric hook for intercepting objects as they enter the persistent
+state via this particular avenue::
+
+    @event.listens_for(sessionmaker, "loaded_as_persistent")
+    def intercept_loaded_as_persistent(session, object_):
+        print("object loaded into persistent state: %s" % object_)
+
+
+Persistent to Transient
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The persistent object can revert to the transient state if the
+:meth:`.Session.rollback` method is called for a transaction where the
+object was first added as pending.   In the case of the ROLLBACK, the
+INSERT statement that made this object persistent is rolled back, and
+the object is evicted from the :class:`.Session` to again become transient.
+Track objects that were reverted to transient from
+persistent using the :meth:`.SessionEvents.persistent_to_transient`
+event hook::
+
+    @event.listens_for(sessionmaker, "persistent_to_transient")
+    def intercept_persistent_to_transient(session, object_):
+        print("persistent to transient: %s" % object_)
+
+Persistent to Deleted
+^^^^^^^^^^^^^^^^^^^^^
+
+The persistent object enters the :term:`deleted` state when an object
+marked for deletion is deleted from the database within the flush
+process.   Note that this is **not the same** as when the :meth:`.Session.delete`
+method is called for a target object.   The :meth:`.Session.delete`
+method only **marks** the object for deletion; the actual DELETE statement
+is not emitted until the flush proceeds.  It is subsequent to the flush
+that the "deleted" state is present for the target object.
+
+Within the "deleted" state, the object is only marginally associated
+with the :class:`.Session`.  It is not present in the identity map
+nor is it present in the :attr:`.Session.deleted` collection that refers
+to when it was pending for deletion.
+
+From the "deleted" state, the object can go either to the detached state
+when the transaction is committed, or back to the persistent state
+if the transaction is instead rolled back.
+
+Track the persistent to deleted transition with
+:meth:`.SessionEvents.persistent_to_deleted`::
+
+    @event.listens_for(sessionmaker, "persistent_to_deleted")
+    def intercept_persistent_to_deleted(session, object_):
+        print("object was DELETEd, is now in deleted state: %s" % object_)
+
+
+Deleted to Detached
+^^^^^^^^^^^^^^^^^^^^
+
+The deleted object becomes :term:`detached` when the session's transaction
+is committed.  After the :meth:`.Session.commit` method is called, the
+database transaction is final and the :class:`.Session` now fully discards
+the deleted object and removes all associations to it.   Track
+the deleted to detached transition using :meth:`.SessionEvents.deleted_to_detached`::
+
+    @event.listens_for(sessionmaker, "deleted_to_detached")
+    def intercept_deleted_to_detached(session, object_):
+        print("deleted to detached: %s" % object_)
+
+
+.. note::
+
+    While the object is in the deleted state, the :attr:`.InstanceState.deleted`
+    attribute, accessible using ``inspect(object).deleted``, returns True.  However
+    when the object is detached, :attr:`.InstanceState.deleted` will again
+    return False.  To detect that an object was deleted, regardless of whether
+    or not it is detached, use the :attr:`.InstanceState.was_deleted`
+    accessor.
+
+
+Persistent to Detached
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The persistent object becomes :term:`detached` when the object is de-associated
+with the :class:`.Session`, via the :meth:`.Session.expunge`,
+:meth:`.Session.expunge_all`, or :meth:`.Session.close` methods.
+
+.. note::
+
+  An object may also become **implicitly detached** if its owning
+  :class:`.Session` is dereferenced by the application and discarded due to
+  garbage collection. In this case, **no event is emitted**.
+
+Track objects as they move from persistent to detached using the
+:meth:`.SessionEvents.persistent_to_detached` event::
+
+    @event.listens_for(sessionmaker, "persistent_to_detached")
+    def intecept_persistent_to_detached(session, object_):
+        print("object became detached: %s" % object_)
+
+Detached to Persistent
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The detached object becomes persistent when it is re-associated with a
+session using the :meth:`.Session.add` or equivalent method.  Track
+objects moving back to persistent from detached using the
+:meth:`.SessionEvents.detached_to_persistent` event::
+
+    @event.listens_for(sessionmaker, "detached_to_persistent")
+    def intecept_detached_to_persistent(session, object_):
+        print("object became persistent again: %s" % object_)
+
+
+Deleted to Persistent
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The :term:`deleted` object can be reverted to the :term:`persistent`
+state when the transaction in which it was DELETEd was rolled back
+using the :meth:`.Session.rollback` method.   Track deleted objects
+moving back to the persistent state using the
+:meth:`.SessionEvents.deleted_to_persistent` event::
+
+    @event.listens_for(sessionmaker, "transient_to_pending")
+    def intercept_transient_to_pending(session, object_):
+        print("transient to pending: %s" % object_)
 
 .. _session_transaction_events:
 
