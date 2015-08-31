@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table,\
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
-    assert_raises_message, fixtures
+    assert_raises_message, fixtures, eq_
 from sqlalchemy.sql import crud
 
 
@@ -694,8 +694,21 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'foo_2': None  # evaluated later
         }
 
+        stmt = table.insert().values(values)
+
+        eq_(
+            dict([
+                (k, v.type._type_affinity)
+                for (k, v) in
+                stmt.compile(dialect=postgresql.dialect()).binds.items()]),
+            {
+                'foo': Integer, 'data_2': String, 'id_0': Integer,
+                'id_2': Integer, 'foo_1': Integer, 'data_1': String,
+                'id_1': Integer, 'foo_2': Integer, 'data_0': String}
+        )
+
         self.assert_compile(
-            table.insert().values(values),
+            stmt,
             'INSERT INTO sometable (id, data, foo) VALUES '
             '(%(id_0)s, %(data_0)s, %(foo)s), '
             '(%(id_1)s, %(data_1)s, %(foo_1)s), '
@@ -728,8 +741,20 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'foo_2': None,  # evaluated later
         }
 
+        stmt = table.insert().values(values)
+        eq_(
+            dict([
+                (k, v.type._type_affinity)
+                for (k, v) in
+                stmt.compile(dialect=postgresql.dialect()).binds.items()]),
+            {
+                'foo': Integer, 'data_2': String, 'id_0': Integer,
+                'id_2': Integer, 'foo_1': Integer, 'data_1': String,
+                'id_1': Integer, 'foo_2': Integer, 'data_0': String}
+        )
+
         self.assert_compile(
-            table.insert().values(values),
+            stmt,
             "INSERT INTO sometable (id, data, foo) VALUES "
             "(%(id_0)s, %(data_0)s, %(foo)s), "
             "(%(id_1)s, %(data_1)s, %(foo_1)s), "
