@@ -2333,6 +2333,19 @@ class Query(object):
         """Apply a ``DISTINCT`` to the query and return the newly resulting
         ``Query``.
 
+
+        .. note::
+
+            The :meth:`.distinct` call includes logic that will automatically
+            add columns from the ORDER BY of the query to the columns
+            clause of the SELECT statement, to satisfy the common need
+            of the database backend that ORDER BY columns be part of the
+            SELECT list when DISTINCT is used.   These columns *are not*
+            added to the list of columns actually fetched by the
+            :class:`.Query`, however, so would not affect results.
+            The columns are passed through when using the
+            :attr:`.Query.statement` accessor, however.
+
         :param \*expr: optional column expressions.  When present,
          the Postgresql dialect will render a ``DISTINCT ON (<expressions>>)``
          construct.
