@@ -319,6 +319,7 @@ class _multiparam_column(elements.ColumnElement):
         self.key = "%s_%d" % (original.key, index + 1)
         self.original = original
         self.default = original.default
+        self.type = original.type
 
     def __eq__(self, other):
         return isinstance(other, _multiparam_column) and \

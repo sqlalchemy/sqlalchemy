@@ -19,6 +19,17 @@
     :version: 1.0.9
 
     .. change::
+        :tags: bug, sql
+        :versions: 1.1.0b1
+        :tickets: 3520
+
+        Fixed regression in 1.0-released default-processor for multi-VALUES
+        insert statement, :ticket:`3288`, where the column type for the
+        default-holding column would not be propagated to the compiled
+        statement in the case where the default was being used,
+        leading to bind-level type handlers not being invoked.
+
+    .. change::
         :tags: bug, examples
         :versions: 1.1.0b1
 
