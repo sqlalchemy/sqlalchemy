@@ -11,10 +11,6 @@ ORM events are described in :ref:`orm_event_toplevel`.
 .. autoclass:: sqlalchemy.event.base.Events
    :members:
 
-.. versionadded:: 0.7
-    The event system supersedes the previous system of "extension", "listener",
-    and "proxy" classes.
-
 Connection Pool Events
 -----------------------
 

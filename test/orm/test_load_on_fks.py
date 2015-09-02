@@ -301,7 +301,8 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
                             c2 = Child()
 
                             if attach:
-                                sess._attach(instance_state(c2))
+                                state = instance_state(c2)
+                                state.session_id = sess.hash_key
 
                             if enable_relationship_rel:
                                 sess.enable_relationship_loading(c2)

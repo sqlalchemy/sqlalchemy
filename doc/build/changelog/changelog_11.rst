@@ -22,6 +22,50 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2677
+
+        The :class:`.SessionEvents` suite now includes events to allow
+        unambiguous tracking of all object lifecycle state transitions
+        in terms of the :class:`.Session` itself, e.g. pending,
+        transient,  persistent, detached.   The state of the object
+        within each event is also defined.
+
+        .. seealso::
+
+            :ref:`change_2677`
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2677
+
+        Added a new session lifecycle state :term:`deleted`.  This new state
+        represents an object that has been deleted from the :term:`persistent`
+        state and will move to the :term:`detached` state once the transaction
+        is committed.  This resolves the long-standing issue that objects
+        which were deleted existed in a gray area between persistent and
+        detached.   The :attr:`.InstanceState.persistent` accessor will
+        **no longer** report on a deleted object as persistent; the
+        :attr:`.InstanceState.deleted` accessor will instead be True for
+        these objects, until they become detached.
+
+        .. seealso::
+
+            :ref:`change_2677`
+
+    .. change::
+        :tags: change, orm
+        :tickets: 2677
+
+        The :paramref:`.Session.weak_identity_map` parameter is deprecated.
+        See the new recipe at :ref:`session_referencing_behavior` for
+        an event-based approach to maintaining strong identity map behavior.
+
+        .. seealso::
+
+            :ref:`change_2677`
+
+    .. change::
         :tags: bug, sql
         :tickets: 2919
 

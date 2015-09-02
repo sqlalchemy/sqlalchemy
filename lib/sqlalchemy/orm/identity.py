@@ -8,7 +8,8 @@
 import weakref
 from . import attributes
 from .. import util
-
+from .. import exc as sa_exc
+from . import util as orm_util
 
 class IdentityMap(object):
     def __init__(self):
@@ -126,16 +127,18 @@ class WeakInstanceDict(IdentityMap):
                 if existing_state is not state:
                     o = existing_state.obj()
                     if o is not None:
-                        raise AssertionError(
-                            "A conflicting state is already "
-                            "present in the identity map for key %r"
-                            % (key, ))
+                        raise sa_exc.InvalidRequestError(
+                            "Can't attach instance "
+                            "%s; another instance with key %s is already "
+                            "present in this session." % (
+                                orm_util.state_str(state), state.key))
                 else:
-                    return
+                    return False
             except KeyError:
                 pass
         self._dict[key] = state
         self._manage_incoming_state(state)
+        return True
 
     def _add_unpresent(self, state, key):
         # inlined form of add() called by loading.py
@@ -210,13 +213,13 @@ class WeakInstanceDict(IdentityMap):
 class StrongInstanceDict(IdentityMap):
     """A 'strong-referencing' version of the identity map.
 
-    .. deprecated:: this object is present in order to fulfill
-       the ``weak_identity_map=False`` option of the Session.
-       This option is present to allow compatibility with older applications,
-       but it is recommended that strong references to objects
-       be maintained by the calling application
-       externally to the :class:`.Session` itself, to the degree
-       that is needed by the application.
+    .. deprecated 1.1::
+        The strong
+        reference identity map is legacy.  See the
+        recipe at :ref:`session_referencing_behavior` for
+        an event-based approach to maintaining strong identity
+        references.
+
 
     """
 
@@ -268,12 +271,16 @@ class StrongInstanceDict(IdentityMap):
     def add(self, state):
         if state.key in self:
             if attributes.instance_state(self._dict[state.key]) is not state:
-                raise AssertionError('A conflicting state is already '
-                                     'present in the identity map for key %r'
-                                     % (state.key, ))
+                raise sa_exc.InvalidRequestError(
+                    "Can't attach instance "
+                    "%s; another instance with key %s is already "
+                    "present in this session." % (
+                        orm_util.state_str(state), state.key))
+            return False
         else:
             self._dict[state.key] = state.obj()
             self._manage_incoming_state(state)
+            return True
 
     def _add_unpresent(self, state, key):
         # inlined form of add() called by loading.py

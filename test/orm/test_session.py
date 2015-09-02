@@ -493,8 +493,10 @@ class SessionStateTest(_fixtures.FixtureTest):
                               'is already attached to session',
                               s2.delete, user)
         u2 = s2.query(User).get(user.id)
-        assert_raises_message(sa.exc.InvalidRequestError,
-                              'another instance with key', s.delete, u2)
+        s2.expunge(u2)
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            'another instance .* is already present', s.delete, u2)
         s.expire(user)
         s.expunge(user)
         assert user not in s
@@ -543,8 +545,14 @@ class SessionStateTest(_fixtures.FixtureTest):
             s.expunge(u2)
             s.identity_map.add(sa.orm.attributes.instance_state(u1))
 
-            assert_raises(AssertionError, s.identity_map.add,
-                          sa.orm.attributes.instance_state(u2))
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "Can't attach instance <User.*?>; another instance "
+                "with key .*? is already "
+                "present in this session.",
+                s.identity_map.add,
+                sa.orm.attributes.instance_state(u2)
+            )
 
     def test_pickled_update(self):
         users, User = self.tables.users, pickleable.User
@@ -581,7 +589,13 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u2 is not None and u2 is not u1
         assert u2 in sess
 
-        assert_raises(AssertionError, lambda: sess.add(u1))
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't attach instance <User.*?>; another instance "
+            "with key .*? is already "
+            "present in this session.",
+            sess.add, u1
+        )
 
         sess.expunge(u2)
         assert u2 not in sess
@@ -1124,11 +1138,56 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 class StrongIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
 
+    def _strong_ident_fixture(self):
+        sess = create_session(weak_identity_map=False)
+        return sess, sess.prune
+
+    def _event_fixture(self):
+        session = create_session()
+
+        @event.listens_for(session, "pending_to_persistent")
+        @event.listens_for(session, "deleted_to_persistent")
+        @event.listens_for(session, "detached_to_persistent")
+        @event.listens_for(session, "loaded_as_persistent")
+        def strong_ref_object(sess, instance):
+            if 'refs' not in sess.info:
+                sess.info['refs'] = refs = set()
+            else:
+                refs = sess.info['refs']
+
+            refs.add(instance)
+
+        @event.listens_for(session, "persistent_to_detached")
+        @event.listens_for(session, "persistent_to_deleted")
+        @event.listens_for(session, "persistent_to_transient")
+        def deref_object(sess, instance):
+            sess.info['refs'].discard(instance)
+
+        def prune():
+            if 'refs' not in session.info:
+                return 0
+
+            sess_size = len(session.identity_map)
+            session.info['refs'].clear()
+            gc_collect()
+            session.info['refs'] = set(
+                s.obj() for s in session.identity_map.all_states())
+            return sess_size - len(session.identity_map)
+
+        return session, prune
+
     @testing.uses_deprecated()
-    def test_strong_ref(self):
+    def test_strong_ref_imap(self):
+        self._test_strong_ref(self._strong_ident_fixture)
+
+    def test_strong_ref_events(self):
+        self._test_strong_ref(self._event_fixture)
+
+    def _test_strong_ref(self, fixture):
+        s, prune = fixture()
+
         users, User = self.tables.users, self.classes.User
 
-        s = create_session(weak_identity_map=False)
         mapper(User, users)
 
         # save user
@@ -1148,12 +1207,19 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
 
     @testing.uses_deprecated()
+    def test_prune_imap(self):
+        self._test_prune(self._strong_ident_fixture)
+
+    def test_prune_events(self):
+        self._test_prune(self._event_fixture)
+
     @testing.fails_if(lambda: pypy, "pypy has a real GC")
     @testing.fails_on('+zxjdbc', 'http://www.sqlalchemy.org/trac/ticket/1473')
-    def test_prune(self):
+    def _test_prune(self, fixture):
+        s, prune = fixture()
+
         users, User = self.tables.users, self.classes.User
 
-        s = create_session(weak_identity_map=False)
         mapper(User, users)
 
         for o in [User(name='u%s' % x) for x in range(10)]:
@@ -1161,43 +1227,44 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         # o is still live after this loop...
 
         self.assert_(len(s.identity_map) == 0)
-        self.assert_(s.prune() == 0)
+        eq_(prune(), 0)
         s.flush()
         gc_collect()
-        self.assert_(s.prune() == 9)
+        eq_(prune(), 9)
+        # o is still in local scope here, so still present
         self.assert_(len(s.identity_map) == 1)
 
         id = o.id
         del o
-        self.assert_(s.prune() == 1)
+        eq_(prune(), 1)
         self.assert_(len(s.identity_map) == 0)
 
         u = s.query(User).get(id)
-        self.assert_(s.prune() == 0)
+        eq_(prune(), 0)
         self.assert_(len(s.identity_map) == 1)
         u.name = 'squiznart'
         del u
-        self.assert_(s.prune() == 0)
+        eq_(prune(), 0)
         self.assert_(len(s.identity_map) == 1)
         s.flush()
-        self.assert_(s.prune() == 1)
+        eq_(prune(), 1)
         self.assert_(len(s.identity_map) == 0)
 
         s.add(User(name='x'))
-        self.assert_(s.prune() == 0)
+        eq_(prune(), 0)
         self.assert_(len(s.identity_map) == 0)
         s.flush()
         self.assert_(len(s.identity_map) == 1)
-        self.assert_(s.prune() == 1)
+        eq_(prune(), 1)
         self.assert_(len(s.identity_map) == 0)
 
         u = s.query(User).get(id)
         s.delete(u)
         del u
-        self.assert_(s.prune() == 0)
+        eq_(prune(), 0)
         self.assert_(len(s.identity_map) == 1)
         s.flush()
-        self.assert_(s.prune() == 0)
+        eq_(prune(), 0)
         self.assert_(len(s.identity_map) == 0)
 
 

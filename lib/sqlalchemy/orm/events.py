@@ -316,6 +316,8 @@ class InstanceEvents(event.Events):
 
             :meth:`.InstanceEvents.refresh`
 
+            :meth:`.SessionEvents.loaded_as_persistent`
+
         """
 
     def refresh(self, target, context, attrs):
@@ -825,30 +827,14 @@ class MapperEvents(event.Events):
         steps.
 
         .. warning::
-            Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled
-            and via SQL operations with the given**
-            :class:`.Connection` **only.** Handlers here should **not** make
-            alterations to the state of the :class:`.Session` overall, and
-            in general should not affect any :func:`.relationship` -mapped
-            attributes, as session cascade rules will not function properly,
-            nor is it always known if the related class has already been
-            handled. Operations that **are not supported in mapper
-            events** include:
 
-            * :meth:`.Session.add`
-            * :meth:`.Session.delete`
-            * Mapped collection append, add, remove, delete, discard, etc.
-            * Mapped relationship attribute set/del events,
-              i.e. ``someobject.related = someotherobject``
-
-            Operations which manipulate the state of the object
-            relative to other objects are better handled:
-
-            * In the ``__init__()`` method of the mapped object itself, or
-              another method designed to establish some particular state.
-            * In a ``@validates`` handler, see :ref:`simple_validators`
-            * Within the  :meth:`.SessionEvents.before_flush` event.
+            Mapper-level flush events only allow **very limited operations**,
+            on attributes local to the row being operated upon only,
+            as well as allowing any SQL to be emitted on the given
+            :class:`.Connection`.  **Please read fully** the notes
+            at :ref:`session_persistence_mapper` for guidelines on using
+            these methods; generally, the :meth:`.SessionEvents.before_flush`
+            method should be preferred for general on-flush changes.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -861,6 +847,10 @@ class MapperEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
+
+        .. seealso::
+
+            :ref:`session_persistence_events`
 
         """
 
@@ -883,30 +873,14 @@ class MapperEvents(event.Events):
         event->persist->event steps.
 
         .. warning::
-            Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled
-            and via SQL operations with the given**
-            :class:`.Connection` **only.** Handlers here should **not** make
-            alterations to the state of the :class:`.Session` overall, and in
-            general should not affect any :func:`.relationship` -mapped
-            attributes, as session cascade rules will not function properly,
-            nor is it always known if the related class has already been
-            handled. Operations that **are not supported in mapper
-            events** include:
 
-            * :meth:`.Session.add`
-            * :meth:`.Session.delete`
-            * Mapped collection append, add, remove, delete, discard, etc.
-            * Mapped relationship attribute set/del events,
-              i.e. ``someobject.related = someotherobject``
-
-            Operations which manipulate the state of the object
-            relative to other objects are better handled:
-
-            * In the ``__init__()`` method of the mapped object itself,
-              or another method designed to establish some particular state.
-            * In a ``@validates`` handler, see :ref:`simple_validators`
-            * Within the  :meth:`.SessionEvents.before_flush` event.
+            Mapper-level flush events only allow **very limited operations**,
+            on attributes local to the row being operated upon only,
+            as well as allowing any SQL to be emitted on the given
+            :class:`.Connection`.  **Please read fully** the notes
+            at :ref:`session_persistence_mapper` for guidelines on using
+            these methods; generally, the :meth:`.SessionEvents.before_flush`
+            method should be preferred for general on-flush changes.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -919,6 +893,10 @@ class MapperEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
+
+        .. seealso::
+
+            :ref:`session_persistence_events`
 
         """
 
@@ -960,29 +938,14 @@ class MapperEvents(event.Events):
         steps.
 
         .. warning::
-            Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled
-            and via SQL operations with the given** :class:`.Connection`
-            **only.** Handlers here should **not** make alterations to the
-            state of the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as
-            session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.
-            Operations that **are not supported in mapper events** include:
 
-            * :meth:`.Session.add`
-            * :meth:`.Session.delete`
-            * Mapped collection append, add, remove, delete, discard, etc.
-            * Mapped relationship attribute set/del events,
-              i.e. ``someobject.related = someotherobject``
-
-            Operations which manipulate the state of the object
-            relative to other objects are better handled:
-
-            * In the ``__init__()`` method of the mapped object itself,
-              or another method designed to establish some particular state.
-            * In a ``@validates`` handler, see :ref:`simple_validators`
-            * Within the  :meth:`.SessionEvents.before_flush` event.
+            Mapper-level flush events only allow **very limited operations**,
+            on attributes local to the row being operated upon only,
+            as well as allowing any SQL to be emitted on the given
+            :class:`.Connection`.  **Please read fully** the notes
+            at :ref:`session_persistence_mapper` for guidelines on using
+            these methods; generally, the :meth:`.SessionEvents.before_flush`
+            method should be preferred for general on-flush changes.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -995,6 +958,11 @@ class MapperEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
+
+        .. seealso::
+
+            :ref:`session_persistence_events`
+
         """
 
     def after_update(self, mapper, connection, target):
@@ -1034,29 +1002,14 @@ class MapperEvents(event.Events):
         steps.
 
         .. warning::
-            Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled
-            and via SQL operations with the given** :class:`.Connection`
-            **only.** Handlers here should **not** make alterations to the
-            state of the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as
-            session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.
-            Operations that **are not supported in mapper events** include:
 
-            * :meth:`.Session.add`
-            * :meth:`.Session.delete`
-            * Mapped collection append, add, remove, delete, discard, etc.
-            * Mapped relationship attribute set/del events,
-              i.e. ``someobject.related = someotherobject``
-
-            Operations which manipulate the state of the object
-            relative to other objects are better handled:
-
-            * In the ``__init__()`` method of the mapped object itself,
-              or another method designed to establish some particular state.
-            * In a ``@validates`` handler, see :ref:`simple_validators`
-            * Within the  :meth:`.SessionEvents.before_flush` event.
+            Mapper-level flush events only allow **very limited operations**,
+            on attributes local to the row being operated upon only,
+            as well as allowing any SQL to be emitted on the given
+            :class:`.Connection`.  **Please read fully** the notes
+            at :ref:`session_persistence_mapper` for guidelines on using
+            these methods; generally, the :meth:`.SessionEvents.before_flush`
+            method should be preferred for general on-flush changes.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -1069,6 +1022,10 @@ class MapperEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
+
+        .. seealso::
+
+            :ref:`session_persistence_events`
 
         """
 
@@ -1085,29 +1042,14 @@ class MapperEvents(event.Events):
         once in a later step.
 
         .. warning::
-            Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled
-            and via SQL operations with the given** :class:`.Connection`
-            **only.** Handlers here should **not** make alterations to the
-            state of the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as
-            session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.
-            Operations that **are not supported in mapper events** include:
 
-            * :meth:`.Session.add`
-            * :meth:`.Session.delete`
-            * Mapped collection append, add, remove, delete, discard, etc.
-            * Mapped relationship attribute set/del events,
-              i.e. ``someobject.related = someotherobject``
-
-            Operations which manipulate the state of the object
-            relative to other objects are better handled:
-
-            * In the ``__init__()`` method of the mapped object itself,
-              or another method designed to establish some particular state.
-            * In a ``@validates`` handler, see :ref:`simple_validators`
-            * Within the  :meth:`.SessionEvents.before_flush` event.
+            Mapper-level flush events only allow **very limited operations**,
+            on attributes local to the row being operated upon only,
+            as well as allowing any SQL to be emitted on the given
+            :class:`.Connection`.  **Please read fully** the notes
+            at :ref:`session_persistence_mapper` for guidelines on using
+            these methods; generally, the :meth:`.SessionEvents.before_flush`
+            method should be preferred for general on-flush changes.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -1120,6 +1062,10 @@ class MapperEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
+
+        .. seealso::
+
+            :ref:`session_persistence_events`
 
         """
 
@@ -1136,29 +1082,14 @@ class MapperEvents(event.Events):
         once in a previous step.
 
         .. warning::
-            Mapper-level flush events are designed to operate **on attributes
-            local to the immediate object being handled
-            and via SQL operations with the given** :class:`.Connection`
-            **only.** Handlers here should **not** make alterations to the
-            state of the :class:`.Session` overall, and in general should not
-            affect any :func:`.relationship` -mapped attributes, as
-            session cascade rules will not function properly, nor is it
-            always known if the related class has already been handled.
-            Operations that **are not supported in mapper events** include:
 
-            * :meth:`.Session.add`
-            * :meth:`.Session.delete`
-            * Mapped collection append, add, remove, delete, discard, etc.
-            * Mapped relationship attribute set/del events,
-              i.e. ``someobject.related = someotherobject``
-
-            Operations which manipulate the state of the object
-            relative to other objects are better handled:
-
-            * In the ``__init__()`` method of the mapped object itself,
-              or another method designed to establish some particular state.
-            * In a ``@validates`` handler, see :ref:`simple_validators`
-            * Within the  :meth:`.SessionEvents.before_flush` event.
+            Mapper-level flush events only allow **very limited operations**,
+            on attributes local to the row being operated upon only,
+            as well as allowing any SQL to be emitted on the given
+            :class:`.Connection`.  **Please read fully** the notes
+            at :ref:`session_persistence_mapper` for guidelines on using
+            these methods; generally, the :meth:`.SessionEvents.before_flush`
+            method should be preferred for general on-flush changes.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -1171,6 +1102,10 @@ class MapperEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :return: No return value is supported by this event.
+
+        .. seealso::
+
+            :ref:`session_persistence_events`
 
         """
 
@@ -1412,6 +1347,8 @@ class SessionEvents(event.Events):
 
             :meth:`~.SessionEvents.after_flush_postexec`
 
+            :ref:`session_persistence_events`
+
         """
 
     def after_flush(self, session, flush_context):
@@ -1431,6 +1368,8 @@ class SessionEvents(event.Events):
             :meth:`~.SessionEvents.before_flush`
 
             :meth:`~.SessionEvents.after_flush_postexec`
+
+            :ref:`session_persistence_events`
 
         """
 
@@ -1453,6 +1392,8 @@ class SessionEvents(event.Events):
             :meth:`~.SessionEvents.before_flush`
 
             :meth:`~.SessionEvents.after_flush`
+
+            :ref:`session_persistence_events`
 
         """
 
@@ -1491,6 +1432,8 @@ class SessionEvents(event.Events):
 
             :meth:`~.SessionEvents.after_attach`
 
+            :ref:`session_lifecycle_events`
+
         """
 
     def after_attach(self, session, instance):
@@ -1512,6 +1455,8 @@ class SessionEvents(event.Events):
         .. seealso::
 
             :meth:`~.SessionEvents.before_attach`
+
+            :ref:`session_lifecycle_events`
 
         """
 
@@ -1564,6 +1509,244 @@ class SessionEvents(event.Events):
             * ``result`` the :class:`.ResultProxy` returned as a result of the
               bulk DELETE operation.
 
+
+        """
+
+    def transient_to_pending(self, session, instance):
+        """Intercept the "transient to pending" transition for a specific object.
+
+        This event is a specialization of the
+        :meth:`.SessionEvents.after_attach` event which is only invoked
+        for this specific transition.  It is invoked typically during the
+        :meth:`.Session.add` call.
+
+        :param session: target :class:`.Session`
+
+        :param instance: the ORM-mapped instance being operated upon.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def pending_to_transient(self, session, instance):
+        """Intercept the "pending to transient" transition for a specific object.
+
+        This less common transition occurs when an pending object that has
+        not been flushed is evicted from the session; this can occur
+        when the :meth:`.Session.rollback` method rolls back the transaction,
+        or when the :meth:`.Session.expunge` method is used.
+
+        :param session: target :class:`.Session`
+
+        :param instance: the ORM-mapped instance being operated upon.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def persistent_to_transient(self, session, instance):
+        """Intercept the "persistent to transient" transition for a specific object.
+
+        This less common transition occurs when an pending object that has
+        has been flushed is evicted from the session; this can occur
+        when the :meth:`.Session.rollback` method rolls back the transaction.
+
+        :param session: target :class:`.Session`
+
+        :param instance: the ORM-mapped instance being operated upon.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def pending_to_persistent(self, session, instance):
+        """Intercept the "pending to persistent"" transition for a specific object.
+
+        This event is invoked within the flush process, and is
+        similar to scanning the :attr:`.Session.new` collection within
+        the :meth:`.SessionEvents.after_flush` event.  However, in this
+        case the object has already been moved to the persistent state
+        when the event is called.
+
+        :param session: target :class:`.Session`
+
+        :param instance: the ORM-mapped instance being operated upon.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def detached_to_persistent(self, session, instance):
+        """Intercept the "detached to persistent" transition for a specific object.
+
+        This event is a specialization of the
+        :meth:`.SessionEvents.after_attach` event which is only invoked
+        for this specific transition.  It is invoked typically during the
+        :meth:`.Session.add` call, as well as during the
+        :meth:`.Session.delete` call if the object was not previously
+        associated with the
+        :class:`.Session` (note that an object marked as "deleted" remains
+        in the "persistent" state until the flush proceeds).
+
+        .. note::
+
+            If the object becomes persistent as part of a call to
+            :meth:`.Session.delete`, the object is **not** yet marked as
+            deleted when this event is called.  To detect deleted objects,
+            check the ``deleted`` flag sent to the
+            :meth:`.SessionEvents.persistent_to_detached` to event after the
+            flush proceeds, or check the :attr:`.Session.deleted` collection
+            within the :meth:`.SessionEvents.before_flush` event if deleted
+            objects need to be intercepted before the flush.
+
+        :param session: target :class:`.Session`
+
+        :param instance: the ORM-mapped instance being operated upon.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def loaded_as_persistent(self, session, instance):
+        """Intercept the "loaded as peristent" transition for a specific object.
+
+        This event is invoked within the ORM loading process, and is invoked
+        very similarly to the :meth:`.InstanceEvents.load` event.  However,
+        the event here is linkable to a :class:`.Session` class or instance,
+        rather than to a mapper or class hierarchy, and integrates
+        with the other session lifecycle events smoothly.  The object
+        is guaranteed to be present in the session's identity map when
+        this event is called.
+
+
+        :param session: target :class:`.Session`
+
+        :param instance: the ORM-mapped instance being operated upon.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def persistent_to_deleted(self, session, instance):
+        """Intercept the "persistent to deleted" transition for a specific object.
+
+        This event is invoked when a persistent object's identity
+        is deleted from the database within a flush, however the object
+        still remains associated with the :class:`.Session` until the
+        transaction completes.
+
+        If the transaction is rolled back, the object moves again
+        to the persistent state, and the
+        :meth:`.SessionEvents.deleted_to_persistent` event is called.
+        If the transaction is committed, the object becomes detached,
+        which will emit the :meth:`.SessionEvents.deleted_to_detached`
+        event.
+
+        Note that while the :meth:`.Session.delete` method is the primary
+        public interface to mark an object as deleted, many objects
+        get deleted due to cascade rules, which are not always determined
+        until flush time.  Therefore, there's no way to catch
+        every object that will be deleted until the flush has proceeded.
+        the :meth:`.SessionEvents.persistent_to_deleted` event is therefore
+        invoked at the end of a flush.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def deleted_to_persistent(self, session, instance):
+        """Intercept the "deleted to persistent" transition for a specific object.
+
+        This transition occurs only when an object that's been deleted
+        successfully in a flush is restored due to a call to
+        :meth:`.Session.rollback`.   The event is not called under
+        any other circumstances.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def deleted_to_detached(self, session, instance):
+        """Intercept the "deleted to detached" transition for a specific object.
+
+        This event is invoked when a deleted object is evicted
+        from the session.   The typical case when this occurs is when
+        the transaction for a :class:`.Session` in which the object
+        was deleted is committed; the object moves from the deleted
+        state to the detached state.
+
+        It is also invoked for objects that were deleted in a flush
+        when the :meth:`.Session.expunge_all` or :meth:`.Session.close`
+        events are called, as well as if the object is individually
+        expunged from its deleted state via :meth:`.Session.expunge`.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
+
+        """
+
+    def persistent_to_detached(self, session, instance):
+        """Intercept the "persistent to detached" transition for a specific object.
+
+        This event is invoked when a persistent object is evicted
+        from the session.  There are many conditions that cause this
+        to happen, including:
+
+        * using a method such as :meth:`.Session.expunge`
+          or :meth:`.Session.close`
+
+        * Calling the :meth:`.Session.rollback` method, when the object
+          was part of an INSERT statement for that session's transaction
+
+
+        :param session: target :class:`.Session`
+
+        :param instance: the ORM-mapped instance being operated upon.
+
+        :param deleted: boolean.  If True, indicates this object moved
+         to the detached state because it was marked as deleted and flushed.
+
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`session_lifecycle_events`
 
         """
 

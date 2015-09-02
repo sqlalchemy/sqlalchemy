@@ -895,7 +895,13 @@ class AutoExpireTest(_LocalFixture):
         assert u1_state.obj() is None
 
         s.rollback()
-        assert u1_state in s.identity_map.all_states()
+        # new in 1.1, not in identity map if the object was
+        # gc'ed and we restore snapshot; we've changed update_impl
+        # to just skip this object
+        assert u1_state not in s.identity_map.all_states()
+
+        # in any version, the state is replaced by the query
+        # because the identity map would switch it
         u1 = s.query(User).filter_by(name='ed').one()
         assert u1_state not in s.identity_map.all_states()
         assert s.scalar(users.count()) == 1

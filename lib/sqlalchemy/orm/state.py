@@ -58,7 +58,7 @@ class InstanceState(interfaces.InspectionAttr):
     _strong_obj = None
     modified = False
     expired = False
-    deleted = False
+    _deleted = False
     _load_pending = False
     is_instance = True
 
@@ -88,7 +88,6 @@ class InstanceState(interfaces.InspectionAttr):
 
        see also the ``unmodified`` collection which is intersected
        against this set when a refresh operation occurs."""
-
 
     @util.memoized_property
     def attrs(self):
@@ -135,8 +134,72 @@ class InstanceState(interfaces.InspectionAttr):
             self._attached
 
     @property
+    def deleted(self):
+        """Return true if the object is :term:`deleted`.
+
+        An object that is in the deleted state is guaranteed to
+        not be within the :attr:`.Session.identity_map` of its parent
+        :class:`.Session`; however if the session's transaction is rolled
+        back, the object will be restored to the persistent state and
+        the identity map.
+
+        .. note::
+
+            The :attr:`.InstanceState.deleted` attribute refers to a specific
+            state of the object that occurs between the "persistent" and
+            "detached" states; once the object is :term:`detached`, the
+            :attr:`.InstanceState.deleted` attribute **no longer returns
+            True**; in order to detect that a state was deleted, regardless
+            of whether or not the object is associated with a :class:`.Session`,
+            use the :attr:`.InstanceState.was_deleted` accessor.
+
+        .. versionadded: 1.1
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+        """
+        return self.key is not None and \
+            self._attached and self._deleted
+
+    @property
+    def was_deleted(self):
+        """Return True if this object is or was previously in the
+        "deleted" state and has not been reverted to persistent.
+
+        This flag returns True once the object was deleted in flush.
+        When the object is expunged from the session either explicitly
+        or via transaction commit and enters the "detached" state,
+        this flag will continue to report True.
+
+        .. versionadded:: 1.1 - added a local method form of
+           :func:`.orm.util.was_deleted`.
+
+        .. seealso::
+
+            :attr:`.InstanceState.deleted` - refers to the "deleted" state
+
+            :func:`.orm.util.was_deleted` - standalone function
+
+            :ref:`session_object_states`
+
+        """
+        return self._deleted
+
+    @property
     def persistent(self):
         """Return true if the object is :term:`persistent`.
+
+        An object that is in the persistent state is guaranteed to
+        be within the :attr:`.Session.identity_map` of its parent
+        :class:`.Session`.
+
+        .. versionchanged:: 1.1 The :attr:`.InstanceState.persistent`
+           accessor no longer returns True for an object that was
+           "deleted" within a flush; use the :attr:`.InstanceState.deleted`
+           accessor to detect this state.   This allows the "persistent"
+           state to guarantee membership in the identity map.
 
         .. seealso::
 
@@ -144,7 +207,7 @@ class InstanceState(interfaces.InspectionAttr):
 
             """
         return self.key is not None and \
-            self._attached
+            self._attached and not self._deleted
 
     @property
     def detached(self):
@@ -155,8 +218,7 @@ class InstanceState(interfaces.InspectionAttr):
             :ref:`session_object_states`
 
         """
-        return self.key is not None and \
-            not self._attached
+        return self.key is not None and not self._attached
 
     @property
     @util.dependencies("sqlalchemy.orm.session")
@@ -243,8 +305,44 @@ class InstanceState(interfaces.InspectionAttr):
         """
         return bool(self.key)
 
-    def _detach(self):
-        self.session_id = self._strong_obj = None
+    @classmethod
+    def _detach_states(self, states, session, to_transient=False):
+        persistent_to_detached = \
+            session.dispatch.persistent_to_detached or None
+        deleted_to_detached = \
+            session.dispatch.deleted_to_detached or None
+        pending_to_transient = \
+            session.dispatch.pending_to_transient or None
+        persistent_to_transient = \
+            session.dispatch.persistent_to_transient or None
+
+        for state in states:
+            deleted = state._deleted
+            persistent = state.key is not None and not deleted
+            pending = state.key is None
+
+            state.session_id = None
+
+            if to_transient and state.key:
+                del state.key
+            if persistent:
+                if to_transient:
+                    if persistent_to_transient is not None:
+                        persistent_to_transient(session, state.obj())
+                elif persistent_to_detached is not None:
+                    persistent_to_detached(session, state.obj())
+            elif deleted and deleted_to_detached is not None:
+                deleted_to_detached(session, state.obj())
+            elif pending and pending_to_transient is not None:
+                pending_to_transient(session, state.obj())
+
+            state._strong_obj = None
+
+    def _detach(self, session=None):
+        if session:
+            InstanceState._detach_states([self], session)
+        else:
+            self.session_id = self._strong_obj = None
 
     def _dispose(self):
         self._detach()
