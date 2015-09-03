@@ -271,7 +271,7 @@ test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.4_mysql_pymysql_cextensions 23716
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.4_mysql_pymysql_nocextensions 23871
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.4_postgresql_psycopg2_cextensions 19552
-test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.4_postgresql_psycopg2_nocextensions 19731
+test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.4_postgresql_psycopg2_nocextensions 19727
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.4_sqlite_pysqlite_cextensions 22051
 test.aaa_profiling.test_orm.MergeBackrefsTest.test_merge_pending_with_all_pks 3.4_sqlite_pysqlite_nocextensions 22255
 
@@ -315,7 +315,7 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.3_sqlite_pysqlite_noc
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_mysql_pymysql_cextensions 92,20
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_mysql_pymysql_nocextensions 92,20
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_postgresql_psycopg2_cextensions 92,20
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_postgresql_psycopg2_nocextensions 104,20
+test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_postgresql_psycopg2_nocextensions 94,20
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_sqlite_pysqlite_cextensions 92,20
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 3.4_sqlite_pysqlite_nocextensions 92,20
 
@@ -359,7 +359,7 @@ test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.3_sqlite_pysqlite_noc
 test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_mysql_pymysql_cextensions 1254
 test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_mysql_pymysql_nocextensions 1280
 test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2_cextensions 1247
-test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2_nocextensions 1270
+test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_postgresql_psycopg2_nocextensions 1263
 test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_cextensions 1238
 test.aaa_profiling.test_orm.SessionTest.test_expire_lots 3.4_sqlite_pysqlite_nocextensions 1272
 
@@ -546,7 +546,7 @@ test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 2.7_postgresql_psyco
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_cextensions 5591,277,3569,11458,1134,1924,2489
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_nocextensions 5613,277,3665,12630,1228,1931,2681
 test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_cextensions 5619,277,3705,11902,1144,1966,2532
-test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_nocextensions 5625,277,3809,13108,1241,1975,2729
+test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_nocextensions 5625,277,3809,13110,1240,1975,2733
 
 # TEST: test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation
 
@@ -555,4 +555,4 @@ test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 2.7_postgresql_p
 test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_cextensions 6228,393,6747,17582,1148,2623
 test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.3_postgresql_psycopg2_nocextensions 6318,398,6851,18609,1234,2652
 test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_cextensions 6257,393,6891,18056,1159,2671
-test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_nocextensions 6508,406,7005,19115,1248,2707
+test.aaa_profiling.test_zoomark_orm.ZooMarkTest.test_invocation 3.4_postgresql_psycopg2_nocextensions 6418,401,7005,19115,1247,2706
