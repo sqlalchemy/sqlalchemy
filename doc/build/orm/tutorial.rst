@@ -1744,7 +1744,7 @@ attribute:
     <User(name='jack', fullname='Jack Bean', password='gjffdd')>
 
 For more information on eager loading, including how to configure various forms
-of loading by default, see the section :doc:`/orm/loading`.
+of loading by default, see the section :doc:`/orm/loading_relationships`.
 
 Deleting
 ========
