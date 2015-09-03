@@ -318,8 +318,8 @@ class InstanceState(interfaces.InspectionAttr):
 
         for state in states:
             deleted = state._deleted
-            persistent = state.key is not None and not deleted
             pending = state.key is None
+            persistent = not pending and not deleted
 
             state.session_id = None
 

@@ -180,8 +180,7 @@ class SessionTransaction(object):
         if self.session._enable_transaction_accounting:
             self._take_snapshot()
 
-        if self.session.dispatch.after_transaction_create:
-            self.session.dispatch.after_transaction_create(self.session, self)
+        self.session.dispatch.after_transaction_create(self.session, self)
 
     @property
     def is_active(self):
@@ -463,8 +462,7 @@ class SessionTransaction(object):
                     transaction.close()
 
         self._state = CLOSED
-        if self.session.dispatch.after_transaction_end:
-            self.session.dispatch.after_transaction_end(self.session, self)
+        self.session.dispatch.after_transaction_end(self.session, self)
 
         if self._parent is None:
             if not self.session.autocommit:
@@ -1626,9 +1624,9 @@ class Session(_SessionClassMethods):
         except exc.NO_STATE:
             raise exc.UnmappedInstanceError(instance)
 
-        self._delete_impl(state, head=True)
+        self._delete_impl(state, instance, head=True)
 
-    def _delete_impl(self, state, head):
+    def _delete_impl(self, state, obj, head):
 
         if state.key is None:
             if head:
@@ -1638,14 +1636,14 @@ class Session(_SessionClassMethods):
             else:
                 return
 
-        to_attach = self._before_attach(state)
+        to_attach = self._before_attach(state, obj)
 
         if state in self._deleted:
             return
 
         if to_attach:
             self.identity_map.add(state)
-            self._after_attach(state)
+            self._after_attach(state, obj)
 
         if head:
             # grab the cascades before adding the item to the deleted list
@@ -1654,11 +1652,11 @@ class Session(_SessionClassMethods):
             cascade_states = list(state.manager.mapper.cascade_iterator(
                 'delete', state))
 
-        self._deleted[state] = state.obj()
+        self._deleted[state] = obj
 
         if head:
             for o, m, st_, dct_ in cascade_states:
-                self._delete_impl(st_, False)
+                self._delete_impl(st_, o, False)
 
     def merge(self, instance, load=True):
         """Copy the state of a given instance into a corresponding instance
@@ -1835,12 +1833,13 @@ class Session(_SessionClassMethods):
                 "Object '%s' already has an identity - "
                 "it can't be registered as pending" % state_str(state))
 
-        to_attach = self._before_attach(state)
+        obj = state.obj()
+        to_attach = self._before_attach(state, obj)
         if state not in self._new:
-            self._new[state] = state.obj()
+            self._new[state] = obj
             state.insert_order = len(self._new)
         if to_attach:
-            self._after_attach(state)
+            self._after_attach(state, obj)
 
     def _update_impl(self, state, revert_deletion=False):
         if state.key is None:
@@ -1862,8 +1861,8 @@ class Session(_SessionClassMethods):
                     state_str(state)
                 )
 
-        to_attach = self._before_attach(state)
-
+        obj = state.obj()
+        to_attach = self._before_attach(state, obj)
 
         self._deleted.pop(state, None)
         if revert_deletion:
@@ -1872,9 +1871,9 @@ class Session(_SessionClassMethods):
             self.identity_map.add(state)
 
         if to_attach:
-            self._after_attach(state)
-        elif revert_deletion and self.dispatch.deleted_to_persistent:
-            self.dispatch.deleted_to_persistent(self, state.obj())
+            self._after_attach(state, obj)
+        elif revert_deletion:
+            self.dispatch.deleted_to_persistent(self, obj)
 
     def _save_or_update_impl(self, state):
         if state.key is None:
@@ -1934,12 +1933,12 @@ class Session(_SessionClassMethods):
 
         """
         state = attributes.instance_state(obj)
-        to_attach = self._before_attach(state)
+        to_attach = self._before_attach(state, obj)
         state._load_pending = True
         if to_attach:
-            self._after_attach(state)
+            self._after_attach(state, obj)
 
-    def _before_attach(self, state):
+    def _before_attach(self, state, obj):
         if state.session_id == self.hash_key:
             return False
 
@@ -1949,21 +1948,20 @@ class Session(_SessionClassMethods):
                 "(this is '%s')" % (state_str(state),
                                     state.session_id, self.hash_key))
 
-        if self.dispatch.before_attach:
-            self.dispatch.before_attach(self, state.obj())
+        self.dispatch.before_attach(self, obj)
 
         return True
 
-    def _after_attach(self, state):
+    def _after_attach(self, state, obj):
         state.session_id = self.hash_key
         if state.modified and state._strong_obj is None:
-            state._strong_obj = state.obj()
-        if self.dispatch.after_attach:
-            self.dispatch.after_attach(self, state.obj())
-        if state.persistent and self.dispatch.detached_to_persistent:
-            self.dispatch.detached_to_persistent(self, state.obj())
-        elif state.pending and self.dispatch.transient_to_pending:
-            self.dispatch.transient_to_pending(self, state.obj())
+            state._strong_obj = obj
+        self.dispatch.after_attach(self, obj)
+
+        if state.key:
+            self.dispatch.detached_to_persistent(self, obj)
+        else:
+            self.dispatch.transient_to_pending(self, obj)
 
     def __contains__(self, instance):
         """Return True if the instance is associated with this session.
