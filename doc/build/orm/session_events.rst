@@ -42,7 +42,7 @@ scanning the collections :attr:`.Session.new`, :attr:`.Session.dirty` and
 :attr:`.Session.deleted` in order to look for objects
 where something will be happening.
 
-For illustrations of :meth:`.SessionEvents.before_flush, see
+For illustrations of :meth:`.SessionEvents.before_flush`, see
 examples such as :ref:`examples_versioned_history` and
 :ref:`examples_versioned_rows`.
 
