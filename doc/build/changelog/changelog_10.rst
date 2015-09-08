@@ -19,6 +19,16 @@
     :version: 1.0.9
 
     .. change::
+        :tags: bug, orm
+        :versions: 1.1.0b1
+        :tickets: 3525
+
+        Fixed bug in :meth:`.Session.bulk_save_objects` where a mapped
+        column that had some kind of "fetch on update" value and was not
+        locally present in the given object would cause an AttributeError
+        within the operation.
+
+    .. change::
         :tags: bug, sql
         :versions: 1.1.0b1
         :tickets: 3520

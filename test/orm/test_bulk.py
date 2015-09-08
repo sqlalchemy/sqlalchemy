@@ -2,7 +2,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import fixtures
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, FetchedValue
 from sqlalchemy.orm import mapper, Session
 from sqlalchemy.testing.assertsql import CompiledSQL
 from test.orm import _fixtures
@@ -154,6 +154,58 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
                  {'id': 3, 'name': 'u3new'}]
             )
         )
+
+
+class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column(
+                'id', Integer,
+                primary_key=True,
+                test_needs_autoincrement=True),
+            Column('x', Integer),
+            Column('y', Integer, server_default=FetchedValue(), server_onupdate=FetchedValue()))
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A = cls.classes.A
+        a = cls.tables.a
+
+        mapper(A, a)
+
+
+    def test_insert_w_fetch(self):
+        A = self.classes.A
+
+        s = Session()
+        a1 = A(x=1)
+        s.bulk_save_objects([a1])
+        s.commit()
+
+    def test_update_w_fetch(self):
+        A = self.classes.A
+
+        s = Session()
+        a1 = A(x=1, y=2)
+        s.add(a1)
+        s.commit()
+
+        eq_(a1.id, 1)  # force a load
+        a1.x = 5
+        s.expire(a1, ['y'])
+        assert 'y' not in a1.__dict__
+        s.bulk_save_objects([a1])
+        s.commit()
+
+        eq_(a1.x, 5)
+        eq_(a1.y, 2)
 
 
 class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
