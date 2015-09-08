@@ -277,7 +277,7 @@ transactions set the flag ``twophase=True`` on the session::
 Setting Transaction Isolation Levels
 ------------------------------------
 
-:term:`isolation` refers to the behavior of the transaction at the database
+:term:`Isolation` refers to the behavior of the transaction at the database
 level in relation to other transactions occurring concurrently.  There
 are four well-known modes of isolation, and typically the Python DBAPI
 allows these to be set on a per-connection basis, either through explicit
