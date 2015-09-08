@@ -166,7 +166,9 @@ class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
                 primary_key=True,
                 test_needs_autoincrement=True),
             Column('x', Integer),
-            Column('y', Integer, server_default=FetchedValue(), server_onupdate=FetchedValue()))
+            Column('y', Integer,
+                   server_default=FetchedValue(),
+                   server_onupdate=FetchedValue()))
 
     @classmethod
     def setup_classes(cls):
@@ -179,7 +181,6 @@ class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
         a = cls.tables.a
 
         mapper(A, a)
-
 
     def test_insert_w_fetch(self):
         A = self.classes.A

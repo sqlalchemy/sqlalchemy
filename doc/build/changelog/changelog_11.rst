@@ -22,6 +22,16 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3526
+
+        Internal calls to "bookkeeping" functions within
+        :meth:`.Session.bulk_save_objects` and related bulk methods have
+        been scaled back to the extent that this functionality is not
+        currently used, e.g. checks for column default values to be
+        fetched after an INSERT or UPDATE statement.
+
+    .. change::
         :tags: feature, orm
         :tickets: 2677
 

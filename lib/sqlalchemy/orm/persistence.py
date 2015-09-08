@@ -674,15 +674,16 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         execute(statement, params)
 
                     # TODO: why with bookkeeping=False?
-                    _postfetch(
-                        mapper,
-                        uowtransaction,
-                        table,
-                        state,
-                        state_dict,
-                        c,
-                        c.context.compiled_parameters[0],
-                        value_params)
+                    if bookkeeping:
+                        _postfetch(
+                            mapper,
+                            uowtransaction,
+                            table,
+                            state,
+                            state_dict,
+                            c,
+                            c.context.compiled_parameters[0],
+                            value_params)
                     rows += c.rowcount
             else:
                 multiparams = [rec[2] for rec in records]
@@ -697,18 +698,18 @@ def _emit_update_statements(base_mapper, uowtransaction,
 
                 rows += c.rowcount
 
-                # TODO: why with bookkeeping=False?
                 for state, state_dict, params, mapper, \
                         connection, value_params in records:
-                    _postfetch(
-                        mapper,
-                        uowtransaction,
-                        table,
-                        state,
-                        state_dict,
-                        c,
-                        c.context.compiled_parameters[0],
-                        value_params)
+                    if bookkeeping:
+                        _postfetch(
+                            mapper,
+                            uowtransaction,
+                            table,
+                            state,
+                            state_dict,
+                            c,
+                            c.context.compiled_parameters[0],
+                            value_params)
 
         if check_rowcount:
             if rows != len(records):
@@ -758,15 +759,18 @@ def _emit_insert_statements(base_mapper, uowtransaction,
                         conn, value_params, has_all_pks, has_all_defaults), \
                         last_inserted_params in \
                         zip(records, c.context.compiled_parameters):
-                    _postfetch(
-                        mapper_rec,
-                        uowtransaction,
-                        table,
-                        state,
-                        state_dict,
-                        c,
-                        last_inserted_params,
-                        value_params)
+                    if state:
+                        _postfetch(
+                            mapper_rec,
+                            uowtransaction,
+                            table,
+                            state,
+                            state_dict,
+                            c,
+                            last_inserted_params,
+                            value_params)
+                    else:
+                        _postfetch_bulk_save(mapper_rec, state_dict, table)
 
         else:
             if not has_all_defaults and base_mapper.eager_defaults:
@@ -795,15 +799,19 @@ def _emit_insert_statements(base_mapper, uowtransaction,
                         prop = mapper_rec._columntoproperty[col]
                         if state_dict.get(prop.key) is None:
                             state_dict[prop.key] = pk
-                _postfetch(
-                    mapper_rec,
-                    uowtransaction,
-                    table,
-                    state,
-                    state_dict,
-                    result,
-                    result.context.compiled_parameters[0],
-                    value_params)
+                if bookkeeping:
+                    if state:
+                        _postfetch(
+                            mapper_rec,
+                            uowtransaction,
+                            table,
+                            state,
+                            state_dict,
+                            result,
+                            result.context.compiled_parameters[0],
+                            value_params)
+                    else:
+                        _postfetch_bulk_save(mapper_rec, state_dict, table)
 
 
 def _emit_post_update_statements(base_mapper, uowtransaction,
@@ -963,12 +971,10 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
 
 def _postfetch(mapper, uowtransaction, table,
-               state, dict_, result, params, value_params, bulk=False):
+               state, dict_, result, params, value_params):
     """Expire attributes in need of newly persisted database state,
     after an INSERT or UPDATE statement has proceeded for that
     state."""
-
-    # TODO: bulk is never non-False, need to clean this up
 
     prefetch_cols = result.context.compiled.prefetch
     postfetch_cols = result.context.compiled.postfetch
@@ -1002,7 +1008,7 @@ def _postfetch(mapper, uowtransaction, table,
         mapper.class_manager.dispatch.refresh_flush(
             state, uowtransaction, load_evt_attrs)
 
-    if postfetch_cols and state:
+    if postfetch_cols:
         state._expire_attributes(state.dict,
                                  [mapper._columntoproperty[c].key
                                   for c in postfetch_cols if c in
@@ -1013,13 +1019,15 @@ def _postfetch(mapper, uowtransaction, table,
     # TODO: this still goes a little too often.  would be nice to
     # have definitive list of "columns that changed" here
     for m, equated_pairs in mapper._table_to_equated[table]:
-        if state is None:
-            sync.bulk_populate_inherit_keys(dict_, m, equated_pairs)
-        else:
-            sync.populate(state, m, state, m,
-                          equated_pairs,
-                          uowtransaction,
-                          mapper.passive_updates)
+        sync.populate(state, m, state, m,
+                      equated_pairs,
+                      uowtransaction,
+                      mapper.passive_updates)
+
+
+def _postfetch_bulk_save(mapper, dict_, table):
+    for m, equated_pairs in mapper._table_to_equated[table]:
+        sync.bulk_populate_inherit_keys(dict_, m, equated_pairs)
 
 
 def _connections_for_states(base_mapper, uowtransaction, states):
