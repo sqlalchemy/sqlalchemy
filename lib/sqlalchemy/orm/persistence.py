@@ -672,6 +672,8 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         connection, value_params in records:
                     c = cached_connections[connection].\
                         execute(statement, params)
+
+                    # TODO: why with bookkeeping=False?
                     _postfetch(
                         mapper,
                         uowtransaction,
@@ -694,6 +696,8 @@ def _emit_update_statements(base_mapper, uowtransaction,
                     execute(statement, multiparams)
 
                 rows += c.rowcount
+
+                # TODO: why with bookkeeping=False?
                 for state, state_dict, params, mapper, \
                         connection, value_params in records:
                     _postfetch(
@@ -964,6 +968,8 @@ def _postfetch(mapper, uowtransaction, table,
     after an INSERT or UPDATE statement has proceeded for that
     state."""
 
+    # TODO: bulk is never non-False, need to clean this up
+
     prefetch_cols = result.context.compiled.prefetch
     postfetch_cols = result.context.compiled.postfetch
     returning_cols = result.context.compiled.returning
@@ -996,7 +1002,7 @@ def _postfetch(mapper, uowtransaction, table,
         mapper.class_manager.dispatch.refresh_flush(
             state, uowtransaction, load_evt_attrs)
 
-    if postfetch_cols:
+    if postfetch_cols and state:
         state._expire_attributes(state.dict,
                                  [mapper._columntoproperty[c].key
                                   for c in postfetch_cols if c in
