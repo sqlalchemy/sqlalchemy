@@ -302,7 +302,7 @@ test.aaa_profiling.test_orm.MergeTest.test_merge_load 3.4_sqlite_pysqlite_nocext
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.6_sqlite_pysqlite_nocextensions 89,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqldb_cextensions 93,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_mysql_mysqldb_nocextensions 93,19
-test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_postgresql_psycopg2_cextensions 101,19
+test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_postgresql_psycopg2_cextensions 91,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_postgresql_psycopg2_nocextensions 93,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_cextensions 93,19
 test.aaa_profiling.test_orm.MergeTest.test_merge_no_load 2.7_sqlite_pysqlite_nocextensions 93,19
