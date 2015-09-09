@@ -581,6 +581,11 @@ class AttachedMemoryDBTest(fixtures.TestBase):
         insp = inspect(self.conn)
         eq_(insp.get_table_names("test_schema"), ["created"])
 
+    def test_schema_names(self):
+        self._fixture()
+        insp = inspect(self.conn)
+        eq_(insp.get_schema_names(), ["main", "test_schema"])
+
     def test_reflect_system_table(self):
         meta = MetaData(self.conn)
         alt_master = Table(
