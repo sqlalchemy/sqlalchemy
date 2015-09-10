@@ -45,8 +45,8 @@ as the class itself::
             return self.end - self.start
 
         @hybrid_method
-        def contains(self,point):
-            return (self.start <= point) & (point < self.end)
+        def contains(self, point):
+            return (self.start <= point) & (point <= self.end)
 
         @hybrid_method
         def intersects(self, other):
