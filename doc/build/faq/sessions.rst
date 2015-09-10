@@ -430,12 +430,12 @@ iterate all the objects, correcting for cycles as well::
 
 
     def walk(obj):
-        stack = [obj]
+        deque = [obj]
 
         seen = set()
 
-        while stack:
-            obj = stack.pop(0)
+        while deque:
+            obj = deque.pop(0)
             if obj in seen:
                 continue
             else:
@@ -445,9 +445,9 @@ iterate all the objects, correcting for cycles as well::
             for relationship in insp.mapper.relationships:
                 related = getattr(obj, relationship.key)
                 if relationship.uselist:
-                    stack.extend(related)
+                    deque.extend(related)
                 elif related is not None:
-                    stack.append(related)
+                    deque.append(related)
 
 The function can be demonstrated as follows::
 
