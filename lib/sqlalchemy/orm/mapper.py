@@ -2571,15 +2571,24 @@ class Mapper(InspectionAttr):
         for all relationships that meet the given cascade rule.
 
         :param type_:
-          The name of the cascade rule (i.e. save-update, delete,
-          etc.)
+          The name of the cascade rule (i.e. ``"save-update"``, ``"delete"``,
+          etc.).
+
+          .. note::  the ``"all"`` cascade is not accepted here.  For a generic
+             object traversal function, see :ref:`faq_walk_objects`.
 
         :param state:
           The lead InstanceState.  child items will be processed per
           the relationships defined for this object's mapper.
 
-        the return value are object instances; this provides a strong
-        reference so that they don't fall out of scope immediately.
+        :return: the method yields individual object instances.
+
+        .. seealso::
+
+            :ref:`unitofwork_cascades`
+
+            :ref:`faq_walk_objects` - illustrates a generic function to
+            traverse all objects without relying on cascades.
 
         """
         visited_states = set()
