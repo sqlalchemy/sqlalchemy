@@ -417,6 +417,77 @@ The recipe `ExpireRelationshipOnFKChange <http://www.sqlalchemy.org/trac/wiki/Us
 in order to coordinate the setting of foreign key attributes with many-to-one
 relationships.
 
+.. _faq_walk_objects:
+
+How do I walk all objects that are related to a given object?
+-------------------------------------------------------------
+
+An object that has other objects related to it will correspond to the
+:func:`.relationship` constructs set up between mappers.  This code fragment will
+iterate all the objects, correcting for cycles as well::
+
+    from sqlalchemy import inspect
+
+
+    def walk(obj):
+        stack = [obj]
+
+        seen = set()
+
+        while stack:
+            obj = stack.pop(0)
+            if obj in seen:
+                continue
+            else:
+                seen.add(obj)
+                yield obj
+            insp = inspect(obj)
+            for relationship in insp.mapper.relationships:
+                related = getattr(obj, relationship.key)
+                if relationship.uselist:
+                    stack.extend(related)
+                elif related is not None:
+                    stack.append(related)
+
+The function can be demonstrated as follows::
+
+    Base = declarative_base()
+
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B", backref="a")
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+        c_id = Column(ForeignKey('c.id'))
+        c = relationship("C", backref="bs")
+
+
+    class C(Base):
+        __tablename__ = 'c'
+        id = Column(Integer, primary_key=True)
+
+
+    a1 = A(bs=[B(), B(c=C())])
+
+
+    for obj in walk(a1):
+        print obj
+
+Output::
+
+    <__main__.A object at 0x10303b190>
+    <__main__.B object at 0x103025210>
+    <__main__.B object at 0x10303b0d0>
+    <__main__.C object at 0x103025490>
+
+
+
 Is there a way to automagically have only unique keywords (or other kinds of objects) without doing a query for the keyword and getting a reference to the row containing that keyword?
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
