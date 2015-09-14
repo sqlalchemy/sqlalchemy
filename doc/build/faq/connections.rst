@@ -136,3 +136,84 @@ when :meth:`.Connection.close` is called::
     conn.detach()  # detaches the DBAPI connection from the connection pool
     conn.connection.<go nuts>
     conn.close()  # connection is closed for real, the pool replaces it with a new connection
+
+How do I use engines / connections / sessions with Python multiprocessing, or os.fork()?
+----------------------------------------------------------------------------------------
+
+The key goal with multiple python processes is to prevent any database connections
+from being shared across processes.   Depending on specifics of the driver and OS,
+the issues that arise here range from non-working connections to socket connections that
+are used by multiple processes concurrently, leading to broken messaging (the latter
+case is typically the most common).
+
+The SQLAlchemy :class:`.Engine` object refers to a connection pool of existing
+database connections.  So when this object is replicated to a child process,
+the goal is to ensure that no database connections are carried over.  There
+are three general approaches to this:
+
+1. Disable pooling using :class:`.NullPool`.  This is the most simplistic,
+   one shot system that prevents the :class:`.Engine` from using any connection
+   more than once.
+
+2. Call :meth:`.Engine.dispose` on any given :class:`.Engine` as soon one is
+   within the new process.  In Python multiprocessing, constructs such as
+   ``multiprocessing.Pool`` include "initializer" hooks which are a place
+   that this can be performed; otherwise at the top of where ``os.fork()``
+   or where the ``Process`` object begins the child fork, a single call
+   to :meth:`.Engine.dispose` will ensure any remaining connections are flushed.
+
+3. An event handler can be applied to the connection pool that tests for connections
+   being shared across process boundaries, and invalidates them.  This looks like
+   the following::
+
+        import os
+        import warnings
+
+        from sqlalchemy import event
+        from sqlalchemy import exc
+
+        def add_engine_pidguard(engine):
+            """Add multiprocessing guards.
+
+            Forces a connection to be reconnected if it is detected
+            as having been shared to a sub-process.
+
+            """
+
+            @event.listens_for(engine, "connect")
+            def connect(dbapi_connection, connection_record):
+                connection_record.info['pid'] = os.getpid()
+
+            @event.listens_for(engine, "checkout")
+            def checkout(dbapi_connection, connection_record, connection_proxy):
+                pid = os.getpid()
+                if connection_record.info['pid'] != pid:
+                    # substitute log.debug() or similar here as desired
+                    warnings.warn(
+                        "Parent process %(orig)s forked (%(newproc)s) with an open "
+                        "database connection, "
+                        "which is being discarded and recreated." %
+                        {"newproc": pid, "orig": connection_record.info['pid']})
+                    connection_record.connection = connection_proxy.connection = None
+                    raise exc.DisconnectionError(
+                        "Connection record belongs to pid %s, "
+                        "attempting to check out in pid %s" %
+                        (connection_record.info['pid'], pid)
+                    )
+
+   These events are applied to an :class:`.Engine` as soon as its created::
+
+        engine = create_engine("...")
+
+        add_engine_pidguard(engine)
+
+The above strategies will accommodate the case of an :class:`.Engine`
+being shared among processes.  However, for the case of a transaction-active
+:class:`.Session` or :class:`.Connection` being shared, there's no automatic
+fix for this; an application needs to ensure a new child process only
+initiate new :class:`.Connection` objects and transactions, as well as ORM
+:class:`.Session` objects.  For a :class:`.Session` object, technically
+this is only needed if the session is currently transaction-bound, however
+the scope of a single :class:`.Session` is in any case intended to be
+kept within a single call stack in any case (e.g. not a global object, not
+shared between processes or threads).
