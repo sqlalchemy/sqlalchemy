@@ -228,9 +228,9 @@ subclasses:
     entity = with_polymorphic(Employee, [Engineer, Manager])
 
     # join to all subclass tables
-    entity = query.with_polymorphic(Employee, '*')
+    entity = with_polymorphic(Employee, '*')
 
-    # use with Query
+    # use the 'entity' with a Query object
     session.query(entity).all()
 
 It also accepts a third argument ``selectable`` which replaces the automatic
@@ -249,7 +249,7 @@ should be used to load polymorphically::
                 employee.outerjoin(manager).outerjoin(engineer)
             )
 
-    # use with Query
+    # use the 'entity' with a Query object
     session.query(entity).all()
 
 Note that if you only need to load a single subtype, such as just the
