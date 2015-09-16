@@ -13,7 +13,7 @@ import datetime as dt
 import codecs
 
 from .type_api import TypeEngine, TypeDecorator, to_instance
-from .elements import quoted_name, type_coerce, _defer_name
+from .elements import quoted_name, TypeCoerce as type_coerce, _defer_name
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
 from . import operators

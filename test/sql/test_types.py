@@ -12,6 +12,7 @@ from sqlalchemy import (
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
     INTEGER, DECIMAL, NUMERIC, FLOAT, REAL, Array)
 from sqlalchemy.sql import ddl
+from sqlalchemy.sql import visitors
 from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
@@ -789,6 +790,68 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [('BIND_INd1', 'BIND_INd1BIND_OUT')]
         )
 
+    def test_cast_replace_col_w_bind(self):
+        self._test_replace_col_w_bind(cast)
+
+    def test_type_coerce_replace_col_w_bind(self):
+        self._test_replace_col_w_bind(type_coerce)
+
+    def _test_replace_col_w_bind(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        stmt = select([t.c.data, coerce_fn(t.c.data, MyType)])
+
+        def col_to_bind(col):
+            if col is t.c.data:
+                return bindparam(None, "x", type_=col.type, unique=True)
+            return None
+
+        # ensure we evaulate the expression so that we can see
+        # the clone resets this info
+        stmt.compile()
+
+        new_stmt = visitors.replacement_traverse(stmt, {}, col_to_bind)
+
+        # original statement
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+        # replaced with binds; CAST can't affect the bound parameter
+        # on the way in here
+        eq_(
+            testing.db.execute(new_stmt).fetchall(),
+            [('x', 'BIND_INxBIND_OUT')] if coerce_fn is type_coerce
+            else [('x', 'xBIND_OUT')]
+        )
+
+    def test_cast_bind(self):
+        self._test_bind(cast)
+
+    def test_type_bind(self):
+        self._test_bind(type_coerce)
+
+    def _test_bind(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        stmt = select([
+            bindparam(None, "x", String(50), unique=True),
+            coerce_fn(bindparam(None, "x", String(50), unique=True), MyType)
+        ])
+
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [('x', 'BIND_INxBIND_OUT')] if coerce_fn is type_coerce
+            else [('x', 'xBIND_OUT')]
+        )
+
     @testing.fails_on(
         "oracle", "ORA-00906: missing left parenthesis - "
         "seems to be CAST(:param AS type)")
@@ -820,6 +883,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         eq_(
             select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
             [('BIND_INd1BIND_OUT', )])
+
 
 
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):

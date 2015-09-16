@@ -141,6 +141,9 @@ used to construct any kind of typed SQL expression.
 .. autoclass:: sqlalchemy.sql.elements.True_
    :members:
 
+.. autoclass:: TypeCoerce
+   :members:
+
 .. autoclass:: sqlalchemy.sql.operators.custom_op
    :members:
 

@@ -435,6 +435,110 @@ can be done like any other type::
 
 :ticket:`2919`
 
+.. _change_3531:
+
+The type_coerce function is now a persistent SQL element
+--------------------------------------------------------
+
+The :func:`.expression.type_coerce` function previously would return
+an object either of type :class:`.BindParameter` or :class:`.Label`, depending
+on the input.  An effect this would have was that in the case where expression
+transformations were used, such as the conversion of an element from a
+:class:`.Column` to a :class:`.BindParameter` that's critical to ORM-level
+lazy loading, the type coercion information would not be used since it would
+have been lost already.
+
+To improve this behavior, the function now returns a persistent
+:class:`.TypeCoerce` container around the given expression, which itself
+remains unaffected; this construct is evaluated explicitly by the
+SQL compiler.  This allows for the coercion of the inner expression
+to be maintained no matter how the statement is modified, including if
+the contained element is replaced with a different one, as is common
+within the ORM's lazy loading feature.
+
+The test case illustrating the effect makes use of a heterogeneous
+primaryjoin condition in conjunction with custom types and lazy loading.
+Given a custom type that applies a CAST as a "bind expression"::
+
+    class StringAsInt(TypeDecorator):
+        impl = String
+
+        def column_expression(self, col):
+            return cast(col, Integer)
+
+        def bind_expression(self, value):
+            return cast(value, String)
+
+Then, a mapping where we are equating a string "id" column on one
+table to an integer "id" column on the other::
+
+    class Person(Base):
+        __tablename__ = 'person'
+        id = Column(StringAsInt, primary_key=True)
+
+        pets = relationship(
+            'Pets',
+            primaryjoin=(
+                'foreign(Pets.person_id)'
+                '==cast(type_coerce(Person.id, Integer), Integer)'
+            )
+        )
+
+    class Pets(Base):
+        __tablename__ = 'pets'
+        id = Column('id', Integer, primary_key=True)
+        person_id = Column('person_id', Integer)
+
+Above, in the :paramref:`.relationship.primaryjoin` expression, we are
+using :func:`.type_coerce` to handle bound parameters passed via
+lazyloading as integers, since we already know these will come from
+our ``StringAsInt`` type which maintains the value as an integer in
+Python. We are then using :func:`.cast` so that as a SQL expression,
+the VARCHAR "id"  column will be CAST to an integer for a regular non-
+converted join as with :meth:`.Query.join` or :func:`.orm.joinedload`.
+That is, a joinedload of ``.pets`` looks like::
+
+    SELECT person.id AS person_id, pets_1.id AS pets_1_id,
+           pets_1.person_id AS pets_1_person_id
+    FROM person
+    LEFT OUTER JOIN pets AS pets_1
+    ON pets_1.person_id = CAST(person.id AS INTEGER)
+
+Without the CAST in the ON clause of the join, strongly-typed databases
+such as Postgresql will refuse to implicitly compare the integer and fail.
+
+The lazyload case of ``.pets`` relies upon replacing
+the ``Person.id`` column at load time with a bound parameter, which receives
+a Python-loaded value.  This replacement is specifically where the intent
+of our :func:`.type_coerce` function would be lost.  Prior to the change,
+this lazy load comes out as::
+
+    SELECT pets.id AS pets_id, pets.person_id AS pets_person_id
+    FROM pets
+    WHERE pets.person_id = CAST(CAST(%(param_1)s AS VARCHAR) AS INTEGER)
+    {'param_1': 5}
+
+Where above, we see that our in-Python value of ``5`` is CAST first
+to a VARCHAR, then back to an INTEGER in SQL; a double CAST which works,
+but is nevertheless not what we asked for.
+
+With the change, the :func:`.type_coerce` function maintains a wrapper
+even after the column is swapped out for a bound parameter, and the query now
+looks like::
+
+    SELECT pets.id AS pets_id, pets.person_id AS pets_person_id
+    FROM pets
+    WHERE pets.person_id = CAST(%(param_1)s AS INTEGER)
+    {'param_1': 5}
+
+Where our outer CAST that's in our primaryjoin still takes effect, but the
+needless CAST that's in part of the ``StringAsInt`` custom type is removed
+as intended by the :func:`.type_coerce` function.
+
+
+:ticket:`3531`
+
+
 Key Behavioral Changes - ORM
 ============================
 

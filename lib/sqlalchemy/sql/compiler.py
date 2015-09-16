@@ -765,6 +765,9 @@ class SQLCompiler(Compiled):
         x += "END"
         return x
 
+    def visit_type_coerce(self, type_coerce, **kw):
+        return type_coerce.typed_expression._compiler_dispatch(self, **kw)
+
     def visit_cast(self, cast, **kwargs):
         return "CAST(%s AS %s)" % \
             (cast.clause._compiler_dispatch(self, **kwargs),

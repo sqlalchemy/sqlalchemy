@@ -124,67 +124,6 @@ def literal(value, type_=None):
     return BindParameter(None, value, type_=type_, unique=True)
 
 
-def type_coerce(expression, type_):
-    """Associate a SQL expression with a particular type, without rendering
-    ``CAST``.
-
-    E.g.::
-
-        from sqlalchemy import type_coerce
-
-        stmt = select([type_coerce(log_table.date_string, StringDateTime())])
-
-    The above construct will produce SQL that is usually otherwise unaffected
-    by the :func:`.type_coerce` call::
-
-        SELECT date_string FROM log
-
-    However, when result rows are fetched, the ``StringDateTime`` type
-    will be applied to result rows on behalf of the ``date_string`` column.
-
-    A type that features bound-value handling will also have that behavior
-    take effect when literal values or :func:`.bindparam` constructs are
-    passed to :func:`.type_coerce` as targets.
-    For example, if a type implements the :meth:`.TypeEngine.bind_expression`
-    method or :meth:`.TypeEngine.bind_processor` method or equivalent,
-    these functions will take effect at statement compilation/execution time
-    when a literal value is passed, as in::
-
-        # bound-value handling of MyStringType will be applied to the
-        # literal value "some string"
-        stmt = select([type_coerce("some string", MyStringType)])
-
-    :func:`.type_coerce` is similar to the :func:`.cast` function,
-    except that it does not render the ``CAST`` expression in the resulting
-    statement.
-
-    :param expression: A SQL expression, such as a :class:`.ColumnElement`
-     expression or a Python string which will be coerced into a bound literal
-     value.
-
-    :param type_: A :class:`.TypeEngine` class or instance indicating
-     the type to which the expression is coerced.
-
-    .. seealso::
-
-        :func:`.cast`
-
-    """
-    type_ = type_api.to_instance(type_)
-
-    if hasattr(expression, '__clause_element__'):
-        return type_coerce(expression.__clause_element__(), type_)
-    elif isinstance(expression, BindParameter):
-        bp = expression._clone()
-        bp.type = type_
-        return bp
-    elif not isinstance(expression, Visitable):
-        if expression is None:
-            return Null()
-        else:
-            return literal(expression, type_=type_)
-    else:
-        return Label(None, expression, type_=type_)
 
 
 def outparam(key, type_=None):
@@ -2345,6 +2284,109 @@ class Cast(ColumnElement):
     @property
     def _from_objects(self):
         return self.clause._from_objects
+
+
+class TypeCoerce(ColumnElement):
+    """Represent a Python-side type-coercion wrapper.
+
+    :class:`.TypeCoerce` supplies the :func:`.expression.type_coerce`
+    function; see that function for usage details.
+
+    .. versionchanged:: 1.1 The :func:`.type_coerce` function now produces
+       a persistent :class:`.TypeCoerce` wrapper object rather than
+       translating the given object in place.
+
+    .. seealso::
+
+        :func:`.expression.type_coerce`
+
+    """
+
+    __visit_name__ = 'type_coerce'
+
+    def __init__(self, expression, type_):
+        """Associate a SQL expression with a particular type, without rendering
+        ``CAST``.
+
+        E.g.::
+
+            from sqlalchemy import type_coerce
+
+            stmt = select([
+                type_coerce(log_table.date_string, StringDateTime())
+            ])
+
+        The above construct will produce a :class:`.TypeCoerce` object, which
+        renders SQL that labels the expression, but otherwise does not
+        modify its value on the SQL side::
+
+            SELECT date_string AS anon_1 FROM log
+
+        When result rows are fetched, the ``StringDateTime`` type
+        will be applied to result rows on behalf of the ``date_string`` column.
+        The rationale for the "anon_1" label is so that the type-coerced
+        column remains separate in the list of result columns vs. other
+        type-coerced or direct values of the target column.  In order to
+        provide a named label for the expression, use
+        :meth:`.ColumnElement.label`::
+
+            stmt = select([
+                type_coerce(
+                    log_table.date_string, StringDateTime()).label('date')
+            ])
+
+
+        A type that features bound-value handling will also have that behavior
+        take effect when literal values or :func:`.bindparam` constructs are
+        passed to :func:`.type_coerce` as targets.
+        For example, if a type implements the
+        :meth:`.TypeEngine.bind_expression`
+        method or :meth:`.TypeEngine.bind_processor` method or equivalent,
+        these functions will take effect at statement compilation/execution
+        time when a literal value is passed, as in::
+
+            # bound-value handling of MyStringType will be applied to the
+            # literal value "some string"
+            stmt = select([type_coerce("some string", MyStringType)])
+
+        :func:`.type_coerce` is similar to the :func:`.cast` function,
+        except that it does not render the ``CAST`` expression in the resulting
+        statement.
+
+        :param expression: A SQL expression, such as a :class:`.ColumnElement`
+         expression or a Python string which will be coerced into a bound
+         literal value.
+
+        :param type_: A :class:`.TypeEngine` class or instance indicating
+         the type to which the expression is coerced.
+
+        .. seealso::
+
+            :func:`.cast`
+
+        """
+        self.type = type_api.to_instance(type_)
+        self.clause = _literal_as_binds(expression, type_=self.type)
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.clause = clone(self.clause, **kw)
+        self.__dict__.pop('typed_expression', None)
+
+    def get_children(self, **kwargs):
+        return self.clause,
+
+    @property
+    def _from_objects(self):
+        return self.clause._from_objects
+
+    @util.memoized_property
+    def typed_expression(self):
+        if isinstance(self.clause, BindParameter):
+            bp = self.clause._clone()
+            bp.type = self.type
+            return bp
+        else:
+            return self.clause
 
 
 class Extract(ColumnElement):

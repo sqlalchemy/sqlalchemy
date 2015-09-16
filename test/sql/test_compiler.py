@@ -3484,13 +3484,15 @@ class ResultMapTest(fixtures.TestBase):
         tc = type_coerce(t.c.a, String)
         stmt = select([t.c.a, l1, tc])
         comp = stmt.compile()
-        tc_anon_label = comp._create_result_map()['a_1'][1][0]
+        tc_anon_label = comp._create_result_map()['anon_1'][1][0]
         eq_(
             comp._create_result_map(),
             {
                 'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type),
                 'bar': ('bar', (l1, 'bar'), l1.type),
-                'a_1': ('%%(%d a)s' % id(tc), (tc_anon_label, 'a_1'), tc.type),
+                'anon_1': (
+                    '%%(%d anon)s' % id(tc),
+                    (tc_anon_label, 'anon_1', tc), tc.type),
             },
         )
 

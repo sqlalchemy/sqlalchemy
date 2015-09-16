@@ -22,6 +22,23 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3531
+
+        The :func:`.type_coerce` construct is now a fully fledged Core
+        expression element which is late-evaluated at compile time.  Previously,
+        the function was only a conversion function which would handle different
+        expression inputs by returning either a :class:`.Label` of a column-oriented
+        expression or a copy of a given :class:`.BindParameter` object,
+        which in particular prevented the operation from being logically
+        maintained when an ORM-level expression transformation would convert
+        a column to a bound parameter (e.g. for lazy loading).
+
+        .. seealso::
+
+            :ref:`change_3531`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3526
 

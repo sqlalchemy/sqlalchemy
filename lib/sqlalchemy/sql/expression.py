@@ -36,7 +36,7 @@ from .elements import ClauseElement, ColumnElement,\
     True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
     Grouping, WithinGroup, not_, \
     collate, literal_column, between,\
-    literal, outparam, type_coerce, ClauseList, FunctionFilter
+    literal, outparam, TypeCoerce, ClauseList, FunctionFilter
 
 from .elements import SavepointClause, RollbackToSavepointClause, \
     ReleaseSavepointClause
@@ -92,6 +92,7 @@ asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
 desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
 distinct = public_factory(
     UnaryExpression._create_distinct, ".expression.distinct")
+type_coerce = public_factory(TypeCoerce, ".expression.type_coerce")
 true = public_factory(True_._instance, ".expression.true")
 false = public_factory(False_._instance, ".expression.false")
 null = public_factory(Null._instance, ".expression.null")
