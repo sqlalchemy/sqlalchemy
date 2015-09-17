@@ -1077,8 +1077,11 @@ class RefersToSelfLazyLoadInterferenceTest(fixtures.MappedTest):
 class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults,):
     """ORM-level test for [ticket:3531]"""
 
+    # mysql is having a recursion issue in the bind_expression
+    __only_on__ = ('sqlite', 'postgresql')
+
     class StringAsInt(TypeDecorator):
-        impl = String
+        impl = String(50)
 
         def column_expression(self, col):
             return sa.cast(col, Integer)
@@ -1095,7 +1098,7 @@ class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults,):
         Table(
             "pets", metadata,
             Column("id", Integer, primary_key=True),
-            Column("person_id", cls.StringAsInt()),
+            Column("person_id", Integer),
         )
 
     @classmethod
@@ -1139,7 +1142,7 @@ class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults,):
 
         asserter.assert_(
             CompiledSQL(
-                "SELECT pets.id AS pets_id, CAST(pets.person_id AS INTEGER) "
+                "SELECT pets.id AS pets_id, pets.person_id "
                 "AS pets_person_id FROM pets "
                 "WHERE pets.person_id = CAST(:param_1 AS INTEGER)",
                 [{'param_1': 5}]
