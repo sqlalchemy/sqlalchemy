@@ -166,56 +166,6 @@ how SQLAlchemy handles this:
 This
 is an auxilliary use case suitable for testing and bulk insert scenarios.
 
-.. _legacy_schema_rendering:
-
-Rendering of SQL statements that include schema qualifiers
----------------------------------------------------------
-
-When using :class:`.Table` metadata that includes a "schema" qualifier,
-such as::
-
-    account_table = Table(
-        'account', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('info', String(100)),
-        schema="customer_schema"
-    )
-
-The SQL Server dialect has a long-standing behavior that it will attempt
-to turn a schema-qualified table name into an alias, such as::
-
-    >>> eng = create_engine("mssql+pymssql://mydsn")
-    >>> print(account_table.select().compile(eng))
-    SELECT account_1.id, account_1.info
-    FROM customer_schema.account AS account_1
-
-This behavior is legacy, does not function correctly for many forms
-of SQL statements, and will be disabled by default in the 1.1 series
-of SQLAlchemy.   As of 1.0.5, the above statement will produce the following
-warning::
-
-    SAWarning: legacy_schema_aliasing flag is defaulted to True;
-      some schema-qualified queries may not function correctly.
-      Consider setting this flag to False for modern SQL Server versions;
-      this flag will default to False in version 1.1
-
-This warning encourages the :class:`.Engine` to be created as follows::
-
-    >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=False)
-
-Where the above SELECT statement will produce::
-
-    >>> print(account_table.select().compile(eng))
-    SELECT customer_schema.account.id, customer_schema.account.info
-    FROM customer_schema.account
-
-The warning will not emit if the ``legacy_schema_aliasing`` flag is set
-to either True or False.
-
-.. versionadded:: 1.0.5 - Added the ``legacy_schema_aliasing`` flag to disable
-   the SQL Server dialect's legacy behavior with schema-qualified table
-   names.  This flag will default to False in version 1.1.
-
 Collation Support
 -----------------
 
@@ -321,6 +271,41 @@ behavior of this flag is as follows:
   fixed and always output exactly that type.
 
 .. versionadded:: 1.0.0
+
+.. _legacy_schema_rendering:
+
+Legacy Schema Mode
+------------------
+
+Very old versions of the MSSQL dialect introduced the behavior such that a
+schema-qualified table would be auto-aliased when used in a
+SELECT statement; given a table::
+
+    account_table = Table(
+        'account', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('info', String(100)),
+        schema="customer_schema"
+    )
+
+this legacy mode of rendering would assume that "customer_schema.account"
+would not be accepted by all parts of the SQL statement, as illustrated
+below::
+
+    >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=True)
+    >>> print(account_table.select().compile(eng))
+    SELECT account_1.id, account_1.info
+    FROM customer_schema.account AS account_1
+
+This mode of behavior is now off by default, as it appears to have served
+no purpose; however in the case that legacy applications rely upon it,
+it is available using the ``legacy_schema_aliasing`` argument to
+:func:`.create_engine` as illustrated above.
+
+.. versionchanged:: 1.1 the ``legacy_schema_aliasing`` flag introduced
+   in version 1.0.5 to allow disabling of legacy mode for schemas now
+   defaults to False.
+
 
 .. _mssql_indexes:
 
@@ -1156,15 +1141,6 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
     def _schema_aliased_table(self, table):
         if getattr(table, 'schema', None) is not None:
-            if self.dialect._warn_schema_aliasing and \
-                    table.schema.lower() != 'information_schema':
-                util.warn(
-                    "legacy_schema_aliasing flag is defaulted to True; "
-                    "some schema-qualified queries may not function "
-                    "correctly. Consider setting this flag to False for "
-                    "modern SQL Server versions; this flag will default to "
-                    "False in version 1.1")
-
             if table not in self.tablealiases:
                 self.tablealiases[table] = table.alias()
             return self.tablealiases[table]
@@ -1530,7 +1506,7 @@ class MSDialect(default.DefaultDialect):
                  max_identifier_length=None,
                  schema_name="dbo",
                  deprecate_large_types=None,
-                 legacy_schema_aliasing=None, **opts):
+                 legacy_schema_aliasing=False, **opts):
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name
 
@@ -1538,13 +1514,7 @@ class MSDialect(default.DefaultDialect):
         self.max_identifier_length = int(max_identifier_length or 0) or \
             self.max_identifier_length
         self.deprecate_large_types = deprecate_large_types
-
-        if legacy_schema_aliasing is None:
-            self.legacy_schema_aliasing = True
-            self._warn_schema_aliasing = True
-        else:
-            self.legacy_schema_aliasing = legacy_schema_aliasing
-            self._warn_schema_aliasing = False
+        self.legacy_schema_aliasing = legacy_schema_aliasing
 
         super(MSDialect, self).__init__(**opts)
 

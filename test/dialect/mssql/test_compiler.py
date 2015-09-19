@@ -12,7 +12,7 @@ from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = mssql.dialect(legacy_schema_aliasing=False)
+    __dialect__ = mssql.dialect()
 
     def test_true_false(self):
         self.assert_compile(

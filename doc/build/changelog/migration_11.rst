@@ -831,5 +831,41 @@ the same thing.
 
 :ticket:`3504`
 
+.. _change_3434:
+
+The legacy_schema_aliasing flag is now set to False
+---------------------------------------------------
+
+SQLAlchemy 1.0.5 introduced the ``legacy_schema_aliasing`` flag to the
+MSSQL dialect, allowing so-called "legacy mode" aliasing to be turned off.
+This aliasing attempts to turn schema-qualified tables into aliases;
+given a table such as::
+
+    account_table = Table(
+        'account', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('info', String(100)),
+        schema="customer_schema"
+    )
+
+The legacy mode of behavior will attempt to turn a schema-qualified table
+name into an alias::
+
+    >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=True)
+    >>> print(account_table.select().compile(eng))
+    SELECT account_1.id, account_1.info
+    FROM customer_schema.account AS account_1
+
+However, this aliasing has been shown to be unnecessary and in many cases
+produces incorrect SQL.
+
+In SQLAlchemy 1.1, the ``legacy_schema_aliasing`` flag now defaults to
+False, disabling this mode of behavior and allowing the MSSQL dialect to behave
+normally with schema-qualified tables.  For applications which may rely
+on this behavior, set the flag back to True.
+
+
+:ticket:`3434`
+
 Dialect Improvements and Changes - Oracle
 =============================================

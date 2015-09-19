@@ -22,6 +22,19 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: change, mssql
+        :tickets: 3434
+
+        The ``legacy_schema_aliasing`` flag, introduced in version 1.0.5
+        as part of :ticket:`3424` to allow disabling of the MSSQL dialect's
+        attempts to create aliases for schema-qualified tables, now defaults
+        to False; the old behavior is now disabled unless explicitly turned on.
+
+        .. seealso::
+
+            :ref:`change_3434`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3250
 

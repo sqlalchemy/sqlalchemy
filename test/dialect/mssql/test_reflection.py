@@ -213,7 +213,7 @@ class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt = tables.c.table_name == 'somename'
         self.assert_compile(
             stmt,
-            "[TABLES_1].[TABLE_NAME] = :table_name_1",
+            "[INFORMATION_SCHEMA].[TABLES].[TABLE_NAME] = :table_name_1",
             dialect=dialect
         )
 
@@ -223,7 +223,7 @@ class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt = tables.c.table_name == 'somename'
         self.assert_compile(
             stmt,
-            "[TABLES_1].[TABLE_NAME] = CAST(:table_name_1 AS NVARCHAR(max))",
+            "[INFORMATION_SCHEMA].[TABLES].[TABLE_NAME] = CAST(:table_name_1 AS NVARCHAR(max))",
             dialect=dialect
         )
 
