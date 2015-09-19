@@ -1312,6 +1312,32 @@ class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
             set([('1', '2', '3'), ('4', '5', '6'), (('4', '5'), ('6', '7'))])
         )
 
+    def test_array_plus_native_enum_create(self):
+        m = MetaData()
+        t = Table(
+            't', m,
+            Column(
+                'data_1',
+                postgresql.ARRAY(
+                    postgresql.ENUM('a', 'b', 'c', name='my_enum_1')
+                )
+            ),
+            Column(
+                'data_2',
+                postgresql.ARRAY(
+                    types.Enum('a', 'b', 'c', name='my_enum_2')
+                )
+            )
+        )
+
+        t.create(testing.db)
+        eq_(
+            set(e['name'] for e in inspect(testing.db).get_enums()),
+            set(['my_enum_1', 'my_enum_2'])
+        )
+        t.drop(testing.db)
+        eq_(inspect(testing.db).get_enums(), [])
+
 
 class HashableFlagORMTest(fixtures.TestBase):
     """test the various 'collection' types that they flip the 'hashable' flag

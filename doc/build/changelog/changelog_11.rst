@@ -22,6 +22,19 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 2729
+
+        The use of a :class:`.postgresql.ARRAY` object that refers
+        to a :class:`.types.Enum` or :class:`.postgresql.ENUM` subtype
+        will now emit the expected "CREATE TYPE" and "DROP TYPE" DDL when
+        the type is used within a "CREATE TABLE" or "DROP TABLE".
+
+        .. seealso::
+
+            :ref:`change_2729`
+
+    .. change::
         :tags: bug, sql
         :tickets: 3531
 

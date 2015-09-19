@@ -723,6 +723,44 @@ to::
 
 :ticket:`3514`
 
+.. _change_2729:
+
+ARRAY with ENUM will now emit CREATE TYPE for the ENUM
+------------------------------------------------------
+
+A table definition like the following will now emit CREATE TYPE
+as expected::
+
+    enum = Enum(
+        'manager', 'place_admin', 'carwash_admin',
+        'parking_admin', 'service_admin', 'tire_admin',
+        'mechanic', 'carwasher', 'tire_mechanic', name="work_place_roles")
+
+    class WorkPlacement(Base):
+        __tablename__ = 'work_placement'
+        id = Column(Integer, primary_key=True)
+        roles = Column(ARRAY(enum))
+
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    Base.metadata.create_all(e)
+
+emits::
+
+    CREATE TYPE work_place_roles AS ENUM (
+        'manager', 'place_admin', 'carwash_admin', 'parking_admin',
+        'service_admin', 'tire_admin', 'mechanic', 'carwasher',
+        'tire_mechanic')
+
+    CREATE TABLE work_placement (
+        id SERIAL NOT NULL,
+        roles work_place_roles[],
+        PRIMARY KEY (id)
+    )
+
+
+:ticket:`2729`
+
 Dialect Improvements and Changes - MySQL
 =============================================
 

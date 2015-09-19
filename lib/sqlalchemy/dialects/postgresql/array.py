@@ -7,6 +7,7 @@
 
 from .base import ischema_names
 from ...sql import expression, operators
+from ...sql.base import SchemaEventTarget
 from ... import types as sqltypes
 
 try:
@@ -105,7 +106,7 @@ CONTAINED_BY = operators.custom_op("<@", precedence=5)
 OVERLAP = operators.custom_op("&&", precedence=5)
 
 
-class ARRAY(sqltypes.Array):
+class ARRAY(SchemaEventTarget, sqltypes.Array):
 
     """Postgresql ARRAY type.
 
@@ -238,6 +239,18 @@ class ARRAY(sqltypes.Array):
 
     def compare_values(self, x, y):
         return x == y
+
+    def _set_parent(self, column):
+        """Support SchemaEentTarget"""
+
+        if isinstance(self.item_type, SchemaEventTarget):
+            self.item_type._set_parent(column)
+
+    def _set_parent_with_dispatch(self, parent):
+        """Support SchemaEentTarget"""
+
+        if isinstance(self.item_type, SchemaEventTarget):
+            self.item_type._set_parent_with_dispatch(parent)
 
     def _proc_array(self, arr, itemproc, dim, collection):
         if dim is None:
