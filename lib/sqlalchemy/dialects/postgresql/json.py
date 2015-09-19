@@ -258,7 +258,7 @@ class JSON(sqltypes.Indexable, sqltypes.TypeEngine):
     comparator_factory = Comparator
 
     @property
-    def evaluates_none(self):
+    def should_evaluate_none(self):
         return not self.none_as_null
 
     def bind_processor(self, dialect):

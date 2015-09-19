@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: September 2, 2015
+    Document last updated: September 19, 2015
 
 Introduction
 ============
@@ -232,6 +232,26 @@ relationship attribute to an object, which is handled distinctly::
 
 
 :ticket:`3321`
+
+.. _change_3250:
+
+New options allowing explicit persistence of NULL over a default
+----------------------------------------------------------------
+
+Related to the new JSON-NULL support added to Postgresql as part of
+:ref:`change_3514`, the base :class:`.TypeEngine` class now supports
+a method :meth:`.TypeEngine.evaluates_none` which allows a positive set
+of the ``None`` value on an attribute to be persisted as NULL, rather than
+omitting the column from the INSERT statement, which has the effect of using
+the column-level default.  This allows a mapper-level
+configuration of the existing object-level technique of assigning
+:func:`.sql.null` to the attribute.
+
+.. seealso::
+
+    :ref:`session_forcing_null`
+
+:ticket:`3250`
 
 New Features and Improvements - Core
 ====================================
@@ -671,7 +691,8 @@ method were used, ``None`` would be ignored in all cases::
         MyObject,
         [{"json_value": None}])  # would insert SQL NULL and/or trigger defaults
 
-The :class:`.JSON` type now adds a new flag :attr:`.TypeEngine.evaluates_none`
+The :class:`.JSON` type now implements the
+:attr:`.TypeEngine.should_evaluate_none` flag,
 indicating that ``None`` should not be ignored here; it is configured
 automatically based on the value of :paramref:`.JSON.none_as_null`.
 Thanks to :ticket:`3061`, we can differentiate when the value ``None`` is actively
@@ -693,7 +714,9 @@ previously.  Below, the two variants are illustrated::
 
 .. seealso::
 
-  :ref:`change_3514_jsonnull`
+      :ref:`change_3250`
+
+      :ref:`change_3514_jsonnull`
 
 .. _change_3514_jsonnull:
 

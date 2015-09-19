@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3250
+
+        Added a new type-level modifier :meth:`.TypeEngine.evaluates_none`
+        which indicates to the ORM that a positive set of None should be
+        persisted as the value NULL, instead of omitting the column from
+        the INSERT statement.  This feature is used both as part of the
+        implementation for :ticket:`3514` as well as a standalone feature
+        available on any type.
+
+        .. seealso::
+
+            :ref:`change_3250`
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 2729
 
@@ -277,6 +292,8 @@
         .. seealso::
 
             :ref:`change_3514`
+
+            :ref:`change_3250`
 
     .. change::
         :tags: feature, postgresql

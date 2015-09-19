@@ -1964,7 +1964,7 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         class EvalsNull(TypeDecorator):
             impl = String(50)
 
-            evaluates_none = True
+            should_evaluate_none = True
 
             def process_bind_param(self, value, dialect):
                 if value is None:
@@ -1979,6 +1979,11 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             Column('evals_null_default', EvalsNull(), default='default_val'),
             Column('no_eval_null_no_default', String(50)),
             Column('no_eval_null_default', String(50), default='default_val'),
+            Column(
+                'builtin_evals_null_no_default', String(50).evaluates_none()),
+            Column(
+                'builtin_evals_null_default',
+                String(50).evaluates_none(), default='default_val'),
         )
 
     @classmethod
@@ -2120,4 +2125,44 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     def test_no_evalnull_default_bulk_insert_novalue(self):
         self._test_bulk_insert_novalue(
             "no_eval_null_default", 'default_val'
+        )
+
+    def test_builtin_evalnull_nodefault_insert(self):
+        self._test_insert(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_nodefault_bulk_insert(self):
+        self._test_bulk_insert(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_nodefault_insert_novalue(self):
+        self._test_insert_novalue(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_nodefault_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_default_insert(self):
+        self._test_insert(
+            "builtin_evals_null_default", None
+        )
+
+    def test_builtin_evalnull_default_bulk_insert(self):
+        self._test_bulk_insert(
+            "builtin_evals_null_default", None
+        )
+
+    def test_builtin_evalnull_default_insert_novalue(self):
+        self._test_insert_novalue(
+            "builtin_evals_null_default", 'default_val'
+        )
+
+    def test_builtin_evalnull_default_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "builtin_evals_null_default", 'default_val'
         )
