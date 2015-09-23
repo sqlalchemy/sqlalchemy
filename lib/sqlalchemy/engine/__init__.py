@@ -389,9 +389,9 @@ def create_engine(*args, **kwargs):
 def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     """Create a new Engine instance using a configuration dictionary.
 
-    The dictionary is typically produced from a config file where keys
-    are prefixed, such as sqlalchemy.url, sqlalchemy.echo, etc.  The
-    'prefix' argument indicates the prefix to be searched for.
+    The *configuration* dictionary is typically produced from a config file
+    in which keys are prefixed, e.g. sqlalchemy.url, sqlalchemy.echo, etc.
+    The 'prefix' argument indicates the prefix to be searched for.
 
     A select set of keyword arguments will be "coerced" to their
     expected type based on string values.    The set of arguments
