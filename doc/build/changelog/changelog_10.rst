@@ -21,6 +21,14 @@
     .. change::
         :tags: bug, orm
         :versions: 1.1.0b1
+        :tickets: 3539
+
+        Fixed rare TypeError which could occur when stringifying certain
+        kinds of internal column loader options within internal logging.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 1.1.0b1
         :tickets: 3525
 
         Fixed bug in :meth:`.Session.bulk_save_objects` where a mapped
