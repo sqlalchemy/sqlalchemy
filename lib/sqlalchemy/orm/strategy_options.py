@@ -180,7 +180,7 @@ class Load(Generative, MapperOption):
         return path
 
     def __str__(self):
-        return "Load(strategy=%r)" % self.strategy
+        return "Load(strategy=%r)" % (self.strategy, )
 
     def _coerce_strat(self, strategy):
         if strategy is not None:

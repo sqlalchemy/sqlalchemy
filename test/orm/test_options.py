@@ -2,7 +2,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import attributes, mapper, relationship, backref, \
     configure_mappers, create_session, synonym, Session, class_mapper, \
     aliased, column_property, joinedload_all, joinedload, Query,\
-    util as orm_util, Load
+    util as orm_util, Load, defer
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.testing.assertions import eq_, assert_raises, assert_raises_message
@@ -46,7 +46,17 @@ class PathTest(object):
             set([self._make_path(p) for p in paths])
         )
 
+
 class LoadTest(PathTest, QueryTest):
+
+    def test_str(self):
+        User = self.classes.User
+        l = Load(User)
+        l.strategy = (('deferred', False), ('instrument', True))
+        eq_(
+            str(l),
+            "Load(strategy=(('deferred', False), ('instrument', True)))"
+        )
 
     def test_gen_path_attr_entity(self):
         User = self.classes.User
