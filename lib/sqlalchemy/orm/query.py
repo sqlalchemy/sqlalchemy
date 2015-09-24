@@ -2471,6 +2471,38 @@ class Query(object):
         else:
             return None
 
+    def one_or_none(self):
+        """Return at most one result or raise an exception.
+
+        Returns ``None`` if the query selects
+        no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound``
+        if multiple object identities are returned, or if multiple
+        rows are returned for a query that does not return object
+        identities.
+
+        Note that an entity query, that is, one which selects one or
+        more mapped classes as opposed to individual column attributes,
+        may ultimately represent many rows but only one row of
+        unique entity or entities - this is a successful result for
+        `one_or_none()`.
+
+        Calling ``one_or_none()`` results in an execution of the underlying
+        query.
+
+        .. versionchanged:: 1.0.9
+            Added ``one_or_none()``
+        """
+        ret = list(self)
+
+        l = len(ret)
+        if l == 1:
+            return ret[0]
+        elif l == 0:
+            return None
+        else:
+            raise orm_exc.MultipleResultsFound(
+                "Multiple rows were found for one_or_none()")
+
     def one(self):
         """Return exactly one result or raise an exception.
 

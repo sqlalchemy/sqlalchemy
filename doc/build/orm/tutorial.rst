@@ -849,7 +849,7 @@ database results.  Here's a brief tour:
       ('%ed', 1, 0)
       {stop}<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>
 
-* :meth:`~.Query.one()`, fully fetches all rows, and if not
+* :meth:`~.Query.one()` fully fetches all rows, and if not
   exactly one object identity or composite row is present in the result, raises
   an error.  With multiple rows found:
 
@@ -891,6 +891,11 @@ database results.  Here's a brief tour:
   "no items found" versus "multiple items found" differently; such as a RESTful
   web service, which may want to raise a "404 not found" when no results are found,
   but raise an application error when multiple results are found.
+
+* :meth:`~.Query.one_or_none` is like :meth:`~.Query.one`, except that if no
+  results are found, it doesn't raise an error; it just returns ``None``. Like
+  :meth:`~.Query.one`, however, it does raise an error if multiple results are
+  found.
 
 * :meth:`~.Query.scalar` invokes the :meth:`~.Query.one` method, and upon
   success returns the first column of the row:

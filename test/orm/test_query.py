@@ -3598,6 +3598,60 @@ class ImmediateTest(_fixtures.FixtureTest):
             sess.query(User).join(User.addresses).filter(User.id.in_([8, 9])).
             order_by(User.id).one)
 
+    def test_one_or_none(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        eq_(sess.query(User).filter(User.id == 99).one_or_none(), None)
+
+        eq_(sess.query(User).filter(User.id == 7).one_or_none().id, 7)
+
+        assert_raises_message(
+            sa.orm.exc.MultipleResultsFound,
+            "Multiple rows were found for one_or_none\(\)",
+            sess.query(User).one_or_none)
+
+        eq_(sess.query(User.id, User.name).filter(User.id == 99).one_or_none(), None)
+
+        eq_(sess.query(User.id, User.name).filter(User.id == 7).one_or_none(),
+            (7, 'jack'))
+
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User.id, User.name).one_or_none)
+
+        eq_(
+            (sess.query(User, Address).join(User.addresses).
+           filter(Address.id == 99)).one_or_none(), None)
+
+        eq_((sess.query(User, Address).
+            join(User.addresses).
+            filter(Address.id == 4)).one_or_none(),
+           (User(id=8), Address(id=4)))
+
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User, Address).join(User.addresses).one_or_none)
+
+        # this result returns multiple rows, the first
+        # two rows being the same.  but uniquing is
+        # not applied for a column based result.
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User.id).join(User.addresses).
+            filter(User.id.in_([8, 9])).order_by(User.id).one_or_none)
+
+        # test that a join which ultimately returns
+        # multiple identities across many rows still
+        # raises, even though the first two rows are of
+        # the same identity and unique filtering
+        # is applied ([ticket:1688])
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User).join(User.addresses).filter(User.id.in_([8, 9])).
+            order_by(User.id).one_or_none)
+
     @testing.future
     def test_getslice(self):
         assert False
