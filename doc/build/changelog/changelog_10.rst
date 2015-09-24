@@ -90,6 +90,10 @@
         to again work as it is based on an 8.0.x version of Postgresql.
         Fix courtesy Pete Hollobon.
 
+    .. change::
+        :tags: orm
+
+        Add Query.one_or_none() method.
 
 .. changelog::
     :version: 1.0.8
