@@ -2491,8 +2491,10 @@ class Query(object):
         Calling ``one_or_none()`` results in an execution of the underlying
         query.
 
-        .. versionchanged:: 1.0.9
-            Added ``one_or_none()``
+        .. versionadded:: 1.0.9
+
+            Added :meth:`.Query.one_or_none`
+
         """
         ret = list(self)
 
@@ -2525,6 +2527,12 @@ class Query(object):
             ``one()`` fully fetches all results instead of applying
             any kind of limit, so that the "unique"-ing of entities does not
             conceal multiple object identities.
+
+        .. seealso::
+
+            :meth:`.Query.first`
+
+            :meth:`.Query.one_or_none`
 
         """
         ret = list(self)

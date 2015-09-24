@@ -151,6 +151,26 @@ class LikeQueryTest(BakedTest):
             (8, )
         )
 
+    def test_one_or_none_no_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name == 'asdf')
+
+        eq_(
+            bq(Session()).one_or_none(),
+            None
+        )
+
+    def test_one_or_none_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name == 'ed')
+
+        u1 = bq(Session()).one_or_none()
+        eq_(u1.name, 'ed')
+
     def test_one_no_result(self):
         User = self.classes.User
 
