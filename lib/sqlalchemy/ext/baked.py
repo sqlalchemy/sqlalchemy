@@ -301,7 +301,7 @@ class Result(object):
             return None
         else:
             raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one()")
+                "Multiple rows were found for one_or_none()")
 
     def all(self):
         """Return all rows.

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, subqueryload, \
     mapper, relationship, lazyload, clear_mappers
-from sqlalchemy.testing import eq_, is_, is_not_, assert_raises
+from sqlalchemy.testing import eq_, is_, is_not_
+from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import testing
 from test.orm import _fixtures
 from sqlalchemy.ext.baked import BakedQuery, baked_lazyload, BakedLazyLoader
@@ -171,18 +172,7 @@ class LikeQueryTest(BakedTest):
         u1 = bq(Session()).one_or_none()
         eq_(u1.name, 'ed')
 
-    def test_one_no_result(self):
-        User = self.classes.User
-
-        bq = self.bakery(lambda s: s.query(User))
-        bq += lambda q: q.filter(User.name == 'asdf')
-
-        assert_raises(
-            orm_exc.NoResultFound,
-            bq(Session()).one
-        )
-
-    def test_one_multiple_result(self):
+    def test_one_or_none_multiple_result(self):
         User = self.classes.User
 
         bq = self.bakery(lambda s: s.query(User))
@@ -190,6 +180,39 @@ class LikeQueryTest(BakedTest):
 
         assert_raises(
             orm_exc.MultipleResultsFound,
+            bq(Session()).one_or_none
+        )
+
+    def test_one_no_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name == 'asdf')
+
+        assert_raises_message(
+            orm_exc.NoResultFound,
+            "No row was found for one()",
+            bq(Session()).one
+        )
+
+    def test_one_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name == 'ed')
+
+        u1 = bq(Session()).one()
+        eq_(u1.name, 'ed')
+
+    def test_one_multiple_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name.like('%ed%'))
+
+        assert_raises_message(
+            orm_exc.MultipleResultsFound,
+            "Multiple rows were found for one()",
             bq(Session()).one
         )
 
