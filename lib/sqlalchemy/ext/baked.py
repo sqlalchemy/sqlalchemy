@@ -283,6 +283,26 @@ class Result(object):
             raise orm_exc.MultipleResultsFound(
                 "Multiple rows were found for one()")
 
+    def one_or_none(self):
+        """Return one or zero results, or raise an exception for multiple
+        rows.
+
+        Equivalent to :meth:`.Query.one_or_none`.
+
+        .. versionadded:: 1.0.9
+
+        """
+        ret = list(self)
+
+        l = len(ret)
+        if l == 1:
+            return ret[0]
+        elif l == 0:
+            return None
+        else:
+            raise orm_exc.MultipleResultsFound(
+                "Multiple rows were found for one()")
+
     def all(self):
         """Return all rows.
 

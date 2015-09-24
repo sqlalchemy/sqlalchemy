@@ -19,6 +19,15 @@
     :version: 1.0.9
 
     .. change::
+        :tags: feature, orm
+        :versions: 1.1.0b1
+        :pullreq: github:201
+
+        Added new method :meth:`.Query.one_or_none`; same as
+        :meth:`.Query.one` but returns None if no row found.  Pull request
+        courtesy esiegerman.
+
+    .. change::
         :tags: bug, orm
         :versions: 1.1.0b1
         :tickets: 3539
@@ -90,10 +99,6 @@
         to again work as it is based on an 8.0.x version of Postgresql.
         Fix courtesy Pete Hollobon.
 
-    .. change::
-        :tags: orm
-
-        Add Query.one_or_none() method.
 
 .. changelog::
     :version: 1.0.8
