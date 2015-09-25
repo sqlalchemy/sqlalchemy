@@ -36,7 +36,7 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
     generic_repr, counter, PluginLoader, hybridproperty, hybridmethod, \
     safe_reraise,\
     get_callable_argspec, only_once, attrsetter, ellipses_string, \
-    warn_limited, map_bits, MemoizedSlots, EnsureKWArgType
+    warn_limited, map_bits, MemoizedSlots, EnsureKWArgType, wrap_callable
 
 from .deprecations import warn_deprecated, warn_pending_deprecation, \
     deprecated, pending_deprecation, inject_docstring_text
