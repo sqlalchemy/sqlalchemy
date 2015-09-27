@@ -77,7 +77,7 @@ class InsertExecTest(fixtures.TablesTest):
                 comp = ins.compile(engine, column_keys=list(values))
                 if not set(values).issuperset(
                         c.key for c in table_.primary_key):
-                    is_(comp.returning, True)
+                    is_(bool(comp.returning), True)
 
             result = engine.execute(table_.insert(), **values)
             ret = values.copy()
