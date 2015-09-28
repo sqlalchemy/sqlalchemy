@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: September 19, 2015
+    Document last updated: September 28, 2015
 
 Introduction
 ============
@@ -790,6 +790,19 @@ Dialect Improvements and Changes - MySQL
 
 Dialect Improvements and Changes - SQLite
 =============================================
+
+.. _change_sqlite_schemas:
+
+Improved Support for Remote Schemas
+------------------------------------
+
+The SQLite dialect now implements :meth:`.Inspector.get_schema_names`
+and additionally has improved support for tables and indexes that are
+created and reflected from a remote schema, which in SQLite is a
+database that is assigned a name via the ``ATTACH`` statement; previously,
+the ``CREATE INDEX`` DDL didn't work correctly for a schema-bound table
+and the :meth:`.Inspector.get_foreign_keys` method will now indicate the
+given schema in the results.  Cross-schema foreign keys aren't supported.
 
 
 Dialect Improvements and Changes - SQL Server

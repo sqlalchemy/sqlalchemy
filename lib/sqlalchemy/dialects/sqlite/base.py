@@ -894,11 +894,25 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return preparer.format_table(table, use_schema=False)
 
-    def visit_create_index(self, create):
+    def visit_create_index(self, create, include_schema=False,
+                           include_table_schema=True):
         index = create.element
-
-        text = super(SQLiteDDLCompiler, self).visit_create_index(
-            create, include_table_schema=False)
+        self._verify_index_table(index)
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        text += "INDEX %s ON %s (%s)" \
+            % (
+                self._prepared_index_name(index,
+                                          include_schema=True),
+                preparer.format_table(index.table,
+                                      use_schema=False),
+                ', '.join(
+                    self.sql_compiler.process(
+                        expr, include_table=False, literal_binds=True) for
+                    expr in index.expressions)
+            )
 
         whereclause = index.dialect_options["sqlite"]["where"]
         if whereclause is not None:
@@ -1099,7 +1113,7 @@ class SQLiteDialect(default.DefaultDialect):
         s = "PRAGMA database_list"
         dl = connection.execute(s)
 
-        return [db[1] for db in dl]
+        return [db[1] for db in dl if db[1] != "temp"]
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
@@ -1290,7 +1304,7 @@ class SQLiteDialect(default.DefaultDialect):
                 fk = fks[numerical_id] = {
                     'name': None,
                     'constrained_columns': [],
-                    'referred_schema': None,
+                    'referred_schema': schema,
                     'referred_table': rtbl,
                     'referred_columns': [],
                 }

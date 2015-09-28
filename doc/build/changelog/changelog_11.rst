@@ -22,6 +22,20 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: change, sqlite
+        :pullreq: github:198
+
+        Added support to the SQLite dialect for the
+        :meth:`.Inspector.get_schema_names` method to work with SQLite;
+        pull request courtesy Brian Van Klaveren.  Also repaired support
+        for creation of indexes with schemas as well as reflection of
+        foreign key constraints in schema-bound tables.
+
+        .. seealso::
+
+            :ref:`change_sqlite_schemas`
+
+    .. change::
         :tags: change, mssql
         :tickets: 3434
 

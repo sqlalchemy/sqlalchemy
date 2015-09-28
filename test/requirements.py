@@ -293,7 +293,6 @@ class DefaultRequirements(SuiteRequirements):
         named 'test_schema'."""
 
         return skip_if([
-                    "sqlite",
                     "firebird"
                 ], "no schema support")
 
