@@ -1095,6 +1095,13 @@ class SQLiteDialect(default.DefaultDialect):
             return None
 
     @reflection.cache
+    def get_schema_names(self, connection, **kw):
+        s = "PRAGMA database_list"
+        dl = connection.execute(s)
+
+        return [db[1] for db in dl]
+
+    @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
