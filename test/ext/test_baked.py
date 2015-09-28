@@ -178,8 +178,9 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User))
         bq += lambda q: q.filter(User.name.like('%ed%'))
 
-        assert_raises(
+        assert_raises_message(
             orm_exc.MultipleResultsFound,
+            "Multiple rows were found for one_or_none()",
             bq(Session()).one_or_none
         )
 

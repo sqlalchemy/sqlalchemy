@@ -2535,16 +2535,15 @@ class Query(object):
             :meth:`.Query.one_or_none`
 
         """
-        ret = list(self)
-
-        l = len(ret)
-        if l == 1:
-            return ret[0]
-        elif l == 0:
-            raise orm_exc.NoResultFound("No row was found for one()")
-        else:
+        try:
+            ret = self.one_or_none()
+        except orm_exc.MultipleResultsFound:
             raise orm_exc.MultipleResultsFound(
                 "Multiple rows were found for one()")
+        else:
+            if ret is None:
+                raise orm_exc.NoResultFound("No row was found for one()")
+            return ret
 
     def scalar(self):
         """Return the first element of the first result or None
