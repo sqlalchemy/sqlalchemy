@@ -2463,6 +2463,12 @@ class Query(object):
 
         Calling ``first()`` results in an execution of the underlying query.
 
+        .. seealso::
+
+            :meth:`.Query.one`
+
+            :meth:`.Query.one_or_none`
+
         """
         if self._statement is not None:
             ret = list(self)[0:1]
@@ -2494,6 +2500,12 @@ class Query(object):
         .. versionadded:: 1.0.9
 
             Added :meth:`.Query.one_or_none`
+
+        .. seealso::
+
+            :meth:`.Query.first`
+
+            :meth:`.Query.one`
 
         """
         ret = list(self)
