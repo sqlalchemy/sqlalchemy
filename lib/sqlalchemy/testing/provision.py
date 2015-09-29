@@ -107,7 +107,7 @@ def _configure_follower(cfg, ident):
 
 
 @register.init
-def _post_configure_engine(url, engine):
+def _post_configure_engine(url, engine, follower_ident):
     pass
 
 
