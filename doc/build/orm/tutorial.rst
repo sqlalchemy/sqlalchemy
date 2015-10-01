@@ -795,10 +795,16 @@ Here's a rundown of some of the most common operators used in
     # or chain multiple filter()/filter_by() calls
     query.filter(User.name == 'ed').filter(User.fullname == 'Ed Jones')
 
+ .. note::  Make sure you use :func:`.and_` and **not** the
+    Python ``and`` operator!
+
 * :func:`OR <.sql.expression.or_>`::
 
     from sqlalchemy import or_
     query.filter(or_(User.name == 'ed', User.name == 'wendy'))
+
+ .. note::  Make sure you use :func:`.or_` and **not** the
+    Python ``or`` operator!
 
 * :meth:`MATCH <.ColumnOperators.match>`::
 
