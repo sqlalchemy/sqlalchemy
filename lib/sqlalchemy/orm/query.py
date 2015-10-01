@@ -1236,7 +1236,9 @@ class Query(object):
 
             session.query(MyClass).filter(MyClass.name == 'some name')
 
-        Multiple criteria are joined together by AND::
+        Multiple criteria may be specified as comma separated; the effect
+        is that they will be joined together using the :func:`.and_`
+        function::
 
             session.query(MyClass).\\
                 filter(MyClass.name == 'some name', MyClass.id > 5)
@@ -1244,9 +1246,6 @@ class Query(object):
         The criterion is any SQL expression object applicable to the
         WHERE clause of a select.   String expressions are coerced
         into SQL expression constructs via the :func:`.text` construct.
-
-        .. versionchanged:: 0.7.5
-            Multiple criteria joined by AND.
 
         .. seealso::
 
@@ -1271,7 +1270,9 @@ class Query(object):
 
             session.query(MyClass).filter_by(name = 'some name')
 
-        Multiple criteria are joined together by AND::
+        Multiple criteria may be specified as comma separated; the effect
+        is that they will be joined together using the :func:`.and_`
+        function::
 
             session.query(MyClass).\\
                 filter_by(name = 'some name', id = 5)
