@@ -1332,6 +1332,16 @@ The reference documentation for :meth:`~.Query.join` contains detailed informati
 and examples of the calling styles accepted by this method; :meth:`~.Query.join`
 is an important method at the center of usage for any SQL-fluent application.
 
+.. topic:: What does :class:`.Query` select from if there's multiple entities?
+
+    The :meth:`.Query.join` method will **typically join from the leftmost
+    item** in the list of entities, when the ON clause is omitted, or if the
+    ON clause is a plain SQL expression.  To control the first entity in the list
+    of JOINs, use the :meth:`.Query.select_from` method::
+
+        query = Session.query(User, Address).select_from(Address).join(User)
+
+
 .. _ormtutorial_aliases:
 
 Using Aliases
