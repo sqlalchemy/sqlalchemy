@@ -287,6 +287,7 @@ from sqlalchemy import util, sql
 from sqlalchemy.engine import default, reflection
 from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy import types as sqltypes, schema as sa_schema
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, \
     BLOB, CLOB, TIMESTAMP, FLOAT
@@ -1032,6 +1033,8 @@ class OracleDialect(default.DefaultDialect):
         if name.upper() == name and not \
                 self.identifier_preparer._requires_quotes(name.lower()):
             return name.lower()
+        elif name.lower() == name:
+            return quoted_name(name, quote=True)
         else:
             return name
 

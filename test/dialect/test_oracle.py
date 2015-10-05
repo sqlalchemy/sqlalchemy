@@ -5,6 +5,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy import *
 from sqlalchemy import types as sqltypes, exc, schema
 from sqlalchemy.sql import table, column
+from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.util import u, b
@@ -1858,6 +1859,31 @@ class TableReflectionTest(fixtures.TestBase):
 
         tbl = Table('test_compress', m2, autoload=True)
         assert tbl.dialect_options['oracle']['compress'] == "OLTP"
+
+    @testing.provide_metadata
+    def test_reflect_lowercase_forced_tables(self):
+        metadata = self.metadata
+
+        Table(
+            quoted_name('t1', quote=True), metadata,
+            Column('id', Integer, primary_key=True),
+        )
+        Table(
+            quoted_name('t2', quote=True), metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1id', ForeignKey('t1.id'))
+        )
+        metadata.create_all()
+
+        m2 = MetaData(testing.db)
+        t2_ref = Table(quoted_name('t2', quote=True), m2, autoload=True)
+        t1_ref = m2.tables['t1']
+        assert t2_ref.c.t1id.references(t1_ref.c.id)
+
+        m3 = MetaData(testing.db)
+        m3.reflect(only=lambda name, m: name.lower() in ('t1', 't2'))
+        assert m3.tables['t2'].c.t1id.references(m3.tables['t1'].c.id)
+
 
 
 class RoundTripIndexTest(fixtures.TestBase):
