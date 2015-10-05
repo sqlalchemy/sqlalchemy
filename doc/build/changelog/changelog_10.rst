@@ -19,6 +19,17 @@
     :version: 1.0.9
 
     .. change::
+        :tags: bug, oracle
+        :versions: 1.1.0b1
+        :tickets: 3548
+
+        Fixed bug in Oracle dialect where reflection of tables and other
+        symbols with names quoted to force all-lower-case would not be
+        identified properly in reflection queries.  The :class:`.quoted_name`
+        construct is now applied to incoming symbol names that detect as
+        forced into all-lower-case within the "name normalize" process.
+
+    .. change::
         :tags: feature, orm
         :versions: 1.1.0b1
         :pullreq: github:201
