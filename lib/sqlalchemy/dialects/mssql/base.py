@@ -236,7 +236,7 @@ CREATE TABLE statement for this column will yield::
 LIMIT/OFFSET Support
 --------------------
 
-MSSQL has no support for the LIMIT or OFFSET keysowrds. LIMIT is
+MSSQL has no support for the LIMIT or OFFSET keywords. LIMIT is
 supported directly through the ``TOP`` Transact SQL keyword::
 
     select.limit
