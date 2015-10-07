@@ -931,14 +931,12 @@ class SynonymsAsFKsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("tableA", metadata,
-              Column("id", Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column("id", Integer, primary_key=True),
               Column("foo", Integer,),
               test_needs_fk=True)
 
         Table("tableB", metadata,
-              Column("id", Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column("id", Integer, primary_key=True),
               Column("_a_id", Integer, key='a_id', primary_key=True),
               test_needs_fk=True)
 
@@ -1093,7 +1091,7 @@ class FKsAsPksTest(fixtures.MappedTest):
             'tablec', tableA.metadata,
             Column('id', Integer, primary_key=True),
             Column('a_id', Integer, ForeignKey('tableA.id'),
-                   primary_key=True, autoincrement=False, nullable=True))
+                   primary_key=True, nullable=True))
         tableC.create()
 
         class C(fixtures.BasicEntity):
@@ -2703,8 +2701,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-              Column('id', String(50), primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('id', String(50), primary_key=True),
               Column('data', String(50)))
         Table('t2', metadata,
               Column('id', Integer, primary_key=True,

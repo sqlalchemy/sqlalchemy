@@ -311,22 +311,22 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         Don't mark this test as unsupported for any backend !
 
-        (technically it fails with MySQL InnoDB since "id" comes before "id2")
-
         """
 
         meta = self.metadata
-        Table('test', meta,
+        Table(
+            'test', meta,
             Column('id', sa.Integer, primary_key=True),
             Column('data', sa.String(50)),
-            mysql_engine='MyISAM'
+            mysql_engine='InnoDB'
         )
-        Table('test2', meta,
-            Column('id', sa.Integer, sa.ForeignKey('test.id'),
-                                        primary_key=True),
+        Table(
+            'test2', meta,
+            Column(
+                'id', sa.Integer, sa.ForeignKey('test.id'), primary_key=True),
             Column('id2', sa.Integer, primary_key=True),
             Column('data', sa.String(50)),
-            mysql_engine='MyISAM'
+            mysql_engine='InnoDB'
         )
         meta.create_all()
         m2 = MetaData(testing.db)
@@ -334,7 +334,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert t1a._autoincrement_column is t1a.c.id
 
         t2a = Table('test2', m2, autoload=True)
-        assert t2a._autoincrement_column is t2a.c.id2
+        assert t2a._autoincrement_column is None
+
 
     @skip('sqlite')
     @testing.provide_metadata

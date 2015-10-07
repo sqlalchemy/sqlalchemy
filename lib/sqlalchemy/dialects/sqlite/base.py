@@ -853,12 +853,20 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec += " NOT NULL"
 
-        if (column.primary_key and
-                column.table.dialect_options['sqlite']['autoincrement'] and
-                len(column.table.primary_key.columns) == 1 and
-                issubclass(column.type._type_affinity, sqltypes.Integer) and
-                not column.foreign_keys):
-            colspec += " PRIMARY KEY AUTOINCREMENT"
+        if column.primary_key:
+            if (
+                column.autoincrement is True and
+                len(column.table.primary_key.columns) != 1
+            ):
+                raise exc.CompileError(
+                    "SQLite does not support autoincrement for "
+                    "composite primary keys")
+
+            if (column.table.dialect_options['sqlite']['autoincrement'] and
+                    len(column.table.primary_key.columns) == 1 and
+                    issubclass(column.type._type_affinity, sqltypes.Integer) and
+                    not column.foreign_keys):
+                colspec += " PRIMARY KEY AUTOINCREMENT"
 
         return colspec
 
@@ -1211,7 +1219,7 @@ class SQLiteDialect(default.DefaultDialect):
             'type': coltype,
             'nullable': nullable,
             'default': default,
-            'autoincrement': default is None,
+            'autoincrement': 'auto' if default is None else False,
             'primary_key': primary_key,
         }
 

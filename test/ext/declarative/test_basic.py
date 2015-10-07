@@ -1570,8 +1570,7 @@ class DeclarativeTest(DeclarativeTestBase):
         meta = MetaData(testing.db)
         t1 = Table(
             't1', meta,
-            Column('id', String(50),
-                   primary_key=True, test_needs_autoincrement=True),
+            Column('id', String(50), primary_key=True),
             Column('data', String(50)))
         meta.create_all()
         try:

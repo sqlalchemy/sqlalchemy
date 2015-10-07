@@ -72,9 +72,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             engines.testing_engine(options={'implicit_returning': False}),
             engines.testing_engine(options={'implicit_returning': True})
         ]:
-            assert_raises_message(exc.DBAPIError,
-                                  'violates not-null constraint',
-                                  eng.execute, t2.insert())
+            assert_raises_message(
+                exc.CompileError,
+                ".*has no Python-side or server-side default.*",
+                eng.execute, t2.insert()
+            )
+
 
     def test_sequence_insert(self):
         table = Table(
@@ -494,26 +497,26 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             engines.testing_engine(options={'implicit_returning': False})
         metadata.bind = self.engine
         table.insert().execute({'id': 30, 'data': 'd1'})
-        if self.engine.driver == 'pg8000':
-            exception_cls = exc.ProgrammingError
-        elif self.engine.driver == 'pypostgresql':
-            exception_cls = Exception
-        else:
-            exception_cls = exc.IntegrityError
-        assert_raises_message(exception_cls,
-                              'violates not-null constraint',
-                              table.insert().execute, {'data': 'd2'})
-        assert_raises_message(exception_cls,
-                              'violates not-null constraint',
-                              table.insert().execute, {'data': 'd2'},
-                              {'data': 'd3'})
-        assert_raises_message(exception_cls,
-                              'violates not-null constraint',
-                              table.insert().execute, {'data': 'd2'})
-        assert_raises_message(exception_cls,
-                              'violates not-null constraint',
-                              table.insert().execute, {'data': 'd2'},
-                              {'data': 'd3'})
+
+        assert_raises_message(
+            exc.CompileError,
+            ".*has no Python-side or server-side default.*",
+            table.insert().execute, {'data': 'd2'})
+        assert_raises_message(
+            exc.CompileError,
+            ".*has no Python-side or server-side default.*",
+            table.insert().execute, {'data': 'd2'},
+            {'data': 'd3'})
+        assert_raises_message(
+            exc.CompileError,
+            ".*has no Python-side or server-side default.*",
+            table.insert().execute, {'data': 'd2'})
+        assert_raises_message(
+            exc.CompileError,
+            ".*has no Python-side or server-side default.*",
+            table.insert().execute, {'data': 'd2'},
+            {'data': 'd3'})
+
         table.insert().execute({'id': 31, 'data': 'd2'}, {'id': 32,
                                                           'data': 'd3'})
         table.insert(inline=True).execute({'id': 33, 'data': 'd4'})
@@ -530,13 +533,15 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         m2 = MetaData(self.engine)
         table = Table(table.name, m2, autoload=True)
         table.insert().execute({'id': 30, 'data': 'd1'})
-        assert_raises_message(exception_cls,
-                              'violates not-null constraint',
-                              table.insert().execute, {'data': 'd2'})
-        assert_raises_message(exception_cls,
-                              'violates not-null constraint',
-                              table.insert().execute, {'data': 'd2'},
-                              {'data': 'd3'})
+        assert_raises_message(
+            exc.CompileError,
+            ".*has no Python-side or server-side default.*",
+            table.insert().execute, {'data': 'd2'})
+        assert_raises_message(
+            exc.CompileError,
+            ".*has no Python-side or server-side default.*",
+            table.insert().execute, {'data': 'd2'},
+            {'data': 'd3'})
         table.insert().execute({'id': 31, 'data': 'd2'}, {'id': 32,
                                                           'data': 'd3'})
         table.insert(inline=True).execute({'id': 33, 'data': 'd4'})

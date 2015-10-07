@@ -20,7 +20,7 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
     AssertsExecutionResults, engines
 from sqlalchemy import testing
-from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import CreateTable, FetchedValue
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.testing import mock
 
@@ -751,6 +751,17 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                             "WHERE data > 'a' AND data < 'b''s'",
                             dialect=sqlite.dialect())
 
+    def test_no_autoinc_on_composite_pk(self):
+        m = MetaData()
+        t = Table(
+            't', m,
+            Column('x', Integer, primary_key=True, autoincrement=True),
+            Column('y', Integer, primary_key=True))
+        assert_raises_message(
+            exc.CompileError,
+            "SQLite does not support autoincrement for composite",
+            CreateTable(t).compile, dialect=sqlite.dialect()
+        )
 
 
 class InsertTest(fixtures.TestBase, AssertsExecutionResults):
@@ -781,20 +792,43 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk2(self):
+        # now raises CompileError due to [ticket:3216]
         assert_raises(
-            exc.DBAPIError, self._test_empty_insert,
+            exc.CompileError, self._test_empty_insert,
             Table(
                 'b', MetaData(testing.db),
                 Column('x', Integer, primary_key=True),
                 Column('y', Integer, primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
+    def test_empty_insert_pk2_fv(self):
+        assert_raises(
+            exc.DBAPIError, self._test_empty_insert,
+            Table(
+                'b', MetaData(testing.db),
+                Column('x', Integer, primary_key=True,
+                       server_default=FetchedValue()),
+                Column('y', Integer, primary_key=True,
+                       server_default=FetchedValue())))
+
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk3(self):
+        # now raises CompileError due to [ticket:3216]
+        assert_raises(
+            exc.CompileError, self._test_empty_insert,
+            Table(
+                'c', MetaData(testing.db),
+                Column('x', Integer, primary_key=True),
+                Column('y', Integer, DefaultClause('123'), primary_key=True)))
+
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
+    def test_empty_insert_pk3_fv(self):
         assert_raises(
             exc.DBAPIError, self._test_empty_insert,
             Table(
                 'c', MetaData(testing.db),
-                Column('x', Integer, primary_key=True),
+                Column('x', Integer, primary_key=True,
+                       server_default=FetchedValue()),
                 Column('y', Integer, DefaultClause('123'), primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')

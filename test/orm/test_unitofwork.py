@@ -260,7 +260,7 @@ class PKTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table('multipk1', metadata,
               Column('multi_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+                     test_needs_autoincrement=not testing.against('sqlite')),
               Column('multi_rev', Integer, primary_key=True),
               Column('name', String(50), nullable=False),
               Column('value', String(100)))

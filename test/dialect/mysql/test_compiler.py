@@ -511,9 +511,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(schema.CreateTable(t1),
                             'CREATE TABLE sometable (assigned_id '
                             'INTEGER NOT NULL, id INTEGER NOT NULL '
-                            'AUTO_INCREMENT, PRIMARY KEY (assigned_id, '
-                            'id), KEY idx_autoinc_id (id))ENGINE=Inn'
-                            'oDB')
+                            'AUTO_INCREMENT, PRIMARY KEY (id, assigned_id)'
+                            ')ENGINE=InnoDB')
 
         t1 = Table('sometable', MetaData(),
                    Column('assigned_id', Integer(), primary_key=True,
@@ -537,8 +536,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'CREATE TABLE sometable ('
             'id INTEGER NOT NULL, '
             '`order` INTEGER NOT NULL AUTO_INCREMENT, '
-            'PRIMARY KEY (id, `order`), '
-            'KEY idx_autoinc_order (`order`)'
+            'PRIMARY KEY (`order`, id)'
             ')ENGINE=InnoDB')
 
     def test_create_table_with_partition(self):

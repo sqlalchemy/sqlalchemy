@@ -1916,38 +1916,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         return None
 
 
-# ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].
-#       Starting with MySQL 4.1.2, these indexes are created automatically.
-#       In older versions, the indexes must be created explicitly or the
-#       creation of foreign key constraints fails."
-
 class MySQLDDLCompiler(compiler.DDLCompiler):
-    def create_table_constraints(self, table, **kw):
-        """Get table constraints."""
-        constraint_string = super(
-            MySQLDDLCompiler, self).create_table_constraints(table, **kw)
-
-        # why self.dialect.name and not 'mysql'?  because of drizzle
-        is_innodb = 'engine' in table.dialect_options[self.dialect.name] and \
-                    table.dialect_options[self.dialect.name][
-                        'engine'].lower() == 'innodb'
-
-        auto_inc_column = table._autoincrement_column
-
-        if is_innodb and \
-                auto_inc_column is not None and \
-                auto_inc_column is not list(table.primary_key)[0]:
-            if constraint_string:
-                constraint_string += ", \n\t"
-            constraint_string += "KEY %s (%s)" % (
-                self.preparer.quote(
-                    "idx_autoinc_%s" % auto_inc_column.name
-                ),
-                self.preparer.format_column(auto_inc_column)
-            )
-
-        return constraint_string
-
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
 

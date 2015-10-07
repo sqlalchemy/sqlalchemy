@@ -1361,6 +1361,128 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not t1.c.x.nullable
 
 
+class PKAutoIncrementTest(fixtures.TestBase):
+    def test_multi_integer_no_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', Integer),
+            Column('b', Integer)
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, None)
+
+    def test_multi_integer_multi_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', Integer, autoincrement=True),
+            Column('b', Integer, autoincrement=True)
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Only one Column may be marked",
+            lambda: pk._autoincrement_column
+        )
+
+    def test_single_integer_no_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', Integer),
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, pk.columns['a'])
+
+    def test_single_string_no_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', String),
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, None)
+
+    def test_single_string_illegal_autoinc(self):
+        t = Table('t', MetaData(), Column('a', String, autoincrement=True))
+        pk = PrimaryKeyConstraint(
+            t.c.a
+        )
+        t.append_constraint(pk)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Column type VARCHAR on column 't.a'",
+            lambda: pk._autoincrement_column
+        )
+
+    def test_single_integer_illegal_default(self):
+        t = Table(
+            't', MetaData(),
+            Column('a', Integer, autoincrement=True, default=lambda: 1))
+        pk = PrimaryKeyConstraint(
+            t.c.a
+        )
+        t.append_constraint(pk)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Column default.*on column t.a is not compatible",
+            lambda: pk._autoincrement_column
+        )
+
+    def test_single_integer_illegal_server_default(self):
+        t = Table(
+            't', MetaData(),
+            Column('a', Integer,
+                   autoincrement=True, server_default=func.magic()))
+        pk = PrimaryKeyConstraint(
+            t.c.a
+        )
+        t.append_constraint(pk)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Column server default.*on column t.a is not compatible",
+            lambda: pk._autoincrement_column
+        )
+
+    def test_implicit_autoinc_but_fks(self):
+        m = MetaData()
+        Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table(
+            't2', MetaData(),
+            Column('a', Integer, ForeignKey('t1.id')))
+        pk = PrimaryKeyConstraint(
+            t2.c.a
+        )
+        t2.append_constraint(pk)
+        is_(pk._autoincrement_column, None)
+
+    def test_explicit_autoinc_but_fks(self):
+        m = MetaData()
+        Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table(
+            't2', MetaData(),
+            Column('a', Integer, ForeignKey('t1.id'), autoincrement=True))
+        pk = PrimaryKeyConstraint(
+            t2.c.a
+        )
+        t2.append_constraint(pk)
+        is_(pk._autoincrement_column, t2.c.a)
+
+        t3 = Table(
+            't3', MetaData(),
+            Column('a', Integer,
+                   ForeignKey('t1.id'), autoincrement='ignore_fk'))
+        pk = PrimaryKeyConstraint(
+            t3.c.a
+        )
+        t3.append_constraint(pk)
+        is_(pk._autoincrement_column, t3.c.a)
+
+
 class SchemaTypeTest(fixtures.TestBase):
 
     class MyType(sqltypes.SchemaType, sqltypes.TypeEngine):

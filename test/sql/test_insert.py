@@ -390,6 +390,106 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"name_1": "foo"}
         )
 
+    def test_anticipate_no_pk_composite_pk(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True)
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.y' is marked as a member.*"
+            "Note that as of SQLAlchemy 1.1,",
+            t.insert().compile, column_keys=['x']
+
+        )
+
+    def test_anticipate_no_pk_composite_pk_implicit_returning(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = True
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.y' is marked as a member.*"
+            "Note that as of SQLAlchemy 1.1,",
+            t.insert().compile, dialect=d, column_keys=['x']
+
+        )
+
+    def test_anticipate_no_pk_composite_pk_prefetch(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = False
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.y' is marked as a member.*"
+            "Note that as of SQLAlchemy 1.1,",
+            t.insert().compile, dialect=d, column_keys=['x']
+
+        )
+
+    def test_anticipate_nullable_composite_pk(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True, nullable=True)
+        )
+        self.assert_compile(
+            t.insert(),
+            "INSERT INTO t (x) VALUES (:x)",
+            params={'x': 5},
+        )
+
+    def test_anticipate_no_pk_non_composite_pk(self):
+        t = Table(
+            't', MetaData(),
+            Column('x', Integer, primary_key=True, autoincrement=False),
+            Column('q', Integer)
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.x' is marked as a member.*"
+            "may not store NULL.$",
+            t.insert().compile, column_keys=['q']
+
+        )
+
+    def test_anticipate_no_pk_non_composite_pk_implicit_returning(self):
+        t = Table(
+            't', MetaData(),
+            Column('x', Integer, primary_key=True, autoincrement=False),
+            Column('q', Integer)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = True
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.x' is marked as a member.*"
+            "may not store NULL.$",
+            t.insert().compile, dialect=d, column_keys=['q']
+
+        )
+
+    def test_anticipate_no_pk_non_composite_pk_prefetch(self):
+        t = Table(
+            't', MetaData(),
+            Column('x', Integer, primary_key=True, autoincrement=False),
+            Column('q', Integer)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = False
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.x' is marked as a member.*"
+            "may not store NULL.$",
+            t.insert().compile, dialect=d, column_keys=['q']
+
+        )
+
 
 class InsertImplicitReturningTest(
         _InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):

@@ -732,7 +732,6 @@ class AutoIncrementTest(fixtures.TablesTest):
         )
         assert x._autoincrement_column is None
 
-    @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_non_autoincrement(self):
         # sqlite INT primary keys can be non-unique! (only for ints)
         nonai = Table(
@@ -746,8 +745,9 @@ class AutoIncrementTest(fixtures.TablesTest):
             # mysql in legacy mode fails on second row
             nonai.insert().execute(data='row 1')
             nonai.insert().execute(data='row 2')
-        assert_raises(
-            sa.exc.DBAPIError,
+        assert_raises_message(
+            sa.exc.CompileError,
+            ".*has no Python-side or server-side default.*",
             go
         )
 

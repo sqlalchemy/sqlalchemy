@@ -579,8 +579,7 @@ class GetTest(QueryTest):
         table = Table(
             'unicode_data', metadata,
             Column(
-                'id', Unicode(40), primary_key=True,
-                test_needs_autoincrement=True),
+                'id', Unicode(40), primary_key=True),
             Column('data', Unicode(40)))
         metadata.create_all()
         ustring = util.b('petit voix m\xe2\x80\x99a').decode('utf-8')

@@ -211,49 +211,55 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         meta = MetaData(testing.db)
         try:
             Table('ai_1', meta,
-                  Column('int_y', Integer, primary_key=True),
+                  Column('int_y', Integer, primary_key=True,
+                         autoincrement=True),
                   Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True),
-                         mysql_engine='MyISAM')
+                  mysql_engine='MyISAM')
             Table('ai_2', meta,
-                  Column('int_y', Integer, primary_key=True),
+                  Column('int_y', Integer, primary_key=True,
+                         autoincrement=True),
                   Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True),
-                         mysql_engine='MyISAM')
+                  mysql_engine='MyISAM')
             Table('ai_3', meta,
                   Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
-                  Column('int_y', Integer, primary_key=True),
-                         mysql_engine='MyISAM')
+                  Column('int_y', Integer, primary_key=True,
+                         autoincrement=True),
+                  mysql_engine='MyISAM')
             Table('ai_4', meta,
                   Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
                   Column('int_n2', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
-                         mysql_engine='MyISAM')
+                  mysql_engine='MyISAM')
             Table('ai_5', meta,
-                  Column('int_y', Integer, primary_key=True),
+                  Column('int_y', Integer, primary_key=True,
+                         autoincrement=True),
                   Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
-                         mysql_engine='MyISAM')
+                  mysql_engine='MyISAM')
             Table('ai_6', meta,
                   Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
-                  Column('int_y', Integer, primary_key=True),
-                         mysql_engine='MyISAM')
+                  Column('int_y', Integer, primary_key=True,
+                         autoincrement=True),
+                  mysql_engine='MyISAM')
             Table('ai_7', meta,
                   Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
                   Column('o2', String(1), DefaultClause('x'),
                          primary_key=True),
-                  Column('int_y', Integer, primary_key=True),
-                         mysql_engine='MyISAM')
+                  Column('int_y', Integer, primary_key=True,
+                         autoincrement=True),
+                  mysql_engine='MyISAM')
             Table('ai_8', meta,
                   Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
                   Column('o2', String(1), DefaultClause('x'),
                          primary_key=True),
-                         mysql_engine='MyISAM')
+                  mysql_engine='MyISAM')
             meta.create_all()
 
             table_names = ['ai_1', 'ai_2', 'ai_3', 'ai_4',
