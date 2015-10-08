@@ -907,7 +907,8 @@ class Column(SchemaItem, ColumnClause):
         :param autoincrement: Set up "auto increment" semantics for an integer
           primary key column.  The default value is the string ``"auto"``
           which indicates that a single-column primary key that is of
-          an INTEGER type should receive auto increment semantics automatically;
+          an INTEGER type with no stated client-side or python-side defaults
+          should receive auto increment semantics automatically;
           all other varieties of primary key columns will not.  This
           includes that :term:`DDL` such as Postgresql SERIAL or MySQL
           AUTO_INCREMENT will be emitted for this column during a table
@@ -918,7 +919,11 @@ class Column(SchemaItem, ColumnClause):
           The flag may be set to ``True`` to indicate that a column which
           is part of a composite (e.g. multi-column) primary key should
           have autoincrement semantics, though note that only one column
-          within a primary key may have this setting.   It can also be
+          within a primary key may have this setting.    It can also
+          be set to ``True`` to indicate autoincrement semantics on a
+          column that has a client-side or server-side default configured,
+          however note that not all dialects can accommodate all styles
+          of default as an "autoincrement".  It can also be
           set to ``False`` on a single-column primary key that has a
           datatype of INTEGER in order to disable auto increment semantics
           for that column.
@@ -929,6 +934,10 @@ class Column(SchemaItem, ColumnClause):
              (multi-column) primary keys, autoincrement is never implicitly
              enabled; as always, ``autoincrement=True`` will allow for
              at most one of those columns to be an "autoincrement" column.
+             ``autoincrement=True`` may also be set on a :class:`.Column`
+             that has an explicit client-side or server-side default,
+             subject to limitations of the backend database and dialect.
+
 
           The setting *only* has an effect for columns which are:
 
@@ -948,9 +957,6 @@ class Column(SchemaItem, ColumnClause):
             on a column that refers to another via foreign key, as such a column
             is required to refer to a value that originates from elsewhere.
 
-          * have no server side or client side defaults (with the exception
-            of Postgresql SERIAL).
-
           The setting has these two effects on columns that meet the
           above criteria:
 
@@ -966,13 +972,14 @@ class Column(SchemaItem, ColumnClause):
 
                 :ref:`sqlite_autoincrement`
 
-          * The column will be considered to be available as
-            cursor.lastrowid or equivalent, for those dialects which
-            "post fetch" newly inserted identifiers after a row has
-            been inserted (SQLite, MySQL, MS-SQL).  It does not have
-            any effect in this regard for databases that use sequences
-            to generate primary key identifiers (i.e. Firebird, Postgresql,
-            Oracle).
+          * The column will be considered to be available using an
+            "autoincrement" method specific to the backend database, such
+            as calling upon ``cursor.lastrowid``, using RETURNING in an
+            INSERT statement to get at a sequence-generated value, or using
+            special functions such as "SELECT scope_identity()".
+            These methods are highly specific to the DBAPIs and databases in
+            use and vary greatly, so care should be taken when associating
+            ``autoincrement=True`` with a custom default generation function.
 
 
         :param default: A scalar, Python callable, or
@@ -3043,11 +3050,11 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     @util.memoized_property
     def _autoincrement_column(self):
 
-        def _validate_autoinc(col, raise_):
+        def _validate_autoinc(col, autoinc_true):
             if col.type._type_affinity is None or not issubclass(
                 col.type._type_affinity,
                     type_api.INTEGERTYPE._type_affinity):
-                if raise_:
+                if autoinc_true:
                     raise exc.ArgumentError(
                         "Column type %s on column '%s' is not "
                         "compatible with autoincrement=True" % (
@@ -3056,30 +3063,11 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                         ))
                 else:
                     return False
-            elif not isinstance(col.default, (type(None), Sequence)):
-                if raise_:
-                    raise exc.ArgumentError(
-                        "Column default %s on column %s.%s is not "
-                        "compatible with autoincrement=True" % (
-                            col.default,
-                            col.table.fullname, col.name
-                        )
-                    )
-                else:
+            elif not isinstance(col.default, (type(None), Sequence)) and \
+                    not autoinc_true:
                     return False
-            elif (
-                col.server_default is not None and
-                    not col.server_default.reflected):
-                if raise_:
-                    raise exc.ArgumentError(
-                        "Column server default %s on column %s.%s is not "
-                        "compatible with autoincrement=True" % (
-                            col.server_default,
-                            col.table.fullname, col.name
-                        )
-                    )
-                else:
-                    return False
+            elif col.server_default is not None and not autoinc_true:
+                return False
             elif (
                     col.foreign_keys and col.autoincrement
                     not in (True, 'ignore_fk')):

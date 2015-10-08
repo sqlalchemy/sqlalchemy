@@ -343,6 +343,9 @@ specify the column with ``nullable=True``::
         Column('y', Integer, primary_key=True, nullable=True)
     )
 
+In a related change, the ``autoincrement`` flag may be set to True
+on a column that has a client-side or server-side default.  This typically
+will not have much impact on the behavior of the column during an INSERT.
 
 
 .. seealso::

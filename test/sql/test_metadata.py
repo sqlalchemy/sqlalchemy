@@ -1417,7 +1417,7 @@ class PKAutoIncrementTest(fixtures.TestBase):
             lambda: pk._autoincrement_column
         )
 
-    def test_single_integer_illegal_default(self):
+    def test_single_integer_default(self):
         t = Table(
             't', MetaData(),
             Column('a', Integer, autoincrement=True, default=lambda: 1))
@@ -1426,13 +1426,12 @@ class PKAutoIncrementTest(fixtures.TestBase):
         )
         t.append_constraint(pk)
 
-        assert_raises_message(
-            exc.ArgumentError,
-            "Column default.*on column t.a is not compatible",
-            lambda: pk._autoincrement_column
-        )
+        is_(pk._autoincrement_column, t.c.a)
 
-    def test_single_integer_illegal_server_default(self):
+    def test_single_integer_server_default(self):
+        # new as of 1.1; now that we have three states for autoincrement,
+        # if the user puts autoincrement=True with a server_default, trust
+        # them on it
         t = Table(
             't', MetaData(),
             Column('a', Integer,
@@ -1442,11 +1441,7 @@ class PKAutoIncrementTest(fixtures.TestBase):
         )
         t.append_constraint(pk)
 
-        assert_raises_message(
-            exc.ArgumentError,
-            "Column server default.*on column t.a is not compatible",
-            lambda: pk._autoincrement_column
-        )
+        is_(pk._autoincrement_column, t.c.a)
 
     def test_implicit_autoinc_but_fks(self):
         m = MetaData()
