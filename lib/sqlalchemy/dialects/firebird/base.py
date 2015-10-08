@@ -648,7 +648,7 @@ class FBDialect(default.DefaultDialect):
                 'type': coltype,
                 'nullable': not bool(row['null_flag']),
                 'default': defvalue,
-                'autoincrement': defvalue is None
+                'autoincrement': 'auto',
             }
 
             if orig_colname.lower() == orig_colname:

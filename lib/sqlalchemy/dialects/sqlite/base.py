@@ -1219,7 +1219,7 @@ class SQLiteDialect(default.DefaultDialect):
             'type': coltype,
             'nullable': nullable,
             'default': default,
-            'autoincrement': 'auto' if default is None else False,
+            'autoincrement': 'auto',
             'primary_key': primary_key,
         }
 
