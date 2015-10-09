@@ -94,7 +94,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def __init__(self, target_collection, attr, creator=None,
                  getset_factory=None, proxy_factory=None,
-                 proxy_bulk_set=None):
+                 proxy_bulk_set=None, info=None):
         """Construct a new :class:`.AssociationProxy`.
 
         The :func:`.association_proxy` function is provided as the usual
@@ -138,6 +138,11 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         :param proxy_bulk_set: Optional, use with proxy_factory.  See
           the _set() method for details.
 
+        :param info: optional, will be assigned to
+         :attr:`.AssociationProxy.info` if present.
+
+         .. versionadded:: 1.0.9
+
         """
         self.target_collection = target_collection
         self.value_attr = attr
@@ -150,6 +155,8 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         self.key = '_%s_%s_%s' % (
             type(self).__name__, target_collection, id(self))
         self.collection_class = None
+        if info:
+            self.info = info
 
     @property
     def remote_attr(self):

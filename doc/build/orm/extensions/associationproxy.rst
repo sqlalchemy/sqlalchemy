@@ -509,5 +509,6 @@ API Documentation
 .. autoclass:: AssociationProxy
    :members:
    :undoc-members:
+   :inherited-members:
 
 .. autodata:: ASSOCIATION_PROXY

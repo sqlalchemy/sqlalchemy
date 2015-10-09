@@ -19,6 +19,18 @@
     :version: 1.0.9
 
     .. change::
+        :tags: feature, ext
+        :versions: 1.1.0b1
+        :tickets: 3551
+
+        Added the :paramref:`.AssociationProxy.info` parameter to the
+        :class:`.AssociationProxy` constructor, to suit the
+        :attr:`.AssociationProxy.info` accessor that was added in
+        :ticket:`2971`.  This is possible because :class:`.AssociationProxy`
+        is constructed explicitly, unlike a hybrid which is constructed
+        implicitly via the decorator syntax.
+
+    .. change::
         :tags: bug, oracle
         :versions: 1.1.0b1
         :tickets: 3548
