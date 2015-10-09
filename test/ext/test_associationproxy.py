@@ -1593,3 +1593,23 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
             a1.elements.update,
             (("B", 3), 'elem2'), (("C", 4), "elem3")
         )
+
+
+class InfoTest(fixtures.TestBase):
+    def test_constructor(self):
+        assoc = association_proxy('a', 'b', info={'some_assoc': 'some_value'})
+        eq_(assoc.info, {"some_assoc": "some_value"})
+
+    def test_empty(self):
+        assoc = association_proxy('a', 'b')
+        eq_(assoc.info, {})
+
+    def test_via_cls(self):
+        class Foob(object):
+            assoc = association_proxy('a', 'b')
+
+        eq_(Foob.assoc.info, {})
+
+        Foob.assoc.info["foo"] = 'bar'
+
+        eq_(Foob.assoc.info, {'foo': 'bar'})
