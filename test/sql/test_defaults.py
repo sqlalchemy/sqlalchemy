@@ -1089,7 +1089,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 'id', Integer,
                 autoincrement=True,
                 primary_key=True,
-                server_default=Sequence(
+                default=Sequence(
                     'my_sequence', metadata=self.metadata).next_value())
         )
         self.metadata.create_all(testing.db)
