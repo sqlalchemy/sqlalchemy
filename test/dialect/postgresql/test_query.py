@@ -49,8 +49,9 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
     def test_foreignkey_missing_insert(self):
-        t1 = Table('t1', metadata, Column('id', Integer,
-                                          primary_key=True))
+        Table(
+            't1', metadata,
+            Column('id', Integer, primary_key=True))
         t2 = Table(
             't2',
             metadata,
@@ -77,7 +78,6 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 ".*has no Python-side or server-side default.*",
                 eng.execute, t2.insert()
             )
-
 
     def test_sequence_insert(self):
         table = Table(
@@ -327,17 +327,17 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 30, 'data': 'd1'}),
+                       {'id': 30, 'data': 'd1'}),
             DialectSQL('INSERT INTO testtable (data) VALUES (:data) RETURNING '
-             'testtable.id', {'data': 'd2'}),
+                       'testtable.id', {'data': 'd2'}),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
+                       [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
             DialectSQL('INSERT INTO testtable (data) VALUES (:data)',
-             [{'data': 'd5'}, {'data': 'd6'}]),
+                       [{'data': 'd5'}, {'data': 'd6'}]),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 33, 'data': 'd7'}]),
+                       [{'id': 33, 'data': 'd7'}]),
             DialectSQL('INSERT INTO testtable (data) VALUES (:data)',
-                [{'data': 'd8'}]),
+                       [{'data': 'd8'}]),
         )
 
         eq_(
@@ -373,16 +373,18 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 30, 'data': 'd1'}),
+                       {'id': 30, 'data': 'd1'}),
             DialectSQL('INSERT INTO testtable (data) VALUES (:data) RETURNING '
-             'testtable.id', {'data': 'd2'}),
+                       'testtable.id', {'data': 'd2'}),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
+                       [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
             DialectSQL('INSERT INTO testtable (data) VALUES (:data)',
-             [{'data': 'd5'}, {'data': 'd6'}]),
+                       [{'data': 'd5'}, {'data': 'd6'}]),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 33, 'data': 'd7'}]),
-            DialectSQL('INSERT INTO testtable (data) VALUES (:data)', [{'data': 'd8'}]),
+                       [{'id': 33, 'data': 'd7'}]),
+            DialectSQL(
+                'INSERT INTO testtable (data) VALUES (:data)',
+                [{'data': 'd8'}]),
         )
         eq_(
             table.select().execute().fetchall(),
@@ -415,18 +417,20 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 30, 'data': 'd1'}),
+                       {'id': 30, 'data': 'd1'}),
             CursorSQL("select nextval('my_seq')"),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 1, 'data': 'd2'}),
+                       {'id': 1, 'data': 'd2'}),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-             ":data)" % seqname, [{'data': 'd5'}, {'data': 'd6'}]),
+                       [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
+            DialectSQL(
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                ":data)" % seqname, [{'data': 'd5'}, {'data': 'd6'}]),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 33, 'data': 'd7'}]),
-            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-             ":data)" % seqname, [{'data': 'd8'}]),
+                       [{'id': 33, 'data': 'd7'}]),
+            DialectSQL(
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                ":data)" % seqname, [{'data': 'd8'}]),
         )
         eq_(
             table.select().execute().fetchall(),
@@ -461,18 +465,20 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             {'id': 30, 'data': 'd1'}),
+                       {'id': 30, 'data': 'd1'}),
             DialectSQL("INSERT INTO testtable (id, data) VALUES "
-             "(nextval('my_seq'), :data) RETURNING testtable.id",
-             {'data': 'd2'}),
+                       "(nextval('my_seq'), :data) RETURNING testtable.id",
+                       {'data': 'd2'}),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
-            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-             ":data)" % seqname, [{'data': 'd5'}, {'data': 'd6'}]),
+                       [{'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'}]),
+            DialectSQL(
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                ":data)" % seqname, [{'data': 'd5'}, {'data': 'd6'}]),
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
-             [{'id': 33, 'data': 'd7'}]),
-            DialectSQL("INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-             ":data)" % seqname, [{'data': 'd8'}]),
+                       [{'id': 33, 'data': 'd7'}]),
+            DialectSQL(
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                ":data)" % seqname, [{'data': 'd8'}]),
         )
 
         eq_(
@@ -875,17 +881,16 @@ class ExtractTest(fixtures.TablesTest):
                 return datetime.timedelta(hours=4)
 
         cls.bind.execute(
-                cls.tables.t.insert(),
-                {
-                    'dtme': datetime.datetime(2012, 5, 10, 12, 15, 25),
-                    'dt': datetime.date(2012, 5, 10),
-                    'tm': datetime.time(12, 15, 25),
-                    'intv': datetime.timedelta(seconds=570),
-                    'dttz':
-                            datetime.datetime(2012, 5, 10, 12, 15, 25,
-                            tzinfo=TZ())
-                },
-            )
+            cls.tables.t.insert(),
+            {
+                'dtme': datetime.datetime(2012, 5, 10, 12, 15, 25),
+                'dt': datetime.date(2012, 5, 10),
+                'tm': datetime.time(12, 15, 25),
+                'intv': datetime.timedelta(seconds=570),
+                'dttz': datetime.datetime(2012, 5, 10, 12, 15, 25,
+                                          tzinfo=TZ())
+            },
+        )
 
     def _test(self, expr, field="all", overrides=None):
         t = self.tables.t
@@ -925,7 +930,7 @@ class ExtractTest(fixtures.TablesTest):
                    overrides={"epoch": 1336652695.0, "minute": 24})
 
     def test_three(self):
-        t = self.tables.t
+        self.tables.t
 
         actual_ts = self.bind.scalar(func.current_timestamp()) - \
             datetime.timedelta(days=5)
