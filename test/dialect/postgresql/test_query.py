@@ -837,6 +837,19 @@ class ExtractTest(fixtures.TablesTest):
     run_deletes = None
 
     @classmethod
+    def setup_bind(cls):
+        from sqlalchemy import event
+        eng = engines.testing_engine()
+
+        @event.listens_for(eng, "connect")
+        def connect(dbapi_conn, rec):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("SET SESSION TIME ZONE 0")
+            cursor.close()
+
+        return eng
+
+    @classmethod
     def define_tables(cls, metadata):
         Table('t', metadata,
               Column('id', Integer, primary_key=True),
@@ -856,12 +869,7 @@ class ExtractTest(fixtures.TablesTest):
             def utcoffset(self, dt):
                 return datetime.timedelta(hours=4)
 
-        with testing.db.connect() as conn:
-
-            # we aren't resetting this at the moment but we don't have
-            # any other tests that are TZ specific
-            conn.execute("SET SESSION TIME ZONE 0")
-            conn.execute(
+        cls.bind.execute(
                 cls.tables.t.insert(),
                 {
                     'dtme': datetime.datetime(2012, 5, 10, 12, 15, 25),
@@ -898,7 +906,7 @@ class ExtractTest(fixtures.TablesTest):
             fields.update(overrides)
 
         for field in fields:
-            result = testing.db.scalar(
+            result = self.bind.scalar(
                 select([extract(field, expr)]).select_from(t))
             eq_(result, fields[field])
 
@@ -914,7 +922,7 @@ class ExtractTest(fixtures.TablesTest):
     def test_three(self):
         t = self.tables.t
 
-        actual_ts = testing.db.scalar(func.current_timestamp()) - \
+        actual_ts = self.bind.scalar(func.current_timestamp()) - \
             datetime.timedelta(days=5)
         self._test(func.current_timestamp() - datetime.timedelta(days=5),
                    {"hour": actual_ts.hour, "year": actual_ts.year,
@@ -963,7 +971,7 @@ class ExtractTest(fixtures.TablesTest):
 
     def test_twelve(self):
         t = self.tables.t
-        actual_ts = testing.db.scalar(
+        actual_ts = self.bind.scalar(
             func.current_timestamp()).replace(tzinfo=None) - \
             datetime.datetime(2012, 5, 10, 12, 15, 25)
 
