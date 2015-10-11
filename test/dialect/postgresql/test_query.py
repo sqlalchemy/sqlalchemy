@@ -12,7 +12,7 @@ from sqlalchemy import exc
 from sqlalchemy.dialects import postgresql
 import datetime
 
-metadata = matchtable = cattable = None
+matchtable = cattable = None
 
 
 class InsertTest(fixtures.TestBase, AssertsExecutionResults):
@@ -22,23 +22,19 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     @classmethod
     def setup_class(cls):
-        global metadata
-        cls.engine = testing.db
-        metadata = MetaData(testing.db)
+        cls.metadata = MetaData(testing.db)
 
     def teardown(self):
-        metadata.drop_all()
-        metadata.clear()
-        if self.engine is not testing.db:
-            self.engine.dispose()
+        self.metadata.drop_all()
+        self.metadata.clear()
 
     def test_compiled_insert(self):
         table = Table(
-            'testtable', metadata, Column(
+            'testtable', self.metadata, Column(
                 'id', Integer, primary_key=True),
             Column(
                 'data', String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         ins = table.insert(
             inline=True,
             values={'data': bindparam('x')}).compile()
@@ -50,17 +46,17 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_foreignkey_missing_insert(self):
         Table(
-            't1', metadata,
+            't1', self.metadata,
             Column('id', Integer, primary_key=True))
         t2 = Table(
             't2',
-            metadata,
+            self.metadata,
             Column(
                 'id',
                 Integer,
                 ForeignKey('t1.id'),
                 primary_key=True))
-        metadata.create_all()
+        self.metadata.create_all()
 
         # want to ensure that "null value in column "id" violates not-
         # null constraint" is raised (IntegrityError on psycoopg2, but
@@ -82,7 +78,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
     def test_sequence_insert(self):
         table = Table(
             'testtable',
-            metadata,
+            self.metadata,
             Column(
                 'id',
                 Integer,
@@ -91,14 +87,14 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column(
                 'data',
                 String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         self._assert_data_with_sequence(table, 'my_seq')
 
     @testing.requires.returning
     def test_sequence_returning_insert(self):
         table = Table(
             'testtable',
-            metadata,
+            self.metadata,
             Column(
                 'id',
                 Integer,
@@ -107,57 +103,57 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column(
                 'data',
                 String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         self._assert_data_with_sequence_returning(table, 'my_seq')
 
     def test_opt_sequence_insert(self):
         table = Table(
-            'testtable', metadata,
+            'testtable', self.metadata,
             Column(
                 'id', Integer, Sequence(
                     'my_seq', optional=True), primary_key=True),
             Column(
                 'data', String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         self._assert_data_autoincrement(table)
 
     @testing.requires.returning
     def test_opt_sequence_returning_insert(self):
         table = Table(
-            'testtable', metadata,
+            'testtable', self.metadata,
             Column(
                 'id', Integer, Sequence(
                     'my_seq', optional=True), primary_key=True),
             Column(
                 'data', String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         self._assert_data_autoincrement_returning(table)
 
     def test_autoincrement_insert(self):
         table = Table(
-            'testtable', metadata,
+            'testtable', self.metadata,
             Column(
                 'id', Integer, primary_key=True),
             Column(
                 'data', String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         self._assert_data_autoincrement(table)
 
     @testing.requires.returning
     def test_autoincrement_returning_insert(self):
         table = Table(
-            'testtable', metadata,
+            'testtable', self.metadata,
             Column(
                 'id', Integer, primary_key=True),
             Column(
                 'data', String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         self._assert_data_autoincrement_returning(table)
 
     def test_noautoincrement_insert(self):
         table = Table(
             'testtable',
-            metadata,
+            self.metadata,
             Column(
                 'id',
                 Integer,
@@ -166,42 +162,45 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column(
                 'data',
                 String(30)))
-        metadata.create_all()
+        self.metadata.create_all()
         self._assert_data_noautoincrement(table)
 
     def _assert_data_autoincrement(self, table):
-        self.engine = \
+        engine = \
             engines.testing_engine(options={'implicit_returning': False})
-        metadata.bind = self.engine
 
-        with self.sql_execution_asserter(self.engine) as asserter:
+        with self.sql_execution_asserter(engine) as asserter:
 
-            # execute with explicit id
+            with engine.connect() as conn:
+                # execute with explicit id
 
-            r = table.insert().execute({'id': 30, 'data': 'd1'})
-            assert r.inserted_primary_key == [30]
+                r = conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
+                eq_(r.inserted_primary_key, [30])
 
-            # execute with prefetch id
+                # execute with prefetch id
 
-            r = table.insert().execute({'data': 'd2'})
-            assert r.inserted_primary_key == [1]
+                r = conn.execute(table.insert(), {'data': 'd2'})
+                eq_(r.inserted_primary_key, [1])
 
-            # executemany with explicit ids
+                # executemany with explicit ids
 
-            table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
-                                                              'data': 'd4'})
+                conn.execute(
+                    table.insert(),
+                    {'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'})
 
-            # executemany, uses SERIAL
+                # executemany, uses SERIAL
 
-            table.insert().execute({'data': 'd5'}, {'data': 'd6'})
+                conn.execute(table.insert(), {'data': 'd5'}, {'data': 'd6'})
 
-            # single execute, explicit id, inline
+                # single execute, explicit id, inline
 
-            table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
+                conn.execute(
+                    table.insert(inline=True),
+                    {'id': 33, 'data': 'd7'})
 
-            # single execute, inline, uses SERIAL
+                # single execute, inline, uses SERIAL
 
-            table.insert(inline=True).execute({'data': 'd8'})
+                conn.execute(table.insert(inline=True), {'data': 'd8'})
 
         asserter.assert_(
             DialectSQL(
@@ -224,37 +223,41 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 [{'data': 'd8'}]),
         )
 
-        eq_(
-            table.select().execute().fetchall(),
-            [
-                (30, 'd1'),
-                (1, 'd2'),
-                (31, 'd3'),
-                (32, 'd4'),
-                (2, 'd5'),
-                (3, 'd6'),
-                (33, 'd7'),
-                (4, 'd8'),
-            ]
-        )
+        with engine.connect() as conn:
+            eq_(
+                conn.execute(table.select()).fetchall(),
+                [
+                    (30, 'd1'),
+                    (1, 'd2'),
+                    (31, 'd3'),
+                    (32, 'd4'),
+                    (2, 'd5'),
+                    (3, 'd6'),
+                    (33, 'd7'),
+                    (4, 'd8'),
+                ]
+            )
 
-        table.delete().execute()
+            conn.execute(table.delete())
 
         # test the same series of events using a reflected version of
         # the table
 
-        m2 = MetaData(self.engine)
+        m2 = MetaData(engine)
         table = Table(table.name, m2, autoload=True)
 
-        with self.sql_execution_asserter(self.engine) as asserter:
-            table.insert().execute({'id': 30, 'data': 'd1'})
-            r = table.insert().execute({'data': 'd2'})
-            assert r.inserted_primary_key == [5]
-            table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
-                                                              'data': 'd4'})
-            table.insert().execute({'data': 'd5'}, {'data': 'd6'})
-            table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
-            table.insert(inline=True).execute({'data': 'd8'})
+        with self.sql_execution_asserter(engine) as asserter:
+            with engine.connect() as conn:
+                conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
+                r = conn.execute(table.insert(), {'data': 'd2'})
+                eq_(r.inserted_primary_key, [5])
+                conn.execute(
+                    table.insert(),
+                    {'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'})
+                conn.execute(table.insert(), {'data': 'd5'}, {'data': 'd6'})
+                conn.execute(
+                    table.insert(inline=True), {'id': 33, 'data': 'd7'})
+                conn.execute(table.insert(inline=True), {'data': 'd8'})
 
         asserter.assert_(
             DialectSQL(
@@ -276,54 +279,57 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 'INSERT INTO testtable (data) VALUES (:data)',
                 [{'data': 'd8'}]),
         )
-        eq_(
-            table.select().execute().fetchall(),
-            [
-                (30, 'd1'),
-                (5, 'd2'),
-                (31, 'd3'),
-                (32, 'd4'),
-                (6, 'd5'),
-                (7, 'd6'),
-                (33, 'd7'),
-                (8, 'd8'),
-            ]
-        )
-        table.delete().execute()
+        with engine.connect() as conn:
+            eq_(
+                conn.execute(table.select()).fetchall(),
+                [
+                    (30, 'd1'),
+                    (5, 'd2'),
+                    (31, 'd3'),
+                    (32, 'd4'),
+                    (6, 'd5'),
+                    (7, 'd6'),
+                    (33, 'd7'),
+                    (8, 'd8'),
+                ]
+            )
+            conn.execute(table.delete())
 
     def _assert_data_autoincrement_returning(self, table):
-        self.engine = \
+        engine = \
             engines.testing_engine(options={'implicit_returning': True})
-        metadata.bind = self.engine
 
-        with self.sql_execution_asserter(self.engine) as asserter:
+        with self.sql_execution_asserter(engine) as asserter:
+            with engine.connect() as conn:
 
-            # execute with explicit id
+                # execute with explicit id
 
-            r = table.insert().execute({'id': 30, 'data': 'd1'})
-            assert r.inserted_primary_key == [30]
+                r = conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
+                eq_(r.inserted_primary_key, [30])
 
-            # execute with prefetch id
+                # execute with prefetch id
 
-            r = table.insert().execute({'data': 'd2'})
-            assert r.inserted_primary_key == [1]
+                r = conn.execute(table.insert(), {'data': 'd2'})
+                eq_(r.inserted_primary_key, [1])
 
-            # executemany with explicit ids
+                # executemany with explicit ids
 
-            table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
-                                                              'data': 'd4'})
+                conn.execute(
+                    table.insert(),
+                    {'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'})
 
-            # executemany, uses SERIAL
+                # executemany, uses SERIAL
 
-            table.insert().execute({'data': 'd5'}, {'data': 'd6'})
+                conn.execute(table.insert(), {'data': 'd5'}, {'data': 'd6'})
 
-            # single execute, explicit id, inline
+                # single execute, explicit id, inline
 
-            table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
+                conn.execute(
+                    table.insert(inline=True), {'id': 33, 'data': 'd7'})
 
-            # single execute, inline, uses SERIAL
+                # single execute, inline, uses SERIAL
 
-            table.insert(inline=True).execute({'data': 'd8'})
+                conn.execute(table.insert(inline=True), {'data': 'd8'})
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
@@ -340,36 +346,40 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                        [{'data': 'd8'}]),
         )
 
-        eq_(
-            table.select().execute().fetchall(),
-            [
-                (30, 'd1'),
-                (1, 'd2'),
-                (31, 'd3'),
-                (32, 'd4'),
-                (2, 'd5'),
-                (3, 'd6'),
-                (33, 'd7'),
-                (4, 'd8'),
-            ]
-        )
-        table.delete().execute()
+        with engine.connect() as conn:
+            eq_(
+                conn.execute(table.select()).fetchall(),
+                [
+                    (30, 'd1'),
+                    (1, 'd2'),
+                    (31, 'd3'),
+                    (32, 'd4'),
+                    (2, 'd5'),
+                    (3, 'd6'),
+                    (33, 'd7'),
+                    (4, 'd8'),
+                ]
+            )
+            conn.execute(table.delete())
 
         # test the same series of events using a reflected version of
         # the table
 
-        m2 = MetaData(self.engine)
+        m2 = MetaData(engine)
         table = Table(table.name, m2, autoload=True)
 
-        with self.sql_execution_asserter(self.engine) as asserter:
-            table.insert().execute({'id': 30, 'data': 'd1'})
-            r = table.insert().execute({'data': 'd2'})
-            assert r.inserted_primary_key == [5]
-            table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
-                                                              'data': 'd4'})
-            table.insert().execute({'data': 'd5'}, {'data': 'd6'})
-            table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
-            table.insert(inline=True).execute({'data': 'd8'})
+        with self.sql_execution_asserter(engine) as asserter:
+            with engine.connect() as conn:
+                conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
+                r = conn.execute(table.insert(), {'data': 'd2'})
+                eq_(r.inserted_primary_key, [5])
+                conn.execute(
+                    table.insert(),
+                    {'id': 31, 'data': 'd3'}, {'id': 32, 'data': 'd4'})
+                conn.execute(table.insert(), {'data': 'd5'}, {'data': 'd6'})
+                conn.execute(
+                    table.insert(inline=True), {'id': 33, 'data': 'd7'})
+                conn.execute(table.insert(inline=True), {'data': 'd8'})
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
@@ -386,34 +396,38 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 'INSERT INTO testtable (data) VALUES (:data)',
                 [{'data': 'd8'}]),
         )
-        eq_(
-            table.select().execute().fetchall(),
-            [
-                (30, 'd1'),
-                (5, 'd2'),
-                (31, 'd3'),
-                (32, 'd4'),
-                (6, 'd5'),
-                (7, 'd6'),
-                (33, 'd7'),
-                (8, 'd8'),
-            ]
-        )
-        table.delete().execute()
+
+        with engine.connect() as conn:
+            eq_(
+                conn.execute(table.select()).fetchall(),
+                [
+                    (30, 'd1'),
+                    (5, 'd2'),
+                    (31, 'd3'),
+                    (32, 'd4'),
+                    (6, 'd5'),
+                    (7, 'd6'),
+                    (33, 'd7'),
+                    (8, 'd8'),
+                ]
+            )
+            conn.execute(table.delete())
 
     def _assert_data_with_sequence(self, table, seqname):
-        self.engine = \
+        engine = \
             engines.testing_engine(options={'implicit_returning': False})
-        metadata.bind = self.engine
 
-        with self.sql_execution_asserter(self.engine) as asserter:
-            table.insert().execute({'id': 30, 'data': 'd1'})
-            table.insert().execute({'data': 'd2'})
-            table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
-                                                              'data': 'd4'})
-            table.insert().execute({'data': 'd5'}, {'data': 'd6'})
-            table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
-            table.insert(inline=True).execute({'data': 'd8'})
+        with self.sql_execution_asserter(engine) as asserter:
+            with engine.connect() as conn:
+                conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
+                conn.execute(table.insert(), {'data': 'd2'})
+                conn.execute(table.insert(),
+                             {'id': 31, 'data': 'd3'},
+                             {'id': 32, 'data': 'd4'})
+                conn.execute(table.insert(), {'data': 'd5'}, {'data': 'd6'})
+                conn.execute(table.insert(inline=True),
+                             {'id': 33, 'data': 'd7'})
+                conn.execute(table.insert(inline=True), {'data': 'd8'})
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
@@ -432,36 +446,39 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
                 ":data)" % seqname, [{'data': 'd8'}]),
         )
-        eq_(
-            table.select().execute().fetchall(),
-            [
-                (30, 'd1'),
-                (1, 'd2'),
-                (31, 'd3'),
-                (32, 'd4'),
-                (2, 'd5'),
-                (3, 'd6'),
-                (33, 'd7'),
-                (4, 'd8'),
-            ]
-        )
+        with engine.connect() as conn:
+            eq_(
+                conn.execute(table.select()).fetchall(),
+                [
+                    (30, 'd1'),
+                    (1, 'd2'),
+                    (31, 'd3'),
+                    (32, 'd4'),
+                    (2, 'd5'),
+                    (3, 'd6'),
+                    (33, 'd7'),
+                    (4, 'd8'),
+                ]
+            )
 
         # cant test reflection here since the Sequence must be
         # explicitly specified
 
     def _assert_data_with_sequence_returning(self, table, seqname):
-        self.engine = \
+        engine = \
             engines.testing_engine(options={'implicit_returning': True})
-        metadata.bind = self.engine
 
-        with self.sql_execution_asserter(self.engine) as asserter:
-            table.insert().execute({'id': 30, 'data': 'd1'})
-            table.insert().execute({'data': 'd2'})
-            table.insert().execute({'id': 31, 'data': 'd3'}, {'id': 32,
-                                                              'data': 'd4'})
-            table.insert().execute({'data': 'd5'}, {'data': 'd6'})
-            table.insert(inline=True).execute({'id': 33, 'data': 'd7'})
-            table.insert(inline=True).execute({'data': 'd8'})
+        with self.sql_execution_asserter(engine) as asserter:
+            with engine.connect() as conn:
+                conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
+                conn.execute(table.insert(), {'data': 'd2'})
+                conn.execute(table.insert(),
+                             {'id': 31, 'data': 'd3'},
+                             {'id': 32, 'data': 'd4'})
+                conn.execute(table.insert(), {'data': 'd5'}, {'data': 'd6'})
+                conn.execute(
+                    table.insert(inline=True), {'id': 33, 'data': 'd7'})
+                conn.execute(table.insert(inline=True), {'data': 'd8'})
 
         asserter.assert_(
             DialectSQL('INSERT INTO testtable (id, data) VALUES (:id, :data)',
@@ -481,81 +498,86 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 ":data)" % seqname, [{'data': 'd8'}]),
         )
 
-        eq_(
-            table.select().execute().fetchall(),
-            [
-                (30, 'd1'),
-                (1, 'd2'),
-                (31, 'd3'),
-                (32, 'd4'),
-                (2, 'd5'),
-                (3, 'd6'),
-                (33, 'd7'),
-                (4, 'd8'),
-            ]
-        )
+        with engine.connect() as conn:
+            eq_(
+                conn.execute(table.select()).fetchall(),
+                [
+                    (30, 'd1'),
+                    (1, 'd2'),
+                    (31, 'd3'),
+                    (32, 'd4'),
+                    (2, 'd5'),
+                    (3, 'd6'),
+                    (33, 'd7'),
+                    (4, 'd8'),
+                ]
+            )
 
-        # cant test reflection here since the Sequence must be
-        # explicitly specified
+            # cant test reflection here since the Sequence must be
+            # explicitly specified
 
     def _assert_data_noautoincrement(self, table):
-        self.engine = \
+        engine = \
             engines.testing_engine(options={'implicit_returning': False})
-        metadata.bind = self.engine
-        table.insert().execute({'id': 30, 'data': 'd1'})
 
-        assert_raises_message(
-            exc.CompileError,
-            ".*has no Python-side or server-side default.*",
-            table.insert().execute, {'data': 'd2'})
-        assert_raises_message(
-            exc.CompileError,
-            ".*has no Python-side or server-side default.*",
-            table.insert().execute, {'data': 'd2'},
-            {'data': 'd3'})
-        assert_raises_message(
-            exc.CompileError,
-            ".*has no Python-side or server-side default.*",
-            table.insert().execute, {'data': 'd2'})
-        assert_raises_message(
-            exc.CompileError,
-            ".*has no Python-side or server-side default.*",
-            table.insert().execute, {'data': 'd2'},
-            {'data': 'd3'})
+        with engine.connect() as conn:
+            conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
 
-        table.insert().execute({'id': 31, 'data': 'd2'}, {'id': 32,
-                                                          'data': 'd3'})
-        table.insert(inline=True).execute({'id': 33, 'data': 'd4'})
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (31, 'd2'),
-            (32, 'd3'),
-            (33, 'd4')]
-        table.delete().execute()
+            assert_raises_message(
+                exc.CompileError,
+                ".*has no Python-side or server-side default.*",
+                conn.execute, table.insert(), {'data': 'd2'})
+            assert_raises_message(
+                exc.CompileError,
+                ".*has no Python-side or server-side default.*",
+                conn.execute, table.insert(), {'data': 'd2'},
+                {'data': 'd3'})
+            assert_raises_message(
+                exc.CompileError,
+                ".*has no Python-side or server-side default.*",
+                conn.execute, table.insert(), {'data': 'd2'})
+            assert_raises_message(
+                exc.CompileError,
+                ".*has no Python-side or server-side default.*",
+                conn.execute, table.insert(), {'data': 'd2'},
+                {'data': 'd3'})
+
+            conn.execute(
+                table.insert(),
+                {'id': 31, 'data': 'd2'}, {'id': 32, 'data': 'd3'})
+            conn.execute(table.insert(inline=True), {'id': 33, 'data': 'd4'})
+            eq_(conn.execute(table.select()).fetchall(), [
+                (30, 'd1'),
+                (31, 'd2'),
+                (32, 'd3'),
+                (33, 'd4')])
+            conn.execute(table.delete())
 
         # test the same series of events using a reflected version of
         # the table
 
-        m2 = MetaData(self.engine)
+        m2 = MetaData(engine)
         table = Table(table.name, m2, autoload=True)
-        table.insert().execute({'id': 30, 'data': 'd1'})
-        assert_raises_message(
-            exc.CompileError,
-            ".*has no Python-side or server-side default.*",
-            table.insert().execute, {'data': 'd2'})
-        assert_raises_message(
-            exc.CompileError,
-            ".*has no Python-side or server-side default.*",
-            table.insert().execute, {'data': 'd2'},
-            {'data': 'd3'})
-        table.insert().execute({'id': 31, 'data': 'd2'}, {'id': 32,
-                                                          'data': 'd3'})
-        table.insert(inline=True).execute({'id': 33, 'data': 'd4'})
-        assert table.select().execute().fetchall() == [
-            (30, 'd1'),
-            (31, 'd2'),
-            (32, 'd3'),
-            (33, 'd4')]
+        with engine.connect() as conn:
+            conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
+            assert_raises_message(
+                exc.CompileError,
+                ".*has no Python-side or server-side default.*",
+                conn.execute, table.insert(), {'data': 'd2'})
+            assert_raises_message(
+                exc.CompileError,
+                ".*has no Python-side or server-side default.*",
+                conn.execute, table.insert(), {'data': 'd2'},
+                {'data': 'd3'})
+            conn.execute(
+                table.insert(),
+                {'id': 31, 'data': 'd2'}, {'id': 32, 'data': 'd3'})
+            conn.execute(table.insert(inline=True), {'id': 33, 'data': 'd4'})
+            eq_(conn.execute(table.select()).fetchall(), [
+                (30, 'd1'),
+                (31, 'd2'),
+                (32, 'd3'),
+                (33, 'd4')])
 
 
 class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
