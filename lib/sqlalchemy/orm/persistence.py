@@ -643,7 +643,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
         assert_singlerow = connection.dialect.supports_sane_rowcount
         assert_multirow = assert_singlerow and \
             connection.dialect.supports_sane_multi_rowcount
-        allow_multirow = assert_multirow and not needs_version_id
+        allow_multirow = not needs_version_id
 
         if hasvalue:
             for state, state_dict, params, mapper, \
