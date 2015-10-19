@@ -19,6 +19,18 @@
     :version: 1.0.9
 
     .. change::
+        :tags: bug, orm, postgresql
+        :versions: 1.1.0b1
+        :tickets: 3556
+
+        Fixed regression in 1.0 where new feature of using "executemany"
+        for UPDATE statements in the ORM (e.g. :ref:`feature_updatemany`)
+        would break on Postgresql and other RETURNING backends
+        when using server-side version generation
+        schemes, as the server side value is retrieved via RETURNING which
+        is not supported with executemany.
+
+    .. change::
         :tags: feature, ext
         :versions: 1.1.0b1
         :tickets: 3551

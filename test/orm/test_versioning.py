@@ -112,6 +112,24 @@ class VersioningTest(fixtures.MappedTest):
         else:
             s1.commit()
 
+    def test_multiple_updates(self):
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1 = Foo(value='f1')
+        f2 = Foo(value='f2')
+        s1.add_all((f1, f2))
+        s1.commit()
+
+        f1.value = 'f1rev2'
+        f2.value = 'f2rev2'
+        s1.commit()
+
+        eq_(
+            s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
+            [(f1.id, 'f1rev2', 2), (f2.id, 'f2rev2', 2)]
+        )
+
     @testing.emits_warning_on(
         '+zxjdbc', r'.*does not support (update|delete)d rowcount')
     def test_bump_version(self):
@@ -950,6 +968,76 @@ class ServerVersioningTest(fixtures.MappedTest):
                     lambda ctx: [{"param_1": 1}]
                 )
             )
+        self.assert_sql_execution(testing.db, sess.flush, *statements)
+
+    def test_multi_update(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(value='f1')
+        f2 = self.classes.Foo(value='f2')
+        f3 = self.classes.Foo(value='f3')
+        sess.add_all([f1, f2, f3])
+        sess.flush()
+
+        f1.value = 'f1a'
+        f2.value = 'f2a'
+        f3.value = 'f3a'
+
+        statements = [
+            # note that the assertsql tests the rule against
+            # "default" - on a "returning" backend, the statement
+            # includes "RETURNING"
+            CompiledSQL(
+                "UPDATE version_table SET version_id=2, value=:value "
+                "WHERE version_table.id = :version_table_id AND "
+                "version_table.version_id = :version_table_version_id",
+                lambda ctx: [
+                    {
+                        "version_table_id": 1,
+                        "version_table_version_id": 1, "value": "f1a"}]
+            ),
+            CompiledSQL(
+                "UPDATE version_table SET version_id=2, value=:value "
+                "WHERE version_table.id = :version_table_id AND "
+                "version_table.version_id = :version_table_version_id",
+                lambda ctx: [
+                    {
+                        "version_table_id": 2,
+                        "version_table_version_id": 1, "value": "f2a"}]
+            ),
+            CompiledSQL(
+                "UPDATE version_table SET version_id=2, value=:value "
+                "WHERE version_table.id = :version_table_id AND "
+                "version_table.version_id = :version_table_version_id",
+                lambda ctx: [
+                    {
+                        "version_table_id": 3,
+                        "version_table_version_id": 1, "value": "f3a"}]
+            )
+        ]
+        if not testing.db.dialect.implicit_returning:
+            # DBs without implicit returning, we must immediately
+            # SELECT for the new version id
+            statements.extend([
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 1}]
+                ),
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 2}]
+                ),
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 3}]
+                )
+            ])
         self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     def test_delete_col(self):
