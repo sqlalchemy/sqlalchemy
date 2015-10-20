@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.9
+    :released: October 20, 2015
 
     .. change::
         :tags: bug, orm, postgresql
