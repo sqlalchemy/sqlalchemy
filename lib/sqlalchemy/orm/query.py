@@ -2462,7 +2462,7 @@ class Query(object):
         (note this may consist of multiple result rows if join-loaded
         collections are present).
 
-        Calling ``first()`` results in an execution of the underlying query.
+        Calling :meth:`.Query.first` results in an execution of the underlying query.
 
         .. seealso::
 
@@ -2486,17 +2486,11 @@ class Query(object):
         Returns ``None`` if the query selects
         no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound``
         if multiple object identities are returned, or if multiple
-        rows are returned for a query that does not return object
-        identities.
+        rows are returned for a query that returns only scalar values
+        as opposed to full identity-mapped entities.
 
-        Note that an entity query, that is, one which selects one or
-        more mapped classes as opposed to individual column attributes,
-        may ultimately represent many rows but only one row of
-        unique entity or entities - this is a successful result for
-        `one_or_none()`.
-
-        Calling ``one_or_none()`` results in an execution of the underlying
-        query.
+        Calling :meth:`.Query.one_or_none` results in an execution of the
+        underlying query.
 
         .. versionadded:: 1.0.9
 
@@ -2526,20 +2520,10 @@ class Query(object):
         Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
         no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound``
         if multiple object identities are returned, or if multiple
-        rows are returned for a query that does not return object
-        identities.
+        rows are returned for a query that returns only scalar values
+        as opposed to full identity-mapped entities.
 
-        Note that an entity query, that is, one which selects one or
-        more mapped classes as opposed to individual column attributes,
-        may ultimately represent many rows but only one row of
-        unique entity or entities - this is a successful result for one().
-
-        Calling ``one()`` results in an execution of the underlying query.
-
-        .. versionchanged:: 0.6
-            ``one()`` fully fetches all results instead of applying
-            any kind of limit, so that the "unique"-ing of entities does not
-            conceal multiple object identities.
+        Calling :meth:`.one` results in an execution of the underlying query.
 
         .. seealso::
 
