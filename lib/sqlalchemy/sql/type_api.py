@@ -656,6 +656,26 @@ class TypeDecorator(TypeEngine):
             else:
                 return self
 
+    .. warning::
+
+       Note that the **behavior of coerce_compared_value is not inherited
+       by default from that of the base type**.
+       If the :class:`.TypeDecorator` is augmenting a
+       type that requires special logic for certain types of operators,
+       this method **must** be overridden.  A key example is when decorating
+       the :class:`.postgresql.JSON` and :class:`.postgresql.JSONB` types;
+       the default rules of :meth:`.TypeEngine.coerce_compared_value` should
+       be used in order to deal with operators like index operations::
+
+            class MyJsonType(TypeDecorator):
+                impl = postgresql.JSON
+
+                def coerce_compared_value(self, op, value):
+                    return self.impl.coerce_compared_value(op, value)
+
+       Without the above step, index operations such as ``mycol['foo']``
+       will cause the index value ``'foo'`` to be JSON encoded.
+
     """
 
     __visit_name__ = "type_decorator"
