@@ -1378,28 +1378,24 @@ class EnsureKWArgType(type):
         return update_wrapper(wrap, fn)
 
 
-def wrap_callable(fn):
-    """Wrap callable and set __name__, __doc__, and __module__.
+def wrap_callable(wrapper, fn):
+    """Augment functools.update_wrapper() to work with objects with
+    a ``__call__()`` method.
 
     :param fn:
       object with __call__ method
+
     """
     if hasattr(fn, '__name__'):
-        _f = update_wrapper(lambda ctx: fn(), fn)
-        _f.__doc__ = _f.__doc__ or fn.__name__
-        return _f
+        return update_wrapper(wrapper, fn)
     else:
-        _f = lambda ctx: fn()
+        _f = wrapper
         _f.__name__ = fn.__class__.__name__
         _f.__module__ = fn.__module__
 
         if hasattr(fn.__call__, '__doc__') and fn.__call__.__doc__:
-            _f.__doc__ = fn.__call__.__doc__ 
-        elif hasattr(fn.__class__, '__doc__') and fn.__class__.__doc__:
-            _f.__doc__ = fn.__class__.__doc__
+            _f.__doc__ = fn.__call__.__doc__
         elif fn.__doc__:
             _f.__doc__ = fn.__doc__
-        else:
-            _f.__doc__ = fn.__class__.__name__
 
         return _f

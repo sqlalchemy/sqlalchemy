@@ -301,66 +301,6 @@ class DefaultTest(fixtures.TestBase):
             c = sa.ColumnDefault(fn)
             c.arg("context")
 
-    def test_wrapping_update_wrapper_fn(self):
-        def my_fancy_default():
-            """run the fancy default"""
-            return 10
-
-        c = sa.ColumnDefault(my_fancy_default)
-        eq_(c.arg.__name__, "my_fancy_default")
-        eq_(c.arg.__doc__, "run the fancy default")
-
-    def test_wrapping_update_wrapper_fn_nodocstring(self):
-        def my_fancy_default():
-            return 10
-
-        c = sa.ColumnDefault(my_fancy_default)
-        eq_(c.arg.__name__, "my_fancy_default")
-        eq_(c.arg.__doc__, "my_fancy_default")
-
-    def test_wrapping_update_wrapper_cls(self):
-        class MyFancyDefault(object):
-            """a fancy default"""
-
-            def __call__(self):
-                """run the fancy default"""
-                return 10
-
-        c = sa.ColumnDefault(MyFancyDefault())
-        eq_(c.arg.__name__, "MyFancyDefault")
-        eq_(c.arg.__doc__, "run the fancy default")
-
-    def test_wrapping_update_wrapper_cls_noclassdocstring(self):
-        class MyFancyDefault(object):
-
-            def __call__(self):
-                """run the fancy default"""
-                return 10
-
-        c = sa.ColumnDefault(MyFancyDefault())
-        eq_(c.arg.__name__, "MyFancyDefault")
-        eq_(c.arg.__doc__, "run the fancy default")
-
-    def test_wrapping_update_wrapper_cls_nomethoddocstring(self):
-        class MyFancyDefault(object):
-            """a fancy default"""
-
-            def __call__(self):
-                return 10
-
-        c = sa.ColumnDefault(MyFancyDefault())
-        eq_(c.arg.__name__, "MyFancyDefault")
-        eq_(c.arg.__doc__, "a fancy default")
-
-    def test_wrapping_update_wrapper_cls_noclassdocstring_nomethoddocstring(self):
-        class MyFancyDefault(object):
-
-            def __call__(self):
-                return 10
-
-        c = sa.ColumnDefault(MyFancyDefault())
-        eq_(c.arg.__name__, "MyFancyDefault")
-        eq_(c.arg.__doc__, "MyFancyDefault")
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_standalone(self):
