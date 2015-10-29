@@ -18,6 +18,7 @@ from .session import Session, sessionmaker
 from .scoping import scoped_session
 from .attributes import QueryableAttribute
 from .query import Query
+from sqlalchemy.util.compat import inspect_getargspec
 
 class InstrumentationEvents(event.Events):
     """Events related to class instrumentation events.
@@ -603,7 +604,7 @@ class MapperEvents(event.Events):
                 meth = getattr(cls, identifier)
                 try:
                     target_index = \
-                        inspect.getargspec(meth)[0].index('target') - 1
+                        inspect_getargspec(meth)[0].index('target') - 1
                 except ValueError:
                     target_index = None
 
