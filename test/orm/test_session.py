@@ -17,6 +17,7 @@ from sqlalchemy.util import pypy
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import event, ForeignKey
+from sqlalchemy.util.compat import inspect_getargspec
 
 
 class ExecutionTest(_fixtures.FixtureTest):
@@ -1416,7 +1417,7 @@ class SessionInterface(fixtures.TestBase):
         for meth in Session.public_methods:
             if meth in blacklist:
                 continue
-            spec = inspect.getargspec(getattr(Session, meth))
+            spec = inspect_getargspec(getattr(Session, meth))
             if len(spec[0]) > 1 or spec[1]:
                 ok.add(meth)
         return ok

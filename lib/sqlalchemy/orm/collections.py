@@ -111,6 +111,7 @@ from ..sql import expression
 from .. import util, exc as sa_exc
 from . import base
 
+from sqlalchemy.util.compat import inspect_getargspec
 
 __all__ = ['collection', 'collection_adapter',
            'mapped_collection', 'column_mapped_collection',
@@ -982,7 +983,7 @@ def _instrument_membership_mutator(method, before, argument, after):
     adapter."""
     # This isn't smart enough to handle @adds(1) for 'def fn(self, (a, b))'
     if before:
-        fn_args = list(util.flatten_iterator(inspect.getargspec(method)[0]))
+        fn_args = list(util.flatten_iterator(inspect_getargspec(method)[0]))
         if isinstance(argument, int):
             pos_arg = argument
             named_arg = len(fn_args) > argument and fn_args[argument] or None

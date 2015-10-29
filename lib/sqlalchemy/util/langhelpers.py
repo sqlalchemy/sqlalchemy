@@ -426,7 +426,7 @@ def getargspec_init(method):
 
     """
     try:
-        return inspect.getargspec(method)
+        return compat.inspect_getargspec(method)
     except TypeError:
         if method is object.__init__:
             return (['self'], None, None, None)
@@ -464,7 +464,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     for i, insp in enumerate(to_inspect):
         try:
             (_args, _vargs, vkw, defaults) = \
-                inspect.getargspec(insp.__init__)
+                compat.inspect_getargspec(insp.__init__)
         except TypeError:
             continue
         else:
@@ -625,7 +625,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
         except AttributeError:
             continue
         try:
-            spec = inspect.getargspec(fn)
+            spec = compat.inspect_getargspec(fn)
             fn_args = inspect.formatargspec(spec[0])
             d_args = inspect.formatargspec(spec[0][1:])
         except TypeError:
@@ -1363,7 +1363,7 @@ class EnsureKWArgType(type):
                 m = re.match(fn_reg, key)
                 if m:
                     fn = clsdict[key]
-                    spec = inspect.getargspec(fn)
+                    spec = compat.inspect_getargspec(fn)
                     if not spec.keywords:
                         clsdict[key] = wrapped = cls._wrap_w_kw(fn)
                         setattr(cls, key, wrapped)
