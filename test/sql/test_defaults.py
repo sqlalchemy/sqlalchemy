@@ -301,6 +301,7 @@ class DefaultTest(fixtures.TestBase):
             c = sa.ColumnDefault(fn)
             c.arg("context")
 
+
     @testing.fails_on('firebird', 'Data type unknown')
     def test_standalone(self):
         c = testing.db.engine.contextual_connect()

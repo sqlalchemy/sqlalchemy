@@ -1987,13 +1987,14 @@ class ColumnDefault(DefaultGenerator):
         try:
             argspec = util.get_callable_argspec(fn, no_self=True)
         except TypeError:
-            return lambda ctx: fn()
+            return util.wrap_callable(lambda ctx: fn(), fn)
 
         defaulted = argspec[3] is not None and len(argspec[3]) or 0
         positionals = len(argspec[0]) - defaulted
 
         if positionals == 0:
-            return lambda ctx: fn()
+            return util.wrap_callable(lambda ctx: fn(), fn)
+
         elif positionals == 1:
             return fn
         else:

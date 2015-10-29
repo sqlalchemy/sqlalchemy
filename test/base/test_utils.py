@@ -313,6 +313,75 @@ class MemoizedAttrTest(fixtures.TestBase):
         eq_(canary.mock_calls, [mock.call.attr(), mock.call.method()])
 
 
+class WrapCallableTest(fixtures.TestBase):
+    def test_wrapping_update_wrapper_fn(self):
+        def my_fancy_default():
+            """run the fancy default"""
+            return 10
+
+        c = util.wrap_callable(lambda: my_fancy_default, my_fancy_default)
+
+        eq_(c.__name__, "my_fancy_default")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_fn_nodocstring(self):
+        def my_fancy_default():
+            return 10
+
+        c = util.wrap_callable(lambda: my_fancy_default, my_fancy_default)
+        eq_(c.__name__, "my_fancy_default")
+        eq_(c.__doc__, None)
+
+    def test_wrapping_update_wrapper_cls(self):
+        class MyFancyDefault(object):
+            """a fancy default"""
+
+            def __call__(self):
+                """run the fancy default"""
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_cls_noclsdocstring(self):
+        class MyFancyDefault(object):
+
+            def __call__(self):
+                """run the fancy default"""
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_cls_nomethdocstring(self):
+        class MyFancyDefault(object):
+            """a fancy default"""
+
+            def __call__(self):
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "a fancy default")
+
+    def test_wrapping_update_wrapper_cls_noclsdocstring_nomethdocstring(self):
+        class MyFancyDefault(object):
+
+            def __call__(self):
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, None)
+
+
 class ToListTest(fixtures.TestBase):
     def test_from_string(self):
         eq_(

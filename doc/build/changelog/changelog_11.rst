@@ -22,6 +22,16 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: enhancement, schema
+        :pullreq: github:204
+
+        The default generation functions passed to :class:`.Column` objects
+        are now run through "update_wrapper", or an equivalent function
+        if a callable non-function is passed, so that introspection tools
+        preserve the name and docstring of the wrapped function.  Pull
+        request courtesy hsum.
+
+    .. change::
         :tags: change, sql, mysql
         :tickets: 3216
 
