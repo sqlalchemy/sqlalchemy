@@ -209,6 +209,8 @@ correspond to a single request failing with a 500 error, then the web applicatio
 continuing normally beyond that.   Hence the approach is "optimistic" in that frequent
 database restarts are not anticipated.
 
+.. _pool_setting_recycle:
+
 Setting Pool Recycle
 ~~~~~~~~~~~~~~~~~~~~~~~
 
