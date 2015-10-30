@@ -603,7 +603,7 @@ class _AssociationList(_AssociationCollection):
 
         for member in self.col:
             yield self._get(member)
-        raise StopIteration
+        return
 
     def append(self, value):
         item = self._create(value)
@@ -907,7 +907,7 @@ class _AssociationSet(_AssociationCollection):
         """
         for member in self.col:
             yield self._get(member)
-        raise StopIteration
+        return
 
     def add(self, value):
         if value not in self:
