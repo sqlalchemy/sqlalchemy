@@ -32,6 +32,11 @@ the ``pool_recycle`` option which controls the maximum age of any connection::
 
     engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
 
+.. seealso::
+
+    :ref:`pool_setting_recycle` - full description of the pool recycle feature.
+
+
 .. _mysql_storage_engines:
 
 CREATE TABLE arguments including Storage Engines
