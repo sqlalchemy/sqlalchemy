@@ -102,7 +102,7 @@ via foreign key constraint, a decision must be made as to how the ``.schema``
 is represented in those remote tables, in the case where that remote
 schema name is also a member of the current
 `Postgresql search path
-<http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_.
+<http://www.postgresql.org/docs/devel/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_.
 
 By default, the Postgresql dialect mimics the behavior encouraged by
 Postgresql's own ``pg_get_constraintdef()`` builtin procedure.  This function
@@ -506,7 +506,7 @@ dialect in conjunction with the :class:`.Table` construct:
 .. seealso::
 
     `Postgresql CREATE TABLE options
-    <http://www.postgresql.org/docs/9.3/static/sql-createtable.html>`_
+    <http://www.postgresql.org/docs/devel/static/sql-createtable.html>`_
 
 ARRAY Types
 -----------
