@@ -19,6 +19,16 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, orm
+        :pullreq: github:212
+        :versions: 1.1.0b1
+
+        Fixed bug where in Py2K a unicode literal would not be accepted as the
+        string name of a class or other argument within declarative using
+        :func:`.backref` on :func:`.relationship`.  Pull request courtesy
+        Nils Philippsen.
+
+    .. change::
         :tags: bug, mssql
         :versions: 1.1.0b1
         :pullreq: github:206
