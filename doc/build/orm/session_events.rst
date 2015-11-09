@@ -72,7 +72,10 @@ for finalized objects and possibly emit additional SQL.   In this hook,
 there is the ability to make new changes on objects, which means the
 :class:`.Session` will again go into a "dirty" state; the mechanics of the
 :class:`.Session` here will cause it to flush **again** if new changes
-are detected in this hook.  A counter ensures that an endless loop in this
+are detected in this hook if the flush were invoked in the context of
+:meth:`.Session.commit`; otherwise, the pending changes will be bundled
+as part of the next normal flush.  When the hook detects new changes within
+a :meth:`.Session.commit`, a counter ensures that an endless loop in this
 regard is stopped after 100 iterations, in the case that an
 :meth:`.SessionEvents.after_flush_postexec`
 hook continually adds new state to be flushed each time it is called.
