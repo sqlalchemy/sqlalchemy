@@ -111,7 +111,7 @@ explicit table declaration::
     User, Address, Order = Base.classes.user, Base.classes.address,\
         Base.classes.user_order
 
-Specifying Classes Explcitly
+Specifying Classes Explicitly
 ============================
 
 The :mod:`.sqlalchemy.ext.automap` extension allows classes to be defined
