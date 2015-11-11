@@ -9,6 +9,8 @@ from sqlalchemy.testing.schema import Table, Column
 
 
 class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
+    __dialect__ = 'default'
+
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -207,6 +209,19 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         eq_(sess.query(Manager).filter(Manager.name.like('%m%')).count(), 2)
         eq_(sess.query(Employee).filter(Employee.name.like('%m%')).count(), 3)
+
+    def test_exists_standalone(self):
+        Engineer = self.classes.Engineer
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(
+                sess.query(Engineer).filter(Engineer.name == 'foo').exists()),
+            "SELECT EXISTS (SELECT 1 FROM employees WHERE "
+            "employees.name = :name_1 AND employees.type "
+            "IN (:type_1, :type_2)) AS anon_1"
+        )
 
     def test_type_filtering(self):
         Employee, Manager, reports, Engineer = (self.classes.Employee,

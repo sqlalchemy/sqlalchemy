@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: October 7, 2015
+    Document last updated: November 11, 2015
 
 Introduction
 ============
@@ -252,6 +252,44 @@ configuration of the existing object-level technique of assigning
     :ref:`session_forcing_null`
 
 :ticket:`3250`
+
+
+.. _change_3582:
+
+Further Fixes to single-table inheritance querying
+--------------------------------------------------
+
+Continuing from 1.0's :ref:`migration_3177`, the :class:`.Query` should
+no longer inappropriately add the "single inheritance" criteria when the
+query is against a subquery expression such as an exists::
+
+    class Widget(Base):
+        __tablename__ = 'widget'
+        id = Column(Integer, primary_key=True)
+        type = Column(String)
+        data = Column(String)
+        __mapper_args__ = {'polymorphic_on': type}
+
+
+    class FooWidget(Widget):
+        __mapper_args__ = {'polymorphic_identity': 'foo'}
+
+    q = session.query(FooWidget).filter(FooWidget.data == 'bar').exists()
+
+    session.query(q).all()
+
+Produces::
+
+    SELECT EXISTS (SELECT 1
+    FROM widget
+    WHERE widget.data = :data_1 AND widget.type IN (:type_1)) AS anon_1
+
+The IN clause on the inside is appropriate, in order to limit to FooWidget
+objects, however previously the IN clause would also be generated a second
+time on the outside of the subquery.
+
+:ticket:`3582`
+
 
 New Features and Improvements - Core
 ====================================

@@ -22,6 +22,18 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3582
+
+        Fixed bug where the "single table inheritance" criteria would be
+        added onto the end of a query in some inappropriate situations, such
+        as when querying from an exists() of a single-inheritance subclass.
+
+        .. seealso::
+
+            :ref:`change_3582`
+
+    .. change::
         :tags: enhancement, schema
         :pullreq: github:204
 

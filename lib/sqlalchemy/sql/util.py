@@ -203,6 +203,21 @@ def surface_selectables(clause):
             stack.append(elem.element)
 
 
+def surface_column_elements(clause):
+    """traverse and yield only outer-exposed column elements, such as would
+    be addressable in the WHERE clause of a SELECT if this element were
+    in the columns clause."""
+
+    stack = deque([clause])
+    while stack:
+        elem = stack.popleft()
+        yield elem
+        for sub in elem.get_children():
+            if isinstance(elem, FromGrouping):
+                continue
+            stack.append(sub)
+
+
 def selectables_overlap(left, right):
     """Return True if left/right have some overlapping selectable"""
 

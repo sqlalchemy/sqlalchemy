@@ -3676,7 +3676,7 @@ class _ColumnEntity(_QueryEntity):
             self._from_entities = set(self.entities)
         else:
             all_elements = [
-                elem for elem in visitors.iterate(column, {})
+                elem for elem in sql_util.surface_column_elements(column)
                 if 'parententity' in elem._annotations
             ]
 
