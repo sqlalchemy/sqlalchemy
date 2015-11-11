@@ -213,7 +213,7 @@ def surface_column_elements(clause):
         elem = stack.popleft()
         yield elem
         for sub in elem.get_children():
-            if isinstance(elem, FromGrouping):
+            if isinstance(sub, FromGrouping):
                 continue
             stack.append(sub)
 
