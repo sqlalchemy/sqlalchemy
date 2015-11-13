@@ -466,6 +466,8 @@ class TypeRoundTripTest(
 
             (mssql.MSDateTime2, [], {},
              'DATETIME2', ['>=', (10,)]),
+            (mssql.MSDateTime2, [0], {},
+             'DATETIME2(0)', ['>=', (10,)]),
             (mssql.MSDateTime2, [1], {},
              'DATETIME2(1)', ['>=', (10,)]),
 
