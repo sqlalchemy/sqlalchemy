@@ -675,7 +675,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
           def process_result_value(self, value, dialect):
               return value[7:]
 
-          def copy(self):
+          def copy(self, **kw):
               return MyType(self.impl.length)
 
     The class-level "impl" attribute is required, and can reference any
@@ -1136,7 +1136,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         """
         return self
 
-    def copy(self):
+    def copy(self, **kw):
         """Produce a copy of this :class:`.TypeDecorator` instance.
 
         This is a shallow copy and is provided to fulfill part of

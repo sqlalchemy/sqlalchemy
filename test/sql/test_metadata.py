@@ -7,7 +7,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, PrimaryKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode, types as sqltypes, bindparam, \
-    Table, Column, Boolean, Enum, func, text
+    Table, Column, Boolean, Enum, func, text, TypeDecorator
 from sqlalchemy import schema, exc
 from sqlalchemy.sql import elements, naming
 import sqlalchemy as tsa
@@ -1546,6 +1546,20 @@ class SchemaTypeTest(fixtures.TestBase):
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
+
+    def test_tometadata_copy_decorated(self):
+
+        class MyDecorated(TypeDecorator):
+            impl = self.MyType
+
+        m1 = MetaData()
+
+        type_ = MyDecorated(schema="z")
+        t1 = Table('x', m1, Column("y", type_))
+
+        m2 = MetaData()
+        t2 = t1.tometadata(m2)
+        eq_(t2.c.y.type.schema, "z")
 
     def test_tometadata_independent_schema(self):
         m1 = MetaData()
