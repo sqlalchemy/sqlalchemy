@@ -773,7 +773,7 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_DATETIME2(self, type_, **kw):
         precision = getattr(type_, 'precision', None)
-        if precision:
+        if precision is not None:
             return "DATETIME2(%s)" % precision
         else:
             return "DATETIME2"
