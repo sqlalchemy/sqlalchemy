@@ -16,6 +16,19 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.10
+
+    .. change::
+        :tags: bug, mssql
+        :pullreq: github:213
+        :versions: 1.1.0b1
+
+        Fixed issue where DDL generated for the MSSQL types DATETIME2,
+        TIME and DATETIMEOFFSET with a precision of "zero" would not generate
+        the precision field.  Pull request courtesy Jacobo de Vera.
+
+
+.. changelog::
     :version: 1.0.9
     :released: October 20, 2015
 

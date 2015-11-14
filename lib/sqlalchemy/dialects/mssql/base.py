@@ -774,14 +774,14 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return "TINYINT"
 
     def visit_DATETIMEOFFSET(self, type_, **kw):
-        if type_.precision:
+        if type_.precision is not None:
             return "DATETIMEOFFSET(%s)" % type_.precision
         else:
             return "DATETIMEOFFSET"
 
     def visit_TIME(self, type_, **kw):
         precision = getattr(type_, 'precision', None)
-        if precision:
+        if precision is not None:
             return "TIME(%s)" % precision
         else:
             return "TIME"
