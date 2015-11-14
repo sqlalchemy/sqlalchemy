@@ -2012,7 +2012,7 @@ class QueryEvents(event.Events):
             def no_deleted(query):
                 for desc in query.column_descriptions:
                     if desc['type'] is User:
-                        entity = desc['expr']
+                        entity = desc['entity']
                         query = query.filter(entity.deleted == False)
                 return query
 
