@@ -37,7 +37,7 @@ class level, so that it is available from an instance::
     some_user = session.query(User).first()
     print some_user.fullname
 
-as well as usable wtihin queries::
+as well as usable within queries::
 
     some_user = session.query(User).filter(User.fullname == "John Smith").first()
 
