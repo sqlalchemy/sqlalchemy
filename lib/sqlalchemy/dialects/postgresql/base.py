@@ -1961,11 +1961,27 @@ class PGDialect(default.DefaultDialect):
             current_schema = schema
         else:
             current_schema = self.default_schema_name
-        s = """
-        SELECT definition FROM pg_views
-        WHERE schemaname = :schema
-        AND viewname = :view_name
-        """
+
+        if self.server_version_info >= (9, 3):
+            s = """
+            SELECT definition FROM pg_views
+            WHERE schemaname = :schema
+            AND viewname = :view_name
+
+            UNION
+
+            SELECT definition FROM pg_matviews
+            WHERE schemaname = :schema
+            AND matviewname = :view_name
+
+            """
+        else:
+            s = """
+            SELECT definition FROM pg_views
+            WHERE schemaname = :schema
+            AND viewname = :view_name
+            """
+
         rp = connection.execute(sql.text(s),
                                 view_name=view_name, schema=current_schema)
         if rp:

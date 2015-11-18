@@ -22,6 +22,14 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3587
+
+        Added support for reflecting the source of materialized views
+        to the Postgresql version of the :meth:`.Inspector.get_view_definition`
+        method.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3582
 
