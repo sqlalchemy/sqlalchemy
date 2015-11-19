@@ -19,6 +19,16 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, postgresql
+        :versions: 1.1.0b1
+        :tickets: 3571
+
+        Fixed the ``.python_type`` attribute of :class:`.postgresql.INTERVAL`
+        to return ``datetime.timedelta`` in the same way as that of
+        :obj:`.types.Interval.python_type`, rather than raising
+        ``NotImplementedError``.
+
+    .. change::
         :tags: bug, mssql
         :pullreq: github:213
         :versions: 1.1.0b1
