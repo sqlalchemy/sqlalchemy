@@ -275,14 +275,30 @@ class RelationshipProperty(StrategizedProperty):
             :paramref:`~.relationship.backref` - alternative form
             of backref specification.
 
-        :param bake_queries:
-          Use the :class:`.BakedQuery` cache to cache queries used in lazy
-          loads.  True by default, as this typically improves performance
-          significantly.  Set to False to reduce ORM memory use, or
-          if unresolved stability issues are observed with the baked query
+        :param bake_queries=True:
+          Use the :class:`.BakedQuery` cache to cache the construction of SQL
+          used in lazy loads, when the :func:`.bake_lazy_loaders` function has
+          first been called.  Defaults to True and is intended to provide an
+          "opt out" flag per-relationship when the baked query cache system is
+          in use.
+
+          .. warning::
+
+              This flag **only** has an effect when the application-wide
+              :func:`.bake_lazy_loaders` function has been called.   It
+              defaults to True so is an "opt out" flag.
+
+          Setting this flag to False when baked queries are otherwise in
+          use might be to reduce
+          ORM memory use for this :func:`.relationship`, or to work around
+          unresolved stability issues observed within the baked query
           cache system.
 
           .. versionadded:: 1.0.0
+
+          .. seealso::
+
+            :ref:`baked_toplevel`
 
         :param cascade:
           a comma-separated list of cascade rules which determines how

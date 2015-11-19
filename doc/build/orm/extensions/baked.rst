@@ -355,6 +355,14 @@ this feature is local to the mapper for ``MyClass``.
 For per-query use, the :func:`.baked_lazyload` strategy may be used,
 which works like any other loader option.
 
+Opting out with the bake_queries flag
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :func:`.relationship` construct includes a flag
+:paramref:`.relationship.bake_queries` which when set to False will cause
+that relationship to opt out of the baked query system, when the
+application-wide :func:`.bake_lazy_loaders` function has been called to enable
+baked query loaders by default.
 
 API Documentation
 -----------------
