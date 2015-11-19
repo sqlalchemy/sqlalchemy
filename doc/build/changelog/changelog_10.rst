@@ -19,6 +19,21 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, orm
+        :versions: 1.1.0b1
+        :tickets: 2696
+
+        A rare case which occurs when a :meth:`.Session.rollback` fails in the
+        scope of a :meth:`.Session.flush` operation that's raising an
+        exception, as has been observed in some MySQL SAVEPOINT cases, prevents
+        the original  database exception from being observed when it was
+        emitted during  flush, but only on Py2K because Py2K does not support
+        exception  chaining; on Py3K the originating exception is chained.  As
+        a workaround, a warning is emitted in this specific case showing at
+        least the string message of the original database error before we
+        proceed to raise  the rollback-originating exception.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.1.0b1
         :tickets: 3571

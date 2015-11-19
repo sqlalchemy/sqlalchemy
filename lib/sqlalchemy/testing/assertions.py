@@ -121,7 +121,7 @@ def uses_deprecated(*messages):
 def _expect_warnings(exc_cls, messages, regex=True, assert_=True):
 
     if regex:
-        filters = [re.compile(msg, re.I) for msg in messages]
+        filters = [re.compile(msg, re.I | re.S) for msg in messages]
     else:
         filters = messages
 

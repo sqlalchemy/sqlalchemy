@@ -412,11 +412,23 @@ class SessionTransaction(object):
             for subtransaction in stx._iterate_parents(upto=self):
                 subtransaction.close()
 
+        if _capture_exception:
+            captured_exception = sys.exc_info()[1]
+
         boundary = self
         if self._state in (ACTIVE, PREPARED):
             for transaction in self._iterate_parents():
                 if transaction._parent is None or transaction.nested:
-                    transaction._rollback_impl()
+                    try:
+                        transaction._rollback_impl()
+                    except Exception:
+                        if _capture_exception:
+                            util.warn(
+                                "An exception raised during a Session "
+                                "persistence operation cannot be raised "
+                                "due to an additional ROLLBACK exception; "
+                                "the exception is: %s" % captured_exception)
+                        raise
                     transaction._state = DEACTIVE
                     boundary = transaction
                     break
@@ -438,7 +450,7 @@ class SessionTransaction(object):
 
         self.close()
         if self._parent and _capture_exception:
-            self._parent._rollback_exception = sys.exc_info()[1]
+            self._parent._rollback_exception = captured_exception
 
         sess.dispatch.after_soft_rollback(sess, self)
 

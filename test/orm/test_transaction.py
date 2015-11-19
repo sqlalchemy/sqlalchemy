@@ -657,6 +657,31 @@ class SessionTransactionTest(FixtureTest):
         assert session.transaction is not None, \
             'autocommit=False should start a new transaction'
 
+    @testing.requires.savepoints
+    def test_report_primary_error_when_rollback_fails(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        session = Session(testing.db)
+
+        with expect_warnings(".*due to an additional ROLLBACK.*INSERT INTO"):
+            session.begin_nested()
+            savepoint = session.\
+                connection()._Connection__transaction._savepoint
+
+            # force the savepoint to disappear
+            session.execute("RELEASE SAVEPOINT %s" % savepoint)
+
+            # now do a broken flush
+            session.add_all([User(id=1), User(id=1)])
+
+            assert_raises_message(
+                sa_exc.DBAPIError,
+                "ROLLBACK TO SAVEPOINT ",
+                session.flush
+            )
+
 
 class _LocalFixture(FixtureTest):
     run_setup_mappers = 'once'
