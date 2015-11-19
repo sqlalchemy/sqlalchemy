@@ -568,6 +568,8 @@ a new version.
 """
 from collections import defaultdict
 import re
+import datetime as dt
+
 
 from ... import sql, schema, exc, util
 from ...engine import default, reflection
@@ -673,6 +675,10 @@ class INTERVAL(sqltypes.TypeEngine):
     @property
     def _type_affinity(self):
         return sqltypes.Interval
+
+    @property
+    def python_type(self):
+        return dt.timedelta
 
 PGInterval = INTERVAL
 

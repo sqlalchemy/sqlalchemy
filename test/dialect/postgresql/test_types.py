@@ -559,6 +559,14 @@ class NumericInterpretationTest(fixtures.TestBase):
         )
 
 
+class PythonTypeTest(fixtures.TestBase):
+    def test_interval(self):
+        is_(
+            postgresql.INTERVAL().python_type,
+            datetime.timedelta
+        )
+
+
 class TimezoneTest(fixtures.TestBase):
     __backend__ = True
 
@@ -1050,6 +1058,16 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
         s = select([text("timestamp '2007-12-25'")])
         result = connection.execute(s).first()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
+
+    def test_interval_arithmetic(self):
+        # basically testing that we get timedelta back for an INTERVAL
+        # result.  more of a driver assertion.
+        engine = testing.db
+        connection = engine.connect()
+
+        s = select([text("timestamp '2007-12-25' - timestamp '2007-11-15'")])
+        result = connection.execute(s).first()
+        eq_(result[0], datetime.timedelta(40))
 
 
 class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
