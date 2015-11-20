@@ -657,6 +657,7 @@ class SessionTransactionTest(FixtureTest):
         assert session.transaction is not None, \
             'autocommit=False should start a new transaction'
 
+    @testing.skip_if("oracle", "oracle doesn't support release of savepoint")
     @testing.requires.savepoints
     def test_report_primary_error_when_rollback_fails(self):
         User, users = self.classes.User, self.tables.users
@@ -671,7 +672,9 @@ class SessionTransactionTest(FixtureTest):
                 connection()._Connection__transaction._savepoint
 
             # force the savepoint to disappear
-            session.execute("RELEASE SAVEPOINT %s" % savepoint)
+            session.connection().dialect.do_release_savepoint(
+                session.connection(), savepoint
+            )
 
             # now do a broken flush
             session.add_all([User(id=1), User(id=1)])
