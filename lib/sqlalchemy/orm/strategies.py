@@ -1367,8 +1367,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable
 
-        if self.parent_property.secondary is None and \
-                not parentmapper:
+        if not parentmapper:
             # for parentclause that is the non-eager end of the join,
             # ensure all the parent cols in the primaryjoin are actually
             # in the

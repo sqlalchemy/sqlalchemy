@@ -21,6 +21,21 @@
     .. change::
         :tags: bug, orm
         :versions: 1.1.0b1
+        :tickets: 3592
+
+        Fixed joinedload bug which would occur when a. the query includes
+        limit/offset criteria that forces a subquery b. the relationship
+        uses "secondary" c. the primaryjoin of the relationship refers to
+        a column that is either not part of the primary key, or is a PK
+        col in a joined-inheritance subclass table that is under a different
+        attribute name than the parent table's primary key column d. the
+        query defers the columns that are present in the primaryjoin, typically
+        via not being included in load_only(); the necessary column(s) would
+        not be present in the subquery and produce invalid SQL.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 1.1.0b1
         :tickets: 2696
 
         A rare case which occurs when a :meth:`.Session.rollback` fails in the
