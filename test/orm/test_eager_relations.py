@@ -2442,6 +2442,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     """test #2188"""
 
     __dialect__ = 'default'
+    run_create_tables = None
 
     @classmethod
     def define_tables(cls, metadata):
@@ -4013,6 +4014,7 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
 class CyclicalInheritingEagerTestThree(fixtures.DeclarativeMappedTest,
                                        testing.AssertsCompiledSQL):
     __dialect__ = 'default'
+    run_create_tables = None
 
     @classmethod
     def setup_classes(cls):
