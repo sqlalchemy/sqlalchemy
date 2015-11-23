@@ -84,7 +84,7 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
         )
         self.using = kw.get('using', 'gist')
         where = kw.get('where')
-        if where:
+        if where is not None:
             self.where = expression._literal_as_text(where)
 
     def copy(self, **kw):
