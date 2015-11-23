@@ -510,6 +510,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             '(CAST("Room" AS TEXT) WITH =)'
         )
 
+    def test_exclude_constraint_when(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('room', String)
+        )
+        cons = ExcludeConstraint(('room', '='), where=tbl.c.room.in_(['12']))
+        tbl.append_constraint(cons)
+        self.assert_compile(schema.AddConstraint(cons),
+                            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+                            '(room WITH =) WHERE (testtbl.room IN (\'12\'))',
+                            dialect=postgresql.dialect())
+
     def test_substring(self):
         self.assert_compile(func.substring('abc', 1, 2),
                             'SUBSTRING(%(substring_1)s FROM %(substring_2)s '
