@@ -580,6 +580,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mytable_1.myid = %(myid_1)s FOR UPDATE OF mytable_1"
         )
 
+    def test_for_update_with_schema(self):
+        m = MetaData()
+        table1 = Table(
+            'mytable', m,
+            Column('myid'),
+            Column('name'),
+            schema='testschema'
+        )
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(of=table1),
+            "SELECT testschema.mytable.myid, testschema.mytable.name "
+            "FROM testschema.mytable "
+            "WHERE testschema.mytable.myid = %(myid_1)s "
+            "FOR UPDATE OF mytable")
+
     def test_reserved_words(self):
         table = Table("pg_table", MetaData(),
                       Column("col1", Integer),
