@@ -275,12 +275,14 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
 
     def setup(self):
         self._setup_each_tables()
+        self._setup_each_classes()
         self._setup_each_mappers()
         self._setup_each_inserts()
 
     def teardown(self):
         sa.orm.session.Session.close_all()
         self._teardown_each_mappers()
+        self._teardown_each_classes()
         self._teardown_each_tables()
 
     @classmethod
@@ -301,6 +303,10 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
     def _setup_each_mappers(self):
         if self.run_setup_mappers == 'each':
             self._with_register_classes(self.setup_mappers)
+
+    def _setup_each_classes(self):
+        if self.run_setup_classes == 'each':
+            self._with_register_classes(self.setup_classes)
 
     @classmethod
     def _with_register_classes(cls, fn):
@@ -335,6 +341,10 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
         # clear mappers in any case
         if self.run_setup_mappers != 'once':
             sa.orm.clear_mappers()
+
+    def _teardown_each_classes(self):
+        if self.run_setup_classes != 'once':
+            self.classes.clear()
 
     @classmethod
     def setup_classes(cls):
