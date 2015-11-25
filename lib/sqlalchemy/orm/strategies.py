@@ -1325,8 +1325,17 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if adapter:
             if getattr(adapter, 'aliased_class', None):
+                # joining from an adapted entity.  The adapted entity
+                # might be a "with_polymorphic", so resolve that to our
+                # specific mapper's entity before looking for our attribute
+                # name on it.
+                efm = inspect(adapter.aliased_class).\
+                    _entity_for_mapper(self.parent)
+
+                # look for our attribute on the adapted entity, else fall back
+                # to our straight property
                 onclause = getattr(
-                    adapter.aliased_class, self.key,
+                    efm.entity, self.key,
                     self.parent_property)
             else:
                 onclause = getattr(

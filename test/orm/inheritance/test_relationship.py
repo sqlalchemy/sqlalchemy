@@ -1,6 +1,6 @@
 from sqlalchemy.orm import create_session, relationship, mapper, \
     contains_eager, joinedload, subqueryload, subqueryload_all,\
-    Session, aliased, with_polymorphic
+    Session, aliased, with_polymorphic, joinedload_all
 
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.engine import default
@@ -1359,6 +1359,135 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "JOIN ep1 ON anon_1.base2_id = ep1.base2_id "
             "JOIN ep2 ON anon_1.base2_id = ep2.base2_id"
         )
+
+
+class JoinedloadOverWPolyAliased(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsCompiledSQL):
+    """exercise issues in #3593"""
+
+    run_setup_mappers = 'each'
+    run_setup_classes = 'each'
+    run_define_tables = 'each'
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'with_polymorphic': ('*', None),
+            }
+
+        class Sub1(Parent):
+            __mapper_args__ = {'polymorphic_identity': 's1'}
+
+        class Link(Base):
+            __tablename__ = 'link'
+
+            parent_id = Column(
+                Integer, ForeignKey('parent.id'), primary_key=True)
+            child_id = Column(
+                Integer, ForeignKey('parent.id'), primary_key=True)
+
+            child = relationship(
+                Parent,
+                primaryjoin=child_id == Parent.id,
+            )
+
+    def _fixture_from_base(self):
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+
+        Parent.links = relationship(
+            Link,
+            primaryjoin=Parent.id == Link.parent_id,
+        )
+        return Parent
+
+    def _fixture_from_subclass(self):
+        Sub1 = self.classes.Sub1
+        Link = self.classes.Link
+
+        Sub1.links = relationship(
+            Link,
+            primaryjoin=Sub1.id == Link.parent_id,
+        )
+        return Sub1
+
+    def test_from_base(self):
+        self._test(self._fixture_from_base)
+
+    def test_from_sub(self):
+        self._test(self._fixture_from_subclass)
+
+    def _test(self, fn):
+        cls = fn()
+        Link = self.classes.Link
+
+        session = Session()
+        q = session.query(cls).options(
+            joinedload_all(
+                cls.links,
+                Link.child,
+                cls.links
+            )
+        )
+        if cls is self.classes.Sub1:
+            extra = " WHERE parent.type IN (:type_1)"
+        else:
+            extra = ""
+
+        self.assert_compile(
+            q,
+            "SELECT parent.id AS parent_id, parent.type AS parent_type, "
+            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
+            "link_1.parent_id AS link_1_parent_id, "
+            "link_1.child_id AS link_1_child_id, "
+            "link_2.parent_id AS link_2_parent_id, "
+            "link_2.child_id AS link_2_child_id "
+            "FROM parent "
+            "LEFT OUTER JOIN link AS link_2 ON parent.id = link_2.parent_id "
+            "LEFT OUTER JOIN parent "
+            "AS parent_1 ON link_2.child_id = parent_1.id "
+            "LEFT OUTER JOIN link AS link_1 "
+            "ON parent_1.id = link_1.parent_id" + extra
+        )
+
+    def test_local_wpoly(self):
+        Sub1 = self._fixture_from_subclass()
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+
+        poly = with_polymorphic(Parent, [Sub1])
+
+        session = Session()
+        q = session.query(poly).options(
+            joinedload(poly.Sub1.links).
+            joinedload(Link.child.of_type(Sub1)).
+            joinedload(poly.Sub1.links)
+        )
+        self.assert_compile(
+            q,
+            "SELECT parent.id AS parent_id, parent.type AS parent_type, "
+            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
+            "link_1.parent_id AS link_1_parent_id, "
+            "link_1.child_id AS link_1_child_id, "
+            "link_2.parent_id AS link_2_parent_id, "
+            "link_2.child_id AS link_2_child_id FROM parent "
+            "LEFT OUTER JOIN link AS link_2 ON parent.id = link_2.parent_id "
+            "LEFT OUTER JOIN parent AS parent_1 "
+            "ON link_2.child_id = parent_1.id "
+            "LEFT OUTER JOIN link AS link_1 ON parent_1.id = link_1.parent_id"
+        )
+
 
 class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
                                         testing.AssertsCompiledSQL):
