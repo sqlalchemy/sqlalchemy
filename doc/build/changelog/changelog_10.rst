@@ -21,6 +21,17 @@
     .. change::
         :tags: bug, orm
         :versions: 1.1.0b1
+        :tickets: 3593
+
+        Fixed bug which is actually a regression that occurred between
+        versions 0.8.0 and 0.8.1, due :ticket:`2714`.  The case where
+        joined eager loading needs to join out over a subclass-bound
+        relationship when "with_polymorphic" were also used would fail
+        to join from the correct entity.
+
+    .. change::
+        :tags: bug, orm
+        :versions: 1.1.0b1
         :tickets: 3592
 
         Fixed joinedload bug which would occur when a. the query includes

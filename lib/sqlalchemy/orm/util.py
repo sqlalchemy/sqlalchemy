@@ -537,7 +537,11 @@ class AliasedInsp(InspectionAttr):
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers
         if mapper in self_poly:
-            return getattr(self.entity, mapper.class_.__name__)._aliased_insp
+            if mapper is self.mapper:
+                return self
+            else:
+                return getattr(
+                    self.entity, mapper.class_.__name__)._aliased_insp
         elif mapper.isa(self.mapper):
             return self
         else:
