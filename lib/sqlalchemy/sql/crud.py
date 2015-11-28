@@ -208,7 +208,18 @@ def _scan_cols(
         implicit_return_defaults, postfetch_lastrowid = \
         _get_returning_modifiers(compiler, stmt)
 
-    cols = stmt.table.columns
+    if stmt._parameter_ordering:
+        parameter_ordering = [
+            _column_as_key(key) for key in stmt._parameter_ordering
+        ]
+        ordered_keys = set(parameter_ordering)
+        cols = [
+            stmt.table.c[key] for key in parameter_ordering
+        ] + [
+            c for c in stmt.table.c if c.key not in ordered_keys
+        ]
+    else:
+        cols = stmt.table.columns
 
     for c in cols:
         col_key = _getattr_col_key(c)

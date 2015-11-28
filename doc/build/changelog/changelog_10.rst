@@ -19,6 +19,23 @@
     :version: 1.0.10
 
     .. change::
+        :tags: feature, sql
+        :versions: 1.1.0b1
+        :pullreq: github:200
+
+        Added support for parameter-ordered SET clauses in an UPDATE
+        statement.  This feature is available by passing the
+        :paramref:`~.sqlalchemy.sql.expression.update.preserve_parameter_order`
+        flag either to the core :class:`.Update` construct or alternatively
+        adding it to the :paramref:`.Query.update.update_args` dictionary at
+        the ORM-level, also passing the parameters themselves as a list of 2-tuples.
+        Thanks to Gorka Eguileor for implementation and tests.
+
+        .. seealso::
+
+            :ref:`updates_order_parameters`
+
+    .. change::
         :tags: bug, orm
         :versions: 1.1.0b1
         :tickets: 3593

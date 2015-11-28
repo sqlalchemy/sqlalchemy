@@ -451,7 +451,6 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
     return pairs
 
 
-
 class ClauseAdapter(visitors.ReplacingCloningVisitor):
     """Clones and modifies clauses based on column correspondence.
 

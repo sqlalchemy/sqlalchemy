@@ -1873,6 +1873,53 @@ a non-supporting database.  The ``UPDATE FROM`` syntax generates by default
 when multiple tables are present, and the statement will be rejected
 by the database if this syntax is not supported.
 
+.. _updates_order_parameters:
+
+Parameter-Ordered Updates
+--------------------------
+
+The default behavior of the :func:`.update` construct when rendering the SET
+clauses is to render them using the column ordering given in the
+originating :class:`.Table` object.
+This is an important behavior, since it means that the rendering of a
+particular UPDATE statement with particular columns
+will be rendered the same each time, which has an impact on query caching systems
+that rely on the form of the statement, either client side or server side.
+Since the parameters themselves are passed to the :meth:`.Update.values`
+method as Python dictionary keys, there is no other fixed ordering
+available.
+
+However in some cases, the order of parameters rendered in the SET clause of an
+UPDATE statement can be significant.  The main example of this is when using
+MySQL and providing updates to column values based on that of other
+column values.  The end result of the following statement::
+
+    UPDATE some_table SET x = y + 10, y = 20
+
+Will have a different result than::
+
+    UPDATE some_table SET y = 20, x = y + 10
+
+This because on MySQL, the individual SET clauses are fully evaluated on
+a per-value basis, as opposed to on a per-row basis, and as each SET clause
+is evaluated, the values embedded in the row are changing.
+
+To suit this specific use case, the
+:paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+flag may be used.  When using this flag, we supply a **Python list of 2-tuples**
+as the argument to the :meth:`.Update.values` method::
+
+    stmt = some_table.update(preserve_parameter_order=True).\
+        values([(some_table.c.y, 20), (some_table.c.x, some_table.c.y + 10)])
+
+The list of 2-tuples is essentially the same structure as a Python dictionary
+except it is ordered.  Using the above form, we are assured that the
+"y" column's SET clause will render first, then the "x" column's SET clause.
+
+.. versionadded:: 1.0.10 Added support for explicit ordering of UPDATE
+   parameters using the :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order` flag.
+
+
 .. _deletes:
 
 Deletes

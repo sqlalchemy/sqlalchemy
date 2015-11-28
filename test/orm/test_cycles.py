@@ -1181,9 +1181,10 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
             testing.db,
             sess.flush,
             CompiledSQL(
-                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "
-                "c3_id=:c3_id WHERE parent.id = :parent_id",
-                lambda ctx: {'c2_id': c23.id, 'parent_id': p1.id, 'c1_id': c12.id, 'c3_id': c31.id}
+                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, c3_id=:c3_id "
+                "WHERE parent.id = :parent_id",
+                lambda ctx: {'c2_id': c23.id, 'parent_id': p1.id,
+                             'c1_id': c12.id, 'c3_id': c31.id}
             )
         )
 
@@ -1193,8 +1194,9 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
             testing.db,
             sess.flush,
             CompiledSQL(
-                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "
-                "c3_id=:c3_id WHERE parent.id = :parent_id",
-                lambda ctx: {'c2_id': None, 'parent_id': p1.id, 'c1_id': None, 'c3_id': None}
+                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, c3_id=:c3_id "
+                "WHERE parent.id = :parent_id",
+                lambda ctx: {'c2_id': None, 'parent_id': p1.id,
+                             'c1_id': None, 'c3_id': None}
             )
         )
