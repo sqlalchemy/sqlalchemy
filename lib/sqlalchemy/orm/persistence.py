@@ -1248,10 +1248,16 @@ class BulkUpdate(BulkUD):
                 "Invalid expression type: %r" % key)
 
     def _do_exec(self):
-        values = dict(
+
+        values = [
             (self._resolve_string_to_expr(k), v)
-            for k, v in self.values.items()
-        )
+            for k, v in (
+                self.values.items() if hasattr(self.values, 'items')
+                else self.values)
+        ]
+        if not self.update_kwargs.get('preserve_parameter_order', False):
+            values = dict(values)
+
         update_stmt = sql.update(self.primary_table,
                                  self.context.whereclause, values,
                                  **self.update_kwargs)
@@ -1301,7 +1307,9 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
 
     def _additional_evaluators(self, evaluator_compiler):
         self.value_evaluators = {}
-        for key, value in self.values.items():
+        values = (self.values.items() if hasattr(self.values, 'items')
+                  else self.values)
+        for key, value in values:
             key = self._resolve_key_to_attrname(key)
             if key is not None:
                 self.value_evaluators[key] = evaluator_compiler.process(

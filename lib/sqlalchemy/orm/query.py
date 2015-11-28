@@ -2904,7 +2904,12 @@ class Query(object):
 
         :param values: a dictionary with attributes names, or alternatively
          mapped attributes or SQL expressions, as keys, and literal
-         values or sql expressions as values.
+         values or sql expressions as values.   If :ref:`parameter-ordered
+         mode <updates_order_parameters>` is desired, the values can be
+         passed as a list of 2-tuples;
+         this requires that the :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+         flag is passed to the :paramref:`.Query.update.update_args` dictionary
+         as well.
 
           .. versionchanged:: 1.0.0 - string names in the values dictionary
              are now resolved against the mapped entity; previously, these
@@ -2935,7 +2940,8 @@ class Query(object):
         :param update_args: Optional dictionary, if present will be passed
          to the underlying :func:`.update` construct as the ``**kw`` for
          the object.  May be used to pass dialect-specific arguments such
-         as ``mysql_limit``.
+         as ``mysql_limit``, as well as other special arguments such as
+         :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`.
 
          .. versionadded:: 1.0.0
 
