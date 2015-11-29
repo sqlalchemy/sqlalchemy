@@ -354,6 +354,12 @@ class Result(object):
         # (remember, we can map to an OUTER JOIN)
         bq = self.bq
 
+        # add the clause we got from mapper._get_clause to the cache
+        # key so that if a race causes multiple calls to _get_clause,
+        # we've cached on ours
+        bq = bq._clone()
+        bq._cache_key += (_get_clause, )
+
         bq = bq.with_criteria(setup, tuple(elem is None for elem in ident))
 
         params = dict([

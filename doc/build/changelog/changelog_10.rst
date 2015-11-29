@@ -19,6 +19,18 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, ext
+        :versions: 1.1.0b1
+        :tickets: 3597
+
+        Fixed an issue in baked queries where the .get() method, used either
+        directly or within lazy loads, didn't consider the mapper's "get clause"
+        as part of the cache key, causing bound parameter mismatches if the
+        clause got re-generated.  This clause is cached by mappers
+        on the fly but in highly concurrent scenarios may be generated more
+        than once when first accessed.
+
+    .. change::
         :tags: feature, sql
         :versions: 1.1.0b1
         :pullreq: github:200

@@ -271,6 +271,30 @@ class LikeQueryTest(BakedTest):
             eq_(u2.name, 'chuck')
         self.assert_sql_count(testing.db, go, 0)
 
+    def test_get_includes_getclause(self):
+        # test issue #3597
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+
+        for i in range(5):
+            sess = Session()
+            u1 = bq(sess).get(7)
+            eq_(u1.name, 'jack')
+
+        eq_(len(bq._bakery), 2)
+
+        # simulate race where mapper._get_clause
+        # may be generated more than once
+        from sqlalchemy import inspect
+        del inspect(User).__dict__['_get_clause']
+
+        for i in range(5):
+            sess = Session()
+            u1 = bq(sess).get(7)
+            eq_(u1.name, 'jack')
+        eq_(len(bq._bakery), 4)
+
 
 class ResultTest(BakedTest):
     __backend__ = True
