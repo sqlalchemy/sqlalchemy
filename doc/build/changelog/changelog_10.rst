@@ -19,6 +19,15 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3585
+        :versions: 1.1.0b1
+
+        Added the error "20006: Write to the server failed" to the list
+        of disconnect errors for the pymssql driver, as this has been observed
+        to render a connection unusable.
+
+    .. change::
         :tags: bug, postgresql
         :pullreq: github:216
         :tickets: 3573
