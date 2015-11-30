@@ -1131,7 +1131,10 @@ class IdentitySetTest(fixtures.TestBase):
         return super_, sub_, twin1, twin2, unique1, unique2
 
     def _assert_unorderable_types(self, callable_):
-        if util.py3k:
+        if util.py36:
+            assert_raises_message(
+                TypeError, 'not supported between instances of', callable_)
+        elif util.py3k:
             assert_raises_message(
                 TypeError, 'unorderable types', callable_)
         else:
