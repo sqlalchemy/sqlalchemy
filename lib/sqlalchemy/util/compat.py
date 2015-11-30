@@ -14,6 +14,7 @@ try:
 except ImportError:
     import dummy_threading as threading
 
+py36 = sys.version_info >= (3, 6)
 py33 = sys.version_info >= (3, 3)
 py32 = sys.version_info >= (3, 2)
 py3k = sys.version_info >= (3, 0)
