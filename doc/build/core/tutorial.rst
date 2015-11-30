@@ -290,7 +290,8 @@ the SQLAlchemy :class:`~sqlalchemy.engine.Connection` object references a
 DBAPI connection, the result, known as a
 :class:`~sqlalchemy.engine.ResultProxy` object, is analogous to the DBAPI
 cursor object. In the case of an INSERT, we can get important information from
-it, such as the primary key values which were generated from our statement:
+it, such as the primary key values which were generated from our statement
+using :attr:`.ResultProxy.inserted_primary_key`:
 
 .. sourcecode:: pycon+sql
 
@@ -304,8 +305,11 @@ value would have been used. In either case, SQLAlchemy always knows how to get
 at a newly generated primary key value, even though the method of generating
 them is different across different databases; each database's
 :class:`~sqlalchemy.engine.interfaces.Dialect` knows the specific steps needed to
-determine the correct value (or values; note that ``inserted_primary_key``
-returns a list so that it supports composite primary keys).
+determine the correct value (or values; note that
+:attr:`.ResultProxy.inserted_primary_key`
+returns a list so that it supports composite primary keys).    Methods here
+range from using ``cursor.lastrowid``, to selecting from a database-specific
+function, to using ``INSERT..RETURNING`` syntax; this all occurs transparently.
 
 .. _execute_multiple:
 
