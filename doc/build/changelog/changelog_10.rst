@@ -19,6 +19,15 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, postgresql
+        :pullreq: github:215
+        :versions: 1.1.0b1
+
+        Fixed bug where some varieties of SQL expression passed to the
+        "where" clause of :class:`.postgresql.ExcludeConstraint` would fail
+        to be accepted correctly.  Pull request courtesy aisch.
+
+    .. change::
         :tags: bug, orm, declarative
         :pullreq: github:212
         :versions: 1.1.0b1
