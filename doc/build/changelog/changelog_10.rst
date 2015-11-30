@@ -31,12 +31,13 @@
     .. change::
         :tags: bug, py3k
         :versions: 1.1.0b1
-        :pullreq: github:210
+        :pullreq: github:210, github:218, github:211
 
-        Updates to internal getargspec() calls, as well as some py36-related
-        fixture updates, to allow tests to pass without
-        warnings on Py3.5, Py3.6, pull requests courtesy Jacob MacDonald
-        and Luri de Silvio.
+        Updates to internal getargspec() calls, some py36-related
+        fixture updates, and alterations to two iterators to "return" instead
+        of raising StopIteration, to allow tests to pass without
+        errors or warnings on Py3.5, Py3.6, pull requests courtesy
+        Jacob MacDonald, Luri de Silvio, and Phil Jones.
 
     .. change::
         :tags: bug, ext
