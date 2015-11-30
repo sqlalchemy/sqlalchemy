@@ -1799,9 +1799,9 @@ class SQLCompiler(Compiled):
         return text
 
     def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,
-                    fromhints=None, **kwargs):
+                    fromhints=None, use_schema=True, **kwargs):
         if asfrom or ashint:
-            if getattr(table, "schema", None):
+            if use_schema and getattr(table, "schema", None):
                 ret = self.preparer.quote_schema(table.schema) + \
                     "." + self.preparer.quote(table.name)
             else:

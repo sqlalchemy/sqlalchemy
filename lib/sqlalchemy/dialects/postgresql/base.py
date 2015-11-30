@@ -1158,7 +1158,7 @@ class PGCompiler(compiler.SQLCompiler):
                 c.table if isinstance(c, expression.ColumnClause)
                 else c for c in select._for_update_arg.of)
             tmp += " OF " + ", ".join(
-                self.process(table, ashint=True, **kw)
+                self.process(table, ashint=True, use_schema=False, **kw)
                 for table in tables
             )
 
