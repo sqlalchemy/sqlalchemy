@@ -19,6 +19,14 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, py3k
+        :versions: 1.1.0b1
+        :pullreq: github:210
+
+        Updates to internal getargspec() calls to allow tests to pass without
+        warnings on Py3.5, Py3.6, pull request courtesy Jacob MacDonald.
+
+    .. change::
         :tags: bug, ext
         :versions: 1.1.0b1
         :tickets: 3597
