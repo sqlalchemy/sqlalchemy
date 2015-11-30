@@ -19,7 +19,7 @@
     :version: 1.0.10
 
     .. change::
-        :tags: bug, orm
+        :tags: bug, orm, declarative
         :pullreq: github:212
         :versions: 1.1.0b1
 
