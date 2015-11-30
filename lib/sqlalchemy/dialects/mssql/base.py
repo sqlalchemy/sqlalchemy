@@ -548,9 +548,13 @@ class _MSDate(sqltypes.Date):
             if isinstance(value, datetime.datetime):
                 return value.date()
             elif isinstance(value, util.string_types):
+                m = self._reg.match(value)
+                if not m:
+                    raise ValueError(
+                        "could not parse %r as a date value" % (value, ))
                 return datetime.date(*[
                     int(x or 0)
-                    for x in self._reg.match(value).groups()
+                    for x in m.groups()
                 ])
             else:
                 return value
@@ -582,9 +586,13 @@ class TIME(sqltypes.TIME):
             if isinstance(value, datetime.datetime):
                 return value.time()
             elif isinstance(value, util.string_types):
+                m = self._reg.match(value)
+                if not m:
+                    raise ValueError(
+                        "could not parse %r as a time value" % (value, ))
                 return datetime.time(*[
                     int(x or 0)
-                    for x in self._reg.match(value).groups()])
+                    for x in m.groups()])
             else:
                 return value
         return process

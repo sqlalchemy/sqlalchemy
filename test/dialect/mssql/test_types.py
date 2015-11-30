@@ -1,5 +1,5 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_, engines, pickleable
+from sqlalchemy.testing import eq_, engines, pickleable, assert_raises_message
 import datetime
 import os
 from sqlalchemy import Table, Column, MetaData, Float, \
@@ -8,8 +8,8 @@ from sqlalchemy import Table, Column, MetaData, Float, \
     UnicodeText, LargeBinary
 from sqlalchemy import types, schema
 from sqlalchemy.databases import mssql
-from sqlalchemy.dialects.mssql.base import TIME, MS_2005_VERSION, \
-    MS_2008_VERSION
+from sqlalchemy.dialects.mssql.base import TIME, _MSDate
+from sqlalchemy.dialects.mssql.base import MS_2005_VERSION, MS_2008_VERSION
 from sqlalchemy.testing import fixtures, \
     AssertsExecutionResults, ComparesTables
 from sqlalchemy import testing
@@ -33,6 +33,36 @@ class TimeTypeTest(fixtures.TestBase):
         mssql_time_type = TIME()
         result_processor = mssql_time_type.result_processor(None, None)
         eq_(expected, result_processor(value))
+
+    def test_result_processor_invalid(self):
+        mssql_time_type = TIME()
+        result_processor = mssql_time_type.result_processor(None, None)
+        assert_raises_message(
+            ValueError,
+            "could not parse 'abc' as a time value",
+            result_processor, 'abc'
+        )
+
+
+class MSDateTypeTest(fixtures.TestBase):
+
+    def test_result_processor(self):
+        expected = datetime.date(2000, 1, 2)
+        self._assert_result_processor(expected, '2000-01-02')
+
+    def _assert_result_processor(self, expected, value):
+        mssql_date_type = _MSDate()
+        result_processor = mssql_date_type.result_processor(None, None)
+        eq_(expected, result_processor(value))
+
+    def test_result_processor_invalid(self):
+        mssql_date_type = _MSDate()
+        result_processor = mssql_date_type.result_processor(None, None)
+        assert_raises_message(
+            ValueError,
+            "could not parse 'abc' as a date value",
+            result_processor, 'abc'
+        )
 
 
 class TypeDDLTest(fixtures.TestBase):

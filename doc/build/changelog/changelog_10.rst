@@ -19,6 +19,16 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, mssql
+        :versions: 1.1.0b1
+        :pullreq: github:206
+
+        A descriptive ValueError is now raised in the event that SQL server
+        returns an invalid date or time format from a DATE or TIME
+        column, rather than failing with a NoneType error.  Pull request
+        courtesy Ed Avis.
+
+    .. change::
         :tags: bug, py3k
         :versions: 1.1.0b1
         :pullreq: github:210
