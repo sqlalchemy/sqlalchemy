@@ -20,6 +20,17 @@
 
     .. change::
         :tags: bug, postgresql
+        :pullreq: github:216
+        :tickets: 3573
+        :versions: 1.1.0b1
+
+        Fixed issue where the "FOR UPDATE OF" Postgresql-specific SELECT
+        modifier would fail if the referred table had a schema qualifier;
+        PG needs the schema name to be omitted.  Pull request courtesy
+        Diana Clarke.
+
+    .. change::
+        :tags: bug, postgresql
         :pullreq: github:215
         :versions: 1.1.0b1
 
