@@ -281,6 +281,7 @@ class LikeQueryTest(BakedTest):
             sess = Session()
             u1 = bq(sess).get(7)
             eq_(u1.name, 'jack')
+            sess.close()
 
         eq_(len(bq._bakery), 2)
 
@@ -293,6 +294,7 @@ class LikeQueryTest(BakedTest):
             sess = Session()
             u1 = bq(sess).get(7)
             eq_(u1.name, 'jack')
+            sess.close()
         eq_(len(bq._bakery), 4)
 
 
