@@ -19,6 +19,15 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3599
+        :versions: 1.1.0b1
+
+        Fixed issue where post_update on a many-to-one relationship would
+        fail to emit an UPDATE in the case where the attribute were set to
+        None and not previously loaded.
+
+    .. change::
         :tags: bug, sql, postgresql
         :tickets: 3598
         :versions: 1.1.0b1

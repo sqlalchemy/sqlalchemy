@@ -303,9 +303,9 @@ class DependencyProcessor(object):
             set
         )
 
-    def _post_update(self, state, uowcommit, related):
+    def _post_update(self, state, uowcommit, related, is_m2o_delete=False):
         for x in related:
-            if x is not None:
+            if not is_m2o_delete or x is not None:
                 uowcommit.issue_post_update(
                     state,
                     [r for l, r in self.prop.synchronize_pairs]
@@ -740,7 +740,9 @@ class ManyToOneDP(DependencyProcessor):
                         self.key,
                         self._passive_delete_flag)
                     if history:
-                        self._post_update(state, uowcommit, history.sum())
+                        self._post_update(
+                            state, uowcommit, history.sum(),
+                            is_m2o_delete=True)
 
     def process_saves(self, uowcommit, states):
         for state in states:
