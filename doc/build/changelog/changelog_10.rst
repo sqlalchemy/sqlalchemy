@@ -19,6 +19,16 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 3598
+        :versions: 1.1.0b1
+
+        Fixed bug where CREATE TABLE with a no-column table, but a constraint
+        such as a CHECK constraint would render an erroneous comma in the
+        definition; this scenario can occur such as with a Postgresql
+        INHERITS table that has no columns of its own.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3585
         :versions: 1.1.0b1

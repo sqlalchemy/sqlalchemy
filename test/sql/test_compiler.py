@@ -18,7 +18,7 @@ from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
     literal, and_, null, type_coerce, alias, or_, literal_column,\
     Float, TIMESTAMP, Numeric, Date, Text, union, except_,\
     intersect, union_all, Boolean, distinct, join, outerjoin, asc, desc,\
-    over, subquery, case, true
+    over, subquery, case, true, CheckConstraint
 import decimal
 from sqlalchemy.util import u
 from sqlalchemy import exc, sql, util, types, schema
@@ -2855,6 +2855,30 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(t2),
             "CREATE TABLE t (x INTEGER, z INTEGER)"
+        )
+
+    def test_table_no_cols(self):
+        m = MetaData()
+        t1 = Table('t1', m)
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 ()"
+        )
+
+    def test_table_no_cols_w_constraint(self):
+        m = MetaData()
+        t1 = Table('t1', m, CheckConstraint('a = 1'))
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 (CHECK (a = 1))"
+        )
+
+    def test_table_one_col_w_constraint(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('q', Integer), CheckConstraint('a = 1'))
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 (q INTEGER, CHECK (a = 1))"
         )
 
 
