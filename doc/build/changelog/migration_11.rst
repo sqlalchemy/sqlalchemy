@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: November 11, 2015
+    Document last updated: December 4, 2015
 
 Introduction
 ============
@@ -290,6 +290,59 @@ time on the outside of the subquery.
 
 :ticket:`3582`
 
+
+.. _change_3601:
+
+Session.merge resolves pending conflicts the same as persistent
+---------------------------------------------------------------
+
+The :meth:`.Session.merge` method will now track the identities of objects given
+within a graph to maintain primary key uniqueness before emitting an INSERT.
+When duplicate objects of the same identity are encountered, non-primary-key
+attributes are **overwritten** as the objects are encountered, which is
+essentially non-deterministic.   This behavior matches that of how persistent
+objects, that is objects that are already located in the database via
+primary key, are already treated, so this behavior is more internally
+consistent.
+
+Given::
+
+    u1 = User(id=7, name='x')
+    u1.orders = [
+        Order(description='o1', address=Address(id=1, email_address='a')),
+        Order(description='o2', address=Address(id=1, email_address='b')),
+        Order(description='o3', address=Address(id=1, email_address='c'))
+    ]
+
+    sess = Session()
+    sess.merge(u1)
+
+Above, we merge a ``User`` object with three new ``Order`` objects, each referring to
+a distinct ``Address`` object, however each is given the same primary key.
+The current behavior of :meth:`.Session.merge` is to look in the identity
+map for this ``Address`` object, and use that as the target.   If the object
+is present, meaning that the database already has a row for ``Address`` with
+primary key "1", we can see that the ``email_address`` field of the ``Address``
+will be overwritten three times, in this case with the values a, b and finally
+c.
+
+However, if the ``Address`` row for primary key "1" were not present, :meth:`.Session.merge`
+would instead create three separate ``Address`` instances, and we'd then get
+a primary key conflict upon INSERT.  The new behavior is that the proposed
+primary key for these ``Address`` objects are tracked in a separate dictionary
+so that we merge the state of the three proposed ``Address`` objects onto
+one ``Address`` object to be inserted.
+
+It may have been preferable if the original case emitted some kind of warning
+that conflicting data were present in a single merge-tree, however the
+non-deterministic merging of values has been the behavior for many
+years for the persistent case; it now matches for the pending case.   A
+feature that warns for conflicting values could still be feasible for both
+cases but would add considerable performance overhead as each column value
+would have to be compared during the merge.
+
+
+:ticket:`3601`
 
 New Features and Improvements - Core
 ====================================

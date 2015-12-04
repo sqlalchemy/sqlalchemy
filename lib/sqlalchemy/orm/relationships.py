@@ -1430,7 +1430,7 @@ class RelationshipProperty(StrategizedProperty):
               source_dict,
               dest_state,
               dest_dict,
-              load, _recursive):
+              load, _recursive, _resolve_conflict_map):
 
         if load:
             for r in self._reverse_property:
@@ -1463,8 +1463,10 @@ class RelationshipProperty(StrategizedProperty):
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict,
-                                     load=load, _recursive=_recursive)
+                obj = session._merge(
+                    current_state, current_dict,
+                    load=load, _recursive=_recursive,
+                    _resolve_conflict_map=_resolve_conflict_map)
                 if obj is not None:
                     dest_list.append(obj)
 
@@ -1482,8 +1484,10 @@ class RelationshipProperty(StrategizedProperty):
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict,
-                                     load=load, _recursive=_recursive)
+                obj = session._merge(
+                    current_state, current_dict,
+                    load=load, _recursive=_recursive,
+                    _resolve_conflict_map=_resolve_conflict_map)
             else:
                 obj = None
 

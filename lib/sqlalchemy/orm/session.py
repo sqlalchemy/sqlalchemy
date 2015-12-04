@@ -1689,6 +1689,10 @@ class Session(_SessionClassMethods):
 
         See :ref:`unitofwork_merging` for a detailed discussion of merging.
 
+        .. versionchanged:: 1.1 - :meth:`.Session.merge` will now reconcile
+           pending objects with overlapping primary keys in the same way
+           as persistent.  See :ref:`change_3601` for discussion.
+
         :param instance: Instance to be merged.
         :param load: Boolean, when False, :meth:`.merge` switches into
          a "high performance" mode which causes it to forego emitting history
@@ -1713,12 +1717,14 @@ class Session(_SessionClassMethods):
          should be "clean" as well, else this suggests a mis-use of the
          method.
 
+
         """
 
         if self._warn_on_events:
             self._flush_warning("Session.merge()")
 
         _recursive = {}
+        _resolve_conflict_map = {}
 
         if load:
             # flush current contents if we expect to load data
@@ -1731,11 +1737,13 @@ class Session(_SessionClassMethods):
             return self._merge(
                 attributes.instance_state(instance),
                 attributes.instance_dict(instance),
-                load=load, _recursive=_recursive)
+                load=load, _recursive=_recursive,
+                _resolve_conflict_map=_resolve_conflict_map)
         finally:
             self.autoflush = autoflush
 
-    def _merge(self, state, state_dict, load=True, _recursive=None):
+    def _merge(self, state, state_dict, load=True, _recursive=None,
+               _resolve_conflict_map=None):
         mapper = _state_mapper(state)
         if state in _recursive:
             return _recursive[state]
@@ -1751,9 +1759,14 @@ class Session(_SessionClassMethods):
                     "all changes on mapped instances before merging with "
                     "load=False.")
             key = mapper._identity_key_from_state(state)
+            key_is_persistent = attributes.NEVER_SET not in key[1]
+        else:
+            key_is_persistent = True
 
         if key in self.identity_map:
             merged = self.identity_map[key]
+        elif key_is_persistent and key in _resolve_conflict_map:
+            merged = _resolve_conflict_map[key]
 
         elif not load:
             if state.modified:
@@ -1785,6 +1798,7 @@ class Session(_SessionClassMethods):
             merged_dict = attributes.instance_dict(merged)
 
         _recursive[state] = merged
+        _resolve_conflict_map[key] = merged
 
         # check that we didn't just pull the exact same
         # state out.
@@ -1823,7 +1837,7 @@ class Session(_SessionClassMethods):
             for prop in mapper.iterate_properties:
                 prop.merge(self, state, state_dict,
                            merged_state, merged_dict,
-                           load, _recursive)
+                           load, _recursive, _resolve_conflict_map)
 
         if not load:
             # remove any history

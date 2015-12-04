@@ -22,6 +22,20 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3601
+
+        The :meth:`.Session.merge` method now tracks pending objects by
+        primary key before emitting an INSERT, and merges distinct objects with
+        duplicate primary keys together as they are encountered, which is
+        essentially semi-deterministic at best.   This behavior
+        matches what happens already with persistent objects.
+
+        .. seealso::
+
+            :ref:`change_3601`
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3587
 

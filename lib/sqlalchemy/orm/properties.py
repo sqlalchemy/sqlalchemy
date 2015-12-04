@@ -206,7 +206,7 @@ class ColumnProperty(StrategizedProperty):
             get_committed_value(state, dict_, passive=passive)
 
     def merge(self, session, source_state, source_dict, dest_state,
-              dest_dict, load, _recursive):
+              dest_dict, load, _recursive, _resolve_conflict_map):
         if not self.instrument:
             return
         elif self.key in source_dict:
