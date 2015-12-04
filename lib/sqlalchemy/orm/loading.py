@@ -108,7 +108,7 @@ def merge_result(querylib, query, iterator, load=True):
                 result = [session._merge(
                     attributes.instance_state(instance),
                     attributes.instance_dict(instance),
-                    load=load, _recursive={})
+                    load=load, _recursive={}, _resolve_conflict_map={})
                     for instance in iterator]
             else:
                 result = list(iterator)
@@ -125,7 +125,7 @@ def merge_result(querylib, query, iterator, load=True):
                         newrow[i] = session._merge(
                             attributes.instance_state(newrow[i]),
                             attributes.instance_dict(newrow[i]),
-                            load=load, _recursive={})
+                            load=load, _recursive={}, _resolve_conflict_map={})
                 result.append(keyed_tuple(newrow))
 
         return iter(result)
