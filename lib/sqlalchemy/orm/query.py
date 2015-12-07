@@ -982,8 +982,169 @@ class Query(object):
         """return a Query that selects from this Query's
         SELECT statement.
 
-        \*entities - optional list of entities which will replace
-        those being selected.
+        :meth:`.Query.from_self` essentially turns the SELECT statement
+        into a SELECT of itself.  Given a query such as::
+
+            q = session.query(User).filter(User.name.like('e%'))
+
+        Given the :meth:`.Query.from_self` version::
+
+            q = session.query(User).filter(User.name.like('e%')).from_self()
+
+        This query renders as:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1) AS anon_1
+
+        There are lots of cases where :meth:`.Query.from_self` may be useful.
+        A simple one is where above, we may want to apply a row LIMIT to
+        the set of user objects we query against, and then apply additional
+        joins against that row-limited set::
+
+            q = session.query(User).filter(User.name.like('e%')).\\
+                limit(5).from_self().\\
+                join(User.addresses).filter(Address.email.like('q%'))
+
+        The above query joins to the ``Address`` entity but only against the
+        first five results of the ``User`` query:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1
+             LIMIT :param_1) AS anon_1
+            JOIN address ON anon_1.user_id = address.user_id
+            WHERE address.email LIKE :email_1
+
+        **Automatic Aliasing**
+
+        Another key behavior of :meth:`.Query.from_self` is that it applies
+        **automatic aliasing** to the entities inside the subquery, when
+        they are referenced on the outside.  Above, if we continue to
+        refer to the ``User`` entity without any additional aliasing applied
+        to it, those references wil be in terms of the subquery::
+
+            q = session.query(User).filter(User.name.like('e%')).\\
+                limit(5).from_self().\\
+                join(User.addresses).filter(Address.email.like('q%')).\\
+                order_by(User.name)
+
+        The ORDER BY against ``User.name`` is aliased to be in terms of the
+        inner subquery:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1
+             LIMIT :param_1) AS anon_1
+            JOIN address ON anon_1.user_id = address.user_id
+            WHERE address.email LIKE :email_1 ORDER BY anon_1.user_name
+
+        The automatic aliasing feature only works in a **limited** way,
+        for simple filters and orderings.   More ambitious constructions
+        such as referring to the entity in joins should prefer to use
+        explicit subquery objects, typically making use of the
+        :meth:`.Query.subquery` method to produce an explicit subquery object.
+        Always test the structure of queries by viewing the SQL to ensure
+        a particular structure does what's expected!
+
+        **Changing the Entities**
+
+        :meth:`.Query.from_self` also includes the ability to modify what
+        columns are being queried.   In our example, we want ``User.id``
+        to be queried by the inner query, so that we can join to the
+        ``Address`` entity on the outside, but we only wanted the outer
+        query to return the ``Address.email`` column::
+
+            q = session.query(User).filter(User.name.like('e%')).\\
+                limit(5).from_self(Address.email).\\
+                join(User.addresses).filter(Address.email.like('q%'))
+
+        yielding:
+
+        .. sourcecode:: sql
+
+            SELECT address.email AS address_email
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1
+             LIMIT :param_1) AS anon_1
+            JOIN address ON anon_1.user_id = address.user_id
+            WHERE address.email LIKE :email_1
+
+        **Looking out for Inner / Outer Columns**
+
+        Keep in mind that when referring to columns that originate from
+        inside the subquery, we need to ensure they are present in the
+        columns clause of the subquery itself; this is an ordinary aspect of
+        SQL.  For example, if we wanted to load from a joined entity inside
+        the subquery using :func:`.contains_eager`, we need to add those
+        columns.   Below illustrates a join of ``Address`` to ``User``,
+        then a subquery, and then we'd like :func:`.contains_eager` to access
+        the ``User`` columns::
+
+            q = session.query(Address).join(Address.user).\\
+                filter(User.name.like('e%'))
+
+            q = q.add_entity(User).from_self().\\
+                options(contains_eager(Address.user))
+
+        We use :meth:`.Query.add_entity` above **before** we call
+        :meth:`.Query.from_self` so that the ``User`` columns are present
+        in the inner subquery, so that they are available to the
+        :func:`.contains_eager` modifier we are using on the outside,
+        producing:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.address_id AS anon_1_address_id,
+                   anon_1.address_email AS anon_1_address_email,
+                   anon_1.address_user_id AS anon_1_address_user_id,
+                   anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (
+                SELECT address.id AS address_id,
+                address.email AS address_email,
+                address.user_id AS address_user_id,
+                "user".id AS user_id,
+                "user".name AS user_name
+            FROM address JOIN "user" ON "user".id = address.user_id
+            WHERE "user".name LIKE :name_1) AS anon_1
+
+        If we didn't call ``add_entity(User)``, but still asked
+        :func:`.contains_eager` to load the ``User`` entity, it would be
+        forced to add the table on the outside without the correct
+        join criteria - note the ``anon1, "user"`` phrase at
+        the end:
+
+        .. sourcecode:: sql
+
+            -- incorrect query
+            SELECT anon_1.address_id AS anon_1_address_id,
+                   anon_1.address_email AS anon_1_address_email,
+                   anon_1.address_user_id AS anon_1_address_user_id,
+                   "user".id AS user_id,
+                   "user".name AS user_name
+            FROM (
+                SELECT address.id AS address_id,
+                address.email AS address_email,
+                address.user_id AS address_user_id
+            FROM address JOIN "user" ON "user".id = address.user_id
+            WHERE "user".name LIKE :name_1) AS anon_1, "user"
+
+        :param \*entities: optional list of entities which will replace
+         those being selected.
 
         """
         fromclause = self.with_labels().enable_eagerloads(False).\
