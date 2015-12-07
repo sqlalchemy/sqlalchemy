@@ -19,6 +19,17 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 3602
+        :versions: 1.1.0b1
+
+        Fixed bug in MySQL reflection where the "fractional sections portion"
+        of the :class:`.mysql.DATETIME`, :class:`.mysql.TIMESTAMP` and
+        :class:`.mysql.TIME` types would be incorrectly placed into the
+        ``timestamp`` attribute, which is unused by MySQL, instead of the
+        ``fsp`` attribute.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3599
         :versions: 1.1.0b1
