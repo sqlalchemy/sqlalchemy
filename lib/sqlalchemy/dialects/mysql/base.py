@@ -3094,6 +3094,11 @@ class MySQLTableDefinitionParser(object):
 
         # Column type keyword options
         type_kw = {}
+
+        if issubclass(col_type, (DATETIME, TIME, TIMESTAMP)):
+            if type_args:
+                type_kw['fsp'] = type_args.pop(0)
+
         for kw in ('unsigned', 'zerofill'):
             if spec.get(kw, False):
                 type_kw[kw] = True
