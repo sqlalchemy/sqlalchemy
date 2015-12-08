@@ -37,7 +37,7 @@ class TypeReflectionTest(fixtures.TestBase):
             )
             event.listen(
                 m, 'before_drop',
-                DDL("DROP VIEW mysql_types_v")
+                DDL("DROP VIEW IF EXISTS mysql_types_v")
             )
         m.create_all()
 
