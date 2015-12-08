@@ -694,7 +694,7 @@ class Session(_SessionClassMethods):
     def info(self):
         """A user-modifiable dictionary.
 
-        The initial value of this dictioanry can be populated using the
+        The initial value of this dictionary can be populated using the
         ``info`` argument to the :class:`.Session` constructor or
         :class:`.sessionmaker` constructor or factory methods.  The dictionary
         here is always local to this :class:`.Session` and can be modified
