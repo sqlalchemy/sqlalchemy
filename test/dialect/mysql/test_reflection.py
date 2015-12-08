@@ -71,11 +71,16 @@ class TypeReflectionTest(fixtures.TestBase):
     def test_time_types(self):
         specs = []
 
+        if testing.requires.mysql_fsp.enabled:
+            fsps = [None, 0, 5]
+        else:
+            fsps = [None]
+
         for type_ in (mysql.TIMESTAMP, mysql.DATETIME, mysql.TIME):
             # MySQL defaults fsp to 0, and if 0 does not report it.
             # we don't actually render 0 right now in DDL but even if we do,
             # it comes back blank
-            for fsp in (None, 0, 5):
+            for fsp in fsps:
                 if fsp:
                     specs.append((type_(fsp=fsp), type_(fsp=fsp)))
                 else:

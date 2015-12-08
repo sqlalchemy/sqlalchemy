@@ -841,6 +841,10 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
 
     @property
+    def mysql_fsp(self):
+        return only_if('mysql >= 5.6.4')
+
+    @property
     def mysql_fully_case_sensitive(self):
         return only_if(self._has_mysql_fully_case_sensitive)
 
