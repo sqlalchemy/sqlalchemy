@@ -19,6 +19,20 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3603
+        :versions: 1.1.0b1
+
+        Fixed issue within the :meth:`.Insert.from_select` construct whereby
+        the :class:`.Select` construct would have its ``._raw_columns``
+        collection mutated in-place when compiling the :class:`.Insert`
+        construct, when the target :class:`.Table` has Python-side defaults.
+        The :class:`.Select` construct would compile standalone with the
+        erroneous column present subsequent to compilation of the
+        :class:`.Insert`, and the the :class:`.Insert` statement itself would
+        fail on a second compile attempt due to duplicate bound parameters.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 3602
         :versions: 1.1.0b1

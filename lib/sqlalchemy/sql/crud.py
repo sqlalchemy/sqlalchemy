@@ -196,8 +196,9 @@ def _scan_insert_from_select_cols(
     if add_select_cols:
         values.extend(add_select_cols)
         compiler._insert_from_select = compiler._insert_from_select._generate()
-        compiler._insert_from_select._raw_columns += tuple(
-            expr for col, expr in add_select_cols)
+        compiler._insert_from_select._raw_columns = \
+            tuple(compiler._insert_from_select._raw_columns) + tuple(
+                expr for col, expr in add_select_cols)
 
 
 def _scan_cols(
