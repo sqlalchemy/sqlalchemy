@@ -319,6 +319,32 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"name_1": "foo", "foo": None}
         )
 
+    def test_insert_from_select_dont_mutate_raw_columns(self):
+        # test [ticket:3603]
+        from sqlalchemy import table
+        table_ = table(
+            'mytable',
+            Column('foo', String),
+            Column('bar', String, default='baz'),
+        )
+
+        stmt = select([table_.c.foo])
+        insert = table_.insert().from_select(['foo'], stmt)
+
+        self.assert_compile(stmt, "SELECT mytable.foo FROM mytable")
+        self.assert_compile(
+            insert,
+            "INSERT INTO mytable (foo, bar) "
+            "SELECT mytable.foo, :bar AS anon_1 FROM mytable"
+        )
+        self.assert_compile(stmt, "SELECT mytable.foo FROM mytable")
+        self.assert_compile(
+            insert,
+            "INSERT INTO mytable (foo, bar) "
+            "SELECT mytable.foo, :bar AS anon_1 FROM mytable"
+        )
+
+
     def test_insert_mix_select_values_exception(self):
         table1 = self.tables.mytable
         sel = select([table1.c.myid, table1.c.name]).where(
