@@ -1101,7 +1101,7 @@ declarative, we define this table along with its mapped class, ``Address``:
 .. sourcecode:: python+sql
 
     >>> from sqlalchemy import ForeignKey
-    >>> from sqlalchemy.orm import relationship, backref
+    >>> from sqlalchemy.orm import relationship
 
     >>> class Address(Base):
     ...     __tablename__ = 'addresses'
@@ -1109,10 +1109,13 @@ declarative, we define this table along with its mapped class, ``Address``:
     ...     email_address = Column(String, nullable=False)
     ...     user_id = Column(Integer, ForeignKey('users.id'))
     ...
-    ...     user = relationship("User", backref=backref('addresses', order_by=id))
+    ...     user = relationship("User", back_populates="addresses")
     ...
     ...     def __repr__(self):
     ...         return "<Address(email_address='%s')>" % self.email_address
+
+    >>> User.addresses = relationship(
+    ...     "Address", order_by=Address.id, back_populates="user")
 
 The above class introduces the :class:`.ForeignKey` construct, which is a
 directive applied to :class:`.Column` that indicates that values in this
@@ -1129,11 +1132,27 @@ to the ``User`` class, using the attribute ``Address.user``.
 :func:`.relationship` uses the foreign key
 relationships between the two tables to determine the nature of
 this linkage, determining that ``Address.user`` will be :term:`many to one`.
-A subdirective of :func:`.relationship` called :func:`.backref` is
-placed inside of :func:`.relationship`, providing details about
-the relationship as expressed in reverse, that of a collection of ``Address``
-objects on ``User`` referenced by ``User.addresses``.  The reverse
-side of a many-to-one relationship is always :term:`one to many`.
+An additional :func:`.relationship` directive is placed on the
+``User`` mapped class under the attribute ``User.addresses``.  In both
+:func:`.relationship` directives, the parameter
+:paramref:`.relationship.back_populates` is assigned to refer to the
+complementary attribute names; by doing so, each :func:`.relationship`
+can make intelligent decision about the same relationship as expressed
+in reverse;  on one side, ``Address.user`` refers to a ``User`` instance,
+and on the other side, ``User.addresses`` refers to a list of
+``Address`` instances.
+
+.. note::
+
+    The :paramref:`.relationship.back_populates` parameter is a newer
+    version of a very common SQLAlchemy feature called
+    :paramref:`.relationship.backref`.  The :paramref:`.relationship.backref`
+    parameter hasn't gone anywhere and will always remain available!
+    The :paramref:`.relationship.back_populates` is the same thing, except
+    a little more verbose and easier to manipulate.  For an overview
+    of the entire topic, see the section :ref:`relationships_backref`.
+
+The reverse side of a many-to-one relationship is always :term:`one to many`.
 A full catalog of available :func:`.relationship` configurations
 is at :ref:`relationship_patterns`.
 
@@ -1148,13 +1167,7 @@ use.   Once all mappings are complete, these strings are evaluated
 as Python expressions in order to produce the actual argument, in the
 above case the ``User`` class.   The names which are allowed during
 this evaluation include, among other things, the names of all classes
-which have been created in terms of the declared base.  Below we illustrate creation
-of the same "addresses/user" bidirectional relationship in terms of ``User`` instead of
-``Address``::
-
-    class User(Base):
-        # ....
-        addresses = relationship("Address", order_by="Address.id", backref="user")
+which have been created in terms of the declared base.
 
 See the docstring for :func:`.relationship` for more detail on argument style.
 
@@ -1839,7 +1852,7 @@ including the cascade configuration (we'll leave the constructor out too)::
     ...     fullname = Column(String)
     ...     password = Column(String)
     ...
-    ...     addresses = relationship("Address", backref='user',
+    ...     addresses = relationship("Address", back_populates='user',
     ...                     cascade="all, delete, delete-orphan")
     ...
     ...     def __repr__(self):
@@ -1854,6 +1867,7 @@ the ``Address.user`` relationship via the ``User`` class already::
     ...     id = Column(Integer, primary_key=True)
     ...     email_address = Column(String, nullable=False)
     ...     user_id = Column(Integer, ForeignKey('users.id'))
+    ...     user = relationship("User", back_populates="addresses")
     ...
     ...     def __repr__(self):
     ...         return "<Address(email_address='%s')>" % self.email_address
@@ -1969,8 +1983,9 @@ each individual :class:`.Column` argument is separated by a comma.  The
 :class:`.Column` object is also given its name explicitly, rather than it being
 taken from an assigned attribute name.
 
-Next we define ``BlogPost`` and ``Keyword``, with a :func:`.relationship` linked
-via the ``post_keywords`` table::
+Next we define ``BlogPost`` and ``Keyword``, using complementary
+:func:`.relationship` constructs, each referring to the ``post_keywords``
+table as an association table::
 
     >>> class BlogPost(Base):
     ...     __tablename__ = 'posts'
@@ -1981,7 +1996,9 @@ via the ``post_keywords`` table::
     ...     body = Column(Text)
     ...
     ...     # many to many BlogPost<->Keyword
-    ...     keywords = relationship('Keyword', secondary=post_keywords, backref='posts')
+    ...     keywords = relationship('Keyword',
+    ...                             secondary=post_keywords,
+    ...                             back_populates='posts')
     ...
     ...     def __init__(self, headline, body, author):
     ...         self.author = author
@@ -1997,6 +2014,9 @@ via the ``post_keywords`` table::
     ...
     ...     id = Column(Integer, primary_key=True)
     ...     keyword = Column(String(50), nullable=False, unique=True)
+    ...     posts = relationship('BlogPost',
+    ...                          secondary=post_keywords,
+    ...                          back_populates='keywords')
     ...
     ...     def __init__(self, keyword):
     ...         self.keyword = keyword
@@ -2021,15 +2041,12 @@ that a single user might have lots of blog posts. When we access
 ``User.posts``, we'd like to be able to filter results further so as not to
 load the entire collection. For this we use a setting accepted by
 :func:`~sqlalchemy.orm.relationship` called ``lazy='dynamic'``, which
-configures an alternate **loader strategy** on the attribute. To use it on the
-"reverse" side of a :func:`~sqlalchemy.orm.relationship`, we use the
-:func:`~sqlalchemy.orm.backref` function:
+configures an alternate **loader strategy** on the attribute::
 
 .. sourcecode:: python+sql
 
-    >>> from sqlalchemy.orm import backref
-    >>> # "dynamic" loading relationship to User
-    >>> BlogPost.author = relationship(User, backref=backref('posts', lazy='dynamic'))
+    >>> BlogPost.author = relationship(User, back_populates="posts")
+    >>> User.posts = relationship(BlogPost, back_populates="author", lazy="dynamic")
 
 Create new tables:
 

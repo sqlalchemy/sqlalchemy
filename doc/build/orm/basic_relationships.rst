@@ -8,7 +8,7 @@ A quick walkthrough of the basic relational patterns.
 The imports used for each of the following sections is as follows::
 
     from sqlalchemy import Table, Column, Integer, ForeignKey
-    from sqlalchemy.orm import relationship, backref
+    from sqlalchemy.orm import relationship
     from sqlalchemy.ext.declarative import declarative_base
 
     Base = declarative_base()
@@ -32,19 +32,31 @@ a collection of items represented by the child::
         parent_id = Column(Integer, ForeignKey('parent.id'))
 
 To establish a bidirectional relationship in one-to-many, where the "reverse"
-side is a many to one, specify the :paramref:`~.relationship.backref` option::
+side is a many to one, specify an additional :func:`.relationship` and connect
+the two using the :paramref:`.relationship.back_populates` parameter::
+
+    class Parent(Base):
+        __tablename__ = 'parent'
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", back_populates="parent")
+
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent = relationship("Parent", back_populates="children")
+
+``Child`` will get a ``parent`` attribute with many-to-one semantics.
+
+Alternatively, the :paramref:`~.relationship.backref` option may be used
+on a single :func:`.relationship` instead of using
+:paramref:`~.relationship.back_populates`::
 
     class Parent(Base):
         __tablename__ = 'parent'
         id = Column(Integer, primary_key=True)
         children = relationship("Child", backref="parent")
 
-    class Child(Base):
-        __tablename__ = 'child'
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id'))
-
-``Child`` will get a ``parent`` attribute with many-to-one semantics.
 
 Many To One
 ~~~~~~~~~~~~
@@ -63,9 +75,23 @@ attribute will be created::
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
 
-Bidirectional behavior is achieved by setting
-:paramref:`~.relationship.backref` to the value ``"parents"``, which
-will place a one-to-many collection on the ``Child`` class::
+Bidirectional behavior is achieved by adding a second :func:`.relationship`
+and applying the :paramref:`.relationship.back_populates` parameter
+in both directions::
+
+    class Parent(Base):
+        __tablename__ = 'parent'
+        id = Column(Integer, primary_key=True)
+        child_id = Column(Integer, ForeignKey('child.id'))
+        child = relationship("Child", back_populates="parents")
+
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
+        parents = relationship("Parent", back_populates="child")
+
+Alternatively, the :paramref:`~.relationship.backref` parameter
+may be applied to a single :func:`.relationship`, such as ``Parent.child``::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -86,15 +112,32 @@ of the relationship. To convert one-to-many into one-to-one::
     class Parent(Base):
         __tablename__ = 'parent'
         id = Column(Integer, primary_key=True)
-        child = relationship("Child", uselist=False, backref="parent")
+        child = relationship("Child", uselist=False, back_populates="parent")
 
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent = relationship("Child", back_populates="child")
 
-Or to turn a one-to-many backref into one-to-one, use the :func:`.backref` function
-to provide arguments for the reverse side::
+Or for many-to-one::
+
+    class Parent(Base):
+        __tablename__ = 'parent'
+        id = Column(Integer, primary_key=True)
+        child_id = Column(Integer, ForeignKey('child.id'))
+        child = relationship("Child", back_populates="parent")
+
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
+        parent = relationship("Child", back_populates="child", uselist=False)
+
+As always, the :paramref:`.relationship.backref` and :func:`.backref` functions
+may be used in lieu of the :paramref:`.relationship.back_populates` approach;
+to specify ``uselist`` on a backref, use the :func:`.backref` function::
+
+    from sqlalchemy.orm import backref
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -102,9 +145,6 @@ to provide arguments for the reverse side::
         child_id = Column(Integer, ForeignKey('child.id'))
         child = relationship("Child", backref=backref("parent", uselist=False))
 
-    class Child(Base):
-        __tablename__ = 'child'
-        id = Column(Integer, primary_key=True)
 
 .. _relationships_many_to_many:
 
@@ -133,7 +173,32 @@ directives can locate the remote tables with which to link::
         id = Column(Integer, primary_key=True)
 
 For a bidirectional relationship, both sides of the relationship contain a
-collection.  The :paramref:`~.relationship.backref` keyword will automatically use
+collection.  Specify using :paramref:`.relationship.back_populates`, and
+for each :func:`.relationship` specify the common association table::
+
+    association_table = Table('association', Base.metadata,
+        Column('left_id', Integer, ForeignKey('left.id')),
+        Column('right_id', Integer, ForeignKey('right.id'))
+    )
+
+    class Parent(Base):
+        __tablename__ = 'left'
+        id = Column(Integer, primary_key=True)
+        children = relationship(
+            "Child",
+            secondary=association_table,
+            back_populates="parents")
+
+    class Child(Base):
+        __tablename__ = 'right'
+        id = Column(Integer, primary_key=True)
+        parents = relationship(
+            "Parent",
+            secondary=association_table,
+            back_populates="children")
+
+When using the :paramref:`~.relationship.backref` parameter instead of
+:paramref:`.relationship.back_populates`, the backref will automatically use
 the same :paramref:`~.relationship.secondary` argument for the reverse relationship::
 
     association_table = Table('association', Base.metadata,
@@ -259,23 +324,26 @@ is stored along with each association between ``Parent`` and
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
 
-The bidirectional version adds backrefs to both relationships::
+As always, the bidirectional version make use of :paramref:`.relationship.back_populates`
+or :paramref:`.relationship.backref`::
 
     class Association(Base):
         __tablename__ = 'association'
         left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
         right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
         extra_data = Column(String(50))
-        child = relationship("Child", backref="parent_assocs")
+        child = relationship("Child", back_populates="parents")
+        parent = relationship("Parent", back_populates="children")
 
     class Parent(Base):
         __tablename__ = 'left'
         id = Column(Integer, primary_key=True)
-        children = relationship("Association", backref="parent")
+        children = relationship("Association", back_populates="parent")
 
     class Child(Base):
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
+        parents = relationship("Association", back_populates="child")
 
 Working with the association pattern in its direct form requires that child
 objects are associated with an association instance before being appended to
