@@ -1476,8 +1476,9 @@ class RelationshipProperty(StrategizedProperty):
                 for c in dest_list:
                     coll.append_without_event(c)
             else:
-                dest_state.get_impl(self.key)._set_iterable(
-                    dest_state, dest_dict, dest_list)
+                dest_state.get_impl(self.key).set(
+                    dest_state, dest_dict, dest_list,
+                    _adapt=False)
         else:
             current = source_dict[self.key]
             if current is not None:

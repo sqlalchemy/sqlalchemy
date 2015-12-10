@@ -853,7 +853,10 @@ class CollectionAttributeImpl(AttributeImpl):
     supports_population = True
     collection = True
 
-    __slots__ = 'copy', 'collection_factory', '_append_token', '_remove_token'
+    __slots__ = (
+        'copy', 'collection_factory', '_append_token', '_remove_token',
+        '_duck_typed_as'
+    )
 
     def __init__(self, class_, key, callable_, dispatch,
                  typecallable=None, trackparent=False, extension=None,
@@ -873,6 +876,8 @@ class CollectionAttributeImpl(AttributeImpl):
         self.collection_factory = typecallable
         self._append_token = None
         self._remove_token = None
+        self._duck_typed_as = util.duck_type_collection(
+            self.collection_factory())
 
         if getattr(self.collection_factory, "_sa_linker", None):
 
@@ -1016,38 +1021,46 @@ class CollectionAttributeImpl(AttributeImpl):
         except (ValueError, KeyError, IndexError):
             pass
 
-    def set(self, state, dict_, value, initiator,
-            passive=PASSIVE_OFF, pop=False):
-        """Set a value on the given object.
+    def set(self, state, dict_, value, initiator=None,
+            passive=PASSIVE_OFF, pop=False, _adapt=True):
+        iterable = orig_iterable = value
 
-        """
-
-        self._set_iterable(
-            state, dict_, value,
-            lambda adapter, i: adapter.adapt_like_to_iterable(i))
-
-    def _set_iterable(self, state, dict_, iterable, adapter=None):
-        """Set a collection value from an iterable of state-bearers.
-
-        ``adapter`` is an optional callable invoked with a CollectionAdapter
-        and the iterable.  Should return an iterable of state-bearing
-        instances suitable for appending via a CollectionAdapter.  Can be used
-        for, e.g., adapting an incoming dictionary into an iterator of values
-        rather than keys.
-
-        """
         # pulling a new collection first so that an adaptation exception does
         # not trigger a lazy load of the old collection.
         new_collection, user_data = self._initialize_collection(state)
-        if adapter:
-            new_values = list(adapter(new_collection, iterable))
-        else:
-            new_values = list(iterable)
+        if _adapt:
+            if new_collection._converter is not None:
+                iterable = new_collection._converter(iterable)
+            else:
+                setting_type = util.duck_type_collection(iterable)
+                receiving_type = self._duck_typed_as
+
+                if setting_type is not receiving_type:
+                    given = iterable is None and 'None' or \
+                        iterable.__class__.__name__
+                    wanted = self._duck_typed_as.__name__
+                    raise TypeError(
+                        "Incompatible collection type: %s is not %s-like" % (
+                            given, wanted))
+
+                # If the object is an adapted collection, return the (iterable)
+                # adapter.
+                if hasattr(iterable, '_sa_iterator'):
+                    iterable = iterable._sa_iterator()
+                elif setting_type is dict:
+                    if util.py3k:
+                        iterable = iterable.values()
+                    else:
+                        iterable = getattr(
+                            iterable, 'itervalues', iterable.values)()
+                else:
+                    iterable = iter(iterable)
+        new_values = list(iterable)
 
         old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         if old is PASSIVE_NO_RESULT:
             old = self.initialize(state, dict_)
-        elif old is iterable:
+        elif old is orig_iterable:
             # ignore re-assignment of the current collection, as happens
             # implicitly with in-place operators (foo.collection |= other)
             return
@@ -1059,7 +1072,8 @@ class CollectionAttributeImpl(AttributeImpl):
 
         dict_[self.key] = user_data
 
-        collections.bulk_replace(new_values, old_collection, new_collection)
+        collections.bulk_replace(
+            new_values, old_collection, new_collection)
 
         del old._sa_adapter
         self.dispatch.dispose_collection(state, old, old_collection)
