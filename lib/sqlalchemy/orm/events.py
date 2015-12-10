@@ -1950,7 +1950,7 @@ class AttributeEvents(event.Events):
 
         and also during replace operations::
 
-            u1.addresess = [a2, a3]  #  <- new collection
+            u1.addresses = [a2, a3]  #  <- new collection
 
         :param target: the object instance receiving the event.
          If the listener is registered with ``raw=True``, this will
