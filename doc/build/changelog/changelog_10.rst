@@ -19,6 +19,14 @@
     :version: 1.0.10
 
     .. change::
+        :tags: change, tests
+        :versions: 1.1.0b1
+
+        The ORM and Core tutorials, which have always been in doctest format,
+        are now exercised within the normal unit test suite in both Python
+        2 and Python 3.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3603
         :versions: 1.1.0b1
