@@ -19,6 +19,14 @@
     :version: 1.0.10
 
     .. change::
+        :tags: bug, ext
+        :tickets: 3605
+        :versions: 1.1.0b1
+
+        Added support for the ``dict.pop()`` and ``dict.popitem()`` methods
+        to the :class:`.mutable.MutableDict` class.
+
+    .. change::
         :tags: change, tests
         :versions: 1.1.0b1
 
