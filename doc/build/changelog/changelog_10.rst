@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.10
+    :released: December 11, 2015
 
     .. change::
         :tags: bug, ext
