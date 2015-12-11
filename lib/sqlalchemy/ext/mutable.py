@@ -658,6 +658,16 @@ class MutableDict(Mutable, dict):
         dict.update(self, *a, **kw)
         self.changed()
 
+    def pop(self, key):
+        result = dict.pop(self, key)
+        self.changed()
+        return result
+
+    def popitem(self):
+        result = dict.popitem(self)
+        self.changed()
+        return result
+
     def clear(self):
         dict.clear(self)
         self.changed()
