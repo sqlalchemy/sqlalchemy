@@ -3140,6 +3140,39 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         #     sess.query(Order).with_parent(None, property='addresses').all()
         #     == [Order(description="order 5")]
 
+    def test_select_from(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        u1 = sess.query(User).get(7)
+        q = sess.query(Address).select_from(Address).with_parent(u1)
+        self.assert_compile(
+            q,
+            "SELECT addresses.id AS addresses_id, "
+            "addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM addresses WHERE :param_1 = addresses.user_id",
+            {'param_1': 7}
+        )
+
+    @testing.fails("issue #3607")
+    def test_select_from_alias(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        q = sess.query(a1).with_parent(u1)
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM addresses AS addresses_1 "
+            "WHERE :param_1 = addresses_1.user_id",
+            {'param_1': 7}
+        )
+
     def test_noparent(self):
         Item, User = self.classes.Item, self.classes.User
 

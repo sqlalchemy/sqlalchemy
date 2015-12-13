@@ -16,6 +16,18 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.11
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3606
+        :versions: 1.1.0b1
+
+        Fixed bug where use of the :meth:`.Query.select_from` method would
+        cause a subsequent call to the :meth:`.Query.with_parent` method to
+        fail.
+
+.. changelog::
     :version: 1.0.10
     :released: December 11, 2015
 
