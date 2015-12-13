@@ -289,6 +289,8 @@ class Query(object):
         return self._entities[0]
 
     def _mapper_zero(self):
+        # TODO: self._select_from_entity is not a mapper
+        # so this method is misnamed
         return self._select_from_entity \
             if self._select_from_entity is not None \
             else self._entity_zero().entity_zero
@@ -942,11 +944,13 @@ class Query(object):
         """
 
         if property is None:
+            mapper_zero = inspect(self._mapper_zero()).mapper
+
             mapper = object_mapper(instance)
 
             for prop in mapper.iterate_properties:
                 if isinstance(prop, properties.RelationshipProperty) and \
-                        prop.mapper is self._mapper_zero():
+                        prop.mapper is mapper_zero:
                     property = prop
                     break
             else:
