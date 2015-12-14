@@ -195,6 +195,8 @@ collection contains a list of primary key values for the row inserted (a list
 so that single-column and composite-column primary keys are represented in the
 same format).
 
+.. _server_defaults:
+
 Server Side Defaults
 --------------------
 

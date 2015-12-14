@@ -984,8 +984,12 @@ class Column(SchemaItem, ColumnClause):
             a positional argument; see that class for full detail on the
             structure of the argument.
 
-            Contrast this argument to ``server_default`` which creates a
-            default generator on the database side.
+            Contrast this argument to :paramref:`.Column.server_default`
+            which creates a default generator on the database side.
+
+            .. seealso::
+
+                :ref:`metadata_defaults_toplevel`
 
         :param doc: optional String that can be used by the ORM or similar
             to document attributes.   This attribute does not render SQL
@@ -1050,6 +1054,10 @@ class Column(SchemaItem, ColumnClause):
             will be available to SQLAlchemy for post-fetch after inserts. This
             construct does not specify any DDL and the implementation is left
             to the database, such as via a trigger.
+
+            .. seealso::
+
+                :ref:`server_defaults`
 
         :param server_onupdate:   A :class:`.FetchedValue` instance
              representing a database-side default generation function. This
