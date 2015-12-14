@@ -441,6 +441,7 @@ def _append_param_update(
         else:
             compiler.postfetch.append(c)
     elif implicit_return_defaults and \
+            stmt._return_defaults is not True and \
             c in implicit_return_defaults:
         compiler.returning.append(c)
 

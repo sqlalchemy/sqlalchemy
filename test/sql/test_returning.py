@@ -387,6 +387,31 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             {"data": None, 'upddef': 1}
         )
 
+    def test_insert_all(self):
+        t1 = self.tables.t1
+        result = testing.db.execute(
+            t1.insert().values(upddef=1).return_defaults()
+        )
+        eq_(
+            dict(result.returned_defaults),
+            {"id": 1, "data": None, "insdef": 0}
+        )
+
+    def test_update_all(self):
+        t1 = self.tables.t1
+        testing.db.execute(
+            t1.insert().values(upddef=1)
+        )
+        result = testing.db.execute(
+            t1.update().
+            values(insdef=2).return_defaults()
+        )
+        eq_(
+            dict(result.returned_defaults),
+            {'upddef': 1}
+        )
+
+
 
 class ImplicitReturningFlag(fixtures.TestBase):
     __backend__ = True

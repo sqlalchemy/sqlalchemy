@@ -894,19 +894,26 @@ class ServerVersioningTest(fixtures.MappedTest):
         class Bar(cls.Basic):
             pass
 
-    def _fixture(self, expire_on_commit=True):
+    def _fixture(self, expire_on_commit=True, eager_defaults=False):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
         mapper(
             Foo, version_table, version_id_col=version_table.c.version_id,
             version_id_generator=False,
+            eager_defaults=eager_defaults
         )
 
         s1 = Session(expire_on_commit=expire_on_commit)
         return s1
 
     def test_insert_col(self):
-        sess = self._fixture()
+        self._test_insert_col()
+
+    def test_insert_col_eager_defaults(self):
+        self._test_insert_col(eager_defaults=True)
+
+    def _test_insert_col(self, **kw):
+        sess = self._fixture(**kw)
 
         f1 = self.classes.Foo(value='f1')
         sess.add(f1)
@@ -935,7 +942,13 @@ class ServerVersioningTest(fixtures.MappedTest):
         self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     def test_update_col(self):
-        sess = self._fixture()
+        self._test_update_col()
+
+    def test_update_col_eager_defaults(self):
+        self._test_update_col(eager_defaults=True)
+
+    def _test_update_col(self, **kw):
+        sess = self._fixture(**kw)
 
         f1 = self.classes.Foo(value='f1')
         sess.add(f1)

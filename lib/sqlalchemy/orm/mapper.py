@@ -1956,8 +1956,20 @@ class Mapper(InspectionAttr):
             (
                 table,
                 frozenset([
-                    col for col in columns
+                    col.key for col in columns
                     if col.server_default is not None])
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _server_onupdate_default_cols(self):
+        return dict(
+            (
+                table,
+                frozenset([
+                    col.key for col in columns
+                    if col.server_onupdate is not None])
             )
             for table, columns in self._cols_by_table.items()
         )
