@@ -492,7 +492,7 @@ def _collect_update_commands(
             col = mapper.version_id_col
             params[col._label] = update_version_id
 
-            if col.key not in params and \
+            if (bulk or col.key not in params) and \
                     mapper.version_id_generator is not False:
                 val = mapper.version_id_generator(update_version_id)
                 params[col.key] = val

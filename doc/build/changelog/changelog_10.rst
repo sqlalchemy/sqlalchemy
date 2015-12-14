@@ -19,6 +19,17 @@
     :version: 1.0.11
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3610
+        :versions: 1.1.0b1
+
+        Fixed bug where :meth:`.Session.bulk_update_mappings` and related
+        would not bump a version id counter when in use.  The experience
+        here is still a little rough as the original version id is required
+        in the given dictionaries and there's not clean error reporting
+        on that yet.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3609
         :versions: 1.1.0b1
