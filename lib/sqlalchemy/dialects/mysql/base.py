@@ -602,6 +602,8 @@ RESERVED_WORDS = set(
      'get', 'io_after_gtids', 'io_before_gtids', 'master_bind', 'one_shot',
         'partition', 'sql_after_gtids', 'sql_before_gtids',  # 5.6
 
+     'generated', 'optimizer_costs', 'stored', 'virtual',  # 5.7
+
      ])
 
 AUTOCOMMIT_RE = re.compile(
