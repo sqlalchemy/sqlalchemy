@@ -19,6 +19,27 @@
     :version: 1.0.11
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3609
+        :versions: 1.1.0b1
+
+        Fixed bug in :meth:`.Update.return_defaults` which would cause all
+        insert-default holding columns not otherwise included in the SET
+        clause (such as primary key cols) to get rendered into the RETURNING
+        even though this is an UPDATE.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3609
+        :versions: 1.1.0b1
+
+        Major fixes to the :paramref:`.Mapper.eager_defaults` flag, this
+        flag would not be honored correctly in the case that multiple
+        UPDATE statements were to be emitted, either as part of a flush
+        or a bulk update operation.  Additionally, RETURNING
+        would be emitted unnecessarily within update statements.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3606
         :versions: 1.1.0b1

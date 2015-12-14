@@ -13,6 +13,7 @@ import contextlib
 from .. import event
 from sqlalchemy.schema import _DDLCompiles
 from sqlalchemy.engine.util import _distill_params
+from sqlalchemy.engine import url
 
 
 class AssertRule(object):
@@ -58,16 +59,25 @@ class CursorSQL(SQLMatchRule):
 
 class CompiledSQL(SQLMatchRule):
 
-    def __init__(self, statement, params=None):
+    def __init__(self, statement, params=None, dialect='default'):
         self.statement = statement
         self.params = params
+        self.dialect = dialect
 
     def _compare_sql(self, execute_observed, received_statement):
         stmt = re.sub(r'[\n\t]', '', self.statement)
         return received_statement == stmt
 
     def _compile_dialect(self, execute_observed):
-        return DefaultDialect()
+        if self.dialect == 'default':
+            return DefaultDialect()
+        else:
+            # ugh
+            if self.dialect == 'postgresql':
+                params = {'implicit_returning': True}
+            else:
+                params = {}
+            return url.URL(self.dialect).get_dialect()(**params)
 
     def _received_statement(self, execute_observed):
         """reconstruct the statement and params in terms
@@ -159,7 +169,7 @@ class CompiledSQL(SQLMatchRule):
             'Testing for compiled statement %r partial params %r, '
             'received %%(received_statement)r with params '
             '%%(received_parameters)r' % (
-                self.statement, expected_params
+                self.statement.replace('%', '%%'), expected_params
             )
         )
 
@@ -170,6 +180,7 @@ class RegexSQL(CompiledSQL):
         self.regex = re.compile(regex)
         self.orig_regex = regex
         self.params = params
+        self.dialect = 'default'
 
     def _failure_message(self, expected_params):
         return (
