@@ -626,7 +626,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
         stmt = table.update(clause)
         return stmt
 
-    statement = base_mapper._memo(('update', table), update_stmt)
+    cached_stmt = base_mapper._memo(('update', table), update_stmt)
 
     for (connection, paramkeys, hasvalue, has_all_defaults), \
         records in groupby(
@@ -641,6 +641,8 @@ def _emit_update_statements(base_mapper, uowtransaction,
         rows = 0
         records = list(records)
 
+        statement = cached_stmt
+
         # TODO: would be super-nice to not have to determine this boolean
         # inside the loop here, in the 99.9999% of the time there's only
         # one connection in use
@@ -649,7 +651,8 @@ def _emit_update_statements(base_mapper, uowtransaction,
             connection.dialect.supports_sane_multi_rowcount
         allow_multirow = has_all_defaults and not needs_version_id
 
-        if bookkeeping and mapper.base_mapper.eager_defaults:
+        if bookkeeping and not has_all_defaults and \
+                mapper.base_mapper.eager_defaults:
             statement = statement.return_defaults()
         elif mapper.version_id_col is not None:
             statement = statement.return_defaults(mapper.version_id_col)
@@ -736,7 +739,7 @@ def _emit_insert_statements(base_mapper, uowtransaction,
     """Emit INSERT statements corresponding to value lists collected
     by _collect_insert_commands()."""
 
-    statement = base_mapper._memo(('insert', table), table.insert)
+    cached_stmt = base_mapper._memo(('insert', table), table.insert)
 
     for (connection, pkeys, hasvalue, has_all_pks, has_all_defaults), \
         records in groupby(
@@ -747,6 +750,8 @@ def _emit_insert_statements(base_mapper, uowtransaction,
                 bool(rec[5]),  # whether we have "value" parameters
                 rec[6],
                 rec[7])):
+
+        statement = cached_stmt
 
         if not bookkeeping or \
                 (
