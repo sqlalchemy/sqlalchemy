@@ -20,6 +20,16 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3611
+        :versions: 1.1.0b1
+
+        Fixed regression caused in 1.0.10 by the fix for :ticket:`3593` where
+        the check added for a polymorphic joinedload from a
+        poly_subclass->class->poly_baseclass connection would fail for the
+        scenario of class->poly_subclass->class.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3610
         :versions: 1.1.0b1
 
