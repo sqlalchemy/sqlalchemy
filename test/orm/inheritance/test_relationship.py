@@ -1364,7 +1364,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
 class JoinedloadOverWPolyAliased(
         fixtures.DeclarativeMappedTest,
         testing.AssertsCompiledSQL):
-    """exercise issues in #3593"""
+    """exercise issues in #3593 and #3611"""
 
     run_setup_mappers = 'each'
     run_setup_classes = 'each'
@@ -1374,6 +1374,20 @@ class JoinedloadOverWPolyAliased(
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
+
+        class Owner(Base):
+            __tablename__ = 'owner'
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'with_polymorphic': ('*', None),
+            }
+
+        class SubOwner(Owner):
+            __mapper_args__ = {'polymorphic_identity': 'so'}
 
         class Parent(Base):
             __tablename__ = 'parent'
@@ -1397,14 +1411,11 @@ class JoinedloadOverWPolyAliased(
             child_id = Column(
                 Integer, ForeignKey('parent.id'), primary_key=True)
 
-            child = relationship(
-                Parent,
-                primaryjoin=child_id == Parent.id,
-            )
-
     def _fixture_from_base(self):
         Parent = self.classes.Parent
         Link = self.classes.Link
+        Link.child = relationship(
+            Parent, primaryjoin=Link.child_id == Parent.id)
 
         Parent.links = relationship(
             Link,
@@ -1415,6 +1426,9 @@ class JoinedloadOverWPolyAliased(
     def _fixture_from_subclass(self):
         Sub1 = self.classes.Sub1
         Link = self.classes.Link
+        Parent = self.classes.Parent
+        Link.child = relationship(
+            Parent, primaryjoin=Link.child_id == Parent.id)
 
         Sub1.links = relationship(
             Link,
@@ -1422,13 +1436,50 @@ class JoinedloadOverWPolyAliased(
         )
         return Sub1
 
+    def _fixture_to_subclass_to_base(self):
+        Owner = self.classes.Owner
+        Parent = self.classes.Parent
+        Sub1 = self.classes.Sub1
+        Link = self.classes.Link
+
+        # Link -> Sub1 -> Owner
+
+        Link.child = relationship(
+            Sub1, primaryjoin=Link.child_id == Sub1.id)
+
+        Parent.owner_id = Column(ForeignKey('owner.id'))
+
+        Parent.owner = relationship(Owner)
+        return Parent
+
+    def _fixture_to_base_to_base(self):
+        Owner = self.classes.Owner
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+
+        # Link -> Parent -> Owner
+
+        Link.child = relationship(
+            Parent, primaryjoin=Link.child_id == Parent.id)
+
+        Parent.owner_id = Column(ForeignKey('owner.id'))
+
+        Parent.owner = relationship(Owner)
+        return Parent
+
     def test_from_base(self):
-        self._test(self._fixture_from_base)
+        self._test_poly_single_poly(self._fixture_from_base)
 
     def test_from_sub(self):
-        self._test(self._fixture_from_subclass)
+        self._test_poly_single_poly(self._fixture_from_subclass)
 
-    def _test(self, fn):
+    def test_to_sub_to_base(self):
+        self._test_single_poly_poly(self._fixture_to_subclass_to_base)
+
+    def test_to_base_to_base(self):
+        self._test_single_poly_poly(self._fixture_to_base_to_base)
+
+    def _test_poly_single_poly(self, fn):
         cls = fn()
         Link = self.classes.Link
 
@@ -1448,17 +1499,47 @@ class JoinedloadOverWPolyAliased(
         self.assert_compile(
             q,
             "SELECT parent.id AS parent_id, parent.type AS parent_type, "
-            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
             "link_1.parent_id AS link_1_parent_id, "
             "link_1.child_id AS link_1_child_id, "
+            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
             "link_2.parent_id AS link_2_parent_id, "
             "link_2.child_id AS link_2_child_id "
             "FROM parent "
-            "LEFT OUTER JOIN link AS link_2 ON parent.id = link_2.parent_id "
+            "LEFT OUTER JOIN link AS link_1 ON parent.id = link_1.parent_id "
             "LEFT OUTER JOIN parent "
-            "AS parent_1 ON link_2.child_id = parent_1.id "
-            "LEFT OUTER JOIN link AS link_1 "
-            "ON parent_1.id = link_1.parent_id" + extra
+            "AS parent_1 ON link_1.child_id = parent_1.id "
+            "LEFT OUTER JOIN link AS link_2 "
+            "ON parent_1.id = link_2.parent_id" + extra
+        )
+
+    def _test_single_poly_poly(self, fn):
+        parent_cls = fn()
+        Link = self.classes.Link
+
+        session = Session()
+        q = session.query(Link).options(
+            joinedload_all(
+                Link.child,
+                parent_cls.owner
+            )
+        )
+
+        if Link.child.property.mapper.class_ is self.classes.Sub1:
+            extra = "AND parent_1.type IN (:type_1) "
+        else:
+            extra = ""
+
+        self.assert_compile(
+            q,
+            "SELECT link.parent_id AS link_parent_id, "
+            "link.child_id AS link_child_id, parent_1.id AS parent_1_id, "
+            "parent_1.type AS parent_1_type, "
+            "parent_1.owner_id AS parent_1_owner_id, "
+            "owner_1.id AS owner_1_id, owner_1.type AS owner_1_type "
+            "FROM link LEFT OUTER JOIN parent AS parent_1 "
+            "ON link.child_id = parent_1.id "  + extra +
+            "LEFT OUTER JOIN owner AS owner_1 "
+            "ON owner_1.id = parent_1.owner_id"
         )
 
     def test_local_wpoly(self):
@@ -1477,15 +1558,15 @@ class JoinedloadOverWPolyAliased(
         self.assert_compile(
             q,
             "SELECT parent.id AS parent_id, parent.type AS parent_type, "
-            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
             "link_1.parent_id AS link_1_parent_id, "
             "link_1.child_id AS link_1_child_id, "
+            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
             "link_2.parent_id AS link_2_parent_id, "
             "link_2.child_id AS link_2_child_id FROM parent "
-            "LEFT OUTER JOIN link AS link_2 ON parent.id = link_2.parent_id "
+            "LEFT OUTER JOIN link AS link_1 ON parent.id = link_1.parent_id "
             "LEFT OUTER JOIN parent AS parent_1 "
-            "ON link_2.child_id = parent_1.id "
-            "LEFT OUTER JOIN link AS link_1 ON parent_1.id = link_1.parent_id"
+            "ON link_1.child_id = parent_1.id "
+            "LEFT OUTER JOIN link AS link_2 ON parent_1.id = link_2.parent_id"
         )
 
 
