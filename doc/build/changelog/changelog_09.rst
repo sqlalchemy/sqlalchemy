@@ -1631,7 +1631,7 @@
         with pytest.
 
         The test plugin system has also been enhanced to support running
-        tests against mutiple database URLs at once, by specifying the ``--db``
+        tests against multiple database URLs at once, by specifying the ``--db``
         and/or ``--dburi`` flags multiple times.  This does not run the entire test
         suite for each database, but instead allows test cases that are specific
         to certain backends make use of that backend as the test is run.
