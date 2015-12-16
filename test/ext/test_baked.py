@@ -717,6 +717,24 @@ class LazyLoaderTest(BakedTest):
                 u1._sa_instance_state
             )
 
+    def test_systemwide_loaders_loadable_via_lazyloader(self):
+        from sqlalchemy.orm import configure_mappers
+        from sqlalchemy.orm.strategies import LazyLoader
+
+        baked.bake_lazy_loaders()
+        try:
+            User, Address = self._o2m_fixture(lazy='joined')
+
+            configure_mappers()
+
+            is_(
+                User.addresses.property.
+                _get_strategy_by_cls(LazyLoader).__class__,
+                BakedLazyLoader
+            )
+        finally:
+            baked.unbake_lazy_loaders()
+
     def test_invocation_systemwide_loaders(self):
         baked.bake_lazy_loaders()
         try:

@@ -384,7 +384,6 @@ def bake_lazy_loaders():
     Python overhead for these operations.
 
     """
-    strategies.LazyLoader._strategy_keys[:] = []
     BakedLazyLoader._strategy_keys[:] = []
 
     properties.RelationshipProperty.strategy_for(
@@ -393,6 +392,8 @@ def bake_lazy_loaders():
         lazy=True)(BakedLazyLoader)
     properties.RelationshipProperty.strategy_for(
         lazy="baked_select")(BakedLazyLoader)
+
+    strategies.LazyLoader._strategy_keys[:] = BakedLazyLoader._strategy_keys[:]
 
 
 def unbake_lazy_loaders():

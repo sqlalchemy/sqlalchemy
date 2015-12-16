@@ -19,6 +19,17 @@
     :version: 1.0.11
 
     .. change::
+        :tags: bug, ext
+        :tickets: 3612
+        :versions: 1.1.0b1
+
+        Fixed bug in baked loader system where the systemwide monkeypatch
+        for setting up baked lazy loaders would interfere with other
+        loader strategies that rely on lazy loading as a fallback, e.g.
+        joined and subquery eager loaders, leading to ``IndexError``
+        exceptions at mapper configuration time.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3611
         :versions: 1.1.0b1
