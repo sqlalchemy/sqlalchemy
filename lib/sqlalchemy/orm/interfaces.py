@@ -493,11 +493,7 @@ class StrategizedProperty(MapperProperty):
             return strategy
 
     def _get_strategy_by_cls(self, cls):
-        try:
-            return self._get_strategy(cls._strategy_keys[0])
-        except IndexError:
-            import pdb
-            pdb.set_trace()
+        return self._get_strategy(cls._strategy_keys[0])
 
     def setup(
             self, context, entity, path, adapter, **kwargs):
