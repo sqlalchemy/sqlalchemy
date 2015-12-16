@@ -269,8 +269,8 @@ class ValuesBase(UpdateBase):
          It is essential to note that **passing multiple values is
          NOT the same as using traditional executemany() form**.  The above
          syntax is a **special** syntax not typically used.  To emit an
-         INSERT statement against mutliple rows, the normal method is
-         to pass a mutiple values list to the :meth:`.Connection.execute`
+         INSERT statement against multiple rows, the normal method is
+         to pass a multiple values list to the :meth:`.Connection.execute`
          method, which is supported by all database backends and is generally
          more efficient for a very large number of parameters.
 
@@ -403,7 +403,7 @@ class ValuesBase(UpdateBase):
            SELECT, multi-valued VALUES clause),
            :meth:`.ValuesBase.return_defaults` is intended only for an
            "ORM-style" single-row INSERT/UPDATE statement.  The row returned
-           by the statement is also consumed implcitly when
+           by the statement is also consumed implicitly when
            :meth:`.ValuesBase.return_defaults` is used.  By contrast,
            :meth:`.UpdateBase.returning` leaves the RETURNING result-set
            intact with a collection of any number of rows.
