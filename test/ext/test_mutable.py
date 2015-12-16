@@ -136,6 +136,38 @@ class _MutableDictTestBase(_MutableDictTestFixture):
 
         eq_(f1.data, {'a': 'z'})
 
+    def test_pop(self):
+        sess = Session()
+
+        f1 = Foo(data={'a': 'b', 'c': 'd'})
+        sess.add(f1)
+        sess.commit()
+
+        eq_(f1.data.pop('a'), 'b')
+        sess.commit()
+
+        eq_(f1.data, {'c': 'd'})
+
+    def test_popitem(self):
+        sess = Session()
+
+        orig = {'a': 'b', 'c': 'd'}
+
+        # the orig dict remains unchanged when we assign,
+        # but just making this future-proof
+        data = dict(orig)
+        f1 = Foo(data=data)
+        sess.add(f1)
+        sess.commit()
+
+        k, v = f1.data.popitem()
+        assert k in ('a', 'c')
+        orig.pop(k)
+
+        sess.commit()
+
+        eq_(f1.data, orig)
+
     def test_setdefault(self):
         sess = Session()
 

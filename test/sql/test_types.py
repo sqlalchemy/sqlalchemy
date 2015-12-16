@@ -1,5 +1,6 @@
 # coding: utf-8
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, expect_warnings
+from sqlalchemy.testing import eq_, is_, assert_raises, \
+    assert_raises_message, expect_warnings
 import decimal
 import datetime
 import os
@@ -9,9 +10,10 @@ from sqlalchemy import (
     and_, func, Date, LargeBinary, literal, cast, text, Enum,
     type_coerce, VARCHAR, Time, DateTime, BigInteger, SmallInteger, BOOLEAN,
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
-    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL)
+    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL, Array)
 from sqlalchemy.sql import ddl
-
+from sqlalchemy.sql import visitors
+from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
@@ -25,6 +27,7 @@ from sqlalchemy.testing import AssertsCompiledSQL, AssertsExecutionResults, \
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 
 
 class AdaptTest(fixtures.TestBase):
@@ -137,7 +140,7 @@ class AdaptTest(fixtures.TestBase):
         for is_down_adaption, typ, target_adaptions in adaptions():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif typ is dialects.postgresql.ARRAY:
+            elif issubclass(typ, Array):
                 t1 = typ(String)
             else:
                 t1 = typ()
@@ -187,11 +190,27 @@ class AdaptTest(fixtures.TestBase):
         for typ in self._all_types():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif typ is dialects.postgresql.ARRAY:
+            elif issubclass(typ, Array):
                 t1 = typ(String)
             else:
                 t1 = typ()
             repr(t1)
+
+    def test_adapt_constructor_copy_override_kw(self):
+        """test that adapt() can accept kw args that override
+        the state of the original object.
+
+        This essentially is testing the behavior of util.constructor_copy().
+
+        """
+        t1 = String(length=50, convert_unicode=False)
+        t2 = t1.adapt(Text, convert_unicode=True)
+        eq_(
+            t2.length, 50
+        )
+        eq_(
+            t2.convert_unicode, True
+        )
 
 
 class TypeAffinityTest(fixtures.TestBase):
@@ -771,6 +790,68 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [('BIND_INd1', 'BIND_INd1BIND_OUT')]
         )
 
+    def test_cast_replace_col_w_bind(self):
+        self._test_replace_col_w_bind(cast)
+
+    def test_type_coerce_replace_col_w_bind(self):
+        self._test_replace_col_w_bind(type_coerce)
+
+    def _test_replace_col_w_bind(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        stmt = select([t.c.data, coerce_fn(t.c.data, MyType)])
+
+        def col_to_bind(col):
+            if col is t.c.data:
+                return bindparam(None, "x", type_=col.type, unique=True)
+            return None
+
+        # ensure we evaulate the expression so that we can see
+        # the clone resets this info
+        stmt.compile()
+
+        new_stmt = visitors.replacement_traverse(stmt, {}, col_to_bind)
+
+        # original statement
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+        # replaced with binds; CAST can't affect the bound parameter
+        # on the way in here
+        eq_(
+            testing.db.execute(new_stmt).fetchall(),
+            [('x', 'BIND_INxBIND_OUT')] if coerce_fn is type_coerce
+            else [('x', 'xBIND_OUT')]
+        )
+
+    def test_cast_bind(self):
+        self._test_bind(cast)
+
+    def test_type_bind(self):
+        self._test_bind(type_coerce)
+
+    def _test_bind(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        stmt = select([
+            bindparam(None, "x", String(50), unique=True),
+            coerce_fn(bindparam(None, "x", String(50), unique=True), MyType)
+        ])
+
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [('x', 'BIND_INxBIND_OUT')] if coerce_fn is type_coerce
+            else [('x', 'xBIND_OUT')]
+        )
+
     @testing.fails_on(
         "oracle", "ORA-00906: missing left parenthesis - "
         "seems to be CAST(:param AS type)")
@@ -802,6 +883,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         eq_(
             select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
             [('BIND_INd1BIND_OUT', )])
+
 
 
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1160,15 +1242,12 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
             def __init__(self, name):
                 self.name = name
 
-        class MyEnum(types.SchemaType, TypeDecorator):
+        class MyEnum(TypeDecorator):
 
             def __init__(self, values):
                 self.impl = Enum(
                     *[v.name for v in values], name="myenum",
                     native_enum=False)
-
-            def _set_table(self, table, column):
-                self.impl._set_table(table, column)
 
             # future method
             def process_literal_param(self, value, dialect):
@@ -1325,6 +1404,68 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         f = os.path.join(os.path.dirname(__file__), "..", name)
         with open(f, mode='rb') as o:
             return o.read()
+
+
+class ArrayTest(fixtures.TestBase):
+
+    def _myarray_fixture(self):
+        class MyArray(Array):
+            pass
+        return MyArray
+
+    def test_array_index_map_dimensions(self):
+        col = column('x', Array(Integer, dimensions=3))
+        is_(
+            col[5].type._type_affinity, Array
+        )
+        eq_(
+            col[5].type.dimensions, 2
+        )
+        is_(
+            col[5][6].type._type_affinity, Array
+        )
+        eq_(
+            col[5][6].type.dimensions, 1
+        )
+        is_(
+            col[5][6][7].type._type_affinity, Integer
+        )
+
+    def test_array_getitem_single_type(self):
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', Array(Integer)),
+            Column('strarr', Array(String)),
+        )
+        is_(arrtable.c.intarr[1].type._type_affinity, Integer)
+        is_(arrtable.c.strarr[1].type._type_affinity, String)
+
+    def test_array_getitem_slice_type(self):
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', Array(Integer)),
+            Column('strarr', Array(String)),
+        )
+        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+
+    def test_array_getitem_slice_type_dialect_level(self):
+        MyArray = self._myarray_fixture()
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', MyArray(Integer)),
+            Column('strarr', MyArray(String)),
+        )
+        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+
+        # but the slice returns the actual type
+        assert isinstance(arrtable.c.intarr[1:3].type, MyArray)
+        assert isinstance(arrtable.c.strarr[1:3].type, MyArray)
+
 
 test_table = meta = MyCustomType = MyTypeDec = None
 
@@ -1631,6 +1772,34 @@ class ExpressionTest(
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
 
+    def test_detect_coercion_of_builtins(self):
+        @inspection._self_inspects
+        class SomeSQLAThing(object):
+            def __repr__(self):
+                return "some_sqla_thing()"
+
+        class SomeOtherThing(object):
+            pass
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Object some_sqla_thing\(\) is not legal as a SQL literal value",
+            lambda: column('a', String) == SomeSQLAThing()
+        )
+
+        is_(
+            bindparam('x', SomeOtherThing()).type,
+            types.NULLTYPE
+        )
+
+    def test_detect_coercion_not_fooled_by_mock(self):
+        m1 = mock.Mock()
+        is_(
+            bindparam('x', m1).type,
+            types.NULLTYPE
+        )
+
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -1899,11 +2068,8 @@ class BooleanTest(
             def __init__(self, value):
                 self.value = value
 
-        class MyBool(types.SchemaType, TypeDecorator):
+        class MyBool(TypeDecorator):
             impl = Boolean()
-
-            def _set_table(self, table, column):
-                self.impl._set_table(table, column)
 
             # future method
             def process_literal_param(self, value, dialect):

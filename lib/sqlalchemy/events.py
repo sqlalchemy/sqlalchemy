@@ -819,6 +819,11 @@ class ConnectionEvents(event.Events):
 
         .. seealso::
 
+            :ref:`pool_disconnects_pessimistic` - illustrates how to use
+            :meth:`.ConnectionEvents.engine_connect`
+            to transparently ensure pooled connections are connected to the
+            database.
+
             :meth:`.PoolEvents.checkout` the lower-level pool checkout event
             for an individual DBAPI connection
 

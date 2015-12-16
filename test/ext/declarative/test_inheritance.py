@@ -1453,3 +1453,33 @@ class ConcreteExtensionConfigTest(
             "FROM actual_documents) AS pjoin"
         )
 
+    def test_column_attr_names(self):
+        """test #3480"""
+
+        class Document(Base, AbstractConcreteBase):
+            documentType = Column('documenttype', String)
+
+        class Offer(Document):
+            __tablename__ = 'offers'
+
+            id = Column(Integer, primary_key=True)
+            __mapper_args__ = {
+                'polymorphic_identity': 'offer'
+            }
+
+        configure_mappers()
+        session = Session()
+        self.assert_compile(
+            session.query(Document),
+            "SELECT pjoin.documenttype AS pjoin_documenttype, "
+            "pjoin.id AS pjoin_id, pjoin.type AS pjoin_type FROM "
+            "(SELECT offers.documenttype AS documenttype, offers.id AS id, "
+            "'offer' AS type FROM offers) AS pjoin"
+        )
+
+        self.assert_compile(
+            session.query(Document.documentType),
+            "SELECT pjoin.documenttype AS pjoin_documenttype FROM "
+            "(SELECT offers.documenttype AS documenttype, offers.id AS id, "
+            "'offer' AS type FROM offers) AS pjoin"
+        )

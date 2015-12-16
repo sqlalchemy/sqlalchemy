@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, subqueryload, \
     mapper, relationship, lazyload, clear_mappers
-from sqlalchemy.testing import eq_, is_, is_not_, assert_raises
+from sqlalchemy.testing import eq_, is_, is_not_
+from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import testing
 from test.orm import _fixtures
 from sqlalchemy.ext.baked import BakedQuery, baked_lazyload, BakedLazyLoader
@@ -151,16 +152,58 @@ class LikeQueryTest(BakedTest):
             (8, )
         )
 
+    def test_one_or_none_no_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name == 'asdf')
+
+        eq_(
+            bq(Session()).one_or_none(),
+            None
+        )
+
+    def test_one_or_none_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name == 'ed')
+
+        u1 = bq(Session()).one_or_none()
+        eq_(u1.name, 'ed')
+
+    def test_one_or_none_multiple_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name.like('%ed%'))
+
+        assert_raises_message(
+            orm_exc.MultipleResultsFound,
+            "Multiple rows were found for one_or_none()",
+            bq(Session()).one_or_none
+        )
+
     def test_one_no_result(self):
         User = self.classes.User
 
         bq = self.bakery(lambda s: s.query(User))
         bq += lambda q: q.filter(User.name == 'asdf')
 
-        assert_raises(
+        assert_raises_message(
             orm_exc.NoResultFound,
+            "No row was found for one()",
             bq(Session()).one
         )
+
+    def test_one_result(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+        bq += lambda q: q.filter(User.name == 'ed')
+
+        u1 = bq(Session()).one()
+        eq_(u1.name, 'ed')
 
     def test_one_multiple_result(self):
         User = self.classes.User
@@ -168,8 +211,9 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User))
         bq += lambda q: q.filter(User.name.like('%ed%'))
 
-        assert_raises(
+        assert_raises_message(
             orm_exc.MultipleResultsFound,
+            "Multiple rows were found for one()",
             bq(Session()).one
         )
 
@@ -226,6 +270,32 @@ class LikeQueryTest(BakedTest):
             u2 = bq(sess).get((10, None))
             eq_(u2.name, 'chuck')
         self.assert_sql_count(testing.db, go, 0)
+
+    def test_get_includes_getclause(self):
+        # test issue #3597
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+
+        for i in range(5):
+            sess = Session()
+            u1 = bq(sess).get(7)
+            eq_(u1.name, 'jack')
+            sess.close()
+
+        eq_(len(bq._bakery), 2)
+
+        # simulate race where mapper._get_clause
+        # may be generated more than once
+        from sqlalchemy import inspect
+        del inspect(User).__dict__['_get_clause']
+
+        for i in range(5):
+            sess = Session()
+            u1 = bq(sess).get(7)
+            eq_(u1.name, 'jack')
+            sess.close()
+        eq_(len(bq._bakery), 4)
 
 
 class ResultTest(BakedTest):
@@ -552,14 +622,14 @@ class ResultTest(BakedTest):
 class LazyLoaderTest(BakedTest):
     run_setup_mappers = 'each'
 
-    def _o2m_fixture(self, lazy="select"):
+    def _o2m_fixture(self, lazy="select", **kw):
         User = self.classes.User
         Address = self.classes.Address
 
         mapper(User, self.tables.users, properties={
             'addresses': relationship(
                 Address, order_by=self.tables.addresses.c.id,
-                lazy=lazy)
+                lazy=lazy, **kw)
         })
         mapper(Address, self.tables.addresses)
         return User, Address
@@ -647,6 +717,24 @@ class LazyLoaderTest(BakedTest):
                 u1._sa_instance_state
             )
 
+    def test_systemwide_loaders_loadable_via_lazyloader(self):
+        from sqlalchemy.orm import configure_mappers
+        from sqlalchemy.orm.strategies import LazyLoader
+
+        baked.bake_lazy_loaders()
+        try:
+            User, Address = self._o2m_fixture(lazy='joined')
+
+            configure_mappers()
+
+            is_(
+                User.addresses.property.
+                _get_strategy_by_cls(LazyLoader).__class__,
+                BakedLazyLoader
+            )
+        finally:
+            baked.unbake_lazy_loaders()
+
     def test_invocation_systemwide_loaders(self):
         baked.bake_lazy_loaders()
         try:
@@ -675,6 +763,50 @@ class LazyLoaderTest(BakedTest):
             u1.addresses
             # not invoked
             eq_(el.mock_calls, [])
+
+    def test_baked_lazy_loading_relationship_flag_true(self):
+        self._test_baked_lazy_loading_relationship_flag(True)
+
+    def test_baked_lazy_loading_relationship_flag_false(self):
+        self._test_baked_lazy_loading_relationship_flag(False)
+
+    def _test_baked_lazy_loading_relationship_flag(self, flag):
+        baked.bake_lazy_loaders()
+        try:
+            User, Address = self._o2m_fixture(bake_queries=flag)
+
+            sess = Session()
+            u1 = sess.query(User).first()
+
+            from sqlalchemy.orm import Query
+
+            canary = mock.Mock()
+
+            # I would think Mock can do this but apparently
+            # it cannot (wrap / autospec don't work together)
+            real_compile_context = Query._compile_context
+
+            def _my_compile_context(*arg, **kw):
+                if arg[0].column_descriptions[0]['entity'] is Address:
+                    canary()
+                return real_compile_context(*arg, **kw)
+
+            with mock.patch.object(
+                Query,
+                "_compile_context",
+                _my_compile_context
+            ):
+                u1.addresses
+
+                sess.expire(u1)
+                u1.addresses
+        finally:
+            baked.unbake_lazy_loaders()
+
+        if flag:
+            eq_(canary.call_count, 1)
+        else:
+            eq_(canary.call_count, 2)
 
     def test_baked_lazy_loading_option_o2m(self):
         User, Address = self._o2m_fixture()

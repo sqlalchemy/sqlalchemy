@@ -116,7 +116,7 @@ class ParentRemovalTest(fixtures.MappedTest):
         User = self.classes.User
         s, u1, a1 = self._fixture()
 
-        s._expunge_state(attributes.instance_state(u1))
+        s._expunge_states([attributes.instance_state(u1)])
         del u1
         gc_collect()
 
@@ -178,7 +178,7 @@ class ParentRemovalTest(fixtures.MappedTest):
         u2 = User(addresses=[a1])
         s.add(u2)
         s.flush()
-        s._expunge_state(attributes.instance_state(u2))
+        s._expunge_states([attributes.instance_state(u2)])
         del u2
         gc_collect()
 

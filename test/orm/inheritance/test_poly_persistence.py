@@ -1,6 +1,6 @@
 """tests basic polymorphic mapper loading/saving, minimal relationships"""
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
@@ -271,18 +271,30 @@ def _generate_round_trip_test(include_base, lazy_relationship,
         # into the "person_join" conversion.
         palias = people.alias("palias")
         dilbert = session.query(Person).get(dilbert.person_id)
-        assert dilbert is session.query(Person).filter(
-                            (palias.c.name=='dilbert') & \
-                            (palias.c.person_id==Person.person_id)).first()
-        assert dilbert is session.query(Engineer).filter(
-                            (palias.c.name=='dilbert') & \
-                            (palias.c.person_id==Person.person_id)).first()
-        assert dilbert is session.query(Person).filter(
-                            (Engineer.engineer_name=="engineer1") & \
-                            (engineers.c.person_id==people.c.person_id)
-                        ).first()
-        assert dilbert is session.query(Engineer).\
-                        filter(Engineer.engineer_name=="engineer1")[0]
+        is_(
+            dilbert,
+            session.query(Person).filter(
+                (palias.c.name == 'dilbert') &
+                (palias.c.person_id == Person.person_id)).first()
+        )
+        is_(
+            dilbert,
+            session.query(Engineer).filter(
+                (palias.c.name == 'dilbert') &
+                (palias.c.person_id == Person.person_id)).first()
+        )
+        is_(
+            dilbert,
+            session.query(Person).filter(
+                (Engineer.engineer_name == "engineer1") &
+                (engineers.c.person_id == people.c.person_id)
+            ).first()
+        )
+        is_(
+            dilbert,
+            session.query(Engineer).
+            filter(Engineer.engineer_name == "engineer1")[0]
+        )
 
         session.flush()
         session.expunge_all()

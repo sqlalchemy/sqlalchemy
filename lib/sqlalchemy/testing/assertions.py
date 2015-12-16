@@ -121,7 +121,7 @@ def uses_deprecated(*messages):
 def _expect_warnings(exc_cls, messages, regex=True, assert_=True):
 
     if regex:
-        filters = [re.compile(msg, re.I) for msg in messages]
+        filters = [re.compile(msg, re.I | re.S) for msg in messages]
     else:
         filters = messages
 
@@ -227,6 +227,16 @@ def is_(a, b, msg=None):
 def is_not_(a, b, msg=None):
     """Assert a is not b, with repr messaging on failure."""
     assert a is not b, msg or "%r is %r" % (a, b)
+
+
+def in_(a, b, msg=None):
+    """Assert a in b, with repr messaging on failure."""
+    assert a in b, msg or "%r not in %r" % (a, b)
+
+
+def not_in_(a, b, msg=None):
+    """Assert a in not b, with repr messaging on failure."""
+    assert a not in b, msg or "%r is in %r" % (a, b)
 
 
 def startswith_(a, fragment, msg=None):

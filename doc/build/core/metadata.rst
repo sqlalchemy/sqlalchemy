@@ -306,26 +306,21 @@ Column, Table, MetaData API
 .. autoclass:: Column
     :members:
     :inherited-members:
-    :undoc-members:
 
 
 .. autoclass:: MetaData
     :members:
-    :undoc-members:
 
 
 .. autoclass:: SchemaItem
     :members:
-    :undoc-members:
 
 .. autoclass:: Table
     :members:
     :inherited-members:
-    :undoc-members:
 
 
 .. autoclass:: ThreadLocalMetaData
     :members:
-    :undoc-members:
 
 

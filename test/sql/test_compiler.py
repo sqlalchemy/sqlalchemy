@@ -18,7 +18,7 @@ from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
     literal, and_, null, type_coerce, alias, or_, literal_column,\
     Float, TIMESTAMP, Numeric, Date, Text, union, except_,\
     intersect, union_all, Boolean, distinct, join, outerjoin, asc, desc,\
-    over, subquery, case, true
+    over, subquery, case, true, CheckConstraint
 import decimal
 from sqlalchemy.util import u
 from sqlalchemy import exc, sql, util, types, schema
@@ -1643,14 +1643,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select([column('foo'), column('bar')])
 
-        # ORDER BY's even though not supported by
-        # all DB's, are rendered if requested
         self.assert_compile(
             union(
                 s.order_by("foo"),
                 s.order_by("bar")),
-            "SELECT foo, bar ORDER BY foo UNION SELECT foo, bar ORDER BY bar")
-        # self_group() is honored
+            "(SELECT foo, bar ORDER BY foo) UNION "
+            "(SELECT foo, bar ORDER BY bar)")
         self.assert_compile(
             union(s.order_by("foo").self_group(),
                   s.order_by("bar").limit(10).self_group()),
@@ -1757,6 +1755,67 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT foo, bar FROM bat INTERSECT SELECT foo, bar FROM bat) "
             "UNION (SELECT foo, bar FROM bat INTERSECT "
             "SELECT foo, bar FROM bat)"
+        )
+
+        # tests for [ticket:2528]
+        # sqlite hates all of these.
+        self.assert_compile(
+            union(
+                s.limit(1),
+                s.offset(2)
+            ),
+            "(SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT -1 OFFSET :param_2)"
+        )
+
+        self.assert_compile(
+            union(
+                s.order_by(column('bar')),
+                s.offset(2)
+            ),
+            "(SELECT foo, bar FROM bat ORDER BY bar) "
+            "UNION (SELECT foo, bar FROM bat LIMIT -1 OFFSET :param_1)"
+        )
+
+        self.assert_compile(
+            union(
+                s.limit(1).alias('a'),
+                s.limit(2).alias('b')
+            ),
+            "(SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT :param_2)"
+        )
+
+        self.assert_compile(
+            union(
+                s.limit(1).self_group(),
+                s.limit(2).self_group()
+            ),
+            "(SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT :param_2)"
+        )
+
+        self.assert_compile(
+            union(s.limit(1), s.limit(2).offset(3)).alias().select(),
+            "SELECT anon_1.foo, anon_1.bar FROM "
+            "((SELECT foo, bar FROM bat LIMIT :param_1) "
+            "UNION (SELECT foo, bar FROM bat LIMIT :param_2 OFFSET :param_3)) "
+            "AS anon_1"
+        )
+
+        # this version works for SQLite
+        self.assert_compile(
+            union(
+                s.limit(1).alias().select(),
+                s.offset(2).alias().select(),
+            ),
+            "SELECT anon_1.foo, anon_1.bar "
+            "FROM (SELECT foo, bar FROM bat"
+            " LIMIT :param_1) AS anon_1 "
+            "UNION SELECT anon_2.foo, anon_2.bar "
+            "FROM (SELECT foo, bar "
+            "FROM bat"
+            " LIMIT -1 OFFSET :param_2) AS anon_2"
         )
 
     def test_binds(self):
@@ -2039,6 +2098,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             eq_(len(expected_results), 5,
                 'Incorrect number of expected results')
             eq_(str(cast(tbl.c.v1, Numeric).compile(dialect=dialect)),
+                'CAST(casttest.v1 AS %s)' % expected_results[0])
+            eq_(str(tbl.c.v1.cast(Numeric).compile(dialect=dialect)),
                 'CAST(casttest.v1 AS %s)' % expected_results[0])
             eq_(str(cast(tbl.c.v1, Numeric(12, 9)).compile(dialect=dialect)),
                 'CAST(casttest.v1 AS %s)' % expected_results[1])
@@ -2855,6 +2916,45 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE t (x INTEGER, z INTEGER)"
         )
 
+    def test_composite_pk_constraint_autoinc_first(self):
+        m = MetaData()
+        t = Table(
+            't', m,
+            Column('a', Integer, primary_key=True),
+            Column('b', Integer, primary_key=True, autoincrement=True)
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            "a INTEGER NOT NULL, "
+            "b INTEGER NOT NULL, "
+            "PRIMARY KEY (b, a))"
+        )
+
+    def test_table_no_cols(self):
+        m = MetaData()
+        t1 = Table('t1', m)
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 ()"
+        )
+
+    def test_table_no_cols_w_constraint(self):
+        m = MetaData()
+        t1 = Table('t1', m, CheckConstraint('a = 1'))
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 (CHECK (a = 1))"
+        )
+
+    def test_table_one_col_w_constraint(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('q', Integer), CheckConstraint('a = 1'))
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 (q INTEGER, CHECK (a = 1))"
+        )
+
 
 class InlineDefaultTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -3423,13 +3523,15 @@ class ResultMapTest(fixtures.TestBase):
         tc = type_coerce(t.c.a, String)
         stmt = select([t.c.a, l1, tc])
         comp = stmt.compile()
-        tc_anon_label = comp._create_result_map()['a_1'][1][0]
+        tc_anon_label = comp._create_result_map()['anon_1'][1][0]
         eq_(
             comp._create_result_map(),
             {
                 'a': ('a', (t.c.a, 'a', 'a'), t.c.a.type),
                 'bar': ('bar', (l1, 'bar'), l1.type),
-                'a_1': ('%%(%d a)s' % id(tc), (tc_anon_label, 'a_1'), tc.type),
+                'anon_1': (
+                    '%%(%d anon)s' % id(tc),
+                    (tc_anon_label, 'anon_1', tc), tc.type),
             },
         )
 

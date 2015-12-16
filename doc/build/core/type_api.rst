@@ -11,8 +11,10 @@ Base Type API
 
 .. autoclass:: Concatenable
    :members:
-   :inherited-members:
 
+
+.. autoclass:: Indexable
+   :members:
 
 .. autoclass:: NullType
 

@@ -214,10 +214,13 @@ class custom_op(object):
     """
     __name__ = 'custom_op'
 
-    def __init__(self, opstring, precedence=0, is_comparison=False):
+    def __init__(
+            self, opstring, precedence=0, is_comparison=False,
+            natural_self_precedent=False):
         self.opstring = opstring
         self.precedence = precedence
         self.is_comparison = is_comparison
+        self.natural_self_precedent = natural_self_precedent
 
     def __eq__(self, other):
         return isinstance(other, custom_op) and \
@@ -597,6 +600,14 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(div, other)
 
+    def __rmod__(self, other):
+        """Implement the ``%`` operator in reverse.
+
+        See :meth:`.ColumnOperators.__mod__`.
+
+        """
+        return self.reverse_operate(mod, other)
+
     def between(self, cleft, cright, symmetric=False):
         """Produce a :func:`~.expression.between` clause against
         the parent object, given the lower and upper range.
@@ -610,6 +621,24 @@ class ColumnOperators(Operators):
 
         """
         return self.operate(distinct_op)
+
+    def any_(self):
+        """Produce a :func:`~.expression.any_` clause against the
+        parent object.
+
+        .. versionadded:: 1.1
+
+        """
+        return self.operate(any_op)
+
+    def all_(self):
+        """Produce a :func:`~.expression.all_` clause against the
+        parent object.
+
+        .. versionadded:: 1.1
+
+        """
+        return self.operate(all_op)
 
     def __add__(self, other):
         """Implement the ``+`` operator.
@@ -744,6 +773,14 @@ def distinct_op(a):
     return a.distinct()
 
 
+def any_op(a):
+    return a.any_()
+
+
+def all_op(a):
+    return a.all_()
+
+
 def startswith_op(a, b, escape=None):
     return a.startswith(b, escape=escape)
 
@@ -818,6 +855,28 @@ def is_ordering_modifier(op):
     return op in (asc_op, desc_op,
                   nullsfirst_op, nullslast_op)
 
+
+def is_natural_self_precedent(op):
+    return op in _natural_self_precedent or \
+        isinstance(op, custom_op) and op.natural_self_precedent
+
+_mirror = {
+    gt: lt,
+    ge: le,
+    lt: gt,
+    le: ge
+}
+
+
+def mirror(op):
+    """rotate a comparison operator 180 degrees.
+
+    Note this is not the same as negation.
+
+    """
+    return _mirror.get(op, op)
+
+
 _associative = _commutative.union([concat_op, and_, or_])
 
 _natural_self_precedent = _associative.union([getitem])
@@ -826,12 +885,15 @@ parenthesize (a op b).
 
 """
 
+
 _asbool = util.symbol('_asbool', canonical=-10)
 _smallest = util.symbol('_smallest', canonical=-100)
 _largest = util.symbol('_largest', canonical=100)
 
 _PRECEDENCE = {
     from_: 15,
+    any_op: 15,
+    all_op: 15,
     getitem: 15,
     mul: 8,
     truediv: 8,
@@ -885,7 +947,7 @@ _PRECEDENCE = {
 
 
 def is_precedent(operator, against):
-    if operator is against and operator in _natural_self_precedent:
+    if operator is against and is_natural_self_precedent(operator):
         return False
     else:
         return (_PRECEDENCE.get(operator,

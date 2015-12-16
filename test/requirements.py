@@ -293,7 +293,6 @@ class DefaultRequirements(SuiteRequirements):
         named 'test_schema'."""
 
         return skip_if([
-                    "sqlite",
                     "firebird"
                 ], "no schema support")
 
@@ -360,6 +359,32 @@ class DefaultRequirements(SuiteRequirements):
         return fails_if([
                 "firebird", "mysql", "sybase",
             ], 'no support for EXCEPT')
+
+    @property
+    def parens_in_union_contained_select_w_limit_offset(self):
+        """Target database must support parenthesized SELECT in UNION
+        when LIMIT/OFFSET is specifically present.
+
+        E.g. (SELECT ...) UNION (SELECT ..)
+
+        This is known to fail on SQLite.
+
+        """
+        return fails_if('sqlite')
+
+    @property
+    def parens_in_union_contained_select_wo_limit_offset(self):
+        """Target database must support parenthesized SELECT in UNION
+        when OFFSET/LIMIT is specifically not present.
+
+        E.g. (SELECT ... LIMIT ..) UNION (SELECT .. OFFSET ..)
+
+        This is known to fail on SQLite.  It also fails on Oracle
+        because without LIMIT/OFFSET, there is currently no step that
+        creates an additional subquery.
+
+        """
+        return fails_if(['sqlite', 'oracle'])
 
     @property
     def offset(self):
@@ -758,7 +783,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def postgresql_jsonb(self):
-        return skip_if(
+        return only_on("postgresql >= 9.4") + skip_if(
             lambda config:
             config.db.dialect.driver == "pg8000" and
             config.db.dialect._dbapi_version <= (1, 10, 1)
@@ -839,6 +864,10 @@ class DefaultRequirements(SuiteRequirements):
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
+
+    @property
+    def mysql_fsp(self):
+        return only_if('mysql >= 5.6.4')
 
     @property
     def mysql_fully_case_sensitive(self):

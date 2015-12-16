@@ -346,7 +346,10 @@ class NoLoader(AbstractRelationshipLoader):
             self, context, path, loadopt, mapper,
             result, adapter, populators):
         def invoke_no_load(state, dict_, row):
-            state._initialize(self.key)
+            if self.uselist:
+                state.manager.get_impl(self.key).initialize(state, dict_)
+            else:
+                dict_[self.key] = None
         populators["new"].append((self.key, invoke_no_load))
 
 
@@ -361,7 +364,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
     __slots__ = (
         '_lazywhere', '_rev_lazywhere', 'use_get', '_bind_to_col',
-        '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns')
+        '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns',
+        '_simple_lazy_clause')
 
     def __init__(self, parent):
         super(LazyLoader, self).__init__(parent)
@@ -1321,8 +1325,19 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if adapter:
             if getattr(adapter, 'aliased_class', None):
+                # joining from an adapted entity.  The adapted entity
+                # might be a "with_polymorphic", so resolve that to our
+                # specific mapper's entity before looking for our attribute
+                # name on it.
+                efm = inspect(adapter.aliased_class).\
+                    _entity_for_mapper(
+                        parentmapper
+                        if parentmapper.isa(self.parent) else self.parent)
+
+                # look for our attribute on the adapted entity, else fall back
+                # to our straight property
                 onclause = getattr(
-                    adapter.aliased_class, self.key,
+                    efm.entity, self.key,
                     self.parent_property)
             else:
                 onclause = getattr(
@@ -1363,8 +1378,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable
 
-        if self.parent_property.secondary is None and \
-                not parentmapper:
+        if not parentmapper:
             # for parentclause that is the non-eager end of the join,
             # ensure all the parent cols in the primaryjoin are actually
             # in the

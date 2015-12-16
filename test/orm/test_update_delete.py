@@ -1,10 +1,11 @@
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, or_, exc, \
     select, func, Boolean, case, text, column
 from sqlalchemy.orm import mapper, relationship, backref, Session, \
     joinedload, synonym, query
 from sqlalchemy import testing
+from sqlalchemy.testing import mock
 
 from sqlalchemy.testing.schema import Table, Column
 
@@ -608,6 +609,42 @@ class UpdateDeleteTest(fixtures.MappedTest):
             delete(
                 synchronize_session='fetch')
         assert john not in sess
+
+    def test_update_unordered_dict(self):
+        User = self.classes.User
+        session = Session()
+
+        # Do an update using unordered dict and check that the parameters used
+        # are ordered in table order
+        with mock.patch.object(session, "execute") as exec_:
+            session.query(User).filter(User.id == 15).update(
+                {'name': 'foob', 'id': 123})
+            # Confirm that parameters are a dict instead of tuple or list
+            params_type = type(exec_.mock_calls[0][1][0].parameters)
+            is_(params_type, dict)
+
+    def test_update_preserve_parameter_order(self):
+        User = self.classes.User
+        session = Session()
+
+        # Do update using a tuple and check that order is preserved
+        with mock.patch.object(session, "execute") as exec_:
+            session.query(User).filter(User.id == 15).update(
+                (('id', 123), ('name', 'foob')),
+                update_args={"preserve_parameter_order": True})
+            cols = [c.key
+                    for c in exec_.mock_calls[0][1][0]._parameter_ordering]
+            eq_(['id', 'name'], cols)
+
+        # Now invert the order and use a list instead, and check that order is
+        # also preserved
+        with mock.patch.object(session, "execute") as exec_:
+            session.query(User).filter(User.id == 15).update(
+                [('name', 'foob'), ('id', 123)],
+                update_args={"preserve_parameter_order": True})
+            cols = [c.key
+                    for c in exec_.mock_calls[0][1][0]._parameter_ordering]
+            eq_(['name', 'id'], cols)
 
 
 class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):

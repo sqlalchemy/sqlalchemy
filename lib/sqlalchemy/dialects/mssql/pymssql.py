@@ -85,7 +85,8 @@ class MSDialect_pymssql(MSDialect):
             "message 20003",  # connection timeout
             "Error 10054",
             "Not connected to any MS SQL server",
-            "Connection is closed"
+            "Connection is closed",
+            "message 20006",  # Write to the server failed
         ):
             if msg in str(e):
                 return True

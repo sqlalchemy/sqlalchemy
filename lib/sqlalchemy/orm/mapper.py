@@ -1915,6 +1915,19 @@ class Mapper(InspectionAttr):
     """
 
     @_memoized_configured_property
+    def _insert_cols_evaluating_none(self):
+        return dict(
+            (
+                table,
+                frozenset(
+                    col.key for col in columns
+                    if col.type.should_evaluate_none
+                )
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
     def _insert_cols_as_none(self):
         return dict(
             (
@@ -1922,7 +1935,8 @@ class Mapper(InspectionAttr):
                 frozenset(
                     col.key for col in columns
                     if not col.primary_key and
-                    not col.server_default and not col.default)
+                    not col.server_default and not col.default
+                    and not col.type.should_evaluate_none)
             )
             for table, columns in self._cols_by_table.items()
         )
@@ -1956,8 +1970,20 @@ class Mapper(InspectionAttr):
             (
                 table,
                 frozenset([
-                    col for col in columns
+                    col.key for col in columns
                     if col.server_default is not None])
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _server_onupdate_default_cols(self):
+        return dict(
+            (
+                table,
+                frozenset([
+                    col.key for col in columns
+                    if col.server_onupdate is not None])
             )
             for table, columns in self._cols_by_table.items()
         )
@@ -2557,15 +2583,24 @@ class Mapper(InspectionAttr):
         for all relationships that meet the given cascade rule.
 
         :param type_:
-          The name of the cascade rule (i.e. save-update, delete,
-          etc.)
+          The name of the cascade rule (i.e. ``"save-update"``, ``"delete"``,
+          etc.).
+
+          .. note::  the ``"all"`` cascade is not accepted here.  For a generic
+             object traversal function, see :ref:`faq_walk_objects`.
 
         :param state:
           The lead InstanceState.  child items will be processed per
           the relationships defined for this object's mapper.
 
-        the return value are object instances; this provides a strong
-        reference so that they don't fall out of scope immediately.
+        :return: the method yields individual object instances.
+
+        .. seealso::
+
+            :ref:`unitofwork_cascades`
+
+            :ref:`faq_walk_objects` - illustrates a generic function to
+            traverse all objects without relying on cascades.
 
         """
         visited_states = set()
@@ -2682,7 +2717,33 @@ def configure_mappers():
     have been constructed thus far.
 
     This function can be called any number of times, but in
-    most cases is handled internally.
+    most cases is invoked automatically, the first time mappings are used,
+    as well as whenever mappings are used and additional not-yet-configured
+    mappers have been constructed.
+
+    Points at which this occur include when a mapped class is instantiated
+    into an instance, as well as when the :meth:`.Session.query` method
+    is used.
+
+    The :func:`.configure_mappers` function provides several event hooks
+    that can be used to augment its functionality.  These methods include:
+
+    * :meth:`.MapperEvents.before_configured` - called once before
+      :func:`.configure_mappers` does any work; this can be used to establish
+      additional options, properties, or related mappings before the operation
+      proceeds.
+
+    * :meth:`.MapperEvents.mapper_configured` - called as each indivudal
+      :class:`.Mapper` is configured within the process; will include all
+      mapper state except for backrefs set up by other mappers that are still
+      to be configured.
+
+    * :meth:`.MapperEvents.after_configured` - called once after
+      :func:`.configure_mappers` is complete; at this stage, all
+      :class:`.Mapper` objects that are known  to SQLAlchemy will be fully
+      configured.  Note that the calling application may still have other
+      mappings that haven't been produced yet, such as if they are in modules
+      as yet unimported.
 
     """
 

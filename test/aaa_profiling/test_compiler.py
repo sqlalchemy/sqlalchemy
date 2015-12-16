@@ -32,8 +32,8 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
         for t in (t1, t2):
             for c in t.c:
                 c.type._type_affinity
-        from sqlalchemy import types
-        for t in list(types._type_map.values()):
+        from sqlalchemy.sql import sqltypes
+        for t in list(sqltypes._type_map.values()):
             t._type_affinity
 
         cls.dialect = default.DefaultDialect()

@@ -2,12 +2,13 @@ import copy
 
 from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
-from sqlalchemy.testing import eq_, is_, ne_, fails_if
+from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock
 from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
 from sqlalchemy.util import langhelpers
 import inspect
+
 
 class _KeyedTupleTest(object):
 
@@ -283,6 +284,102 @@ class MemoizedAttrTest(fixtures.TestBase):
         eq_(f1.bar(), 20)
         eq_(f1.bar(), 20)
         eq_(val[0], 21)
+
+    def test_memoized_slots(self):
+        canary = mock.Mock()
+
+        class Foob(util.MemoizedSlots):
+            __slots__ = ('foo_bar', 'gogo')
+
+            def _memoized_method_gogo(self):
+                canary.method()
+                return "gogo"
+
+            def _memoized_attr_foo_bar(self):
+                canary.attr()
+                return "foobar"
+
+        f1 = Foob()
+        assert_raises(AttributeError, setattr, f1, "bar", "bat")
+
+        eq_(f1.foo_bar, "foobar")
+
+        eq_(f1.foo_bar, "foobar")
+
+        eq_(f1.gogo(), "gogo")
+
+        eq_(f1.gogo(), "gogo")
+
+        eq_(canary.mock_calls, [mock.call.attr(), mock.call.method()])
+
+
+class WrapCallableTest(fixtures.TestBase):
+    def test_wrapping_update_wrapper_fn(self):
+        def my_fancy_default():
+            """run the fancy default"""
+            return 10
+
+        c = util.wrap_callable(lambda: my_fancy_default, my_fancy_default)
+
+        eq_(c.__name__, "my_fancy_default")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_fn_nodocstring(self):
+        def my_fancy_default():
+            return 10
+
+        c = util.wrap_callable(lambda: my_fancy_default, my_fancy_default)
+        eq_(c.__name__, "my_fancy_default")
+        eq_(c.__doc__, None)
+
+    def test_wrapping_update_wrapper_cls(self):
+        class MyFancyDefault(object):
+            """a fancy default"""
+
+            def __call__(self):
+                """run the fancy default"""
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_cls_noclsdocstring(self):
+        class MyFancyDefault(object):
+
+            def __call__(self):
+                """run the fancy default"""
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_cls_nomethdocstring(self):
+        class MyFancyDefault(object):
+            """a fancy default"""
+
+            def __call__(self):
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "a fancy default")
+
+    def test_wrapping_update_wrapper_cls_noclsdocstring_nomethdocstring(self):
+        class MyFancyDefault(object):
+
+            def __call__(self):
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, None)
 
 
 class ToListTest(fixtures.TestBase):
@@ -1103,7 +1200,10 @@ class IdentitySetTest(fixtures.TestBase):
         return super_, sub_, twin1, twin2, unique1, unique2
 
     def _assert_unorderable_types(self, callable_):
-        if util.py3k:
+        if util.py36:
+            assert_raises_message(
+                TypeError, 'not supported between instances of', callable_)
+        elif util.py3k:
             assert_raises_message(
                 TypeError, 'unorderable types', callable_)
         else:

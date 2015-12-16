@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .compat import callable, cmp, reduce,  \
-    threading, py3k, py33, py2k, jython, pypy, cpython, win32, \
+    threading, py3k, py33, py36, py2k, jython, pypy, cpython, win32, \
     pickle, dottedgetter, parse_qsl, namedtuple, next, reraise, \
     raise_from_cause, text_type, safe_kwarg, string_types, int_types, \
     binary_type, nested, \
@@ -36,7 +36,7 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
     generic_repr, counter, PluginLoader, hybridproperty, hybridmethod, \
     safe_reraise,\
     get_callable_argspec, only_once, attrsetter, ellipses_string, \
-    warn_limited, map_bits, MemoizedSlots, EnsureKWArgType
+    warn_limited, map_bits, MemoizedSlots, EnsureKWArgType, wrap_callable
 
 from .deprecations import warn_deprecated, warn_pending_deprecation, \
     deprecated, pending_deprecation, inject_docstring_text

@@ -272,16 +272,35 @@ class Result(object):
         Equivalent to :meth:`.Query.one`.
 
         """
+        try:
+            ret = self.one_or_none()
+        except orm_exc.MultipleResultsFound:
+            raise orm_exc.MultipleResultsFound(
+                "Multiple rows were found for one()")
+        else:
+            if ret is None:
+                raise orm_exc.NoResultFound("No row was found for one()")
+            return ret
+
+    def one_or_none(self):
+        """Return one or zero results, or raise an exception for multiple
+        rows.
+
+        Equivalent to :meth:`.Query.one_or_none`.
+
+        .. versionadded:: 1.0.9
+
+        """
         ret = list(self)
 
         l = len(ret)
         if l == 1:
             return ret[0]
         elif l == 0:
-            raise orm_exc.NoResultFound("No row was found for one()")
+            return None
         else:
             raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one()")
+                "Multiple rows were found for one_or_none()")
 
     def all(self):
         """Return all rows.
@@ -335,6 +354,12 @@ class Result(object):
         # (remember, we can map to an OUTER JOIN)
         bq = self.bq
 
+        # add the clause we got from mapper._get_clause to the cache
+        # key so that if a race causes multiple calls to _get_clause,
+        # we've cached on ours
+        bq = bq._clone()
+        bq._cache_key += (_get_clause, )
+
         bq = bq.with_criteria(setup, tuple(elem is None for elem in ident))
 
         params = dict([
@@ -359,7 +384,6 @@ def bake_lazy_loaders():
     Python overhead for these operations.
 
     """
-    strategies.LazyLoader._strategy_keys[:] = []
     BakedLazyLoader._strategy_keys[:] = []
 
     properties.RelationshipProperty.strategy_for(
@@ -368,6 +392,8 @@ def bake_lazy_loaders():
         lazy=True)(BakedLazyLoader)
     properties.RelationshipProperty.strategy_for(
         lazy="baked_select")(BakedLazyLoader)
+
+    strategies.LazyLoader._strategy_keys[:] = BakedLazyLoader._strategy_keys[:]
 
 
 def unbake_lazy_loaders():

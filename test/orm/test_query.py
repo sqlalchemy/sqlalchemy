@@ -579,8 +579,7 @@ class GetTest(QueryTest):
         table = Table(
             'unicode_data', metadata,
             Column(
-                'id', Unicode(40), primary_key=True,
-                test_needs_autoincrement=True),
+                'id', Unicode(40), primary_key=True),
             Column('data', Unicode(40)))
         metadata.create_all()
         ustring = util.b('petit voix m\xe2\x80\x99a').decode('utf-8')
@@ -775,6 +774,42 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
                 sa_exc.InvalidRequestError,
                 meth, q, *arg, **kw
             )
+
+    def test_illegal_coercions(self):
+        User = self.classes.User
+
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Object .*User.* is not legal as a SQL literal value",
+            distinct, User
+        )
+
+        ua = aliased(User)
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Object .*User.* is not legal as a SQL literal value",
+            distinct, ua
+        )
+
+        s = Session()
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Object .*User.* is not legal as a SQL literal value",
+            lambda: s.query(User).filter(User.name == User)
+        )
+
+        u1 = User()
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Object .*User.* is not legal as a SQL literal value",
+            distinct, u1
+        )
+
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Object .*User.* is not legal as a SQL literal value",
+            lambda: s.query(User).filter(User.name == u1)
+        )
 
 
 class OperatorTest(QueryTest, AssertsCompiledSQL):
@@ -1960,13 +1995,6 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             sess.query(User). \
             filter(User.addresses.any(email_address='fred@fred.com')).all()
 
-        # test that any() doesn't overcorrelate
-        assert [User(id=7), User(id=8)] == \
-            sess.query(User).join("addresses"). \
-            filter(
-                ~User.addresses.any(
-                    Address.email_address == 'fred@fred.com')).all()
-
         # test that the contents are not adapted by the aliased join
         assert [User(id=7), User(id=8)] == \
             sess.query(User).join("addresses", aliased=True). \
@@ -1977,6 +2005,18 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         assert [User(id=10)] == \
             sess.query(User).outerjoin("addresses", aliased=True). \
             filter(~User.addresses.any()).all()
+
+    def test_any_doesnt_overcorrelate(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        # test that any() doesn't overcorrelate
+        assert [User(id=7), User(id=8)] == \
+            sess.query(User).join("addresses"). \
+            filter(
+                ~User.addresses.any(
+                    Address.email_address == 'fred@fred.com')).all()
 
     def test_has(self):
         Dingaling, User, Address = (
@@ -2188,6 +2228,42 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name "
             "AS users_name FROM users WHERE name='ed'"
         )
+
+
+class HasMapperEntitiesTest(QueryTest):
+    def test_entity(self):
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User)
+
+        assert q._has_mapper_entities
+
+    def test_cols(self):
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User.id)
+
+        assert not q._has_mapper_entities
+
+    def test_cols_set_entities(self):
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User.id)
+
+        q._set_entities(User)
+        assert q._has_mapper_entities
+
+    def test_entity_set_entities(self):
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User)
+
+        q._set_entities(User.id)
+        assert not q._has_mapper_entities
 
 
 class SetOpsTest(QueryTest, AssertsCompiledSQL):
@@ -3140,6 +3216,39 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         #     sess.query(Order).with_parent(None, property='addresses').all()
         #     == [Order(description="order 5")]
 
+    def test_select_from(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        u1 = sess.query(User).get(7)
+        q = sess.query(Address).select_from(Address).with_parent(u1)
+        self.assert_compile(
+            q,
+            "SELECT addresses.id AS addresses_id, "
+            "addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM addresses WHERE :param_1 = addresses.user_id",
+            {'param_1': 7}
+        )
+
+    @testing.fails("issue #3607")
+    def test_select_from_alias(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        q = sess.query(a1).with_parent(u1)
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM addresses AS addresses_1 "
+            "WHERE :param_1 = addresses_1.user_id",
+            {'param_1': 7}
+        )
+
     def test_noparent(self):
         Item, User = self.classes.Item, self.classes.User
 
@@ -3547,13 +3656,17 @@ class ImmediateTest(_fixtures.FixtureTest):
 
         sess = create_session()
 
-        assert_raises(
+        assert_raises_message(
             sa.orm.exc.NoResultFound,
+            "No row was found for one\(\)",
             sess.query(User).filter(User.id == 99).one)
 
         eq_(sess.query(User).filter(User.id == 7).one().id, 7)
 
-        assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User).one)
+        assert_raises_message(
+            sa.orm.exc.MultipleResultsFound,
+            "Multiple rows were found for one\(\)",
+            sess.query(User).one)
 
         assert_raises(
             sa.orm.exc.NoResultFound,
@@ -3597,6 +3710,60 @@ class ImmediateTest(_fixtures.FixtureTest):
             sa.orm.exc.MultipleResultsFound,
             sess.query(User).join(User.addresses).filter(User.id.in_([8, 9])).
             order_by(User.id).one)
+
+    def test_one_or_none(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        eq_(sess.query(User).filter(User.id == 99).one_or_none(), None)
+
+        eq_(sess.query(User).filter(User.id == 7).one_or_none().id, 7)
+
+        assert_raises_message(
+            sa.orm.exc.MultipleResultsFound,
+            "Multiple rows were found for one_or_none\(\)",
+            sess.query(User).one_or_none)
+
+        eq_(sess.query(User.id, User.name).filter(User.id == 99).one_or_none(), None)
+
+        eq_(sess.query(User.id, User.name).filter(User.id == 7).one_or_none(),
+            (7, 'jack'))
+
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User.id, User.name).one_or_none)
+
+        eq_(
+            (sess.query(User, Address).join(User.addresses).
+           filter(Address.id == 99)).one_or_none(), None)
+
+        eq_((sess.query(User, Address).
+            join(User.addresses).
+            filter(Address.id == 4)).one_or_none(),
+           (User(id=8), Address(id=4)))
+
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User, Address).join(User.addresses).one_or_none)
+
+        # this result returns multiple rows, the first
+        # two rows being the same.  but uniquing is
+        # not applied for a column based result.
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User.id).join(User.addresses).
+            filter(User.id.in_([8, 9])).order_by(User.id).one_or_none)
+
+        # test that a join which ultimately returns
+        # multiple identities across many rows still
+        # raises, even though the first two rows are of
+        # the same identity and unique filtering
+        # is applied ([ticket:1688])
+        assert_raises(
+            sa.orm.exc.MultipleResultsFound,
+            sess.query(User).join(User.addresses).filter(User.id.in_([8, 9])).
+            order_by(User.id).one_or_none)
 
     @testing.future
     def test_getslice(self):

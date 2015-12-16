@@ -32,6 +32,11 @@ the ``pool_recycle`` option which controls the maximum age of any connection::
 
     engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
 
+.. seealso::
+
+    :ref:`pool_setting_recycle` - full description of the pool recycle feature.
+
+
 .. _mysql_storage_engines:
 
 CREATE TABLE arguments including Storage Engines
@@ -1584,7 +1589,10 @@ class SET(_EnumeratedValues):
 
     def column_expression(self, colexpr):
         if self.retrieve_as_bitwise:
-            return colexpr + 0
+            return sql.type_coerce(
+                sql.type_coerce(colexpr, sqltypes.Integer) + 0,
+                self
+            )
         else:
             return colexpr
 
@@ -1913,38 +1921,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         return None
 
 
-# ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].
-#       Starting with MySQL 4.1.2, these indexes are created automatically.
-#       In older versions, the indexes must be created explicitly or the
-#       creation of foreign key constraints fails."
-
 class MySQLDDLCompiler(compiler.DDLCompiler):
-    def create_table_constraints(self, table, **kw):
-        """Get table constraints."""
-        constraint_string = super(
-            MySQLDDLCompiler, self).create_table_constraints(table, **kw)
-
-        # why self.dialect.name and not 'mysql'?  because of drizzle
-        is_innodb = 'engine' in table.dialect_options[self.dialect.name] and \
-                    table.dialect_options[self.dialect.name][
-                        'engine'].lower() == 'innodb'
-
-        auto_inc_column = table._autoincrement_column
-
-        if is_innodb and \
-                auto_inc_column is not None and \
-                auto_inc_column is not list(table.primary_key)[0]:
-            if constraint_string:
-                constraint_string += ", \n\t"
-            constraint_string += "KEY %s (%s)" % (
-                self.preparer.quote(
-                    "idx_autoinc_%s" % auto_inc_column.name
-                ),
-                self.preparer.format_column(auto_inc_column)
-            )
-
-        return constraint_string
-
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
 
@@ -3117,6 +3094,11 @@ class MySQLTableDefinitionParser(object):
 
         # Column type keyword options
         type_kw = {}
+
+        if issubclass(col_type, (DATETIME, TIME, TIMESTAMP)):
+            if type_args:
+                type_kw['fsp'] = type_args.pop(0)
+
         for kw in ('unsigned', 'zerofill'):
             if spec.get(kw, False):
                 type_kw[kw] = True

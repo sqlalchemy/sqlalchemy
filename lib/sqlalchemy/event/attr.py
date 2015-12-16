@@ -51,7 +51,7 @@ class _ClsLevelDispatch(RefCollection):
     """Class-level events on :class:`._Dispatch` classes."""
 
     __slots__ = ('name', 'arg_names', 'has_kw',
-                 'legacy_signatures', '_clslevel')
+                 'legacy_signatures', '_clslevel', '__weakref__')
 
     def __init__(self, parent_dispatch_cls, fn):
         self.name = fn.__name__
@@ -230,9 +230,7 @@ class _EmptyListener(_InstanceLevelDispatch):
 
 
 class _CompoundListener(_InstanceLevelDispatch):
-    _exec_once = False
-
-    __slots__ = '_exec_once_mutex',
+    __slots__ = '_exec_once_mutex', '_exec_once'
 
     def _memoized_attr__exec_once_mutex(self):
         return threading.Lock()
@@ -279,11 +277,14 @@ class _ListenerCollection(_CompoundListener):
 
     """
 
-    __slots__ = 'parent_listeners', 'parent', 'name', 'listeners', 'propagate'
+    __slots__ = (
+        'parent_listeners', 'parent', 'name', 'listeners',
+        'propagate', '__weakref__')
 
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
+        self._exec_once = False
         self.parent_listeners = parent._clslevel[target_cls]
         self.parent = parent
         self.name = parent.name
@@ -339,11 +340,10 @@ class _ListenerCollection(_CompoundListener):
 
 
 class _JoinedListener(_CompoundListener):
-    _exec_once = False
-
     __slots__ = 'parent', 'name', 'local', 'parent_listeners'
 
     def __init__(self, parent, name, local):
+        self._exec_once = False
         self.parent = parent
         self.name = name
         self.local = local

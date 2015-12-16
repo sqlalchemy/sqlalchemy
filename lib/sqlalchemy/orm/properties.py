@@ -39,7 +39,7 @@ class ColumnProperty(StrategizedProperty):
         'instrument', 'comparator_factory', 'descriptor', 'extension',
         'active_history', 'expire_on_flush', 'info', 'doc',
         'strategy_class', '_creation_order', '_is_polymorphic_discriminator',
-        '_mapped_by_synonym', '_deferred_loader')
+        '_mapped_by_synonym', '_deferred_column_loader')
 
     def __init__(self, *columns, **kwargs):
         """Provide a column-level property for use with a Mapper.
@@ -206,7 +206,7 @@ class ColumnProperty(StrategizedProperty):
             get_committed_value(state, dict_, passive=passive)
 
     def merge(self, session, source_state, source_dict, dest_state,
-              dest_dict, load, _recursive):
+              dest_dict, load, _recursive, _resolve_conflict_map):
         if not self.instrument:
             return
         elif self.key in source_dict:

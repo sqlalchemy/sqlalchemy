@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table,\
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
-    assert_raises_message, fixtures
+    assert_raises_message, fixtures, eq_
 from sqlalchemy.sql import crud
 
 
@@ -319,6 +319,32 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"name_1": "foo", "foo": None}
         )
 
+    def test_insert_from_select_dont_mutate_raw_columns(self):
+        # test [ticket:3603]
+        from sqlalchemy import table
+        table_ = table(
+            'mytable',
+            Column('foo', String),
+            Column('bar', String, default='baz'),
+        )
+
+        stmt = select([table_.c.foo])
+        insert = table_.insert().from_select(['foo'], stmt)
+
+        self.assert_compile(stmt, "SELECT mytable.foo FROM mytable")
+        self.assert_compile(
+            insert,
+            "INSERT INTO mytable (foo, bar) "
+            "SELECT mytable.foo, :bar AS anon_1 FROM mytable"
+        )
+        self.assert_compile(stmt, "SELECT mytable.foo FROM mytable")
+        self.assert_compile(
+            insert,
+            "INSERT INTO mytable (foo, bar) "
+            "SELECT mytable.foo, :bar AS anon_1 FROM mytable"
+        )
+
+
     def test_insert_mix_select_values_exception(self):
         table1 = self.tables.mytable
         sel = select([table1.c.myid, table1.c.name]).where(
@@ -388,6 +414,106 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name FROM mytable "
             "WHERE mytable.name = :name_1",
             checkparams={"name_1": "foo"}
+        )
+
+    def test_anticipate_no_pk_composite_pk(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True)
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.y' is marked as a member.*"
+            "Note that as of SQLAlchemy 1.1,",
+            t.insert().compile, column_keys=['x']
+
+        )
+
+    def test_anticipate_no_pk_composite_pk_implicit_returning(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = True
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.y' is marked as a member.*"
+            "Note that as of SQLAlchemy 1.1,",
+            t.insert().compile, dialect=d, column_keys=['x']
+
+        )
+
+    def test_anticipate_no_pk_composite_pk_prefetch(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = False
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.y' is marked as a member.*"
+            "Note that as of SQLAlchemy 1.1,",
+            t.insert().compile, dialect=d, column_keys=['x']
+
+        )
+
+    def test_anticipate_nullable_composite_pk(self):
+        t = Table(
+            't', MetaData(), Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True, nullable=True)
+        )
+        self.assert_compile(
+            t.insert(),
+            "INSERT INTO t (x) VALUES (:x)",
+            params={'x': 5},
+        )
+
+    def test_anticipate_no_pk_non_composite_pk(self):
+        t = Table(
+            't', MetaData(),
+            Column('x', Integer, primary_key=True, autoincrement=False),
+            Column('q', Integer)
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.x' is marked as a member.*"
+            "may not store NULL.$",
+            t.insert().compile, column_keys=['q']
+
+        )
+
+    def test_anticipate_no_pk_non_composite_pk_implicit_returning(self):
+        t = Table(
+            't', MetaData(),
+            Column('x', Integer, primary_key=True, autoincrement=False),
+            Column('q', Integer)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = True
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.x' is marked as a member.*"
+            "may not store NULL.$",
+            t.insert().compile, dialect=d, column_keys=['q']
+
+        )
+
+    def test_anticipate_no_pk_non_composite_pk_prefetch(self):
+        t = Table(
+            't', MetaData(),
+            Column('x', Integer, primary_key=True, autoincrement=False),
+            Column('q', Integer)
+        )
+        d = postgresql.dialect()
+        d.implicit_returning = False
+        assert_raises_message(
+            exc.CompileError,
+            "Column 't.x' is marked as a member.*"
+            "may not store NULL.$",
+            t.insert().compile, dialect=d, column_keys=['q']
+
         )
 
 
@@ -694,8 +820,21 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'foo_2': None  # evaluated later
         }
 
+        stmt = table.insert().values(values)
+
+        eq_(
+            dict([
+                (k, v.type._type_affinity)
+                for (k, v) in
+                stmt.compile(dialect=postgresql.dialect()).binds.items()]),
+            {
+                'foo': Integer, 'data_2': String, 'id_0': Integer,
+                'id_2': Integer, 'foo_1': Integer, 'data_1': String,
+                'id_1': Integer, 'foo_2': Integer, 'data_0': String}
+        )
+
         self.assert_compile(
-            table.insert().values(values),
+            stmt,
             'INSERT INTO sometable (id, data, foo) VALUES '
             '(%(id_0)s, %(data_0)s, %(foo)s), '
             '(%(id_1)s, %(data_1)s, %(foo_1)s), '
@@ -728,8 +867,20 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'foo_2': None,  # evaluated later
         }
 
+        stmt = table.insert().values(values)
+        eq_(
+            dict([
+                (k, v.type._type_affinity)
+                for (k, v) in
+                stmt.compile(dialect=postgresql.dialect()).binds.items()]),
+            {
+                'foo': Integer, 'data_2': String, 'id_0': Integer,
+                'id_2': Integer, 'foo_1': Integer, 'data_1': String,
+                'id_1': Integer, 'foo_2': Integer, 'data_0': String}
+        )
+
         self.assert_compile(
-            table.insert().values(values),
+            stmt,
             "INSERT INTO sometable (id, data, foo) VALUES "
             "(%(id_0)s, %(data_0)s, %(foo)s), "
             "(%(id_1)s, %(data_1)s, %(foo_1)s), "

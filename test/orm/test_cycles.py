@@ -10,7 +10,7 @@ from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, sessionmaker
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_
 from sqlalchemy.testing.assertsql import RegexSQL, CompiledSQL, AllOf
 from sqlalchemy.testing import fixtures
 
@@ -816,6 +816,39 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                          {'id': b4.id}])
         )
 
+    def test_post_update_m2o_detect_none(self):
+        person, ball, Ball, Person = (
+            self.tables.person,
+            self.tables.ball,
+            self.classes.Ball,
+            self.classes.Person)
+
+        mapper(Ball, ball, properties={
+            'person': relationship(
+                Person, post_update=True,
+                primaryjoin=person.c.id == ball.c.person_id)
+        })
+        mapper(Person, person)
+
+        sess = create_session(autocommit=False, expire_on_commit=True)
+        sess.add(Ball(person=Person()))
+        sess.commit()
+        b1 = sess.query(Ball).first()
+
+        # needs to be unloaded
+        assert 'person' not in b1.__dict__
+        b1.person = None
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda ctx: {'person_id': None, 'ball_id': b1.id})
+        )
+
+        is_(b1.person, None)
+
 
 class SelfReferentialPostUpdateTest(fixtures.MappedTest):
     """Post_update on a single self-referential mapper.
@@ -1181,9 +1214,10 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
             testing.db,
             sess.flush,
             CompiledSQL(
-                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "
-                "c3_id=:c3_id WHERE parent.id = :parent_id",
-                lambda ctx: {'c2_id': c23.id, 'parent_id': p1.id, 'c1_id': c12.id, 'c3_id': c31.id}
+                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, c3_id=:c3_id "
+                "WHERE parent.id = :parent_id",
+                lambda ctx: {'c2_id': c23.id, 'parent_id': p1.id,
+                             'c1_id': c12.id, 'c3_id': c31.id}
             )
         )
 
@@ -1193,8 +1227,9 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
             testing.db,
             sess.flush,
             CompiledSQL(
-                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "
-                "c3_id=:c3_id WHERE parent.id = :parent_id",
-                lambda ctx: {'c2_id': None, 'parent_id': p1.id, 'c1_id': None, 'c3_id': None}
+                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, c3_id=:c3_id "
+                "WHERE parent.id = :parent_id",
+                lambda ctx: {'c2_id': None, 'parent_id': p1.id,
+                             'c1_id': None, 'c3_id': None}
             )
         )

@@ -102,6 +102,29 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert User.addresses.property.mapper.class_ is Address
 
+    def test_unicode_string_resolve_backref(self):
+        class User(Base, fixtures.ComparableEntity):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column('name', String(50))
+
+        class Address(Base, fixtures.ComparableEntity):
+            __tablename__ = 'addresses'
+
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            email = Column(String(50), key='_email')
+            user_id = Column('user_id', Integer, ForeignKey('users.id'),
+                             key='_user_id')
+            user = relationship(
+                    User,
+                    backref=backref("addresses",
+                                    order_by=util.u("Address.email")))
+
+        assert Address.user.property.mapper.class_ is User
+
     def test_no_table(self):
         def go():
             class User(Base):
@@ -1570,8 +1593,7 @@ class DeclarativeTest(DeclarativeTestBase):
         meta = MetaData(testing.db)
         t1 = Table(
             't1', meta,
-            Column('id', String(50),
-                   primary_key=True, test_needs_autoincrement=True),
+            Column('id', String(50), primary_key=True),
             Column('data', String(50)))
         meta.create_all()
         try:

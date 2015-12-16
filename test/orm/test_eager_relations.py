@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.orm import joinedload, deferred, undefer, \
     joinedload_all, backref, Session,\
-    defaultload, Load
+    defaultload, Load, load_only
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, \
     func, text
 from sqlalchemy.testing.schema import Table, Column
@@ -2442,6 +2442,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     """test #2188"""
 
     __dialect__ = 'default'
+    run_create_tables = None
 
     @classmethod
     def define_tables(cls, metadata):
@@ -4013,6 +4014,7 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
 class CyclicalInheritingEagerTestThree(fixtures.DeclarativeMappedTest,
                                        testing.AssertsCompiledSQL):
     __dialect__ = 'default'
+    run_create_tables = None
 
     @classmethod
     def setup_classes(cls):
@@ -4066,4 +4068,113 @@ class CyclicalInheritingEagerTestThree(fixtures.DeclarativeMappedTest,
             "LEFT OUTER JOIN director AS director_1 ON "
             "director_1.id = persistent_1.id) "
             "ON director.other_id = persistent_1.id"
+        )
+
+
+class EnsureColumnsAddedTest(
+        fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            arb = Column(Integer, unique=True)
+            data = Column(Integer)
+            o2mchild = relationship("O2MChild")
+            m2mchild = relationship("M2MChild", secondary=Table(
+                'parent_to_m2m', Base.metadata,
+                Column('parent_id', ForeignKey('parent.arb')),
+                Column('child_id', ForeignKey('m2mchild.id'))
+            ))
+
+        class O2MChild(Base):
+            __tablename__ = 'o2mchild'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            parent_id = Column(ForeignKey('parent.arb'))
+
+        class M2MChild(Base):
+            __tablename__ = 'm2mchild'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+
+    def test_joinedload_defered_pk_limit_o2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.o2mchild)).limit(10),
+            "SELECT anon_1.parent_id AS anon_1_parent_id, "
+            "anon_1.parent_data AS anon_1_parent_data, "
+            "anon_1.parent_arb AS anon_1_parent_arb, "
+            "o2mchild_1.id AS o2mchild_1_id, "
+            "o2mchild_1.parent_id AS o2mchild_1_parent_id "
+            "FROM (SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "parent.arb AS parent_arb FROM parent LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN o2mchild AS o2mchild_1 "
+            "ON anon_1.parent_arb = o2mchild_1.parent_id"
+        )
+
+    def test_joinedload_defered_pk_limit_m2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.m2mchild)).limit(10),
+            "SELECT anon_1.parent_id AS anon_1_parent_id, "
+            "anon_1.parent_data AS anon_1_parent_data, "
+            "anon_1.parent_arb AS anon_1_parent_arb, "
+            "m2mchild_1.id AS m2mchild_1_id "
+            "FROM (SELECT parent.id AS parent_id, "
+            "parent.data AS parent_data, parent.arb AS parent_arb "
+            "FROM parent LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN (parent_to_m2m AS parent_to_m2m_1 "
+            "JOIN m2mchild AS m2mchild_1 "
+            "ON m2mchild_1.id = parent_to_m2m_1.child_id) "
+            "ON anon_1.parent_arb = parent_to_m2m_1.parent_id"
+        )
+
+    def test_joinedload_defered_pk_o2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.o2mchild)),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "parent.arb AS parent_arb, o2mchild_1.id AS o2mchild_1_id, "
+            "o2mchild_1.parent_id AS o2mchild_1_parent_id "
+            "FROM parent LEFT OUTER JOIN o2mchild AS o2mchild_1 "
+            "ON parent.arb = o2mchild_1.parent_id"
+        )
+
+    def test_joinedload_defered_pk_m2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.m2mchild)),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "parent.arb AS parent_arb, m2mchild_1.id AS m2mchild_1_id "
+            "FROM parent LEFT OUTER JOIN (parent_to_m2m AS parent_to_m2m_1 "
+            "JOIN m2mchild AS m2mchild_1 "
+            "ON m2mchild_1.id = parent_to_m2m_1.child_id) "
+            "ON parent.arb = parent_to_m2m_1.parent_id"
         )

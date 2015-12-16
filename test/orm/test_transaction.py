@@ -657,6 +657,34 @@ class SessionTransactionTest(FixtureTest):
         assert session.transaction is not None, \
             'autocommit=False should start a new transaction'
 
+    @testing.skip_if("oracle", "oracle doesn't support release of savepoint")
+    @testing.requires.savepoints
+    def test_report_primary_error_when_rollback_fails(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        session = Session(testing.db)
+
+        with expect_warnings(".*due to an additional ROLLBACK.*INSERT INTO"):
+            session.begin_nested()
+            savepoint = session.\
+                connection()._Connection__transaction._savepoint
+
+            # force the savepoint to disappear
+            session.connection().dialect.do_release_savepoint(
+                session.connection(), savepoint
+            )
+
+            # now do a broken flush
+            session.add_all([User(id=1), User(id=1)])
+
+            assert_raises_message(
+                sa_exc.DBAPIError,
+                "ROLLBACK TO SAVEPOINT ",
+                session.flush
+            )
+
 
 class _LocalFixture(FixtureTest):
     run_setup_mappers = 'once'
@@ -895,7 +923,13 @@ class AutoExpireTest(_LocalFixture):
         assert u1_state.obj() is None
 
         s.rollback()
-        assert u1_state in s.identity_map.all_states()
+        # new in 1.1, not in identity map if the object was
+        # gc'ed and we restore snapshot; we've changed update_impl
+        # to just skip this object
+        assert u1_state not in s.identity_map.all_states()
+
+        # in any version, the state is replaced by the query
+        # because the identity map would switch it
         u1 = s.query(User).filter_by(name='ed').one()
         assert u1_state not in s.identity_map.all_states()
         assert s.scalar(users.count()) == 1

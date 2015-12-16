@@ -1,5 +1,5 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_, engines, pickleable
+from sqlalchemy.testing import eq_, engines, pickleable, assert_raises_message
 import datetime
 import os
 from sqlalchemy import Table, Column, MetaData, Float, \
@@ -8,7 +8,8 @@ from sqlalchemy import Table, Column, MetaData, Float, \
     UnicodeText, LargeBinary
 from sqlalchemy import types, schema
 from sqlalchemy.databases import mssql
-from sqlalchemy.dialects.mssql.base import TIME
+from sqlalchemy.dialects.mssql.base import TIME, _MSDate
+from sqlalchemy.dialects.mssql.base import MS_2005_VERSION, MS_2008_VERSION
 from sqlalchemy.testing import fixtures, \
     AssertsExecutionResults, ComparesTables
 from sqlalchemy import testing
@@ -32,6 +33,36 @@ class TimeTypeTest(fixtures.TestBase):
         mssql_time_type = TIME()
         result_processor = mssql_time_type.result_processor(None, None)
         eq_(expected, result_processor(value))
+
+    def test_result_processor_invalid(self):
+        mssql_time_type = TIME()
+        result_processor = mssql_time_type.result_processor(None, None)
+        assert_raises_message(
+            ValueError,
+            "could not parse 'abc' as a time value",
+            result_processor, 'abc'
+        )
+
+
+class MSDateTypeTest(fixtures.TestBase):
+
+    def test_result_processor(self):
+        expected = datetime.date(2000, 1, 2)
+        self._assert_result_processor(expected, '2000-01-02')
+
+    def _assert_result_processor(self, expected, value):
+        mssql_date_type = _MSDate()
+        result_processor = mssql_date_type.result_processor(None, None)
+        eq_(expected, result_processor(value))
+
+    def test_result_processor_invalid(self):
+        mssql_date_type = _MSDate()
+        result_processor = mssql_date_type.result_processor(None, None)
+        assert_raises_message(
+            ValueError,
+            "could not parse 'abc' as a date value",
+            result_processor, 'abc'
+        )
 
 
 class TypeDDLTest(fixtures.TestBase):
@@ -171,6 +202,91 @@ class TypeDDLTest(fixtures.TestBase):
             testing.eq_(
                 gen.get_column_specification(col),
                 "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
+
+    def test_dates(self):
+        "Exercise type specification for date types."
+
+        columns = [
+            # column type, args, kwargs, expected ddl
+            (mssql.MSDateTime, [], {},
+             'DATETIME', None),
+
+            (types.DATE, [], {},
+             'DATE', None),
+            (types.Date, [], {},
+             'DATE', None),
+            (types.Date, [], {},
+             'DATETIME', MS_2005_VERSION),
+            (mssql.MSDate, [], {},
+             'DATE', None),
+            (mssql.MSDate, [], {},
+             'DATETIME', MS_2005_VERSION),
+
+            (types.TIME, [], {},
+             'TIME', None),
+            (types.Time, [], {},
+             'TIME', None),
+            (mssql.MSTime, [], {},
+             'TIME', None),
+            (mssql.MSTime, [1], {},
+             'TIME(1)', None),
+            (types.Time, [], {},
+             'DATETIME', MS_2005_VERSION),
+            (mssql.MSTime, [], {},
+             'TIME', None),
+
+            (mssql.MSSmallDateTime, [], {},
+             'SMALLDATETIME', None),
+
+            (mssql.MSDateTimeOffset, [], {},
+             'DATETIMEOFFSET', None),
+            (mssql.MSDateTimeOffset, [1], {},
+             'DATETIMEOFFSET(1)', None),
+
+            (mssql.MSDateTime2, [], {},
+             'DATETIME2', None),
+            (mssql.MSDateTime2, [0], {},
+             'DATETIME2(0)', None),
+            (mssql.MSDateTime2, [1], {},
+             'DATETIME2(1)', None),
+
+            (mssql.MSTime, [0], {},
+             'TIME(0)', None),
+
+            (mssql.MSDateTimeOffset, [0], {},
+             'DATETIMEOFFSET(0)', None),
+
+        ]
+
+        metadata = MetaData()
+        table_args = ['test_mssql_dates', metadata]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res, server_version = spec
+            table_args.append(
+                Column('c%s' % index, type_(*args, **kw), nullable=None))
+
+        date_table = Table(*table_args)
+        dialect = mssql.dialect()
+        dialect.server_version_info = MS_2008_VERSION
+        ms_2005_dialect = mssql.dialect()
+        ms_2005_dialect.server_version_info = MS_2005_VERSION
+        gen = dialect.ddl_compiler(dialect, schema.CreateTable(date_table))
+        gen2005 = ms_2005_dialect.ddl_compiler(
+            ms_2005_dialect, schema.CreateTable(date_table))
+
+        for col in date_table.c:
+            index = int(col.name[1:])
+            server_version = columns[index][4]
+            if not server_version:
+                testing.eq_(
+                    gen.get_column_specification(col),
+                    "%s %s" % (col.name, columns[index][3]))
+            else:
+                testing.eq_(
+                    gen2005.get_column_specification(col),
+                    "%s %s" % (col.name, columns[index][3]))
+
             self.assert_(repr(col))
 
     def test_large_type_deprecation(self):
@@ -313,9 +429,7 @@ class TypeRoundTripTest(
     def teardown(self):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except(
-        'mssql+pyodbc',
-        'this is some pyodbc-specific feature')
+    @testing.fails_on_everything_except('mssql+pyodbc')
     def test_decimal_notation(self):
         numeric_table = Table(
             'numeric_table', metadata,
@@ -466,6 +580,8 @@ class TypeRoundTripTest(
 
             (mssql.MSDateTime2, [], {},
              'DATETIME2', ['>=', (10,)]),
+            (mssql.MSDateTime2, [0], {},
+             'DATETIME2(0)', ['>=', (10,)]),
             (mssql.MSDateTime2, [1], {},
              'DATETIME2(1)', ['>=', (10,)]),
 

@@ -9,11 +9,13 @@ from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
     Text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
-from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.orm import mapper, aliased, Session
-from sqlalchemy.sql import table, column, operators
+from sqlalchemy.sql import table, column, operators, literal_column
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.util import u
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -21,7 +23,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_format(self):
         seq = Sequence('my_seq_no_schema')
-        dialect = postgresql.PGDialect()
+        dialect = postgresql.dialect()
         assert dialect.identifier_preparer.format_sequence(seq) \
             == 'my_seq_no_schema'
         seq = Sequence('my_seq', schema='some_schema')
@@ -508,6 +510,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             '(CAST("Room" AS TEXT) WITH =)'
         )
 
+    def test_exclude_constraint_when(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('room', String)
+        )
+        cons = ExcludeConstraint(('room', '='), where=tbl.c.room.in_(['12']))
+        tbl.append_constraint(cons)
+        self.assert_compile(schema.AddConstraint(cons),
+                            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+                            '(room WITH =) WHERE (testtbl.room IN (\'12\'))',
+                            dialect=postgresql.dialect())
+
     def test_substring(self):
         self.assert_compile(func.substring('abc', 1, 2),
                             'SUBSTRING(%(substring_1)s FROM %(substring_2)s '
@@ -577,6 +592,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable AS mytable_1 "
             "WHERE mytable_1.myid = %(myid_1)s FOR UPDATE OF mytable_1"
         )
+
+    def test_for_update_with_schema(self):
+        m = MetaData()
+        table1 = Table(
+            'mytable', m,
+            Column('myid'),
+            Column('name'),
+            schema='testschema'
+        )
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(of=table1),
+            "SELECT testschema.mytable.myid, testschema.mytable.name "
+            "FROM testschema.mytable "
+            "WHERE testschema.mytable.myid = %(myid_1)s "
+            "FOR UPDATE OF mytable")
 
     def test_reserved_words(self):
         table = Table("pg_table", MetaData(),
@@ -693,7 +724,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self._test_array_zero_indexes(False)
 
     def test_array_literal_type(self):
-        is_(postgresql.array([1, 2]).type._type_affinity, postgresql.ARRAY)
+        isinstance(postgresql.array([1, 2]).type, postgresql.ARRAY)
         is_(postgresql.array([1, 2]).type.item_type._type_affinity, Integer)
 
         is_(postgresql.array([1, 2], type_=String).
@@ -798,6 +829,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.CompileError,
             tbl3.select().with_hint(tbl3, "FAKE", "postgresql").compile,
             dialect=postgresql.dialect()
+        )
+
+    def test_aggregate_order_by_one(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select([expr])
+
+        # note this tests that the object exports FROM objects
+        # correctly
+        self.assert_compile(
+            stmt,
+            "SELECT array_agg(table1.a ORDER BY table1.b DESC) "
+            "AS array_agg_1 FROM table1"
+        )
+
+    def test_aggregate_order_by_two(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.string_agg(
+            table.c.a,
+            aggregate_order_by(literal_column("','"), table.c.a)
+        )
+        stmt = select([expr])
+
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(table1.a, ',' ORDER BY table1.a) "
+            "AS string_agg_1 FROM table1"
+        )
+
+    def test_aggregate_order_by_adapt(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select([expr])
+
+        a1 = table.alias('foo')
+        stmt2 = sql_util.ClauseAdapter(a1).traverse(stmt)
+        self.assert_compile(
+            stmt2,
+            "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 FROM table1 AS foo"
         )
 
 

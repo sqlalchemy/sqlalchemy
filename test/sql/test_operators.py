@@ -1,7 +1,8 @@
 from sqlalchemy.testing import fixtures, eq_, is_, is_not_
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.sql import column, desc, asc, literal, collate, null, true, false
+from sqlalchemy.sql import column, desc, asc, literal, collate, null, \
+    true, false, any_, all_
 from sqlalchemy.sql.expression import BinaryExpression, \
     ClauseList, Grouping, \
     UnaryExpression, select, union, func, tuple_
@@ -12,8 +13,9 @@ from sqlalchemy import exc
 from sqlalchemy.engine import default
 from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
+from sqlalchemy.sql import compiler
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
-    Boolean, NullType, MatchType
+    Boolean, NullType, MatchType, Indexable, Concatenable, Array
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -21,7 +23,6 @@ import datetime
 import collections
 from sqlalchemy import text, literal_column
 from sqlalchemy import and_, not_, between, or_
-from sqlalchemy.sql import true, false, null
 
 
 class LoopOperate(operators.ColumnOperators):
@@ -209,6 +210,60 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_concat(self):
         self._do_operate_test(operators.concat_op)
+
+    def test_default_adapt(self):
+        class TypeOne(TypeEngine):
+            pass
+
+        class TypeTwo(TypeEngine):
+            pass
+
+        expr = column('x', TypeOne()) - column('y', TypeTwo())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+
+    def test_concatenable_adapt(self):
+        class TypeOne(Concatenable, TypeEngine):
+            pass
+
+        class TypeTwo(Concatenable, TypeEngine):
+            pass
+
+        class TypeThree(TypeEngine):
+            pass
+
+        expr = column('x', TypeOne()) - column('y', TypeTwo())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operator.sub
+        )
+
+        expr = column('x', TypeOne()) + column('y', TypeTwo())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operators.concat_op
+        )
+
+        expr = column('x', TypeOne()) - column('y', TypeThree())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operator.sub
+        )
+
+        expr = column('x', TypeOne()) + column('y', TypeThree())
+        is_(
+            expr.type._type_affinity, TypeOne
+        )
+        is_(
+            expr.operator, operator.add
+        )
 
 
 class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -577,6 +632,200 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
+class IndexableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    def setUp(self):
+        class MyTypeCompiler(compiler.GenericTypeCompiler):
+            def visit_mytype(self, type, **kw):
+                return "MYTYPE"
+
+            def visit_myothertype(self, type, **kw):
+                return "MYOTHERTYPE"
+
+        class MyCompiler(compiler.SQLCompiler):
+            def visit_slice(self, element, **kw):
+                return "%s:%s" % (
+                    self.process(element.start, **kw),
+                    self.process(element.stop, **kw),
+                )
+
+            def visit_getitem_binary(self, binary, operator, **kw):
+                return "%s[%s]" % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **kw)
+                )
+
+        class MyDialect(default.DefaultDialect):
+            statement_compiler = MyCompiler
+            type_compiler = MyTypeCompiler
+
+        class MyType(Indexable, TypeEngine):
+            __visit_name__ = 'mytype'
+
+            def __init__(self, zero_indexes=False, dimensions=1):
+                if zero_indexes:
+                    self.zero_indexes = zero_indexes
+                self.dimensions = dimensions
+
+            class Comparator(Indexable.Comparator):
+                def _setup_getitem(self, index):
+                    if isinstance(index, slice):
+                        return_type = self.type
+                    elif self.type.dimensions is None or \
+                            self.type.dimensions == 1:
+                        return_type = Integer()
+                    else:
+                        adapt_kw = {'dimensions': self.type.dimensions - 1}
+                        # this is also testing the behavior of adapt()
+                        # that we can pass kw that override constructor kws.
+                        # required a small change to util.constructor_copy().
+                        return_type = self.type.adapt(
+                            self.type.__class__, **adapt_kw)
+
+                    return operators.getitem, index, return_type
+            comparator_factory = Comparator
+
+        self.MyType = MyType
+        self.__dialect__ = MyDialect()
+
+    def test_setup_getitem_w_dims(self):
+        """test the behavior of the _setup_getitem() method given a simple
+        'dimensions' scheme - this is identical to postgresql.ARRAY."""
+
+        col = Column('x', self.MyType(dimensions=3))
+
+        is_(
+            col[5].type._type_affinity, self.MyType
+        )
+        eq_(
+            col[5].type.dimensions, 2
+        )
+        is_(
+            col[5][6].type._type_affinity, self.MyType
+        )
+        eq_(
+            col[5][6].type.dimensions, 1
+        )
+        is_(
+            col[5][6][7].type._type_affinity, Integer
+        )
+
+    def test_getindex_literal(self):
+
+        col = Column('x', self.MyType())
+
+        self.assert_compile(
+            col[5],
+            "x[:x_1]",
+            checkparams={'x_1': 5}
+        )
+
+    def test_getindex_sqlexpr(self):
+
+        col = Column('x', self.MyType())
+        col2 = Column('y', Integer())
+
+        self.assert_compile(
+            col[col2],
+            "x[y]",
+            checkparams={}
+        )
+
+        self.assert_compile(
+            col[col2 + 8],
+            "x[(y + :y_1)]",
+            checkparams={'y_1': 8}
+        )
+
+    def test_getslice_literal(self):
+
+        col = Column('x', self.MyType())
+
+        self.assert_compile(
+            col[5:6],
+            "x[:x_1::x_2]",
+            checkparams={'x_1': 5, 'x_2': 6}
+        )
+
+    def test_getslice_sqlexpr(self):
+
+        col = Column('x', self.MyType())
+        col2 = Column('y', Integer())
+
+        self.assert_compile(
+            col[col2:col2 + 5],
+            "x[y:y + :y_1]",
+            checkparams={'y_1': 5}
+        )
+
+    def test_getindex_literal_zeroind(self):
+
+        col = Column('x', self.MyType(zero_indexes=True))
+
+        self.assert_compile(
+            col[5],
+            "x[:x_1]",
+            checkparams={'x_1': 6}
+        )
+
+    def test_getindex_sqlexpr_zeroind(self):
+
+        col = Column('x', self.MyType(zero_indexes=True))
+        col2 = Column('y', Integer())
+
+        self.assert_compile(
+            col[col2],
+            "x[(y + :y_1)]",
+            checkparams={'y_1': 1}
+        )
+
+        self.assert_compile(
+            col[col2 + 8],
+            "x[(y + :y_1 + :param_1)]",
+            checkparams={'y_1': 8, 'param_1': 1}
+        )
+
+    def test_getslice_literal_zeroind(self):
+
+        col = Column('x', self.MyType(zero_indexes=True))
+
+        self.assert_compile(
+            col[5:6],
+            "x[:x_1::x_2]",
+            checkparams={'x_1': 6, 'x_2': 7}
+        )
+
+    def test_getslice_sqlexpr_zeroind(self):
+
+        col = Column('x', self.MyType(zero_indexes=True))
+        col2 = Column('y', Integer())
+
+        self.assert_compile(
+            col[col2:col2 + 5],
+            "x[y + :y_1:y + :y_2 + :param_1]",
+            checkparams={'y_1': 1, 'y_2': 5, 'param_1': 1}
+        )
+
+    def test_override_operators(self):
+        special_index_op = operators.custom_op('->')
+
+        class MyOtherType(Indexable, TypeEngine):
+            __visit_name__ = 'myothertype'
+
+            class Comparator(TypeEngine.Comparator):
+
+                def _adapt_expression(self, op, other_comparator):
+                    return special_index_op, MyOtherType()
+
+            comparator_factory = Comparator
+
+        col = Column('x', MyOtherType())
+        self.assert_compile(
+            col[5],
+            "x -> :x_1",
+            checkparams={'x_1': 5}
+        )
+
+
 class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     """test standalone booleans being wrapped in an AsBoolean, as well
@@ -823,6 +1072,64 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             select([false(), false()]),
             "SELECT false AS anon_1, false AS anon_2"
+        )
+
+    def test_is_true_literal(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            c.is_(True),
+            "x IS true"
+        )
+
+    def test_is_false_literal(self):
+        c = column('x', Boolean)
+        self.assert_compile(
+            c.is_(False),
+            "x IS false"
+        )
+
+    def test_and_false_literal_leading(self):
+        self.assert_compile(
+            and_(False, True),
+            "false"
+        )
+
+        self.assert_compile(
+            and_(False, False),
+            "false"
+        )
+
+    def test_and_true_literal_leading(self):
+        self.assert_compile(
+            and_(True, True),
+            "true"
+        )
+
+        self.assert_compile(
+            and_(True, False),
+            "false"
+        )
+
+    def test_or_false_literal_leading(self):
+        self.assert_compile(
+            or_(False, True),
+            "true"
+        )
+
+        self.assert_compile(
+            or_(False, False),
+            "false"
+        )
+
+    def test_or_true_literal_leading(self):
+        self.assert_compile(
+            or_(True, True),
+            "true"
+        )
+
+        self.assert_compile(
+            or_(True, False),
+            "true"
         )
 
 
@@ -1326,6 +1633,9 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self._test_math_op(operator.truediv, '/')
         else:
             self._test_math_op(operator.div, '/')
+
+    def test_math_op_mod(self):
+        self._test_math_op(operator.mod, '%')
 
 
 class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -1953,3 +2263,154 @@ class TupleTypingTest(fixtures.TestBase):
         eq_(len(expr.right.clauses), 2)
         for elem in expr.right.clauses:
             self._assert_types(elem)
+
+
+class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _fixture(self):
+        m = MetaData()
+
+        t = Table(
+            'tab1', m,
+            Column('arrval', Array(Integer)),
+            Column('data', Integer)
+        )
+        return t
+
+    def test_any_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == any_(t.c.arrval),
+            ":param_1 = ANY (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_all_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == all_(t.c.arrval),
+            ":param_1 = ALL (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_any_comparator_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 > any_(t.c.arrval),
+            ":param_1 > ANY (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_all_comparator_array(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 > all_(t.c.arrval),
+            ":param_1 > ALL (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_any_comparator_array_wexpr(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.data > any_(t.c.arrval),
+            "tab1.data > ANY (tab1.arrval)",
+            checkparams={}
+        )
+
+    def test_all_comparator_array_wexpr(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.data > all_(t.c.arrval),
+            "tab1.data > ALL (tab1.arrval)",
+            checkparams={}
+        )
+
+    def test_illegal_ops(self):
+        t = self._fixture()
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Only comparison operators may be used with ANY/ALL",
+            lambda: 5 + all_(t.c.arrval)
+        )
+
+        # TODO:
+        # this is invalid but doesn't raise an error,
+        # as the left-hand side just does its thing.  Types
+        # would need to reject their right-hand side.
+        self.assert_compile(
+            t.c.data + all_(t.c.arrval),
+            "tab1.data + ALL (tab1.arrval)"
+        )
+
+    def test_any_array_comparator_accessor(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.arrval.any(5, operator.gt),
+            ":param_1 > ANY (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_all_array_comparator_accessor(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            t.c.arrval.all(5, operator.gt),
+            ":param_1 > ALL (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_any_array_expression(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == any_(t.c.arrval[5:6] + postgresql.array([3, 4])),
+            "%(param_1)s = ANY (tab1.arrval[%(arrval_1)s:%(arrval_2)s] || "
+            "ARRAY[%(param_2)s, %(param_3)s])",
+            checkparams={
+                'arrval_2': 6, 'param_1': 5, 'param_3': 4,
+                'arrval_1': 5, 'param_2': 3},
+            dialect='postgresql'
+        )
+
+    def test_all_array_expression(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == all_(t.c.arrval[5:6] + postgresql.array([3, 4])),
+            "%(param_1)s = ALL (tab1.arrval[%(arrval_1)s:%(arrval_2)s] || "
+            "ARRAY[%(param_2)s, %(param_3)s])",
+            checkparams={
+                'arrval_2': 6, 'param_1': 5, 'param_3': 4,
+                'arrval_1': 5, 'param_2': 3},
+            dialect='postgresql'
+        )
+
+    def test_any_subq(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == any_(select([t.c.data]).where(t.c.data < 10)),
+            ":param_1 = ANY (SELECT tab1.data "
+            "FROM tab1 WHERE tab1.data < :data_1)",
+            checkparams={'data_1': 10, 'param_1': 5}
+        )
+
+    def test_all_subq(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == all_(select([t.c.data]).where(t.c.data < 10)),
+            ":param_1 = ALL (SELECT tab1.data "
+            "FROM tab1 WHERE tab1.data < :data_1)",
+            checkparams={'data_1': 10, 'param_1': 5}
+        )
+

@@ -84,18 +84,14 @@ releases as well, depending on the state of Jython itself.
 Supported Installation Methods
 -------------------------------
 
-SQLAlchemy supports installation using standard Python "distutils" or
-"setuptools" methodologies. An overview of potential setups is as follows:
+SQLAlchemy installation is via standard Python methodologies that are
+based on `setuptools <http://pypi.python.org/pypi/setuptools/>`_, either
+by referring to ``setup.py`` directly or by using
+`pip <http://pypi.python.org/pypi/pip/>`_ or other setuptools-compatible
+approaches.
 
-* **Plain Python Distutils** - SQLAlchemy can be installed with a clean
-  Python install using the services provided via `Python Distutils <http://docs.python.org/distutils/>`_,
-  using the ``setup.py`` script. The C extensions as well as Python 3 builds are supported.
-* **Setuptools or Distribute** - When using `setuptools <http://pypi.python.org/pypi/setuptools/>`_,
-  SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
-  extensions are supported.
-* **pip** - `pip <http://pypi.python.org/pypi/pip/>`_ is an installer that
-  rides on top of ``setuptools`` or ``distribute``, replacing the usage
-  of ``easy_install``.  It is often preferred for its simpler mode of usage.
+.. versionchanged:: 1.1 setuptools is now required by the setup.py file;
+   plain distutils installs are no longer supported.
 
 Install via pip
 ---------------
@@ -108,7 +104,7 @@ downloaded from Pypi and installed in one step::
 This command will download the latest **released** version of SQLAlchemy from the `Python
 Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
 
-In order to install the latest **prerelease** version, such as ``1.0.0b1``,
+In order to install the latest **prerelease** version, such as ``1.1.0b1``,
 pip requires that the ``--pre`` flag be used::
 
     pip install --pre SQLAlchemy
@@ -124,16 +120,14 @@ Otherwise, you can install from the distribution using the ``setup.py`` script::
 
     python setup.py install
 
+.. _c_extensions:
+
 Installing the C Extensions
 ----------------------------------
 
 SQLAlchemy includes C extensions which provide an extra speed boost for
 dealing with result sets.   The extensions are supported on both the 2.xx
 and 3.xx series of cPython.
-
-.. versionchanged:: 0.9.0
-
-    The C extensions now compile on Python 3 as well as Python 2.
 
 ``setup.py`` will automatically build the extensions if an appropriate platform is
 detected. If the build of the C extensions fails, due to missing compiler or
@@ -146,26 +140,11 @@ use case for this is either for special testing circumstances, or in the rare
 case of compatibility/build issues not overcome by the usual "rebuild"
 mechanism::
 
-  # *** only in SQLAlchemy 0.9.4 / 0.8.6 or greater ***
   export DISABLE_SQLALCHEMY_CEXT=1; python setup.py install
 
-.. versionadded:: 0.9.4,0.8.6  Support for disabling the build of
-   C extensions using the ``DISABLE_SQLALCHEMY_CEXT`` environment variable
-   has been added.  This allows control of C extension building whether or not
-   setuptools is available, and additionally works around the fact that
-   setuptools will possibly be **removing support** for command-line switches
-   such as ``--without-extensions`` in a future release.
-
-   For versions of SQLAlchemy prior to 0.9.4 or 0.8.6, the
-   ``--without-cextensions`` option may be used to disable the attempt to build
-   C extensions, provided setupools is in use, and provided the ``Feature``
-   construct is supported by the installed version of setuptools::
-
-      python setup.py --without-cextensions install
-
-   Or with pip::
-
-      pip install --global-option='--without-cextensions' SQLAlchemy
+.. versionchanged:: 1.1 The legacy ``--without-cextensions`` flag has been
+   removed from the installer as it relies on deprecated features of
+   setuptools.
 
 
 Installing on Python 3
@@ -174,8 +153,6 @@ Installing on Python 3
 SQLAlchemy runs directly on Python 2 or Python 3, and can be installed in
 either environment without any adjustments or code conversion.
 
-.. versionchanged:: 0.9.0 Python 3 is now supported in place with no 2to3 step
-   required.
 
 
 Installing a Database API
@@ -189,7 +166,7 @@ the available DBAPIs for each database, including external links.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 1.0. If you're working on a
+This documentation covers SQLAlchemy version 1.1. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this:
 
@@ -197,11 +174,11 @@ Python prompt like this:
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     1.0.0
+     1.1.0
 
 .. _migration:
 
-0.9 to 1.0 Migration
+1.0 to 1.1 Migration
 =====================
 
-Notes on what's changed from 0.9 to 1.0 is available here at :doc:`changelog/migration_10`.
+Notes on what's changed from 1.0 to 1.1 is available here at :doc:`changelog/migration_11`.

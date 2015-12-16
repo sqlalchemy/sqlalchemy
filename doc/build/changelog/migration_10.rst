@@ -2305,7 +2305,7 @@ Postgresql Dialect reflects Materialized Views, Foreign Tables
 Changes are as follows:
 
 * the :class:`Table` construct with ``autoload=True`` will now match a name
-  that exists in the database as a materialized view or foriegn table.
+  that exists in the database as a materialized view or foreign table.
 
 * :meth:`.Inspector.get_view_names` will return plain and materialized view
   names.

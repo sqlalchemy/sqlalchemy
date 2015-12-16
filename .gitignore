@@ -19,3 +19,4 @@ coverage.xml
 sqlnet.log
 /mapping_setup.py
 /test.py
+/.cache/

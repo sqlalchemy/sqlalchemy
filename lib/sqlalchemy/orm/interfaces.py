@@ -234,7 +234,7 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
         """
 
     def merge(self, session, source_state, source_dict, dest_state,
-              dest_dict, load, _recursive):
+              dest_dict, load, _recursive, _resolve_conflict_map):
         """Merge the attribute represented by this ``MapperProperty``
         from source to destination object.
 

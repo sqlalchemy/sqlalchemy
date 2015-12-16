@@ -13,6 +13,7 @@ from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import ARRAY
+import re
 
 
 class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -129,6 +130,15 @@ class MaterializedViewReflectionTest(
     def test_get_view_names(self):
         insp = inspect(testing.db)
         eq_(set(insp.get_view_names()), set(['test_mview', 'test_regview']))
+
+    def test_get_view_definition(self):
+        insp = inspect(testing.db)
+        eq_(
+            re.sub(
+                r'[\n\t ]+', ' ',
+                insp.get_view_definition("test_mview").strip()),
+            "SELECT testtable.id, testtable.data FROM testtable;"
+        )
 
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
@@ -673,6 +683,7 @@ class ReflectionTest(fixtures.TestBase):
         eq_(ind, [{'unique': False, 'column_names': ['y'], 'name': 'idx1'}])
         conn.close()
 
+    @testing.fails_if("postgresql < 8.2", "reloptions not supported")
     @testing.provide_metadata
     def test_index_reflection_with_storage_options(self):
         """reflect indexes with storage options set"""

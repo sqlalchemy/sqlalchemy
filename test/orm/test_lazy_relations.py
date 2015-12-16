@@ -1073,3 +1073,78 @@ class RefersToSelfLazyLoadInterferenceTest(fixtures.MappedTest):
         session.query(B).options(
             sa.orm.joinedload('parent').joinedload('zc')).all()
 
+
+class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults,):
+    """ORM-level test for [ticket:3531]"""
+
+    # mysql is having a recursion issue in the bind_expression
+    __only_on__ = ('sqlite', 'postgresql')
+
+    class StringAsInt(TypeDecorator):
+        impl = String(50)
+
+        def column_expression(self, col):
+            return sa.cast(col, Integer)
+
+        def bind_expression(self, col):
+            return sa.cast(col, String)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'person', metadata,
+            Column("id", cls.StringAsInt, primary_key=True),
+        )
+        Table(
+            "pets", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("person_id", Integer),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Person(cls.Basic):
+            pass
+
+        class Pet(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.Person, cls.tables.person, properties=dict(
+            pets=relationship(
+                cls.classes.Pet, primaryjoin=(
+                    orm.foreign(cls.tables.pets.c.person_id) ==
+                    sa.cast(
+                        sa.type_coerce(cls.tables.person.c.id, Integer),
+                        Integer
+                    )
+                )
+            )
+        ))
+
+        mapper(cls.classes.Pet, cls.tables.pets)
+
+    def test_lazyload_singlecast(self):
+        Person = self.classes.Person
+        Pet = self.classes.Pet
+
+        s = Session()
+        s.add_all([
+            Person(id=5), Pet(id=1, person_id=5)
+        ])
+        s.commit()
+
+        p1 = s.query(Person).first()
+
+        with self.sql_execution_asserter() as asserter:
+            p1.pets
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT pets.id AS pets_id, pets.person_id "
+                "AS pets_person_id FROM pets "
+                "WHERE pets.person_id = CAST(:param_1 AS INTEGER)",
+                [{'param_1': 5}]
+            )
+        )

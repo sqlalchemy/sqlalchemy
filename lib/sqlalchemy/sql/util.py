@@ -154,6 +154,7 @@ def unwrap_order_by(clause):
     without DESC/ASC/NULLS FIRST/NULLS LAST"""
 
     cols = util.column_set()
+    result = []
     stack = deque([clause])
     while stack:
         t = stack.popleft()
@@ -166,11 +167,13 @@ def unwrap_order_by(clause):
                 t = t.element
             if isinstance(t, (_textual_label_reference)):
                 continue
-            cols.add(t)
+            if t not in cols:
+                cols.add(t)
+                result.append(t)
         else:
             for c in t.get_children():
                 stack.append(c)
-    return cols
+    return result
 
 
 def clause_is_present(clause, search):
@@ -198,6 +201,21 @@ def surface_selectables(clause):
             stack.extend((elem.left, elem.right))
         elif isinstance(elem, FromGrouping):
             stack.append(elem.element)
+
+
+def surface_column_elements(clause):
+    """traverse and yield only outer-exposed column elements, such as would
+    be addressable in the WHERE clause of a SELECT if this element were
+    in the columns clause."""
+
+    stack = deque([clause])
+    while stack:
+        elem = stack.popleft()
+        yield elem
+        for sub in elem.get_children():
+            if isinstance(sub, FromGrouping):
+                continue
+            stack.append(sub)
 
 
 def selectables_overlap(left, right):
@@ -431,7 +449,6 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
     pairs = []
     visitors.traverse(expression, {}, {'binary': visit_binary})
     return pairs
-
 
 
 class ClauseAdapter(visitors.ReplacingCloningVisitor):

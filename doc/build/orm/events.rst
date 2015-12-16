@@ -5,12 +5,10 @@ ORM Events
 
 The ORM includes a wide variety of hooks available for subscription.
 
-.. versionadded:: 0.7
-    The event supersedes the previous system of "extension" classes.
-
-For an introduction to the event API, see :ref:`event_toplevel`.  Non-ORM events
-such as those regarding connections and low-level statement execution are described in
-:ref:`core_event_toplevel`.
+For an introduction to the most commonly used ORM events, see the section
+:ref:`session_events_toplevel`.   The event system in general is discussed
+at :ref:`event_toplevel`.  Non-ORM events such as those regarding connections
+and low-level statement execution are described in :ref:`core_event_toplevel`.
 
 Attribute Events
 ----------------

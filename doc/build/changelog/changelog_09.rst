@@ -12,7 +12,46 @@
         :start-line: 5
 
 .. changelog::
+    :version: 0.9.11
+
+    .. change::
+        :tags: bug, oracle, py3k
+        :tickets: 3491
+        :versions: 1.1.0b1, 1.0.9
+
+        Fixed support for cx_Oracle version 5.2, which was tripping
+        up SQLAlchemy's version detection under Python 3 and inadvertently
+        not using the correct unicode mode for Python 3.  This would cause
+        issues such as bound variables mis-interpreted as NULL and rows
+        silently not being returned.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 3497
+        :versions: 1.0.8
+
+        Fixed critical issue whereby the pool "checkout" event handler
+        may be called against a stale connection without the "connect"
+        event handler having been called, in the case where the pool
+        attempted to reconnect after being invalidated and failed; the stale
+        connection would remain present and would be used on a subsequent
+        attempt.  This issue has a greater impact in the 1.0 series subsequent
+        to 1.0.2, as it also delivers a blanked-out ``.info`` dictionary to
+        the event handler; prior to 1.0.2 the ``.info`` dictionary is still
+        the previous one.
+
+.. changelog::
     :version: 0.9.10
+    :released: July 22, 2015
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 3495
+        :versions: 1.0.8
+
+        Fixed bug in SQLite dialect where reflection of UNIQUE constraints
+        that included non-alphabetic characters in the names, like dots or
+        spaces, would not be reflected with their name.
 
     .. change::
         :tags: feature, sql

@@ -41,17 +41,15 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def _assert_sql(self, element, legacy_sql, modern_sql=None):
+        dialect = mssql.dialect(legacy_schema_aliasing=True)
+
+        self.assert_compile(
+            element,
+            legacy_sql,
+            dialect=dialect
+        )
+
         dialect = mssql.dialect()
-
-        with assertions.expect_warnings(
-                "legacy_schema_aliasing flag is defaulted to True.*"):
-            self.assert_compile(
-                element,
-                legacy_sql,
-                dialect=dialect
-            )
-
-        dialect = mssql.dialect(legacy_schema_aliasing=False)
         self.assert_compile(
             element,
             modern_sql or "foob",

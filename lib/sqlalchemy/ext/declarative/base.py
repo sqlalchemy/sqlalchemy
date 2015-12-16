@@ -463,7 +463,6 @@ class _MapperConfig(object):
 
     def _prepare_mapper_arguments(self):
         properties = self.properties
-
         if self.mapper_args_fn:
             mapper_args = self.mapper_args_fn()
         else:

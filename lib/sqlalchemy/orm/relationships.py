@@ -275,14 +275,30 @@ class RelationshipProperty(StrategizedProperty):
             :paramref:`~.relationship.backref` - alternative form
             of backref specification.
 
-        :param bake_queries:
-          Use the :class:`.BakedQuery` cache to cache queries used in lazy
-          loads.  True by default, as this typically improves performance
-          significantly.  Set to False to reduce ORM memory use, or
-          if unresolved stability issues are observed with the baked query
+        :param bake_queries=True:
+          Use the :class:`.BakedQuery` cache to cache the construction of SQL
+          used in lazy loads, when the :func:`.bake_lazy_loaders` function has
+          first been called.  Defaults to True and is intended to provide an
+          "opt out" flag per-relationship when the baked query cache system is
+          in use.
+
+          .. warning::
+
+              This flag **only** has an effect when the application-wide
+              :func:`.bake_lazy_loaders` function has been called.   It
+              defaults to True so is an "opt out" flag.
+
+          Setting this flag to False when baked queries are otherwise in
+          use might be to reduce
+          ORM memory use for this :func:`.relationship`, or to work around
+          unresolved stability issues observed within the baked query
           cache system.
 
           .. versionadded:: 1.0.0
+
+          .. seealso::
+
+            :ref:`baked_toplevel`
 
         :param cascade:
           a comma-separated list of cascade rules which determines how
@@ -604,30 +620,26 @@ class RelationshipProperty(StrategizedProperty):
                 and examples.
 
         :param passive_updates=True:
-          Indicates loading and INSERT/UPDATE/DELETE behavior when the
-          source of a foreign key value changes (i.e. an "on update"
-          cascade), which are typically the primary key columns of the
-          source row.
+          Indicates the persistence behavior to take when a referenced
+          primary key value changes in place, indicating that the referencing
+          foreign key columns will also need their value changed.
 
-          When True, it is assumed that ON UPDATE CASCADE is configured on
+          When True, it is assumed that ``ON UPDATE CASCADE`` is configured on
           the foreign key in the database, and that the database will
           handle propagation of an UPDATE from a source column to
-          dependent rows.  Note that with databases which enforce
-          referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
-          ON UPDATE CASCADE is required for this operation.  The
-          relationship() will update the value of the attribute on related
-          items which are locally present in the session during a flush.
+          dependent rows.  When False, the SQLAlchemy :func:`.relationship`
+          construct will attempt to emit its own UPDATE statements to
+          modify related targets.  However note that SQLAlchemy **cannot**
+          emit an UPDATE for more than one level of cascade.  Also,
+          setting this flag to False is not compatible in the case where
+          the database is in fact enforcing referential integrity, unless
+          those constraints are explicitly "deferred", if the target backend
+          supports it.
 
-          When False, it is assumed that the database does not enforce
-          referential integrity and will not be issuing its own CASCADE
-          operation for an update.  The relationship() will issue the
-          appropriate UPDATE statements to the database in response to the
-          change of a referenced key, and items locally present in the
-          session during a flush will also be refreshed.
-
-          This flag should probably be set to False if primary key changes
-          are expected and the database in use doesn't support CASCADE
-          (i.e. SQLite, MySQL MyISAM tables).
+          It is highly advised that an application which is employing
+          mutable primary keys keeps ``passive_updates`` set to True,
+          and instead uses the referential integrity features of the database
+          itself in order to handle the change efficiently and fully.
 
           .. seealso::
 
@@ -1418,7 +1430,7 @@ class RelationshipProperty(StrategizedProperty):
               source_dict,
               dest_state,
               dest_dict,
-              load, _recursive):
+              load, _recursive, _resolve_conflict_map):
 
         if load:
             for r in self._reverse_property:
@@ -1451,8 +1463,10 @@ class RelationshipProperty(StrategizedProperty):
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict,
-                                     load=load, _recursive=_recursive)
+                obj = session._merge(
+                    current_state, current_dict,
+                    load=load, _recursive=_recursive,
+                    _resolve_conflict_map=_resolve_conflict_map)
                 if obj is not None:
                     dest_list.append(obj)
 
@@ -1462,16 +1476,19 @@ class RelationshipProperty(StrategizedProperty):
                 for c in dest_list:
                     coll.append_without_event(c)
             else:
-                dest_state.get_impl(self.key)._set_iterable(
-                    dest_state, dest_dict, dest_list)
+                dest_state.get_impl(self.key).set(
+                    dest_state, dest_dict, dest_list,
+                    _adapt=False)
         else:
             current = source_dict[self.key]
             if current is not None:
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict,
-                                     load=load, _recursive=_recursive)
+                obj = session._merge(
+                    current_state, current_dict,
+                    load=load, _recursive=_recursive,
+                    _resolve_conflict_map=_resolve_conflict_map)
             else:
                 obj = None
 

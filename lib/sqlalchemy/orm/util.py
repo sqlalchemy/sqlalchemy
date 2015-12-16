@@ -537,7 +537,11 @@ class AliasedInsp(InspectionAttr):
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers
         if mapper in self_poly:
-            return getattr(self.entity, mapper.class_.__name__)._aliased_insp
+            if mapper is self.mapper:
+                return self
+            else:
+                return getattr(
+                    self.entity, mapper.class_.__name__)._aliased_insp
         elif mapper.isa(self.mapper):
             return self
         else:
@@ -985,12 +989,19 @@ def was_deleted(object):
     """Return True if the given object was deleted
     within a session flush.
 
+    This is regardless of whether or not the object is
+    persistent or detached.
+
     .. versionadded:: 0.8.0
+
+    .. seealso::
+
+        :attr:`.InstanceState.was_deleted`
 
     """
 
     state = attributes.instance_state(object)
-    return state.deleted
+    return state.was_deleted
 
 
 def randomize_unitofwork():

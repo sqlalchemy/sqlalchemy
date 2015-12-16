@@ -221,7 +221,7 @@ class ResultMetaData(object):
                 in enumerate(result_columns)
             ]
             self.keys = [
-                elem[1] for elem in result_columns
+                elem[0] for elem in result_columns
             ]
         else:
             # case 2 - raw string, or number of columns in result does
@@ -236,7 +236,8 @@ class ResultMetaData(object):
             # that SQLAlchemy has used up through 0.9.
 
             if num_ctx_cols:
-                result_map = self._create_result_map(result_columns)
+                result_map = self._create_result_map(
+                    result_columns, case_sensitive)
 
             raw = []
             self.keys = []
@@ -329,10 +330,12 @@ class ResultMetaData(object):
                 ])
 
     @classmethod
-    def _create_result_map(cls, result_columns):
+    def _create_result_map(cls, result_columns, case_sensitive=True):
         d = {}
         for elem in result_columns:
             key, rec = elem[0], elem[1:]
+            if not case_sensitive:
+                key = key.lower()
             if key in d:
                 # conflicting keyname, just double up the list
                 # of objects.  this will cause an "ambiguous name"
@@ -492,10 +495,20 @@ class ResultProxy(object):
         self._init_metadata()
 
     def _getter(self, key):
-        return self._metadata._getter(key)
+        try:
+            getter = self._metadata._getter
+        except AttributeError:
+            return self._non_result(None)
+        else:
+            return getter(key)
 
     def _has_key(self, key):
-        return self._metadata._has_key(key)
+        try:
+            has_key = self._metadata._has_key
+        except AttributeError:
+            return self._non_result(None)
+        else:
+            return has_key(key)
 
     def _init_metadata(self):
         metadata = self._cursor_description()
@@ -699,7 +712,7 @@ class ResultProxy(object):
         while True:
             row = self.fetchone()
             if row is None:
-                raise StopIteration
+                return
             else:
                 yield row
 

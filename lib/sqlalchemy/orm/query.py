@@ -103,6 +103,7 @@ class Query(object):
     _orm_only_adapt = True
     _orm_only_from_obj_alias = True
     _current_path = _path_registry
+    _has_mapper_entities = False
 
     def __init__(self, entities, session=None):
         self.session = session
@@ -114,6 +115,7 @@ class Query(object):
             entity_wrapper = _QueryEntity
         self._entities = []
         self._primary_entity = None
+        self._has_mapper_entities = False
         for ent in util.to_list(entities):
             entity_wrapper(self, ent)
 
@@ -287,6 +289,8 @@ class Query(object):
         return self._entities[0]
 
     def _mapper_zero(self):
+        # TODO: self._select_from_entity is not a mapper
+        # so this method is misnamed
         return self._select_from_entity \
             if self._select_from_entity is not None \
             else self._entity_zero().entity_zero
@@ -607,6 +611,16 @@ class Query(object):
 
         When the `Query` actually issues SQL to load rows, it always
         uses column labeling.
+
+        .. note:: The :meth:`.Query.with_labels` method *only* applies
+           the output of :attr:`.Query.statement`, and *not* to any of
+           the result-row invoking systems of :class:`.Query` itself, e.g.
+           :meth:`.Query.first`, :meth:`.Query.all`, etc.   To execute
+           a query using :meth:`.Query.with_labels`, invoke the
+           :attr:`.Query.statement` using :meth:`.Session.execute`::
+
+                result = session.execute(query.with_labels().statement)
+
 
         """
         self._with_labels = True
@@ -930,11 +944,13 @@ class Query(object):
         """
 
         if property is None:
+            mapper_zero = inspect(self._mapper_zero()).mapper
+
             mapper = object_mapper(instance)
 
             for prop in mapper.iterate_properties:
                 if isinstance(prop, properties.RelationshipProperty) and \
-                        prop.mapper is self._mapper_zero():
+                        prop.mapper is mapper_zero:
                     property = prop
                     break
             else:
@@ -972,8 +988,169 @@ class Query(object):
         """return a Query that selects from this Query's
         SELECT statement.
 
-        \*entities - optional list of entities which will replace
-        those being selected.
+        :meth:`.Query.from_self` essentially turns the SELECT statement
+        into a SELECT of itself.  Given a query such as::
+
+            q = session.query(User).filter(User.name.like('e%'))
+
+        Given the :meth:`.Query.from_self` version::
+
+            q = session.query(User).filter(User.name.like('e%')).from_self()
+
+        This query renders as:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1) AS anon_1
+
+        There are lots of cases where :meth:`.Query.from_self` may be useful.
+        A simple one is where above, we may want to apply a row LIMIT to
+        the set of user objects we query against, and then apply additional
+        joins against that row-limited set::
+
+            q = session.query(User).filter(User.name.like('e%')).\\
+                limit(5).from_self().\\
+                join(User.addresses).filter(Address.email.like('q%'))
+
+        The above query joins to the ``Address`` entity but only against the
+        first five results of the ``User`` query:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1
+             LIMIT :param_1) AS anon_1
+            JOIN address ON anon_1.user_id = address.user_id
+            WHERE address.email LIKE :email_1
+
+        **Automatic Aliasing**
+
+        Another key behavior of :meth:`.Query.from_self` is that it applies
+        **automatic aliasing** to the entities inside the subquery, when
+        they are referenced on the outside.  Above, if we continue to
+        refer to the ``User`` entity without any additional aliasing applied
+        to it, those references wil be in terms of the subquery::
+
+            q = session.query(User).filter(User.name.like('e%')).\\
+                limit(5).from_self().\\
+                join(User.addresses).filter(Address.email.like('q%')).\\
+                order_by(User.name)
+
+        The ORDER BY against ``User.name`` is aliased to be in terms of the
+        inner subquery:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1
+             LIMIT :param_1) AS anon_1
+            JOIN address ON anon_1.user_id = address.user_id
+            WHERE address.email LIKE :email_1 ORDER BY anon_1.user_name
+
+        The automatic aliasing feature only works in a **limited** way,
+        for simple filters and orderings.   More ambitious constructions
+        such as referring to the entity in joins should prefer to use
+        explicit subquery objects, typically making use of the
+        :meth:`.Query.subquery` method to produce an explicit subquery object.
+        Always test the structure of queries by viewing the SQL to ensure
+        a particular structure does what's expected!
+
+        **Changing the Entities**
+
+        :meth:`.Query.from_self` also includes the ability to modify what
+        columns are being queried.   In our example, we want ``User.id``
+        to be queried by the inner query, so that we can join to the
+        ``Address`` entity on the outside, but we only wanted the outer
+        query to return the ``Address.email`` column::
+
+            q = session.query(User).filter(User.name.like('e%')).\\
+                limit(5).from_self(Address.email).\\
+                join(User.addresses).filter(Address.email.like('q%'))
+
+        yielding:
+
+        .. sourcecode:: sql
+
+            SELECT address.email AS address_email
+            FROM (SELECT "user".id AS user_id, "user".name AS user_name
+            FROM "user"
+            WHERE "user".name LIKE :name_1
+             LIMIT :param_1) AS anon_1
+            JOIN address ON anon_1.user_id = address.user_id
+            WHERE address.email LIKE :email_1
+
+        **Looking out for Inner / Outer Columns**
+
+        Keep in mind that when referring to columns that originate from
+        inside the subquery, we need to ensure they are present in the
+        columns clause of the subquery itself; this is an ordinary aspect of
+        SQL.  For example, if we wanted to load from a joined entity inside
+        the subquery using :func:`.contains_eager`, we need to add those
+        columns.   Below illustrates a join of ``Address`` to ``User``,
+        then a subquery, and then we'd like :func:`.contains_eager` to access
+        the ``User`` columns::
+
+            q = session.query(Address).join(Address.user).\\
+                filter(User.name.like('e%'))
+
+            q = q.add_entity(User).from_self().\\
+                options(contains_eager(Address.user))
+
+        We use :meth:`.Query.add_entity` above **before** we call
+        :meth:`.Query.from_self` so that the ``User`` columns are present
+        in the inner subquery, so that they are available to the
+        :func:`.contains_eager` modifier we are using on the outside,
+        producing:
+
+        .. sourcecode:: sql
+
+            SELECT anon_1.address_id AS anon_1_address_id,
+                   anon_1.address_email AS anon_1_address_email,
+                   anon_1.address_user_id AS anon_1_address_user_id,
+                   anon_1.user_id AS anon_1_user_id,
+                   anon_1.user_name AS anon_1_user_name
+            FROM (
+                SELECT address.id AS address_id,
+                address.email AS address_email,
+                address.user_id AS address_user_id,
+                "user".id AS user_id,
+                "user".name AS user_name
+            FROM address JOIN "user" ON "user".id = address.user_id
+            WHERE "user".name LIKE :name_1) AS anon_1
+
+        If we didn't call ``add_entity(User)``, but still asked
+        :func:`.contains_eager` to load the ``User`` entity, it would be
+        forced to add the table on the outside without the correct
+        join criteria - note the ``anon1, "user"`` phrase at
+        the end:
+
+        .. sourcecode:: sql
+
+            -- incorrect query
+            SELECT anon_1.address_id AS anon_1_address_id,
+                   anon_1.address_email AS anon_1_address_email,
+                   anon_1.address_user_id AS anon_1_address_user_id,
+                   "user".id AS user_id,
+                   "user".name AS user_name
+            FROM (
+                SELECT address.id AS address_id,
+                address.email AS address_email,
+                address.user_id AS address_user_id
+            FROM address JOIN "user" ON "user".id = address.user_id
+            WHERE "user".name LIKE :name_1) AS anon_1, "user"
+
+        :param \*entities: optional list of entities which will replace
+         those being selected.
 
         """
         fromclause = self.with_labels().enable_eagerloads(False).\
@@ -1280,7 +1457,9 @@ class Query(object):
 
             session.query(MyClass).filter(MyClass.name == 'some name')
 
-        Multiple criteria are joined together by AND::
+        Multiple criteria may be specified as comma separated; the effect
+        is that they will be joined together using the :func:`.and_`
+        function::
 
             session.query(MyClass).\\
                 filter(MyClass.name == 'some name', MyClass.id > 5)
@@ -1288,9 +1467,6 @@ class Query(object):
         The criterion is any SQL expression object applicable to the
         WHERE clause of a select.   String expressions are coerced
         into SQL expression constructs via the :func:`.text` construct.
-
-        .. versionchanged:: 0.7.5
-            Multiple criteria joined by AND.
 
         .. seealso::
 
@@ -1315,7 +1491,9 @@ class Query(object):
 
             session.query(MyClass).filter_by(name = 'some name')
 
-        Multiple criteria are joined together by AND::
+        Multiple criteria may be specified as comma separated; the effect
+        is that they will be joined together using the :func:`.and_`
+        function::
 
             session.query(MyClass).\\
                 filter_by(name = 'some name', id = 5)
@@ -2323,6 +2501,19 @@ class Query(object):
         """Apply a ``DISTINCT`` to the query and return the newly resulting
         ``Query``.
 
+
+        .. note::
+
+            The :meth:`.distinct` call includes logic that will automatically
+            add columns from the ORDER BY of the query to the columns
+            clause of the SELECT statement, to satisfy the common need
+            of the database backend that ORDER BY columns be part of the
+            SELECT list when DISTINCT is used.   These columns *are not*
+            added to the list of columns actually fetched by the
+            :class:`.Query`, however, so would not affect results.
+            The columns are passed through when using the
+            :attr:`.Query.statement` accessor, however.
+
         :param \*expr: optional column expressions.  When present,
          the Postgresql dialect will render a ``DISTINCT ON (<expressions>>)``
          construct.
@@ -2436,7 +2627,13 @@ class Query(object):
         (note this may consist of multiple result rows if join-loaded
         collections are present).
 
-        Calling ``first()`` results in an execution of the underlying query.
+        Calling :meth:`.Query.first` results in an execution of the underlying query.
+
+        .. seealso::
+
+            :meth:`.Query.one`
+
+            :meth:`.Query.one_or_none`
 
         """
         if self._statement is not None:
@@ -2448,26 +2645,27 @@ class Query(object):
         else:
             return None
 
-    def one(self):
-        """Return exactly one result or raise an exception.
+    def one_or_none(self):
+        """Return at most one result or raise an exception.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+        Returns ``None`` if the query selects
         no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound``
         if multiple object identities are returned, or if multiple
-        rows are returned for a query that does not return object
-        identities.
+        rows are returned for a query that returns only scalar values
+        as opposed to full identity-mapped entities.
 
-        Note that an entity query, that is, one which selects one or
-        more mapped classes as opposed to individual column attributes,
-        may ultimately represent many rows but only one row of
-        unique entity or entities - this is a successful result for one().
+        Calling :meth:`.Query.one_or_none` results in an execution of the
+        underlying query.
 
-        Calling ``one()`` results in an execution of the underlying query.
+        .. versionadded:: 1.0.9
 
-        .. versionchanged:: 0.6
-            ``one()`` fully fetches all results instead of applying
-            any kind of limit, so that the "unique"-ing of entities does not
-            conceal multiple object identities.
+            Added :meth:`.Query.one_or_none`
+
+        .. seealso::
+
+            :meth:`.Query.first`
+
+            :meth:`.Query.one`
 
         """
         ret = list(self)
@@ -2476,10 +2674,38 @@ class Query(object):
         if l == 1:
             return ret[0]
         elif l == 0:
-            raise orm_exc.NoResultFound("No row was found for one()")
+            return None
         else:
             raise orm_exc.MultipleResultsFound(
+                "Multiple rows were found for one_or_none()")
+
+    def one(self):
+        """Return exactly one result or raise an exception.
+
+        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+        no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound``
+        if multiple object identities are returned, or if multiple
+        rows are returned for a query that returns only scalar values
+        as opposed to full identity-mapped entities.
+
+        Calling :meth:`.one` results in an execution of the underlying query.
+
+        .. seealso::
+
+            :meth:`.Query.first`
+
+            :meth:`.Query.one_or_none`
+
+        """
+        try:
+            ret = self.one_or_none()
+        except orm_exc.MultipleResultsFound:
+            raise orm_exc.MultipleResultsFound(
                 "Multiple rows were found for one()")
+        else:
+            if ret is None:
+                raise orm_exc.NoResultFound("No row was found for one()")
+            return ret
 
     def scalar(self):
         """Return the first element of the first result or None
@@ -2849,7 +3075,12 @@ class Query(object):
 
         :param values: a dictionary with attributes names, or alternatively
          mapped attributes or SQL expressions, as keys, and literal
-         values or sql expressions as values.
+         values or sql expressions as values.   If :ref:`parameter-ordered
+         mode <updates_order_parameters>` is desired, the values can be
+         passed as a list of 2-tuples;
+         this requires that the :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+         flag is passed to the :paramref:`.Query.update.update_args` dictionary
+         as well.
 
           .. versionchanged:: 1.0.0 - string names in the values dictionary
              are now resolved against the mapped entity; previously, these
@@ -2880,7 +3111,8 @@ class Query(object):
         :param update_args: Optional dictionary, if present will be passed
          to the underlying :func:`.update` construct as the ``**kw`` for
          the object.  May be used to pass dialect-specific arguments such
-         as ``mysql_limit``.
+         as ``mysql_limit``, as well as other special arguments such as
+         :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`.
 
          .. versionadded:: 1.0.0
 
@@ -3181,11 +3413,13 @@ class _MapperEntity(_QueryEntity):
         if not query._primary_entity:
             query._primary_entity = self
         query._entities.append(self)
-
+        query._has_mapper_entities = True
         self.entities = [entity]
         self.expr = entity
 
     supports_single_entity = True
+
+    use_id_for_hash = True
 
     def setup_entity(self, ext_info, aliased_adapter):
         self.mapper = ext_info.mapper
@@ -3231,8 +3465,6 @@ class _MapperEntity(_QueryEntity):
         query._mapper_loads_polymorphically_with(
             self.mapper, sql_util.ColumnAdapter(
                 from_obj, self.mapper._equivalent_columns))
-
-    filter_fn = id
 
     @property
     def type(self):
@@ -3462,6 +3694,8 @@ class Bundle(InspectionAttr):
 
 
 class _BundleEntity(_QueryEntity):
+    use_id_for_hash = False
+
     def __init__(self, query, bundle, setup_entities=True):
         query._entities.append(self)
         self.bundle = self.expr = bundle
@@ -3477,8 +3711,6 @@ class _BundleEntity(_QueryEntity):
                     _ColumnEntity(self, expr, namespace=self)
 
         self.entities = ()
-
-        self.filter_fn = lambda item: item
 
         self.supports_single_entity = self.bundle.single_entity
 
@@ -3582,11 +3814,7 @@ class _ColumnEntity(_QueryEntity):
             search_entities = True
 
         self.type = type_ = column.type
-        if type_.hashable:
-            self.filter_fn = lambda item: item
-        else:
-            counter = util.counter()
-            self.filter_fn = lambda item: counter()
+        self.use_id_for_hash = not type_.hashable
 
         # If the Column is unnamed, give it a
         # label() so that mutable column expressions
@@ -3619,7 +3847,7 @@ class _ColumnEntity(_QueryEntity):
             self._from_entities = set(self.entities)
         else:
             all_elements = [
-                elem for elem in visitors.iterate(column, {})
+                elem for elem in sql_util.surface_column_elements(column)
                 if 'parententity' in elem._annotations
             ]
 

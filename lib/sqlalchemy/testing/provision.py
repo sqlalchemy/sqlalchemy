@@ -2,7 +2,7 @@ from sqlalchemy.engine import url as sa_url
 from sqlalchemy import text
 from sqlalchemy.util import compat
 from . import config, engines
-
+import os
 
 FOLLOWER_IDENT = None
 
@@ -46,11 +46,13 @@ def configure_follower(follower_ident):
         _configure_follower(cfg, follower_ident)
 
 
-def setup_config(db_url, db_opts, options, file_config, follower_ident):
+def setup_config(db_url, options, file_config, follower_ident):
     if follower_ident:
         db_url = _follower_url_from_main(db_url, follower_ident)
+    db_opts = {}
     _update_db_opts(db_url, db_opts)
     eng = engines.testing_engine(db_url, db_opts)
+    _post_configure_engine(db_url, eng, follower_ident)
     eng.connect().close()
     cfg = config.Config.register(eng, db_opts, options, file_config)
     if follower_ident:
@@ -105,6 +107,11 @@ def _configure_follower(cfg, ident):
 
 
 @register.init
+def _post_configure_engine(url, engine, follower_ident):
+    pass
+
+
+@register.init
 def _follower_url_from_main(url, ident):
     url = sa_url.make_url(url)
     url.database = ident
@@ -123,6 +130,23 @@ def _sqlite_follower_url_from_main(url, ident):
         return url
     else:
         return sa_url.make_url("sqlite:///%s.db" % ident)
+
+
+@_post_configure_engine.for_db("sqlite")
+def _sqlite_post_configure_engine(url, engine, follower_ident):
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "connect")
+    def connect(dbapi_connection, connection_record):
+        # use file DBs in all cases, memory acts kind of strangely
+        # as an attached
+        if not follower_ident:
+            dbapi_connection.execute(
+                'ATTACH DATABASE "test_schema.db" AS test_schema')
+        else:
+            dbapi_connection.execute(
+                'ATTACH DATABASE "%s_test_schema.db" AS test_schema'
+                % follower_ident)
 
 
 @_create_db.for_db("postgresql")
@@ -175,8 +199,10 @@ def _pg_drop_db(cfg, eng, ident):
 
 @_drop_db.for_db("sqlite")
 def _sqlite_drop_db(cfg, eng, ident):
-    pass
-    #os.remove("%s.db" % ident)
+    if ident:
+        os.remove("%s_test_schema.db" % ident)
+    else:
+        os.remove("%s.db" % ident)
 
 
 @_drop_db.for_db("mysql")

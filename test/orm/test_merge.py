@@ -1102,6 +1102,101 @@ class MergeTest(_fixtures.FixtureTest):
             eq_(ustate.load_path.path, (umapper, ))
             eq_(ustate.load_options, set([opt2]))
 
+    def test_resolve_conflicts_pending_doesnt_interfere_no_ident(self):
+        User, Address, Order = (
+            self.classes.User, self.classes.Address, self.classes.Order)
+        users, addresses, orders = (
+            self.tables.users, self.tables.addresses, self.tables.orders)
+
+        mapper(User, users, properties={
+            'orders': relationship(Order)
+        })
+        mapper(Order, orders, properties={
+            'address': relationship(Address)
+        })
+        mapper(Address, addresses)
+
+        u1 = User(id=7, name='x')
+        u1.orders = [
+            Order(description='o1', address=Address(email_address='a')),
+            Order(description='o2', address=Address(email_address='b')),
+            Order(description='o3', address=Address(email_address='c'))
+        ]
+
+        sess = Session()
+        sess.merge(u1)
+        sess.flush()
+
+        eq_(
+            sess.query(Address.email_address).order_by(
+                Address.email_address).all(),
+            [('a', ), ('b', ), ('c', )]
+        )
+
+    def test_resolve_conflicts_pending(self):
+        User, Address, Order = (
+            self.classes.User, self.classes.Address, self.classes.Order)
+        users, addresses, orders = (
+            self.tables.users, self.tables.addresses, self.tables.orders)
+
+        mapper(User, users, properties={
+            'orders': relationship(Order)
+        })
+        mapper(Order, orders, properties={
+            'address': relationship(Address)
+        })
+        mapper(Address, addresses)
+
+        u1 = User(id=7, name='x')
+        u1.orders = [
+            Order(description='o1', address=Address(id=1, email_address='a')),
+            Order(description='o2', address=Address(id=1, email_address='b')),
+            Order(description='o3', address=Address(id=1, email_address='c'))
+        ]
+
+        sess = Session()
+        sess.merge(u1)
+        sess.flush()
+
+        eq_(
+            sess.query(Address).one(),
+            Address(id=1, email_address='c')
+        )
+
+    def test_resolve_conflicts_persistent(self):
+        User, Address, Order = (
+            self.classes.User, self.classes.Address, self.classes.Order)
+        users, addresses, orders = (
+            self.tables.users, self.tables.addresses, self.tables.orders)
+
+        mapper(User, users, properties={
+            'orders': relationship(Order)
+        })
+        mapper(Order, orders, properties={
+            'address': relationship(Address)
+        })
+        mapper(Address, addresses)
+
+        sess = Session()
+        sess.add(Address(id=1, email_address='z'))
+        sess.commit()
+
+        u1 = User(id=7, name='x')
+        u1.orders = [
+            Order(description='o1', address=Address(id=1, email_address='a')),
+            Order(description='o2', address=Address(id=1, email_address='b')),
+            Order(description='o3', address=Address(id=1, email_address='c'))
+        ]
+
+        sess = Session()
+        sess.merge(u1)
+        sess.flush()
+
+        eq_(
+            sess.query(Address).one(),
+            Address(id=1, email_address='c')
+        )
+
 
 class M2ONoUseGetLoadingTest(fixtures.MappedTest):
     """Merge a one-to-many.  The many-to-one on the other side is set up

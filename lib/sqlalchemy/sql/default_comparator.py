@@ -14,7 +14,8 @@ from . import operators
 from .elements import BindParameter, True_, False_, BinaryExpression, \
     Null, _const_expr, _clause_element_as_expr, \
     ClauseList, ColumnElement, TextClause, UnaryExpression, \
-    collate, _is_literal, _literal_as_text, ClauseElement, and_, or_
+    collate, _is_literal, _literal_as_text, ClauseElement, and_, or_, \
+    Slice, Visitable, _literal_as_binds
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 
@@ -161,6 +162,34 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
                             negate=negate_op)
 
 
+def _getitem_impl(expr, op, other, **kw):
+    if isinstance(expr.type, type_api.INDEXABLE):
+        if isinstance(other, slice):
+            if expr.type.zero_indexes:
+                other = slice(
+                    other.start + 1,
+                    other.stop + 1,
+                    other.step
+                )
+            other = Slice(
+                _literal_as_binds(
+                    other.start, name=expr.key, type_=type_api.INTEGERTYPE),
+                _literal_as_binds(
+                    other.stop, name=expr.key, type_=type_api.INTEGERTYPE),
+                _literal_as_binds(
+                    other.step, name=expr.key, type_=type_api.INTEGERTYPE)
+            )
+        else:
+            if expr.type.zero_indexes:
+                other += 1
+
+        other = _literal_as_binds(
+            other, name=expr.key, type_=type_api.INTEGERTYPE)
+        return _binary_operate(expr, op, other, **kw)
+    else:
+        _unsupported_impl(expr, op, other, **kw)
+
+
 def _unsupported_impl(expr, op, *arg, **kw):
     raise NotImplementedError("Operator '%s' is not supported on "
                               "this expression" % op.__name__)
@@ -260,7 +289,7 @@ operator_lookup = {
     "between_op": (_between_impl, ),
     "notbetween_op": (_between_impl, ),
     "neg": (_neg_impl,),
-    "getitem": (_unsupported_impl,),
+    "getitem": (_getitem_impl,),
     "lshift": (_unsupported_impl,),
     "rshift": (_unsupported_impl,),
 }
@@ -280,7 +309,7 @@ def _check_literal(expr, operator, other):
 
     if isinstance(other, (SelectBase, Alias)):
         return other.as_scalar()
-    elif not isinstance(other, (ColumnElement, TextClause)):
+    elif not isinstance(other, Visitable):
         return expr._bind_param(operator, other)
     else:
         return other

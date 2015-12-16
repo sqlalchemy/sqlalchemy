@@ -12,9 +12,9 @@ from . import sqltypes, schema
 from .base import Executable, ColumnCollection
 from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
     literal_column, _type_from_args, ColumnElement, _clone,\
-    Over, BindParameter, FunctionFilter
+    Over, BindParameter, FunctionFilter, Grouping, WithinGroup
 from .selectable import FromClause, Select, Alias
-
+from . import util as sqlutil
 from . import operators
 from .visitors import VisitableType
 from .. import util
@@ -116,6 +116,21 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         """
         return Over(self, partition_by=partition_by, order_by=order_by)
 
+    def within_group(self, *order_by):
+        """Produce a WITHIN GROUP (ORDER BY expr) clause against this function.
+
+        Used against so-called "ordered set aggregate" and "hypothetical
+        set aggregate" functions, including :class:`.percentile_cont`,
+        :class:`.rank`, :class:`.dense_rank`, etc.
+
+        See :func:`~.expression.within_group` for a full description.
+
+        .. versionadded:: 1.1
+
+
+        """
+        return WithinGroup(self, *order_by)
+
     def filter(self, *criterion):
         """Produce a FILTER clause against this function.
 
@@ -156,6 +171,18 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         self.clause_expr = clone(self.clause_expr, **kw)
         self._reset_exported()
         FunctionElement.clauses._reset(self)
+
+    def within_group_type(self, within_group):
+        """For types that define their return type as based on the criteria
+        within a WITHIN GROUP (ORDER BY) expression, called by the
+        :class:`.WithinGroup` construct.
+
+        Returns None by default, in which case the function's normal ``.type``
+        is used.
+
+        """
+
+        return None
 
     def alias(self, name=None, flat=False):
         """Produce a :class:`.Alias` construct against this
@@ -232,6 +259,16 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def _bind_param(self, operator, obj):
         return BindParameter(None, obj, _compared_to_operator=operator,
                              _compared_to_type=self.type, unique=True)
+
+    def self_group(self, against=None):
+        # for the moment, we are parenthesizing all array-returning
+        # expressions against getitem.  This may need to be made
+        # more portable if in the future we support other DBs
+        # besides postgresql.
+        if against is operators.getitem:
+            return Grouping(self)
+        else:
+            return super(FunctionElement, self).self_group(against=against)
 
 
 class _FunctionGenerator(object):
@@ -483,7 +520,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     def __init__(self, *args, **kwargs):
         parsed_args = kwargs.pop('_parsed_args', None)
         if parsed_args is None:
-            parsed_args = [_literal_as_binds(c) for c in args]
+            parsed_args = [_literal_as_binds(c, self.name) for c in args]
         self.packagenames = []
         self._bind = kwargs.get('bind', None)
         self.clause_expr = ClauseList(
@@ -528,10 +565,10 @@ class ReturnTypeFromArgs(GenericFunction):
     """Define a function whose return type is the same as its arguments."""
 
     def __init__(self, *args, **kwargs):
-        args = [_literal_as_binds(c) for c in args]
+        args = [_literal_as_binds(c, self.name) for c in args]
         kwargs.setdefault('type_', _type_from_args(args))
         kwargs['_parsed_args'] = args
-        GenericFunction.__init__(self, *args, **kwargs)
+        super(ReturnTypeFromArgs, self).__init__(*args, **kwargs)
 
 
 class coalesce(ReturnTypeFromArgs):
@@ -579,7 +616,7 @@ class count(GenericFunction):
     def __init__(self, expression=None, **kwargs):
         if expression is None:
             expression = literal_column('*')
-        GenericFunction.__init__(self, expression, **kwargs)
+        super(count, self).__init__(expression, **kwargs)
 
 
 class current_date(AnsiFunction):
@@ -616,3 +653,150 @@ class sysdate(AnsiFunction):
 
 class user(AnsiFunction):
     type = sqltypes.String
+
+
+class array_agg(GenericFunction):
+    """support for the ARRAY_AGG function.
+
+    The ``func.array_agg(expr)`` construct returns an expression of
+    type :class:`.Array`.
+
+    e.g.::
+
+        stmt = select([func.array_agg(table.c.values)[2:5]])
+
+    .. versionadded:: 1.1
+
+    .. seealso::
+
+        :func:`.postgresql.array_agg` - PostgreSQL-specific version that
+        returns :class:`.ARRAY`, which has PG-specific operators added.
+
+    """
+
+    type = sqltypes.Array
+
+    def __init__(self, *args, **kwargs):
+        args = [_literal_as_binds(c) for c in args]
+        kwargs.setdefault('type_', self.type(_type_from_args(args)))
+        kwargs['_parsed_args'] = args
+        super(array_agg, self).__init__(*args, **kwargs)
+
+
+class OrderedSetAgg(GenericFunction):
+    """Define a function where the return type is based on the sort
+    expression type as defined by the expression passed to the
+    :meth:`.FunctionElement.within_group` method."""
+
+    array_for_multi_clause = False
+
+    def within_group_type(self, within_group):
+        func_clauses = self.clause_expr.element
+        order_by = sqlutil.unwrap_order_by(within_group.order_by)
+        if self.array_for_multi_clause and len(func_clauses.clauses) > 1:
+            return sqltypes.Array(order_by[0].type)
+        else:
+            return order_by[0].type
+
+
+class mode(OrderedSetAgg):
+    """implement the ``mode`` ordered-set aggregate function.
+
+    This function must be used with the :meth:`.FunctionElement.within_group`
+    modifier to supply a sort expression to operate upon.
+
+    The return type of this function is the same as the sort expression.
+
+    .. versionadded:: 1.1
+
+    """
+
+
+class percentile_cont(OrderedSetAgg):
+    """implement the ``percentile_cont`` ordered-set aggregate function.
+
+    This function must be used with the :meth:`.FunctionElement.within_group`
+    modifier to supply a sort expression to operate upon.
+
+    The return type of this function is the same as the sort expression,
+    or if the arguments are an array, an :class:`.Array` of the sort
+    expression's type.
+
+    .. versionadded:: 1.1
+
+    """
+
+    array_for_multi_clause = True
+
+
+class percentile_disc(OrderedSetAgg):
+    """implement the ``percentile_disc`` ordered-set aggregate function.
+
+    This function must be used with the :meth:`.FunctionElement.within_group`
+    modifier to supply a sort expression to operate upon.
+
+    The return type of this function is the same as the sort expression,
+    or if the arguments are an array, an :class:`.Array` of the sort
+    expression's type.
+
+    .. versionadded:: 1.1
+
+    """
+
+    array_for_multi_clause = True
+
+
+class rank(GenericFunction):
+    """Implement the ``rank`` hypothetical-set aggregate function.
+
+    This function must be used with the :meth:`.FunctionElement.within_group`
+    modifier to supply a sort expression to operate upon.
+
+    The return type of this function is :class:`.Integer`.
+
+    .. versionadded:: 1.1
+
+    """
+    type = sqltypes.Integer()
+
+
+class dense_rank(GenericFunction):
+    """Implement the ``dense_rank`` hypothetical-set aggregate function.
+
+    This function must be used with the :meth:`.FunctionElement.within_group`
+    modifier to supply a sort expression to operate upon.
+
+    The return type of this function is :class:`.Integer`.
+
+    .. versionadded:: 1.1
+
+    """
+    type = sqltypes.Integer()
+
+
+class percent_rank(GenericFunction):
+    """Implement the ``percent_rank`` hypothetical-set aggregate function.
+
+    This function must be used with the :meth:`.FunctionElement.within_group`
+    modifier to supply a sort expression to operate upon.
+
+    The return type of this function is :class:`.Numeric`.
+
+    .. versionadded:: 1.1
+
+    """
+    type = sqltypes.Numeric()
+
+
+class cume_dist(GenericFunction):
+    """Implement the ``cume_dist`` hypothetical-set aggregate function.
+
+    This function must be used with the :meth:`.FunctionElement.within_group`
+    modifier to supply a sort expression to operate upon.
+
+    The return type of this function is :class:`.Numeric`.
+
+    .. versionadded:: 1.1
+
+    """
+    type = sqltypes.Numeric()

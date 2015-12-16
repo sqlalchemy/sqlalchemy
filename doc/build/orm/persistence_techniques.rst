@@ -78,6 +78,112 @@ proper context for the desired engine::
 
     connection = session.connection(MyMappedClass)
 
+.. _session_forcing_null:
+
+Forcing NULL on a column with a default
+=======================================
+
+The ORM considers any attribute that was never set on an object as a
+"default" case; the attribute will be omitted from the INSERT statement::
+
+    class MyObject(Base):
+        __tablename__ = 'my_table'
+        id = Column(Integer, primary_key=True)
+        data = Column(String(50), nullable=True)
+
+    obj = MyObject(id=1)
+    session.add(obj)
+    session.commit()  # INSERT with the 'data' column omitted; the database
+                      # itself will persist this as the NULL value
+
+Omitting a column from the INSERT means that the column will
+have the NULL value set, *unless* the column has a default set up,
+in which case the default value will be persisted.   This holds true
+both from a pure SQL perspective with server-side defaults, as well as the
+behavior of SQLAlchemy's insert behavior with both client-side and server-side
+defaults::
+
+    class MyObject(Base):
+        __tablename__ = 'my_table'
+        id = Column(Integer, primary_key=True)
+        data = Column(String(50), nullable=True, server_default="default")
+
+    obj = MyObject(id=1)
+    session.add(obj)
+    session.commit()  # INSERT with the 'data' column omitted; the database
+                      # itself will persist this as the value 'default'
+
+However, in the ORM, even if one assigns the Python value ``None`` explicitly
+to the object, this is treated the **same** as though the value were never
+assigned::
+
+    class MyObject(Base):
+        __tablename__ = 'my_table'
+        id = Column(Integer, primary_key=True)
+        data = Column(String(50), nullable=True, server_default="default")
+
+    obj = MyObject(id=1, data=None)
+    session.add(obj)
+    session.commit()  # INSERT with the 'data' column explicitly set to None;
+                      # the ORM still omits it from the statement and the
+                      # database will still persist this as the value 'default'
+
+The above operation will persist into the ``data`` column the
+server default value of ``"default"`` and not SQL NULL, even though ``None``
+was passed; this is a long-standing behavior of the ORM that many applications
+hold as an assumption.
+
+So what if we want to actually put NULL into this column, even though the
+column has a default value?  There are two approaches.  One is that
+on a per-instance level, we assign the attribute using the
+:obj:`~.expression.null` SQL construct::
+
+    from sqlalchemy import null
+
+    obj = MyObject(id=1, data=null())
+    session.add(obj)
+    session.commit()  # INSERT with the 'data' column explicitly set as null();
+                      # the ORM uses this directly, bypassing all client-
+                      # and server-side defaults, and the database will
+                      # persist this as the NULL value
+
+The :obj:`~.expression.null` SQL construct always translates into the SQL
+NULL value being directly present in the target INSERT statement.
+
+If we'd like to be able to use the Python value ``None`` and have this
+also be persisted as NULL despite the presence of column defaults,
+we can configure this for the ORM using a Core-level modifier
+:meth:`.TypeEngine.evaluates_none`, which indicates
+a type where the ORM should treat the value ``None`` the same as any other
+value and pass it through, rather than omitting it as a "missing" value::
+
+    class MyObject(Base):
+        __tablename__ = 'my_table'
+        id = Column(Integer, primary_key=True)
+        data = Column(
+          String(50).evaluates_none(),  # indicate that None should always be passed
+          nullable=True, server_default="default")
+
+    obj = MyObject(id=1, data=None)
+    session.add(obj)
+    session.commit()  # INSERT with the 'data' column explicitly set to None;
+                      # the ORM uses this directly, bypassing all client-
+                      # and server-side defaults, and the database will
+                      # persist this as the NULL value
+
+.. topic:: Evaluating None
+
+  The :meth:`.TypeEngine.evaluates_none` modifier is primarily intended to
+  signal a type where the Python value "None" is significant, the primary
+  example being a JSON type which may want to persist the JSON ``null`` value
+  rather than SQL NULL.  We are slightly repurposing it here in order to
+  signal to the ORM that we'd like ``None`` to be passed into the type whenever
+  present, even though no special type-level behaviors are assigned to it.
+
+.. versionadded:: 1.1 added the :meth:`.TypeEngine.evaluates_none` method
+   in order to indicate that a "None" value should be treated as significant.
+
+
 .. _session_partitioning:
 
 Partitioning Strategies

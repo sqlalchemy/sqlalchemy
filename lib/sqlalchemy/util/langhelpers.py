@@ -426,7 +426,7 @@ def getargspec_init(method):
 
     """
     try:
-        return inspect.getargspec(method)
+        return compat.inspect_getargspec(method)
     except TypeError:
         if method is object.__init__:
             return (['self'], None, None, None)
@@ -464,7 +464,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     for i, insp in enumerate(to_inspect):
         try:
             (_args, _vargs, vkw, defaults) = \
-                inspect.getargspec(insp.__init__)
+                compat.inspect_getargspec(insp.__init__)
         except TypeError:
             continue
         else:
@@ -625,7 +625,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
         except AttributeError:
             continue
         try:
-            spec = inspect.getargspec(fn)
+            spec = compat.inspect_getargspec(fn)
             fn_args = inspect.formatargspec(spec[0])
             d_args = inspect.formatargspec(spec[0][1:])
         except TypeError:
@@ -804,6 +804,8 @@ class MemoizedSlots(object):
     memoized_instancemethod to be available to a class using __slots__.
 
     """
+
+    __slots__ = ()
 
     def _fallback_getattr(self, key):
         raise AttributeError(key)
@@ -1017,7 +1019,9 @@ def constructor_copy(obj, cls, *args, **kw):
     """
 
     names = get_cls_kwargs(cls)
-    kw.update((k, obj.__dict__[k]) for k in names if k in obj.__dict__)
+    kw.update(
+        (k, obj.__dict__[k]) for k in names.difference(kw)
+        if k in obj.__dict__)
     return cls(*args, **kw)
 
 
@@ -1361,7 +1365,7 @@ class EnsureKWArgType(type):
                 m = re.match(fn_reg, key)
                 if m:
                     fn = clsdict[key]
-                    spec = inspect.getargspec(fn)
+                    spec = compat.inspect_getargspec(fn)
                     if not spec.keywords:
                         clsdict[key] = wrapped = cls._wrap_w_kw(fn)
                         setattr(cls, key, wrapped)
@@ -1373,3 +1377,25 @@ class EnsureKWArgType(type):
             return fn(*arg)
         return update_wrapper(wrap, fn)
 
+
+def wrap_callable(wrapper, fn):
+    """Augment functools.update_wrapper() to work with objects with
+    a ``__call__()`` method.
+
+    :param fn:
+      object with __call__ method
+
+    """
+    if hasattr(fn, '__name__'):
+        return update_wrapper(wrapper, fn)
+    else:
+        _f = wrapper
+        _f.__name__ = fn.__class__.__name__
+        _f.__module__ = fn.__module__
+
+        if hasattr(fn.__call__, '__doc__') and fn.__call__.__doc__:
+            _f.__doc__ = fn.__call__.__doc__
+        elif fn.__doc__:
+            _f.__doc__ = fn.__doc__
+
+        return _f

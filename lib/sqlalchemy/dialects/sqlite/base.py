@@ -853,12 +853,20 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec += " NOT NULL"
 
-        if (column.primary_key and
-                column.table.dialect_options['sqlite']['autoincrement'] and
-                len(column.table.primary_key.columns) == 1 and
-                issubclass(column.type._type_affinity, sqltypes.Integer) and
-                not column.foreign_keys):
-            colspec += " PRIMARY KEY AUTOINCREMENT"
+        if column.primary_key:
+            if (
+                column.autoincrement is True and
+                len(column.table.primary_key.columns) != 1
+            ):
+                raise exc.CompileError(
+                    "SQLite does not support autoincrement for "
+                    "composite primary keys")
+
+            if (column.table.dialect_options['sqlite']['autoincrement'] and
+                    len(column.table.primary_key.columns) == 1 and
+                    issubclass(column.type._type_affinity, sqltypes.Integer) and
+                    not column.foreign_keys):
+                colspec += " PRIMARY KEY AUTOINCREMENT"
 
         return colspec
 
@@ -894,11 +902,25 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return preparer.format_table(table, use_schema=False)
 
-    def visit_create_index(self, create):
+    def visit_create_index(self, create, include_schema=False,
+                           include_table_schema=True):
         index = create.element
-
-        text = super(SQLiteDDLCompiler, self).visit_create_index(
-            create, include_table_schema=False)
+        self._verify_index_table(index)
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        text += "INDEX %s ON %s (%s)" \
+            % (
+                self._prepared_index_name(index,
+                                          include_schema=True),
+                preparer.format_table(index.table,
+                                      use_schema=False),
+                ', '.join(
+                    self.sql_compiler.process(
+                        expr, include_table=False, literal_binds=True) for
+                    expr in index.expressions)
+            )
 
         whereclause = index.dialect_options["sqlite"]["where"]
         if whereclause is not None:
@@ -1095,6 +1117,13 @@ class SQLiteDialect(default.DefaultDialect):
             return None
 
     @reflection.cache
+    def get_schema_names(self, connection, **kw):
+        s = "PRAGMA database_list"
+        dl = connection.execute(s)
+
+        return [db[1] for db in dl if db[1] != "temp"]
+
+    @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
@@ -1190,7 +1219,7 @@ class SQLiteDialect(default.DefaultDialect):
             'type': coltype,
             'nullable': nullable,
             'default': default,
-            'autoincrement': default is None,
+            'autoincrement': 'auto',
             'primary_key': primary_key,
         }
 
@@ -1283,7 +1312,7 @@ class SQLiteDialect(default.DefaultDialect):
                 fk = fks[numerical_id] = {
                     'name': None,
                     'constrained_columns': [],
-                    'referred_schema': None,
+                    'referred_schema': schema,
                     'referred_table': rtbl,
                     'referred_columns': [],
                 }
@@ -1387,7 +1416,7 @@ class SQLiteDialect(default.DefaultDialect):
         unique_constraints = []
 
         def parse_uqs():
-            UNIQUE_PATTERN = '(?:CONSTRAINT (\w+) +)?UNIQUE *\((.+?)\)'
+            UNIQUE_PATTERN = '(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
                 '(?:(".+?")|([a-z0-9]+)) '
                 '+[a-z0-9_ ]+? +UNIQUE')

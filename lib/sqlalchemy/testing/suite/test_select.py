@@ -2,7 +2,7 @@ from .. import fixtures, config
 from ..assertions import eq_
 
 from sqlalchemy import util
-from sqlalchemy import Integer, String, select, func, bindparam
+from sqlalchemy import Integer, String, select, func, bindparam, union
 from sqlalchemy import testing
 
 from ..schema import Table, Column
@@ -146,7 +146,7 @@ class LimitOffsetTest(fixtures.TablesTest):
             select([table]).order_by(table.c.id).limit(2).offset(1),
             [(2, 2, 3), (3, 3, 4)]
         )
-    
+
     @testing.requires.offset
     def test_limit_offset_nobinds(self):
         """test that 'literal binds' mode works - no bound params."""
@@ -189,4 +189,124 @@ class LimitOffsetTest(fixtures.TablesTest):
             limit(bindparam("l")).offset(bindparam("o")),
             [(2, 2, 3), (3, 3, 4)],
             params={"l": 2, "o": 1}
+        )
+
+
+class CompoundSelectTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("some_table", metadata,
+              Column('id', Integer, primary_key=True),
+              Column('x', Integer),
+              Column('y', Integer))
+
+    @classmethod
+    def insert_data(cls):
+        config.db.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2},
+                {"id": 2, "x": 2, "y": 3},
+                {"id": 3, "x": 3, "y": 4},
+                {"id": 4, "x": 4, "y": 5},
+            ]
+        )
+
+    def _assert_result(self, select, result, params=()):
+        eq_(
+            config.db.execute(select, params).fetchall(),
+            result
+        )
+
+    def test_plain_union(self):
+        table = self.tables.some_table
+        s1 = select([table]).where(table.c.id == 2)
+        s2 = select([table]).where(table.c.id == 3)
+
+        u1 = union(s1, s2)
+        self._assert_result(
+            u1.order_by(u1.c.id),
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
+    def test_select_from_plain_union(self):
+        table = self.tables.some_table
+        s1 = select([table]).where(table.c.id == 2)
+        s2 = select([table]).where(table.c.id == 3)
+
+        u1 = union(s1, s2).alias().select()
+        self._assert_result(
+            u1.order_by(u1.c.id),
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
+    @testing.requires.parens_in_union_contained_select_w_limit_offset
+    def test_limit_offset_selectable_in_unions(self):
+        table = self.tables.some_table
+        s1 = select([table]).where(table.c.id == 2).\
+            limit(1).order_by(table.c.id)
+        s2 = select([table]).where(table.c.id == 3).\
+            limit(1).order_by(table.c.id)
+
+        u1 = union(s1, s2).limit(2)
+        self._assert_result(
+            u1.order_by(u1.c.id),
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
+    @testing.requires.parens_in_union_contained_select_wo_limit_offset
+    def test_order_by_selectable_in_unions(self):
+        table = self.tables.some_table
+        s1 = select([table]).where(table.c.id == 2).\
+            order_by(table.c.id)
+        s2 = select([table]).where(table.c.id == 3).\
+            order_by(table.c.id)
+
+        u1 = union(s1, s2).limit(2)
+        self._assert_result(
+            u1.order_by(u1.c.id),
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
+    def test_distinct_selectable_in_unions(self):
+        table = self.tables.some_table
+        s1 = select([table]).where(table.c.id == 2).\
+            distinct()
+        s2 = select([table]).where(table.c.id == 3).\
+            distinct()
+
+        u1 = union(s1, s2).limit(2)
+        self._assert_result(
+            u1.order_by(u1.c.id),
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
+    @testing.requires.parens_in_union_contained_select_w_limit_offset
+    def test_limit_offset_in_unions_from_alias(self):
+        table = self.tables.some_table
+        s1 = select([table]).where(table.c.id == 2).\
+            limit(1).order_by(table.c.id)
+        s2 = select([table]).where(table.c.id == 3).\
+            limit(1).order_by(table.c.id)
+
+        # this necessarily has double parens
+        u1 = union(s1, s2).alias()
+        self._assert_result(
+            u1.select().limit(2).order_by(u1.c.id),
+            [(2, 2, 3), (3, 3, 4)]
+        )
+
+    def test_limit_offset_aliased_selectable_in_unions(self):
+        table = self.tables.some_table
+        s1 = select([table]).where(table.c.id == 2).\
+            limit(1).order_by(table.c.id).alias().select()
+        s2 = select([table]).where(table.c.id == 3).\
+            limit(1).order_by(table.c.id).alias().select()
+
+        u1 = union(s1, s2).limit(2)
+        self._assert_result(
+            u1.order_by(u1.c.id),
+            [(2, 2, 3), (3, 3, 4)]
         )

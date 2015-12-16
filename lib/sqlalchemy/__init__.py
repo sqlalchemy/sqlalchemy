@@ -8,7 +8,9 @@
 
 from .sql import (
     alias,
+    all_,
     and_,
+    any_,
     asc,
     between,
     bindparam,
@@ -52,6 +54,7 @@ from .sql import (
     )
 
 from .types import (
+    Array,
     BIGINT,
     BINARY,
     BLOB,
@@ -120,7 +123,7 @@ from .schema import (
 from .inspection import inspect
 from .engine import create_engine, engine_from_config
 
-__version__ = '1.0.7'
+__version__ = '1.1.0b1'
 
 
 def __go(lcls):

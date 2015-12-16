@@ -48,7 +48,7 @@ Production Ready
 
 * `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix,
   developed jointly by IBM and SQLAlchemy developers.
-* `redshift-sqlalchemy <https://pypi.python.org/pypi/redshift-sqlalchemy>`_ - driver for Amazon Redshift, adapts
+* `sqlalchemy-redshift <https://pypi.python.org/pypi/sqlalchemy-redshift>`_ - driver for Amazon Redshift, adapts
   the existing Postgresql/psycopg2 driver.
 * `sqlalchemy_exasol <https://github.com/blue-yonder/sqlalchemy_exasol>`_ - driver for EXASolution.
 * `sqlalchemy-sqlany <https://github.com/sqlanywhere/sqlalchemy-sqlany>`_ - driver for SAP Sybase SQL

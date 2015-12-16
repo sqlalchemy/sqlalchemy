@@ -149,7 +149,12 @@ def backref(name, **kwargs):
         'items':relationship(
             SomeItem, backref=backref('parent', lazy='subquery'))
 
+    .. seealso::
+
+        :ref:`relationships_backref`
+
     """
+
     return (name, kwargs)
 
 

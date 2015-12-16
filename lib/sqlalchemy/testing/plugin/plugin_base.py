@@ -40,7 +40,6 @@ file_config = None
 
 
 logging = None
-db_opts = {}
 include_tags = set()
 exclude_tags = set()
 options = None
@@ -115,7 +114,6 @@ def memoize_important_follower_config(dict_):
 
     """
     dict_['memoized_config'] = {
-        'db_opts': db_opts,
         'include_tags': include_tags,
         'exclude_tags': exclude_tags
     }
@@ -127,8 +125,7 @@ def restore_important_follower_config(dict_):
     This invokes in the follower process.
 
     """
-    global db_opts, include_tags, exclude_tags
-    db_opts.update(dict_['memoized_config']['db_opts'])
+    global include_tags, exclude_tags
     include_tags.update(dict_['memoized_config']['include_tags'])
     exclude_tags.update(dict_['memoized_config']['exclude_tags'])
 
@@ -268,7 +265,7 @@ def _engine_uri(options, file_config):
 
     for db_url in db_urls:
         cfg = provision.setup_config(
-            db_url, db_opts, options, file_config, provision.FOLLOWER_IDENT)
+            db_url, options, file_config, provision.FOLLOWER_IDENT)
 
         if not config._current:
             cfg.set_as_current(cfg, testing)

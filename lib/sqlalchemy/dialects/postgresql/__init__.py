@@ -12,11 +12,13 @@ base.dialect = psycopg2.dialect
 from .base import \
     INTEGER, BIGINT, SMALLINT, VARCHAR, CHAR, TEXT, NUMERIC, FLOAT, REAL, \
     INET, CIDR, UUID, BIT, MACADDR, OID, DOUBLE_PRECISION, TIMESTAMP, TIME, \
-    DATE, BYTEA, BOOLEAN, INTERVAL, ARRAY, ENUM, dialect, array, Any, All, \
-    TSVECTOR, DropEnumType
-from .constraints import ExcludeConstraint
+    DATE, BYTEA, BOOLEAN, INTERVAL, ENUM, dialect, TSVECTOR, DropEnumType, \
+    CreateEnumType
 from .hstore import HSTORE, hstore
-from .json import JSON, JSONElement, JSONB
+from .json import JSON, JSONB
+from .array import array, ARRAY, Any, All
+from .ext import aggregate_order_by, ExcludeConstraint, array_agg
+
 from .ranges import INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, \
     TSTZRANGE
 
@@ -24,8 +26,9 @@ __all__ = (
     'INTEGER', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'NUMERIC',
     'FLOAT', 'REAL', 'INET', 'CIDR', 'UUID', 'BIT', 'MACADDR', 'OID',
     'DOUBLE_PRECISION', 'TIMESTAMP', 'TIME', 'DATE', 'BYTEA', 'BOOLEAN',
-    'INTERVAL', 'ARRAY', 'ENUM', 'dialect', 'Any', 'All', 'array', 'HSTORE',
+    'INTERVAL', 'ARRAY', 'ENUM', 'dialect', 'array', 'HSTORE',
     'hstore', 'INT4RANGE', 'INT8RANGE', 'NUMRANGE', 'DATERANGE',
-    'TSRANGE', 'TSTZRANGE', 'json', 'JSON', 'JSONB', 'JSONElement',
-    'DropEnumType'
+    'TSRANGE', 'TSTZRANGE', 'json', 'JSON', 'JSONB', 'Any', 'All',
+    'DropEnumType', 'CreateEnumType', 'ExcludeConstraint',
+    'aggregate_order_by', 'array_agg'
 )

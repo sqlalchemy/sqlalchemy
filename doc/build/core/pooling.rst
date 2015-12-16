@@ -209,6 +209,8 @@ correspond to a single request failing with a 500 error, then the web applicatio
 continuing normally beyond that.   Hence the approach is "optimistic" in that frequent
 database restarts are not anticipated.
 
+.. _pool_setting_recycle:
+
 Setting Pool Recycle
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -231,9 +233,55 @@ of the :class:`.Pool` itself, independent of whether or not an :class:`.Engine` 
 Disconnect Handling - Pessimistic
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-At the expense of some extra SQL emitted for each connection checked out from the pool,
-a "ping" operation established by a checkout event handler
-can detect an invalid connection before it is used::
+At the expense of some extra SQL emitted for each connection checked out from
+the pool, a "ping" operation established by a checkout event handler can
+detect an invalid connection before it is used.  In modern SQLAlchemy, the
+best way to do this is to make use of the
+:meth:`.ConnectionEvents.engine_connect` event, assuming the use of a
+:class:`.Engine` and not just a raw :class:`.Pool` object::
+
+    from sqlalchemy import exc
+    from sqlalchemy import event
+    from sqlalchemy import select
+
+    some_engine = create_engine(...)
+
+    @event.listens_for(some_engine, "engine_connect")
+    def ping_connection(connection, branch):
+        if branch:
+            # "branch" refers to a sub-connection of a connection,
+            # we don't want to bother pinging on these.
+            return
+
+        try:
+            # run a SELECT 1.   use a core select() so that
+            # the SELECT of a scalar value without a table is
+            # appropriately formatted for the backend
+            connection.scalar(select([1]))
+        except exc.DBAPIError as err:
+            # catch SQLAlchemy's DBAPIError, which is a wrapper
+            # for the DBAPI's exception.  It includes a .connection_invalidated
+            # attribute which specifies if this connection is a "disconnect"
+            # condition, which is based on inspection of the original exception
+            # by the dialect in use.
+            if err.connection_invalidated:
+                # run the same SELECT again - the connection will re-validate
+                # itself and establish a new connection.  The disconnect detection
+                # here also causes the whole connection pool to be invalidated
+                # so that all stale connections are discarded.
+                connection.scalar(select([1]))
+            else:
+                raise
+
+The above recipe has the advantage that we are making use of SQLAlchemy's
+facilities for detecting those DBAPI exceptions that are known to indicate
+a "disconnect" situation, as well as the :class:`.Engine` object's ability
+to correctly invalidate the current connection pool when this condition
+occurs and allowing the current :class:`.Connection` to re-validate onto
+a new DBAPI connection.
+
+For the much less common case of where a :class:`.Pool` is being used without
+an :class:`.Engine`, an older approach may be used as below::
 
     from sqlalchemy import exc
     from sqlalchemy import event
@@ -245,46 +293,19 @@ can detect an invalid connection before it is used::
         try:
             cursor.execute("SELECT 1")
         except:
-            # optional - dispose the whole pool
-            # instead of invalidating one at a time
-            # connection_proxy._pool.dispose()
-
             # raise DisconnectionError - pool will try
             # connecting again up to three times before raising.
             raise exc.DisconnectionError()
         cursor.close()
 
-Above, the :class:`.Pool` object specifically catches :class:`~sqlalchemy.exc.DisconnectionError` and attempts
-to create a new DBAPI connection, up to three times, before giving up and then raising
-:class:`~sqlalchemy.exc.InvalidRequestError`, failing the connection.   This recipe will ensure
-that a new :class:`.Connection` will succeed even if connections
-in the pool have gone stale, provided that the database server is actually running.   The expense
-is that of an additional execution performed per checkout.   When using the ORM :class:`.Session`,
-there is one connection checkout per transaction, so the expense is fairly low.   The ping approach
-above also works with straight connection pool usage, that is, even if no :class:`.Engine` were
-involved.
-
-The event handler can be tested using a script like the following, restarting the database
-server at the point at which the script pauses for input::
-
-    from sqlalchemy import create_engine
-    e = create_engine("mysql://scott:tiger@localhost/test", echo_pool=True)
-    c1 = e.connect()
-    c2 = e.connect()
-    c3 = e.connect()
-    c1.close()
-    c2.close()
-    c3.close()
-
-    # pool size is now three.
-
-    print "Restart the server"
-    raw_input()
-
-    for i in xrange(10):
-        c = e.connect()
-        print c.execute("select 1").fetchall()
-        c.close()
+Above, the :class:`.Pool` object specifically catches
+:class:`~sqlalchemy.exc.DisconnectionError` and attempts to create a new DBAPI
+connection, up to three times, before giving up and then raising
+:class:`~sqlalchemy.exc.InvalidRequestError`, failing the connection.  The
+disadvantage of the above approach is that we don't have any easy way of
+determining if the exception raised is in fact a "disconnect" situation, since
+there is no :class:`.Engine` or :class:`.Dialect` in play, and also the above
+error would occur individually for all stale connections still in the pool.
 
 .. _pool_connection_invalidation:
 

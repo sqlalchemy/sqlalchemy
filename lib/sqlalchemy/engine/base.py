@@ -1531,8 +1531,12 @@ class Transaction(object):
 
     def __init__(self, connection, parent):
         self.connection = connection
-        self._parent = parent or self
+        self._actual_parent = parent
         self.is_active = True
+
+    @property
+    def _parent(self):
+        return self._actual_parent or self
 
     def close(self):
         """Close this :class:`.Transaction`.
