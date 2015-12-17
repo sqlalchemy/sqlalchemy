@@ -20,6 +20,14 @@
 
     .. change::
         :tags: bug, ext
+        :tickets: 3605
+        :versions: 1.1.0b1
+
+        Further fixes to :ticket:`3605`, pop method on :class:`.MutableDict`,
+        where the "default" argument was not included.
+
+    .. change::
+        :tags: bug, ext
         :tickets: 3612
         :versions: 1.1.0b1
 
