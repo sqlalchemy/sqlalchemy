@@ -658,8 +658,8 @@ class MutableDict(Mutable, dict):
         dict.update(self, *a, **kw)
         self.changed()
 
-    def pop(self, key, *arg):
-        result = dict.pop(self, key, *arg)
+    def pop(self, *arg):
+        result = dict.pop(self, *arg)
         self.changed()
         return result
 
