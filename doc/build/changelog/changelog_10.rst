@@ -21,6 +21,16 @@
     .. change::
         :tags: bug, mysql
         :versions: 1.1.0b1
+        :tickets: 3613
+
+        An adjustment to the regular expression used to parse MySQL views,
+        such that we no longer assume the "ALGORITHM" keyword is present in
+        the reflected view source, as some users have reported this not being
+        present in some Amazon RDS environments.
+
+    .. change::
+        :tags: bug, mysql
+        :versions: 1.1.0b1
         :pullreq: github:222
 
         Added new reserved words for MySQL 5.7 to the MySQL dialect,

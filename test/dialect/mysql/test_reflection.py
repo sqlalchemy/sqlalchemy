@@ -397,6 +397,37 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
+    @testing.provide_metadata
+    def test_view_reflection(self):
+        Table('x', self.metadata, Column('a', Integer), Column('b', String(50)))
+        self.metadata.create_all()
+
+        with testing.db.connect() as conn:
+            conn.execute("CREATE VIEW v1 AS SELECT * FROM x")
+            conn.execute(
+                "CREATE ALGORITHM=MERGE VIEW v2 AS SELECT * FROM x")
+            conn.execute(
+                "CREATE ALGORITHM=UNDEFINED VIEW v3 AS SELECT * FROM x")
+            conn.execute(
+                "CREATE DEFINER=CURRENT_USER VIEW v4 AS SELECT * FROM x")
+
+        @event.listens_for(self.metadata, "before_drop")
+        def cleanup(*arg, **kw):
+            with testing.db.connect() as conn:
+                for v in ['v1', 'v2', 'v3', 'v4']:
+                    conn.execute("DROP VIEW %s" % v)
+
+        insp = inspect(testing.db)
+        for v in ['v1', 'v2', 'v3', 'v4']:
+            eq_(
+                [
+                    (col['name'], col['type'].__class__)
+                    for col in insp.get_columns(v)
+                ],
+                [('a', mysql.INTEGER), ('b', mysql.VARCHAR)]
+            )
+
+
     @testing.exclude('mysql', '<', (5, 0, 0), 'no information_schema support')
     def test_system_views(self):
         dialect = testing.db.dialect

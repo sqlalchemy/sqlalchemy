@@ -2806,7 +2806,7 @@ class MySQLDialect(default.DefaultDialect):
             schema, table_name))
         sql = self._show_create_table(connection, None, charset,
                                       full_name=full_name)
-        if sql.startswith('CREATE ALGORITHM'):
+        if re.match(r'^CREATE (?:ALGORITHM)?.* VIEW', sql):
             # Adapt views to something table-like.
             columns = self._describe_table(connection, None, charset,
                                            full_name=full_name)
