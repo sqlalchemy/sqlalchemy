@@ -19,6 +19,15 @@
     :version: 1.0.11
 
     .. change::
+        :tags: bug, mysql
+        :versions: 1.1.0b1
+        :pullreq: github:222
+
+        Added new reserved words for MySQL 5.7 to the MySQL dialect,
+        including 'generated', 'optimizer_costs', 'stored', 'virtual'.
+        Pull request courtesy Hanno Schlichting.
+
+    .. change::
         :tags: bug, ext
         :tickets: 3605
         :versions: 1.1.0b1
