@@ -1382,7 +1382,7 @@ class JoinedloadSinglePolysubSingle(
 
             id = Column(Integer, primary_key=True)
 
-            row_type = Column(String, nullable=False)
+            row_type = Column(String(50), nullable=False)
             __mapper_args__ = {'polymorphic_on': row_type}
 
             user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
