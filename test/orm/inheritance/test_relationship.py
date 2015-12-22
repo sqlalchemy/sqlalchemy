@@ -1361,6 +1361,66 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         )
 
 
+class JoinedloadSinglePolysubSingle(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsCompiledSQL):
+    """exercise issue #3611, using the test from dupe issue 3614"""
+
+    run_define_tables = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+
+        class UserRole(Base):
+            __tablename__ = 'user_roles'
+
+            id = Column(Integer, primary_key=True)
+
+            row_type = Column(String, nullable=False)
+            __mapper_args__ = {'polymorphic_on': row_type}
+
+            user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+            user = relationship('User', lazy=False)
+
+        class Admin(UserRole):
+            __tablename__ = 'admins'
+            __mapper_args__ = {'polymorphic_identity': 'admin'}
+
+            id = Column(Integer, ForeignKey('user_roles.id'), primary_key=True)
+
+        class Thing(Base):
+            __tablename__ = 'things'
+
+            id = Column(Integer, primary_key=True)
+
+            admin_id = Column(Integer, ForeignKey('admins.id'))
+            admin = relationship('Admin', lazy=False)
+
+    def test_query(self):
+        Thing = self.classes.Thing
+        sess = Session()
+        self.assert_compile(
+            sess.query(Thing),
+            "SELECT things.id AS things_id, "
+            "things.admin_id AS things_admin_id, "
+            "users_1.id AS users_1_id, admins_1.id AS admins_1_id, "
+            "user_roles_1.id AS user_roles_1_id, "
+            "user_roles_1.row_type AS user_roles_1_row_type, "
+            "user_roles_1.user_id AS user_roles_1_user_id FROM things "
+            "LEFT OUTER JOIN (user_roles AS user_roles_1 JOIN admins "
+            "AS admins_1 ON user_roles_1.id = admins_1.id) ON "
+            "admins_1.id = things.admin_id "
+            "LEFT OUTER JOIN users AS "
+            "users_1 ON users_1.id = user_roles_1.user_id"
+        )
+
+
 class JoinedloadOverWPolyAliased(
         fixtures.DeclarativeMappedTest,
         testing.AssertsCompiledSQL):
