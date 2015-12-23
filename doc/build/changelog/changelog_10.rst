@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.11
+    :released: December 22, 2015
 
     .. change::
         :tags: bug, mysql
