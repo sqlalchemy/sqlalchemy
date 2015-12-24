@@ -22,6 +22,16 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3616
+
+        Fixed an assertion that would raise somewhat inappropriately
+        if a :class:`.Index` were associated with a :class:`.Column` that
+        is associated with a lower-case-t :class:`.TableClause`; the
+        association should be ignored for the purposes of associating
+        the index with a :class:`.Table`.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3601
 

@@ -2498,9 +2498,13 @@ class ColumnCollectionMixin(object):
             has_string_cols = set(self._pending_colargs).difference(col_objs)
             if not has_string_cols:
                 def _col_attached(column, table):
-                    cols_wo_table.discard(column)
-                    if not cols_wo_table:
-                        self._check_attach(evt=True)
+                    # this isinstance() corresponds with the
+                    # isinstance() above; only want to count Table-bound
+                    # columns
+                    if isinstance(table, Table):
+                        cols_wo_table.discard(column)
+                        if not cols_wo_table:
+                            self._check_attach(evt=True)
                 self._cols_wo_table = cols_wo_table
                 for col in cols_wo_table:
                     col._on_table_attach(_col_attached)

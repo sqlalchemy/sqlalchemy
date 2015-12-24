@@ -2068,6 +2068,13 @@ class IndexTest(fixtures.TestBase):
             t.append_constraint, idx
         )
 
+    def test_column_associated_w_lowercase_table(self):
+        from sqlalchemy import table
+        c = Column('x', Integer)
+        table('foo', c)
+        idx = Index('q', c)
+        is_(idx.table, None)  # lower-case-T table doesn't have indexes
+
 
 class ConstraintTest(fixtures.TestBase):
 
