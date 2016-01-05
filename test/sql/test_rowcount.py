@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.testing import fixtures, AssertsExecutionResults
 from sqlalchemy import testing
+from sqlalchemy.testing import eq_
 
 
 class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
@@ -64,6 +65,22 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
         r = employees_table.update(department == 'C').execute(department='C')
         print("expecting 3, dialect reports %s" % r.rowcount)
         assert r.rowcount == 3
+
+    def test_raw_sql_rowcount(self):
+        # test issue #3622, make sure eager rowcount is called for text
+        with testing.db.connect() as conn:
+            result = conn.execute(
+                "update employees set department='Z' where department='C'")
+            eq_(result.rowcount, 3)
+
+    def test_text_rowcount(self):
+        # test issue #3622, make sure eager rowcount is called for text
+        with testing.db.connect() as conn:
+            result = conn.execute(
+                text(
+                    "update employees set department='Z' "
+                    "where department='C'"))
+            eq_(result.rowcount, 3)
 
     def test_delete_rowcount(self):
         # WHERE matches 3, 3 rows deleted
