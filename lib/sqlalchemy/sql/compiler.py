@@ -286,6 +286,7 @@ class _CompileLabel(visitors.Visitable):
     def self_group(self, **kw):
         return self
 
+
 class SQLCompiler(Compiled):
 
     """Default implementation of Compiled.
@@ -304,6 +305,8 @@ class SQLCompiler(Compiled):
     level to define if this Compiled instance represents
     INSERT/UPDATE/DELETE
     """
+
+    isplaintext = False
 
     returning = None
     """holds the "returning" collection of columns if
@@ -687,6 +690,9 @@ class SQLCompiler(Compiled):
                 return self.process(textclause._bindparams[name], **kw)
             else:
                 return self.bindparam_string(name, **kw)
+
+        if not self.stack:
+            self.isplaintext = True
 
         # un-escape any \:params
         return BIND_PARAMS_ESC.sub(

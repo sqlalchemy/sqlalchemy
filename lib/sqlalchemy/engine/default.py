@@ -467,6 +467,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     isupdate = False
     isdelete = False
     is_crud = False
+    is_text = False
     isddl = False
     executemany = False
     compiled = None
@@ -543,6 +544,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
+        self.is_text = compiled.isplaintext
 
         if not parameters:
             self.compiled_parameters = [compiled.construct_params()]
@@ -622,6 +624,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.root_connection = connection
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
+        self.is_text = True
 
         # plain text statement
         self.execution_options = connection._execution_options

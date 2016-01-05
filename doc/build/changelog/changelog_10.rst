@@ -16,6 +16,22 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.12
+    :released:
+
+    .. change::
+        :tags: bug, mssql, firebird
+        :versions: 1.1.0b1
+        :tickets: 3622
+
+        Fixed 1.0 regression where the eager fetch of cursor.rowcount was
+        no longer called for an UPDATE or DELETE statement emitted via plain
+        text or via the :func:`.text` construct, affecting those drivers
+        that erase cursor.rowcount once the cursor is closed such as SQL
+        Server ODBC and Firebird drivers.
+
+
+.. changelog::
     :version: 1.0.11
     :released: December 22, 2015
 

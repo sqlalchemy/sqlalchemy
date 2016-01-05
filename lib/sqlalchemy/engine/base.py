@@ -1155,7 +1155,7 @@ class Connection(Connectable):
         if context.compiled:
             context.post_exec()
 
-        if context.is_crud:
+        if context.is_crud or context.is_text:
             result = context._setup_crud_result_proxy()
         else:
             result = context.get_result_proxy()
