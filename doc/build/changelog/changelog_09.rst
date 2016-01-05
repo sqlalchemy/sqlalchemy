@@ -17,7 +17,7 @@
     .. change::
         :tags: bug, oracle, py3k
         :tickets: 3491
-        :versions: 1.1.0b1, 1.0.9
+        :versions: 1.0.9
 
         Fixed support for cx_Oracle version 5.2, which was tripping
         up SQLAlchemy's version detection under Python 3 and inadvertently
