@@ -1056,6 +1056,16 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(element.stop, **kw),
         )
 
+    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(
+            binary, " -> ", **kw
+        )
+
+    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(
+            binary, " #> ", **kw
+        )
+
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (
             self.process(binary.left, **kw),

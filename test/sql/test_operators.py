@@ -15,7 +15,7 @@ from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.sql import compiler
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
-    Boolean, NullType, MatchType, Indexable, Concatenable, Array
+    Boolean, NullType, MatchType, Indexable, Concatenable, ARRAY, JSON
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -632,7 +632,125 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class IndexableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    def setUp(self):
+        class MyTypeCompiler(compiler.GenericTypeCompiler):
+            def visit_mytype(self, type, **kw):
+                return "MYTYPE"
+
+            def visit_myothertype(self, type, **kw):
+                return "MYOTHERTYPE"
+
+        class MyCompiler(compiler.SQLCompiler):
+
+            def visit_json_getitem_op_binary(self, binary, operator, **kw):
+                return self._generate_generic_binary(
+                    binary, " -> ", **kw
+                )
+
+            def visit_json_path_getitem_op_binary(
+                    self, binary, operator, **kw):
+                return self._generate_generic_binary(
+                    binary, " #> ", **kw
+                )
+
+            def visit_getitem_binary(self, binary, operator, **kw):
+                raise NotImplementedError()
+
+        class MyDialect(default.DefaultDialect):
+            statement_compiler = MyCompiler
+            type_compiler = MyTypeCompiler
+
+        class MyType(JSON):
+            __visit_name__ = 'mytype'
+
+            pass
+
+        self.MyType = MyType
+        self.__dialect__ = MyDialect()
+
+    def test_setup_getitem(self):
+        col = Column('x', self.MyType())
+
+        is_(
+            col[5].type._type_affinity, JSON
+        )
+        is_(
+            col[5]['foo'].type._type_affinity, JSON
+        )
+        is_(
+            col[('a', 'b', 'c')].type._type_affinity, JSON
+        )
+
+    def test_getindex_literal_integer(self):
+
+        col = Column('x', self.MyType())
+
+        self.assert_compile(
+            col[5],
+            "x -> :x_1",
+            checkparams={'x_1': 5}
+        )
+
+    def test_getindex_literal_string(self):
+
+        col = Column('x', self.MyType())
+
+        self.assert_compile(
+            col['foo'],
+            "x -> :x_1",
+            checkparams={'x_1': 'foo'}
+        )
+
+    def test_path_getindex_literal(self):
+
+        col = Column('x', self.MyType())
+
+        self.assert_compile(
+            col[('a', 'b', 3, 4, 'd')],
+            "x #> :x_1",
+            checkparams={'x_1': ('a', 'b', 3, 4, 'd')}
+        )
+
+    def test_getindex_sqlexpr(self):
+
+        col = Column('x', self.MyType())
+        col2 = Column('y', Integer())
+
+        self.assert_compile(
+            col[col2],
+            "x -> y",
+            checkparams={}
+        )
+
+        self.assert_compile(
+            col[col2 + 8],
+            "x -> (y + :y_1)",
+            checkparams={'y_1': 8}
+        )
+
+    def test_override_operators(self):
+        special_index_op = operators.custom_op('$$>')
+
+        class MyOtherType(JSON, TypeEngine):
+            __visit_name__ = 'myothertype'
+
+            class Comparator(TypeEngine.Comparator):
+
+                def _adapt_expression(self, op, other_comparator):
+                    return special_index_op, MyOtherType()
+
+            comparator_factory = Comparator
+
+        col = Column('x', MyOtherType())
+        self.assert_compile(
+            col[5],
+            "x $$> :x_1",
+            checkparams={'x_1': 5}
+        )
+
+
+class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def setUp(self):
         class MyTypeCompiler(compiler.GenericTypeCompiler):
             def visit_mytype(self, type, **kw):
@@ -658,31 +776,14 @@ class IndexableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             statement_compiler = MyCompiler
             type_compiler = MyTypeCompiler
 
-        class MyType(Indexable, TypeEngine):
+        class MyType(ARRAY):
             __visit_name__ = 'mytype'
 
             def __init__(self, zero_indexes=False, dimensions=1):
                 if zero_indexes:
                     self.zero_indexes = zero_indexes
                 self.dimensions = dimensions
-
-            class Comparator(Indexable.Comparator):
-                def _setup_getitem(self, index):
-                    if isinstance(index, slice):
-                        return_type = self.type
-                    elif self.type.dimensions is None or \
-                            self.type.dimensions == 1:
-                        return_type = Integer()
-                    else:
-                        adapt_kw = {'dimensions': self.type.dimensions - 1}
-                        # this is also testing the behavior of adapt()
-                        # that we can pass kw that override constructor kws.
-                        # required a small change to util.constructor_copy().
-                        return_type = self.type.adapt(
-                            self.type.__class__, **adapt_kw)
-
-                    return operators.getitem, index, return_type
-            comparator_factory = Comparator
+                self.item_type = Integer()
 
         self.MyType = MyType
         self.__dialect__ = MyDialect()
@@ -694,13 +795,13 @@ class IndexableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         col = Column('x', self.MyType(dimensions=3))
 
         is_(
-            col[5].type._type_affinity, self.MyType
+            col[5].type._type_affinity, ARRAY
         )
         eq_(
             col[5].type.dimensions, 2
         )
         is_(
-            col[5][6].type._type_affinity, self.MyType
+            col[5][6].type._type_affinity, ARRAY
         )
         eq_(
             col[5][6].type.dimensions, 1
@@ -2273,7 +2374,7 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         t = Table(
             'tab1', m,
-            Column('arrval', Array(Integer)),
+            Column('arrval', ARRAY(Integer)),
             Column('data', Integer)
         )
         return t

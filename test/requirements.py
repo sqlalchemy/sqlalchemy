@@ -531,6 +531,14 @@ class DefaultRequirements(SuiteRequirements):
                     'sybase')
 
     @property
+    def json_type(self):
+        return only_on([
+            lambda config: against(config, "mysql >= 5.7") and
+            not config.db.dialect._is_mariadb,
+            "postgresql >= 9.3"
+        ])
+
+    @property
     def datetime_literals(self):
         """target dialect supports rendering of a date, time, or datetime as a
         literal string, e.g. via the TypeEngine.literal_processor() method.

@@ -502,33 +502,138 @@ UNIONs with parenthesized SELECT statements is much less common than the
 
 :ticket:`2528`
 
+.. _change_3619:
+
+JSON support added to Core
+--------------------------
+
+As MySQL now has a JSON datatype in addition to the Postgresql JSON datatype,
+the core now gains a :class:`sqlalchemy.types.JSON` datatype that is the basis
+for both of these.  Using this type allows access to the "getitem" operator
+as well as the "getpath" operator in a way that is agnostic across Postgresql
+and MySQL.
+
+The new datatype also has a series of improvements to the handling of
+NULL values as well as expression handling.
+
+.. seealso::
+
+    :ref:`change_3547`
+
+    :class:`.types.JSON`
+
+    :class:`.postgresql.JSON`
+
+    :class:`.mysql.JSON`
+
+:ticket:`3619`
+
+.. _change_3514:
+
+JSON "null" is inserted as expected with ORM operations, regardless of column default present
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :class:`.types.JSON` type and its descendant types :class:`.postgresql.JSON`
+and :class:`.mysql.JSON` have a flag :paramref:`.types.JSON.none_as_null` which
+when set to True indicates that the Python value ``None`` should translate
+into a SQL NULL rather than a JSON NULL value.  This flag defaults to False,
+which means that the column should *never* insert SQL NULL or fall back
+to a default unless the :func:`.null` constant were used.  However, this would
+fail in the ORM under two circumstances; one is when the column also contained
+a default or server_default value, a positive value of ``None`` on the mapped
+attribute would still result in the column-level default being triggered,
+replacing the ``None`` value::
+
+    obj = MyObject(json_value=None)
+    session.add(obj)
+    session.commit()   # would fire off default / server_default, not encode "'none'"
+
+The other is when the :meth:`.Session.bulk_insert_mappings`
+method were used, ``None`` would be ignored in all cases::
+
+    session.bulk_insert_mappings(
+        MyObject,
+        [{"json_value": None}])  # would insert SQL NULL and/or trigger defaults
+
+The :class:`.types.JSON` type now implements the
+:attr:`.TypeEngine.should_evaluate_none` flag,
+indicating that ``None`` should not be ignored here; it is configured
+automatically based on the value of :paramref:`.types.JSON.none_as_null`.
+Thanks to :ticket:`3061`, we can differentiate when the value ``None`` is actively
+set by the user versus when it was never set at all.
+
+If the attribute is not set at all, then column level defaults *will*
+fire off and/or SQL NULL will be inserted as expected, as was the behavior
+previously.  Below, the two variants are illustrated::
+
+    obj = MyObject(json_value=None)
+    session.add(obj)
+    session.commit()   # *will not* fire off column defaults, will insert JSON 'null'
+
+    obj = MyObject()
+    session.add(obj)
+    session.commit()   # *will* fire off column defaults, and/or insert SQL NULL
+
+The feature applies as well to the new base :class:`.types.JSON` type
+and its descendant types.
+
+:ticket:`3514`
+
+.. _change_3514_jsonnull:
+
+New JSON.NULL Constant Added
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To ensure that an application can always have full control at the value level
+of whether a :class:`.types.JSON`, :class:`.postgresql.JSON`, :class:`.mysql.JSON`,
+or :class:`.postgresql.JSONB` column
+should receive a SQL NULL or JSON ``"null"`` value, the constant
+:attr:`.types.JSON.NULL` has been added, which in conjunction with
+:func:`.null` can be used to determine fully between SQL NULL and
+JSON ``"null"``, regardless of what :paramref:`.types.JSON.none_as_null` is set
+to::
+
+    from sqlalchemy import null
+    from sqlalchemy.dialects.postgresql import JSON
+
+    obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
+    obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
+
+    session.add_all([obj1, obj2])
+    session.commit()
+
+The feature applies as well to the new base :class:`.types.JSON` type
+and its descendant types.
+
+:ticket:`3514`
+
 .. _change_3516:
 
 Array support added to Core; new ANY and ALL operators
 ------------------------------------------------------
 
-Along with the enhancements made to the Postgresql :class:`.ARRAY`
-type described in :ref:`change_3503`, the base class of :class:`.ARRAY`
-itself has been moved to Core in a new class :class:`.types.Array`.
+Along with the enhancements made to the Postgresql :class:`.postgresql.ARRAY`
+type described in :ref:`change_3503`, the base class of :class:`.postgresql.ARRAY`
+itself has been moved to Core in a new class :class:`.types.ARRAY`.
 
 Arrays are part of the SQL standard, as are several array-oriented functions
 such as ``array_agg()`` and ``unnest()``.  In support of these constructs
 for not just PostgreSQL but also potentially for other array-capable backends
 in the future such as DB2, the majority of array logic for SQL expressions
-is now in Core.   The :class:`.Array` type still **only works on
+is now in Core.   The :class:`.types.ARRAY` type still **only works on
 Postgresql**, however it can be used directly, supporting special array
 use cases such as indexed access, as well as support for the ANY and ALL::
 
     mytable = Table("mytable", metadata,
-            Column("data", Array(Integer, dimensions=2))
+            Column("data", ARRAY(Integer, dimensions=2))
         )
 
     expr = mytable.c.data[5][6]
 
     expr = mytable.c.data[5].any(12)
 
-In support of ANY and ALL, the :class:`.Array` type retains the same
-:meth:`.Array.Comparator.any` and :meth:`.Array.Comparator.all` methods
+In support of ANY and ALL, the :class:`.types.ARRAY` type retains the same
+:meth:`.types.ARRAY.Comparator.any` and :meth:`.types.ARRAY.Comparator.all` methods
 from the PostgreSQL type, but also exports these operations to new
 standalone operator functions :func:`.sql.expression.any_` and
 :func:`.sql.expression.all_`.  These two functions work in more
@@ -541,7 +646,7 @@ as::
 
 For the PostgreSQL-specific operators "contains", "contained_by", and
 "overlaps", one should continue to use the :class:`.postgresql.ARRAY`
-type directly, which provides all functionality of the :class:`.Array`
+type directly, which provides all functionality of the :class:`.types.ARRAY`
 type as well.
 
 The :func:`.sql.expression.any_` and :func:`.sql.expression.all_` operators
@@ -564,7 +669,7 @@ such as::
 New Function features, "WITHIN GROUP", array_agg and set aggregate functions
 ----------------------------------------------------------------------------
 
-With the new :class:`.Array` type we can also implement a pre-typed
+With the new :class:`.types.ARRAY` type we can also implement a pre-typed
 function for the ``array_agg()`` SQL function that returns an array,
 which is now available using :class:`.array_agg`::
 
@@ -767,8 +872,9 @@ As described in :ref:`change_3499`, the ORM relies upon being able to
 produce a hash function for column values when a query's selected entities
 mixes full ORM entities with column expressions.   The ``hashable=False``
 flag is now correctly set on all of PG's "data structure" types, including
-:class:`.ARRAY` and :class:`.JSON`.  The :class:`.JSONB` and :class:`.HSTORE`
-types already included this flag.  For :class:`.ARRAY`,
+:class:`.postgresql.ARRAY` and :class:`.postgresql.JSON`.
+The :class:`.JSONB` and :class:`.HSTORE`
+types already included this flag.  For :class:`.postgresql.ARRAY`,
 this is conditional based on the :paramref:`.postgresql.ARRAY.as_tuple`
 flag, however it should no longer be necessary to set this flag
 in order to have an array value present in a composed ORM row.
@@ -840,7 +946,7 @@ The JSON cast() operation now requires ``.astext`` is called explicitly
 As part of the changes in :ref:`change_3503`, the workings of the
 :meth:`.ColumnElement.cast` operator on :class:`.postgresql.JSON` and
 :class:`.postgresql.JSONB` no longer implictly invoke the
-:attr:`.JSON.Comparator.astext` modifier; Postgresql's JSON/JSONB types
+:attr:`.postgresql.JSON.Comparator.astext` modifier; Postgresql's JSON/JSONB types
 support CAST operations to each other without the "astext" aspect.
 
 This means that in most cases, an application that was doing this::
@@ -851,88 +957,6 @@ Will now need to change to this::
 
     expr = json_col['somekey'].astext.cast(Integer)
 
-
-
-.. _change_3514:
-
-Postgresql JSON "null" is inserted as expected with ORM operations, regardless of column default present
------------------------------------------------------------------------------------------------------------
-
-The :class:`.JSON` type has a flag :paramref:`.JSON.none_as_null` which
-when set to True indicates that the Python value ``None`` should translate
-into a SQL NULL rather than a JSON NULL value.  This flag defaults to False,
-which means that the column should *never* insert SQL NULL or fall back
-to a default unless the :func:`.null` constant were used.  However, this would
-fail in the ORM under two circumstances; one is when the column also contained
-a default or server_default value, a positive value of ``None`` on the mapped
-attribute would still result in the column-level default being triggered,
-replacing the ``None`` value::
-
-    obj = MyObject(json_value=None)
-    session.add(obj)
-    session.commit()   # would fire off default / server_default, not encode "'none'"
-
-The other is when the :meth:`.Session.bulk_insert_mappings`
-method were used, ``None`` would be ignored in all cases::
-
-    session.bulk_insert_mappings(
-        MyObject,
-        [{"json_value": None}])  # would insert SQL NULL and/or trigger defaults
-
-The :class:`.JSON` type now implements the
-:attr:`.TypeEngine.should_evaluate_none` flag,
-indicating that ``None`` should not be ignored here; it is configured
-automatically based on the value of :paramref:`.JSON.none_as_null`.
-Thanks to :ticket:`3061`, we can differentiate when the value ``None`` is actively
-set by the user versus when it was never set at all.
-
-If the attribute is not set at all, then column level defaults *will*
-fire off and/or SQL NULL will be inserted as expected, as was the behavior
-previously.  Below, the two variants are illustrated::
-
-    obj = MyObject(json_value=None)
-    session.add(obj)
-    session.commit()   # *will not* fire off column defaults, will insert JSON 'null'
-
-    obj = MyObject()
-    session.add(obj)
-    session.commit()   # *will* fire off column defaults, and/or insert SQL NULL
-
-:ticket:`3514`
-
-.. seealso::
-
-      :ref:`change_3250`
-
-      :ref:`change_3514_jsonnull`
-
-.. _change_3514_jsonnull:
-
-New JSON.NULL Constant Added
-----------------------------
-
-To ensure that an application can always have full control at the value level
-of whether a :class:`.postgresql.JSON` or :class:`.postgresql.JSONB` column
-should receive a SQL NULL or JSON ``"null"`` value, the constant
-:attr:`.postgresql.JSON.NULL` has been added, which in conjunction with
-:func:`.null` can be used to determine fully between SQL NULL and
-JSON ``"null"``, regardless of what :paramref:`.JSON.none_as_null` is set
-to::
-
-    from sqlalchemy import null
-    from sqlalchemy.dialects.postgresql import JSON
-
-    obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
-    obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
-
-    session.add_all([obj1, obj2])
-    session.commit()
-
-.. seealso::
-
-    :ref:`change_3514`
-
-:ticket:`3514`
 
 .. _change_2729:
 
@@ -974,6 +998,25 @@ emits::
 
 Dialect Improvements and Changes - MySQL
 =============================================
+
+.. _change_3547:
+
+MySQL JSON Support
+------------------
+
+A new type :class:`.mysql.JSON` is added to the MySQL dialect supporting
+the JSON type newly added to MySQL 5.7.   This type provides both persistence
+of JSON as well as rudimentary indexed-access using the ``JSON_EXTRACT``
+function internally.  An indexable JSON column that works across MySQL
+and Postgresql can be achieved by using the :class:`.types.JSON` datatype
+common to both MySQL and Postgresql.
+
+.. seealso::
+
+    :ref:`change_3619`
+
+:ticket:`3547`
+
 
 .. _change_mysql_3216:
 

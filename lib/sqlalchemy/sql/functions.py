@@ -256,16 +256,18 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         """
         return self.select().execute()
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return BindParameter(None, obj, _compared_to_operator=operator,
-                             _compared_to_type=self.type, unique=True)
+                             _compared_to_type=self.type, unique=True,
+                             type_=type_)
 
     def self_group(self, against=None):
         # for the moment, we are parenthesizing all array-returning
         # expressions against getitem.  This may need to be made
         # more portable if in the future we support other DBs
         # besides postgresql.
-        if against is operators.getitem:
+        if against is operators.getitem and \
+                isinstance(self.type, sqltypes.ARRAY):
             return Grouping(self)
         else:
             return super(FunctionElement, self).self_group(against=against)
@@ -423,10 +425,11 @@ class Function(FunctionElement):
 
         FunctionElement.__init__(self, *clauses, **kw)
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return BindParameter(self.name, obj,
                              _compared_to_operator=operator,
                              _compared_to_type=self.type,
+                             type_=type_,
                              unique=True)
 
 
@@ -659,7 +662,7 @@ class array_agg(GenericFunction):
     """support for the ARRAY_AGG function.
 
     The ``func.array_agg(expr)`` construct returns an expression of
-    type :class:`.Array`.
+    type :class:`.types.ARRAY`.
 
     e.g.::
 
@@ -670,11 +673,11 @@ class array_agg(GenericFunction):
     .. seealso::
 
         :func:`.postgresql.array_agg` - PostgreSQL-specific version that
-        returns :class:`.ARRAY`, which has PG-specific operators added.
+        returns :class:`.postgresql.ARRAY`, which has PG-specific operators added.
 
     """
 
-    type = sqltypes.Array
+    type = sqltypes.ARRAY
 
     def __init__(self, *args, **kwargs):
         args = [_literal_as_binds(c) for c in args]
@@ -694,7 +697,7 @@ class OrderedSetAgg(GenericFunction):
         func_clauses = self.clause_expr.element
         order_by = sqlutil.unwrap_order_by(within_group.order_by)
         if self.array_for_multi_clause and len(func_clauses.clauses) > 1:
-            return sqltypes.Array(order_by[0].type)
+            return sqltypes.ARRAY(order_by[0].type)
         else:
             return order_by[0].type
 
@@ -719,7 +722,7 @@ class percentile_cont(OrderedSetAgg):
     modifier to supply a sort expression to operate upon.
 
     The return type of this function is the same as the sort expression,
-    or if the arguments are an array, an :class:`.Array` of the sort
+    or if the arguments are an array, an :class:`.types.ARRAY` of the sort
     expression's type.
 
     .. versionadded:: 1.1
@@ -736,7 +739,7 @@ class percentile_disc(OrderedSetAgg):
     modifier to supply a sort expression to operate upon.
 
     The return type of this function is the same as the sort expression,
-    or if the arguments are an array, an :class:`.Array` of the sort
+    or if the arguments are an array, an :class:`.types.ARRAY` of the sort
     expression's type.
 
     .. versionadded:: 1.1

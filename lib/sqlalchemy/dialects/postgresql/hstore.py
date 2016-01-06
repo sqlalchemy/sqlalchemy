@@ -12,34 +12,33 @@ from .array import ARRAY
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
 from ...sql import operators
-from ...sql.operators import custom_op
 from ... import util
 
 __all__ = ('HSTORE', 'hstore')
 
 
-INDEX = custom_op(
-    "->", precedence=5, natural_self_precedent=True
+GETITEM = operators.custom_op(
+    "->", precedence=15, natural_self_precedent=True,
 )
 
 HAS_KEY = operators.custom_op(
-    "?", precedence=5, natural_self_precedent=True
+    "?", precedence=15, natural_self_precedent=True
 )
 
 HAS_ALL = operators.custom_op(
-    "?&", precedence=5, natural_self_precedent=True
+    "?&", precedence=15, natural_self_precedent=True
 )
 
 HAS_ANY = operators.custom_op(
-    "?|", precedence=5, natural_self_precedent=True
+    "?|", precedence=15, natural_self_precedent=True
 )
 
 CONTAINS = operators.custom_op(
-    "@>", precedence=5, natural_self_precedent=True
+    "@>", precedence=15, natural_self_precedent=True
 )
 
 CONTAINED_BY = operators.custom_op(
-    "<@", precedence=5, natural_self_precedent=True
+    "<@", precedence=15, natural_self_precedent=True
 )
 
 
@@ -166,7 +165,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
                 CONTAINED_BY, other, result_type=sqltypes.Boolean)
 
         def _setup_getitem(self, index):
-            return INDEX, index, self.type.text_type
+            return GETITEM, index, self.type.text_type
 
         def defined(self, key):
             """Boolean expression.  Test for presence of a non-NULL value for

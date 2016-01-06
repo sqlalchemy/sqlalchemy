@@ -5,7 +5,7 @@ from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
-    Text, Numeric, Float, literal, Boolean
+    Text, Numeric, Float, literal, Boolean, cast, null, JSON
 from ..schema import Table, Column
 from ... import testing
 import decimal
@@ -586,7 +586,246 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
 
-__all__ = ('UnicodeVarcharTest', 'UnicodeTextTest',
+class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __requires__ = 'json_type',
+    __backend__ = True
+
+    datatype = JSON
+
+    data1 = {
+        "key1": "value1",
+        "key2": "value2"
+    }
+
+    data2 = {
+        "Key 'One'": "value1",
+        "key two": "value2",
+        "key three": "value ' three '"
+    }
+
+    data3 = {
+        "key1": [1, 2, 3],
+        "key2": ["one", "two", "three"],
+        "key3": [{"four": "five"}, {"six": "seven"}]
+    }
+
+    data4 = ["one", "two", "three"]
+
+    data5 = {
+        "nested": {
+            "elem1": [
+                {"a": "b", "c": "d"},
+                {"e": "f", "g": "h"}
+            ],
+            "elem2": {
+                "elem3": {"elem4": "elem5"}
+            }
+        }
+    }
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('data_table', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('name', String(30), nullable=False),
+              Column('data', cls.datatype),
+              Column('nulldata', cls.datatype(none_as_null=True))
+              )
+
+    def test_round_trip_data1(self):
+        self._test_round_trip(self.data1)
+
+    def _test_round_trip(self, data_element):
+        data_table = self.tables.data_table
+
+        config.db.execute(
+            data_table.insert(),
+            {'name': 'row1', 'data': data_element}
+        )
+
+        row = config.db.execute(
+            select([
+                data_table.c.data,
+            ])
+        ).first()
+
+        eq_(row, (data_element, ))
+
+    def test_round_trip_none_as_sql_null(self):
+        col = self.tables.data_table.c['nulldata']
+
+        with config.db.connect() as conn:
+            conn.execute(
+                self.tables.data_table.insert(),
+                {"name": "r1", "data": None}
+            )
+
+            eq_(
+                conn.scalar(
+                    select([self.tables.data_table.c.name]).
+                    where(col.is_(null()))
+                ),
+                "r1"
+            )
+
+            eq_(
+                conn.scalar(
+                    select([col])
+                ),
+                None
+            )
+
+    def test_round_trip_json_null_as_json_null(self):
+        col = self.tables.data_table.c['data']
+
+        with config.db.connect() as conn:
+            conn.execute(
+                self.tables.data_table.insert(),
+                {"name": "r1", "data": JSON.NULL}
+            )
+
+            eq_(
+                conn.scalar(
+                    select([self.tables.data_table.c.name]).
+                    where(cast(col, String) == 'null')
+                ),
+                "r1"
+            )
+
+            eq_(
+                conn.scalar(
+                    select([col])
+                ),
+                None
+            )
+
+    def test_round_trip_none_as_json_null(self):
+        col = self.tables.data_table.c['data']
+
+        with config.db.connect() as conn:
+            conn.execute(
+                self.tables.data_table.insert(),
+                {"name": "r1", "data": None}
+            )
+
+            eq_(
+                conn.scalar(
+                    select([self.tables.data_table.c.name]).
+                    where(cast(col, String) == 'null')
+                ),
+                "r1"
+            )
+
+            eq_(
+                conn.scalar(
+                    select([col])
+                ),
+                None
+            )
+
+    def _criteria_fixture(self):
+        config.db.execute(
+            self.tables.data_table.insert(),
+            [{"name": "r1", "data": self.data1},
+             {"name": "r2", "data": self.data2},
+             {"name": "r3", "data": self.data3},
+             {"name": "r4", "data": self.data4},
+             {"name": "r5", "data": self.data5}]
+        )
+
+    def _test_index_criteria(self, crit, expected):
+        self._criteria_fixture()
+        with config.db.connect() as conn:
+            eq_(
+                conn.scalar(
+                    select([self.tables.data_table.c.name]).
+                    where(crit)
+                ),
+                expected
+            )
+
+    def test_crit_spaces_in_key(self):
+        col = self.tables.data_table.c['data']
+        self._test_index_criteria(
+            cast(col["key two"], String) == '"value2"',
+            "r2"
+        )
+
+    def test_crit_simple_int(self):
+        col = self.tables.data_table.c['data']
+        self._test_index_criteria(
+            cast(col[1], String) == '"two"',
+            "r4"
+        )
+
+    def test_crit_mixed_path(self):
+        col = self.tables.data_table.c['data']
+        self._test_index_criteria(
+            cast(col[("key3", 1, "six")], String) == '"seven"',
+            "r3"
+        )
+
+    def test_crit_string_path(self):
+        col = self.tables.data_table.c['data']
+        self._test_index_criteria(
+            cast(col[("nested", "elem2", "elem3", "elem4")], String)
+            == '"elem5"',
+            "r5"
+        )
+
+    def test_unicode_round_trip(self):
+        s = select([
+            cast(
+                {
+                    util.u('réveillé'): util.u('réveillé'),
+                    "data": {"k1": util.u('drôle')}
+                },
+                self.datatype
+            )
+        ])
+        eq_(
+            config.db.scalar(s),
+            {
+                util.u('réveillé'): util.u('réveillé'),
+                "data": {"k1": util.u('drôle')}
+            },
+        )
+
+    def test_eval_none_flag_orm(self):
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import Session
+
+        Base = declarative_base()
+
+        class Data(Base):
+            __table__ = self.tables.data_table
+
+        s = Session(testing.db)
+
+        d1 = Data(name='d1', data=None, nulldata=None)
+        s.add(d1)
+        s.commit()
+
+        s.bulk_insert_mappings(
+            Data, [{"name": "d2", "data": None, "nulldata": None}]
+        )
+        eq_(
+            s.query(
+                cast(self.tables.data_table.c.data, String),
+                cast(self.tables.data_table.c.nulldata, String)
+            ).filter(self.tables.data_table.c.name == 'd1').first(),
+            ("null", None)
+        )
+        eq_(
+            s.query(
+                cast(self.tables.data_table.c.data, String),
+                cast(self.tables.data_table.c.nulldata, String)
+            ).filter(self.tables.data_table.c.name == 'd2').first(),
+            ("null", None)
+        )
+
+
+__all__ = ('UnicodeVarcharTest', 'UnicodeTextTest', 'JSONTest',
            'DateTest', 'DateTimeTest', 'TextTest',
            'NumericTest', 'IntegerTest',
            'DateTimeHistoricTest', 'DateTimeCoercedToDateTimeTest',

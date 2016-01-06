@@ -7,7 +7,7 @@ from sqlalchemy import testing
 import datetime
 from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
     func, DateTime, Numeric, exc, String, cast, REAL, TypeDecorator, Unicode, \
-    Text, null, text, column, Array, any_, all_
+    Text, null, text, column, ARRAY, any_, all_
 from sqlalchemy.sql import operators
 from sqlalchemy import types
 import sqlalchemy as sa
@@ -819,7 +819,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_index_map_dimensions(self):
         col = column('x', postgresql.ARRAY(Integer, dimensions=3))
         is_(
-            col[5].type._type_affinity, Array
+            col[5].type._type_affinity, ARRAY
         )
         assert isinstance(
             col[5].type, postgresql.ARRAY
@@ -828,7 +828,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             col[5].type.dimensions, 2
         )
         is_(
-            col[5][6].type._type_affinity, Array
+            col[5][6].type._type_affinity, ARRAY
         )
         assert isinstance(
             col[5][6].type, postgresql.ARRAY
@@ -859,8 +859,8 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
         # type affinity is Array...
-        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
-        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.intarr[1:3].type._type_affinity, ARRAY)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, ARRAY)
 
         # but the slice returns the actual type
         assert isinstance(arrtable.c.intarr[1:3].type, postgresql.ARRAY)
@@ -892,12 +892,12 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
                 type_=postgresql.ARRAY(Integer)
             )[3],
             "(array_cat(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s], "
-            "ARRAY[%(param_4)s, %(param_5)s, %(param_6)s]))[%(param_7)s]"
+            "ARRAY[%(param_4)s, %(param_5)s, %(param_6)s]))[%(array_cat_1)s]"
         )
 
     def test_array_agg_generic(self):
         expr = func.array_agg(column('q', Integer))
-        is_(expr.type.__class__, types.Array)
+        is_(expr.type.__class__, types.ARRAY)
         is_(expr.type.item_type.__class__, Integer)
 
     def test_array_agg_specific(self):
@@ -1811,7 +1811,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_getitem(self):
         self._test_where(
             self.hashcol['bar'] == None,
-            "(test_table.hash -> %(hash_1)s) IS NULL"
+            "test_table.hash -> %(hash_1)s IS NULL"
         )
 
     def test_cols_get(self):
@@ -1894,7 +1894,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_cols_concat_get(self):
         self._test_cols(
             (self.hashcol + self.hashcol)['foo'],
-            "test_table.hash || test_table.hash -> %(param_1)s AS anon_1"
+            "(test_table.hash || test_table.hash) -> %(param_1)s AS anon_1"
         )
 
     def test_cols_keys(self):
@@ -1979,6 +1979,21 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         insp = inspect(testing.db)
         cols = insp.get_columns('data_table')
         assert isinstance(cols[2]['type'], HSTORE)
+
+    def test_literal_round_trip(self):
+        # in particular, this tests that the array index
+        # operator against the function is handled by PG; with some
+        # array functions it requires outer parenthezisation on the left and
+        # we may not be doing that here
+        expr = hstore(
+            postgresql.array(['1', '2']),
+            postgresql.array(['3', None]))['1']
+        eq_(
+            testing.db.scalar(
+                select([expr])
+            ),
+            "3"
+        )
 
     @testing.requires.psycopg2_native_hstore
     def test_insert_native(self):
@@ -2411,100 +2426,33 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
             ) % expected
         )
 
-    def test_bind_serialize_default(self):
-        dialect = postgresql.dialect()
-        proc = self.test_table.c.test_column.type._cached_bind_processor(
-            dialect)
-        eq_(
-            proc({"A": [1, 2, 3, True, False]}),
-            '{"A": [1, 2, 3, true, false]}'
-        )
-
-    def test_bind_serialize_None(self):
-        dialect = postgresql.dialect()
-        proc = self.test_table.c.test_column.type._cached_bind_processor(
-            dialect)
-        eq_(
-            proc(None),
-            'null'
-        )
-
-    def test_bind_serialize_none_as_null(self):
-        dialect = postgresql.dialect()
-        proc = JSON(none_as_null=True)._cached_bind_processor(
-            dialect)
-        eq_(
-            proc(None),
-            None
-        )
-        eq_(
-            proc(null()),
-            None
-        )
-
-    def test_bind_serialize_null(self):
-        dialect = postgresql.dialect()
-        proc = self.test_table.c.test_column.type._cached_bind_processor(
-            dialect)
-        eq_(
-            proc(null()),
-            None
-        )
-
-    def test_result_deserialize_default(self):
-        dialect = postgresql.dialect()
-        proc = self.test_table.c.test_column.type._cached_result_processor(
-            dialect, None)
-        eq_(
-            proc('{"A": [1, 2, 3, true, false]}'),
-            {"A": [1, 2, 3, True, False]}
-        )
-
-    def test_result_deserialize_null(self):
-        dialect = postgresql.dialect()
-        proc = self.test_table.c.test_column.type._cached_result_processor(
-            dialect, None)
-        eq_(
-            proc('null'),
-            None
-        )
-
-    def test_result_deserialize_None(self):
-        dialect = postgresql.dialect()
-        proc = self.test_table.c.test_column.type._cached_result_processor(
-            dialect, None)
-        eq_(
-            proc(None),
-            None
-        )
-
     # This test is a bit misleading -- in real life you will need to cast to
     # do anything
     def test_where_getitem(self):
         self._test_where(
             self.jsoncol['bar'] == None,
-            "(test_table.test_column -> %(test_column_1)s) IS NULL"
+            "test_table.test_column -> %(test_column_1)s IS NULL"
         )
 
     def test_where_path(self):
         self._test_where(
             self.jsoncol[("foo", 1)] == None,
-            "(test_table.test_column #> %(test_column_1)s) IS NULL"
+            "test_table.test_column #> %(test_column_1)s IS NULL"
         )
 
     def test_path_typing(self):
         col = column('x', JSON())
         is_(
-            col['q'].type._type_affinity, JSON
+            col['q'].type._type_affinity, types.JSON
         )
         is_(
-            col[('q', )].type._type_affinity, JSON
+            col[('q', )].type._type_affinity, types.JSON
         )
         is_(
-            col['q']['p'].type._type_affinity, JSON
+            col['q']['p'].type._type_affinity, types.JSON
         )
         is_(
-            col[('q', 'p')].type._type_affinity, JSON
+            col[('q', 'p')].type._type_affinity, types.JSON
         )
 
     def test_custom_astext_type(self):
@@ -2528,7 +2476,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_getitem_as_text(self):
         self._test_where(
             self.jsoncol['bar'].astext == None,
-            "(test_table.test_column ->> %(test_column_1)s) IS NULL"
+            "test_table.test_column ->> %(test_column_1)s IS NULL"
         )
 
     def test_where_getitem_astext_cast(self):
@@ -2548,7 +2496,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_path_as_text(self):
         self._test_where(
             self.jsoncol[("foo", 1)].astext == None,
-            "(test_table.test_column #>> %(test_column_1)s) IS NULL"
+            "test_table.test_column #>> %(test_column_1)s IS NULL"
         )
 
     def test_cols_get(self):

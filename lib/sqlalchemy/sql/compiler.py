@@ -879,22 +879,28 @@ class SQLCompiler(Compiled):
         else:
             return text
 
+    def _get_operator_dispatch(self, operator_, qualifier1, qualifier2):
+        attrname = "visit_%s_%s%s" % (
+            operator_.__name__, qualifier1,
+            "_" + qualifier2 if qualifier2 else "")
+        return getattr(self, attrname, None)
+
     def visit_unary(self, unary, **kw):
         if unary.operator:
             if unary.modifier:
                 raise exc.CompileError(
                     "Unary expression does not support operator "
                     "and modifier simultaneously")
-            disp = getattr(self, "visit_%s_unary_operator" %
-                           unary.operator.__name__, None)
+            disp = self._get_operator_dispatch(
+                unary.operator, "unary", "operator")
             if disp:
                 return disp(unary, unary.operator, **kw)
             else:
                 return self._generate_generic_unary_operator(
                     unary, OPERATORS[unary.operator], **kw)
         elif unary.modifier:
-            disp = getattr(self, "visit_%s_unary_modifier" %
-                           unary.modifier.__name__, None)
+            disp = self._get_operator_dispatch(
+                unary.modifier, "unary", "modifier")
             if disp:
                 return disp(unary, unary.modifier, **kw)
             else:
@@ -928,7 +934,7 @@ class SQLCompiler(Compiled):
             kw['literal_binds'] = True
 
         operator_ = override_operator or binary.operator
-        disp = getattr(self, "visit_%s_binary" % operator_.__name__, None)
+        disp = self._get_operator_dispatch(operator_, "binary", None)
         if disp:
             return disp(binary, operator_, **kw)
         else:

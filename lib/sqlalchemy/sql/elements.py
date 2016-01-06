@@ -682,9 +682,10 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     def reverse_operate(self, op, other, **kwargs):
         return op(other, self.comparator, **kwargs)
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return BindParameter(None, obj,
                              _compared_to_operator=operator,
+                             type_=type_,
                              _compared_to_type=self.type, unique=True)
 
     @property
@@ -1952,11 +1953,12 @@ class Tuple(ClauseList, ColumnElement):
     def _select_iterable(self):
         return (self, )
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return Tuple(*[
             BindParameter(None, o, _compared_to_operator=operator,
-                          _compared_to_type=type_, unique=True)
-            for o, type_ in zip(obj, self._type_tuple)
+                          _compared_to_type=compared_to_type, unique=True,
+                          type_=type_)
+            for o, compared_to_type in zip(obj, self._type_tuple)
         ]).self_group()
 
 
@@ -3637,10 +3639,11 @@ class ColumnClause(Immutable, ColumnElement):
         else:
             return name
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return BindParameter(self.key, obj,
                              _compared_to_operator=operator,
                              _compared_to_type=self.type,
+                             type_=type_,
                              unique=True)
 
     def _make_proxy(self, selectable, name=None, attach=True,

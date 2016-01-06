@@ -487,6 +487,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def json_type(self):
+        """target platform implements a native JSON type."""
+
+        return exclusions.closed()
+
+    @property
     def precision_numerics_general(self):
         """target backend has general support for moderately high-precision
         numerics."""

@@ -22,6 +22,33 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, mysql
+        :tickets: 3547
+
+        Added :class:`.mysql.JSON` for MySQL 5.7.  The JSON type provides
+        persistence of JSON values in MySQL as well as basic operator support
+        of "getitem" and "getpath", making use of the ``JSON_EXTRACT``
+        function in order to refer to individual paths in a JSON structure.
+
+        .. seealso::
+
+            :ref:`change_3547`
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3619
+
+        Added a new type to core :class:`.types.JSON`.  This is the
+        base of the PostgreSQL :class:`.postgresql.JSON` type as well as that
+        of the new :class:`.mysql.JSON` type, so that a PG/MySQL-agnostic
+        JSON column may be used.  The type features basic index and path
+        searching support.
+
+        .. seealso::
+
+            :ref:`change_3619`
+
+    .. change::
         :tags: bug, sql
         :tickets: 3616
 
@@ -275,7 +302,7 @@
         :tickets: 3132
 
         Added support for the SQL-standard function :class:`.array_agg`,
-        which automatically returns an :class:`.Array` of the correct type
+        which automatically returns an :class:`.postgresql.ARRAY` of the correct type
         and supports index / slice operations, as well as
         :func:`.postgresql.array_agg`, which returns a :class:`.postgresql.ARRAY`
         with additional comparison features.   As arrays are only
@@ -292,8 +319,8 @@
         :tags: feature, sql
         :tickets: 3516
 
-        Added a new type to core :class:`.types.Array`.  This is the
-        base of the PostgreSQL :class:`.ARRAY` type, and is now part of Core
+        Added a new type to core :class:`.types.ARRAY`.  This is the
+        base of the PostgreSQL :class:`.postgresql.ARRAY` type, and is now part of Core
         to begin supporting various SQL-standard array-supporting features
         including some functions and eventual support for native arrays
         on other databases that have an "array" concept, such as DB2 or Oracle.
@@ -399,7 +426,7 @@
         :tickets: 3514
 
         Additional fixes have been made regarding the value of ``None``
-        in conjunction with the Postgresql :class:`.JSON` type.  When
+        in conjunction with the Postgresql :class:`.postgresql.JSON` type.  When
         the :paramref:`.JSON.none_as_null` flag is left at its default
         value of ``False``, the ORM will now correctly insert the Json
         "'null'" string into the column whenever the value on the ORM

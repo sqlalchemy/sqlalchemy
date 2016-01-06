@@ -534,6 +534,7 @@ class PGDialect_psycopg2(PGDialect):
             sqltypes.Enum: _PGEnum,  # needs force_unicode
             HSTORE: _PGHStore,
             JSON: _PGJSON,
+            sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
             UUID: _PGUUID
         }
