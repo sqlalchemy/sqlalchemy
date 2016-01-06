@@ -656,6 +656,9 @@ Connection / Engine API
 .. autoclass:: Connectable
    :members:
 
+.. autoclass:: CreateEnginePlugin
+   :members:
+
 .. autoclass:: Engine
    :members:
 

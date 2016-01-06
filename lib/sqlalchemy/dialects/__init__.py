@@ -43,3 +43,5 @@ def _auto_fn(name):
         return None
 
 registry = util.PluginLoader("sqlalchemy.dialects", auto_fn=_auto_fn)
+
+plugins = util.PluginLoader("sqlalchemy.plugins")

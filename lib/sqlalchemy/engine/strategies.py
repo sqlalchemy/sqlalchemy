@@ -48,6 +48,10 @@ class DefaultEngineStrategy(EngineStrategy):
         # create url.URL object
         u = url.make_url(name_or_url)
 
+        plugins = u._instantiate_plugins(kwargs)
+
+        u.query.pop('plugin', None)
+
         entrypoint = u._get_entrypoint()
         dialect_cls = entrypoint.get_dialect_cls(u)
 
@@ -168,6 +172,9 @@ class DefaultEngineStrategy(EngineStrategy):
         dialect_cls.engine_created(engine)
         if entrypoint is not dialect_cls:
             entrypoint.engine_created(engine)
+
+        for plugin in plugins:
+            plugin.engine_created(engine)
 
         return engine
 

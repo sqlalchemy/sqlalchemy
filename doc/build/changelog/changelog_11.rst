@@ -22,6 +22,19 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, engine
+        :tickets: 3536
+
+        Added a new entrypoint system to the engine to allow "plugins" to
+        be stated in the query string for a URL.   Custom plugins can
+        be written which will be given the chance up front to alter and/or
+        consume the engine's URL and keyword arguments, and then at engine
+        create time will be given the engine itself to allow additional
+        modifications or event registration.  Plugins are written as a
+        subclass of :class:`.CreateEnginePlugin`; see that class for
+        details.
+
+    .. change::
         :tags: feature, mysql
         :tickets: 3547
 

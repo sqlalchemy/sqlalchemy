@@ -781,6 +781,111 @@ class Dialect(object):
         pass
 
 
+class CreateEnginePlugin(object):
+    """A set of hooks intended to augment the construction of an
+    :class:`.Engine` object based on entrypoint names in a URL.
+
+    The purpose of :class:`.CreateEnginePlugin` is to allow third-party
+    systems to apply engine, pool and dialect level event listeners without
+    the need for the target application to be modified; instead, the plugin
+    names can be added to the database URL.  Target applications for
+    :class:`.CreateEnginePlugin` include:
+
+    * connection and SQL performance tools, e.g. which use events to track
+      number of checkouts and/or time spent with statements
+
+    * connectivity plugins such as proxies
+
+    Plugins are registered using entry points in a similar way as that
+    of dialects::
+
+        entry_points={
+            'sqlalchemy.plugins': [
+                'myplugin = myapp.plugins:MyPlugin'
+            ]
+
+    A plugin that uses the above names would be invoked from a database
+    URL as in::
+
+        from sqlalchemy import create_engine
+
+        engine = create_engine(
+          "mysql+pymysql://scott:tiger@localhost/test?plugin=myplugin")
+
+    The ``plugin`` argument supports multiple instances, so that a URL
+    may specify multiple plugins; they are loaded in the order stated
+    in the URL::
+
+        engine = create_engine(
+          "mysql+pymysql://scott:tiger@localhost/"
+          "test?plugin=plugin_one&plugin=plugin_twp&plugin=plugin_three")
+
+    A plugin can receive additional arguments from the URL string as
+    well as from the keyword arguments passed to :func:`.create_engine`.
+    The :class:`.URL` object and the keyword dictionary are passed to the
+    constructor so that these arguments can be extracted from the url's
+    :attr:`.URL.query` collection as well as from the dictionary::
+
+        class MyPlugin(CreateEnginePlugin):
+            def __init__(self, url, kwargs):
+                self.my_argument_one = url.query.pop('my_argument_one')
+                self.my_argument_two = url.query.pop('my_argument_two')
+                self.my_argument_three = kwargs.pop('my_argument_three', None)
+
+    Arguments like those illustrated above would be consumed from the
+    following::
+
+        from sqlalchemy import create_engine
+
+        engine = create_engine(
+          "mysql+pymysql://scott:tiger@localhost/"
+          "test?plugin=myplugin&my_argument_one=foo&my_argument_two=bar",
+          my_argument_three='bat')
+
+    The URL and dictionary are used for subsequent setup of the engine
+    as they are, so the plugin can modify their arguments in-place.
+    Arguments that are only understood by the plugin should be popped
+    or otherwise removed so that they aren't interpreted as erroneous
+    arguments afterwards.
+
+    When the engine creation process completes and produces the
+    :class:`.Engine` object, it is again passed to the plugin via the
+    :meth:`.CreateEnginePlugin.engine_created` hook.  In this hook, additional
+    changes can be made to the engine, most typically involving setup of
+    events (e.g. those defined in :ref:`core_event_toplevel`).
+
+    .. versionadded:: 1.1
+
+    """
+    def __init__(self, url, kwargs):
+        """Contruct a new :class:`.CreateEnginePlugin`.
+
+        The plugin object is instantiated individually for each call
+        to :func:`.create_engine`.  A single :class:`.Engine` will be
+        passed to the :meth:`.CreateEnginePlugin.engine_created` method
+        corresponding to this URL.
+
+        :param url: the :class:`.URL` object.  The plugin should inspect
+         what it needs here as well as remove its custom arguments from the
+         :attr:`.URL.query` collection.  The URL can be modified in-place
+         in any other way as well.
+        :param kwargs: The keyword arguments passed to :func`.create_engine`.
+         The plugin can read and modify this dictionary in-place, to affect
+         the ultimate arguments used to create the engine.  It should
+         remove its custom arguments from the dictionary as well.
+
+        """
+        self.url = url
+
+    def engine_created(self, engine):
+        """Receive the :class:`.Engine` object when it is fully constructed.
+
+        The plugin may make additional changes to the engine, such as
+        registering engine or connection pool events.
+
+        """
+
+
 class ExecutionContext(object):
     """A messenger object for a Dialect that corresponds to a single
     execution.

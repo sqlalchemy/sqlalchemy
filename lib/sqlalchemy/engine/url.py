@@ -17,7 +17,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 import re
 from .. import exc, util
 from . import Dialect
-from ..dialects import registry
+from ..dialects import registry, plugins
 
 
 class URL(object):
@@ -116,6 +116,14 @@ class URL(object):
             return self.get_dialect().driver
         else:
             return self.drivername.split('+')[1]
+
+    def _instantiate_plugins(self, kwargs):
+        plugin_names = util.to_list(self.query.get('plugin', ()))
+
+        return [
+            plugins.load(plugin_name)(self, kwargs)
+            for plugin_name in plugin_names
+        ]
 
     def _get_entrypoint(self):
         """Return the "entry point" dialect class.
