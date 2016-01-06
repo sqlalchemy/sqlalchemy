@@ -5,7 +5,7 @@ from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
-    Text, Numeric, Float, literal, Boolean, cast, null, JSON
+    Text, Numeric, Float, literal, Boolean, cast, null, JSON, and_
 from ..schema import Table, Column
 from ... import testing
 import decimal
@@ -745,16 +745,29 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
     def test_crit_spaces_in_key(self):
+        name = self.tables.data_table.c.name
         col = self.tables.data_table.c['data']
+
+        # limit the rows here to avoid PG error
+        # "cannot extract field from a non-object", which is
+        # fixed in 9.4 but may exist in 9.3
         self._test_index_criteria(
-            cast(col["key two"], String) == '"value2"',
+            and_(
+                name.in_(["r1", "r2", "r3"]),
+                cast(col["key two"], String) == '"value2"'
+            ),
             "r2"
         )
 
     def test_crit_simple_int(self):
+        name = self.tables.data_table.c.name
         col = self.tables.data_table.c['data']
+
+        # limit the rows here to avoid PG error
+        # "cannot extract array element from a non-array", which is
+        # fixed in 9.4 but may exist in 9.3
         self._test_index_criteria(
-            cast(col[1], String) == '"two"',
+            and_(name == 'r4', cast(col[1], String) == '"two"'),
             "r4"
         )
 
