@@ -424,6 +424,7 @@ class CursorErrTest(fixtures.TestBase):
         url = Mock(
             get_dialect=lambda: default.DefaultDialect,
             _get_entrypoint=lambda: default.DefaultDialect,
+            _instantiate_plugins=lambda kwargs: (),
             translate_connect_args=lambda: {}, query={},)
         eng = testing_engine(
             url, options=dict(module=dbapi, _initialize=initialize))
