@@ -759,6 +759,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             "r2"
         )
 
+    @config.requirements.json_array_indexes
     def test_crit_simple_int(self):
         name = self.tables.data_table.c.name
         col = self.tables.data_table.c['data']

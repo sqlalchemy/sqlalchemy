@@ -539,6 +539,10 @@ class DefaultRequirements(SuiteRequirements):
         ])
 
     @property
+    def json_array_indexes(self):
+        return self.json_type + fails_if("+pg8000")
+
+    @property
     def datetime_literals(self):
         """target dialect supports rendering of a date, time, or datetime as a
         literal string, e.g. via the TypeEngine.literal_processor() method.
