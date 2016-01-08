@@ -168,11 +168,11 @@ class Compiled(object):
 
     def __init__(self, dialect, statement, bind=None,
                  compile_kwargs=util.immutabledict()):
-        """Construct a new ``Compiled`` object.
+        """Construct a new :class:`.Compiled` object.
 
-        :param dialect: ``Dialect`` to compile against.
+        :param dialect: :class:`.Dialect` to compile against.
 
-        :param statement: ``ClauseElement`` to be compiled.
+        :param statement: :class:`.ClauseElement` to be compiled.
 
         :param bind: Optional Engine or Connection to compile this
           statement against.
@@ -288,11 +288,9 @@ class _CompileLabel(visitors.Visitable):
 
 
 class SQLCompiler(Compiled):
+    """Default implementation of :class:`.Compiled`.
 
-    """Default implementation of Compiled.
-
-    Compiles ClauseElements into SQL strings.   Uses a similar visit
-    paradigm as visitors.ClauseVisitor but implements its own traversal.
+    Compiles :class:`.ClauseElement` objects into SQL strings.
 
     """
 
@@ -335,17 +333,20 @@ class SQLCompiler(Compiled):
 
     def __init__(self, dialect, statement, column_keys=None,
                  inline=False, **kwargs):
-        """Construct a new ``DefaultCompiler`` object.
+        """Construct a new :class:`.SQLCompiler` object.
 
-        dialect
-          Dialect to be used
+        :param dialect: :class:`.Dialect` to be used
 
-        statement
-          ClauseElement to be compiled
+        :param statement: :class:`.ClauseElement` to be compiled
 
-        column_keys
-          a list of column names to be compiled into an INSERT or UPDATE
-          statement.
+        :param column_keys:  a list of column names to be compiled into an
+         INSERT or UPDATE statement.
+
+        :param inline: whether to generate INSERT statements as "inline", e.g.
+         not formatted to return any generated defaults
+
+        :param kwargs: additional keyword arguments to be consumed by the
+         superclass.
 
         """
         self.column_keys = column_keys
