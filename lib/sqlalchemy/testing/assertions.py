@@ -273,7 +273,8 @@ class AssertsCompiledSQL(object):
                        check_prefetch=None,
                        use_default_dialect=False,
                        allow_dialect_select=False,
-                       literal_binds=False):
+                       literal_binds=False,
+                       schema_translate_map=None):
         if use_default_dialect:
             dialect = default.DefaultDialect()
         elif allow_dialect_select:
@@ -291,6 +292,9 @@ class AssertsCompiledSQL(object):
 
         kw = {}
         compile_kwargs = {}
+
+        if schema_translate_map:
+            kw['schema_translate_map'] = schema_translate_map
 
         if params is not None:
             kw['column_keys'] = list(params)

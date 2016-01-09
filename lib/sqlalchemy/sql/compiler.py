@@ -167,6 +167,7 @@ class Compiled(object):
     _cached_metadata = None
 
     def __init__(self, dialect, statement, bind=None,
+                 schema_translate_map=None,
                  compile_kwargs=util.immutabledict()):
         """Construct a new :class:`.Compiled` object.
 
@@ -177,15 +178,24 @@ class Compiled(object):
         :param bind: Optional Engine or Connection to compile this
           statement against.
 
+        :param schema_translate_map: dictionary of schema names to be
+         translated when forming the resultant SQL
+
+         .. versionadded:: 1.1
+
         :param compile_kwargs: additional kwargs that will be
          passed to the initial call to :meth:`.Compiled.process`.
 
-         .. versionadded:: 0.8
 
         """
 
         self.dialect = dialect
         self.bind = bind
+        self.preparer = self.dialect.identifier_preparer
+        if schema_translate_map:
+            self.preparer = self.preparer._with_schema_translate(
+                schema_translate_map)
+
         if statement is not None:
             self.statement = statement
             self.can_execute = statement.supports_execution
@@ -385,8 +395,6 @@ class SQLCompiler(Compiled):
 
         self.ctes = None
 
-        # an IdentifierPreparer that formats the quoting of identifiers
-        self.preparer = dialect.identifier_preparer
         self.label_length = dialect.label_length \
             or dialect.max_identifier_length
 
@@ -653,8 +661,16 @@ class SQLCompiler(Compiled):
         if table is None or not include_table or not table.named_with_column:
             return name
         else:
-            if table.schema:
-                schema_prefix = self.preparer.quote_schema(table.schema) + '.'
+
+            # inlining of preparer._get_effective_schema
+            effective_schema = table.schema
+            if self.preparer.schema_translate_map:
+                effective_schema = self.preparer.schema_translate_map.get(
+                    effective_schema, effective_schema)
+
+            if effective_schema:
+                schema_prefix = self.preparer.quote_schema(
+                    effective_schema) + '.'
             else:
                 schema_prefix = ''
             tablename = table.name
@@ -1814,8 +1830,15 @@ class SQLCompiler(Compiled):
     def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,
                     fromhints=None, use_schema=True, **kwargs):
         if asfrom or ashint:
-            if use_schema and getattr(table, "schema", None):
-                ret = self.preparer.quote_schema(table.schema) + \
+
+            # inlining of preparer._get_effective_schema
+            effective_schema = table.schema
+            if self.preparer.schema_translate_map:
+                effective_schema = self.preparer.schema_translate_map.get(
+                    effective_schema, effective_schema)
+
+            if use_schema and effective_schema:
+                ret = self.preparer.quote_schema(effective_schema) + \
                     "." + self.preparer.quote(table.name)
             else:
                 ret = self.preparer.quote(table.name)
@@ -2103,10 +2126,6 @@ class DDLCompiler(Compiled):
     def type_compiler(self):
         return self.dialect.type_compiler
 
-    @property
-    def preparer(self):
-        return self.dialect.identifier_preparer
-
     def construct_params(self, params=None):
         return None
 
@@ -2116,7 +2135,7 @@ class DDLCompiler(Compiled):
         if isinstance(ddl.target, schema.Table):
             context = context.copy()
 
-            preparer = self.dialect.identifier_preparer
+            preparer = self.preparer
             path = preparer.format_table_seq(ddl.target)
             if len(path) == 1:
                 table, sch = path[0], ''
@@ -2142,7 +2161,7 @@ class DDLCompiler(Compiled):
 
     def visit_create_table(self, create):
         table = create.element
-        preparer = self.dialect.identifier_preparer
+        preparer = self.preparer
 
         text = "\nCREATE "
         if table._prefixes:
@@ -2269,9 +2288,12 @@ class DDLCompiler(Compiled):
             index, include_schema=True)
 
     def _prepared_index_name(self, index, include_schema=False):
-        if include_schema and index.table is not None and index.table.schema:
-            schema = index.table.schema
-            schema_name = self.preparer.quote_schema(schema)
+        if index.table is not None:
+            effective_schema = self.preparer._get_effective_schema(index.table)
+        else:
+            effective_schema = None
+        if include_schema and effective_schema:
+            schema_name = self.preparer.quote_schema(effective_schema)
         else:
             schema_name = None
 
@@ -2399,7 +2421,7 @@ class DDLCompiler(Compiled):
         return text
 
     def visit_foreign_key_constraint(self, constraint):
-        preparer = self.dialect.identifier_preparer
+        preparer = self.preparer
         text = ""
         if constraint.name is not None:
             formatted_name = self.preparer.format_constraint(constraint)
@@ -2626,6 +2648,8 @@ class IdentifierPreparer(object):
 
     illegal_initial_characters = ILLEGAL_INITIAL_CHARACTERS
 
+    schema_translate_map = util.immutabledict()
+
     def __init__(self, dialect, initial_quote='"',
                  final_quote=None, escape_quote='"', omit_schema=False):
         """Construct a new ``IdentifierPreparer`` object.
@@ -2649,6 +2673,12 @@ class IdentifierPreparer(object):
         self.escape_to_quote = self.escape_quote * 2
         self.omit_schema = omit_schema
         self._strings = {}
+
+    def _with_schema_translate(self, schema_translate_map):
+        prep = self.__class__.__new__(self.__class__)
+        prep.__dict__.update(self.__dict__)
+        prep.schema_translate_map = schema_translate_map
+        return prep
 
     def _escape_identifier(self, value):
         """Escape an identifier.
@@ -2722,9 +2752,12 @@ class IdentifierPreparer(object):
 
     def format_sequence(self, sequence, use_schema=True):
         name = self.quote(sequence.name)
+
+        effective_schema = self._get_effective_schema(sequence)
+
         if (not self.omit_schema and use_schema and
-                sequence.schema is not None):
-            name = self.quote_schema(sequence.schema) + "." + name
+                effective_schema is not None):
+            name = self.quote_schema(effective_schema) + "." + name
         return name
 
     def format_label(self, label, name=None):
@@ -2747,15 +2780,25 @@ class IdentifierPreparer(object):
                 return None
         return self.quote(constraint.name)
 
+    def _get_effective_schema(self, table):
+        effective_schema = table.schema
+        if self.schema_translate_map:
+            effective_schema = self.schema_translate_map.get(
+                effective_schema, effective_schema)
+        return effective_schema
+
     def format_table(self, table, use_schema=True, name=None):
         """Prepare a quoted table and schema name."""
 
         if name is None:
             name = table.name
         result = self.quote(name)
+
+        effective_schema = self._get_effective_schema(table)
+
         if not self.omit_schema and use_schema \
-                and getattr(table, "schema", None):
-            result = self.quote_schema(table.schema) + "." + result
+                and effective_schema:
+            result = self.quote_schema(effective_schema) + "." + result
         return result
 
     def format_schema(self, name, quote=None):
@@ -2794,9 +2837,11 @@ class IdentifierPreparer(object):
         # ('database', 'owner', etc.) could override this and return
         # a longer sequence.
 
+        effective_schema = self._get_effective_schema(table)
+
         if not self.omit_schema and use_schema and \
-                getattr(table, 'schema', None):
-            return (self.quote_schema(table.schema),
+                effective_schema:
+            return (self.quote_schema(effective_schema),
                     self.format_table(table, use_schema=False))
         else:
             return (self.format_table(table, use_schema=False), )

@@ -529,7 +529,8 @@ class Inspector(object):
         """
         dialect = self.bind.dialect
 
-        schema = table.schema
+        schema = self.bind._get_effective_schema(table)
+
         table_name = table.name
 
         # get table-level arguments that are specifically

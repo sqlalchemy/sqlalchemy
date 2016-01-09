@@ -23,6 +23,21 @@
 
     .. change::
         :tags: feature, engine
+        :tickets: 2685
+
+        Multi-tenancy schema translation for :class:`.Table` objects is added.
+        This supports the use case of an application that uses the same set of
+        :class:`.Table` objects in many schemas, such as schema-per-user.
+        A new execution option
+        :paramref:`.Connection.execution_options.schema_translate_map` is
+        added.
+
+        .. seealso::
+
+            :ref:`change_2685`
+
+    .. change::
+        :tags: feature, engine
         :tickets: 3536
 
         Added a new entrypoint system to the engine to allow "plugins" to

@@ -233,6 +233,9 @@ class MockEngineStrategy(EngineStrategy):
         dialect = property(attrgetter('_dialect'))
         name = property(lambda s: s._dialect.name)
 
+        def _get_effective_schema(self, table):
+            return table.schema
+
         def contextual_connect(self, **kwargs):
             return self
 

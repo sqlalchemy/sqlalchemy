@@ -44,6 +44,8 @@ class Connection(Connectable):
 
     """
 
+    _schema_translate_map = None
+
     def __init__(self, engine, connection=None, close_with_result=False,
                  _branch_from=None, _execution_options=None,
                  _dispatch=None,
@@ -139,6 +141,13 @@ class Connection(Connectable):
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
         return c
+
+    def _get_effective_schema(self, table):
+        effective_schema = table.schema
+        if self._schema_translate_map:
+            effective_schema = self._schema_translate_map.get(
+                effective_schema, effective_schema)
+        return effective_schema
 
     def __enter__(self):
         return self
@@ -276,6 +285,19 @@ class Connection(Connectable):
           "streamed" and not pre-buffered, if possible.  This is a limitation
           of many DBAPIs.  The flag is currently understood only by the
           psycopg2 dialect.
+
+        :param schema_translate_map: Available on: Connection, Engine.
+          A dictionary mapping schema names to schema names, that will be
+          applied to the :paramref:`.Table.schema` element of each
+          :class:`.Table` encountered when SQL or DDL expression elements
+          are compiled into strings; the resulting schema name will be
+          converted based on presence in the map of the original name.
+
+          .. versionadded:: 1.1
+
+          .. seealso::
+
+            :ref:`schema_translating`
 
         """
         c = self._clone()
@@ -959,7 +981,9 @@ class Connection(Connectable):
 
         dialect = self.dialect
 
-        compiled = ddl.compile(dialect=dialect)
+        compiled = ddl.compile(
+            dialect=dialect,
+            schema_translate_map=self._schema_translate_map)
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_ddl,
@@ -990,17 +1014,27 @@ class Connection(Connectable):
 
         dialect = self.dialect
         if 'compiled_cache' in self._execution_options:
-            key = dialect, elem, tuple(sorted(keys)), len(distilled_params) > 1
+            key = (
+                dialect, elem, tuple(sorted(keys)),
+                tuple(
+                    (k, self._schema_translate_map[k])
+                    for k in sorted(self._schema_translate_map)
+                ) if self._schema_translate_map else None,
+                len(distilled_params) > 1
+            )
             compiled_sql = self._execution_options['compiled_cache'].get(key)
             if compiled_sql is None:
                 compiled_sql = elem.compile(
                     dialect=dialect, column_keys=keys,
-                    inline=len(distilled_params) > 1)
+                    inline=len(distilled_params) > 1,
+                    schema_translate_map=self._schema_translate_map
+                )
                 self._execution_options['compiled_cache'][key] = compiled_sql
         else:
             compiled_sql = elem.compile(
                 dialect=dialect, column_keys=keys,
-                inline=len(distilled_params) > 1)
+                inline=len(distilled_params) > 1,
+                schema_translate_map=self._schema_translate_map)
 
         ret = self._execute_context(
             dialect,

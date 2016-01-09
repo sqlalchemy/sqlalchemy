@@ -1481,8 +1481,11 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             raise exc.CompileError("Postgresql ENUM type requires a name.")
 
         name = self.quote(type_.name)
-        if not self.omit_schema and use_schema and type_.schema is not None:
-            name = self.quote_schema(type_.schema) + "." + name
+        effective_schema = self._get_effective_schema(type_)
+
+        if not self.omit_schema and use_schema and \
+                effective_schema is not None:
+            name = self.quote_schema(effective_schema) + "." + name
         return name
 
 
@@ -1575,10 +1578,15 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     name = "%s_%s_seq" % (tab, col)
                     column._postgresql_seq_name = seq_name = name
 
-                sch = column.table.schema
-                if sch is not None:
+                if column.table is not None:
+                    effective_schema = self.connection._get_effective_schema(
+                        column.table)
+                else:
+                    effective_schema = None
+
+                if effective_schema is not None:
                     exc = "select nextval('\"%s\".\"%s\"')" % \
-                        (sch, seq_name)
+                        (effective_schema, seq_name)
                 else:
                     exc = "select nextval('\"%s\"')" % \
                         (seq_name, )

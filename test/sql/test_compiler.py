@@ -2955,6 +2955,57 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE t1 (q INTEGER, CHECK (a = 1))"
         )
 
+    def test_schema_translate_map_table(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('q', Integer))
+        t2 = Table('t2', m, Column('q', Integer), schema='foo')
+        t3 = Table('t3', m, Column('q', Integer), schema='bar')
+
+        schema_translate_map = {None: "z", "bar": None, "foo": "bat"}
+
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE z.t1 (q INTEGER)",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE bat.t2 (q INTEGER)",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE t3 (q INTEGER)",
+            schema_translate_map=schema_translate_map
+        )
+
+    def test_schema_translate_map_sequence(self):
+        s1 = schema.Sequence('s1')
+        s2 = schema.Sequence('s2', schema='foo')
+        s3 = schema.Sequence('s3', schema='bar')
+
+        schema_translate_map = {None: "z", "bar": None, "foo": "bat"}
+
+        self.assert_compile(
+            schema.CreateSequence(s1),
+            "CREATE SEQUENCE z.s1",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            schema.CreateSequence(s2),
+            "CREATE SEQUENCE bat.s2",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            schema.CreateSequence(s3),
+            "CREATE SEQUENCE s3",
+            schema_translate_map=schema_translate_map
+        )
+
 
 class InlineDefaultTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -3048,6 +3099,82 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
                             'dbo_remote_owner_remotetable_value FROM'
                             ' "dbo.remote_owner".remotetable'
                             )
+
+    def test_schema_translate_select(self):
+        schema_translate_map = {"remote_owner": "foob", None: 'bar'}
+
+        self.assert_compile(
+            table1.select().where(table1.c.name == 'hi'),
+            "SELECT bar.mytable.myid, bar.mytable.name, "
+            "bar.mytable.description FROM bar.mytable "
+            "WHERE bar.mytable.name = :name_1",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            table4.select().where(table4.c.value == 'hi'),
+            "SELECT foob.remotetable.rem_id, foob.remotetable.datatype_id, "
+            "foob.remotetable.value FROM foob.remotetable "
+            "WHERE foob.remotetable.value = :value_1",
+            schema_translate_map=schema_translate_map
+        )
+
+        schema_translate_map = {"remote_owner": "foob"}
+        self.assert_compile(
+            select([
+                table1, table4
+            ]).select_from(
+                join(table1, table4, table1.c.myid == table4.c.rem_id)
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description, "
+            "foob.remotetable.rem_id, foob.remotetable.datatype_id, "
+            "foob.remotetable.value FROM mytable JOIN foob.remotetable "
+            "ON foob.remotetable.rem_id = mytable.myid",
+            schema_translate_map=schema_translate_map
+        )
+
+    def test_schema_translate_crud(self):
+        schema_translate_map = {"remote_owner": "foob", None: 'bar'}
+
+        self.assert_compile(
+            table1.insert().values(description='foo'),
+            "INSERT INTO bar.mytable (description) VALUES (:description)",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            table1.update().where(table1.c.name == 'hi').
+            values(description='foo'),
+            "UPDATE bar.mytable SET description=:description "
+            "WHERE bar.mytable.name = :name_1",
+            schema_translate_map=schema_translate_map
+        )
+        self.assert_compile(
+            table1.delete().where(table1.c.name == 'hi'),
+            "DELETE FROM bar.mytable WHERE bar.mytable.name = :name_1",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            table4.insert().values(value='there'),
+            "INSERT INTO foob.remotetable (value) VALUES (:value)",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            table4.update().where(table4.c.value == 'hi').
+            values(value='there'),
+            "UPDATE foob.remotetable SET value=:value "
+            "WHERE foob.remotetable.value = :value_1",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            table4.delete().where(table4.c.value == 'hi'),
+            "DELETE FROM foob.remotetable WHERE "
+            "foob.remotetable.value = :value_1",
+            schema_translate_map=schema_translate_map
+        )
 
     def test_alias(self):
         a = alias(table4, 'remtable')

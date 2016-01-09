@@ -748,6 +748,43 @@ can be done like any other type::
 
 :ticket:`2919`
 
+.. _change_2685:
+
+Multi-Tenancy Schema Translation for Table objects
+--------------------------------------------------
+
+To support the use case of an application that uses the same set of
+:class:`.Table` objects in many schemas, such as schema-per-user, a new
+execution option :paramref:`.Connection.execution_options.schema_translate_map`
+is added.  Using this mapping, a set of :class:`.Table`
+objects can be made on a per-connection basis to refer to any set of schemas
+instead of the :paramref:`.Table.schema` to which they were assigned.  The
+translation works for DDL and SQL generation, as well as with the ORM.
+
+For example, if the ``User`` class were assigned the schema "per_user"::
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+
+        __table_args__ = {'schema': 'per_user'}
+
+On each request, the :class:`.Session` can be set up to refer to a
+different schema each time::
+
+    session = Session()
+    session.connection(execution_options={
+        "schema_translate_map": {"per_user": "account_one"}})
+
+    # will query from the ``account_one.user`` table
+    session.query(User).get(5)
+
+.. seealso::
+
+    :ref:`schema_translating`
+
+:ticket:`2685`
+
 .. _change_3531:
 
 The type_coerce function is now a persistent SQL element
