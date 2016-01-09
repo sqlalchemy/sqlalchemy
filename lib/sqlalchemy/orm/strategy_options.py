@@ -88,6 +88,7 @@ class Load(Generative, MapperOption):
         cloned.local_opts = {}
         return cloned
 
+    _merge_into_path = False
     strategy = None
     propagate_to_loaders = False
 
@@ -214,7 +215,15 @@ class Load(Generative, MapperOption):
             cloned._set_path_strategy()
 
     def _set_path_strategy(self):
-        if self.path.has_entity:
+        if self._merge_into_path:
+            # special helper for undefer_group
+            existing = self.path.get(self.context, "loader")
+            if existing:
+                existing.local_opts.update(self.local_opts)
+            else:
+                self.path.set(self.context, "loader", self)
+
+        elif self.path.has_entity:
             self.path.parent.set(self.context, "loader", self)
         else:
             self.path.set(self.context, "loader", self)
@@ -411,11 +420,20 @@ class _UnboundLoad(Load):
 
         if effective_path.is_token:
             for path in effective_path.generate_for_superclasses():
-                if self._is_chain_link:
+                if self._merge_into_path:
+                    # special helper for undefer_group
+                    existing = path.get(context, "loader")
+                    if existing:
+                        existing.local_opts.update(self.local_opts)
+                    else:
+                        path.set(context, "loader", loader)
+                elif self._is_chain_link:
                     path.setdefault(context, "loader", loader)
                 else:
                     path.set(context, "loader", loader)
         else:
+            # only supported for the undefer_group() wildcard opt
+            assert not self._merge_into_path
             if self._is_chain_link:
                 effective_path.setdefault(context, "loader", loader)
             else:
@@ -1025,10 +1043,11 @@ def undefer_group(loadopt, name):
         :func:`.orm.undefer`
 
     """
+    loadopt._merge_into_path = True
     return loadopt.set_column_strategy(
         "*",
         None,
-        {"undefer_group": name}
+        {"undefer_group_%s" % name: True}
     )
 
 

@@ -238,7 +238,7 @@ class DeferredColumnLoader(LoaderStrategy):
             (
                 loadopt and
                 self.group and
-                loadopt.local_opts.get('undefer_group', False) == self.group
+                loadopt.local_opts.get('undefer_group_%s' % self.group, False)
             )
             or
             (

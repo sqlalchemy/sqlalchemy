@@ -320,6 +320,64 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
              "FROM orders ORDER BY orders.id",
              {})])
 
+    def test_undefer_group_multi(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(Order, orders, properties=util.OrderedDict([
+            ('userident', deferred(orders.c.user_id, group='primary')),
+            ('description', deferred(orders.c.description, group='primary')),
+            ('opened', deferred(orders.c.isopen, group='secondary'))
+            ]
+            ))
+
+        sess = create_session()
+        q = sess.query(Order).order_by(Order.id)
+        def go():
+            l = q.options(
+                undefer_group('primary'), undefer_group('secondary')).all()
+            o2 = l[2]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+
+        self.sql_eq_(go, [
+            ("SELECT orders.user_id AS orders_user_id, "
+             "orders.description AS orders_description, "
+             "orders.isopen AS orders_isopen, "
+             "orders.id AS orders_id, "
+             "orders.address_id AS orders_address_id "
+             "FROM orders ORDER BY orders.id",
+             {})])
+
+    def test_undefer_group_multi_pathed(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(Order, orders, properties=util.OrderedDict([
+            ('userident', deferred(orders.c.user_id, group='primary')),
+            ('description', deferred(orders.c.description, group='primary')),
+            ('opened', deferred(orders.c.isopen, group='secondary'))
+            ]
+            ))
+
+        sess = create_session()
+        q = sess.query(Order).order_by(Order.id)
+        def go():
+            l = q.options(
+                Load(Order).undefer_group('primary').undefer_group('secondary')).all()
+            o2 = l[2]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+
+        self.sql_eq_(go, [
+            ("SELECT orders.user_id AS orders_user_id, "
+             "orders.description AS orders_description, "
+             "orders.isopen AS orders_isopen, "
+             "orders.id AS orders_id, "
+             "orders.address_id AS orders_address_id "
+             "FROM orders ORDER BY orders.id",
+             {})])
+
     def test_undefer_star(self):
         orders, Order = self.tables.orders, self.classes.Order
 

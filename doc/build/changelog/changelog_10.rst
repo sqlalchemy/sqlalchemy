@@ -20,6 +20,16 @@
     :released:
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3623
+
+        Fixed regression since 0.9 where the 0.9 style loader options
+        system failed to accommodate for multiple :func:`.undefer_group`
+        loader options in a single query.   Multiple :func:`.undefer_group`
+        options will now be taken into account even against the same
+        entity.
+
+    .. change::
         :tags: bug, mssql, firebird
         :tickets: 3622
 
