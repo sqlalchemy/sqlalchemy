@@ -3,10 +3,13 @@ from sqlalchemy.orm import attributes, mapper, relationship, backref, \
     configure_mappers, create_session, synonym, Session, class_mapper, \
     aliased, column_property, joinedload_all, joinedload, Query,\
     util as orm_util, Load, defer
+from sqlalchemy.orm.query import QueryContext
+from sqlalchemy.orm import strategy_options
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy.testing.assertions import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing.assertions import eq_, assert_raises_message
 from test.orm import _fixtures
+
 
 class QueryTest(_fixtures.FixtureTest):
     run_setup_mappers = 'once'
@@ -16,6 +19,7 @@ class QueryTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
         cls._setup_stock_mapping()
+
 
 class PathTest(object):
     def _make_path(self, path):
@@ -160,11 +164,11 @@ class LoadTest(PathTest, QueryTest):
         )
 
 
+
+
 class OptionsTest(PathTest, QueryTest):
 
     def _option_fixture(self, *arg):
-        from sqlalchemy.orm import strategy_options
-
         return strategy_options._UnboundLoad._from_keys(
                     strategy_options._UnboundLoad.joinedload, arg, True, {})
 
@@ -768,3 +772,121 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                               create_session().query(column).options,
                               joinedload(eager_option))
 
+
+class LocalOptsTest(PathTest, QueryTest):
+    @classmethod
+    def setup_class(cls):
+        super(LocalOptsTest, cls).setup_class()
+
+        @strategy_options.loader_option()
+        def some_col_opt_only(loadopt, key, opts):
+            return loadopt.set_column_strategy(
+                (key, ),
+                None,
+                opts,
+                opts_only=True
+            )
+
+        @strategy_options.loader_option()
+        def some_col_opt_strategy(loadopt, key, opts):
+            return loadopt.set_column_strategy(
+                (key, ),
+                {"deferred": True, "instrument": True},
+                opts
+            )
+
+        cls.some_col_opt_only = some_col_opt_only
+        cls.some_col_opt_strategy = some_col_opt_strategy
+
+    def _assert_attrs(self, opts, expected):
+        User = self.classes.User
+
+        query = create_session().query(User)
+        attr = {}
+
+        for opt in opts:
+            if isinstance(opt, strategy_options._UnboundLoad):
+                for tb in opt._to_bind:
+                    tb._bind_loader(query, attr, False)
+            else:
+                attr.update(opt.context)
+
+        key = (
+            'loader',
+            tuple(inspect(User)._path_registry[User.name.property]))
+        eq_(
+            attr[key].local_opts,
+            expected
+        )
+
+    def test_single_opt_only(self):
+        opt = strategy_options._UnboundLoad().some_col_opt_only(
+            "name", {"foo": "bar"}
+        )
+        self._assert_attrs([opt], {"foo": "bar"})
+
+    def test_unbound_multiple_opt_only(self):
+        opts = [
+            strategy_options._UnboundLoad().some_col_opt_only(
+                "name", {"foo": "bar"}
+            ),
+            strategy_options._UnboundLoad().some_col_opt_only(
+                "name", {"bat": "hoho"}
+            )
+        ]
+        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
+
+    def test_bound_multiple_opt_only(self):
+        User = self.classes.User
+        opts = [
+            Load(User).some_col_opt_only(
+                "name", {"foo": "bar"}
+            ).some_col_opt_only(
+                "name", {"bat": "hoho"}
+            )
+        ]
+        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
+
+    def test_bound_strat_opt_recvs_from_optonly(self):
+        User = self.classes.User
+        opts = [
+            Load(User).some_col_opt_only(
+                "name", {"foo": "bar"}
+            ).some_col_opt_strategy(
+                "name", {"bat": "hoho"}
+            )
+        ]
+        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
+
+    def test_unbound_strat_opt_recvs_from_optonly(self):
+        opts = [
+            strategy_options._UnboundLoad().some_col_opt_only(
+                "name", {"foo": "bar"}
+            ),
+            strategy_options._UnboundLoad().some_col_opt_strategy(
+                "name", {"bat": "hoho"}
+            )
+        ]
+        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
+
+    def test_unbound_opt_only_adds_to_strat(self):
+        opts = [
+            strategy_options._UnboundLoad().some_col_opt_strategy(
+                "name", {"bat": "hoho"}
+            ),
+            strategy_options._UnboundLoad().some_col_opt_only(
+                "name", {"foo": "bar"}
+            ),
+        ]
+        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
+
+    def test_bound_opt_only_adds_to_strat(self):
+        User = self.classes.User
+        opts = [
+            Load(User).some_col_opt_strategy(
+                "name", {"bat": "hoho"}
+            ).some_col_opt_only(
+                "name", {"foo": "bar"}
+            ),
+        ]
+        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
