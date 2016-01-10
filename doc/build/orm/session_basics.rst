@@ -247,7 +247,7 @@ While there's no one-size-fits-all recommendation for how transaction
 scope should be determined, there are common patterns.   Especially
 if one is writing a web application, the choice is pretty much established.
 
-A web application is the easiest case because such an appication is already
+A web application is the easiest case because such an application is already
 constructed around a single, consistent scope - this is the **request**,
 which represents an incoming request from a browser, the processing
 of that request to formulate a response, and finally the delivery of that
