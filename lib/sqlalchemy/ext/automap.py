@@ -112,7 +112,7 @@ explicit table declaration::
         Base.classes.user_order
 
 Specifying Classes Explicitly
-============================
+=============================
 
 The :mod:`.sqlalchemy.ext.automap` extension allows classes to be defined
 explicitly, in a way similar to that of the :class:`.DeferredReflection` class.
