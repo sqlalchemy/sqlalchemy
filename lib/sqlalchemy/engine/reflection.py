@@ -529,7 +529,8 @@ class Inspector(object):
         """
         dialect = self.bind.dialect
 
-        schema = self.bind._get_effective_schema(table)
+        with self.bind.connect() as conn:
+            schema = conn._get_effective_schema(table)
 
         table_name = table.name
 

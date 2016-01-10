@@ -69,6 +69,7 @@ class Connection(Connectable):
             self.should_close_with_result = False
             self.dispatch = _dispatch
             self._has_events = _branch_from._has_events
+            self._schema_translate_map = _branch_from._schema_translate_map
         else:
             self.__connection = connection \
                 if connection is not None else engine.raw_connection()
