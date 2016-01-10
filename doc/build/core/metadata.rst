@@ -45,7 +45,7 @@ Note also that each column describes its datatype using objects corresponding
 to genericized types, such as :class:`~sqlalchemy.types.Integer` and
 :class:`~sqlalchemy.types.String`. SQLAlchemy features dozens of types of
 varying levels of specificity as well as the ability to create custom types.
-Documentation on the type system can be found at :ref:`types`.
+Documentation on the type system can be found at :ref:`types_toplevel`.
 
 Accessing Tables and Columns
 ----------------------------

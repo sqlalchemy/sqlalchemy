@@ -869,7 +869,7 @@ need to refer to any pre-established :class:`.Table` metadata:
     :ref:`orm_tutorial_literal_sql` - integrating ORM-level queries with
     :func:`.text`
 
-.. fchanged:: 1.0.0
+.. versionchanged:: 1.0.0
    The :func:`.select` construct emits warnings when string SQL
    fragments are coerced to :func:`.text`, and :func:`.text` should
    be used explicitly.  See :ref:`migration_2992` for background.

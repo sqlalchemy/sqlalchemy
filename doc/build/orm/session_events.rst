@@ -50,7 +50,7 @@ examples such as :ref:`examples_versioned_history` and
 ^^^^^^^^^^^^^^^^^
 
 The :meth:`.SessionEvents.after_flush` hook is called after the SQL has been
-emitted for a flush process, but **before* the state of the objects that
+emitted for a flush process, but **before** the state of the objects that
 were flushed has been altered.  That is, you can still inspect
 the :attr:`.Session.new`, :attr:`.Session.dirty` and
 :attr:`.Session.deleted` collections to see what was just flushed, and
