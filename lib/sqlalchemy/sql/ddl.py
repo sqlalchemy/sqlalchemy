@@ -679,7 +679,7 @@ class SchemaGenerator(DDLBase):
 
     def _can_create_table(self, table):
         self.dialect.validate_identifier(table.name)
-        effective_schema = self.connection._get_effective_schema(table)
+        effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
         return not self.checkfirst or \
@@ -687,7 +687,7 @@ class SchemaGenerator(DDLBase):
                                        table.name, schema=effective_schema)
 
     def _can_create_sequence(self, sequence):
-        effective_schema = self.connection._get_effective_schema(sequence)
+        effective_schema = self.connection.schema_for_object(sequence)
 
         return self.dialect.supports_sequences and \
             (
@@ -885,14 +885,14 @@ class SchemaDropper(DDLBase):
 
     def _can_drop_table(self, table):
         self.dialect.validate_identifier(table.name)
-        effective_schema = self.connection._get_effective_schema(table)
+        effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
         return not self.checkfirst or self.dialect.has_table(
             self.connection, table.name, schema=effective_schema)
 
     def _can_drop_sequence(self, sequence):
-        effective_schema = self.connection._get_effective_schema(sequence)
+        effective_schema = self.connection.schema_for_object(sequence)
         return self.dialect.supports_sequences and \
             ((not self.dialect.sequences_optional or
               not sequence.optional) and

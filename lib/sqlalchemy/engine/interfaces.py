@@ -7,7 +7,7 @@
 
 """Define core interfaces used by the engine system."""
 
-from .. import util, event
+from .. import util
 
 # backwards compat
 from ..sql.compiler import Compiled, TypeCompiler

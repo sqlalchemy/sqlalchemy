@@ -90,7 +90,7 @@ class CompiledSQL(SQLMatchRule):
                 context.compiled.statement.compile(
                     dialect=compare_dialect,
                     schema_translate_map=context.
-                    compiled.preparer.schema_translate_map)
+                    execution_options.get('schema_translate_map'))
         else:
             compiled = (
                 context.compiled.statement.compile(
@@ -98,7 +98,7 @@ class CompiledSQL(SQLMatchRule):
                     column_keys=context.compiled.column_keys,
                     inline=context.compiled.inline,
                     schema_translate_map=context.
-                    compiled.preparer.schema_translate_map)
+                    execution_options.get('schema_translate_map'))
             )
         _received_statement = re.sub(r'[\n\t]', '', util.text_type(compiled))
         parameters = execute_observed.parameters

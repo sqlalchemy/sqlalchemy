@@ -14,6 +14,7 @@ from __future__ import with_statement
 import sys
 from .. import exc, util, log, interfaces
 from ..sql import util as sql_util
+from ..sql import schema
 from .interfaces import Connectable, ExceptionContext
 from .util import _distill_params
 import contextlib
@@ -44,7 +45,21 @@ class Connection(Connectable):
 
     """
 
-    _schema_translate_map = None
+    schema_for_object = schema._schema_getter(None)
+    """Return the ".schema" attribute for an object.
+
+    Used for :class:`.Table`, :class:`.Sequence` and similar objects,
+    and takes into account
+    the :paramref:`.Connection.execution_options.schema_translate_map`
+    parameter.
+
+      .. versionadded:: 1.1
+
+      .. seealso::
+
+          :ref:`schema_translating`
+
+    """
 
     def __init__(self, engine, connection=None, close_with_result=False,
                  _branch_from=None, _execution_options=None,
@@ -69,7 +84,7 @@ class Connection(Connectable):
             self.should_close_with_result = False
             self.dispatch = _dispatch
             self._has_events = _branch_from._has_events
-            self._schema_translate_map = _branch_from._schema_translate_map
+            self.schema_for_object = _branch_from.schema_for_object
         else:
             self.__connection = connection \
                 if connection is not None else engine.raw_connection()
@@ -142,13 +157,6 @@ class Connection(Connectable):
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
         return c
-
-    def _get_effective_schema(self, table):
-        effective_schema = table.schema
-        if self._schema_translate_map:
-            effective_schema = self._schema_translate_map.get(
-                effective_schema, effective_schema)
-        return effective_schema
 
     def __enter__(self):
         return self
@@ -984,7 +992,8 @@ class Connection(Connectable):
 
         compiled = ddl.compile(
             dialect=dialect,
-            schema_translate_map=self._schema_translate_map)
+            schema_translate_map=self.schema_for_object
+            if not self.schema_for_object.is_default else None)
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_ddl,
@@ -1017,10 +1026,7 @@ class Connection(Connectable):
         if 'compiled_cache' in self._execution_options:
             key = (
                 dialect, elem, tuple(sorted(keys)),
-                tuple(
-                    (k, self._schema_translate_map[k])
-                    for k in sorted(self._schema_translate_map)
-                ) if self._schema_translate_map else None,
+                self.schema_for_object.hash_key,
                 len(distilled_params) > 1
             )
             compiled_sql = self._execution_options['compiled_cache'].get(key)
@@ -1028,14 +1034,16 @@ class Connection(Connectable):
                 compiled_sql = elem.compile(
                     dialect=dialect, column_keys=keys,
                     inline=len(distilled_params) > 1,
-                    schema_translate_map=self._schema_translate_map
+                    schema_translate_map=self.schema_for_object
+                    if not self.schema_for_object.is_default else None
                 )
                 self._execution_options['compiled_cache'][key] = compiled_sql
         else:
             compiled_sql = elem.compile(
                 dialect=dialect, column_keys=keys,
                 inline=len(distilled_params) > 1,
-                schema_translate_map=self._schema_translate_map)
+                schema_translate_map=self.schema_for_object
+                if not self.schema_for_object.is_default else None)
 
         ret = self._execute_context(
             dialect,
@@ -1720,6 +1728,22 @@ class Engine(Connectable, log.Identified):
     _execution_options = util.immutabledict()
     _has_events = False
     _connection_cls = Connection
+
+    schema_for_object = schema._schema_getter(None)
+    """Return the ".schema" attribute for an object.
+
+    Used for :class:`.Table`, :class:`.Sequence` and similar objects,
+    and takes into account
+    the :paramref:`.Connection.execution_options.schema_translate_map`
+    parameter.
+
+      .. versionadded:: 1.1
+
+      .. seealso::
+
+          :ref:`schema_translating`
+
+    """
 
     def __init__(self, pool, dialect, url,
                  logging_name=None, echo=None, proxy=None,

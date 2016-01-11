@@ -183,6 +183,10 @@ class Compiled(object):
 
          .. versionadded:: 1.1
 
+         .. seealso::
+
+            :ref:`schema_translating`
+
         :param compile_kwargs: additional kwargs that will be
          passed to the initial call to :meth:`.Compiled.process`.
 
@@ -661,12 +665,7 @@ class SQLCompiler(Compiled):
         if table is None or not include_table or not table.named_with_column:
             return name
         else:
-
-            # inlining of preparer._get_effective_schema
-            effective_schema = table.schema
-            if self.preparer.schema_translate_map:
-                effective_schema = self.preparer.schema_translate_map.get(
-                    effective_schema, effective_schema)
+            effective_schema = self.preparer.schema_for_object(table)
 
             if effective_schema:
                 schema_prefix = self.preparer.quote_schema(
@@ -1830,12 +1829,7 @@ class SQLCompiler(Compiled):
     def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,
                     fromhints=None, use_schema=True, **kwargs):
         if asfrom or ashint:
-
-            # inlining of preparer._get_effective_schema
-            effective_schema = table.schema
-            if self.preparer.schema_translate_map:
-                effective_schema = self.preparer.schema_translate_map.get(
-                    effective_schema, effective_schema)
+            effective_schema = self.preparer.schema_for_object(table)
 
             if use_schema and effective_schema:
                 ret = self.preparer.quote_schema(effective_schema) + \
@@ -2289,7 +2283,7 @@ class DDLCompiler(Compiled):
 
     def _prepared_index_name(self, index, include_schema=False):
         if index.table is not None:
-            effective_schema = self.preparer._get_effective_schema(index.table)
+            effective_schema = self.preparer.schema_for_object(index.table)
         else:
             effective_schema = None
         if include_schema and effective_schema:
@@ -2648,7 +2642,7 @@ class IdentifierPreparer(object):
 
     illegal_initial_characters = ILLEGAL_INITIAL_CHARACTERS
 
-    schema_translate_map = util.immutabledict()
+    schema_for_object = schema._schema_getter(None)
 
     def __init__(self, dialect, initial_quote='"',
                  final_quote=None, escape_quote='"', omit_schema=False):
@@ -2677,7 +2671,7 @@ class IdentifierPreparer(object):
     def _with_schema_translate(self, schema_translate_map):
         prep = self.__class__.__new__(self.__class__)
         prep.__dict__.update(self.__dict__)
-        prep.schema_translate_map = schema_translate_map
+        prep.schema_for_object = schema._schema_getter(schema_translate_map)
         return prep
 
     def _escape_identifier(self, value):
@@ -2753,7 +2747,7 @@ class IdentifierPreparer(object):
     def format_sequence(self, sequence, use_schema=True):
         name = self.quote(sequence.name)
 
-        effective_schema = self._get_effective_schema(sequence)
+        effective_schema = self.schema_for_object(sequence)
 
         if (not self.omit_schema and use_schema and
                 effective_schema is not None):
@@ -2780,13 +2774,6 @@ class IdentifierPreparer(object):
                 return None
         return self.quote(constraint.name)
 
-    def _get_effective_schema(self, table):
-        effective_schema = table.schema
-        if self.schema_translate_map:
-            effective_schema = self.schema_translate_map.get(
-                effective_schema, effective_schema)
-        return effective_schema
-
     def format_table(self, table, use_schema=True, name=None):
         """Prepare a quoted table and schema name."""
 
@@ -2794,7 +2781,7 @@ class IdentifierPreparer(object):
             name = table.name
         result = self.quote(name)
 
-        effective_schema = self._get_effective_schema(table)
+        effective_schema = self.schema_for_object(table)
 
         if not self.omit_schema and use_schema \
                 and effective_schema:
@@ -2837,7 +2824,7 @@ class IdentifierPreparer(object):
         # ('database', 'owner', etc.) could override this and return
         # a longer sequence.
 
-        effective_schema = self._get_effective_schema(table)
+        effective_schema = self.schema_for_object(table)
 
         if not self.omit_schema and use_schema and \
                 effective_schema:

@@ -1481,7 +1481,7 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             raise exc.CompileError("Postgresql ENUM type requires a name.")
 
         name = self.quote(type_.name)
-        effective_schema = self._get_effective_schema(type_)
+        effective_schema = self.schema_for_object(type_)
 
         if not self.omit_schema and use_schema and \
                 effective_schema is not None:
@@ -1579,7 +1579,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     column._postgresql_seq_name = seq_name = name
 
                 if column.table is not None:
-                    effective_schema = self.connection._get_effective_schema(
+                    effective_schema = self.connection.schema_for_object(
                         column.table)
                 else:
                     effective_schema = None

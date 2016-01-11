@@ -16,7 +16,7 @@ as the base class for their own corresponding classes.
 import re
 import random
 from . import reflection, interfaces, result
-from ..sql import compiler, expression
+from ..sql import compiler, expression, schema
 from .. import types as sqltypes
 from .. import exc, util, pool, processors
 import codecs
@@ -399,16 +399,20 @@ class DefaultDialect(interfaces.Dialect):
                     self._set_connection_isolation(connection, isolation_level)
 
         if 'schema_translate_map' in opts:
+            getter = schema._schema_getter(opts['schema_translate_map'])
+            engine.schema_for_object = getter
+
             @event.listens_for(engine, "engine_connect")
             def set_schema_translate_map(connection, branch):
-                connection._schema_translate_map = opts['schema_translate_map']
+                connection.schema_for_object = getter
 
     def set_connection_execution_options(self, connection, opts):
         if 'isolation_level' in opts:
             self._set_connection_isolation(connection, opts['isolation_level'])
 
         if 'schema_translate_map' in opts:
-            connection._schema_translate_map = opts['schema_translate_map']
+            getter = schema._schema_getter(opts['schema_translate_map'])
+            connection.schema_for_object = getter
 
     def _set_connection_isolation(self, connection, level):
         if connection.in_transaction():

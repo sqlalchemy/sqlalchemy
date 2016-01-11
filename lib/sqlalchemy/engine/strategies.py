@@ -18,8 +18,9 @@ New strategies can be added via new ``EngineStrategy`` classes.
 from operator import attrgetter
 
 from sqlalchemy.engine import base, threadlocal, url
-from sqlalchemy import util, exc, event
+from sqlalchemy import util, event
 from sqlalchemy import pool as poollib
+from sqlalchemy.sql import schema
 
 strategies = {}
 
@@ -233,8 +234,7 @@ class MockEngineStrategy(EngineStrategy):
         dialect = property(attrgetter('_dialect'))
         name = property(lambda s: s._dialect.name)
 
-        def _get_effective_schema(self, table):
-            return table.schema
+        schema_for_object = schema._schema_getter(None)
 
         def contextual_connect(self, **kwargs):
             return self
