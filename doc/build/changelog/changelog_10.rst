@@ -20,6 +20,15 @@
     :released:
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3624
+        :pullreq: bitbucket:70
+
+        Fixed the syntax of the :func:`.extract` function when used on
+        MSSQL against a datetime value; the quotes around the keyword
+        are removed.  Pull request courtesy Guillaume Doumenc.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3623
 

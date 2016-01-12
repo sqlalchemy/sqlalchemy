@@ -64,6 +64,18 @@ class MSDateTypeTest(fixtures.TestBase):
             result_processor, 'abc'
         )
 
+    def test_extract(self):
+        from sqlalchemy import extract
+        fivedaysago = datetime.datetime.now() \
+            - datetime.timedelta(days=5)
+        for field, exp in ('year', fivedaysago.year), \
+                ('month', fivedaysago.month), ('day', fivedaysago.day):
+            r = testing.db.execute(
+                select([
+                    extract(field, fivedaysago)])
+            ).scalar()
+            eq_(r, exp)
+
 
 class TypeDDLTest(fixtures.TestBase):
 
