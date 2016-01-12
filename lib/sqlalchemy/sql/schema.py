@@ -3890,7 +3890,7 @@ class _SchemaTranslateMap(object):
             self.__call__ = schema_for_object
             self.hash_key = ";".join(
                 "%s=%s" % (k, map_[k])
-                for k in sorted(map_)
+                for k in sorted(map_, key=str)
             )
             self.is_default = False
         else:
