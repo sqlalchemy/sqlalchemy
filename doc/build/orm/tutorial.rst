@@ -861,37 +861,19 @@ database results.  Here's a brief tour:
 
   .. sourcecode:: python+sql
 
-      {sql}>>> from sqlalchemy.orm.exc import MultipleResultsFound
-      >>> try:
-      ...     user = query.one()
-      ... except MultipleResultsFound as e:
-      ...     print(e)
-      SELECT users.id AS users_id,
-              users.name AS users_name,
-              users.fullname AS users_fullname,
-              users.password AS users_password
-      FROM users
-      WHERE users.name LIKE ? ORDER BY users.id
-      ('%ed',)
-      {stop}Multiple rows were found for one()
+      >>> user = query.one()
+      Traceback (most recent call last):
+      ...
+      MultipleResultsFound: Multiple rows were found for one()
 
   With no rows found:
 
   .. sourcecode:: python+sql
 
-      {sql}>>> from sqlalchemy.orm.exc import NoResultFound
-      >>> try:
-      ...     user = query.filter(User.id == 99).one()
-      ... except NoResultFound as e:
-      ...     print(e)
-      SELECT users.id AS users_id,
-              users.name AS users_name,
-              users.fullname AS users_fullname,
-              users.password AS users_password
-      FROM users
-      WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id
-      ('%ed', 99)
-      {stop}No row was found for one()
+      >>> user = query.filter(User.id == 99).one()
+      Traceback (most recent call last):
+      ...
+      NoResultFound: No row was found for one()
 
   The :meth:`~.Query.one` method is great for systems that expect to handle
   "no items found" versus "multiple items found" differently; such as a RESTful
