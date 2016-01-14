@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: December 4, 2015
+    Document last updated: January 14, 2016
 
 Introduction
 ============
