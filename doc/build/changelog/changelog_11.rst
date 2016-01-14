@@ -22,6 +22,28 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3501
+
+        A deep improvement to the recently added :meth:`.TextClause.columns`
+        method, and its interaction with result-row processing, now allows
+        the columns passed to the method to be positionally matched with the
+        result columns in the statement, rather than matching on name alone.
+        The advantage to this includes that when linking a textual SQL statement
+        to an ORM or Core table model, no system of labeling or de-duping of
+        common column names needs to occur, which also means there's no need
+        to worry about how label names match to ORM columns and so-forth.  In
+        addition, the :class:`.ResultProxy` has been further enhanced to
+        map column and string keys to a row with greater precision in some
+        cases.
+
+        .. seealso::
+
+            :ref:`change_3501` - feature overview
+
+            :ref:`behavior_change_3501` - backwards compatibility remarks
+
+    .. change::
         :tags: feature, engine
         :tickets: 2685
 

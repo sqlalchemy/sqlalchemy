@@ -965,10 +965,12 @@ method:
     (224, 'fred')
     {stop}<User(name='fred', fullname='Fred Flinstone', password='blah')>
 
-To use an entirely string-based statement, using
-:meth:`~sqlalchemy.orm.query.Query.from_statement()`; just ensure that the
-columns clause of the statement contains the column names normally used by the
-mapper (below illustrated using an asterisk):
+To use an entirely string-based statement, a :func:`.text` construct
+representing a complete statement can be passed to
+:meth:`~sqlalchemy.orm.query.Query.from_statement()`.  Without additional
+specifiers, the columns in the string SQL are matched to the model columns
+based on name, such as below where we use just an asterisk to represent
+loading all columns:
 
 .. sourcecode:: python+sql
 
@@ -979,19 +981,37 @@ mapper (below illustrated using an asterisk):
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
 
-Or alternatively, specify how the columns map to the :func:`.text` construct
-explicitly using the :meth:`.TextClause.columns` method:
+Matching columns on name works for simple cases but can become unwieldy when
+dealing with complex statements that contain duplicate column names or when
+using anonymized ORM constructs that don't easily match to specific names.
+Additionally, there is typing behavior present in our mapped columns that
+we might find necessary when handling result rows.  For these cases,
+the :func:`~.expression.text` construct allows us to link its textual SQL
+to Core or ORM-mapped column expressions positionally; we can achieve this
+by passing column expressions as positional arguments to the
+:meth:`.TextClause.columns` method:
 
 .. sourcecode:: python+sql
 
-    >>> stmt = text("SELECT name, id FROM users where name=:name")
-    >>> stmt = stmt.columns(User.name, User.id)
+    >>> stmt = text("SELECT name, id, fullname, password "
+    ...             "FROM users where name=:name")
+    >>> stmt = stmt.columns(User.name, User.id, User.fullname, User.password)
     {sql}>>> session.query(User).from_statement(stmt).params(name='ed').all()
-    SELECT name, id FROM users where name=?
+    SELECT name, id, fullname, password FROM users where name=?
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
 
-We can choose columns to return individually as well, as in any other case:
+.. versionadded:: 1.1
+
+    The :meth:`.TextClause.columns` method now accepts column expressions
+    which will be matched positionally to a plain text SQL result set,
+    eliminating the need for column names to match or even be unique in the
+    SQL statement.
+
+When selecting from a :func:`~.expression.text` construct, the :class:`.Query`
+may still specify what columns and entities are to be returned; instead of
+``query(User)`` we can also ask for the columns individually, as in
+any other case:
 
 .. sourcecode:: python+sql
 
@@ -1007,11 +1027,6 @@ We can choose columns to return individually as well, as in any other case:
 
     :ref:`sqlexpression_text` - The :func:`.text` construct explained
     from the perspective of Core-only queries.
-
-.. versionchanged:: 1.0.0
-   The :class:`.Query` construct emits warnings when string SQL
-   fragments are coerced to :func:`.text`, and :func:`.text` should
-   be used explicitly.  See :ref:`migration_2992` for background.
 
 Counting
 --------

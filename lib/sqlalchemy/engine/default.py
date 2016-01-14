@@ -544,7 +544,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             connection._execution_options)
 
         self.result_column_struct = (
-            compiled._result_columns, compiled._ordered_columns)
+            compiled._result_columns, compiled._ordered_columns,
+            compiled._textual_ordered_columns)
 
         self.unicode_statement = util.text_type(compiled)
         if not dialect.supports_unicode_statements:

@@ -345,6 +345,18 @@ class SQLCompiler(Compiled):
     driver/DB enforces this
     """
 
+    _textual_ordered_columns = False
+    """tell the result object that the column names as rendered are important,
+    but they are also "ordered" vs. what is in the compiled object here.
+    """
+
+    _ordered_columns = True
+    """
+    if False, means we can't be sure the list of entries
+    in _result_columns is actually the rendered order.  Usually
+    True unless using an unordered TextAsFrom.
+    """
+
     def __init__(self, dialect, statement, column_keys=None,
                  inline=False, **kwargs):
         """Construct a new :class:`.SQLCompiler` object.
@@ -385,11 +397,6 @@ class SQLCompiler(Compiled):
         # TypeEngine. ResultProxy uses this for type processing and
         # column targeting
         self._result_columns = []
-
-        # if False, means we can't be sure the list of entries
-        # in _result_columns is actually the rendered order.   This
-        # gets flipped when we use TextAsFrom, for example.
-        self._ordered_columns = True
 
         # true if the paramstyle is positional
         self.positional = dialect.positional
@@ -733,7 +740,8 @@ class SQLCompiler(Compiled):
             ) or entry.get('need_result_map_for_nested', False)
 
         if populate_result_map:
-            self._ordered_columns = False
+            self._ordered_columns = \
+                self._textual_ordered_columns = taf.positional
             for c in taf.column_args:
                 self.process(c, within_columns_clause=True,
                              add_to_result_map=self._add_to_result_map)
@@ -1326,7 +1334,7 @@ class SQLCompiler(Compiled):
             add_to_result_map = lambda keyname, name, objects, type_: \
                 self._add_to_result_map(
                     keyname, name,
-                    objects + (column,), type_)
+                    (column,) + objects, type_)
         else:
             col_expr = column
             if populate_result_map:

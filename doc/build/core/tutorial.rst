@@ -791,35 +791,127 @@ Above, we can see that bound parameters are specified in
 :func:`~.expression.text` using the named colon format; this format is
 consistent regardless of database backend.  To send values in for the
 parameters, we passed them into the :meth:`~.Connection.execute` method
-as additional arguments.  Depending on how we are working, we can also
-send values to be associated directly with the :func:`~.expression.text`
-construct using the :meth:`~.TextClause.bindparams` method; if we are
-using datatypes that need special handling as they are received in Python,
-or we'd like to compose our :func:`~.expression.text` object into a larger
-expression, we may also wish to use the :meth:`~.TextClause.columns` method
-in order to specify column return types and names:
+as additional arguments.
+
+Specifying Bound Parameter Behaviors
+------------------------------------------
+
+The :func:`~.expression.text` construct supports pre-established bound values
+using the :meth:`.TextClause.bindparams` method::
+
+    stmt = text("SELECT * FROM users WHERE users.name BETWEEN :x AND :y")
+    stmt = stmt.bindparams(x="m", y="z")
+
+The parameters can also be explicitly typed::
+
+    stmt = stmt.bindparams(bindparam("x", String), bindparam("y", String))
+    result = conn.execute(stmt, {"x": "m", "y": "z"})
+
+Typing for bound parameters is necessary when the type requires Python-side
+or special SQL-side processing provided by the datatype.
+
+.. seealso::
+
+    :meth:`.TextClause.bindparams` - full method description
+
+.. _sqlexpression_text_columns:
+
+Specifying Result-Column Behaviors
+----------------------------------------------
+
+We may also specify information about the result columns using the
+:meth:`.TextClause.columns` method; this method can be used to specify
+the return types, based on name::
+
+    stmt = stmt.columns(id=Integer, name=String)
+
+or it can be passed full column expressions positionally, either typed
+or untyped.  In this case it's a good idea to list out the columns
+explicitly within our textual SQL, since the correlation of our column
+expressions to the SQL will be done positionally::
+
+    stmt = text("SELECT id, name FROM users")
+    stmt = stmt.columns(users.c.id, users.c.name)
+
+When we call the :meth:`.TextClause.columns` method, we get back a
+:class:`.TextAsFrom` object that supports the full suite of
+:attr:`.TextAsFrom.c` and other "selectable" operations::
+
+    j = stmt.join(addresses, stmt.c.id == addresses.c.user_id)
+
+    new_stmt = select([stmt.c.id, addresses.c.id]).\
+        select_from(j).where(stmt.c.name == 'x')
+
+The positional form of :meth:`.TextClause.columns` is particularly useful
+when relating textual SQL to existing Core or ORM models, because we can use
+column expressions directly without worrying about name conflicts or other issues with the
+result column names in the textual SQL:
 
 .. sourcecode:: pycon+sql
 
-    >>> s = text(
-    ...     "SELECT users.fullname || ', ' || addresses.email_address AS title "
-    ...         "FROM users, addresses "
-    ...         "WHERE users.id = addresses.user_id "
-    ...         "AND users.name BETWEEN :x AND :y "
-    ...         "AND (addresses.email_address LIKE :e1 "
-    ...             "OR addresses.email_address LIKE :e2)")
-    >>> s = s.columns(title=String)
-    >>> s = s.bindparams(x='m', y='z', e1='%@aol.com', e2='%@msn.com')
-    >>> conn.execute(s).fetchall()
-    SELECT users.fullname || ', ' || addresses.email_address AS title
-    FROM users, addresses
-    WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
-    (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
-    ('m', 'z', '%@aol.com', '%@msn.com')
-    {stop}[(u'Wendy Williams, wendy@aol.com',)]
+    >>> stmt = text("SELECT users.id, addresses.id, users.id, "
+    ...     "users.name, addresses.email_address AS email "
+    ...     "FROM users JOIN addresses ON users.id=addresses.user_id "
+    ...     "WHERE users.id = 1").columns(
+    ...        users.c.id,
+    ...        addresses.c.id,
+    ...        addresses.c.user_id,
+    ...        users.c.name,
+    ...        addresses.c.email_address
+    ...     )
+    {sql}>>> result = conn.execute(stmt)
+    SELECT users.id, addresses.id, users.id, users.name,
+        addresses.email_address AS email
+    FROM users JOIN addresses ON users.id=addresses.user_id WHERE users.id = 1
+    ()
+    {stop}
+
+Above, there's three columns in the result that are named "id", but since
+we've associated these with column expressions positionally, the names aren't an issue
+when the result-columns are fetched using the actual column object as a key.
+Fetching the ``email_address`` column would be::
+
+    >>> row = result.fetchone()
+    >>> row[addresses.c.email_address]
+    'jack@yahoo.com'
+
+If on the other hand we used a string column key, the usual rules of name-
+based matching still apply, and we'd get an ambiguous column error for
+the ``id`` value::
+
+    >>> row["id"]
+    Traceback (most recent call last):
+    ...
+    InvalidRequestError: Ambiguous column name 'id' in result set column descriptions
+
+It's important to note that while accessing columns from a result set using
+:class:`.Column` objects may seem unusual, it is in fact the only system
+used by the ORM, which occurs transparently beneath the facade of the
+:class:`~.orm.query.Query` object; in this way, the :meth:`.TextClause.columns` method
+is typically very applicable to textual statements to be used in an ORM
+context.   The example at :ref:`orm_tutorial_literal_sql` illustrates
+a simple usage.
+
+.. versionadded:: 1.1
+
+    The :meth:`.TextClause.columns` method now accepts column expressions
+    which will be matched positionally to a plain text SQL result set,
+    eliminating the need for column names to match or even be unique in the
+    SQL statement when matching table metadata or ORM models to textual SQL.
+
+.. seealso::
+
+    :meth:`.TextClause.columns` - full method description
+
+    :ref:`orm_tutorial_literal_sql` - integrating ORM-level queries with
+    :func:`.text`
 
 
-:func:`~.expression.text` can also be used freely within a
+Using text() fragments inside bigger statements
+-----------------------------------------------
+
+:func:`~.expression.text` can also be used to produce fragments of SQL
+that can be freely within a
 :func:`~.expression.select` object, which accepts :func:`~.expression.text`
 objects as an argument for most of its builder functions.
 Below, we combine the usage of :func:`~.expression.text` within a
@@ -850,29 +942,12 @@ need to refer to any pre-established :class:`.Table` metadata:
     ('%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-.. topic:: Why not use strings everywhere?
-
-    When we use literal strings, the Core can't adapt our SQL to work
-    on different database backends.  Above, our expression won't work
-    with MySQL since MySQL doesn't have the ``||`` construct.
-    If we only use :func:`.text` to specify columns, our :func:`.select`
-    construct will have an empty ``.c`` collection
-    that we'd normally use to create subqueries.
-    We also lose typing information about result columns and bound parameters,
-    which is often needed to correctly translate data values between
-    Python and the database.  Overall, the more :func:`.text` we use,
-    the less flexibility and ability for manipulation/transformation
-    the statement will have.
-
-.. seealso::
-
-    :ref:`orm_tutorial_literal_sql` - integrating ORM-level queries with
-    :func:`.text`
-
 .. versionchanged:: 1.0.0
    The :func:`.select` construct emits warnings when string SQL
    fragments are coerced to :func:`.text`, and :func:`.text` should
    be used explicitly.  See :ref:`migration_2992` for background.
+
+
 
 .. _sqlexpression_literal_column:
 
