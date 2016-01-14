@@ -383,7 +383,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         for field in 'day', 'month', 'year':
             self.assert_compile(
                 select([extract(field, t.c.col1)]),
-                'SELECT DATEPART("%s", t.col1) AS anon_1 FROM t' % field)
+                'SELECT DATEPART(%s, t.col1) AS anon_1 FROM t' % field)
 
     def test_update_returning(self):
         table1 = table(
