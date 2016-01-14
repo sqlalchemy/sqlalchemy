@@ -1276,17 +1276,16 @@ class TextClause(Executable, ClauseElement):
             for id, name in connection.execute(t):
                 print(id, name)
 
-        The :func:`.text` construct is used internally in cases when
-        a literal string is specified for part of a larger query, such as
-        when a string is specified to the :meth:`.Select.where` method of
-        :class:`.Select`.  In those cases, the same
-        bind parameter syntax is applied::
+        The :func:`.text` construct is used in cases when
+        a literal string SQL fragment is specified as part of a larger query,
+        such as for the WHERE clause of a SELECT statement::
 
-            s = select([users.c.id, users.c.name]).where("id=:user_id")
+            s = select([users.c.id, users.c.name]).where(text("id=:user_id"))
             result = connection.execute(s, user_id=12)
 
-        Using :func:`.text` explicitly usually implies the construction
-        of a full, standalone statement.   As such, SQLAlchemy refers
+        :func:`.text` is also used for the construction
+        of a full, standalone statement using plain text.
+        As such, SQLAlchemy refers
         to it as an :class:`.Executable` object, and it supports
         the :meth:`Executable.execution_options` method.  For example,
         a :func:`.text` construct that should be subject to "autocommit"
