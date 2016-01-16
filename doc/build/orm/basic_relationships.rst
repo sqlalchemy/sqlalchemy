@@ -118,7 +118,7 @@ of the relationship. To convert one-to-many into one-to-one::
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('parent.id'))
-        parent = relationship("Child", back_populates="child")
+        parent = relationship("Parent", back_populates="child")
 
 Or for many-to-one::
 
@@ -131,7 +131,7 @@ Or for many-to-one::
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
-        parent = relationship("Child", back_populates="child", uselist=False)
+        parent = relationship("Parent", back_populates="child", uselist=False)
 
 As always, the :paramref:`.relationship.backref` and :func:`.backref` functions
 may be used in lieu of the :paramref:`.relationship.back_populates` approach;
