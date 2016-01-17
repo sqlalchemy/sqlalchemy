@@ -190,7 +190,7 @@ The same concept can be used with mixin classes (see
 
 The above mixin checks the local ``__table__`` attribute for the column.
 Because we're using single table inheritance, we're sure that in this case,
-``cls.__table__`` refers to ``People.__table__``.  If we were mixing joined-
+``cls.__table__`` refers to ``Person.__table__``.  If we were mixing joined-
 and single-table inheritance, we might want our mixin to check more carefully
 if ``cls.__table__`` is really the :class:`.Table` we're looking for.
 
