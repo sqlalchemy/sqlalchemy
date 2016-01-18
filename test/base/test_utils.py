@@ -1,4 +1,5 @@
 import copy
+import sys
 
 from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
@@ -2063,6 +2064,64 @@ class TestClassHierarchy(fixtures.TestBase):
             eq_(set(util.class_hierarchy(B)), set((A, B, object)))
             eq_(set(util.class_hierarchy(Mixin)), set())
             eq_(set(util.class_hierarchy(A)), set((A, B, object)))
+
+
+class ReraiseTest(fixtures.TestBase):
+    @testing.requires.python3
+    def test_raise_from_cause_same_cause(self):
+        class MyException(Exception):
+            pass
+
+        def go():
+            try:
+                raise MyException("exc one")
+            except Exception as err:
+                util.raise_from_cause(err)
+
+        try:
+            go()
+            assert False
+        except MyException as err:
+            is_(err.__cause__, None)
+
+    def test_reraise_disallow_same_cause(self):
+        class MyException(Exception):
+            pass
+
+        def go():
+            try:
+                raise MyException("exc one")
+            except Exception as err:
+                type_, value, tb = sys.exc_info()
+                util.reraise(type_, err, tb, value)
+
+        assert_raises_message(
+            AssertionError,
+            "Same cause emitted",
+            go
+        )
+
+    def test_raise_from_cause(self):
+        class MyException(Exception):
+            pass
+
+        class MyOtherException(Exception):
+            pass
+
+        me = MyException("exc on")
+
+        def go():
+            try:
+                raise me
+            except Exception:
+                util.raise_from_cause(MyOtherException("exc two"))
+
+        try:
+            go()
+            assert False
+        except MyOtherException as moe:
+            if testing.requires.python3.enabled:
+                is_(moe.__cause__, me)
 
 
 class TestClassProperty(fixtures.TestBase):

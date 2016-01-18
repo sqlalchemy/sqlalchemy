@@ -20,6 +20,14 @@
     :released:
 
     .. change::
+        :tags: bug, py3k
+        :tickets: 3625
+
+        Fixed bug where some exception re-raise scenarios would attach
+        the exception to itself as the "cause"; while the Python 3 interpreter
+        is OK with this, it could cause endless loops in iPython.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3624
         :pullreq: bitbucket:70
