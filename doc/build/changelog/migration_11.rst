@@ -421,6 +421,10 @@ If neither the underlying :class:`.MetaData` nor the :class:`.Session` are
 associated with any bound :class:`.Engine`, then the fallback to the
 "default" dialect is used to generate the SQL string.
 
+.. seealso::
+
+    :ref:`change_3631`
+
 :ticket:`3081`
 
 New Features and Improvements - Core
@@ -977,6 +981,32 @@ different schema each time::
     :ref:`schema_translating`
 
 :ticket:`2685`
+
+.. _change_3631:
+
+"Friendly" stringification of Core SQL constructs without a dialect
+-------------------------------------------------------------------
+
+Calling ``str()`` on a Core SQL construct will now produce a string
+in more cases than before, supporting various SQL constructs not normally
+present in default SQL such as RETURNING, array indexes, and non-standard
+datatypes::
+
+    >>> from sqlalchemy import table, column
+    t>>> t = table('x', column('a'), column('b'))
+    >>> print(t.insert().returning(t.c.a, t.c.b))
+    INSERT INTO x (a, b) VALUES (:a, :b) RETURNING x.a, x.b
+
+The ``str()`` function now calls upon an entirely separate dialect / compiler
+intended just for plain string printing without a specific dialect set up,
+so as more "just show me a string!" cases come up, these can be added
+to this dialect/compiler without impacting behaviors on real dialects.
+
+.. seealso::
+
+    :ref:`change_3081`
+
+:ticket:`3631`
 
 .. _change_3531:
 

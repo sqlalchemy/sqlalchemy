@@ -2118,6 +2118,30 @@ class SQLCompiler(Compiled):
             self.preparer.format_savepoint(savepoint_stmt)
 
 
+class StrSQLCompiler(SQLCompiler):
+    """"a compiler subclass with a few non-standard SQL features allowed.
+
+    Used for stringification of SQL statements when a real dialect is not
+    available.
+
+    """
+
+    def visit_getitem_binary(self, binary, operator, **kw):
+        return "%s[%s]" % (
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw)
+        )
+
+    def returning_clause(self, stmt, returning_cols):
+
+        columns = [
+            self._label_select_column(None, c, True, False, {})
+            for c in elements._select_iterables(returning_cols)
+        ]
+
+        return 'RETURNING ' + ', '.join(columns)
+
+
 class DDLCompiler(Compiled):
 
     @util.memoized_property
@@ -2638,6 +2662,17 @@ class GenericTypeCompiler(TypeCompiler):
 
     def visit_user_defined(self, type_, **kw):
         return type_.get_col_spec(**kw)
+
+
+class StrSQLTypeCompiler(GenericTypeCompiler):
+    def __getattr__(self, key):
+        if key.startswith("visit_"):
+            return self._visit_unknown
+        else:
+            raise AttributeError(key)
+
+    def _visit_unknown(self, type_, **kw):
+        return "%s" % type_.__class__.__name__
 
 
 class IdentifierPreparer(object):

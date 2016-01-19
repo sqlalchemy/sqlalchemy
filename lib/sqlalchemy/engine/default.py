@@ -474,6 +474,23 @@ class DefaultDialect(interfaces.Dialect):
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)
 
 
+class StrCompileDialect(DefaultDialect):
+
+    statement_compiler = compiler.StrSQLCompiler
+    ddl_compiler = compiler.DDLCompiler
+    type_compiler = compiler.StrSQLTypeCompiler
+    preparer = compiler.IdentifierPreparer
+
+    supports_sequences = True
+    sequences_optional = True
+    preexecute_autoincrement_sequences = False
+    implicit_returning = False
+
+    supports_native_boolean = True
+
+    supports_simple_order_by_label = True
+
+
 class DefaultExecutionContext(interfaces.ExecutionContext):
     isinsert = False
     isupdate = False

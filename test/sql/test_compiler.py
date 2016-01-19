@@ -10,7 +10,8 @@ styling and coherent test organization.
 
 """
 
-from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, is_, assert_raises, \
+    assert_raises_message, eq_ignore_whitespace
 from sqlalchemy import testing
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
@@ -2562,7 +2563,7 @@ class UnsupportedTest(fixtures.TestBase):
 
         assert_raises_message(
             exc.UnsupportedCompilationError,
-            r"Compiler <sqlalchemy.sql.compiler.SQLCompiler .*"
+            r"Compiler <sqlalchemy.sql.compiler.StrSQLCompiler .*"
             r"can't render element of type <class '.*SomeElement'>",
             SomeElement().compile
         )
@@ -2578,7 +2579,7 @@ class UnsupportedTest(fixtures.TestBase):
 
         assert_raises_message(
             exc.UnsupportedCompilationError,
-            r"Compiler <sqlalchemy.sql.compiler.SQLCompiler .*"
+            r"Compiler <sqlalchemy.sql.compiler.StrSQLCompiler .*"
             r"can't render element of type <class '.*SomeElement'>",
             SomeElement().compile
         )
@@ -2591,9 +2592,73 @@ class UnsupportedTest(fixtures.TestBase):
         binary = BinaryExpression(column("foo"), column("bar"), myop)
         assert_raises_message(
             exc.UnsupportedCompilationError,
-            r"Compiler <sqlalchemy.sql.compiler.SQLCompiler .*"
+            r"Compiler <sqlalchemy.sql.compiler.StrSQLCompiler .*"
             r"can't render element of type <function.*",
             binary.compile
+        )
+
+
+class StringifySpecialTest(fixtures.TestBase):
+    def test_basic(self):
+        stmt = select([table1]).where(table1.c.myid == 10)
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = :myid_1"
+        )
+
+    def test_cte(self):
+        # stringify of these was supported anyway by defaultdialect.
+        stmt = select([table1.c.myid]).cte()
+        stmt = select([stmt])
+        eq_ignore_whitespace(
+            str(stmt),
+            "WITH anon_1 AS (SELECT mytable.myid AS myid FROM mytable) "
+            "SELECT anon_1.myid FROM anon_1"
+        )
+
+    def test_returning(self):
+        stmt = table1.insert().returning(table1.c.myid)
+
+        eq_ignore_whitespace(
+            str(stmt),
+            "INSERT INTO mytable (myid, name, description) "
+            "VALUES (:myid, :name, :description) RETURNING mytable.myid"
+        )
+
+    def test_array_index(self):
+        stmt = select([column('foo', types.ARRAY(Integer))[5]])
+
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT foo[:foo_1] AS anon_1"
+        )
+
+    def test_unknown_type(self):
+        class MyType(types.TypeEngine):
+            __visit_name__ = 'mytype'
+
+        stmt = select([cast(table1.c.myid, MyType)])
+
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT CAST(mytable.myid AS MyType) AS anon_1 FROM mytable"
+        )
+
+    def test_within_group(self):
+        # stringify of these was supported anyway by defaultdialect.
+        from sqlalchemy import within_group
+        stmt = select([
+            table1.c.myid,
+            within_group(
+                func.percentile_cont(0.5),
+                table1.c.name.desc()
+            )
+        ])
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name DESC) AS anon_1 FROM mytable"
         )
 
 

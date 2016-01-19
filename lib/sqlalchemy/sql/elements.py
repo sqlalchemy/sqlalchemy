@@ -429,7 +429,7 @@ class ClauseElement(Visitable):
                 dialect = self.bind.dialect
                 bind = self.bind
             else:
-                dialect = default.DefaultDialect()
+                dialect = default.StrCompileDialect()
         return self._compiler(dialect, bind=bind, **kw)
 
     def _compiler(self, dialect, **kw):

@@ -9,6 +9,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     events, Unicode, types as sqltypes, bindparam, \
     Table, Column, Boolean, Enum, func, text, TypeDecorator
 from sqlalchemy import schema, exc
+from sqlalchemy.engine import default
 from sqlalchemy.sql import elements, naming
 import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
@@ -3682,7 +3683,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.InvalidRequestError,
             "Naming convention including \%\(constraint_name\)s token "
             "requires that constraint is explicitly named.",
-            schema.CreateTable(u1).compile
+            schema.CreateTable(u1).compile, dialect=default.DefaultDialect()
         )
 
     def test_schematype_no_ck_name_boolean_no_name(self):

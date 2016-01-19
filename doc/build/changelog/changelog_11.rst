@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3631
+
+        Calling str() on a core SQL construct has been made more "friendly",
+        when the construct contains non-standard SQL elements such as
+        RETURNING, array index operations, or dialect-specific or custom
+        datatypes.  A string is now returned in these cases rendering an
+        approximation of the construct (typically the Postgresql-style
+        version of it) rather than raising an error.
+
+        .. seealso::
+
+            :ref:`change_3631`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3630
 
