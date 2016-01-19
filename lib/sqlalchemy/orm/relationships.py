@@ -1817,15 +1817,16 @@ class RelationshipProperty(StrategizedProperty):
                 backref_key, kwargs = self.backref
             mapper = self.mapper.primary_mapper()
 
-            check = set(mapper.iterate_to_root()).\
-                union(mapper.self_and_descendants)
-            for m in check:
-                if m.has_property(backref_key):
-                    raise sa_exc.ArgumentError(
-                        "Error creating backref "
-                        "'%s' on relationship '%s': property of that "
-                        "name exists on mapper '%s'" %
-                        (backref_key, self, m))
+            if not mapper.concrete:
+                check = set(mapper.iterate_to_root()).\
+                    union(mapper.self_and_descendants)
+                for m in check:
+                    if m.has_property(backref_key):
+                        raise sa_exc.ArgumentError(
+                            "Error creating backref "
+                            "'%s' on relationship '%s': property of that "
+                            "name exists on mapper '%s'" %
+                            (backref_key, self, m))
 
             # determine primaryjoin/secondaryjoin for the
             # backref.  Use the one we had, so that

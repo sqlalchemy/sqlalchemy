@@ -22,6 +22,20 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3630
+
+        Fixed issue where two same-named relationships that refer to
+        a base class and a concrete-inherited subclass would raise an error
+        if those relationships were set up using "backref", while setting up the
+        identical configuration using relationship() instead with the conflicting
+        names would succeed, as is allowed in the case of a concrete mapping.
+
+        .. seealso::
+
+            :ref:`change_3630`
+
+    .. change::
         :tags: feature, orm
         :tickets: 3081
 

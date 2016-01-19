@@ -291,6 +291,65 @@ time on the outside of the subquery.
 :ticket:`3582`
 
 
+.. _change_3630:
+
+Same-named backrefs will not raise an error when applied to concrete inheritance subclasses
+-------------------------------------------------------------------------------------------
+
+The following mapping has always been possible without issue::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        b = relationship("B", foreign_keys="B.a_id", backref="a")
+
+    class A1(A):
+        __tablename__ = 'a1'
+        id = Column(Integer, primary_key=True)
+        b = relationship("B", foreign_keys="B.a1_id", backref="a1")
+        __mapper_args__ = {'concrete': True}
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+
+        a_id = Column(ForeignKey('a.id'))
+        a1_id = Column(ForeignKey('a1.id'))
+
+Above, even though class ``A`` and class ``A1`` have a relationship
+named ``b``, no conflict warning or error occurs because class ``A1`` is
+marked as "concrete".
+
+However, if the relationships were configured the other way, an error
+would occur::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+
+    class A1(A):
+        __tablename__ = 'a1'
+        id = Column(Integer, primary_key=True)
+        __mapper_args__ = {'concrete': True}
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+
+        a_id = Column(ForeignKey('a.id'))
+        a1_id = Column(ForeignKey('a1.id'))
+
+        a = relationship("A", backref="b")
+        a1 = relationship("A1", backref="b")
+
+The fix enhances the backref feature so that an error is not emitted,
+as well as an additional check within the mapper logic to bypass warning
+for an attribute being replaced.
+
+:ticket:`3630`
+
 .. _change_3601:
 
 Session.merge resolves pending conflicts the same as persistent
