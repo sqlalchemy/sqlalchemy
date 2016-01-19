@@ -245,6 +245,15 @@ def startswith_(a, fragment, msg=None):
         a, fragment)
 
 
+def eq_ignore_whitespace(a, b, msg=None):
+    a = re.sub(r'^\s+?|\n', "", a)
+    a = re.sub(r' {2,}', " ", a)
+    b = re.sub(r'^\s+?|\n', "", b)
+    b = re.sub(r' {2,}', " ", b)
+
+    assert a == b, msg or "%r != %r" % (a, b)
+
+
 def assert_raises(except_cls, callable_, *args, **kw):
     try:
         callable_(*args, **kw)

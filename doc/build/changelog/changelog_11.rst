@@ -22,6 +22,25 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3081
+
+        The ``str()`` call for :class:`.Query` will now take into account
+        the :class:`.Engine` to which the :class:`.Session` is bound, when
+        generating the string form of the SQL, so that the actual SQL
+        that would be emitted to the database is shown, if possible.  Previously,
+        only the engine associated with the :class:`.MetaData` to which the
+        mappings are associated would be used, if present.  If
+        no bind can be located either on the :class:`.Session` or on
+        the :class:`.MetaData` to which the mappings are associated, then
+        the "default" dialect is used to render the SQL, as was the case
+        previously.
+
+        .. seealso::
+
+            :ref:`change_3081`
+
+    .. change::
         :tags: feature, sql
         :tickets: 3501
 

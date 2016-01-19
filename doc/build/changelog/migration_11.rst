@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: January 14, 2016
+    Document last updated: January 19, 2016
 
 Introduction
 ============
@@ -343,6 +343,26 @@ would have to be compared during the merge.
 
 
 :ticket:`3601`
+
+.. _change_3081:
+
+Stringify of Query will consult the Session for the correct dialect
+-------------------------------------------------------------------
+
+Calling ``str()`` on a :class:`.Query` object will consult the :class:`.Session`
+for the correct "bind" to use, in order to render the SQL that would be
+passed to the database.  In particular this allows a :class:`.Query` that
+refers to dialect-specific SQL constructs to be renderable, assuming the
+:class:`.Query` is associated with an appropriate :class:`.Session`.
+Previously, this behavior would only take effect if the :class:`.MetaData`
+to which the mappings were associated were itself bound to the target
+:class:`.Engine`.
+
+If neither the underlying :class:`.MetaData` nor the :class:`.Session` are
+associated with any bound :class:`.Engine`, then the fallback to the
+"default" dialect is used to generate the SQL string.
+
+:ticket:`3081`
 
 New Features and Improvements - Core
 ====================================
