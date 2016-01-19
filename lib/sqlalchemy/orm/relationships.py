@@ -1821,7 +1821,7 @@ class RelationshipProperty(StrategizedProperty):
                 check = set(mapper.iterate_to_root()).\
                     union(mapper.self_and_descendants)
                 for m in check:
-                    if m.has_property(backref_key):
+                    if m.has_property(backref_key) and not m.concrete:
                         raise sa_exc.ArgumentError(
                             "Error creating backref "
                             "'%s' on relationship '%s': property of that "
