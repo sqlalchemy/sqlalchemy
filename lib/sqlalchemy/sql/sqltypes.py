@@ -873,9 +873,9 @@ class LargeBinary(_Binary):
 
     """A type for large binary byte data.
 
-    The Binary type generates BLOB or BYTEA when tables are created,
-    and also converts incoming values using the ``Binary`` callable
-    provided by each DB-API.
+    The :class:`.LargeBinary` type corresponds to a large and/or unlengthed
+    binary type for the target platform, such as BLOB on MySQL and BYTEA for
+    Postgresql.  It also handles the necessary conversions for the DBAPI.
 
     """
 
@@ -886,13 +886,8 @@ class LargeBinary(_Binary):
         Construct a LargeBinary type.
 
         :param length: optional, a length for the column for use in
-          DDL statements, for those BLOB types that accept a length
-          (i.e. MySQL).  It does *not* produce a small BINARY/VARBINARY
-          type - use the BINARY/VARBINARY types specifically for those.
-          May be safely omitted if no ``CREATE
-          TABLE`` will be issued.  Certain databases may require a
-          *length* for use in DDL, and will raise an exception when
-          the ``CREATE TABLE`` DDL is issued.
+          DDL statements, for those binary types that accept a length,
+          such as the MySQL BLOB type.
 
         """
         _Binary.__init__(self, length=length)
