@@ -670,6 +670,9 @@ Two critical points should be noted:
   mapped in an inheritance relationship with ``Employee``, they still **do not
   include polymorphic loading**.
 
+Concrete Polymorphic Loading
++++++++++++++++++++++++++++++
+
 To load polymorphically, the :paramref:`.orm.mapper.with_polymorphic` argument is required, along
 with a selectable indicating how rows should be loaded.   Polymorphic loading
 is most inefficient with concrete inheritance, so if we do seek this style of
@@ -766,6 +769,11 @@ them to each class using ``__table__``::
     class Manager(Employee):
         __table__ = manager_table
         __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
+
+.. _inheritance_concrete_helpers:
+
+Using the Declarative Helper Classes
++++++++++++++++++++++++++++++++++++++
 
 Another way is to use a special helper class that takes on the fairly
 complicated task of deferring the production of :class:`.Mapper` objects
@@ -870,7 +878,6 @@ can produce this; the mapping would be::
 
     :ref:`declarative_concrete_table` - in the Declarative reference documentation
 
-    :ref:`declarative_concrete_helpers` - in the Declarative reference documentation
 
 Using Relationships with Inheritance
 ------------------------------------
