@@ -290,6 +290,66 @@ time on the outside of the subquery.
 
 :ticket:`3582`
 
+.. _change_2349:
+
+passive_deletes feature for joined-inheritance mappings
+-------------------------------------------------------
+
+A joined-table inheritance mapping may now allow a DELETE to proceed
+as a result of :meth:`.Session.delete`, which only emits DELETE for the
+base table, and not the subclass table, allowing configured ON DELETE CASCADE
+to take place for the configured foreign keys.  This is configured using
+the :paramref:`.orm.mapper.passive_deletes` option::
+
+    from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
+    from sqlalchemy.orm import Session
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+
+    class A(Base):
+        __tablename__ = "a"
+        id = Column('id', Integer, primary_key=True)
+        type = Column(String)
+
+        __mapper_args__ = {
+            'polymorphic_on': type,
+            'polymorphic_identity': 'a',
+            'passive_deletes': True
+        }
+
+
+    class B(A):
+        __tablename__ = 'b'
+        b_table_id = Column('b_table_id', Integer, primary_key=True)
+        bid = Column('bid', Integer, ForeignKey('a.id', ondelete="CASCADE"))
+        data = Column('data', String)
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'b'
+        }
+
+With the above mapping, the :paramref:`.orm.mapper.passive_deletes` option
+is configured on the base mapper; it takes effect for all non-base mappers
+that are descendants of the mapper with the option set.  A DELETE for
+an object of type ``B`` no longer needs to retrieve the primary key value
+of ``b_table_id`` if unloaded, nor does it need to emit a DELETE statement
+for the table itself::
+
+    session.delete(some_b)
+    session.commit()
+
+Will emit SQL as::
+
+    DELETE FROM a WHERE a.id = %(id)s
+    {'id': 1}
+    COMMIT
+
+As always, the target database must have foreign key support with
+ON DELETE CASCADE enabled.
+
+:ticket:`2349`
 
 .. _change_3630:
 

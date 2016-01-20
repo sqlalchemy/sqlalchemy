@@ -241,6 +241,8 @@ def delete_obj(base_mapper, states, uowtransaction):
         mapper = table_to_mapper[table]
         if table not in mapper._pks_by_table:
             continue
+        elif mapper.inherits and mapper.passive_deletes:
+            continue
 
         delete = _collect_delete_commands(base_mapper, uowtransaction,
                                           table, states_to_delete)

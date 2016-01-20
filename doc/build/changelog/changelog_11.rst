@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm
+        :tickets: 2349
+
+        Added new parameter :paramref:`.orm.mapper.passive_deletes` to
+        available mapper options.   This allows a DELETE to proceed
+        for a joined-table inheritance mapping against the base table only,
+        while allowing for ON DELETE CASCADE to handle deleting the row
+        from the subclass tables.
+
+        .. seealso::
+
+            :ref:`change_2349`
+
+
+    .. change::
         :tags: bug, sybase
         :tickets: 2278
 

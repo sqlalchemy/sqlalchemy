@@ -150,6 +150,10 @@ instances of ``MyOtherClass`` which are not loaded, SQLAlchemy assumes that
 "ON DELETE CASCADE" rules will ensure that those rows are deleted by the
 database.
 
+.. seealso::
+
+    :paramref:`.orm.mapper.passive_deletes` - similar feature on :func:`.mapper`
+
 .. currentmodule:: sqlalchemy.orm.collections
 .. _custom_collections:
 
