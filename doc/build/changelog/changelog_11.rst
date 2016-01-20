@@ -22,6 +22,14 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sybase
+        :tickets: 2278
+
+        The unsupported Sybase dialect now raises ``NotImplementedError``
+        when attempting to compile a query that includes "offset"; Sybase
+        has no straightforward "offset" feature.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3631
 
