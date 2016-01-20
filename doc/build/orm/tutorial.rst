@@ -346,8 +346,8 @@ used, it retrieves a connection from a pool of connections maintained by the
 session object.
 
 
-Adding New Objects
-==================
+Adding and Updating Objects
+===========================
 
 To persist our ``User`` object, we :meth:`~.Session.add` it to our :class:`~sqlalchemy.orm.session.Session`::
 
@@ -438,7 +438,10 @@ and that three new ``User`` objects are pending:
 
 We tell the :class:`~sqlalchemy.orm.session.Session` that we'd like to issue
 all remaining changes to the database and commit the transaction, which has
-been in progress throughout. We do this via :meth:`~.Session.commit`:
+been in progress throughout. We do this via :meth:`~.Session.commit`.  The
+:class:`~sqlalchemy.orm.session.Session` emits the ``UPDATE`` statement
+for the password change on "ed", as well as ``INSERT`` statements for the
+three new ``User`` objects we've added:
 
 .. sourcecode:: python+sql
 
