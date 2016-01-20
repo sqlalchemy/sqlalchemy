@@ -579,7 +579,7 @@ use the following workaround type::
 
             def handle_raw_string(value):
                 inner = re.match(r"^{(.*)}$", value).group(1)
-                return inner.split(",")
+                return inner.split(",") if inner else []
 
             def process(value):
                 if value is None:
