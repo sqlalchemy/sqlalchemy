@@ -121,8 +121,18 @@ below where we generate a CHECK constraint that embeds a SQL expression::
     def compile_my_constraint(constraint, ddlcompiler, **kw):
         return "CONSTRAINT %s CHECK (%s)" % (
             constraint.name,
-            ddlcompiler.sql_compiler.process(constraint.expression)
+            ddlcompiler.sql_compiler.process(
+                constraint.expression, literal_binds=True)
         )
+
+Above, we add an additional flag to the process step as called by
+:meth:`.SQLCompiler.process`, which is the ``literal_binds`` flag.  This
+indicates that any SQL expression which refers to a :class:`.BindParameter`
+object or other "literal" object such as those which refer to strings or
+integers should be rendered **in-place**, rather than being referred to as
+a bound parameter;  when emitting DDL, bound parameters are typically not
+supported.
+
 
 .. _enabling_compiled_autocommit:
 
