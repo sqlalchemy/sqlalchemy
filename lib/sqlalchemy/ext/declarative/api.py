@@ -319,6 +319,15 @@ class ConcreteBase(object):
                             'polymorphic_identity':'manager',
                             'concrete':True}
 
+    .. seealso::
+
+        :class:`.AbstractConcreteBase`
+
+        :ref:`concrete_inheritance`
+
+        :ref:`inheritance_concrete_helpers`
+
+
     """
 
     @classmethod
@@ -366,8 +375,16 @@ class AbstractConcreteBase(ConcreteBase):
             name = Column(String(50))
             manager_data = Column(String(40))
             __mapper_args__ = {
-                            'polymorphic_identity':'manager',
-                            'concrete':True}
+                'polymorphic_identity':'manager',
+                'concrete':True}
+
+    .. seealso::
+
+        :class:`.ConcreteBase`
+
+        :ref:`concrete_inheritance`
+
+        :ref:`inheritance_concrete_helpers`
 
     """
 
