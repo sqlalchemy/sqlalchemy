@@ -194,6 +194,8 @@ Because we're using single table inheritance, we're sure that in this case,
 and single-table inheritance, we might want our mixin to check more carefully
 if ``cls.__table__`` is really the :class:`.Table` we're looking for.
 
+.. _declarative_concrete_table:
+
 Concrete Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -253,8 +255,6 @@ Using the Concrete Helpers
 Helper classes provides a simpler pattern for concrete inheritance.
 With these objects, the ``__declare_first__`` helper is used to configure the
 "polymorphic" loader for the mapper after all subclasses have been declared.
-
-.. versionadded:: 0.7.3
 
 An abstract base can be declared using the
 :class:`.AbstractConcreteBase` class::
