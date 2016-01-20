@@ -735,7 +735,7 @@ them to each class using ``__table__``::
     class Employee(Base):
         __table__ = employee_table
         __mapper_args__ = {
-            'polymorphic_on':pjoin.c.type
+            'polymorphic_on':pjoin.c.type,
             'with_polymorphic': ('*', pjoin),
             'polymorphic_identity':'employee'
         }
