@@ -50,10 +50,10 @@ class DocTest(fixtures.TestBase):
         self._teardown_create_table_patcher()
         self._teardown_logger()
 
-
     def _run_doctest_for_content(self, name, content):
         optionflags = (
             doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE |
+            doctest.IGNORE_EXCEPTION_DETAIL |
             _get_allow_unicode_flag()
         )
         runner = doctest.DocTestRunner(
