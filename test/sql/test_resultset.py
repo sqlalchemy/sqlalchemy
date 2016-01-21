@@ -317,7 +317,7 @@ class ResultProxyTest(fixtures.TablesTest):
             dict(user_id=1, user_name='john'),
         )
 
-        # test a little sqlite weirdness - with the UNION,
+        # test a little sqlite < 3.10.0 weirdness - with the UNION,
         # cols come back as "users.user_id" in cursor.description
         r = testing.db.execute(
             text(
@@ -331,7 +331,6 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(r['user_name'], "john")
         eq_(list(r.keys()), ["user_id", "user_name"])
 
-    @testing.only_on("sqlite", "sqlite specific feature")
     def test_column_accessor_sqlite_raw(self):
         users = self.tables.users
 
@@ -346,13 +345,22 @@ class ResultProxyTest(fixtures.TablesTest):
             "users.user_name from users",
             bind=testing.db).execution_options(sqlite_raw_colnames=True). \
             execute().first()
-        not_in_('user_id', r)
-        not_in_('user_name', r)
-        eq_(r['users.user_id'], 1)
-        eq_(r['users.user_name'], "john")
-        eq_(list(r.keys()), ["users.user_id", "users.user_name"])
 
-    @testing.only_on("sqlite", "sqlite specific feature")
+        if testing.against("sqlite < 3.10.0"):
+            not_in_('user_id', r)
+            not_in_('user_name', r)
+            eq_(r['users.user_id'], 1)
+            eq_(r['users.user_name'], "john")
+
+            eq_(list(r.keys()), ["users.user_id", "users.user_name"])
+        else:
+            not_in_('users.user_id', r)
+            not_in_('users.user_name', r)
+            eq_(r['user_id'], 1)
+            eq_(r['user_name'], "john")
+
+            eq_(list(r.keys()), ["user_id", "user_name"])
+
     def test_column_accessor_sqlite_translated(self):
         users = self.tables.users
 
@@ -368,8 +376,10 @@ class ResultProxyTest(fixtures.TablesTest):
             bind=testing.db).execute().first()
         eq_(r['user_id'], 1)
         eq_(r['user_name'], "john")
-        eq_(r['users.user_id'], 1)
-        eq_(r['users.user_name'], "john")
+
+        if testing.against("sqlite < 3.10.0"):
+            eq_(r['users.user_id'], 1)
+            eq_(r['users.user_name'], "john")
         eq_(list(r.keys()), ["user_id", "user_name"])
 
     def test_column_accessor_labels_w_dots(self):
