@@ -1125,7 +1125,7 @@ as INNER JOINs could always be flattened)::
 
     SELECT a.*, b.*, c.* FROM a LEFT OUTER JOIN (b JOIN c ON b.id = c.id) ON a.id
 
-This was due to the fact that SQLite, even today, cannot parse a statement of the above format::
+This was due to the fact that SQLite up until version **3.7.16** cannot parse a statement of the above format::
 
     SQLite version 3.7.15.2 2013-01-09 11:53:05
     Enter ".help" for instructions
@@ -1247,6 +1247,12 @@ with the above queries rewritten as::
     FROM order_item AS order_item_1
         JOIN item ON item.id = order_item_1.item_id AND item.type IN (?)
     ) AS anon_1 ON "order".id = anon_1.order_item_1_order_id
+
+.. note::
+
+    As of SQLAlchemy 1.1, the workarounds present in this feature for SQLite
+    will automatically disable themselves when SQLite version **3.7.16**
+    or greater is detected, as SQLite has repaired support for right-nested joins.
 
 The :meth:`.Join.alias`, :func:`.aliased` and :func:`.with_polymorphic` functions now
 support a new argument, ``flat=True``, which is used to construct aliases of joined-table

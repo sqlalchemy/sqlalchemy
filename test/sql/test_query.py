@@ -871,7 +871,6 @@ class QueryTest(fixtures.TestBase):
         eq_(r['user_name'], "john")
         eq_(list(r.keys()), ["user_id", "user_name"])
 
-    @testing.only_on("sqlite", "sqlite specific feature")
     def test_column_accessor_sqlite_raw(self):
         users.insert().execute(
             dict(user_id=1, user_name='john'),
@@ -884,13 +883,24 @@ class QueryTest(fixtures.TestBase):
             "query_users.user_name from query_users",
             bind=testing.db).execution_options(sqlite_raw_colnames=True). \
             execute().first()
-        assert 'user_id' not in r
-        assert 'user_name' not in r
-        eq_(r['query_users.user_id'], 1)
-        eq_(r['query_users.user_name'], "john")
-        eq_(list(r.keys()), ["query_users.user_id", "query_users.user_name"])
 
-    @testing.only_on("sqlite", "sqlite specific feature")
+        if testing.against("sqlite < 3.10.0"):
+            assert 'user_id' not in r
+            assert 'user_name' not in r
+            eq_(r['query_users.user_id'], 1)
+            eq_(r['query_users.user_name'], "john")
+
+            eq_(
+                list(r.keys()),
+                ["query_users.user_id", "query_users.user_name"])
+        else:
+            assert 'query_users.user_id' not in r
+            assert 'query_users.user_name' not in r
+            eq_(r['user_id'], 1)
+            eq_(r['user_name'], "john")
+
+            eq_(list(r.keys()), ["user_id", "user_name"])
+
     def test_column_accessor_sqlite_translated(self):
         users.insert().execute(
             dict(user_id=1, user_name='john'),
@@ -904,8 +914,13 @@ class QueryTest(fixtures.TestBase):
             bind=testing.db).execute().first()
         eq_(r['user_id'], 1)
         eq_(r['user_name'], "john")
-        eq_(r['query_users.user_id'], 1)
-        eq_(r['query_users.user_name'], "john")
+
+        if testing.against("sqlite < 3.10.0"):
+            eq_(r['query_users.user_id'], 1)
+            eq_(r['query_users.user_name'], "john")
+        else:
+            assert 'query_users.user_id' not in r
+            assert 'query_users.user_name'not in r
         eq_(list(r.keys()), ["user_id", "user_name"])
 
     def test_column_accessor_labels_w_dots(self):

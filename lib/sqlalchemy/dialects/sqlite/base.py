@@ -331,8 +331,14 @@ Dotted Column Names
 Using table or column names that explicitly have periods in them is
 **not recommended**.   While this is generally a bad idea for relational
 databases in general, as the dot is a syntactically significant character,
-the SQLite driver has a bug which requires that SQLAlchemy filter out these
-dots in result sets.
+the SQLite driver up until version **3.10.0** of SQLite has a bug which
+requires that SQLAlchemy filter out these dots in result sets.
+
+.. note::
+
+    The following SQLite issue has been resolved as of version 3.10.0
+    of SQLite.  SQLAlchemy as of **1.1** automatically disables its internal
+    workarounds based on detection of this version.
 
 The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
 
@@ -907,6 +913,9 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         return self.execution_options.get("sqlite_raw_colnames", False)
 
     def _translate_colname(self, colname):
+        # TODO: detect SQLite version 3.10.0 or greater;
+        # see [ticket:3633]
+
         # adjust for dotted column names.  SQLite
         # in the case of UNION may store col names as
         # "tablename.colname", or if using an attached database,
@@ -926,6 +935,9 @@ class SQLiteDialect(default.DefaultDialect):
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True
+
+    # TODO: detect version 3.7.16 or greater;
+    # see [ticket:3634]
     supports_right_nested_joins = False
 
     default_paramstyle = 'qmark'
