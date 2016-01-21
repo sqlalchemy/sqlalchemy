@@ -1207,14 +1207,14 @@ class PassiveDeletesTest(fixtures.MappedTest):
 
         # want to see if the 'C' table loads even though
         # a and b are loaded
-        c1 = s.query(A).filter_by(id=3).first()
+        c1 = s.query(B).filter_by(id=3).first()
         s.delete(c1)
         with self.sql_execution_asserter(testing.db) as asserter:
             s.flush()
         asserter.assert_(
             CompiledSQL(
-                "SELECT c.bid AS c_bid, b.data AS b_data, c.cid AS c_cid "
-                "FROM c, b WHERE :param_1 = b.id AND b.id = c.bid",
+                "SELECT c.bid AS c_bid, c.cid AS c_cid "
+                "FROM c WHERE :param_1 = c.bid",
                 [{'param_1': 3}]
             ),
             CompiledSQL(
