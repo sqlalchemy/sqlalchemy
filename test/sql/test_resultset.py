@@ -381,6 +381,10 @@ class ResultProxyTest(fixtures.TablesTest):
         if testing.against("sqlite < 3.10.0"):
             eq_(r['users.user_id'], 1)
             eq_(r['users.user_name'], "john")
+        else:
+            not_in_('users.user_id', r)
+            not_in_('users.user_name', r)
+
         eq_(list(r.keys()), ["user_id", "user_name"])
 
     def test_column_accessor_labels_w_dots(self):
