@@ -71,8 +71,7 @@ class OracleCompiler_zxjdbc(OracleCompiler):
             expression._select_iterables(returning_cols))
 
         # within_columns_clause=False so that labels (foo AS bar) don't render
-        columns = [self.process(c, within_columns_clause=False,
-                                result_map=self.result_map)
+        columns = [self.process(c, within_columns_clause=False)
                    for c in self.returning_cols]
 
         if not hasattr(self, 'returning_parameters'):
