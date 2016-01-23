@@ -1079,13 +1079,13 @@ class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
 
     def test_array_comparison(self):
         arrtable = self.tables.arrtable
-        arrtable.insert().execute(intarr=[1, 2, 3],
+        arrtable.insert().execute(id=5, intarr=[1, 2, 3],
                     strarr=[util.u('abc'), util.u('def')])
         results = select([arrtable.c.id]).\
                         where(arrtable.c.intarr < [4, 5, 6]).execute()\
                         .fetchall()
         eq_(len(results), 1)
-        eq_(results[0][0], 3)
+        eq_(results[0][0], 5)
 
     def test_array_subtype_resultprocessor(self):
         arrtable = self.tables.arrtable
