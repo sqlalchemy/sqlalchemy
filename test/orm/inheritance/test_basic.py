@@ -5,7 +5,7 @@ from sqlalchemy import exc as sa_exc, util, event
 from sqlalchemy.orm import *
 from sqlalchemy.orm.util import instance_str
 from sqlalchemy.orm import exc as orm_exc, attributes
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, Or
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, RegexSQL, Or
 from sqlalchemy.sql import table, column
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
@@ -1212,8 +1212,8 @@ class PassiveDeletesTest(fixtures.MappedTest):
         with self.sql_execution_asserter(testing.db) as asserter:
             s.flush()
         asserter.assert_(
-            CompiledSQL(
-                "SELECT c.bid AS c_bid, c.cid AS c_cid "
+            RegexSQL(
+                "SELECT .* "
                 "FROM c WHERE :param_1 = c.bid",
                 [{'param_1': 3}]
             ),
