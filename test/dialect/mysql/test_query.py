@@ -2,11 +2,11 @@
 
 from sqlalchemy.testing import eq_
 from sqlalchemy import *
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 
 
-class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TestBase):
     __only_on__ = 'mysql'
 
     @classmethod
@@ -52,25 +52,6 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
-
-    @testing.fails_on('mysql+mysqlconnector', 'uses pyformat')
-    def test_expression(self):
-        format = testing.db.dialect.paramstyle == 'format' and '%s' or '?'
-        self.assert_compile(
-            matchtable.c.title.match('somstr'),
-            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
-
-    @testing.fails_on('mysql+mysqldb', 'uses format')
-    @testing.fails_on('mysql+pymysql', 'uses format')
-    @testing.fails_on('mysql+cymysql', 'uses format')
-    @testing.fails_on('mysql+oursql', 'uses format')
-    @testing.fails_on('mysql+pyodbc', 'uses format')
-    @testing.fails_on('mysql+zxjdbc', 'uses format')
-    def test_expression(self):
-        format = '%(title_1)s'
-        self.assert_compile(
-            matchtable.c.title.match('somstr'),
-            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
 
     def test_simple_match(self):
         results = (matchtable.select().
