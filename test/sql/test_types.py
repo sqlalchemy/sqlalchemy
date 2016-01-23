@@ -933,66 +933,6 @@ class UnicodeTest(fixtures.TestBase):
     """
     __backend__ = True
 
-    def test_native_unicode(self):
-        """assert expected values for 'native unicode' mode"""
-
-        if testing.against('mssql+pyodbc'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                'conditional'
-            )
-
-        elif testing.against('mssql+mxodbc'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                'conditional'
-            )
-
-        elif testing.against('mssql+pymssql'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                ('charset' in testing.db.url.query)
-            )
-
-        elif testing.against('mysql+cymysql', 'mysql+pymssql'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k else False
-            )
-        elif testing.against('oracle+cx_oracle'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k else "conditional"
-            )
-        elif testing.against("mysql+mysqldb"):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k or util.asbool(
-                    testing.db.url.query.get("use_unicode")
-                )
-                else False
-            )
-        else:
-            expected = (testing.db.name, testing.db.driver) in \
-                (
-                    ('postgresql', 'psycopg2'),
-                    ('postgresql', 'psycopg2cffi'),
-                    ('postgresql', 'pypostgresql'),
-                    ('postgresql', 'pg8000'),
-                    ('postgresql', 'zxjdbc'),
-                    ('mysql', 'pymysql'),
-                    ('mysql', 'oursql'),
-                    ('mysql', 'zxjdbc'),
-                    ('mysql', 'mysqlconnector'),
-                    ('sqlite', 'pysqlite'),
-                    ('oracle', 'zxjdbc'),
-            )
-
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                expected
-            )
-
     data = util.u(
         "Alors vous imaginez ma surprise, au lever du jour, quand "
         "une drôle de petite voix m’a réveillé. "
