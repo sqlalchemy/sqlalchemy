@@ -184,6 +184,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t2).compile, dialect=mysql.dialect()
         )
 
+    def test_match(self):
+        matchtable = table('matchtable', column('title', String))
+        self.assert_compile(
+            matchtable.c.title.match('somstr'),
+            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)")
+
     def test_for_update(self):
         table1 = table('mytable',
                        column('myid'), column('name'), column('description'))
