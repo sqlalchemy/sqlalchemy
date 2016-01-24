@@ -38,8 +38,8 @@ SQLAlchemy's ``setup.py`` file has for many years supported operation
 both with Setuptools installed and without; supporting a "fallback" mode
 that uses straight Distutils.  As a Setuptools-less Python environment is
 now unheard of, and in order to support the featureset of Setuptools
-more fully, in particular to support py.test's integration with it,
-``setup.py`` now depends on Setuptools fully.
+more fully, in particular to support py.test's integration with it as well
+as things like "extras", ``setup.py`` now depends on Setuptools fully.
 
 .. seealso::
 
