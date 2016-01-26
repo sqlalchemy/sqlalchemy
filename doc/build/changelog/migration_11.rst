@@ -1442,16 +1442,63 @@ directives are no longer needed::
 Dialect Improvements and Changes - SQLite
 =============================================
 
+.. _change_3634:
+
+Right-nested join workaround lifted for SQLite version 3.7.16
+-------------------------------------------------------------
+
+In version 0.9, the feature introduced by :ref:`feature_joins_09` went
+through lots of effort to support rewriting of joins on SQLite to always
+use subqueries in order to achieve a "right-nested-join" effect, as
+SQLite has not supported this syntax for many years.  Ironically,
+the version of SQLite noted in that migration note, 3.7.15.2, was the *last*
+version of SQLite to actually have this limitation!   The next release was
+3.7.16 and support for right nested joins was quietly added.   In 1.1, the work
+to identify the specific SQLite version and source commit where this change
+was made was done (SQlite's changelog refers to it with the cryptic phrase "Enhance
+the query optimizer to exploit transitive join constraints" without linking
+to any issue number, change number, or further explanation), and the workarounds
+present in this change are now lifted for SQLite when the DBAPI reports
+that version 3.7.16 or greater is in effect.
+
+:ticket:`3634`
+
+.. _change_3633:
+
+Dotted column names workaround lifted for SQLite version 3.10.0
+---------------------------------------------------------------
+
+The SQLite dialect has long had a workaround for an issue where the database
+driver does not report the correct column names for some SQL result sets, in
+particular when UNION is used.  The workaround is detailed at
+:ref:`sqlite_dotted_column_names`, and requires that SQLAlchemy assume that any
+column name with a dot in it is actually a ``tablename.columnname`` combination
+delivered via this buggy behavior, with an option to turn it off via the
+``sqlite_raw_colnames`` execution option.
+
+As of SQLite version 3.10.0, the bug in UNION and other queries has been fixed;
+like the change described in :ref:`change_3634`, SQLite's changelog only
+identifies it cryptically as "Added the colUsed field to sqlite3_index_info for
+use by the sqlite3_module.xBestIndex method", however SQLAlchemy's translation
+of these dotted column names is no longer required with this version, so is
+turned off when version 3.10.0 or greater is detected.
+
+Overall, the SQLAlchemy :class:`.ResultProxy` as of the 1.0 series relies much
+less on column names in result sets when delivering results for Core and ORM
+SQL constructs, so the importance of this issue was already lessened in any
+case.
+
+:ticket:`3633`
+
 .. _change_sqlite_schemas:
 
 Improved Support for Remote Schemas
-------------------------------------
-
+-----------------------------------
 The SQLite dialect now implements :meth:`.Inspector.get_schema_names`
 and additionally has improved support for tables and indexes that are
 created and reflected from a remote schema, which in SQLite is a
-database that is assigned a name via the ``ATTACH`` statement; previously,
-the ``CREATE INDEX`` DDL didn't work correctly for a schema-bound table
+dataase that is assigned a name via the ``ATTACH`` statement; previously,
+the``CREATE INDEX`` DDL didn't work correctly for a schema-bound table
 and the :meth:`.Inspector.get_foreign_keys` method will now indicate the
 given schema in the results.  Cross-schema foreign keys aren't supported.
 

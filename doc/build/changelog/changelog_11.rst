@@ -22,6 +22,30 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3634
+
+        The workaround for right-nested joins on SQLite, where they are rewritten
+        as subqueries in order to work around SQLite's lack of support for this
+        syntax, is lifted when SQLite version 3.7.16 or greater is detected.
+
+        .. seealso::
+
+            :ref:`change_3634`
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 3633
+
+        The workaround for SQLite's unexpected delivery of column names as
+        ``tablename.columnname`` for some kinds of queries is now disabled
+        when SQLite version 3.10.0 or greater is detected.
+
+        .. seealso::
+
+            :ref:`change_3633`
+
+    .. change::
         :tags: feature, orm
         :tickets: 2349
 

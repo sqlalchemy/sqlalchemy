@@ -1422,7 +1422,7 @@ class SQLCompiler(Compiled):
         """Rewrite any "a JOIN (b JOIN c)" expression as
         "a JOIN (select * from b JOIN c) AS anon", to support
         databases that can't parse a parenthesized join correctly
-        (i.e. sqlite the main one).
+        (i.e. sqlite < 3.7.16).
 
         """
         cloned = {}
