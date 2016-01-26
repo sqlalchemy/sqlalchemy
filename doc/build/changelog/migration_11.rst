@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: December 4, 2015
+    Document last updated: January 19, 2016
 
 Introduction
 ============
@@ -38,8 +38,8 @@ SQLAlchemy's ``setup.py`` file has for many years supported operation
 both with Setuptools installed and without; supporting a "fallback" mode
 that uses straight Distutils.  As a Setuptools-less Python environment is
 now unheard of, and in order to support the featureset of Setuptools
-more fully, in particular to support py.test's integration with it,
-``setup.py`` now depends on Setuptools fully.
+more fully, in particular to support py.test's integration with it as well
+as things like "extras", ``setup.py`` now depends on Setuptools fully.
 
 .. seealso::
 
@@ -290,6 +290,125 @@ time on the outside of the subquery.
 
 :ticket:`3582`
 
+.. _change_2349:
+
+passive_deletes feature for joined-inheritance mappings
+-------------------------------------------------------
+
+A joined-table inheritance mapping may now allow a DELETE to proceed
+as a result of :meth:`.Session.delete`, which only emits DELETE for the
+base table, and not the subclass table, allowing configured ON DELETE CASCADE
+to take place for the configured foreign keys.  This is configured using
+the :paramref:`.orm.mapper.passive_deletes` option::
+
+    from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
+    from sqlalchemy.orm import Session
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+
+    class A(Base):
+        __tablename__ = "a"
+        id = Column('id', Integer, primary_key=True)
+        type = Column(String)
+
+        __mapper_args__ = {
+            'polymorphic_on': type,
+            'polymorphic_identity': 'a',
+            'passive_deletes': True
+        }
+
+
+    class B(A):
+        __tablename__ = 'b'
+        b_table_id = Column('b_table_id', Integer, primary_key=True)
+        bid = Column('bid', Integer, ForeignKey('a.id', ondelete="CASCADE"))
+        data = Column('data', String)
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'b'
+        }
+
+With the above mapping, the :paramref:`.orm.mapper.passive_deletes` option
+is configured on the base mapper; it takes effect for all non-base mappers
+that are descendants of the mapper with the option set.  A DELETE for
+an object of type ``B`` no longer needs to retrieve the primary key value
+of ``b_table_id`` if unloaded, nor does it need to emit a DELETE statement
+for the table itself::
+
+    session.delete(some_b)
+    session.commit()
+
+Will emit SQL as::
+
+    DELETE FROM a WHERE a.id = %(id)s
+    {'id': 1}
+    COMMIT
+
+As always, the target database must have foreign key support with
+ON DELETE CASCADE enabled.
+
+:ticket:`2349`
+
+.. _change_3630:
+
+Same-named backrefs will not raise an error when applied to concrete inheritance subclasses
+-------------------------------------------------------------------------------------------
+
+The following mapping has always been possible without issue::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        b = relationship("B", foreign_keys="B.a_id", backref="a")
+
+    class A1(A):
+        __tablename__ = 'a1'
+        id = Column(Integer, primary_key=True)
+        b = relationship("B", foreign_keys="B.a1_id", backref="a1")
+        __mapper_args__ = {'concrete': True}
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+
+        a_id = Column(ForeignKey('a.id'))
+        a1_id = Column(ForeignKey('a1.id'))
+
+Above, even though class ``A`` and class ``A1`` have a relationship
+named ``b``, no conflict warning or error occurs because class ``A1`` is
+marked as "concrete".
+
+However, if the relationships were configured the other way, an error
+would occur::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+
+    class A1(A):
+        __tablename__ = 'a1'
+        id = Column(Integer, primary_key=True)
+        __mapper_args__ = {'concrete': True}
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+
+        a_id = Column(ForeignKey('a.id'))
+        a1_id = Column(ForeignKey('a1.id'))
+
+        a = relationship("A", backref="b")
+        a1 = relationship("A1", backref="b")
+
+The fix enhances the backref feature so that an error is not emitted,
+as well as an additional check within the mapper logic to bypass warning
+for an attribute being replaced.
+
+:ticket:`3630`
 
 .. _change_3601:
 
@@ -343,6 +462,30 @@ would have to be compared during the merge.
 
 
 :ticket:`3601`
+
+.. _change_3081:
+
+Stringify of Query will consult the Session for the correct dialect
+-------------------------------------------------------------------
+
+Calling ``str()`` on a :class:`.Query` object will consult the :class:`.Session`
+for the correct "bind" to use, in order to render the SQL that would be
+passed to the database.  In particular this allows a :class:`.Query` that
+refers to dialect-specific SQL constructs to be renderable, assuming the
+:class:`.Query` is associated with an appropriate :class:`.Session`.
+Previously, this behavior would only take effect if the :class:`.MetaData`
+to which the mappings were associated were itself bound to the target
+:class:`.Engine`.
+
+If neither the underlying :class:`.MetaData` nor the :class:`.Session` are
+associated with any bound :class:`.Engine`, then the fallback to the
+"default" dialect is used to generate the SQL string.
+
+.. seealso::
+
+    :ref:`change_3631`
+
+:ticket:`3081`
 
 New Features and Improvements - Core
 ====================================
@@ -445,6 +588,120 @@ will not have much impact on the behavior of the column during an INSERT.
 
 :ticket:`3216`
 
+.. _change_3501:
+
+ResultSet column matching enhancements; positional column setup for textual SQL
+-------------------------------------------------------------------------------
+
+A series of improvements were made to the :class:`.ResultProxy` system
+in the 1.0 series as part of :ticket:`918`, which reorganizes the internals
+to match cursor-bound result columns with table/ORM metadata positionally,
+rather than by matching names, for compiled SQL constructs that contain full
+information about the result rows to be returned.   This allows a dramatic savings
+on Python overhead as well as much greater accuracy in linking ORM and Core
+SQL expressions to result rows.  In 1.1, this reorganization has been taken
+further internally, and also has been made available to pure-text SQL
+constructs via the use of the recently added :meth:`.TextClause.columns` method.
+
+TextAsFrom.columns() now works positionally
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :meth:`.TextClause.columns` method, added in 0.9, accepts column-based arguments
+positionally; in 1.1, when all columns are passed positionally, the correlation
+of these columns to the ultimate result set is also performed positionally.
+The key advantage here is that textual SQL can now be linked to an ORM-
+level result set without the need to deal with ambiguous or duplicate column
+names, or with having to match labeling schemes to ORM-level labeling schemes.  All
+that's needed now is the same ordering of columns within the textual SQL
+and the column arguments passed to :meth:`.TextClause.columns`::
+
+
+    from sqlalchemy import text
+    stmt = text("SELECT users.id, addresses.id, users.id, "
+         "users.name, addresses.email_address AS email "
+         "FROM users JOIN addresses ON users.id=addresses.user_id "
+         "WHERE users.id = 1").columns(
+            User.id,
+            Address.id,
+            Address.user_id,
+            User.name,
+            Address.email_address
+         )
+
+    query = session.query(User).from_statement(text).\
+        options(contains_eager(User.addresses))
+    result = query.all()
+
+Above, the textual SQL contains the column "id" three times, which would
+normally be ambiguous.  Using the new feature, we can apply the mapped
+columns from the ``User`` and ``Address`` class directly, even linking
+the ``Address.user_id`` column to the ``users.id`` column in textual SQL
+for fun, and the :class:`.Query` object will receive rows that are correctly
+targetable as needed, including for an eager load.
+
+This change is **backwards incompatible** with code that passes the columns
+to the method with a different ordering than is present in the textual statement.
+It is hoped that this impact will be low due to the fact that this
+method has always been documented illustrating the columns being passed in the same order as that of the
+textual SQL statement, as would seem intuitive, even though the internals
+weren't checking for this.  The method itself was only added as of 0.9 in
+any case and may not yet have widespread use.  Notes on exactly how to handle
+this behavioral change for applications using it are at :ref:`behavior_change_3501`.
+
+.. seealso::
+
+    :ref:`sqlexpression_text_columns` - in the Core tutorial
+
+    :ref:`behavior_change_3501` - backwards compatibility remarks
+
+Positional matching is trusted over name-based matching for Core/ORM SQL constructs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Another aspect of this change is that the rules for matching columns have also been modified
+to rely upon "positional" matching more fully for compiled SQL constructs
+as well.   Given a statement like the following::
+
+    ua = users.alias('ua')
+    stmt = select([users.c.user_id, ua.c.user_id])
+
+The above statement will compile to::
+
+    SELECT users.user_id, ua.user_id FROM users, users AS ua
+
+In 1.0, the above statement when executed would be matched to its original
+compiled construct using positional matching, however because the statement
+contains the ``'user_id'`` label duplicated, the "ambiguous column" rule
+would still get involved and prevent the columns from being fetched from a row.
+As of 1.1, the "ambiguous column" rule does not affect an exact match from
+a column construct to the SQL column, which is what the ORM uses to
+fetch columns::
+
+    result = conn.execute(stmt)
+    row = result.first()
+
+    # these both match positionally, so no error
+    user_id = row[users.c.user_id]
+    ua_id = row[ua.c.user_id]
+
+    # this still raises, however
+    user_id = row['user_id']
+
+Much less likely to get an "ambiguous column" error message
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As part of this change, the wording of the error message ``Ambiguous column
+name '<name>' in result set! try 'use_labels' option on select statement.``
+has been dialed back; as this message should now be extremely rare when using
+the ORM or Core compiled SQL constructs, it merely states
+``Ambiguous column name '<name>' in result set column descriptions``, and
+only when a result column is retrieved using the string name that is actually
+ambiguous, e.g. ``row['user_id']`` in the above example.  It also now refers
+to the actual ambiguous name from the rendered SQL statement itself,
+rather than indicating the key or name that was local to the construct being
+used for the fetch.
+
+:ticket:`3501`
+
 .. _change_2528:
 
 A UNION or similar of SELECTs with LIMIT/OFFSET/ORDER BY now parenthesizes the embedded selects
@@ -502,33 +759,138 @@ UNIONs with parenthesized SELECT statements is much less common than the
 
 :ticket:`2528`
 
+.. _change_3619:
+
+JSON support added to Core
+--------------------------
+
+As MySQL now has a JSON datatype in addition to the Postgresql JSON datatype,
+the core now gains a :class:`sqlalchemy.types.JSON` datatype that is the basis
+for both of these.  Using this type allows access to the "getitem" operator
+as well as the "getpath" operator in a way that is agnostic across Postgresql
+and MySQL.
+
+The new datatype also has a series of improvements to the handling of
+NULL values as well as expression handling.
+
+.. seealso::
+
+    :ref:`change_3547`
+
+    :class:`.types.JSON`
+
+    :class:`.postgresql.JSON`
+
+    :class:`.mysql.JSON`
+
+:ticket:`3619`
+
+.. _change_3514:
+
+JSON "null" is inserted as expected with ORM operations, regardless of column default present
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :class:`.types.JSON` type and its descendant types :class:`.postgresql.JSON`
+and :class:`.mysql.JSON` have a flag :paramref:`.types.JSON.none_as_null` which
+when set to True indicates that the Python value ``None`` should translate
+into a SQL NULL rather than a JSON NULL value.  This flag defaults to False,
+which means that the column should *never* insert SQL NULL or fall back
+to a default unless the :func:`.null` constant were used.  However, this would
+fail in the ORM under two circumstances; one is when the column also contained
+a default or server_default value, a positive value of ``None`` on the mapped
+attribute would still result in the column-level default being triggered,
+replacing the ``None`` value::
+
+    obj = MyObject(json_value=None)
+    session.add(obj)
+    session.commit()   # would fire off default / server_default, not encode "'none'"
+
+The other is when the :meth:`.Session.bulk_insert_mappings`
+method were used, ``None`` would be ignored in all cases::
+
+    session.bulk_insert_mappings(
+        MyObject,
+        [{"json_value": None}])  # would insert SQL NULL and/or trigger defaults
+
+The :class:`.types.JSON` type now implements the
+:attr:`.TypeEngine.should_evaluate_none` flag,
+indicating that ``None`` should not be ignored here; it is configured
+automatically based on the value of :paramref:`.types.JSON.none_as_null`.
+Thanks to :ticket:`3061`, we can differentiate when the value ``None`` is actively
+set by the user versus when it was never set at all.
+
+If the attribute is not set at all, then column level defaults *will*
+fire off and/or SQL NULL will be inserted as expected, as was the behavior
+previously.  Below, the two variants are illustrated::
+
+    obj = MyObject(json_value=None)
+    session.add(obj)
+    session.commit()   # *will not* fire off column defaults, will insert JSON 'null'
+
+    obj = MyObject()
+    session.add(obj)
+    session.commit()   # *will* fire off column defaults, and/or insert SQL NULL
+
+The feature applies as well to the new base :class:`.types.JSON` type
+and its descendant types.
+
+:ticket:`3514`
+
+.. _change_3514_jsonnull:
+
+New JSON.NULL Constant Added
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To ensure that an application can always have full control at the value level
+of whether a :class:`.types.JSON`, :class:`.postgresql.JSON`, :class:`.mysql.JSON`,
+or :class:`.postgresql.JSONB` column
+should receive a SQL NULL or JSON ``"null"`` value, the constant
+:attr:`.types.JSON.NULL` has been added, which in conjunction with
+:func:`.null` can be used to determine fully between SQL NULL and
+JSON ``"null"``, regardless of what :paramref:`.types.JSON.none_as_null` is set
+to::
+
+    from sqlalchemy import null
+    from sqlalchemy.dialects.postgresql import JSON
+
+    obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
+    obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
+
+    session.add_all([obj1, obj2])
+    session.commit()
+
+The feature applies as well to the new base :class:`.types.JSON` type
+and its descendant types.
+
+:ticket:`3514`
+
 .. _change_3516:
 
 Array support added to Core; new ANY and ALL operators
 ------------------------------------------------------
 
-Along with the enhancements made to the Postgresql :class:`.ARRAY`
-type described in :ref:`change_3503`, the base class of :class:`.ARRAY`
-itself has been moved to Core in a new class :class:`.types.Array`.
+Along with the enhancements made to the Postgresql :class:`.postgresql.ARRAY`
+type described in :ref:`change_3503`, the base class of :class:`.postgresql.ARRAY`
+itself has been moved to Core in a new class :class:`.types.ARRAY`.
 
 Arrays are part of the SQL standard, as are several array-oriented functions
 such as ``array_agg()`` and ``unnest()``.  In support of these constructs
 for not just PostgreSQL but also potentially for other array-capable backends
 in the future such as DB2, the majority of array logic for SQL expressions
-is now in Core.   The :class:`.Array` type still **only works on
+is now in Core.   The :class:`.types.ARRAY` type still **only works on
 Postgresql**, however it can be used directly, supporting special array
 use cases such as indexed access, as well as support for the ANY and ALL::
 
     mytable = Table("mytable", metadata,
-            Column("data", Array(Integer, dimensions=2))
+            Column("data", ARRAY(Integer, dimensions=2))
         )
 
     expr = mytable.c.data[5][6]
 
     expr = mytable.c.data[5].any(12)
 
-In support of ANY and ALL, the :class:`.Array` type retains the same
-:meth:`.Array.Comparator.any` and :meth:`.Array.Comparator.all` methods
+In support of ANY and ALL, the :class:`.types.ARRAY` type retains the same
+:meth:`.types.ARRAY.Comparator.any` and :meth:`.types.ARRAY.Comparator.all` methods
 from the PostgreSQL type, but also exports these operations to new
 standalone operator functions :func:`.sql.expression.any_` and
 :func:`.sql.expression.all_`.  These two functions work in more
@@ -541,7 +903,7 @@ as::
 
 For the PostgreSQL-specific operators "contains", "contained_by", and
 "overlaps", one should continue to use the :class:`.postgresql.ARRAY`
-type directly, which provides all functionality of the :class:`.Array`
+type directly, which provides all functionality of the :class:`.types.ARRAY`
 type as well.
 
 The :func:`.sql.expression.any_` and :func:`.sql.expression.all_` operators
@@ -564,7 +926,7 @@ such as::
 New Function features, "WITHIN GROUP", array_agg and set aggregate functions
 ----------------------------------------------------------------------------
 
-With the new :class:`.Array` type we can also implement a pre-typed
+With the new :class:`.types.ARRAY` type we can also implement a pre-typed
 function for the ``array_agg()`` SQL function that returns an array,
 which is now available using :class:`.array_agg`::
 
@@ -642,6 +1004,69 @@ can be done like any other type::
 
 
 :ticket:`2919`
+
+.. _change_2685:
+
+Multi-Tenancy Schema Translation for Table objects
+--------------------------------------------------
+
+To support the use case of an application that uses the same set of
+:class:`.Table` objects in many schemas, such as schema-per-user, a new
+execution option :paramref:`.Connection.execution_options.schema_translate_map`
+is added.  Using this mapping, a set of :class:`.Table`
+objects can be made on a per-connection basis to refer to any set of schemas
+instead of the :paramref:`.Table.schema` to which they were assigned.  The
+translation works for DDL and SQL generation, as well as with the ORM.
+
+For example, if the ``User`` class were assigned the schema "per_user"::
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+
+        __table_args__ = {'schema': 'per_user'}
+
+On each request, the :class:`.Session` can be set up to refer to a
+different schema each time::
+
+    session = Session()
+    session.connection(execution_options={
+        "schema_translate_map": {"per_user": "account_one"}})
+
+    # will query from the ``account_one.user`` table
+    session.query(User).get(5)
+
+.. seealso::
+
+    :ref:`schema_translating`
+
+:ticket:`2685`
+
+.. _change_3631:
+
+"Friendly" stringification of Core SQL constructs without a dialect
+-------------------------------------------------------------------
+
+Calling ``str()`` on a Core SQL construct will now produce a string
+in more cases than before, supporting various SQL constructs not normally
+present in default SQL such as RETURNING, array indexes, and non-standard
+datatypes::
+
+    >>> from sqlalchemy import table, column
+    t>>> t = table('x', column('a'), column('b'))
+    >>> print(t.insert().returning(t.c.a, t.c.b))
+    INSERT INTO x (a, b) VALUES (:a, :b) RETURNING x.a, x.b
+
+The ``str()`` function now calls upon an entirely separate dialect / compiler
+intended just for plain string printing without a specific dialect set up,
+so as more "just show me a string!" cases come up, these can be added
+to this dialect/compiler without impacting behaviors on real dialects.
+
+.. seealso::
+
+    :ref:`change_3081`
+
+:ticket:`3631`
 
 .. _change_3531:
 
@@ -754,6 +1179,54 @@ Key Behavioral Changes - ORM
 Key Behavioral Changes - Core
 =============================
 
+.. _behavior_change_3501:
+
+TextClause.columns() will match columns positionally, not by name, when passed positionally
+-------------------------------------------------------------------------------------------
+
+The new behavior of the :meth:`.TextClause.columns` method, which itself
+was recently added as of the 0.9 series, is that when
+columns are passed positionally without any additional keyword arguments,
+they are linked to the ultimate result set
+columns positionally, and no longer on name.   It is hoped that the impact
+of this change will be low due to the fact that the method has always been documented
+illustrating the columns being passed in the same order as that of the
+textual SQL statement, as would seem intuitive, even though the internals
+weren't checking for this.
+
+An application that is using this method by passing :class:`.Column` objects
+to it positionally must ensure that the position of those :class:`.Column`
+objects matches the position in which these columns are stated in the
+textual SQL.
+
+E.g., code like the following::
+
+    stmt = text("SELECT id, name, description FROM table")
+
+    # no longer matches by name
+    stmt = stmt.columns(my_table.c.name, my_table.c.description, my_table.c.id)
+
+Would no longer work as expected; the order of the columns given is now
+significant::
+
+    # correct version
+    stmt = stmt.columns(my_table.c.id, my_table.c.name, my_table.c.description)
+
+Possibly more likely, a statement that worked like this::
+
+    stmt = text("SELECT * FROM table")
+    stmt = stmt.columns(my_table.c.id, my_table.c.name, my_table.c.description)
+
+is now slightly risky, as the "*" specification will generally deliver columns
+in the order in which they are present in the table itself.  If the structure
+of the table changes due to schema changes, this ordering may no longer be the same.
+Therefore when using :meth:`.TextClause.columns`, it's advised to list out
+the desired columns explicitly in the textual SQL, though it's no longer
+necessary to worry about the names themselves in the textual SQL.
+
+.. seealso::
+
+    :ref:`change_3501`
 
 Dialect Improvements and Changes - Postgresql
 =============================================
@@ -767,8 +1240,9 @@ As described in :ref:`change_3499`, the ORM relies upon being able to
 produce a hash function for column values when a query's selected entities
 mixes full ORM entities with column expressions.   The ``hashable=False``
 flag is now correctly set on all of PG's "data structure" types, including
-:class:`.ARRAY` and :class:`.JSON`.  The :class:`.JSONB` and :class:`.HSTORE`
-types already included this flag.  For :class:`.ARRAY`,
+:class:`.postgresql.ARRAY` and :class:`.postgresql.JSON`.
+The :class:`.JSONB` and :class:`.HSTORE`
+types already included this flag.  For :class:`.postgresql.ARRAY`,
 this is conditional based on the :paramref:`.postgresql.ARRAY.as_tuple`
 flag, however it should no longer be necessary to set this flag
 in order to have an array value present in a composed ORM row.
@@ -840,7 +1314,7 @@ The JSON cast() operation now requires ``.astext`` is called explicitly
 As part of the changes in :ref:`change_3503`, the workings of the
 :meth:`.ColumnElement.cast` operator on :class:`.postgresql.JSON` and
 :class:`.postgresql.JSONB` no longer implictly invoke the
-:attr:`.JSON.Comparator.astext` modifier; Postgresql's JSON/JSONB types
+:attr:`.postgresql.JSON.Comparator.astext` modifier; Postgresql's JSON/JSONB types
 support CAST operations to each other without the "astext" aspect.
 
 This means that in most cases, an application that was doing this::
@@ -851,88 +1325,6 @@ Will now need to change to this::
 
     expr = json_col['somekey'].astext.cast(Integer)
 
-
-
-.. _change_3514:
-
-Postgresql JSON "null" is inserted as expected with ORM operations, regardless of column default present
------------------------------------------------------------------------------------------------------------
-
-The :class:`.JSON` type has a flag :paramref:`.JSON.none_as_null` which
-when set to True indicates that the Python value ``None`` should translate
-into a SQL NULL rather than a JSON NULL value.  This flag defaults to False,
-which means that the column should *never* insert SQL NULL or fall back
-to a default unless the :func:`.null` constant were used.  However, this would
-fail in the ORM under two circumstances; one is when the column also contained
-a default or server_default value, a positive value of ``None`` on the mapped
-attribute would still result in the column-level default being triggered,
-replacing the ``None`` value::
-
-    obj = MyObject(json_value=None)
-    session.add(obj)
-    session.commit()   # would fire off default / server_default, not encode "'none'"
-
-The other is when the :meth:`.Session.bulk_insert_mappings`
-method were used, ``None`` would be ignored in all cases::
-
-    session.bulk_insert_mappings(
-        MyObject,
-        [{"json_value": None}])  # would insert SQL NULL and/or trigger defaults
-
-The :class:`.JSON` type now implements the
-:attr:`.TypeEngine.should_evaluate_none` flag,
-indicating that ``None`` should not be ignored here; it is configured
-automatically based on the value of :paramref:`.JSON.none_as_null`.
-Thanks to :ticket:`3061`, we can differentiate when the value ``None`` is actively
-set by the user versus when it was never set at all.
-
-If the attribute is not set at all, then column level defaults *will*
-fire off and/or SQL NULL will be inserted as expected, as was the behavior
-previously.  Below, the two variants are illustrated::
-
-    obj = MyObject(json_value=None)
-    session.add(obj)
-    session.commit()   # *will not* fire off column defaults, will insert JSON 'null'
-
-    obj = MyObject()
-    session.add(obj)
-    session.commit()   # *will* fire off column defaults, and/or insert SQL NULL
-
-:ticket:`3514`
-
-.. seealso::
-
-      :ref:`change_3250`
-
-      :ref:`change_3514_jsonnull`
-
-.. _change_3514_jsonnull:
-
-New JSON.NULL Constant Added
-----------------------------
-
-To ensure that an application can always have full control at the value level
-of whether a :class:`.postgresql.JSON` or :class:`.postgresql.JSONB` column
-should receive a SQL NULL or JSON ``"null"`` value, the constant
-:attr:`.postgresql.JSON.NULL` has been added, which in conjunction with
-:func:`.null` can be used to determine fully between SQL NULL and
-JSON ``"null"``, regardless of what :paramref:`.JSON.none_as_null` is set
-to::
-
-    from sqlalchemy import null
-    from sqlalchemy.dialects.postgresql import JSON
-
-    obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
-    obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
-
-    session.add_all([obj1, obj2])
-    session.commit()
-
-.. seealso::
-
-    :ref:`change_3514`
-
-:ticket:`3514`
 
 .. _change_2729:
 
@@ -974,6 +1366,25 @@ emits::
 
 Dialect Improvements and Changes - MySQL
 =============================================
+
+.. _change_3547:
+
+MySQL JSON Support
+------------------
+
+A new type :class:`.mysql.JSON` is added to the MySQL dialect supporting
+the JSON type newly added to MySQL 5.7.   This type provides both persistence
+of JSON as well as rudimentary indexed-access using the ``JSON_EXTRACT``
+function internally.  An indexable JSON column that works across MySQL
+and Postgresql can be achieved by using the :class:`.types.JSON` datatype
+common to both MySQL and Postgresql.
+
+.. seealso::
+
+    :ref:`change_3619`
+
+:ticket:`3547`
+
 
 .. _change_mysql_3216:
 
@@ -1031,16 +1442,63 @@ directives are no longer needed::
 Dialect Improvements and Changes - SQLite
 =============================================
 
+.. _change_3634:
+
+Right-nested join workaround lifted for SQLite version 3.7.16
+-------------------------------------------------------------
+
+In version 0.9, the feature introduced by :ref:`feature_joins_09` went
+through lots of effort to support rewriting of joins on SQLite to always
+use subqueries in order to achieve a "right-nested-join" effect, as
+SQLite has not supported this syntax for many years.  Ironically,
+the version of SQLite noted in that migration note, 3.7.15.2, was the *last*
+version of SQLite to actually have this limitation!   The next release was
+3.7.16 and support for right nested joins was quietly added.   In 1.1, the work
+to identify the specific SQLite version and source commit where this change
+was made was done (SQlite's changelog refers to it with the cryptic phrase "Enhance
+the query optimizer to exploit transitive join constraints" without linking
+to any issue number, change number, or further explanation), and the workarounds
+present in this change are now lifted for SQLite when the DBAPI reports
+that version 3.7.16 or greater is in effect.
+
+:ticket:`3634`
+
+.. _change_3633:
+
+Dotted column names workaround lifted for SQLite version 3.10.0
+---------------------------------------------------------------
+
+The SQLite dialect has long had a workaround for an issue where the database
+driver does not report the correct column names for some SQL result sets, in
+particular when UNION is used.  The workaround is detailed at
+:ref:`sqlite_dotted_column_names`, and requires that SQLAlchemy assume that any
+column name with a dot in it is actually a ``tablename.columnname`` combination
+delivered via this buggy behavior, with an option to turn it off via the
+``sqlite_raw_colnames`` execution option.
+
+As of SQLite version 3.10.0, the bug in UNION and other queries has been fixed;
+like the change described in :ref:`change_3634`, SQLite's changelog only
+identifies it cryptically as "Added the colUsed field to sqlite3_index_info for
+use by the sqlite3_module.xBestIndex method", however SQLAlchemy's translation
+of these dotted column names is no longer required with this version, so is
+turned off when version 3.10.0 or greater is detected.
+
+Overall, the SQLAlchemy :class:`.ResultProxy` as of the 1.0 series relies much
+less on column names in result sets when delivering results for Core and ORM
+SQL constructs, so the importance of this issue was already lessened in any
+case.
+
+:ticket:`3633`
+
 .. _change_sqlite_schemas:
 
 Improved Support for Remote Schemas
-------------------------------------
-
+-----------------------------------
 The SQLite dialect now implements :meth:`.Inspector.get_schema_names`
 and additionally has improved support for tables and indexes that are
 created and reflected from a remote schema, which in SQLite is a
-database that is assigned a name via the ``ATTACH`` statement; previously,
-the ``CREATE INDEX`` DDL didn't work correctly for a schema-bound table
+dataase that is assigned a name via the ``ATTACH`` statement; previously,
+the``CREATE INDEX`` DDL didn't work correctly for a schema-bound table
 and the :meth:`.Inspector.get_foreign_keys` method will now indicate the
 given schema in the results.  Cross-schema foreign keys aren't supported.
 

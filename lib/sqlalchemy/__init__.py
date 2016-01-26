@@ -51,10 +51,11 @@ from .sql import (
     union,
     union_all,
     update,
+    within_group,
     )
 
 from .types import (
-    Array,
+    ARRAY,
     BIGINT,
     BINARY,
     BLOB,
@@ -76,6 +77,7 @@ from .types import (
     INTEGER,
     Integer,
     Interval,
+    JSON,
     LargeBinary,
     NCHAR,
     NVARCHAR,

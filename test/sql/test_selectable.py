@@ -155,15 +155,19 @@ class SelectableTest(
         assert c in s.c.bar.proxy_set
 
     def test_no_error_on_unsupported_expr_key(self):
-        from sqlalchemy.dialects.postgresql import ARRAY
+        from sqlalchemy.sql.expression import BinaryExpression
 
-        t = table('t', column('x', ARRAY(Integer)))
+        def myop(x, y):
+            pass
 
-        expr = t.c.x[5]
+        t = table('t', column('x'), column('y'))
+
+        expr = BinaryExpression(t.c.x, t.c.y, myop)
+
         s = select([t, expr])
         eq_(
             s.c.keys(),
-            ['x', expr.anon_label]
+            ['x', 'y', expr.anon_label]
         )
 
     def test_cloned_intersection(self):

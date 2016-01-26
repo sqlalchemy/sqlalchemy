@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema
 from sqlalchemy.util import u
@@ -10,6 +10,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionRes
 from sqlalchemy import testing
 import datetime
 import decimal
+from sqlalchemy import types as sqltypes
 
 
 class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
@@ -600,6 +601,49 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             table.delete().execute()
             self.assert_(colspec(table.c.y1).startswith('y1 YEAR'))
             eq_(colspec(table.c.y5), 'y5 YEAR(4)')
+
+
+class JSONTest(fixtures.TestBase):
+    __requires__ = ('json_type', )
+    __only_on__ = 'mysql'
+    __backend__ = True
+
+    @testing.provide_metadata
+    def test_reflection(self):
+
+        Table(
+            'mysql_json', self.metadata,
+            Column('foo', mysql.JSON)
+        )
+        self.metadata.create_all()
+
+        reflected = Table('mysql_json', MetaData(), autoload_with=testing.db)
+        is_(reflected.c.foo.type._type_affinity, sqltypes.JSON)
+        assert isinstance(reflected.c.foo.type, mysql.JSON)
+
+    @testing.provide_metadata
+    def test_rudimental_round_trip(self):
+        # note that test_suite has many more JSON round trip tests
+        # using the backend-agnostic JSON type
+
+        mysql_json = Table(
+            'mysql_json', self.metadata,
+            Column('foo', mysql.JSON)
+        )
+        self.metadata.create_all()
+
+        value = {
+            'json': {'foo': 'bar'},
+            'recs': ['one', 'two']
+        }
+
+        with testing.db.connect() as conn:
+            conn.execute(mysql_json.insert(), foo=value)
+
+            eq_(
+                conn.scalar(select([mysql_json.c.foo])),
+                value
+            )
 
 
 class EnumSetTest(

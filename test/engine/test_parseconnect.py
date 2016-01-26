@@ -6,8 +6,8 @@ import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing.mock import Mock, MagicMock, call
-from sqlalchemy import event
-from sqlalchemy import select
+from sqlalchemy.dialects import registry
+from sqlalchemy.dialects import plugins
 
 dialect = None
 
@@ -172,7 +172,6 @@ class CreateEngineTest(fixtures.TestBase):
 
     def test_engine_from_config_custom(self):
         from sqlalchemy import util
-        from sqlalchemy.dialects import registry
         tokens = __name__.split(".")
 
         class MyDialect(MockDialect):
@@ -325,21 +324,18 @@ class CreateEngineTest(fixtures.TestBase):
 
 class TestRegNewDBAPI(fixtures.TestBase):
     def test_register_base(self):
-        from sqlalchemy.dialects import registry
         registry.register("mockdialect", __name__, "MockDialect")
 
         e = create_engine("mockdialect://")
         assert isinstance(e.dialect, MockDialect)
 
     def test_register_dotted(self):
-        from sqlalchemy.dialects import registry
         registry.register("mockdialect.foob", __name__, "MockDialect")
 
         e = create_engine("mockdialect+foob://")
         assert isinstance(e.dialect, MockDialect)
 
     def test_register_legacy(self):
-        from sqlalchemy.dialects import registry
         tokens = __name__.split(".")
 
         global dialect
@@ -351,7 +347,6 @@ class TestRegNewDBAPI(fixtures.TestBase):
         assert isinstance(e.dialect, MockDialect)
 
     def test_register_per_dbapi(self):
-        from sqlalchemy.dialects import registry
         registry.register("mysql.my_mock_dialect", __name__, "MockDialect")
 
         e = create_engine("mysql+my_mock_dialect://")
@@ -367,7 +362,6 @@ class TestRegNewDBAPI(fixtures.TestBase):
         WrapperFactory = Mock()
         WrapperFactory.get_dialect_cls.side_effect = get_dialect_cls
 
-        from sqlalchemy.dialects import registry
         registry.register("wrapperdialect", __name__, "WrapperFactory")
 
         from sqlalchemy.dialects import sqlite
@@ -382,6 +376,39 @@ class TestRegNewDBAPI(fixtures.TestBase):
                 call.get_dialect_cls(url.make_url("sqlite://")),
                 call.engine_created(e)
             ]
+        )
+
+    @testing.requires.sqlite
+    def test_plugin_registration(self):
+        from sqlalchemy.dialects import sqlite
+
+        global MyEnginePlugin
+
+        def side_effect(url, kw):
+            eq_(kw, {"logging_name": "foob"})
+            kw['logging_name'] = 'bar'
+            return MyEnginePlugin
+
+        MyEnginePlugin = Mock(side_effect=side_effect)
+
+        plugins.register("engineplugin", __name__, "MyEnginePlugin")
+
+        e = create_engine(
+            "sqlite:///?plugin=engineplugin&foo=bar", logging_name='foob')
+        eq_(e.dialect.name, "sqlite")
+        eq_(e.logging_name, "bar")
+        assert isinstance(e.dialect, sqlite.dialect)
+
+        eq_(
+            MyEnginePlugin.mock_calls,
+            [
+                call(e.url, {}),
+                call.engine_created(e)
+            ]
+        )
+        eq_(
+            str(MyEnginePlugin.mock_calls[0][1][0]),
+            "sqlite:///?foo=bar"
         )
 
 

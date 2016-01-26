@@ -1,16 +1,15 @@
-import operator
-
 import unicodedata
 import sqlalchemy as sa
-from sqlalchemy import schema, events, event, inspect
+from sqlalchemy import schema, inspect
 from sqlalchemy import MetaData, Integer, String
-from sqlalchemy.testing import (ComparesTables, engines, AssertsCompiledSQL,
+from sqlalchemy.testing import (
+    ComparesTables, engines, AssertsCompiledSQL,
     fixtures, skip)
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import testing
 from sqlalchemy.util import ue
-
+from sqlalchemy.testing import config
 
 metadata, users = None, None
 
@@ -1344,6 +1343,18 @@ class SchemaTest(fixtures.TestBase):
         finally:
             metadata.drop_all()
 
+    @testing.requires.schemas
+    @testing.provide_metadata
+    def test_schema_translation(self):
+        Table('foob', self.metadata, Column('q', Integer), schema=config.test_schema)
+        self.metadata.create_all()
+
+        m = MetaData()
+        map_ = {"foob": config.test_schema}
+        with config.db.connect().execution_options(schema_translate_map=map_) as conn:
+            t = Table('foob', m, schema="foob", autoload_with=conn)
+            eq_(t.schema, "foob")
+            eq_(t.c.keys(), ['q'])
     @testing.requires.schemas
     @testing.fails_on('sybase', 'FIXME: unknown')
     def test_explicit_default_schema_metadata(self):

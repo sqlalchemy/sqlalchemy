@@ -1157,7 +1157,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
     def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
-        return 'DATEPART("%s", %s)' % \
+        return 'DATEPART(%s, %s)' % \
             (field, self.process(extract.expr, **kw))
 
     def visit_savepoint(self, savepoint_stmt):

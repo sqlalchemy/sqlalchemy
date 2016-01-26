@@ -1,4 +1,4 @@
-Special Relationship Persistence Patterns
+fSpecial Relationship Persistence Patterns
 =========================================
 
 .. _post_update:
@@ -208,6 +208,13 @@ which, on a MySQL backend, ensures that the ``InnoDB`` engine supporting
 referential integrity is used.  When using SQLite, referential integrity
 should be enabled, using the configuration described at
 :ref:`sqlite_foreign_keys`.
+
+.. seealso::
+
+    :ref:`passive_deletes` - supporting ON DELETE CASCADE with relationships
+
+    :paramref:`.orm.mapper.passive_updates` - similar feature on :func:`.mapper`
+
 
 Simulating limited ON UPDATE CASCADE without foreign key support
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

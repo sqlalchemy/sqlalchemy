@@ -17,7 +17,7 @@ __all__ = ['TypeEngine', 'TypeDecorator', 'UserDefinedType',
            'SmallInteger', 'BigInteger', 'Numeric', 'Float', 'DateTime',
            'Date', 'Time', 'LargeBinary', 'Binary', 'Boolean', 'Unicode',
            'Concatenable', 'UnicodeText', 'PickleType', 'Interval', 'Enum',
-           'Indexable', 'Array']
+           'Indexable', 'ARRAY', 'JSON']
 
 from .sql.type_api import (
     adapt_type,
@@ -28,7 +28,7 @@ from .sql.type_api import (
     UserDefinedType
 )
 from .sql.sqltypes import (
-    Array,
+    ARRAY,
     BIGINT,
     BINARY,
     BLOB,
@@ -53,6 +53,7 @@ from .sql.sqltypes import (
     INTEGER,
     Integer,
     Interval,
+    JSON,
     LargeBinary,
     MatchType,
     NCHAR,

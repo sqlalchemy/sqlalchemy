@@ -10,6 +10,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import result as _result
 from sqlalchemy.testing.schema import Table, Column
 import operator
+from sqlalchemy.testing import assertions
 
 
 class ResultProxyTest(fixtures.TablesTest):
@@ -317,7 +318,7 @@ class ResultProxyTest(fixtures.TablesTest):
             dict(user_id=1, user_name='john'),
         )
 
-        # test a little sqlite weirdness - with the UNION,
+        # test a little sqlite < 3.10.0 weirdness - with the UNION,
         # cols come back as "users.user_id" in cursor.description
         r = testing.db.execute(
             text(
@@ -331,7 +332,6 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(r['user_name'], "john")
         eq_(list(r.keys()), ["user_id", "user_name"])
 
-    @testing.only_on("sqlite", "sqlite specific feature")
     def test_column_accessor_sqlite_raw(self):
         users = self.tables.users
 
@@ -346,13 +346,22 @@ class ResultProxyTest(fixtures.TablesTest):
             "users.user_name from users",
             bind=testing.db).execution_options(sqlite_raw_colnames=True). \
             execute().first()
-        not_in_('user_id', r)
-        not_in_('user_name', r)
-        eq_(r['users.user_id'], 1)
-        eq_(r['users.user_name'], "john")
-        eq_(list(r.keys()), ["users.user_id", "users.user_name"])
 
-    @testing.only_on("sqlite", "sqlite specific feature")
+        if testing.against("sqlite < 3.10.0"):
+            not_in_('user_id', r)
+            not_in_('user_name', r)
+            eq_(r['users.user_id'], 1)
+            eq_(r['users.user_name'], "john")
+
+            eq_(list(r.keys()), ["users.user_id", "users.user_name"])
+        else:
+            not_in_('users.user_id', r)
+            not_in_('users.user_name', r)
+            eq_(r['user_id'], 1)
+            eq_(r['user_name'], "john")
+
+            eq_(list(r.keys()), ["user_id", "user_name"])
+
     def test_column_accessor_sqlite_translated(self):
         users = self.tables.users
 
@@ -368,8 +377,14 @@ class ResultProxyTest(fixtures.TablesTest):
             bind=testing.db).execute().first()
         eq_(r['user_id'], 1)
         eq_(r['user_name'], "john")
-        eq_(r['users.user_id'], 1)
-        eq_(r['users.user_name'], "john")
+
+        if testing.against("sqlite < 3.10.0"):
+            eq_(r['users.user_id'], 1)
+            eq_(r['users.user_name'], "john")
+        else:
+            not_in_('users.user_id', r)
+            not_in_('users.user_name', r)
+
         eq_(list(r.keys()), ["user_id", "user_name"])
 
     def test_column_accessor_labels_w_dots(self):
@@ -604,17 +619,11 @@ class ResultProxyTest(fixtures.TablesTest):
             lambda: r['user_id']
         )
 
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "Ambiguous column name",
-            lambda: r[users.c.user_id]
-        )
-
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "Ambiguous column name",
-            lambda: r[addresses.c.user_id]
-        )
+        # pure positional targeting; users.c.user_id
+        # and addresses.c.user_id are known!
+        # works as of 1.1 issue #3501
+        eq_(r[users.c.user_id], 1)
+        eq_(r[addresses.c.user_id], None)
 
         # try to trick it - fake_table isn't in the result!
         # we get the correct error
@@ -652,31 +661,17 @@ class ResultProxyTest(fixtures.TablesTest):
         result = select([users.c.user_id, ua.c.user_id]).execute()
         row = result.first()
 
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "Ambiguous column name",
-            lambda: row[users.c.user_id]
-        )
+        # as of 1.1 issue #3501, we use pure positional
+        # targeting for the column objects here
+        eq_(row[users.c.user_id], 1)
 
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "Ambiguous column name",
-            lambda: row[ua.c.user_id]
-        )
+        eq_(row[ua.c.user_id], 1)
 
-        # Unfortunately, this fails -
-        # we'd like
-        # "Could not locate column in row"
-        # to be raised here, but the check for
-        # "common column" in _compare_name_for_result()
-        # has other requirements to be more liberal.
-        # Ultimately the
-        # expression system would need a way to determine
-        # if given two columns in a "proxy" relationship, if they
-        # refer to a different parent table
+        # this now works as of 1.1 issue #3501;
+        # previously this was stuck on "ambiguous column name"
         assert_raises_message(
             exc.InvalidRequestError,
-            "Ambiguous column name",
+            "Could not locate column in row",
             lambda: row[u2.c.user_id]
         )
 
@@ -1012,7 +1007,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         eq_(row.q, "c1")
         assert_raises_message(
             exc.InvalidRequestError,
-            "Ambiguous column name 'b'",
+            "Ambiguous column name 'a'",
             getattr, row, "b"
         )
         assert_raises_message(
@@ -1134,3 +1129,182 @@ class KeyTargetingTest(fixtures.TablesTest):
         in_(keyed2.c.b, row)
         in_(stmt.c.keyed2_a, row)
         in_(stmt.c.keyed2_b, row)
+
+
+class PositionalTextTest(fixtures.TablesTest):
+    run_inserts = 'once'
+    run_deletes = None
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'text1',
+            metadata,
+            Column("a", CHAR(2)),
+            Column("b", CHAR(2)),
+            Column("c", CHAR(2)),
+            Column("d", CHAR(2))
+        )
+
+    @classmethod
+    def insert_data(cls):
+        cls.tables.text1.insert().execute([
+            dict(a="a1", b="b1", c="c1", d="d1"),
+        ])
+
+    def test_via_column(self):
+        c1, c2, c3, c4 = column('q'), column('p'), column('r'), column('d')
+        stmt = text("select a, b, c, d from text1").columns(c1, c2, c3, c4)
+
+        result = testing.db.execute(stmt)
+        row = result.first()
+
+        eq_(row[c2], "b1")
+        eq_(row[c4], "d1")
+        eq_(row[1], "b1")
+        eq_(row["b"], "b1")
+        eq_(row.keys(), ["a", "b", "c", "d"])
+        eq_(row["r"], "c1")
+        eq_(row["d"], "d1")
+
+    def test_fewer_cols_than_sql_positional(self):
+        c1, c2 = column('q'), column('p')
+        stmt = text("select a, b, c, d from text1").columns(c1, c2)
+
+        # no warning as this can be similar for non-positional
+        result = testing.db.execute(stmt)
+        row = result.first()
+
+        eq_(row[c1], "a1")
+        eq_(row["c"], "c1")
+
+    def test_fewer_cols_than_sql_non_positional(self):
+        c1, c2 = column('a'), column('p')
+        stmt = text("select a, b, c, d from text1").columns(c2, c1, d=CHAR)
+
+        # no warning as this can be similar for non-positional
+        result = testing.db.execute(stmt)
+        row = result.first()
+
+        # c1 name matches, locates
+        eq_(row[c1], "a1")
+        eq_(row["c"], "c1")
+
+        # c2 name does not match, doesn't locate
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "in row for column 'p'",
+            lambda: row[c2]
+        )
+
+    def test_more_cols_than_sql(self):
+        c1, c2, c3, c4 = column('q'), column('p'), column('r'), column('d')
+        stmt = text("select a, b from text1").columns(c1, c2, c3, c4)
+
+        with assertions.expect_warnings(
+                r"Number of columns in textual SQL \(4\) is "
+                "smaller than number of columns requested \(2\)"):
+            result = testing.db.execute(stmt)
+
+        row = result.first()
+        eq_(row[c2], "b1")
+
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "in row for column 'r'",
+            lambda: row[c3]
+        )
+
+    def test_dupe_col_obj(self):
+        c1, c2, c3 = column('q'), column('p'), column('r')
+        stmt = text("select a, b, c, d from text1").columns(c1, c2, c3, c2)
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Duplicate column expression requested in "
+            "textual SQL: <.*.ColumnClause.*; p>",
+            testing.db.execute, stmt
+        )
+
+    def test_anon_aliased_unique(self):
+        text1 = self.tables.text1
+
+        c1 = text1.c.a.label(None)
+        c2 = text1.alias().c.c
+        c3 = text1.alias().c.b
+        c4 = text1.alias().c.d.label(None)
+
+        stmt = text("select a, b, c, d from text1").columns(c1, c2, c3, c4)
+        result = testing.db.execute(stmt)
+        row = result.first()
+
+        eq_(row[c1], "a1")
+        eq_(row[c2], "b1")
+        eq_(row[c3], "c1")
+        eq_(row[c4], "d1")
+
+        # key fallback rules still match this to a column
+        # unambiguously based on its name
+        eq_(row[text1.c.a], "a1")
+
+        # key fallback rules still match this to a column
+        # unambiguously based on its name
+        eq_(row[text1.c.d], "d1")
+
+        # text1.c.b goes nowhere....because we hit key fallback
+        # but the text1.c.b doesn't derive from text1.c.c
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'text1.b'",
+            lambda: row[text1.c.b]
+        )
+
+    def test_anon_aliased_overlapping(self):
+        text1 = self.tables.text1
+
+        c1 = text1.c.a.label(None)
+        c2 = text1.alias().c.a
+        c3 = text1.alias().c.a.label(None)
+        c4 = text1.c.a.label(None)
+
+        stmt = text("select a, b, c, d from text1").columns(c1, c2, c3, c4)
+        result = testing.db.execute(stmt)
+        row = result.first()
+
+        eq_(row[c1], "a1")
+        eq_(row[c2], "b1")
+        eq_(row[c3], "c1")
+        eq_(row[c4], "d1")
+
+        # key fallback rules still match this to a column
+        # unambiguously based on its name
+        eq_(row[text1.c.a], "a1")
+
+    def test_anon_aliased_name_conflict(self):
+        text1 = self.tables.text1
+
+        c1 = text1.c.a.label("a")
+        c2 = text1.alias().c.a
+        c3 = text1.alias().c.a.label("a")
+        c4 = text1.c.a.label("a")
+
+        # all cols are named "a".  if we are positional, we don't care.
+        # this is new logic in 1.1
+        stmt = text("select a, b as a, c as a, d as a from text1").columns(
+            c1, c2, c3, c4)
+        result = testing.db.execute(stmt)
+        row = result.first()
+
+        eq_(row[c1], "a1")
+        eq_(row[c2], "b1")
+        eq_(row[c3], "c1")
+        eq_(row[c4], "d1")
+
+        # fails, because we hit key fallback and find conflicts
+        # in columns that are presnet
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'text1.a'",
+            lambda: row[text1.c.a]
+        )

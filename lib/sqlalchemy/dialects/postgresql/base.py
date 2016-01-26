@@ -579,7 +579,7 @@ use the following workaround type::
 
             def handle_raw_string(value):
                 inner = re.match(r"^{(.*)}$", value).group(1)
-                return inner.split(",")
+                return inner.split(",") if inner else []
 
             def process(value):
                 if value is None:
@@ -1056,6 +1056,16 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(element.stop, **kw),
         )
 
+    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(
+            binary, " -> ", **kw
+        )
+
+    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(
+            binary, " #> ", **kw
+        )
+
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (
             self.process(binary.left, **kw),
@@ -1471,8 +1481,11 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             raise exc.CompileError("Postgresql ENUM type requires a name.")
 
         name = self.quote(type_.name)
-        if not self.omit_schema and use_schema and type_.schema is not None:
-            name = self.quote_schema(type_.schema) + "." + name
+        effective_schema = self.schema_for_object(type_)
+
+        if not self.omit_schema and use_schema and \
+                effective_schema is not None:
+            name = self.quote_schema(effective_schema) + "." + name
         return name
 
 
@@ -1565,10 +1578,15 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     name = "%s_%s_seq" % (tab, col)
                     column._postgresql_seq_name = seq_name = name
 
-                sch = column.table.schema
-                if sch is not None:
+                if column.table is not None:
+                    effective_schema = self.connection.schema_for_object(
+                        column.table)
+                else:
+                    effective_schema = None
+
+                if effective_schema is not None:
                     exc = "select nextval('\"%s\".\"%s\"')" % \
-                        (sch, seq_name)
+                        (effective_schema, seq_name)
                 else:
                     exc = "select nextval('\"%s\"')" % \
                         (seq_name, )

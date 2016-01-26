@@ -2,7 +2,7 @@ from sqlalchemy.testing import eq_, is_
 import datetime
 from sqlalchemy import func, select, Integer, literal, DateTime, Table, \
     Column, Sequence, MetaData, extract, Date, String, bindparam, \
-    literal_column, Array, Numeric
+    literal_column, ARRAY, Numeric
 from sqlalchemy.sql import table, column
 from sqlalchemy import sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
@@ -558,7 +558,7 @@ class ReturnTypeTest(fixtures.TestBase):
 
     def test_array_agg(self):
         expr = func.array_agg(column('data', Integer))
-        is_(expr.type._type_affinity, Array)
+        is_(expr.type._type_affinity, ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_mode(self):
@@ -573,13 +573,13 @@ class ReturnTypeTest(fixtures.TestBase):
     def test_percentile_cont_array(self):
         expr = func.percentile_cont(0.5, 0.7).within_group(
             column('data', Integer))
-        is_(expr.type._type_affinity, Array)
+        is_(expr.type._type_affinity, ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_percentile_cont_array_desc(self):
         expr = func.percentile_cont(0.5, 0.7).within_group(
             column('data', Integer).desc())
-        is_(expr.type._type_affinity, Array)
+        is_(expr.type._type_affinity, ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_cume_dist(self):

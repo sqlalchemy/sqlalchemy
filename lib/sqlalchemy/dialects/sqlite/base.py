@@ -352,18 +352,28 @@ The index will be rendered at create time as::
 
 .. versionadded:: 0.9.9
 
+.. _sqlite_dotted_column_names:
+
 Dotted Column Names
 -------------------
 
 Using table or column names that explicitly have periods in them is
 **not recommended**.   While this is generally a bad idea for relational
 databases in general, as the dot is a syntactically significant character,
-the SQLite driver has a bug which requires that SQLAlchemy filter out these
-dots in result sets.
+the SQLite driver up until version **3.10.0** of SQLite has a bug which
+requires that SQLAlchemy filter out these dots in result sets.
+
+.. versionchanged:: 1.1
+
+    The following SQLite issue has been resolved as of version 3.10.0
+    of SQLite.  SQLAlchemy as of **1.1** automatically disables its internal
+    workarounds based on detection of this version.
 
 The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
 
     import sqlite3
+
+    assert sqlite3.sqlite_version_info < (3, 10, 0), "bug is fixed in this version"
 
     conn = sqlite3.connect(":memory:")
     cursor = conn.cursor()
@@ -997,9 +1007,13 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     @util.memoized_property
     def _preserve_raw_colnames(self):
-        return self.execution_options.get("sqlite_raw_colnames", False)
+        return not self.dialect._broken_dotted_colnames or \
+            self.execution_options.get("sqlite_raw_colnames", False)
 
     def _translate_colname(self, colname):
+        # TODO: detect SQLite version 3.10.0 or greater;
+        # see [ticket:3633]
+
         # adjust for dotted column names.  SQLite
         # in the case of UNION may store col names as
         # "tablename.colname", or if using an attached database,
@@ -1019,7 +1033,6 @@ class SQLiteDialect(default.DefaultDialect):
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True
-    supports_right_nested_joins = False
 
     default_paramstyle = 'qmark'
     execution_ctx_cls = SQLiteExecutionContext
@@ -1044,6 +1057,7 @@ class SQLiteDialect(default.DefaultDialect):
     ]
 
     _broken_fk_pragma_quotes = False
+    _broken_dotted_colnames = False
 
     def __init__(self, isolation_level=None, native_datetime=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -1056,6 +1070,11 @@ class SQLiteDialect(default.DefaultDialect):
         self.native_datetime = native_datetime
 
         if self.dbapi is not None:
+            self.supports_right_nested_joins = (
+                self.dbapi.sqlite_version_info >= (3, 7, 16))
+            self._broken_dotted_colnames = (
+                self.dbapi.sqlite_version_info < (3, 10, 0)
+            )
             self.supports_default_values = (
                 self.dbapi.sqlite_version_info >= (3, 3, 8))
             self.supports_cast = (

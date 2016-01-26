@@ -66,6 +66,7 @@ from .expression import (
     union,
     union_all,
     update,
+    within_group
 )
 
 from .visitors import ClauseVisitor

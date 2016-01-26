@@ -245,6 +245,15 @@ def startswith_(a, fragment, msg=None):
         a, fragment)
 
 
+def eq_ignore_whitespace(a, b, msg=None):
+    a = re.sub(r'^\s+?|\n', "", a)
+    a = re.sub(r' {2,}', " ", a)
+    b = re.sub(r'^\s+?|\n', "", b)
+    b = re.sub(r' {2,}', " ", b)
+
+    assert a == b, msg or "%r != %r" % (a, b)
+
+
 def assert_raises(except_cls, callable_, *args, **kw):
     try:
         callable_(*args, **kw)
@@ -273,7 +282,8 @@ class AssertsCompiledSQL(object):
                        check_prefetch=None,
                        use_default_dialect=False,
                        allow_dialect_select=False,
-                       literal_binds=False):
+                       literal_binds=False,
+                       schema_translate_map=None):
         if use_default_dialect:
             dialect = default.DefaultDialect()
         elif allow_dialect_select:
@@ -291,6 +301,9 @@ class AssertsCompiledSQL(object):
 
         kw = {}
         compile_kwargs = {}
+
+        if schema_translate_map:
+            kw['schema_translate_map'] = schema_translate_map
 
         if params is not None:
             kw['column_keys'] = list(params)

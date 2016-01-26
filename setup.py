@@ -152,6 +152,16 @@ def run_setup(with_cext):
             "Operating System :: OS Independent",
         ],
         distclass=Distribution,
+        extras_require={
+            'mysql': ['mysqlclient'],
+            'pymysql': ['pymysql'],
+            'postgresql': ['psycopg2'],
+            'postgresql_pg8000': ['pg8000'],
+            'postgresql_psycopg2cffi': ['psycopg2cffi'],
+            'oracle': ['cx_oracle'],
+            'mssql_pyodbc': ['pyodbc'],
+            'mssql_pymssql': ['pymssql']
+        },
         **kwargs
     )
 

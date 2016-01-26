@@ -118,7 +118,7 @@ of the relationship. To convert one-to-many into one-to-one::
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('parent.id'))
-        parent = relationship("Child", back_populates="child")
+        parent = relationship("Parent", back_populates="child")
 
 Or for many-to-one::
 
@@ -131,7 +131,7 @@ Or for many-to-one::
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
-        parent = relationship("Child", back_populates="child", uselist=False)
+        parent = relationship("Parent", back_populates="child", uselist=False)
 
 As always, the :paramref:`.relationship.backref` and :func:`.backref` functions
 may be used in lieu of the :paramref:`.relationship.back_populates` approach;
@@ -369,13 +369,55 @@ extension allows the configuration of attributes which will
 access two "hops" with a single access, one "hop" to the
 associated object, and a second to a target attribute.
 
-.. note::
+.. warning::
 
-  When using the association object pattern, it is advisable that the
-  association-mapped table not be used as the
-  :paramref:`~.relationship.secondary` argument on a
-  :func:`.relationship` elsewhere, unless that :func:`.relationship`
-  contains the option :paramref:`~.relationship.viewonly` set to
-  ``True``. SQLAlchemy otherwise may attempt to emit redundant INSERT
-  and DELETE statements on the same table, if similar state is
-  detected on the related attribute as well as the associated object.
+  The association object pattern **does not coordinate changes with a
+  separate relationship that maps the association table as "secondary"**.
+
+  Below, changes made to ``Parent.children`` will not be coordinated
+  with changes made to ``Parent.child_associations`` or
+  ``Child.parent_associations`` in Python; while all of these relationships will continue
+  to function normally by themselves, changes on one will not show up in another
+  until the :class:`.Session` is expired, which normally occurs automatically
+  after :meth:`.Session.commit`::
+
+        class Association(Base):
+            __tablename__ = 'association'
+
+            left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
+            right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
+            extra_data = Column(String(50))
+
+            child = relationship("Child", back_populates="parent_associations")
+            parent = relationship("Parent", back_populates="child_associations")
+
+        class Parent(Base):
+            __tablename__ = 'left'
+            id = Column(Integer, primary_key=True)
+
+            children = relationship("Child", secondary="association")
+
+        class Child(Base):
+            __tablename__ = 'right'
+            id = Column(Integer, primary_key=True)
+
+  Additionally, just as changes to one relationship aren't reflected in the
+  others automatically, writing the same data to both relationships will cause
+  conflicting INSERT or DELETE statements as well, such as below where we
+  establish the same relationship between a ``Parent`` and ``Child`` object
+  twice::
+
+        p1 = Parent()
+        c1 = Child()
+        p1.children.append(c1)
+
+        # redundant, will cause a duplicate INSERT on Association
+        p1.parent_associations.append(Association(child=c1))
+
+  It's fine to use a mapping like the above if you know what
+  you're doing, though it may be a good idea to apply the ``viewonly=True`` parameter
+  to the "secondary" relationship to avoid the issue of redundant changes
+  being logged.  However, to get a foolproof pattern that allows a simple
+  two-object ``Parent->Child`` relationship while still using the association
+  object pattern, use the association proxy extension
+  as documented at :ref:`associationproxy_toplevel`.

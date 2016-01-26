@@ -74,6 +74,8 @@ construction arguments, are as follows:
 .. autoclass:: INTEGER
     :members: __init__
 
+.. autoclass:: JSON
+    :members:
 
 .. autoclass:: LONGBLOB
     :members: __init__

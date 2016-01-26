@@ -53,6 +53,7 @@ url.py
 
 from .interfaces import (
     Connectable,
+    CreateEnginePlugin,
     Dialect,
     ExecutionContext,
     ExceptionContext,
@@ -390,7 +391,7 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     """Create a new Engine instance using a configuration dictionary.
 
     The dictionary is typically produced from a config file.
-    
+
     The keys of interest to ``engine_from_config()`` should be prefixed, e.g.
     ``sqlalchemy.url``, ``sqlalchemy.echo``, etc.  The 'prefix' argument
     indicates the prefix to be searched for.  Each matching key (after the

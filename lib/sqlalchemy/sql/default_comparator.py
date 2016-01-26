@@ -164,27 +164,7 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
 
 def _getitem_impl(expr, op, other, **kw):
     if isinstance(expr.type, type_api.INDEXABLE):
-        if isinstance(other, slice):
-            if expr.type.zero_indexes:
-                other = slice(
-                    other.start + 1,
-                    other.stop + 1,
-                    other.step
-                )
-            other = Slice(
-                _literal_as_binds(
-                    other.start, name=expr.key, type_=type_api.INTEGERTYPE),
-                _literal_as_binds(
-                    other.stop, name=expr.key, type_=type_api.INTEGERTYPE),
-                _literal_as_binds(
-                    other.step, name=expr.key, type_=type_api.INTEGERTYPE)
-            )
-        else:
-            if expr.type.zero_indexes:
-                other += 1
-
-        other = _literal_as_binds(
-            other, name=expr.key, type_=type_api.INTEGERTYPE)
+        other = _check_literal(expr, op, other)
         return _binary_operate(expr, op, other, **kw)
     else:
         _unsupported_impl(expr, op, other, **kw)
@@ -260,6 +240,8 @@ operator_lookup = {
     "mod": (_binary_operate,),
     "truediv": (_binary_operate,),
     "custom_op": (_binary_operate,),
+    "json_path_getitem_op": (_binary_operate, ),
+    "json_getitem_op": (_binary_operate, ),
     "concat_op": (_binary_operate,),
     "lt": (_boolean_compare, operators.ge),
     "le": (_boolean_compare, operators.gt),
@@ -295,7 +277,7 @@ operator_lookup = {
 }
 
 
-def _check_literal(expr, operator, other):
+def _check_literal(expr, operator, other, bindparam_type=None):
     if isinstance(other, (ColumnElement, TextClause)):
         if isinstance(other, BindParameter) and \
                 other.type._isnull:
@@ -310,7 +292,7 @@ def _check_literal(expr, operator, other):
     if isinstance(other, (SelectBase, Alias)):
         return other.as_scalar()
     elif not isinstance(other, Visitable):
-        return expr._bind_param(operator, other)
+        return expr._bind_param(operator, other, type_=bindparam_type)
     else:
         return other
 

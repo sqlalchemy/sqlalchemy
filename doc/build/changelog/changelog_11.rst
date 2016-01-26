@@ -22,6 +22,178 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sqlite
+        :tickets: 3634
+
+        The workaround for right-nested joins on SQLite, where they are rewritten
+        as subqueries in order to work around SQLite's lack of support for this
+        syntax, is lifted when SQLite version 3.7.16 or greater is detected.
+
+        .. seealso::
+
+            :ref:`change_3634`
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 3633
+
+        The workaround for SQLite's unexpected delivery of column names as
+        ``tablename.columnname`` for some kinds of queries is now disabled
+        when SQLite version 3.10.0 or greater is detected.
+
+        .. seealso::
+
+            :ref:`change_3633`
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 2349
+
+        Added new parameter :paramref:`.orm.mapper.passive_deletes` to
+        available mapper options.   This allows a DELETE to proceed
+        for a joined-table inheritance mapping against the base table only,
+        while allowing for ON DELETE CASCADE to handle deleting the row
+        from the subclass tables.
+
+        .. seealso::
+
+            :ref:`change_2349`
+
+
+    .. change::
+        :tags: bug, sybase
+        :tickets: 2278
+
+        The unsupported Sybase dialect now raises ``NotImplementedError``
+        when attempting to compile a query that includes "offset"; Sybase
+        has no straightforward "offset" feature.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3631
+
+        Calling str() on a core SQL construct has been made more "friendly",
+        when the construct contains non-standard SQL elements such as
+        RETURNING, array index operations, or dialect-specific or custom
+        datatypes.  A string is now returned in these cases rendering an
+        approximation of the construct (typically the Postgresql-style
+        version of it) rather than raising an error.
+
+        .. seealso::
+
+            :ref:`change_3631`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3630
+
+        Fixed issue where two same-named relationships that refer to
+        a base class and a concrete-inherited subclass would raise an error
+        if those relationships were set up using "backref", while setting up the
+        identical configuration using relationship() instead with the conflicting
+        names would succeed, as is allowed in the case of a concrete mapping.
+
+        .. seealso::
+
+            :ref:`change_3630`
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 3081
+
+        The ``str()`` call for :class:`.Query` will now take into account
+        the :class:`.Engine` to which the :class:`.Session` is bound, when
+        generating the string form of the SQL, so that the actual SQL
+        that would be emitted to the database is shown, if possible.  Previously,
+        only the engine associated with the :class:`.MetaData` to which the
+        mappings are associated would be used, if present.  If
+        no bind can be located either on the :class:`.Session` or on
+        the :class:`.MetaData` to which the mappings are associated, then
+        the "default" dialect is used to render the SQL, as was the case
+        previously.
+
+        .. seealso::
+
+            :ref:`change_3081`
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3501
+
+        A deep improvement to the recently added :meth:`.TextClause.columns`
+        method, and its interaction with result-row processing, now allows
+        the columns passed to the method to be positionally matched with the
+        result columns in the statement, rather than matching on name alone.
+        The advantage to this includes that when linking a textual SQL statement
+        to an ORM or Core table model, no system of labeling or de-duping of
+        common column names needs to occur, which also means there's no need
+        to worry about how label names match to ORM columns and so-forth.  In
+        addition, the :class:`.ResultProxy` has been further enhanced to
+        map column and string keys to a row with greater precision in some
+        cases.
+
+        .. seealso::
+
+            :ref:`change_3501` - feature overview
+
+            :ref:`behavior_change_3501` - backwards compatibility remarks
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 2685
+
+        Multi-tenancy schema translation for :class:`.Table` objects is added.
+        This supports the use case of an application that uses the same set of
+        :class:`.Table` objects in many schemas, such as schema-per-user.
+        A new execution option
+        :paramref:`.Connection.execution_options.schema_translate_map` is
+        added.
+
+        .. seealso::
+
+            :ref:`change_2685`
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 3536
+
+        Added a new entrypoint system to the engine to allow "plugins" to
+        be stated in the query string for a URL.   Custom plugins can
+        be written which will be given the chance up front to alter and/or
+        consume the engine's URL and keyword arguments, and then at engine
+        create time will be given the engine itself to allow additional
+        modifications or event registration.  Plugins are written as a
+        subclass of :class:`.CreateEnginePlugin`; see that class for
+        details.
+
+    .. change::
+        :tags: feature, mysql
+        :tickets: 3547
+
+        Added :class:`.mysql.JSON` for MySQL 5.7.  The JSON type provides
+        persistence of JSON values in MySQL as well as basic operator support
+        of "getitem" and "getpath", making use of the ``JSON_EXTRACT``
+        function in order to refer to individual paths in a JSON structure.
+
+        .. seealso::
+
+            :ref:`change_3547`
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3619
+
+        Added a new type to core :class:`.types.JSON`.  This is the
+        base of the PostgreSQL :class:`.postgresql.JSON` type as well as that
+        of the new :class:`.mysql.JSON` type, so that a PG/MySQL-agnostic
+        JSON column may be used.  The type features basic index and path
+        searching support.
+
+        .. seealso::
+
+            :ref:`change_3619`
+
+    .. change::
         :tags: bug, sql
         :tickets: 3616
 
@@ -275,7 +447,7 @@
         :tickets: 3132
 
         Added support for the SQL-standard function :class:`.array_agg`,
-        which automatically returns an :class:`.Array` of the correct type
+        which automatically returns an :class:`.postgresql.ARRAY` of the correct type
         and supports index / slice operations, as well as
         :func:`.postgresql.array_agg`, which returns a :class:`.postgresql.ARRAY`
         with additional comparison features.   As arrays are only
@@ -292,8 +464,8 @@
         :tags: feature, sql
         :tickets: 3516
 
-        Added a new type to core :class:`.types.Array`.  This is the
-        base of the PostgreSQL :class:`.ARRAY` type, and is now part of Core
+        Added a new type to core :class:`.types.ARRAY`.  This is the
+        base of the PostgreSQL :class:`.postgresql.ARRAY` type, and is now part of Core
         to begin supporting various SQL-standard array-supporting features
         including some functions and eventual support for native arrays
         on other databases that have an "array" concept, such as DB2 or Oracle.
@@ -399,7 +571,7 @@
         :tickets: 3514
 
         Additional fixes have been made regarding the value of ``None``
-        in conjunction with the Postgresql :class:`.JSON` type.  When
+        in conjunction with the Postgresql :class:`.postgresql.JSON` type.  When
         the :paramref:`.JSON.none_as_null` flag is left at its default
         value of ``False``, the ORM will now correctly insert the Json
         "'null'" string into the column whenever the value on the ORM

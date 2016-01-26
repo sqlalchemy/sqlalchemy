@@ -12,7 +12,6 @@
 
 from .. import util
 
-
 from operator import (
     and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg,
     getitem, lshift, rshift
@@ -720,7 +719,6 @@ def istrue(a):
 def isfalse(a):
     raise NotImplementedError()
 
-
 def is_(a, b):
     return a.is_(b)
 
@@ -837,6 +835,14 @@ def nullslast_op(a):
     return a.nullslast()
 
 
+def json_getitem_op(a, b):
+    raise NotImplementedError()
+
+
+def json_path_getitem_op(a, b):
+    raise NotImplementedError()
+
+
 _commutative = set([eq, ne, add, mul])
 
 _comparison = set([eq, ne, lt, gt, ge, le, between_op, like_op])
@@ -879,7 +885,8 @@ def mirror(op):
 
 _associative = _commutative.union([concat_op, and_, or_])
 
-_natural_self_precedent = _associative.union([getitem])
+_natural_self_precedent = _associative.union([
+    getitem, json_getitem_op, json_path_getitem_op])
 """Operators where if we have (a op b) op c, we don't want to
 parenthesize (a op b).
 
@@ -894,6 +901,8 @@ _PRECEDENCE = {
     from_: 15,
     any_op: 15,
     all_op: 15,
+    json_getitem_op: 15,
+    json_path_getitem_op: 15,
     getitem: 15,
     mul: 8,
     truediv: 8,

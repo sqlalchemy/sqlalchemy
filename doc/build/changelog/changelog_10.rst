@@ -16,12 +16,64 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.12
+    :released:
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 3632
+
+        Fixed bug in :class:`.Table` metadata construct which appeared
+        around the 0.9 series where adding columns to a :class:`.Table`
+        that was unpickled would fail to correctly establish the
+        :class:`.Column` within the 'c' collection, leading to issues in
+        areas such as ORM configuration.   This could impact use cases such
+        as ``extend_existing`` and others.
+
+    .. change::
+        :tags: bug, py3k
+        :tickets: 3625
+
+        Fixed bug where some exception re-raise scenarios would attach
+        the exception to itself as the "cause"; while the Python 3 interpreter
+        is OK with this, it could cause endless loops in iPython.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 3624
+        :pullreq: bitbucket:70
+
+        Fixed the syntax of the :func:`.extract` function when used on
+        MSSQL against a datetime value; the quotes around the keyword
+        are removed.  Pull request courtesy Guillaume Doumenc.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3623
+
+        Fixed regression since 0.9 where the 0.9 style loader options
+        system failed to accommodate for multiple :func:`.undefer_group`
+        loader options in a single query.   Multiple :func:`.undefer_group`
+        options will now be taken into account even against the same
+        entity.
+
+    .. change::
+        :tags: bug, mssql, firebird
+        :tickets: 3622
+
+        Fixed 1.0 regression where the eager fetch of cursor.rowcount was
+        no longer called for an UPDATE or DELETE statement emitted via plain
+        text or via the :func:`.text` construct, affecting those drivers
+        that erase cursor.rowcount once the cursor is closed such as SQL
+        Server ODBC and Firebird drivers.
+
+
+.. changelog::
     :version: 1.0.11
     :released: December 22, 2015
 
     .. change::
         :tags: bug, mysql
-        :versions: 1.1.0b1
         :tickets: 3613
 
         An adjustment to the regular expression used to parse MySQL views,
@@ -31,7 +83,6 @@
 
     .. change::
         :tags: bug, mysql
-        :versions: 1.1.0b1
         :pullreq: github:222
 
         Added new reserved words for MySQL 5.7 to the MySQL dialect,
@@ -41,7 +92,6 @@
     .. change::
         :tags: bug, ext
         :tickets: 3605
-        :versions: 1.1.0b1
 
         Further fixes to :ticket:`3605`, pop method on :class:`.MutableDict`,
         where the "default" argument was not included.
@@ -49,7 +99,6 @@
     .. change::
         :tags: bug, ext
         :tickets: 3612
-        :versions: 1.1.0b1
 
         Fixed bug in baked loader system where the systemwide monkeypatch
         for setting up baked lazy loaders would interfere with other
@@ -60,7 +109,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 3611
-        :versions: 1.1.0b1
 
         Fixed regression caused in 1.0.10 by the fix for :ticket:`3593` where
         the check added for a polymorphic joinedload from a
@@ -70,7 +118,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 3610
-        :versions: 1.1.0b1
 
         Fixed bug where :meth:`.Session.bulk_update_mappings` and related
         would not bump a version id counter when in use.  The experience
@@ -81,7 +128,6 @@
     .. change::
         :tags: bug, sql
         :tickets: 3609
-        :versions: 1.1.0b1
 
         Fixed bug in :meth:`.Update.return_defaults` which would cause all
         insert-default holding columns not otherwise included in the SET
@@ -91,7 +137,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 3609
-        :versions: 1.1.0b1
 
         Major fixes to the :paramref:`.Mapper.eager_defaults` flag, this
         flag would not be honored correctly in the case that multiple
@@ -102,7 +147,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 3606
-        :versions: 1.1.0b1
 
         Fixed bug where use of the :meth:`.Query.select_from` method would
         cause a subsequent call to the :meth:`.Query.with_parent` method to
@@ -115,14 +159,12 @@
     .. change::
         :tags: bug, ext
         :tickets: 3605
-        :versions: 1.1.0b1
 
         Added support for the ``dict.pop()`` and ``dict.popitem()`` methods
         to the :class:`.mutable.MutableDict` class.
 
     .. change::
         :tags: change, tests
-        :versions: 1.1.0b1
 
         The ORM and Core tutorials, which have always been in doctest format,
         are now exercised within the normal unit test suite in both Python
@@ -131,7 +173,6 @@
     .. change::
         :tags: bug, sql
         :tickets: 3603
-        :versions: 1.1.0b1
 
         Fixed issue within the :meth:`.Insert.from_select` construct whereby
         the :class:`.Select` construct would have its ``._raw_columns``
@@ -145,7 +186,6 @@
     .. change::
         :tags: bug, mysql
         :tickets: 3602
-        :versions: 1.1.0b1
 
         Fixed bug in MySQL reflection where the "fractional sections portion"
         of the :class:`.mysql.DATETIME`, :class:`.mysql.TIMESTAMP` and
@@ -156,7 +196,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 3599
-        :versions: 1.1.0b1
 
         Fixed issue where post_update on a many-to-one relationship would
         fail to emit an UPDATE in the case where the attribute were set to
@@ -165,7 +204,6 @@
     .. change::
         :tags: bug, sql, postgresql
         :tickets: 3598
-        :versions: 1.1.0b1
 
         Fixed bug where CREATE TABLE with a no-column table, but a constraint
         such as a CHECK constraint would render an erroneous comma in the
@@ -175,7 +213,7 @@
     .. change::
         :tags: bug, mssql
         :tickets: 3585
-        :versions: 1.1.0b1
+
 
         Added the error "20006: Write to the server failed" to the list
         of disconnect errors for the pymssql driver, as this has been observed
@@ -185,7 +223,7 @@
         :tags: bug, postgresql
         :pullreq: github:216
         :tickets: 3573
-        :versions: 1.1.0b1
+
 
         Fixed issue where the "FOR UPDATE OF" Postgresql-specific SELECT
         modifier would fail if the referred table had a schema qualifier;
@@ -195,7 +233,7 @@
     .. change::
         :tags: bug, postgresql
         :pullreq: github:215
-        :versions: 1.1.0b1
+
 
         Fixed bug where some varieties of SQL expression passed to the
         "where" clause of :class:`.postgresql.ExcludeConstraint` would fail
@@ -204,7 +242,7 @@
     .. change::
         :tags: bug, orm, declarative
         :pullreq: github:212
-        :versions: 1.1.0b1
+
 
         Fixed bug where in Py2K a unicode literal would not be accepted as the
         string name of a class or other argument within declarative using
@@ -213,7 +251,6 @@
 
     .. change::
         :tags: bug, mssql
-        :versions: 1.1.0b1
         :pullreq: github:206
 
         A descriptive ValueError is now raised in the event that SQL server
@@ -223,7 +260,6 @@
 
     .. change::
         :tags: bug, py3k
-        :versions: 1.1.0b1
         :pullreq: github:210, github:218, github:211
 
         Updates to internal getargspec() calls, some py36-related
@@ -234,7 +270,6 @@
 
     .. change::
         :tags: bug, ext
-        :versions: 1.1.0b1
         :tickets: 3597
 
         Fixed an issue in baked queries where the .get() method, used either
@@ -246,7 +281,6 @@
 
     .. change::
         :tags: feature, sql
-        :versions: 1.1.0b1
         :pullreq: github:200
 
         Added support for parameter-ordered SET clauses in an UPDATE
@@ -263,7 +297,6 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.1.0b1
         :tickets: 3593
 
         Fixed bug which is actually a regression that occurred between
@@ -274,7 +307,6 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.1.0b1
         :tickets: 3592
 
         Fixed joinedload bug which would occur when a. the query includes
@@ -289,7 +321,6 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.1.0b1
         :tickets: 2696
 
         A rare case which occurs when a :meth:`.Session.rollback` fails in the
@@ -304,7 +335,6 @@
 
     .. change::
         :tags: bug, postgresql
-        :versions: 1.1.0b1
         :tickets: 3571
 
         Fixed the ``.python_type`` attribute of :class:`.postgresql.INTERVAL`
@@ -315,7 +345,7 @@
     .. change::
         :tags: bug, mssql
         :pullreq: github:213
-        :versions: 1.1.0b1
+
 
         Fixed issue where DDL generated for the MSSQL types DATETIME2,
         TIME and DATETIMEOFFSET with a precision of "zero" would not generate
@@ -328,7 +358,6 @@
 
     .. change::
         :tags: bug, orm, postgresql
-        :versions: 1.1.0b1
         :tickets: 3556
 
         Fixed regression in 1.0 where new feature of using "executemany"
@@ -340,7 +369,6 @@
 
     .. change::
         :tags: feature, ext
-        :versions: 1.1.0b1
         :tickets: 3551
 
         Added the :paramref:`.AssociationProxy.info` parameter to the
@@ -352,7 +380,6 @@
 
     .. change::
         :tags: bug, oracle
-        :versions: 1.1.0b1
         :tickets: 3548
 
         Fixed bug in Oracle dialect where reflection of tables and other
@@ -363,7 +390,6 @@
 
     .. change::
         :tags: feature, orm
-        :versions: 1.1.0b1
         :pullreq: github:201
 
         Added new method :meth:`.Query.one_or_none`; same as
@@ -372,7 +398,6 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.1.0b1
         :tickets: 3539
 
         Fixed rare TypeError which could occur when stringifying certain
@@ -380,7 +405,6 @@
 
     .. change::
         :tags: bug, orm
-        :versions: 1.1.0b1
         :tickets: 3525
 
         Fixed bug in :meth:`.Session.bulk_save_objects` where a mapped
@@ -390,7 +414,6 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.1.0b1
         :tickets: 3520
 
         Fixed regression in 1.0-released default-processor for multi-VALUES
@@ -401,7 +424,7 @@
 
     .. change::
         :tags: bug, examples
-        :versions: 1.1.0b1
+
 
         Fixed two issues in the "history_meta" example where history tracking
         could encounter empty history, and where a column keyed to an alternate
@@ -411,7 +434,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 3510
-        :versions: 1.1.0b1
+
 
         Fixed 1.0 regression where the "noload" loader strategy would fail
         to function for a many-to-one relationship.  The loader used an
@@ -421,7 +444,7 @@
     .. change::
         :tags: bug, sybase
         :tickets: 3508, 3509
-        :versions: 1.1.0b1
+
 
         Fixed two issues regarding Sybase reflection, allowing tables
         without primary keys to be reflected as well as ensured that
@@ -433,7 +456,7 @@
     .. change::
         :tags: bug, postgresql
         :pullreq: github:190
-        :versions: 1.1.0b1
+
 
         An adjustment to the new Postgresql feature of reflecting storage
         options and USING of :ticket:`3455` released in 1.0.6,

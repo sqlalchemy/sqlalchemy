@@ -18,8 +18,9 @@ New strategies can be added via new ``EngineStrategy`` classes.
 from operator import attrgetter
 
 from sqlalchemy.engine import base, threadlocal, url
-from sqlalchemy import util, exc, event
+from sqlalchemy import util, event
 from sqlalchemy import pool as poollib
+from sqlalchemy.sql import schema
 
 strategies = {}
 
@@ -47,6 +48,10 @@ class DefaultEngineStrategy(EngineStrategy):
     def create(self, name_or_url, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)
+
+        plugins = u._instantiate_plugins(kwargs)
+
+        u.query.pop('plugin', None)
 
         entrypoint = u._get_entrypoint()
         dialect_cls = entrypoint.get_dialect_cls(u)
@@ -169,6 +174,9 @@ class DefaultEngineStrategy(EngineStrategy):
         if entrypoint is not dialect_cls:
             entrypoint.engine_created(engine)
 
+        for plugin in plugins:
+            plugin.engine_created(engine)
+
         return engine
 
 
@@ -225,6 +233,8 @@ class MockEngineStrategy(EngineStrategy):
         engine = property(lambda s: s)
         dialect = property(attrgetter('_dialect'))
         name = property(lambda s: s._dialect.name)
+
+        schema_for_object = schema._schema_getter(None)
 
         def contextual_connect(self, **kwargs):
             return self

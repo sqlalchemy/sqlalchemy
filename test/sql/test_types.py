@@ -10,14 +10,14 @@ from sqlalchemy import (
     and_, func, Date, LargeBinary, literal, cast, text, Enum,
     type_coerce, VARCHAR, Time, DateTime, BigInteger, SmallInteger, BOOLEAN,
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
-    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL, Array)
+    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL, ARRAY, JSON)
 from sqlalchemy.sql import ddl
 from sqlalchemy.sql import visitors
 from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
-from sqlalchemy.sql import operators, column, table
+from sqlalchemy.sql import operators, column, table, null
 from sqlalchemy.schema import CheckConstraint, AddConstraint
 from sqlalchemy.engine import default
 from sqlalchemy.testing.schema import Table, Column
@@ -140,13 +140,15 @@ class AdaptTest(fixtures.TestBase):
         for is_down_adaption, typ, target_adaptions in adaptions():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif issubclass(typ, Array):
+            elif issubclass(typ, ARRAY):
                 t1 = typ(String)
             else:
                 t1 = typ()
             for cls in target_adaptions:
                 if not issubclass(typ, types.Enum) and \
                         issubclass(cls, types.Enum):
+                    continue
+                if cls.__module__.startswith("test"):
                     continue
 
                 # print("ADAPT %s -> %s" % (t1.__class__, cls))
@@ -190,7 +192,7 @@ class AdaptTest(fixtures.TestBase):
         for typ in self._all_types():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif issubclass(typ, Array):
+            elif issubclass(typ, ARRAY):
                 t1 = typ(String)
             else:
                 t1 = typ()
@@ -1015,66 +1017,6 @@ class UnicodeTest(fixtures.TestBase):
     """
     __backend__ = True
 
-    def test_native_unicode(self):
-        """assert expected values for 'native unicode' mode"""
-
-        if testing.against('mssql+pyodbc'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                'conditional'
-            )
-
-        elif testing.against('mssql+mxodbc'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                'conditional'
-            )
-
-        elif testing.against('mssql+pymssql'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                ('charset' in testing.db.url.query)
-            )
-
-        elif testing.against('mysql+cymysql', 'mysql+pymssql'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k else False
-            )
-        elif testing.against('oracle+cx_oracle'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k else "conditional"
-            )
-        elif testing.against("mysql+mysqldb"):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k or util.asbool(
-                    testing.db.url.query.get("use_unicode")
-                )
-                else False
-            )
-        else:
-            expected = (testing.db.name, testing.db.driver) in \
-                (
-                    ('postgresql', 'psycopg2'),
-                    ('postgresql', 'psycopg2cffi'),
-                    ('postgresql', 'pypostgresql'),
-                    ('postgresql', 'pg8000'),
-                    ('postgresql', 'zxjdbc'),
-                    ('mysql', 'pymysql'),
-                    ('mysql', 'oursql'),
-                    ('mysql', 'zxjdbc'),
-                    ('mysql', 'mysqlconnector'),
-                    ('sqlite', 'pysqlite'),
-                    ('oracle', 'zxjdbc'),
-            )
-
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                expected
-            )
-
     data = util.u(
         "Alors vous imaginez ma surprise, au lever du jour, quand "
         "une drôle de petite voix m’a réveillé. "
@@ -1406,23 +1348,98 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             return o.read()
 
 
+class JSONTest(fixtures.TestBase):
+
+    def setup(self):
+        metadata = MetaData()
+        self.test_table = Table('test_table', metadata,
+                                Column('id', Integer, primary_key=True),
+                                Column('test_column', JSON),
+                                )
+        self.jsoncol = self.test_table.c.test_column
+
+        self.dialect = default.DefaultDialect()
+        self.dialect._json_serializer = None
+        self.dialect._json_deserializer = None
+
+    def test_bind_serialize_default(self):
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc({"A": [1, 2, 3, True, False]}),
+            '{"A": [1, 2, 3, true, false]}'
+        )
+
+    def test_bind_serialize_None(self):
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc(None),
+            'null'
+        )
+
+    def test_bind_serialize_none_as_null(self):
+        proc = JSON(none_as_null=True)._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc(None),
+            None
+        )
+        eq_(
+            proc(null()),
+            None
+        )
+
+    def test_bind_serialize_null(self):
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc(null()),
+            None
+        )
+
+    def test_result_deserialize_default(self):
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            self.dialect, None)
+        eq_(
+            proc('{"A": [1, 2, 3, true, false]}'),
+            {"A": [1, 2, 3, True, False]}
+        )
+
+    def test_result_deserialize_null(self):
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            self.dialect, None)
+        eq_(
+            proc('null'),
+            None
+        )
+
+    def test_result_deserialize_None(self):
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            self.dialect, None)
+        eq_(
+            proc(None),
+            None
+        )
+
+
 class ArrayTest(fixtures.TestBase):
 
     def _myarray_fixture(self):
-        class MyArray(Array):
+        class MyArray(ARRAY):
             pass
         return MyArray
 
     def test_array_index_map_dimensions(self):
-        col = column('x', Array(Integer, dimensions=3))
+        col = column('x', ARRAY(Integer, dimensions=3))
         is_(
-            col[5].type._type_affinity, Array
+            col[5].type._type_affinity, ARRAY
         )
         eq_(
             col[5].type.dimensions, 2
         )
         is_(
-            col[5][6].type._type_affinity, Array
+            col[5][6].type._type_affinity, ARRAY
         )
         eq_(
             col[5][6].type.dimensions, 1
@@ -1435,8 +1452,8 @@ class ArrayTest(fixtures.TestBase):
         m = MetaData()
         arrtable = Table(
             'arrtable', m,
-            Column('intarr', Array(Integer)),
-            Column('strarr', Array(String)),
+            Column('intarr', ARRAY(Integer)),
+            Column('strarr', ARRAY(String)),
         )
         is_(arrtable.c.intarr[1].type._type_affinity, Integer)
         is_(arrtable.c.strarr[1].type._type_affinity, String)
@@ -1445,11 +1462,11 @@ class ArrayTest(fixtures.TestBase):
         m = MetaData()
         arrtable = Table(
             'arrtable', m,
-            Column('intarr', Array(Integer)),
-            Column('strarr', Array(String)),
+            Column('intarr', ARRAY(Integer)),
+            Column('strarr', ARRAY(String)),
         )
-        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
-        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.intarr[1:3].type._type_affinity, ARRAY)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, ARRAY)
 
     def test_array_getitem_slice_type_dialect_level(self):
         MyArray = self._myarray_fixture()
@@ -1459,8 +1476,8 @@ class ArrayTest(fixtures.TestBase):
             Column('intarr', MyArray(Integer)),
             Column('strarr', MyArray(String)),
         )
-        is_(arrtable.c.intarr[1:3].type._type_affinity, Array)
-        is_(arrtable.c.strarr[1:3].type._type_affinity, Array)
+        is_(arrtable.c.intarr[1:3].type._type_affinity, ARRAY)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, ARRAY)
 
         # but the slice returns the actual type
         assert isinstance(arrtable.c.intarr[1:3].type, MyArray)

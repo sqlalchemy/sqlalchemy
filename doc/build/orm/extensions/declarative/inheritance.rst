@@ -8,6 +8,11 @@ as possible.  The ``inherits`` mapper keyword argument is not needed
 as declarative will determine this from the class itself.   The various
 "polymorphic" keyword arguments are specified using ``__mapper_args__``.
 
+.. seealso::
+
+    :ref:`inheritance_toplevel` - general introduction to inheritance
+    mapping with Declarative.
+
 Joined Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -40,10 +45,6 @@ only the ``engineers.id`` column, give it a different attribute name::
                                                     primary_key=True)
         primary_language = Column(String(50))
 
-
-.. versionchanged:: 0.7 joined table inheritance favors the subclass
-   column over that of the superclass, such as querying above
-   for ``Engineer.id``.  Prior to 0.7 this was the reverse.
 
 .. _declarative_single_table:
 
@@ -190,9 +191,11 @@ The same concept can be used with mixin classes (see
 
 The above mixin checks the local ``__table__`` attribute for the column.
 Because we're using single table inheritance, we're sure that in this case,
-``cls.__table__`` refers to ``People.__table__``.  If we were mixing joined-
+``cls.__table__`` refers to ``Person.__table__``.  If we were mixing joined-
 and single-table inheritance, we might want our mixin to check more carefully
 if ``cls.__table__`` is really the :class:`.Table` we're looking for.
+
+.. _declarative_concrete_table:
 
 Concrete Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -245,74 +248,13 @@ before the class is built::
         __table__ = managers
         __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
 
-.. _declarative_concrete_helpers:
+The helper classes :class:`.AbstractConcreteBase` and :class:`.ConcreteBase`
+provide automation for the above system of creating a polymorphic union.
+See the documentation for these helpers as well as the main ORM documentation
+on concrete inheritance for details.
 
-Using the Concrete Helpers
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. seealso::
 
-Helper classes provides a simpler pattern for concrete inheritance.
-With these objects, the ``__declare_first__`` helper is used to configure the
-"polymorphic" loader for the mapper after all subclasses have been declared.
+    :ref:`concrete_inheritance`
 
-.. versionadded:: 0.7.3
-
-An abstract base can be declared using the
-:class:`.AbstractConcreteBase` class::
-
-    from sqlalchemy.ext.declarative import AbstractConcreteBase
-
-    class Employee(AbstractConcreteBase, Base):
-        pass
-
-To have a concrete ``employee`` table, use :class:`.ConcreteBase` instead::
-
-    from sqlalchemy.ext.declarative import ConcreteBase
-
-    class Employee(ConcreteBase, Base):
-        __tablename__ = 'employee'
-        employee_id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        __mapper_args__ = {
-                        'polymorphic_identity':'employee',
-                        'concrete':True}
-
-
-Either ``Employee`` base can be used in the normal fashion::
-
-    class Manager(Employee):
-        __tablename__ = 'manager'
-        employee_id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        manager_data = Column(String(40))
-        __mapper_args__ = {
-                        'polymorphic_identity':'manager',
-                        'concrete':True}
-
-    class Engineer(Employee):
-        __tablename__ = 'engineer'
-        employee_id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        engineer_info = Column(String(40))
-        __mapper_args__ = {'polymorphic_identity':'engineer',
-                        'concrete':True}
-
-
-The :class:`.AbstractConcreteBase` class is itself mapped, and can be
-used as a target of relationships::
-
-    class Company(Base):
-        __tablename__ = 'company'
-
-        id = Column(Integer, primary_key=True)
-        employees = relationship("Employee",
-                        primaryjoin="Company.id == Employee.company_id")
-
-
-.. versionchanged:: 0.9.3 Support for use of :class:`.AbstractConcreteBase`
-   as the target of a :func:`.relationship` has been improved.
-
-It can also be queried directly::
-
-    for employee in session.query(Employee).filter(Employee.name == 'qbert'):
-        print(employee)
-
+    :ref:`inheritance_concrete_helpers`

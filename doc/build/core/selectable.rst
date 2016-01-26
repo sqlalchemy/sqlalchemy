@@ -86,3 +86,4 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: TextAsFrom
    :members:
+   :inherited-members:

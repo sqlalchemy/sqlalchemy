@@ -16,7 +16,7 @@ as the base class for their own corresponding classes.
 import re
 import random
 from . import reflection, interfaces, result
-from ..sql import compiler, expression
+from ..sql import compiler, expression, schema
 from .. import types as sqltypes
 from .. import exc, util, pool, processors
 import codecs
@@ -398,9 +398,21 @@ class DefaultDialect(interfaces.Dialect):
                 if not branch:
                     self._set_connection_isolation(connection, isolation_level)
 
+        if 'schema_translate_map' in opts:
+            getter = schema._schema_getter(opts['schema_translate_map'])
+            engine.schema_for_object = getter
+
+            @event.listens_for(engine, "engine_connect")
+            def set_schema_translate_map(connection, branch):
+                connection.schema_for_object = getter
+
     def set_connection_execution_options(self, connection, opts):
         if 'isolation_level' in opts:
             self._set_connection_isolation(connection, opts['isolation_level'])
+
+        if 'schema_translate_map' in opts:
+            getter = schema._schema_getter(opts['schema_translate_map'])
+            connection.schema_for_object = getter
 
     def _set_connection_isolation(self, connection, level):
         if connection.in_transaction():
@@ -462,11 +474,29 @@ class DefaultDialect(interfaces.Dialect):
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)
 
 
+class StrCompileDialect(DefaultDialect):
+
+    statement_compiler = compiler.StrSQLCompiler
+    ddl_compiler = compiler.DDLCompiler
+    type_compiler = compiler.StrSQLTypeCompiler
+    preparer = compiler.IdentifierPreparer
+
+    supports_sequences = True
+    sequences_optional = True
+    preexecute_autoincrement_sequences = False
+    implicit_returning = False
+
+    supports_native_boolean = True
+
+    supports_simple_order_by_label = True
+
+
 class DefaultExecutionContext(interfaces.ExecutionContext):
     isinsert = False
     isupdate = False
     isdelete = False
     is_crud = False
+    is_text = False
     isddl = False
     executemany = False
     compiled = None
@@ -531,7 +561,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             connection._execution_options)
 
         self.result_column_struct = (
-            compiled._result_columns, compiled._ordered_columns)
+            compiled._result_columns, compiled._ordered_columns,
+            compiled._textual_ordered_columns)
 
         self.unicode_statement = util.text_type(compiled)
         if not dialect.supports_unicode_statements:
@@ -543,6 +574,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
+        self.is_text = compiled.isplaintext
 
         if not parameters:
             self.compiled_parameters = [compiled.construct_params()]
@@ -622,6 +654,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.root_connection = connection
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
+        self.is_text = True
 
         # plain text statement
         self.execution_options = connection._execution_options

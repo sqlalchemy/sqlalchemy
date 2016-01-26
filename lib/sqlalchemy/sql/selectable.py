@@ -3420,9 +3420,10 @@ class TextAsFrom(SelectBase):
 
     _textual = True
 
-    def __init__(self, text, columns):
+    def __init__(self, text, columns, positional=False):
         self.element = text
         self.column_args = columns
+        self.positional = positional
 
     @property
     def _bind(self):

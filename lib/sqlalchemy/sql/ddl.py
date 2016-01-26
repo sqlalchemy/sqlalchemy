@@ -679,13 +679,16 @@ class SchemaGenerator(DDLBase):
 
     def _can_create_table(self, table):
         self.dialect.validate_identifier(table.name)
-        if table.schema:
-            self.dialect.validate_identifier(table.schema)
+        effective_schema = self.connection.schema_for_object(table)
+        if effective_schema:
+            self.dialect.validate_identifier(effective_schema)
         return not self.checkfirst or \
             not self.dialect.has_table(self.connection,
-                                       table.name, schema=table.schema)
+                                       table.name, schema=effective_schema)
 
     def _can_create_sequence(self, sequence):
+        effective_schema = self.connection.schema_for_object(sequence)
+
         return self.dialect.supports_sequences and \
             (
                 (not self.dialect.sequences_optional or
@@ -695,7 +698,7 @@ class SchemaGenerator(DDLBase):
                     not self.dialect.has_sequence(
                         self.connection,
                         sequence.name,
-                        schema=sequence.schema)
+                        schema=effective_schema)
                 )
             )
 
@@ -882,12 +885,14 @@ class SchemaDropper(DDLBase):
 
     def _can_drop_table(self, table):
         self.dialect.validate_identifier(table.name)
-        if table.schema:
-            self.dialect.validate_identifier(table.schema)
+        effective_schema = self.connection.schema_for_object(table)
+        if effective_schema:
+            self.dialect.validate_identifier(effective_schema)
         return not self.checkfirst or self.dialect.has_table(
-            self.connection, table.name, schema=table.schema)
+            self.connection, table.name, schema=effective_schema)
 
     def _can_drop_sequence(self, sequence):
+        effective_schema = self.connection.schema_for_object(sequence)
         return self.dialect.supports_sequences and \
             ((not self.dialect.sequences_optional or
               not sequence.optional) and
@@ -895,7 +900,7 @@ class SchemaDropper(DDLBase):
                  self.dialect.has_sequence(
                      self.connection,
                      sequence.name,
-                     schema=sequence.schema))
+                     schema=effective_schema))
              )
 
     def visit_index(self, index):

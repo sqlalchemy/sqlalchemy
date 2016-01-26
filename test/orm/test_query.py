@@ -1,7 +1,7 @@
 from sqlalchemy import (
     testing, null, exists, text, union, literal, literal_column, func, between,
     Unicode, desc, and_, bindparam, select, distinct, or_, collate, insert,
-    Integer, String, Boolean, exc as sa_exc, util, cast)
+    Integer, String, Boolean, exc as sa_exc, util, cast, MetaData)
 from sqlalchemy.sql import operators, expression
 from sqlalchemy import column, table
 from sqlalchemy.engine import default
@@ -13,7 +13,8 @@ from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.testing.assertions import (
-    eq_, assert_raises, assert_raises_message, expect_warnings)
+    eq_, assert_raises, assert_raises_message, expect_warnings,
+    eq_ignore_whitespace)
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, assert_warnings
 from test.orm import _fixtures
 from sqlalchemy.orm.util import join, with_parent
@@ -208,6 +209,69 @@ class RowTupleTest(QueryTest):
         eq_(
             row, (User(id=7), [7])
         )
+
+
+class BindSensitiveStringifyTest(fixtures.TestBase):
+    def _fixture(self, bind_to=None):
+        # building a totally separate metadata /mapping here
+        # because we need to control if the MetaData is bound or not
+
+        class User(object):
+            pass
+
+        m = MetaData(bind=bind_to)
+        user_table = Table(
+            'users', m,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50)))
+
+        mapper(User, user_table)
+        return User
+
+    def _dialect_fixture(self):
+        class MyDialect(default.DefaultDialect):
+            default_paramstyle = 'qmark'
+
+        from sqlalchemy.engine import base
+        return base.Engine(mock.Mock(), MyDialect(), mock.Mock())
+
+    def _test(
+            self, bound_metadata, bound_session,
+            session_present, expect_bound):
+        if bound_metadata or bound_session:
+            eng = self._dialect_fixture()
+        else:
+            eng = None
+
+        User = self._fixture(bind_to=eng if bound_metadata else None)
+
+        s = Session(eng if bound_session else None)
+        q = s.query(User).filter(User.id == 7)
+        if not session_present:
+            q = q.with_session(None)
+
+        eq_ignore_whitespace(
+            str(q),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.id = ?" if expect_bound else
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.id = :id_1"
+        )
+
+    def test_query_unbound_metadata_bound_session(self):
+        self._test(False, True, True, True)
+
+    def test_query_bound_metadata_unbound_session(self):
+        self._test(True, False, True, True)
+
+    def test_query_unbound_metadata_no_session(self):
+        self._test(False, False, False, False)
+
+    def test_query_unbound_metadata_unbound_session(self):
+        self._test(False, False, True, False)
+
+    def test_query_bound_metadata_bound_session(self):
+        self._test(True, True, True, True)
 
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):

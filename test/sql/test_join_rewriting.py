@@ -1,3 +1,8 @@
+"""These tests are all about the "join rewriting" feature built
+to support SQLite's lack of right-nested joins.  SQlite as of
+version 3.7.16 no longer has this limitation.
+
+"""
 from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, \
     select, exists, union
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL

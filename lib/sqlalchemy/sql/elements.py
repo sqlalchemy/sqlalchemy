@@ -429,7 +429,7 @@ class ClauseElement(Visitable):
                 dialect = self.bind.dialect
                 bind = self.bind
             else:
-                dialect = default.DefaultDialect()
+                dialect = default.StrCompileDialect()
         return self._compiler(dialect, bind=bind, **kw)
 
     def _compiler(self, dialect, **kw):
@@ -682,9 +682,10 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     def reverse_operate(self, op, other, **kwargs):
         return op(other, self.comparator, **kwargs)
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return BindParameter(None, obj,
                              _compared_to_operator=operator,
+                             type_=type_,
                              _compared_to_type=self.type, unique=True)
 
     @property
@@ -1275,17 +1276,16 @@ class TextClause(Executable, ClauseElement):
             for id, name in connection.execute(t):
                 print(id, name)
 
-        The :func:`.text` construct is used internally in cases when
-        a literal string is specified for part of a larger query, such as
-        when a string is specified to the :meth:`.Select.where` method of
-        :class:`.Select`.  In those cases, the same
-        bind parameter syntax is applied::
+        The :func:`.text` construct is used in cases when
+        a literal string SQL fragment is specified as part of a larger query,
+        such as for the WHERE clause of a SELECT statement::
 
-            s = select([users.c.id, users.c.name]).where("id=:user_id")
+            s = select([users.c.id, users.c.name]).where(text("id=:user_id"))
             result = connection.execute(s, user_id=12)
 
-        Using :func:`.text` explicitly usually implies the construction
-        of a full, standalone statement.   As such, SQLAlchemy refers
+        :func:`.text` is also used for the construction
+        of a full, standalone statement using plain text.
+        As such, SQLAlchemy refers
         to it as an :class:`.Executable` object, and it supports
         the :meth:`Executable.execution_options` method.  For example,
         a :func:`.text` construct that should be subject to "autocommit"
@@ -1359,6 +1359,12 @@ class TextClause(Executable, ClauseElement):
 
           .. deprecated:: 0.9.0 the :meth:`.TextClause.columns` method
              supersedes the ``typemap`` argument to :func:`.text`.
+
+        .. seealso::
+
+            :ref:`sqlexpression_text` - in the Core tutorial
+
+            :ref:`orm_tutorial_literal_sql` - in the ORM tutorial
 
         """
         stmt = TextClause(text, bind=bind)
@@ -1485,9 +1491,17 @@ class TextClause(Executable, ClauseElement):
                         mytable.join(stmt, mytable.c.name == stmt.c.name)
                     ).where(stmt.c.id > 5)
 
-        Above, we used untyped :func:`.column` elements.  These can also have
-        types specified, which will impact how the column behaves in
-        expressions as well as determining result set behavior::
+        Above, we pass a series of :func:`.column` elements to the
+        :meth:`.TextClause.columns` method positionally.  These :func:`.column`
+        elements now become first class elements upon the :attr:`.TextAsFrom.c`
+        column collection, just like any other selectable.
+
+        The column expressions we pass to :meth:`.TextClause.columns` may
+        also be typed; when we do so, these :class:`.TypeEngine` objects become
+        the effective return type of the column, so that SQLAlchemy's
+        result-set-processing systems may be used on the return values.
+        This is often needed for types such as date or boolean types, as well
+        as for unicode processing on some dialect configurations::
 
             stmt = text("SELECT id, name, timestamp FROM some_table")
             stmt = stmt.columns(
@@ -1499,9 +1513,8 @@ class TextClause(Executable, ClauseElement):
             for id, name, timestamp in connection.execute(stmt):
                 print(id, name, timestamp)
 
-        Keyword arguments allow just the names and types of columns to be
-        specified, where the :func:`.column` elements will be generated
-        automatically::
+        As a shortcut to the above syntax, keyword arguments referring to
+        types alone may be used, if only type conversion is needed::
 
             stmt = text("SELECT id, name, timestamp FROM some_table")
             stmt = stmt.columns(
@@ -1512,6 +1525,31 @@ class TextClause(Executable, ClauseElement):
 
             for id, name, timestamp in connection.execute(stmt):
                 print(id, name, timestamp)
+
+        The positional form of :meth:`.TextClause.columns` also provides
+        the unique feature of **positional column targeting**, which is
+        particularly useful when using the ORM with complex textual queries.
+        If we specify the columns from our model to :meth:`.TextClause.columns`,
+        the result set will match to those columns positionally, meaning the
+        name or origin of the column in the textual SQL doesn't matter::
+
+            stmt = text("SELECT users.id, addresses.id, users.id, "
+                 "users.name, addresses.email_address AS email "
+                 "FROM users JOIN addresses ON users.id=addresses.user_id "
+                 "WHERE users.id = 1").columns(
+                    User.id,
+                    Address.id,
+                    Address.user_id,
+                    User.name,
+                    Address.email_address
+                 )
+
+            query = session.query(User).from_statement(stmt).options(
+                contains_eager(User.addresses))
+
+        .. versionadded:: 1.1 the :meth:`.TextClause.columns` method now
+           offers positional column targeting in the result set when
+           the column expressions are passed purely positionally.
 
         The :meth:`.TextClause.columns` method provides a direct
         route to calling :meth:`.FromClause.alias` as well as
@@ -1526,15 +1564,22 @@ class TextClause(Executable, ClauseElement):
            :meth:`.TextClause.columns` method.  This method supersedes the
            ``typemap`` argument to :func:`.text`.
 
+
         """
 
-        input_cols = [
+        positional_input_cols = [
             ColumnClause(col.key, types.pop(col.key))
             if col.key in types
             else col
             for col in cols
-        ] + [ColumnClause(key, type_) for key, type_ in types.items()]
-        return selectable.TextAsFrom(self, input_cols)
+        ]
+        keyed_input_cols = [
+            ColumnClause(key, type_) for key, type_ in types.items()]
+
+        return selectable.TextAsFrom(
+            self,
+            positional_input_cols + keyed_input_cols,
+            positional=bool(positional_input_cols) and not keyed_input_cols)
 
     @property
     def type(self):
@@ -1952,11 +1997,12 @@ class Tuple(ClauseList, ColumnElement):
     def _select_iterable(self):
         return (self, )
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return Tuple(*[
             BindParameter(None, o, _compared_to_operator=operator,
-                          _compared_to_type=type_, unique=True)
-            for o, type_ in zip(obj, self._type_tuple)
+                          _compared_to_type=compared_to_type, unique=True,
+                          type_=type_)
+            for o, compared_to_type in zip(obj, self._type_tuple)
         ]).self_group()
 
 
@@ -3637,10 +3683,11 @@ class ColumnClause(Immutable, ColumnElement):
         else:
             return name
 
-    def _bind_param(self, operator, obj):
+    def _bind_param(self, operator, obj, type_=None):
         return BindParameter(self.key, obj,
                              _compared_to_operator=operator,
                              _compared_to_type=self.type,
+                             type_=type_,
                              unique=True)
 
     def _make_proxy(self, selectable, name=None, attach=True,

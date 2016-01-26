@@ -9,6 +9,7 @@ from sqlalchemy import event
 from sqlalchemy import sql
 from sqlalchemy import inspect
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.dialects.mysql import reflection as _reflection
 from sqlalchemy.testing import fixtures, AssertsExecutionResults
 from sqlalchemy import testing
 
@@ -532,7 +533,7 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 class RawReflectionTest(fixtures.TestBase):
     def setup(self):
         dialect = mysql.dialect()
-        self.parser = mysql.MySQLTableDefinitionParser(
+        self.parser = _reflection.MySQLTableDefinitionParser(
             dialect, dialect.identifier_preparer)
 
     def test_key_reflection(self):

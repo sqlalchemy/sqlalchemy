@@ -155,6 +155,7 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Numeric: _PGNumericNoBind,
             sqltypes.Float: _PGNumeric,
             JSON: _PGJSON,
+            sqltypes.JSON: _PGJSON
         }
     )
 

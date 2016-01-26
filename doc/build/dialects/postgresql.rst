@@ -44,9 +44,7 @@ construction arguments, are as follows:
 .. autoclass:: BYTEA
     :members: __init__
 
-
 .. autoclass:: CIDR
-    :members: __init__
 
 
 .. autoclass:: DOUBLE_PRECISION
@@ -76,9 +74,6 @@ construction arguments, are as follows:
     :members:
 
 .. autoclass:: JSONB
-    :members:
-
-.. autoclass:: JSONElement
     :members:
 
 .. autoclass:: MACADDR

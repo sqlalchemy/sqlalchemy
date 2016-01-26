@@ -2741,21 +2741,36 @@ class Query(object):
             self.session._autoflush()
         return self._execute_and_instances(context)
 
+    def __str__(self):
+        context = self._compile_context()
+        try:
+            bind = self._get_bind_args(
+                context, self.session.get_bind) if self.session else None
+        except sa_exc.UnboundExecutionError:
+            bind = None
+        return str(context.statement.compile(bind))
+
     def _connection_from_session(self, **kw):
-        conn = self.session.connection(
-            **kw)
+        conn = self.session.connection(**kw)
         if self._execution_options:
             conn = conn.execution_options(**self._execution_options)
         return conn
 
     def _execute_and_instances(self, querycontext):
-        conn = self._connection_from_session(
-            mapper=self._bind_mapper(),
-            clause=querycontext.statement,
+        conn = self._get_bind_args(
+            querycontext,
+            self._connection_from_session,
             close_with_result=True)
 
         result = conn.execute(querycontext.statement, self._params)
         return loading.instances(querycontext.query, result, querycontext)
+
+    def _get_bind_args(self, querycontext, fn, **kw):
+        return fn(
+            mapper=self._bind_mapper(),
+            clause=querycontext.statement,
+            **kw
+        )
 
     @property
     def column_descriptions(self):
@@ -3358,8 +3373,6 @@ class Query(object):
                     sql.True_._ifnone(context.whereclause),
                     single_crit)
 
-    def __str__(self):
-        return str(self._compile_context().statement)
 
 from ..sql.selectable import ForUpdateArg
 

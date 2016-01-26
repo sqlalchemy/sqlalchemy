@@ -169,6 +169,24 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "VARCHAR(1), CHECK (somecolumn IN ('x', "
                             "'y', 'z')))")
 
+    def test_create_type_schema_translate(self):
+        e1 = Enum('x', 'y', 'z', name='somename')
+        e2 = Enum('x', 'y', 'z', name='somename', schema='someschema')
+        schema_translate_map = {None: "foo", "someschema": "bar"}
+
+        self.assert_compile(
+            postgresql.CreateEnumType(e1),
+            "CREATE TYPE foo.somename AS ENUM ('x', 'y', 'z')",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            postgresql.CreateEnumType(e2),
+            "CREATE TYPE bar.somename AS ENUM ('x', 'y', 'z')",
+            schema_translate_map=schema_translate_map
+        )
+
+
     def test_create_table_with_tablespace(self):
         m = MetaData()
         tbl = Table(

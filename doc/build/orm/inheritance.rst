@@ -579,53 +579,114 @@ their own.
 Concrete Table Inheritance
 --------------------------
 
-.. note::
-
-    this section is currently using classical mappings.  The
-    Declarative system fully supports concrete inheritance
-    however.   See the links below for more information on using
-    declarative with concrete table inheritance.
-
-This form of inheritance maps each class to a distinct table, as below:
+This form of inheritance maps each class to a distinct table.  As concrete
+inheritance has a bit more conceptual overhead, first we'll illustrate
+what these tables look like as Core table metadata:
 
 .. sourcecode:: python+sql
 
-    employees_table = Table('employees', metadata,
-        Column('employee_id', Integer, primary_key=True),
+    employees_table = Table(
+        'employee', metadata,
+        Column('id', Integer, primary_key=True),
         Column('name', String(50)),
     )
 
-    managers_table = Table('managers', metadata,
-        Column('employee_id', Integer, primary_key=True),
+    managers_table = Table(
+        'manager', metadata,
+        Column('id', Integer, primary_key=True),
         Column('name', String(50)),
         Column('manager_data', String(50)),
     )
 
-    engineers_table = Table('engineers', metadata,
-        Column('employee_id', Integer, primary_key=True),
+    engineers_table = Table(
+        'engineer', metadata,
+        Column('id', Integer, primary_key=True),
         Column('name', String(50)),
         Column('engineer_info', String(50)),
     )
 
-Notice in this case there is no ``type`` column. If polymorphic loading is not
-required, there's no advantage to using ``inherits`` here; you just define a
-separate mapper for each class.
+Notice in this case there is no ``type`` column; for polymorphic loading,
+additional steps will be needed in order to "manufacture" this information
+during a query.
 
-.. sourcecode:: python+sql
+Using classical mapping, we can map our three classes independently without
+any relationship between them; the fact that ``Engineer`` and ``Manager``
+inherit from ``Employee`` does not have any impact on a classical mapping::
+
+    class Employee(object):
+        pass
+
+    class Manager(Employee):
+        pass
+
+    class Engineer(Employee):
+        pass
 
     mapper(Employee, employees_table)
     mapper(Manager, managers_table)
     mapper(Engineer, engineers_table)
 
-To load polymorphically, the ``with_polymorphic`` argument is required, along
-with a selectable indicating how rows should be loaded. In this case we must
-construct a UNION of all three tables. SQLAlchemy includes a helper function
-to create these called :func:`~sqlalchemy.orm.util.polymorphic_union`, which
+However when using Declarative, Declarative assumes an inheritance mapping
+between the classes because they are already in an inheritance relationship.
+So to map our three classes declaratively, we must include the
+:paramref:`.orm.mapper.concrete` parameter within the ``__mapper_args__``::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        manager_data = Column(String(50))
+
+        __mapper_args__ = {
+            'concrete': True
+        }
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        engineer_info = Column(String(50))
+
+        __mapper_args__ = {
+            'concrete': True
+        }
+
+Two critical points should be noted:
+
+* We must **define all columns explicitly** on each subclass, even those of
+  the same name.  A column such as
+  ``Employee.name`` here is **not** copied out to the tables mapped
+  by ``Manager`` or ``Engineer`` for us.
+
+* while the ``Engineer`` and ``Manager`` classes are
+  mapped in an inheritance relationship with ``Employee``, they still **do not
+  include polymorphic loading**.
+
+Concrete Polymorphic Loading
++++++++++++++++++++++++++++++
+
+To load polymorphically, the :paramref:`.orm.mapper.with_polymorphic` argument is required, along
+with a selectable indicating how rows should be loaded.   Polymorphic loading
+is most inefficient with concrete inheritance, so if we do seek this style of
+loading, while it is possible it's less recommended. In the case of concrete
+inheritance, it means we must construct a UNION of all three tables.
+
+First illustrating this with classical mapping, SQLAlchemy includes a helper
+function to create this UNION called :func:`~sqlalchemy.orm.util.polymorphic_union`, which
 will map all the different columns into a structure of selects with the same
 numbers and names of columns, and also generate a virtual ``type`` column for
-each subselect:
+each subselect.  The function is called **after** all three tables are declared,
+and is then combined with the mappers::
 
-.. sourcecode:: python+sql
+    from sqlalchemy.orm import polymorphic_union
 
     pjoin = polymorphic_union({
         'employee': employees_table,
@@ -652,34 +713,171 @@ Upon select, the polymorphic union produces a query like this:
 
     session.query(Employee).all()
     {opensql}
-    SELECT pjoin.type AS pjoin_type,
-            pjoin.manager_data AS pjoin_manager_data,
-            pjoin.employee_id AS pjoin_employee_id,
-    pjoin.name AS pjoin_name, pjoin.engineer_info AS pjoin_engineer_info
+    SELECT
+        pjoin.id AS pjoin_id,
+        pjoin.name AS pjoin_name,
+        pjoin.type AS pjoin_type,
+        pjoin.manager_data AS pjoin_manager_data,
+        pjoin.engineer_info AS pjoin_engineer_info
     FROM (
-        SELECT employees.employee_id AS employee_id,
-            CAST(NULL AS VARCHAR(50)) AS manager_data, employees.name AS name,
-            CAST(NULL AS VARCHAR(50)) AS engineer_info, 'employee' AS type
-        FROM employees
-    UNION ALL
-        SELECT managers.employee_id AS employee_id,
-            managers.manager_data AS manager_data, managers.name AS name,
-            CAST(NULL AS VARCHAR(50)) AS engineer_info, 'manager' AS type
-        FROM managers
-    UNION ALL
-        SELECT engineers.employee_id AS employee_id,
-            CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name,
-        engineers.engineer_info AS engineer_info, 'engineer' AS type
-        FROM engineers
+        SELECT
+            employee.id AS id,
+            employee.name AS name,
+            CAST(NULL AS VARCHAR(50)) AS manager_data,
+            CAST(NULL AS VARCHAR(50)) AS engineer_info,
+            'employee' AS type
+        FROM employee
+        UNION ALL
+        SELECT
+            manager.id AS id,
+            manager.name AS name,
+            manager.manager_data AS manager_data,
+            CAST(NULL AS VARCHAR(50)) AS engineer_info,
+            'manager' AS type
+        FROM manager
+        UNION ALL
+        SELECT
+            engineer.id AS id,
+            engineer.name AS name,
+            CAST(NULL AS VARCHAR(50)) AS manager_data,
+            engineer.engineer_info AS engineer_info,
+            'engineer' AS type
+        FROM engineer
     ) AS pjoin
-    []
 
-Concrete Inheritance with Declarative
-++++++++++++++++++++++++++++++++++++++
+The above UNION query needs to manufacture "NULL" columns for each subtable
+in order to accommodate for those columns that aren't part of the mapping.
 
-.. versionadded:: 0.7.3
-    The :ref:`declarative_toplevel` module includes helpers for concrete
-    inheritance. See :ref:`declarative_concrete_helpers` for more information.
+In order to map with concrete inheritance and polymorphic loading using
+Declarative, the challenge is to have the polymorphic union ready to go
+when the mappings are created.  One way to achieve this is to continue to
+define the table metadata before the actual mapped classes, and specify
+them to each class using ``__table__``::
+
+    class Employee(Base):
+        __table__ = employee_table
+        __mapper_args__ = {
+            'polymorphic_on':pjoin.c.type,
+            'with_polymorphic': ('*', pjoin),
+            'polymorphic_identity':'employee'
+        }
+
+    class Engineer(Employee):
+        __table__ = engineer_table
+        __mapper_args__ = {'polymorphic_identity':'engineer', 'concrete':True}
+
+    class Manager(Employee):
+        __table__ = manager_table
+        __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
+
+.. _inheritance_concrete_helpers:
+
+Using the Declarative Helper Classes
++++++++++++++++++++++++++++++++++++++
+
+Another way is to use a special helper class that takes on the fairly
+complicated task of deferring the production of :class:`.Mapper` objects
+until all table metadata has been collected, and the polymorphic union to which
+the mappers will be associated will be available.  This is available via
+the :class:`.AbstractConcreteBase` and :class:`.ConcreteBase` classes.  For
+our example here, we're using a "concrete" base, e.g. an ``Employee`` row
+can exist by itself that is not an ``Engineer`` or a ``Manager``.   The
+mapping would look like::
+
+    from sqlalchemy.ext.declarative import ConcreteBase
+
+    class Employee(ConcreteBase, Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee',
+            'concrete':True
+        }
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        manager_data = Column(String(40))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'manager',
+            'concrete':True
+        }
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        engineer_info = Column(String(40))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'engineer',
+            'concrete':True
+        }
+
+There is also the option to use a so-called "abstract" base; where we wont
+actually have an ``employee`` table at all, and instead will only have
+``manager`` and ``engineer`` tables.  The ``Employee`` class will never be
+instantiated directly.  The change here is that the base mapper is mapped
+directly to the "polymorphic union" selectable, which no longer includes
+the ``employee`` table.  In classical mapping, this is::
+
+    from sqlalchemy.orm import polymorphic_union
+
+    pjoin = polymorphic_union({
+        'manager': managers_table,
+        'engineer': engineers_table
+    }, 'type', 'pjoin')
+
+    employee_mapper = mapper(Employee, pjoin,
+                                        with_polymorphic=('*', pjoin),
+                                        polymorphic_on=pjoin.c.type)
+    manager_mapper = mapper(Manager, managers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
+                                        polymorphic_identity='manager')
+    engineer_mapper = mapper(Engineer, engineers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
+                                        polymorphic_identity='engineer')
+
+Using the Declarative helpers, the :class:`.AbstractConcreteBase` helper
+can produce this; the mapping would be::
+
+    from sqlalchemy.ext.declarative import AbstractConcreteBase
+
+    class Employee(AbstractConcreteBase, Base):
+        pass
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        manager_data = Column(String(40))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'manager',
+            'concrete':True
+        }
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        engineer_info = Column(String(40))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'engineer',
+            'concrete':True
+        }
+
+.. seealso::
+
+    :ref:`declarative_concrete_table` - in the Declarative reference documentation
+
 
 Using Relationships with Inheritance
 ------------------------------------
