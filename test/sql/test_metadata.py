@@ -1257,6 +1257,25 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             assign2
         )
 
+    def test_c_mutate_after_unpickle(self):
+        m = MetaData()
+
+        y = Column('y', Integer)
+        t1 = Table('t', m, Column('x', Integer), y)
+
+        t2 = pickle.loads(pickle.dumps(t1))
+        z = Column('z', Integer)
+        g = Column('g', Integer)
+        t2.append_column(z)
+
+        is_(t1.c.contains_column(y), True)
+        is_(t2.c.contains_column(y), False)
+        y2 = t2.c.y
+        is_(t2.c.contains_column(y2), True)
+
+        is_(t2.c.contains_column(z), True)
+        is_(t2.c.contains_column(g), False)
+
     def test_autoincrement_replace(self):
         m = MetaData()
 

@@ -20,6 +20,17 @@
     :released:
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3632
+
+        Fixed bug in :class:`.Table` metadata construct which appeared
+        around the 0.9 series where adding columns to a :class:`.Table`
+        that was unpickled would fail to correctly establish the
+        :class:`.Column` within the 'c' collection, leading to issues in
+        areas such as ORM configuration.   This could impact use cases such
+        as ``extend_existing`` and others.
+
+    .. change::
         :tags: bug, py3k
         :tickets: 3625
 
