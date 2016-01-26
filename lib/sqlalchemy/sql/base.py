@@ -579,8 +579,7 @@ class ColumnCollection(util.OrderedProperties):
         object.__setattr__(self, '_all_columns', state['_all_columns'])
 
     def contains_column(self, col):
-        existing = self._data.get(col.key)
-        return existing is not None and hash(existing) == hash(col)
+        return col in set(self._all_columns)
 
     def as_immutable(self):
         return ImmutableColumnCollection(self._data, self._all_columns)
