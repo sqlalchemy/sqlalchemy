@@ -263,7 +263,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
 #if PY_MAJOR_VERSION < 3
     if (PyInt_CheckExact(key)) {
         index = PyInt_AS_LONG(key);
-    }
+    } else
 #endif
 
     if (PyLong_CheckExact(key)) {
