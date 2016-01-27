@@ -35,7 +35,10 @@ except ImportError:
 
 try:
     from sqlalchemy.cresultproxy import BaseRowProxy
+    _baserowproxy_usecext = True
 except ImportError:
+    _baserowproxy_usecext = False
+
     class BaseRowProxy(object):
         __slots__ = ('_parent', '_row', '_processors', '_keymap')
 
@@ -210,11 +213,13 @@ class ResultMetaData(object):
             context, cursor_description, result_columns,
             num_ctx_cols, cols_are_ordered, textual_ordered)
 
-        # keymap indexes by integer index...
-        self._keymap = dict([
-            (elem[0], (elem[3], elem[4], elem[0]))
-            for elem in raw
-        ])
+        self._keymap = {}
+        if not _baserowproxy_usecext:
+            # keymap indexes by integer index...
+            self._keymap.update([
+                (elem[0], (elem[3], elem[4], elem[0]))
+                for elem in raw
+            ])
 
         # processors in key order for certain per-row
         # views like __iter__ and slices
