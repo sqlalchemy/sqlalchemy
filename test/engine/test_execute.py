@@ -951,6 +951,25 @@ class ResultProxyTest(fixtures.TestBase):
             {'key': (None, None, 0), 0: (None, None, 0)})
         assert isinstance(row, collections.Sequence)
 
+    def test_rowproxy_getitem(self):
+        metadata = MetaData()
+        metadata.bind = 'sqlite://'
+        values = Table('users', metadata,
+                       Column('key', String(10), primary_key=True),
+                       Column('value', String(10)))
+        values.create()
+
+        values.insert().execute(key='One', value='Uno')
+        row = values.select().execute().fetchone()
+
+        assert row['key'] == 'One'
+        assert row['value'] == 'Uno'
+        assert row[0] == 'One'
+        assert row[1] == 'Uno'
+        assert row[-2] == 'One'
+        assert row[-1] == 'Uno'
+        assert row[1:0:-1] == ('Uno',)
+
     @testing.requires.cextensions
     def test_row_c_sequence_check(self):
         import csv
