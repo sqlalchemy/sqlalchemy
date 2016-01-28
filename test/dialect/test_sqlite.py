@@ -8,7 +8,7 @@ from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, is_
 from sqlalchemy import Table, select, bindparam, Column,\
     MetaData, func, extract, ForeignKey, text, DefaultClause, and_, \
-    create_engine, UniqueConstraint, Index
+    create_engine, UniqueConstraint, Index, PrimaryKeyConstraint
 from sqlalchemy.types import Integer, String, Boolean, DateTime, Date, Time
 from sqlalchemy import types as sqltypes
 from sqlalchemy import event, inspect
@@ -1130,6 +1130,18 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 prefixes=['TEMPORARY']
             )
 
+            Table(
+                'p', meta,
+                Column('id', Integer),
+                PrimaryKeyConstraint('id', name='pk_name'),
+            )
+
+            Table(
+                'q', meta,
+                Column('id', Integer),
+                PrimaryKeyConstraint('id'),
+            )
+
             meta.create_all(conn)
 
             # will contain an "autoindex"
@@ -1223,8 +1235,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_unnamed_inline_foreign_key_quoted(self):
-        inspector = Inspector(testing.db)
-
         inspector = Inspector(testing.db)
         fks = inspector.get_foreign_keys('e1')
         eq_(
@@ -1340,6 +1350,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
         eq_(
             inspector.get_unique_constraints("n"),
             [{'column_names': ['x'], 'name': None}]
+        )
+
+    def test_primary_key_constraint_named(self):
+        inspector = Inspector(testing.db)
+        eq_(
+            inspector.get_pk_constraint("p"),
+            {'constrained_columns': ['id'], 'name': 'pk_name'}
+        )
+
+    def test_primary_key_constraint_unnamed(self):
+        inspector = Inspector(testing.db)
+        eq_(
+            inspector.get_pk_constraint("q"),
+            {'constrained_columns': ['id'], 'name': None}
+        )
+
+    def test_primary_key_constraint_no_pk(self):
+        inspector = Inspector(testing.db)
+        eq_(
+            inspector.get_pk_constraint("d"),
+            {'constrained_columns': [], 'name': None}
         )
 
 
