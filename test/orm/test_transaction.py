@@ -657,8 +657,8 @@ class SessionTransactionTest(FixtureTest):
         assert session.transaction is not None, \
             'autocommit=False should start a new transaction'
 
-    @testing.skip_if("oracle", "oracle doesn't support release of savepoint")
-    @testing.requires.savepoints
+    @testing.requires.python2
+    @testing.requires.savepoints_w_release
     def test_report_primary_error_when_rollback_fails(self):
         User, users = self.classes.User, self.tables.users
 
@@ -666,7 +666,7 @@ class SessionTransactionTest(FixtureTest):
 
         session = Session(testing.db)
 
-        with expect_warnings(".*due to an additional ROLLBACK.*INSERT INTO"):
+        with expect_warnings(".*during handling of a previous exception.*"):
             session.begin_nested()
             savepoint = session.\
                 connection()._Connection__transaction._savepoint

@@ -59,6 +59,13 @@ class safe_reraise(object):
             self._exc_info = None   # remove potential circular references
             compat.reraise(exc_type, exc_value, exc_tb)
         else:
+            if not compat.py3k and self._exc_info and self._exc_info[1]:
+                # emulate Py3K's behavior of telling us when an exception
+                # occurs in an exception handler.
+                warn(
+                    "An exception has occurred during handling of a "
+                    "previous exception.  The previous exception "
+                    "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1]))
             self._exc_info = None   # remove potential circular references
             compat.reraise(type_, value, traceback)
 

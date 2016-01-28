@@ -286,6 +286,10 @@ class DefaultRequirements(SuiteRequirements):
                     ("mysql", "<", (5, 0, 3)),
                     ], "savepoints not supported")
 
+    @property
+    def savepoints_w_release(self):
+        return self.savepoints + skip_if(
+            "oracle", "oracle doesn't support release of savepoint")
 
     @property
     def schemas(self):

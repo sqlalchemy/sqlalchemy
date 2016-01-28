@@ -3,7 +3,7 @@ import sys
 
 from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
-from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock
+from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock, expect_warnings
 from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
@@ -2191,6 +2191,38 @@ class ReraiseTest(fixtures.TestBase):
         except MyOtherException as moe:
             if testing.requires.python3.enabled:
                 is_(moe.__cause__, me)
+
+    @testing.requires.python2
+    def test_safe_reraise_py2k_warning(self):
+        class MyException(Exception):
+            pass
+
+        class MyOtherException(Exception):
+            pass
+
+        m1 = MyException("exc one")
+        m2 = MyOtherException("exc two")
+
+        def go2():
+            raise m2
+
+        def go():
+            try:
+                raise m1
+            except:
+                with util.safe_reraise():
+                    go2()
+
+        with expect_warnings(
+            "An exception has occurred during handling of a previous "
+            "exception.  The previous exception "
+            "is:.*MyException.*exc one"
+        ):
+            try:
+                go()
+                assert False
+            except MyOtherException:
+                pass
 
 
 class TestClassProperty(fixtures.TestBase):
