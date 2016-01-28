@@ -218,6 +218,27 @@ class TransactionTest(fixtures.TestBase):
         finally:
             connection.close()
 
+    @testing.requires.python2
+    @testing.requires.savepoints_w_release
+    def test_savepoint_release_fails_warning(self):
+        with testing.db.connect() as connection:
+            connection.begin()
+
+            with expect_warnings(
+                "An exception has occurred during handling of a previous "
+                "exception.  The previous exception "
+                "is:.*..SQL\:.*RELEASE SAVEPOINT"
+            ):
+                def go():
+                    with connection.begin_nested() as savepoint:
+                        connection.dialect.do_release_savepoint(
+                            connection, savepoint._savepoint)
+                assert_raises_message(
+                    exc.DBAPIError,
+                    ".*SQL\:.*ROLLBACK TO SAVEPOINT",
+                    go
+                )
+
     def test_retains_through_options(self):
         connection = testing.db.connect()
         try:

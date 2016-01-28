@@ -20,6 +20,29 @@
     :released:
 
     .. change::
+        :tags: bug, engine, mysql
+        :tickets: 2696
+
+        Revisiting :ticket:`2696`, first released in 1.0.10, which attempts to
+        work around Python 2's lack of exception context reporting by emitting
+        a warning for an exception that was interrupted by a second exception
+        when attempting to roll back the already-failed transaction; this
+        issue continues to occur for MySQL backends in conjunction with a
+        savepoint that gets unexpectedly lost, which then causes a
+        "no such savepoint" error when the rollback is attempted, obscuring
+        what the original condition was.
+
+        The approach has been generalized to the Core "safe
+        reraise" function which takes place across the ORM and Core in any
+        place that a transaction is being rolled back in response to an error
+        which occurred trying to commit, including the context managers
+        provided by :class:`.Session` and :class:`.Connection`, and taking
+        place for operations such as a failure on "RELEASE SAVEPOINT".
+        Previously, the fix was only in place for a specific path within
+        the ORM flush/commit process; it now takes place for all transational
+        context managers as well.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3632
 
