@@ -248,7 +248,7 @@ def drop_all_tables(engine, inspector, schema=None, include_names=None):
                 if include_names is not None and tname not in include_names:
                     continue
                 conn.execute(DropTable(
-                    Table(tname, MetaData())
+                    Table(tname, MetaData(), schema=schema)
                 ))
             elif fkcs:
                 if not engine.dialect.supports_alter:
