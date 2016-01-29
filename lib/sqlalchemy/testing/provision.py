@@ -1,8 +1,10 @@
 from sqlalchemy.engine import url as sa_url
 from sqlalchemy import text
+from sqlalchemy import exc
 from sqlalchemy.util import compat
 from . import config, engines
 import os
+import time
 
 FOLLOWER_IDENT = None
 
@@ -158,7 +160,18 @@ def _pg_create_db(cfg, eng, ident):
         except Exception:
             pass
         currentdb = conn.scalar("select current_database()")
-        conn.execute("CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
+        for attempt in range(3):
+            try:
+                conn.execute(
+                    "CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
+            except exc.OperationalError as err:
+                if attempt != 2 and "accessed by other users" in str(err):
+                    time.sleep(.2)
+                    continue
+                else:
+                    raise
+            else:
+                break
 
 
 @_create_db.for_db("mysql")
