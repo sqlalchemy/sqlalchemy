@@ -22,6 +22,15 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: change, postgresql
+
+        The ``sqlalchemy.dialects.postgres`` module, long deprecated, is
+        removed; this has emitted a warning for many years and projects
+        should be calling upon ``sqlalchemy.dialects.postgresql``.
+        Engine URLs of the form ``postgres://`` will still continue to function,
+        however.
+
+    .. change::
         :tags: bug, sqlite
         :tickets: 3634
 

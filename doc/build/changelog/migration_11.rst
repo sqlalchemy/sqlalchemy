@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: January 19, 2016
+    Document last updated: January 29, 2016
 
 Introduction
 ============
@@ -1363,6 +1363,15 @@ emits::
 
 
 :ticket:`2729`
+
+The "postgres" module is removed
+---------------------------------
+
+The ``sqlalchemy.dialects.postgres`` module, long deprecated, is
+removed; this has emitted a warning for many years and projects
+should be calling upon ``sqlalchemy.dialects.postgresql``.
+Engine URLs of the form ``postgres://`` will still continue to function,
+however.
 
 Dialect Improvements and Changes - MySQL
 =============================================

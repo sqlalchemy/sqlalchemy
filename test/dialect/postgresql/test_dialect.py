@@ -15,6 +15,9 @@ import logging
 import logging.handlers
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.engine import engine_from_config
+from sqlalchemy.engine import url
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import expect_deprecated
 
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
@@ -78,6 +81,13 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             "some statement", {}, TransactionRollbackError("foo"),
             psycopg2.Error)
         assert isinstance(exception, exc.OperationalError)
+
+    def test_deprecated_dialect_name_still_loads(self):
+        with expect_deprecated(
+                "The 'postgres' dialect name "
+                "has been renamed to 'postgresql'"):
+            dialect = url.URL("postgres").get_dialect()
+        is_(dialect, postgresql.dialect)
 
     # currently not passing with pg 9.3 that does not seem to generate
     # any notices here, would rather find a way to mock this

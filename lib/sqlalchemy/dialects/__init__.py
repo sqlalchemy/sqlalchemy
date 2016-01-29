@@ -17,6 +17,7 @@ __all__ = (
 
 from .. import util
 
+_translates = {'postgres': 'postgresql'}
 
 def _auto_fn(name):
     """default dialect importer.
@@ -30,6 +31,14 @@ def _auto_fn(name):
     else:
         dialect = name
         driver = "base"
+
+    if dialect in _translates:
+        translated = _translates[dialect]
+        util.warn_deprecated(
+            "The '%s' dialect name has been "
+            "renamed to '%s'" % (dialect, translated)
+        )
+        dialect = translated
     try:
         module = __import__('sqlalchemy.dialects.%s' % (dialect, )).dialects
     except ImportError:
