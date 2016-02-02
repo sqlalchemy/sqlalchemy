@@ -15,7 +15,8 @@ from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.sql import compiler
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
-    Boolean, NullType, MatchType, Indexable, Concatenable, ARRAY, JSON
+    Boolean, NullType, MatchType, Indexable, Concatenable, ARRAY, JSON, \
+    DateTime
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -264,6 +265,18 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         is_(
             expr.operator, operator.add
         )
+
+    def test_contains_override_raises(self):
+        for col in [
+            Column('x', String),
+            Column('x', Integer),
+            Column('x', DateTime)
+        ]:
+            assert_raises_message(
+                NotImplementedError,
+                "Operator 'contains' is not supported on this expression",
+                lambda: 'foo' in col
+            )
 
 
 class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -818,6 +831,15 @@ class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             col[5],
             "x[:x_1]",
             checkparams={'x_1': 5}
+        )
+
+    def test_contains_override_raises(self):
+        col = Column('x', self.MyType())
+
+        assert_raises_message(
+            NotImplementedError,
+            "Operator 'contains' is not supported on this expression",
+            lambda: 'foo' in col
         )
 
     def test_getindex_sqlexpr(self):

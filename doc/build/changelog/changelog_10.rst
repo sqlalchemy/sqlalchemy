@@ -20,6 +20,17 @@
     :released:
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3642
+
+        Fixed issue where inadvertent use of the Python ``__contains__``
+        override with a column expression (e.g. by using ``'x' in col``)
+        would cause an endless loop in the case of an ARRAY type, as Python
+        defers this to ``__getitem__`` access which never raises for this
+        type.  Overall, all use of ``__contains__`` now raises
+        NotImplementedError.
+
+    .. change::
         :tags: bug, engine, mysql
         :tickets: 2696
 

@@ -772,6 +772,15 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             checkparams={'param_1': 4, 'param_3': 6, 'param_2': 5}
         )
 
+    def test_contains_override_raises(self):
+        col = column('x', postgresql.ARRAY(Integer))
+
+        assert_raises_message(
+            NotImplementedError,
+            "Operator 'contains' is not supported on this expression",
+            lambda: 'foo' in col
+        )
+
     def test_array_contained_by(self):
         col = column('x', postgresql.ARRAY(Integer))
         self.assert_compile(
