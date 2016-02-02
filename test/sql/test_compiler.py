@@ -255,6 +255,22 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             literal_binds=True
         )
 
+    def test_insert_literal_binds(self):
+        stmt = table1.insert().values(myid=3, name='jack')
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name) VALUES (3, 'jack')",
+            literal_binds=True)
+
+    def test_update_literal_binds(self):
+        stmt = table1.update().values(name='jack').where(table1.c.name == 'jill')
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name='jack' WHERE mytable.name = 'jill'",
+            literal_binds=True)
+
     def test_select_precol_compile_ordering(self):
         s1 = select([column('x')]).select_from(text('a')).limit(5).as_scalar()
         s2 = select([s1]).limit(10)
