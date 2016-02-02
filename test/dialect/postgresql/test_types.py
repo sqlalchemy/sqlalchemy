@@ -170,7 +170,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         t2 = Table('table', m2, autoload=True)
         eq_(
             t2.c.value.type.enums,
-            (util.u('réveillé'), util.u('drôle'), util.u('S’il'))
+            [util.u('réveillé'), util.u('drôle'), util.u('S’il')]
         )
 
     @testing.provide_metadata
@@ -445,8 +445,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         e.connect()
         assert not dialect.supports_native_enum
 
+    @testing.provide_metadata
     def test_reflection(self):
-        metadata = MetaData(testing.db)
+        metadata = self.metadata
         etype = Enum('four', 'five', 'six', name='fourfivesixtype',
                      metadata=metadata)
         t1 = Table(
@@ -458,18 +459,16 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                     'one', 'two', 'three', name='onetwothreetype')),
             Column('value2', etype))
         metadata.create_all()
-        try:
-            m2 = MetaData(testing.db)
-            t2 = Table('table', m2, autoload=True)
-            assert t2.c.value.type.enums == ('one', 'two', 'three')
-            assert t2.c.value.type.name == 'onetwothreetype'
-            assert t2.c.value2.type.enums == ('four', 'five', 'six')
-            assert t2.c.value2.type.name == 'fourfivesixtype'
-        finally:
-            metadata.drop_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('table', m2, autoload=True)
+        eq_(t2.c.value.type.enums, ['one', 'two', 'three'])
+        eq_(t2.c.value.type.name, 'onetwothreetype')
+        eq_(t2.c.value2.type.enums, ['four', 'five', 'six'])
+        eq_(t2.c.value2.type.name, 'fourfivesixtype')
 
+    @testing.provide_metadata
     def test_schema_reflection(self):
-        metadata = MetaData(testing.db)
+        metadata = self.metadata
         etype = Enum(
             'four',
             'five',
@@ -478,7 +477,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             schema='test_schema',
             metadata=metadata,
         )
-        t1 = Table(
+        Table(
             'table', metadata,
             Column(
                 'id', Integer, primary_key=True),
@@ -488,16 +487,13 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                     name='onetwothreetype', schema='test_schema')),
             Column('value2', etype))
         metadata.create_all()
-        try:
-            m2 = MetaData(testing.db)
-            t2 = Table('table', m2, autoload=True)
-            assert t2.c.value.type.enums == ('one', 'two', 'three')
-            assert t2.c.value.type.name == 'onetwothreetype'
-            assert t2.c.value2.type.enums == ('four', 'five', 'six')
-            assert t2.c.value2.type.name == 'fourfivesixtype'
-            assert t2.c.value2.type.schema == 'test_schema'
-        finally:
-            metadata.drop_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('table', m2, autoload=True)
+        eq_(t2.c.value.type.enums, ['one', 'two', 'three'])
+        eq_(t2.c.value.type.name, 'onetwothreetype')
+        eq_(t2.c.value2.type.enums, ['four', 'five', 'six'])
+        eq_(t2.c.value2.type.name, 'fourfivesixtype')
+        eq_(t2.c.value2.type.schema, 'test_schema')
 
     @testing.provide_metadata
     def test_custom_subclass(self):

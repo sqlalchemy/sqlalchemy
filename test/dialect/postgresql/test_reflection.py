@@ -202,7 +202,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         table = Table('enum_test', metadata, autoload=True)
         eq_(
             table.c.data.type.enums,
-            ('test', )
+            ['test']
         )
 
     def test_table_is_reflected_test_schema(self):
