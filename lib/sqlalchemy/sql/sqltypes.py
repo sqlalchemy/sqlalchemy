@@ -1103,7 +1103,8 @@ class Enum(String, SchemaType):
         Keyword arguments which don't apply to a specific backend are ignored
         by that backend.
 
-        :param \*enums: string or unicode enumeration labels. If unicode
+        :param \*enums: either exactly one PEP 435 compliant enumerated type
+           or one or more string or unicode enumeration labels. If unicode
            labels are present, the `convert_unicode` flag is auto-enabled.
 
         :param convert_unicode: Enable unicode-aware bind parameter and
@@ -1124,7 +1125,9 @@ class Enum(String, SchemaType):
         :param name: The name of this type. This is required for Postgresql
            and any future supported database which requires an explicitly
            named type, or an explicitly named constraint in order to generate
-           the type and/or a table that uses it.
+           the type and/or a table that uses it. If an :class:`~enum.Enum`
+           class was used, its name (converted to lower case) is used by
+           default.
 
         :param native_enum: Use the database's native ENUM type when
            available. Defaults to True. When False, uses VARCHAR + check
@@ -1153,11 +1156,20 @@ class Enum(String, SchemaType):
            .. versionadded:: 0.8
 
         """
-        self.enums = enums
+        if len(enums) == 1 and hasattr(enums[0], '__members__'):
+            self.enums = list(enums[0].__members__)
+            self.enum_class = enums[0]
+            kw.setdefault('name', enums[0].__name__.lower())
+            self.key_lookup = dict((value, key) for key, value in enums[0].__members__.items())
+            self.value_lookup = enums[0].__members__.copy()
+        else:
+            self.enums = enums
+            self.enum_class = self.key_lookup = self.value_lookup = None
+
         self.native_enum = kw.pop('native_enum', True)
         convert_unicode = kw.pop('convert_unicode', None)
         if convert_unicode is None:
-            for e in enums:
+            for e in self.enums:
                 if isinstance(e, util.text_type):
                     convert_unicode = True
                     break
@@ -1203,6 +1215,7 @@ class Enum(String, SchemaType):
         metadata = kw.pop('metadata', self.metadata)
         _create_events = kw.pop('_create_events', False)
         if issubclass(impltype, Enum):
+            args = [self.enum_class] if self.enum_class is not None else self.enums
             return impltype(name=self.name,
                             schema=schema,
                             metadata=metadata,
@@ -1210,11 +1223,65 @@ class Enum(String, SchemaType):
                             native_enum=self.native_enum,
                             inherit_schema=self.inherit_schema,
                             _create_events=_create_events,
-                            *self.enums,
+                            *args,
                             **kw)
         else:
             # TODO: why would we be here?
             return super(Enum, self).adapt(impltype, **kw)
+
+    def literal_processor(self, dialect):
+        parent_processor = super(Enum, self).literal_processor(dialect)
+        if self.key_lookup:
+            def process(value):
+                value = self.key_lookup.get(value, value)
+                if parent_processor:
+                    return parent_processor(value)
+
+            return process
+        else:
+            return parent_processor
+
+    def bind_processor(self, dialect):
+        def process(value):
+            if isinstance(value, util.string_types):
+                if value not in self.enums:
+                    raise LookupError(
+                        '"%s" is not among the defined enum values' %
+                        value)
+            elif self.key_lookup and value in self.key_lookup:
+                value = self.key_lookup[value]
+
+            if parent_processor:
+                value = parent_processor(value)
+            return value
+
+        parent_processor = super(Enum, self).bind_processor(dialect)
+        return process
+
+    def result_processor(self, dialect, coltype):
+        parent_processor = super(Enum, self).result_processor(dialect,
+                                                              coltype)
+        if self.value_lookup:
+            def process(value):
+                if parent_processor:
+                    value = parent_processor(value)
+
+                try:
+                    return self.value_lookup[value]
+                except KeyError:
+                    raise LookupError('No such member in enum class %s: %s' %
+                                      (self.enum_class.__name__, value))
+
+            return process
+        else:
+            return parent_processor
+
+    @property
+    def python_type(self):
+        if self.enum_class:
+            return self.enum_class
+        else:
+            return super(Enum, self).python_type
 
 
 class PickleType(TypeDecorator):

@@ -15,6 +15,7 @@ from sqlalchemy.sql import ddl
 from sqlalchemy.sql import visitors
 from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
+from sqlalchemy.util import OrderedDict
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
 from sqlalchemy.sql import operators, column, table, null
@@ -28,6 +29,21 @@ from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+
+
+class SomeEnum(object):
+    # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
+    __members__ = OrderedDict()
+
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+        self.__members__[name] = self
+        setattr(SomeEnum, name, self)
+
+SomeEnum('one', 1)
+SomeEnum('two', 2)
+SomeEnum('three', 3)
 
 
 class AdaptTest(fixtures.TestBase):
@@ -181,6 +197,8 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.String().python_type, str)
         eq_(types.Unicode().python_type, util.text_type)
         eq_(types.String(convert_unicode=True).python_type, util.text_type)
+        eq_(types.Enum('one', 'two', 'three').python_type, str)
+        eq_(types.Enum(SomeEnum).python_type, SomeEnum)
 
         assert_raises(
             NotImplementedError,
@@ -278,6 +296,7 @@ class PickleTypesTest(fixtures.TestBase):
                 Column('Pic', PickleType()),
                 Column('Int', Interval()),
                 Column('Enu', Enum('x', 'y', 'z', name="somename")),
+                Column('En2', Enum(SomeEnum)),
             ]
             for column_type in column_types:
                 meta = MetaData()
@@ -1087,41 +1106,35 @@ class UnicodeTest(fixtures.TestBase):
             unicodedata.encode('ascii', 'ignore').decode()
         )
 
-enum_table = non_native_enum_table = metadata = None
 
-
-class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
+class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     @classmethod
-    def setup_class(cls):
-        global enum_table, non_native_enum_table, metadata
-        metadata = MetaData(testing.db)
-        enum_table = Table(
+    def define_tables(cls, metadata):
+        Table(
             'enum_table', metadata, Column("id", Integer, primary_key=True),
             Column('someenum', Enum('one', 'two', 'three', name='myenum'))
         )
 
-        non_native_enum_table = Table(
+        Table(
             'non_native_enum_table', metadata,
             Column("id", Integer, primary_key=True),
             Column('someenum', Enum('one', 'two', 'three', native_enum=False)),
         )
 
-        metadata.create_all()
-
-    def teardown(self):
-        enum_table.delete().execute()
-        non_native_enum_table.delete().execute()
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
+        Table(
+            'stdlib_enum_table', metadata,
+            Column("id", Integer, primary_key=True),
+            Column('someenum', Enum(SomeEnum))
+        )
 
     @testing.fails_on(
         'postgresql+zxjdbc',
         'zxjdbc fails on ENUM: column "XXX" is of type XXX '
         'but expression is of type character varying')
     def test_round_trip(self):
+        enum_table = self.tables['enum_table']
+
         enum_table.insert().execute([
             {'id': 1, 'someenum': 'two'},
             {'id': 2, 'someenum': 'two'},
@@ -1138,6 +1151,8 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_non_native_round_trip(self):
+        non_native_enum_table = self.tables['non_native_enum_table']
+
         non_native_enum_table.insert().execute([
             {'id': 1, 'someenum': 'two'},
             {'id': 2, 'someenum': 'two'},
@@ -1154,6 +1169,25 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
             ]
         )
 
+    def test_stdlib_enum_round_trip(self):
+        stdlib_enum_table = self.tables['stdlib_enum_table']
+
+        stdlib_enum_table.insert().execute([
+            {'id': 1, 'someenum': SomeEnum.two},
+            {'id': 2, 'someenum': SomeEnum.two},
+            {'id': 3, 'someenum': SomeEnum.one},
+        ])
+
+        eq_(
+            stdlib_enum_table.select().
+            order_by(stdlib_enum_table.c.id).execute().fetchall(),
+            [
+                (1, SomeEnum.two),
+                (2, SomeEnum.two),
+                (3, SomeEnum.one),
+            ]
+        )
+
     def test_adapt(self):
         from sqlalchemy.dialects.postgresql import ENUM
         e1 = Enum('one', 'two', 'three', native_enum=False)
@@ -1163,6 +1197,9 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         e1 = Enum('one', 'two', 'three', name='foo', schema='bar')
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
+        e1 = Enum(SomeEnum)
+        eq_(e1.adapt(ENUM).name, 'someenum')
+        eq_(e1.adapt(ENUM).enums, ['one', 'two', 'three'])
 
     @testing.provide_metadata
     def test_create_metadata_bound_no_crash(self):
@@ -1170,13 +1207,6 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         Enum('a', 'b', 'c', metadata=m1, name='ncenum')
 
         m1.create_all(testing.db)
-
-    @testing.crashes(
-        'mysql', 'Inconsistent behavior across various OS/drivers')
-    def test_constraint(self):
-        assert_raises(
-            exc.DBAPIError, enum_table.insert().execute,
-            {'id': 4, 'someenum': 'four'})
 
     def test_non_native_constraint_custom_type(self):
         class Foob(object):
@@ -1209,12 +1239,9 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
             dialect="default"
         )
 
-    @testing.fails_on(
-        'mysql',
-        "the CHECK constraint doesn't raise an exception for unknown reason")
-    def test_non_native_constraint(self):
+    def test_lookup_failure(self):
         assert_raises(
-            exc.DBAPIError, non_native_enum_table.insert().execute,
+            exc.StatementError, self.tables['non_native_enum_table'].insert().execute,
             {'id': 4, 'someenum': 'four'}
         )
 
