@@ -20,6 +20,15 @@
     :released:
 
     .. change::
+        :tags: bug, oracle, jython
+        :tickets: 3621
+
+        Fixed a small issue in the Jython Oracle compiler involving the
+        rendering of "RETURNING" which allows this currently
+        unsupported/untested dialect to work rudimentally with the 1.0 series.
+        Pull request courtesy Carlos Rivas.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3642
 
