@@ -2004,7 +2004,7 @@ class SQLCompiler(Compiled):
                 text += " " + extra_from_text
 
         if update_stmt._whereclause is not None:
-            t = self.process(update_stmt._whereclause)
+            t = self.process(update_stmt._whereclause, **kw)
             if t:
                 text += " WHERE " + t
 

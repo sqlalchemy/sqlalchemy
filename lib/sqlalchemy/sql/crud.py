@@ -117,14 +117,14 @@ def _get_crud_params(compiler, stmt, **kw):
 
 def _create_bind_param(
         compiler, col, value, process=True,
-        required=False, name=None):
+        required=False, name=None, **kw):
     if name is None:
         name = col.key
     bindparam = elements.BindParameter(
         name, value, type_=col.type, required=required)
     bindparam._is_crud = True
     if process:
-        bindparam = bindparam._compiler_dispatch(compiler)
+        bindparam = bindparam._compiler_dispatch(compiler, **kw)
     return bindparam
 
 
@@ -275,7 +275,8 @@ def _append_param_parameter(
             compiler, c, value, required=value is REQUIRED,
             name=_col_bind_name(c)
             if not stmt._has_multi_parameters
-            else "%s_0" % _col_bind_name(c)
+            else "%s_0" % _col_bind_name(c),
+            **kw
         )
     else:
         if isinstance(value, elements.BindParameter) and \
