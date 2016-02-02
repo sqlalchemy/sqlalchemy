@@ -69,13 +69,16 @@ class ENUM(sqltypes.Enum, _EnumeratedValues):
 
         :param enums: The range of valid values for this ENUM.  Values will be
           quoted when generating the schema according to the quoting flag (see
-          below).
+          below).  This object may also be a PEP-435-compliant enumerated
+          type.
 
-        :param strict: Defaults to False: ensure that a given value is in this
-          ENUM's range of permissible values when inserting or updating rows.
-          Note that MySQL will not raise a fatal error if you attempt to store
-          an out of range value- an alternate value will be stored instead.
-          (See MySQL ENUM documentation.)
+          .. versionadded: 1.1 added support for PEP-435-compliant enumerated
+             types.
+
+        :param strict: This flag has no effect.
+
+         .. versionchanged:: The MySQL ENUM type as well as the base Enum
+            type now validates all Python data values.
 
         :param charset: Optional, a column-level character set for this string
           value.  Takes precedence to 'ascii' or 'unicode' short-hand.
@@ -109,8 +112,9 @@ class ENUM(sqltypes.Enum, _EnumeratedValues):
           literals for you.  This is a transitional option.
 
         """
-        values, length = self._init_values(enums, kw)
-        self.strict = kw.pop('strict', False)
+
+        kw.pop('strict', None)
+        sqltypes.Enum.__init__(self, *enums)
         kw.pop('metadata', None)
         kw.pop('schema', None)
         kw.pop('name', None)
@@ -118,29 +122,17 @@ class ENUM(sqltypes.Enum, _EnumeratedValues):
         kw.pop('native_enum', None)
         kw.pop('inherit_schema', None)
         kw.pop('_create_events', None)
-        _StringType.__init__(self, length=length, **kw)
-        sqltypes.Enum.__init__(self, *values)
+        _StringType.__init__(self, length=self.length, **kw)
+
+    def _setup_for_values(self, values, objects, kw):
+        values, length = self._init_values(values, kw)
+        return sqltypes.Enum._setup_for_values(self, values, objects, kw)
 
     def __repr__(self):
         return util.generic_repr(
             self, to_inspect=[ENUM, _StringType, sqltypes.Enum])
 
-    def bind_processor(self, dialect):
-        super_convert = super(ENUM, self).bind_processor(dialect)
-
-        def process(value):
-            if self.strict and value is not None and value not in self.enums:
-                raise exc.InvalidRequestError('"%s" not a valid value for '
-                                              'this enum' % value)
-            if super_convert:
-                return super_convert(value)
-            else:
-                return value
-        return process
-
     def adapt(self, cls, **kw):
-        if issubclass(cls, ENUM):
-            kw['strict'] = self.strict
         return sqltypes.Enum.adapt(self, cls, **kw)
 
 

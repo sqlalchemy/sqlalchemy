@@ -22,6 +22,24 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3292, 3095
+
+        Added support for PEP-435-style enumerated classes, namely
+        Python 3's ``enum.Enum`` class but also including compatible
+        enumeration libraries, to the :class:`.types.Enum` datatype.
+        The :class:`.types.Enum` datatype now also performs in-Python validation
+        of incoming values, and adds an option to forego creating the
+        CHECK constraint :paramref:`.Enum.create_constraint`.
+        Pull request courtesy Alex Grönholm.
+
+        .. seealso::
+
+            :ref:`change_3292`
+
+            :ref:`change_3095`
+
+    .. change::
         :tags: change, postgresql
 
         The ``sqlalchemy.dialects.postgres`` module, long deprecated, is

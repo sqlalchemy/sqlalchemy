@@ -1082,11 +1082,52 @@ class Enum(String, SchemaType):
 
     """Generic Enum Type.
 
-    The Enum type provides a set of possible string values which the
-    column is constrained towards.
+    The :class:`.Enum` type provides a set of possible string values
+    which the column is constrained towards.
 
-    By default, uses the backend's native ENUM type if available,
-    else uses VARCHAR + a CHECK constraint.
+    The :class:`.Enum` type will make use of the backend's native "ENUM"
+    type if one is available; otherwise, it uses a VARCHAR datatype and
+    produces a CHECK constraint.  Use of the backend-native enum type
+    can be disabled using the :paramref:`.Enum.native_enum` flag, and
+    the production of the CHECK constraint is configurable using the
+    :paramref:`.Enum.create_constraint` flag.
+
+    The :class:`.Enum` type also provides in-Python validation of both
+    input values and database-returned values.   A ``LookupError`` is raised
+    for any Python value that's not located in the given list of possible
+    values.
+
+    .. versionchanged:: 1.1 the :class:`.Enum` type now provides in-Python
+       validation of input values as well as on data being returned by
+       the database.
+
+    The source of enumerated values may be a list of string values, or
+    alternatively a PEP-435-compliant enumerated class.  For the purposes
+    of the :class:`.Enum` datatype, this class need only provide a
+    ``__members__`` method.
+
+    When using an enumerated class, the enumerated objects are used
+    both for input and output, rather than strings as is the case with
+    a plain-string enumerated type::
+
+        import enum
+        class MyEnum(enum.Enum):
+            one = "one"
+            two = "two"
+            three = "three"
+
+
+        t = Table(
+            'data', MetaData(),
+            Column('value', Enum(MyEnum))
+        )
+
+        connection.execute(t.insert(), {"value": MyEnum.two})
+        assert connection.scalar(t.select()) is MyEnum.two
+
+    .. versionadded:: 1.1 - support for PEP-435-style enumerated
+       classes.
+
 
     .. seealso::
 
@@ -1103,13 +1144,24 @@ class Enum(String, SchemaType):
         Keyword arguments which don't apply to a specific backend are ignored
         by that backend.
 
-        :param \*enums: either exactly one PEP 435 compliant enumerated type
+        :param \*enums: either exactly one PEP-435 compliant enumerated type
            or one or more string or unicode enumeration labels. If unicode
            labels are present, the `convert_unicode` flag is auto-enabled.
+
+           .. versionadded:: 1.1 a PEP-435 style enumerated class may be
+              passed.
 
         :param convert_unicode: Enable unicode-aware bind parameter and
            result-set processing for this Enum's data. This is set
            automatically based on the presence of unicode label strings.
+
+        :param create_constraint: defaults to True.  When creating a non-native
+           enumerated type, also build a CHECK constraint on the database
+           against the valid values.
+
+           .. versionadded:: 1.1 - added :paramref:`.Enum.create_constraint`
+              which provides the option to disable the production of the
+              CHECK constraint for a non-native enumerated type.
 
         :param metadata: Associate this type directly with a ``MetaData``
            object. For types that exist on the target database as an
@@ -1125,7 +1177,7 @@ class Enum(String, SchemaType):
         :param name: The name of this type. This is required for Postgresql
            and any future supported database which requires an explicitly
            named type, or an explicitly named constraint in order to generate
-           the type and/or a table that uses it. If an :class:`~enum.Enum`
+           the type and/or a table that uses it. If a PEP-435 enumerated
            class was used, its name (converted to lower case) is used by
            default.
 
@@ -1153,21 +1205,14 @@ class Enum(String, SchemaType):
            ``schema`` attribute.   This also takes effect when using the
            :meth:`.Table.tometadata` operation.
 
-           .. versionadded:: 0.8
-
         """
-        if len(enums) == 1 and hasattr(enums[0], '__members__'):
-            self.enums = list(enums[0].__members__)
-            self.enum_class = enums[0]
-            kw.setdefault('name', enums[0].__name__.lower())
-            self.key_lookup = dict((value, key) for key, value in enums[0].__members__.items())
-            self.value_lookup = enums[0].__members__.copy()
-        else:
-            self.enums = enums
-            self.enum_class = self.key_lookup = self.value_lookup = None
+
+        values, objects = self._parse_into_values(enums, kw)
+        self._setup_for_values(values, objects, kw)
 
         self.native_enum = kw.pop('native_enum', True)
         convert_unicode = kw.pop('convert_unicode', None)
+        self.create_constraint = kw.pop('create_constraint', True)
         if convert_unicode is None:
             for e in self.enums:
                 if isinstance(e, util.text_type):
@@ -1180,11 +1225,52 @@ class Enum(String, SchemaType):
             length = max(len(x) for x in self.enums)
         else:
             length = 0
+        self._valid_lookup[None] = self._object_lookup[None] = None
+
         String.__init__(self,
                         length=length,
                         convert_unicode=convert_unicode,
                         )
         SchemaType.__init__(self, **kw)
+
+    def _parse_into_values(self, enums, kw):
+        if len(enums) == 1 and hasattr(enums[0], '__members__'):
+            self.enum_class = enums[0]
+            values = list(self.enum_class.__members__)
+            objects = [self.enum_class.__members__[k] for k in values]
+            kw.setdefault('name', self.enum_class.__name__.lower())
+
+            return values, objects
+        else:
+            self.enum_class = None
+            return enums, enums
+
+    def _setup_for_values(self, values, objects, kw):
+        self.enums = list(values)
+
+        self._valid_lookup = dict(
+            zip(objects, values)
+        )
+        self._object_lookup = dict(
+            (value, key) for key, value in self._valid_lookup.items()
+        )
+        self._valid_lookup.update(
+            [(value, value) for value in self._valid_lookup.values()]
+        )
+
+    def _db_value_for_elem(self, elem):
+        try:
+            return self._valid_lookup[elem]
+        except KeyError:
+            raise LookupError(
+                '"%s" is not among the defined enum values' % elem)
+
+    def _object_value_for_elem(self, elem):
+        try:
+            return self._object_lookup[elem]
+        except KeyError:
+            raise LookupError(
+                '"%s" is not among the defined enum values' % elem)
 
     def __repr__(self):
         return util.generic_repr(self,
@@ -1201,6 +1287,9 @@ class Enum(String, SchemaType):
         if self.native_enum:
             SchemaType._set_table(self, column, table)
 
+        if not self.create_constraint:
+            return
+
         e = schema.CheckConstraint(
             type_coerce(column, self).in_(self.enums),
             name=_defer_name(self.name),
@@ -1215,7 +1304,10 @@ class Enum(String, SchemaType):
         metadata = kw.pop('metadata', self.metadata)
         _create_events = kw.pop('_create_events', False)
         if issubclass(impltype, Enum):
-            args = [self.enum_class] if self.enum_class is not None else self.enums
+            if self.enum_class is not None:
+                args = [self.enum_class]
+            else:
+                args = self.enums
             return impltype(name=self.name,
                             schema=schema,
                             metadata=metadata,
@@ -1231,26 +1323,17 @@ class Enum(String, SchemaType):
 
     def literal_processor(self, dialect):
         parent_processor = super(Enum, self).literal_processor(dialect)
-        if self.key_lookup:
-            def process(value):
-                value = self.key_lookup.get(value, value)
-                if parent_processor:
-                    return parent_processor(value)
 
-            return process
-        else:
-            return parent_processor
+        def process(value):
+            value = self._db_value_for_elem(value)
+            if parent_processor:
+                value = parent_processor(value)
+            return value
+        return process
 
     def bind_processor(self, dialect):
         def process(value):
-            if isinstance(value, util.string_types):
-                if value not in self.enums:
-                    raise LookupError(
-                        '"%s" is not among the defined enum values' %
-                        value)
-            elif self.key_lookup and value in self.key_lookup:
-                value = self.key_lookup[value]
-
+            value = self._db_value_for_elem(value)
             if parent_processor:
                 value = parent_processor(value)
             return value
@@ -1259,22 +1342,17 @@ class Enum(String, SchemaType):
         return process
 
     def result_processor(self, dialect, coltype):
-        parent_processor = super(Enum, self).result_processor(dialect,
-                                                              coltype)
-        if self.value_lookup:
-            def process(value):
-                if parent_processor:
-                    value = parent_processor(value)
+        parent_processor = super(Enum, self).result_processor(
+            dialect, coltype)
 
-                try:
-                    return self.value_lookup[value]
-                except KeyError:
-                    raise LookupError('No such member in enum class %s: %s' %
-                                      (self.enum_class.__name__, value))
+        def process(value):
+            if parent_processor:
+                value = parent_processor(value)
 
-            return process
-        else:
-            return parent_processor
+            value = self._object_value_for_elem(value)
+            return value
+
+        return process
 
     @property
     def python_type(self):
@@ -1285,7 +1363,6 @@ class Enum(String, SchemaType):
 
 
 class PickleType(TypeDecorator):
-
     """Holds Python objects, which are serialized using pickle.
 
     PickleType builds upon the Binary type to apply Python's

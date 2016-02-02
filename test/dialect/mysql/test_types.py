@@ -976,12 +976,12 @@ class EnumSetTest(
 
         eq_(
             t2.c.value.type.enums[0:2],
-            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+            [u('réveillé'), u('drôle')]  # u'S’il') # eh ?
         )
 
         eq_(
             t2.c.value2.type.enums[0:2],
-            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+            [u('réveillé'), u('drôle')]  # u'S’il') # eh ?
         )
 
     def test_enum_compile(self):
@@ -1019,13 +1019,13 @@ class EnumSetTest(
         reflected = Table('mysql_enum', MetaData(testing.db),
                           autoload=True)
         for t in enum_table, reflected:
-            eq_(t.c.e1.type.enums, ("a",))
-            eq_(t.c.e2.type.enums, ("",))
-            eq_(t.c.e3.type.enums, ("a",))
-            eq_(t.c.e4.type.enums, ("",))
-            eq_(t.c.e5.type.enums, ("a", ""))
-            eq_(t.c.e6.type.enums, ("", "a"))
-            eq_(t.c.e7.type.enums, ("", "'a'", "b'b", "'"))
+            eq_(t.c.e1.type.enums, ["a"])
+            eq_(t.c.e2.type.enums, [""])
+            eq_(t.c.e3.type.enums, ["a"])
+            eq_(t.c.e4.type.enums, [""])
+            eq_(t.c.e5.type.enums, ["a", ""])
+            eq_(t.c.e6.type.enums, ["", "a"])
+            eq_(t.c.e7.type.enums, ["", "'a'", "b'b", "'"])
 
     @testing.provide_metadata
     @testing.exclude('mysql', '<', (5,))

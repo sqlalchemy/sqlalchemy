@@ -31,19 +31,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 
 
-class SomeEnum(object):
-    # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
-    __members__ = OrderedDict()
-
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
-        self.__members__[name] = self
-        setattr(SomeEnum, name, self)
-
-SomeEnum('one', 1)
-SomeEnum('two', 2)
-SomeEnum('three', 3)
 
 
 class AdaptTest(fixtures.TestBase):
@@ -198,7 +185,6 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.Unicode().python_type, util.text_type)
         eq_(types.String(convert_unicode=True).python_type, util.text_type)
         eq_(types.Enum('one', 'two', 'three').python_type, str)
-        eq_(types.Enum(SomeEnum).python_type, SomeEnum)
 
         assert_raises(
             NotImplementedError,
@@ -295,8 +281,6 @@ class PickleTypesTest(fixtures.TestBase):
                 Column('Lar', LargeBinary()),
                 Column('Pic', PickleType()),
                 Column('Int', Interval()),
-                Column('Enu', Enum('x', 'y', 'z', name="somename")),
-                Column('En2', Enum(SomeEnum)),
             ]
             for column_type in column_types:
                 meta = MetaData()
@@ -1108,6 +1092,21 @@ class UnicodeTest(fixtures.TestBase):
 
 
 class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
+    __backend__ = True
+
+    class SomeEnum(object):
+        # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
+        __members__ = OrderedDict()
+
+        def __init__(self, name, value):
+            self.name = name
+            self.value = value
+            self.__members__[name] = self
+            setattr(self.__class__, name, self)
+
+    one = SomeEnum('one', 1)
+    two = SomeEnum('two', 2)
+    three = SomeEnum('three', 3)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1120,13 +1119,91 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             'non_native_enum_table', metadata,
             Column("id", Integer, primary_key=True),
             Column('someenum', Enum('one', 'two', 'three', native_enum=False)),
+            Column('someotherenum',
+                Enum('one', 'two', 'three',
+                     create_constraint=False, native_enum=False)),
         )
 
         Table(
             'stdlib_enum_table', metadata,
             Column("id", Integer, primary_key=True),
-            Column('someenum', Enum(SomeEnum))
+            Column('someenum', Enum(cls.SomeEnum))
         )
+
+    def test_python_type(self):
+        eq_(types.Enum(self.SomeEnum).python_type, self.SomeEnum)
+
+    def test_pickle_types(self):
+        global SomeEnum
+        SomeEnum = self.SomeEnum
+        for loads, dumps in picklers():
+            column_types = [
+                Column('Enu', Enum('x', 'y', 'z', name="somename")),
+                Column('En2', Enum(self.SomeEnum)),
+            ]
+            for column_type in column_types:
+                meta = MetaData()
+                Table('foo', meta, column_type)
+                loads(dumps(column_type))
+                loads(dumps(meta))
+
+    def test_validators_pep435(self):
+        type_ = Enum(self.SomeEnum)
+
+        bind_processor = type_.bind_processor(testing.db.dialect)
+        eq_(bind_processor('one'), "one")
+        eq_(bind_processor(self.one), "one")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            bind_processor, "foo"
+        )
+
+        result_processor = type_.result_processor(testing.db.dialect, None)
+
+        eq_(result_processor('one'), self.one)
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            result_processor, "foo"
+        )
+
+        literal_processor = type_.literal_processor(testing.db.dialect)
+        eq_(literal_processor("one"), "'one'")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            literal_processor, "foo"
+        )
+
+    def test_validators_plain(self):
+        type_ = Enum("one", "two")
+
+        bind_processor = type_.bind_processor(testing.db.dialect)
+        eq_(bind_processor('one'), "one")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            bind_processor, "foo"
+        )
+
+        result_processor = type_.result_processor(testing.db.dialect, None)
+
+        eq_(result_processor('one'), "one")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            result_processor, "foo"
+        )
+
+        literal_processor = type_.literal_processor(testing.db.dialect)
+        eq_(literal_processor("one"), "'one'")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            literal_processor, "foo"
+        )
+
 
     @testing.fails_on(
         'postgresql+zxjdbc',
@@ -1150,6 +1227,48 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             ]
         )
 
+    def test_null_round_trip(self):
+        enum_table = self.tables.enum_table
+        non_native_enum_table = self.tables.non_native_enum_table
+
+        with testing.db.connect() as conn:
+            conn.execute(enum_table.insert(), {"id": 1, "someenum": None})
+            eq_(conn.scalar(select([enum_table.c.someenum])), None)
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                non_native_enum_table.insert(), {"id": 1, "someenum": None})
+            eq_(conn.scalar(select([non_native_enum_table.c.someenum])), None)
+
+
+    @testing.fails_on(
+        'mysql',
+        "The CHECK clause is parsed but ignored by all storage engines.")
+    @testing.fails_on(
+        'mssql', "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")
+    def test_check_constraint(self):
+        assert_raises(
+            (exc.IntegrityError, exc.ProgrammingError),
+            testing.db.execute,
+            "insert into non_native_enum_table "
+            "(id, someenum) values(1, 'four')")
+
+    def test_skip_check_constraint(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                "insert into non_native_enum_table "
+                "(id, someotherenum) values(1, 'four')"
+            )
+            eq_(
+                conn.scalar("select someotherenum from non_native_enum_table"),
+                "four")
+            assert_raises_message(
+                LookupError,
+                '"four" is not among the defined enum values',
+                conn.scalar,
+                select([self.tables.non_native_enum_table.c.someotherenum])
+            )
+
     def test_non_native_round_trip(self):
         non_native_enum_table = self.tables['non_native_enum_table']
 
@@ -1160,7 +1279,9 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         ])
 
         eq_(
-            non_native_enum_table.select().
+            select([
+                non_native_enum_table.c.id,
+                non_native_enum_table.c.someenum]).
             order_by(non_native_enum_table.c.id).execute().fetchall(),
             [
                 (1, 'two'),
@@ -1169,22 +1290,22 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             ]
         )
 
-    def test_stdlib_enum_round_trip(self):
+    def test_pep435_enum_round_trip(self):
         stdlib_enum_table = self.tables['stdlib_enum_table']
 
         stdlib_enum_table.insert().execute([
-            {'id': 1, 'someenum': SomeEnum.two},
-            {'id': 2, 'someenum': SomeEnum.two},
-            {'id': 3, 'someenum': SomeEnum.one},
+            {'id': 1, 'someenum': self.SomeEnum.two},
+            {'id': 2, 'someenum': self.SomeEnum.two},
+            {'id': 3, 'someenum': self.SomeEnum.one},
         ])
 
         eq_(
             stdlib_enum_table.select().
             order_by(stdlib_enum_table.c.id).execute().fetchall(),
             [
-                (1, SomeEnum.two),
-                (2, SomeEnum.two),
-                (3, SomeEnum.one),
+                (1, self.SomeEnum.two),
+                (2, self.SomeEnum.two),
+                (3, self.SomeEnum.one),
             ]
         )
 
@@ -1197,7 +1318,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         e1 = Enum('one', 'two', 'three', name='foo', schema='bar')
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
-        e1 = Enum(SomeEnum)
+        e1 = Enum(self.SomeEnum)
         eq_(e1.adapt(ENUM).name, 'someenum')
         eq_(e1.adapt(ENUM).enums, ['one', 'two', 'three'])
 
@@ -1241,7 +1362,8 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     def test_lookup_failure(self):
         assert_raises(
-            exc.StatementError, self.tables['non_native_enum_table'].insert().execute,
+            exc.StatementError,
+            self.tables['non_native_enum_table'].insert().execute,
             {'id': 4, 'someenum': 'four'}
         )
 

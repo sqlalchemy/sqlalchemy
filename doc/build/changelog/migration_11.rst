@@ -702,6 +702,80 @@ used for the fetch.
 
 :ticket:`3501`
 
+.. _change_3292:
+
+Support for Python's native ``enum`` type and compatible forms
+---------------------------------------------------------------
+
+The :class:`.Enum` type can now be constructed using any
+PEP-435 compliant enumerated type.   When using this mode, input values
+and return values are the actual enumerated objects, not the
+string values::
+
+    import enum
+    from sqlalchemy import Table, MetaData, Column, Enum, create_engine
+
+
+    class MyEnum(enum.Enum):
+        one = "one"
+        two = "two"
+        three = "three"
+
+
+    t = Table(
+        'data', MetaData(),
+        Column('value', Enum(MyEnum))
+    )
+
+    e = create_engine("sqlite://")
+    t.create(e)
+
+    e.execute(t.insert(), {"value": MyEnum.two})
+    assert e.scalar(t.select()) is MyEnum.two
+
+
+:ticket:`3292`
+
+.. _change_3095:
+
+The ``Enum`` type now does in-Python validation of values
+---------------------------------------------------------
+
+To accomodate for Python native enumerated objects, as well as for edge
+cases such as that of where a non-native ENUM type is used within an ARRAY
+and a CHECK contraint is infeasible, the :class:`.Enum` datatype now adds
+in-Python validation of input values::
+
+
+    >>> from sqlalchemy import Table, MetaData, Column, Enum, create_engine
+    >>> t = Table(
+    ...     'data', MetaData(),
+    ...     Column('value', Enum("one", "two", "three"))
+    ... )
+    >>> e = create_engine("sqlite://")
+    >>> t.create(e)
+    >>> e.execute(t.insert(), {"value": "four"})
+    Traceback (most recent call last):
+      ...
+    sqlalchemy.exc.StatementError: (exceptions.LookupError)
+    "four" is not among the defined enum values
+    [SQL: u'INSERT INTO data (value) VALUES (?)']
+    [parameters: [{'value': 'four'}]]
+
+For simplicity and consistency, this validation is now turned on in all cases,
+whether or not the enumerated type uses a database-native form, whether
+or not the CHECK constraint is in use, as well as whether or not a
+PEP-435 enumerated type or plain list of string values is used.  The
+check also occurs on the result-handling side as well, when values coming
+from the database are returned.
+
+This validation is in addition to the existing behavior of creating a
+CHECK constraint when a non-native enumerated type is used.  The creation of
+this CHECK constraint can now be disabled using the new
+:paramref:`.Enum.create_constraint` flag.
+
+:ticket:`3095`
+
 .. _change_2528:
 
 A UNION or similar of SELECTs with LIMIT/OFFSET/ORDER BY now parenthesizes the embedded selects
