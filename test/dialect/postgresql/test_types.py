@@ -707,7 +707,6 @@ class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
-
     __only_on__ = 'postgresql'
     __backend__ = True
     __unsupported_on__ = 'postgresql+pg8000', 'postgresql+zxjdbc'
@@ -802,6 +801,15 @@ class ArrayTest(fixtures.TablesTest, AssertsExecutionResults):
                         .fetchall()
         eq_(len(results), 1)
         eq_(results[0][0], 5)
+
+    def test_contains_override_raises(self):
+        col = Column('x', postgresql.ARRAY(Integer))
+
+        assert_raises_message(
+            NotImplementedError,
+            "Operator 'contains' is not supported on this expression",
+            lambda: 'foo' in col
+        )
 
     def test_array_subtype_resultprocessor(self):
         arrtable = self.tables.arrtable

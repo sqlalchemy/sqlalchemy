@@ -263,6 +263,7 @@ operator_lookup = {
     "getitem": (_unsupported_impl,),
     "lshift": (_unsupported_impl,),
     "rshift": (_unsupported_impl,),
+    "contains": (_unsupported_impl,),
 }
 
 

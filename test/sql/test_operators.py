@@ -13,7 +13,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
-    Boolean, NullType, MatchType
+    Boolean, NullType, MatchType, DateTime
 from sqlalchemy.dialects import mysql, firebird, postgresql, oracle, \
     sqlite, mssql
 from sqlalchemy import util
@@ -209,6 +209,18 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_concat(self):
         self._do_operate_test(operators.concat_op)
+
+    def test_contains_override_raises(self):
+        for col in [
+            Column('x', String),
+            Column('x', Integer),
+            Column('x', DateTime)
+        ]:
+            assert_raises_message(
+                NotImplementedError,
+                "Operator 'contains' is not supported on this expression",
+                lambda: 'foo' in col
+            )
 
 
 class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
