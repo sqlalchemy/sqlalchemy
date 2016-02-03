@@ -2067,7 +2067,7 @@ class SQLCompiler(Compiled):
                     delete_stmt, delete_stmt._returning)
 
         if delete_stmt._whereclause is not None:
-            t = delete_stmt._whereclause._compiler_dispatch(self)
+            t = delete_stmt._whereclause._compiler_dispatch(self, **kw)
             if t:
                 text += " WHERE " + t
 

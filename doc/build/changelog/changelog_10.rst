@@ -20,6 +20,16 @@
     :released:
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3643
+        :pullreq: github:232
+
+        Fixed issue where the "literal_binds" flag was not propagated
+        for :func:`.expression.insert`, :func:`.expression.update` or
+        :func:`.expression.delete` constructs when compiled to string
+        SQL.  Pull request courtesy Tim Tate.
+
+    .. change::
         :tags: bug, oracle, jython
         :tickets: 3621
 
