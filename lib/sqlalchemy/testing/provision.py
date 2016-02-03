@@ -209,5 +209,34 @@ def _mysql_drop_db(cfg, eng, ident):
             pass
 
 
+@_create_db.for_db("oracle")
+def _oracle_create_db(cfg, eng, ident):
+    with eng.connect() as conn:
+        conn.execute("create user %s identified by xe" % ident)
+        conn.execute("create user %s_ts1 identified by xe" % ident)
+        conn.execute("create user %s_ts2 identified by xe" % ident)
+        conn.execute("grant dba to %s" % (ident, ))
+
+
+@_configure_follower.for_db("oracle")
+def _oracle_configure_follower(config, ident):
+    config.test_schema = "%s_ts1" % ident
+    config.test_schema_2 = "%s_ts2" % ident
+
+
+@_drop_db.for_db("oracle")
+def _oracle_drop_db(cfg, eng, ident):
+    with eng.connect() as conn:
+        conn.execute("drop user %s" % ident)
+        conn.execute("drop user %s_ts1" % ident)
+        conn.execute("drop user %s_ts2" % ident)
+
+
+@_follower_url_from_main.for_db("oracle")
+def _oracle_follower_url_from_main(url, ident):
+    url = sa_url.make_url(url)
+    url.username = ident
+    url.password = 'xe'
+    return url
 
 
