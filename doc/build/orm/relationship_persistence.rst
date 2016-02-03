@@ -1,4 +1,4 @@
-fSpecial Relationship Persistence Patterns
+Special Relationship Persistence Patterns
 =========================================
 
 .. _post_update:
