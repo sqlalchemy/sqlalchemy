@@ -258,6 +258,11 @@ def _oracle_configure_follower(config, ident):
 @_drop_db.for_db("oracle")
 def _oracle_drop_db(cfg, eng, ident):
     with eng.connect() as conn:
+        for row in conn.execute(
+                "select sid, serial# from v$session "
+                "where username='%s'" % ident.upper()):
+            sid, serial = row
+            conn.execute("alter system kill session '%s, %s'" % (sid, serial))
         conn.execute("drop user %s cascade" % ident)
         conn.execute("drop user %s_ts1 cascade" % ident)
         conn.execute("drop user %s_ts2 cascade" % ident)
