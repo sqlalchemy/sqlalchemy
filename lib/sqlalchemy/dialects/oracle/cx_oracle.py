@@ -415,6 +415,18 @@ class _OracleLong(oracle.LONG):
 class _OracleString(_NativeUnicodeMixin, sqltypes.String):
     pass
 
+class _OracleEnum(_NativeUnicodeMixin, sqltypes.Enum):
+    def bind_processor(self, dialect):
+        enum_proc = sqltypes.Enum.bind_processor(self, dialect)
+        unicode_proc = _NativeUnicodeMixin.bind_processor(self, dialect)
+
+        def process(value):
+            raw_str = enum_proc(value)
+            if unicode_proc:
+                raw_str = unicode_proc(raw_str)
+            return raw_str
+        return process
+
 
 class _OracleUnicodeText(
         _LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
@@ -651,6 +663,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         sqltypes.String: _OracleString,
         sqltypes.UnicodeText: _OracleUnicodeText,
         sqltypes.CHAR: _OracleChar,
+        sqltypes.Enum: _OracleEnum,
 
         # a raw LONG is a text type, but does *not*
         # get the LobMixin with cx_oracle.
