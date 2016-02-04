@@ -211,12 +211,17 @@ def _mysql_drop_db(cfg, eng, ident):
 
 @_create_db.for_db("oracle")
 def _oracle_create_db(cfg, eng, ident):
+    # NOTE: make sure you've run "ALTER DATABASE default tablespace users" or
+    # similar, so that the default tablespace is not "system"; reflection will
+    # fail otherwise
     with eng.connect() as conn:
         conn.execute("create user %s identified by xe" % ident)
         conn.execute("create user %s_ts1 identified by xe" % ident)
         conn.execute("create user %s_ts2 identified by xe" % ident)
         conn.execute("grant dba to %s" % (ident, ))
-
+        conn.execute("grant unlimited tablespace to %s" % ident)
+        conn.execute("grant unlimited tablespace to %s_ts1" % ident)
+        conn.execute("grant unlimited tablespace to %s_ts2" % ident)
 
 @_configure_follower.for_db("oracle")
 def _oracle_configure_follower(config, ident):
@@ -227,9 +232,9 @@ def _oracle_configure_follower(config, ident):
 @_drop_db.for_db("oracle")
 def _oracle_drop_db(cfg, eng, ident):
     with eng.connect() as conn:
-        conn.execute("drop user %s" % ident)
-        conn.execute("drop user %s_ts1" % ident)
-        conn.execute("drop user %s_ts2" % ident)
+        conn.execute("drop user %s cascade" % ident)
+        conn.execute("drop user %s_ts1 cascade" % ident)
+        conn.execute("drop user %s_ts2 cascade" % ident)
 
 
 @_follower_url_from_main.for_db("oracle")
