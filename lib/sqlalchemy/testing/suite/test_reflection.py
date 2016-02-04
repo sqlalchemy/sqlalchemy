@@ -113,7 +113,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         # temp table fixture
         if testing.against("oracle"):
             kw = {
-                'prefixes': ["TEMPORARY"],
+                'prefixes': ["TEMPORARY", "GLOBAL"],
                 'oracle_on_commit': 'PRESERVE ROWS'
             }
         else:
