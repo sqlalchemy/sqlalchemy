@@ -23,6 +23,7 @@ from sqlalchemy.testing.mock import Mock
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'oracle+cx_oracle'
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -55,6 +56,7 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
 
 class CXOracleArgsTest(fixtures.TestBase):
     __only_on__ = 'oracle+cx_oracle'
+    __backend__ = True
 
     def test_autosetinputsizes(self):
         dialect = cx_oracle.dialect()
@@ -76,6 +78,7 @@ class CXOracleArgsTest(fixtures.TestBase):
 class QuotedBindRoundTripTest(fixtures.TestBase):
 
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @testing.provide_metadata
     def test_table_round_trip(self):
@@ -834,6 +837,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1046,6 +1050,7 @@ drop synonym %(test_schema)s.local_table;
 class ConstraintTest(fixtures.TablesTest):
 
     __only_on__ = 'oracle'
+    __backend__ = True
     run_deletes = None
 
     @classmethod
@@ -1072,6 +1077,7 @@ class TwoPhaseTest(fixtures.TablesTest):
     so requires a carefully written test."""
 
     __only_on__ = 'oracle+cx_oracle'
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1236,6 +1242,7 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
 class TypesTest(fixtures.TestBase):
     __only_on__ = 'oracle'
     __dialect__ = oracle.OracleDialect()
+    __backend__ = True
 
 
     @testing.fails_on('+zxjdbc', 'zxjdbc lacks the FIXED_CHAR dbapi type')
@@ -1693,6 +1700,7 @@ class EuroNumericTest(fixtures.TestBase):
     """test the numeric output_type_handler when using non-US locale for NLS_LANG."""
 
     __only_on__ = 'oracle+cx_oracle'
+    __backend__ = True
 
     def setup(self):
         self.old_nls_lang = os.environ.get('NLS_LANG', False)
@@ -1730,6 +1738,7 @@ class DontReflectIOTTest(fixtures.TestBase):
     table_names."""
 
     __only_on__ = 'oracle'
+    __backend__ = True
 
     def setup(self):
         testing.db.execute("""
@@ -1758,6 +1767,7 @@ class DontReflectIOTTest(fixtures.TestBase):
 
 class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -1795,6 +1805,7 @@ class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class UnsupportedIndexReflectTest(fixtures.TestBase):
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @testing.emits_warning("No column names")
     @testing.provide_metadata
@@ -1835,6 +1846,7 @@ def all_tables_compress_for_missing():
 
 class TableReflectionTest(fixtures.TestBase):
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @testing.provide_metadata
     @testing.fails_if(all_tables_compression_missing)
@@ -1895,6 +1907,7 @@ class TableReflectionTest(fixtures.TestBase):
 
 class RoundTripIndexTest(fixtures.TestBase):
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @testing.provide_metadata
     def test_basic(self):
@@ -1990,6 +2003,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 class ExecuteTest(fixtures.TestBase):
 
     __only_on__ = 'oracle'
+    __backend__ = True
 
     def test_basic(self):
         eq_(testing.db.execute('/*+ this is a comment */ SELECT 1 FROM '
@@ -2042,6 +2056,7 @@ class ExecuteTest(fixtures.TestBase):
 
 class UnicodeSchemaTest(fixtures.TestBase):
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @testing.provide_metadata
     def test_quoted_column_non_unicode(self):
@@ -2079,6 +2094,7 @@ class UnicodeSchemaTest(fixtures.TestBase):
 class DBLinkReflectionTest(fixtures.TestBase):
     __requires__ = 'oracle_test_dblink',
     __only_on__ = 'oracle'
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -2113,6 +2129,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
 
 class ServiceNameTest(fixtures.TestBase):
     __only_on__ = 'oracle+cx_oracle'
+    __backend__ = True
 
     def test_cx_oracle_service_name(self):
         url_string = 'oracle+cx_oracle://scott:tiger@host/?service_name=hr'
