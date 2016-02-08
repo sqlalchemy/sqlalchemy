@@ -2078,6 +2078,9 @@ class DBLinkReflectionTest(fixtures.TestBase):
         from sqlalchemy.testing import config
         cls.dblink = config.file_config.get('sqla_testing', 'oracle_db_link')
 
+        # note that the synonym here is still not totally functional
+        # when accessing via a different username as we do with the multiprocess
+        # test suite, so testing here is minimal
         with testing.db.connect() as conn:
             conn.execute(
                 "create table test_table "
@@ -2090,15 +2093,6 @@ class DBLinkReflectionTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             conn.execute("drop synonym test_table_syn")
             conn.execute("drop table test_table")
-
-    def test_hello_world(self):
-        """test that the synonym/dblink is functional."""
-        testing.db.execute("insert into test_table_syn (id, data) "
-                            "values (1, 'some data')")
-        eq_(
-            testing.db.execute("select * from test_table_syn").first(),
-            (1, 'some data')
-        )
 
     def test_reflection(self):
         """test the resolution of the synonym/dblink. """
