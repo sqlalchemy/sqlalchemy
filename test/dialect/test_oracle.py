@@ -861,7 +861,7 @@ create table local_table(
 create synonym %(test_schema)s.ptable for %(test_schema)s.parent;
 create synonym %(test_schema)s.ctable for %(test_schema)s.child;
 
-create synonym %(test_schema)s_ptable for %(test_schema)s.parent;
+create synonym %(test_schema)s_pt for %(test_schema)s.parent;
 
 create synonym %(test_schema)s.local_table for local_table;
 
@@ -883,7 +883,7 @@ drop table %(test_schema)s.parent;
 drop table local_table;
 drop synonym %(test_schema)s.ctable;
 drop synonym %(test_schema)s.ptable;
-drop synonym %(test_schema)s_ptable;
+drop synonym %(test_schema)s_pt;
 drop synonym %(test_schema)s.local_table;
 
 """ % {"test_schema": testing.config.test_schema}).split(";"):
@@ -910,11 +910,12 @@ drop synonym %(test_schema)s.local_table;
 
     def test_reflect_alt_table_owner_local_synonym(self):
         meta = MetaData(testing.db)
-        parent = Table('test_schema_ptable', meta, autoload=True,
+        parent = Table('%s_pt' % testing.config.test_schema, meta, autoload=True,
                             oracle_resolve_synonyms=True)
         self.assert_compile(parent.select(),
-                "SELECT test_schema_ptable.id, "
-                "test_schema_ptable.data FROM test_schema_ptable")
+                "SELECT %(test_schema)s_pt.id, "
+                "%(test_schema)s_pt.data FROM %(test_schema)s_pt" 
+                 % {"test_schema": testing.config.test_schema})
         select([parent]).execute().fetchall()
 
     def test_reflect_alt_synonym_owner_local_table(self):
