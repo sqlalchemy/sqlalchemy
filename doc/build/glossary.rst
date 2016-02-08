@@ -129,6 +129,7 @@ Glossary
 
     lazy load
     lazy loads
+    lazy loaded
     lazy loading
         In object relational mapping, a "lazy load" refers to an
         attribute that does not contain its database-side value

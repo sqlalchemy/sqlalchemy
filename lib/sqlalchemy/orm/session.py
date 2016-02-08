@@ -2694,18 +2694,49 @@ class sessionmaker(_SessionClassMethods):
 
 
 def make_transient(instance):
-    """Make the given instance 'transient'.
+    """Alter the state of the given instance so that it is :term:`transient`.
 
-    This will remove its association with any
-    session and additionally will remove its "identity key",
-    such that it's as though the object were newly constructed,
-    except retaining its values.   It also resets the
-    "deleted" flag on the state if this object
-    had been explicitly deleted by its session.
+    .. note::
 
-    Attributes which were "expired" or deferred at the
-    instance level are reverted to undefined, and
-    will not trigger any loads.
+        :func:`.make_transient` is a special-case function for
+        advanced use cases only.
+
+    The given mapped instance is assumed to be in the :term:`persistent` or
+    :term:`detached` state.   The function will remove its association with any
+    :class:`.Session` as well as its :attr:`.InstanceState.identity`. The
+    effect is that the object will behave as though it were newly constructed,
+    except retaining any attribute / collection values that were loaded at the
+    time of the call.   The :attr:`.InstanceState.deleted` flag is also reset
+    if this object had been deleted as a result of using
+    :meth:`.Session.delete`.
+
+    .. warning::
+
+        :func:`.make_transient` does **not** "unexpire" or otherwise eagerly
+        load ORM-mapped attributes that are not currently loaded at the time
+        the function is called.   This includes attributes which:
+
+        * were expired via :meth:`.Session.expire`
+
+        * were expired as the natural effect of committing a session
+          transaction, e.g. :meth:`.Session.commit`
+
+        * are normally :term:`lazy loaded` but are not currently loaded
+
+        * are "deferred" via :ref:`deferred` and are not yet loaded
+
+        * were not present in the query which loaded this object, such as that
+          which is common in joined table inheritance and other scenarios.
+
+        After :func:`.make_transient` is called, unloaded attributes such
+        as those above will normally resolve to the value ``None`` when
+        accessed, or an empty collection for a collection-oriented attribute.
+        As the object is transient and un-associated with any database
+        identity, it will no longer retrieve these values.
+
+    .. seealso::
+
+        :func:`.make_transient_to_detached`
 
     """
     state = attributes.instance_state(instance)
@@ -2727,7 +2758,12 @@ def make_transient(instance):
 
 
 def make_transient_to_detached(instance):
-    """Make the given transient instance 'detached'.
+    """Make the given transient instance :term:`detached`.
+
+    .. note::
+
+        :func:`.make_transient_to_detached` is a special-case function for
+        advanced use cases only.
 
     All attribute history on the given instance
     will be reset as though the instance were freshly loaded
