@@ -418,7 +418,10 @@ class _OracleString(_NativeUnicodeMixin, sqltypes.String):
 class _OracleEnum(_NativeUnicodeMixin, sqltypes.Enum):
     def bind_processor(self, dialect):
         enum_proc = sqltypes.Enum.bind_processor(self, dialect)
-        unicode_proc = _NativeUnicodeMixin.bind_processor(self, dialect)
+        if util.py2k:
+            unicode_proc = _NativeUnicodeMixin.bind_processor(self, dialect)
+        else:
+            unicode_proc = None
 
         def process(value):
             raw_str = enum_proc(value)
