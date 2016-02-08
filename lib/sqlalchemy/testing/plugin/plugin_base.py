@@ -174,6 +174,7 @@ def post_begin():
     warnings.setup_filters()
 
 
+
 def _log(opt_str, value, parser):
     global logging
     if not logging:
@@ -434,6 +435,12 @@ def stop_test_class(cls):
 
 def _restore_engine():
     config._current.reset(testing)
+
+
+def final_process_cleanup():
+    engines.testing_reaper._stop_test_ctx_aggressive()
+    assertions.global_cleanup_assertions()
+    _restore_engine()
 
 
 def _setup_engine(cls):

@@ -54,6 +54,10 @@ def pytest_configure(config):
 def pytest_sessionstart(session):
     plugin_base.post_begin()
 
+
+def pytest_sessionfinish(session):
+    plugin_base.final_process_cleanup()
+
 if has_xdist:
     import uuid
 
