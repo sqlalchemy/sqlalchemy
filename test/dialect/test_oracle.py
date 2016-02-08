@@ -1814,6 +1814,9 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
 def all_tables_compression_missing():
     try:
         testing.db.execute('SELECT compression FROM all_tables')
+        if "Enterprise Edition" not in testing.db.scalar(
+                "select * from v$version"):
+            return True
         return False
     except:
         return True
@@ -1822,6 +1825,9 @@ def all_tables_compression_missing():
 def all_tables_compress_for_missing():
     try:
         testing.db.execute('SELECT compress_for FROM all_tables')
+        if "Enterprise Edition" not in testing.db.scalar(
+                "select * from v$version"):
+            return True
         return False
     except:
         return True
