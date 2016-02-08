@@ -12,6 +12,7 @@ from sqlalchemy import util
 
 class ReflectionTest(fixtures.TestBase, ComparesTables):
     __only_on__ = 'mssql'
+    __backend__ = True
 
     @testing.provide_metadata
     def test_basic_reflection(self):
@@ -229,6 +230,7 @@ class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'
+    __backend__ = True
 
     # crashes on freetds 0.91, not worth it
     __skip_if__ = (

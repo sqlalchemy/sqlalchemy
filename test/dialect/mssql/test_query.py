@@ -134,6 +134,7 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'
     __dialect__ = mssql.MSDialect()
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -187,6 +188,7 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
 class QueryUnicodeTest(fixtures.TestBase):
 
     __only_on__ = 'mssql'
+    __backend__ = True
 
     def test_convert_unicode(self):
         meta = MetaData(testing.db)
@@ -214,6 +216,7 @@ class QueryUnicodeTest(fixtures.TestBase):
 
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = 'mssql'
+    __backend__ = True
 
     def test_fetchid_trigger(self):
         """
@@ -484,6 +487,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'mssql'
     __skip_if__ = full_text_search_missing,
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
