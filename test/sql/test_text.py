@@ -281,6 +281,17 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="postgresql"
         )
 
+    def test_escaping_double_colons(self):
+        self.assert_compile(
+            text(
+                "SELECT * FROM pg_attribute WHERE "
+                "attrelid = :tab\:\:regclass"),
+            "SELECT * FROM pg_attribute WHERE "
+            "attrelid = %(tab)s::regclass",
+            params={'tab': None},
+            dialect="postgresql"
+        )
+
     def test_text_in_select_nonfrom(self):
 
         generate_series = text("generate_series(:x, :y, :z) as s(a)").\
