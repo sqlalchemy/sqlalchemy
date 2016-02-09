@@ -2695,7 +2695,9 @@ class CountTest(QueryTest):
         eq_(q.distinct().count(), 3)
 
 
-class DistinctTest(QueryTest):
+class DistinctTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_basic(self):
         User = self.classes.User
 
@@ -2709,19 +2711,22 @@ class DistinctTest(QueryTest):
             order_by(desc(User.name)).all()
         )
 
-    def test_joined(self):
-        """test that orderbys from a joined table get placed into the columns
-        clause when DISTINCT is used"""
-
+    def test_columns_augmented_roundtrip_one(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
         q = sess.query(User).join('addresses').distinct(). \
             order_by(desc(Address.email_address))
 
-        assert [User(id=7), User(id=9), User(id=8)] == q.all()
+        eq_(
+            [User(id=7), User(id=9), User(id=8)],
+            q.all()
+        )
 
-        sess.expunge_all()
+    def test_columns_augmented_roundtrip_two(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
 
         # test that it works on embedded joinedload/LIMIT subquery
         q = sess.query(User).join('addresses').distinct(). \
@@ -2738,6 +2743,131 @@ class DistinctTest(QueryTest):
                 ]),
             ] == q.all()
         self.assert_sql_count(testing.db, go, 1)
+
+    def test_columns_augmented_roundtrip_three(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = sess.query(User.id, User.name.label('foo'), Address.id).\
+            filter(User.name == 'jack').\
+            distinct().\
+            order_by(User.id, User.name, Address.email_address)
+
+        # even though columns are added, they aren't in the result
+        eq_(
+            q.all(),
+            [(7, 'jack', 3), (7, 'jack', 4), (7, 'jack', 2),
+             (7, 'jack', 5), (7, 'jack', 1)]
+        )
+        for row in q:
+            eq_(row.keys(), ['id', 'foo', 'id'])
+
+    def test_columns_augmented_sql_one(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = sess.query(User.id, User.name.label('foo'), Address.id).\
+            distinct().\
+            order_by(User.id, User.name, Address.email_address)
+
+        # Address.email_address is added because of DISTINCT,
+        # however User.id, User.name are not b.c. they're already there,
+        # even though User.name is labeled
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id, "
+            "addresses.email_address AS addresses_email_address FROM users, "
+            "addresses ORDER BY users.id, users.name, addresses.email_address"
+        )
+
+    def test_columns_augmented_sql_two(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = sess.query(User).\
+            options(joinedload(User.addresses)).\
+            distinct().\
+            order_by(User.name, Address.email_address).\
+            limit(5)
+
+        # addresses.email_address is added to inner query so that
+        # it is available in ORDER BY
+        self.assert_compile(
+            q,
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "anon_1.addresses_email_address AS "
+            "anon_1_addresses_email_address, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM (SELECT DISTINCT users.id AS users_id, "
+            "users.name AS users_name, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM users, addresses "
+            "ORDER BY users.name, addresses.email_address "
+            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN "
+            "addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.users_name, "
+            "anon_1.addresses_email_address, addresses_1.id"
+        )
+
+    def test_columns_augmented_sql_three(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = sess.query(User.id, User.name.label('foo'), Address.id).\
+            distinct(User.name).\
+            order_by(User.id, User.name, Address.email_address)
+
+        # no columns are added when DISTINCT ON is used
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT ON (users.name) users.id AS users_id, "
+            "users.name AS foo, addresses.id AS addresses_id FROM users, "
+            "addresses ORDER BY users.id, users.name, addresses.email_address",
+            dialect='postgresql'
+        )
+
+    def test_columns_augmented_sql_four(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = sess.query(User).join('addresses').\
+            distinct(Address.email_address). \
+            options(joinedload('addresses')).\
+            order_by(desc(Address.email_address)).limit(2)
+
+        # but for the subquery / eager load case, we still need to make
+        # the inner columns available for the ORDER BY even though its
+        # a DISTINCT ON
+        self.assert_compile(
+            q,
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "anon_1.addresses_email_address AS "
+            "anon_1_addresses_email_address, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM (SELECT DISTINCT ON (addresses.email_address) "
+            "users.id AS users_id, users.name AS users_name, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "ORDER BY addresses.email_address DESC  "
+            "LIMIT %(param_1)s) AS anon_1 "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.addresses_email_address DESC, addresses_1.id",
+            dialect='postgresql'
+        )
 
 
 class PrefixWithTest(QueryTest, AssertsCompiledSQL):

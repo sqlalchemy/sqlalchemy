@@ -176,6 +176,28 @@ def unwrap_order_by(clause):
     return result
 
 
+def expand_column_list_from_order_by(collist, order_by):
+    """Given the columns clause and ORDER BY of a selectable,
+    return a list of column expressions that can be added to the collist
+    corresponding to the ORDER BY, without repeating those already
+    in the collist.
+
+    """
+    cols_already_present = set([
+        col.element if col._order_by_label_element is not None
+        else col for col in collist
+    ])
+
+    return [
+        col for col in
+        chain(*[
+            unwrap_order_by(o)
+            for o in order_by
+        ])
+        if col not in cols_already_present
+    ]
+
+
 def clause_is_present(clause, search):
     """Given a target clause and a second to search within, return True
     if the target is plainly present in the search without any

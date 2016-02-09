@@ -22,6 +22,25 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3641
+
+        A refinement to the logic which adds columns to the resulting SQL when
+        :meth:`.Query.distinct` is combined with :meth:`.Query.order_by` such
+        that columns which are already present will not be added
+        a second time, even if they are labeled with a different name.
+        Regardless of this change, the extra columns added to the SQL have
+        never been returned in the final result, so this change only impacts
+        the string form of the statement as well as its behavior when used in
+        a Core execution context.   Additionally, columns are no longer added
+        when the DISTINCT ON format is used, provided the query is not
+        wrapped inside a subquery due to joined eager loading.
+
+        .. seealso::
+
+            :ref:`change_3641`
+
+    .. change::
         :tags: feature, sql
         :tickets: 3292, 3095
 

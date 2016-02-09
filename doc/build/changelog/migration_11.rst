@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: January 29, 2016
+    Document last updated: Feburary 9, 2016
 
 Introduction
 ============
@@ -486,6 +486,45 @@ associated with any bound :class:`.Engine`, then the fallback to the
     :ref:`change_3631`
 
 :ticket:`3081`
+
+.. _change_3641:
+
+Columns no longer added redundantly with DISTINCT + ORDER BY
+------------------------------------------------------------
+
+A query such as the following will now augment only those columns
+that are missing from the SELECT list, without duplicates::
+
+    q = session.query(User.id, User.name.label('name')).\
+        distinct().\
+        order_by(User.id, User.name, User.fullname)
+
+Produces::
+
+    SELECT DISTINCT user.id AS a_id, user.name AS name,
+     user.fullname AS a_fullname
+    FROM a ORDER BY user.id, user.name, user.fullname
+
+Previously, it would produce::
+
+    SELECT DISTINCT user.id AS a_id, user.name AS name, user.name AS a_name,
+      user.fullname AS a_fullname
+    FROM a ORDER BY user.id, user.name, user.fullname
+
+Where above, the ``user.name`` column is added unnecessarily.  The results
+would not be affected, as the additional columns are not included in the
+result in any case, but the columns are unnecessary.
+
+Additionally, when the Postgresql DISTINCT ON format is used by passing
+expressions to :meth:`.Query.distinct`, the above "column adding" logic
+is disabled entirely.
+
+When the query is being bundled into a subquery for the purposes of
+joined eager loading, the "augment column list" rules are are necessarily
+more aggressive so that the ORDER BY can still be satisifed, so this case
+remains unchanged.
+
+:ticket:`3641`
 
 New Features and Improvements - Core
 ====================================

@@ -3254,12 +3254,11 @@ class Query(object):
         # then append eager joins onto that
 
         if context.order_by:
-            order_by_col_expr = list(
-                chain(*[
-                    sql_util.unwrap_order_by(o)
-                    for o in context.order_by
-                ])
-            )
+            order_by_col_expr = \
+                sql_util.expand_column_list_from_order_by(
+                    context.primary_columns,
+                    context.order_by
+                )
         else:
             context.order_by = None
             order_by_col_expr = []
@@ -3319,15 +3318,12 @@ class Query(object):
         if not context.order_by:
             context.order_by = None
 
-        if self._distinct and context.order_by:
-            order_by_col_expr = list(
-                chain(*[
-                    sql_util.unwrap_order_by(o)
-                    for o in context.order_by
-                ])
-            )
-            context.primary_columns += order_by_col_expr
-
+        if self._distinct is True and context.order_by:
+            context.primary_columns += \
+                sql_util.expand_column_list_from_order_by(
+                    context.primary_columns,
+                    context.order_by
+                )
         context.froms += tuple(context.eager_joins.values())
 
         statement = sql.select(
