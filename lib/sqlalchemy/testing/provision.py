@@ -4,6 +4,8 @@ from sqlalchemy import exc
 from sqlalchemy.util import compat
 from . import config, engines
 import time
+import logging
+log = logging.getLogger(__name__)
 
 FOLLOWER_IDENT = None
 
@@ -229,12 +231,39 @@ def _oracle_configure_follower(config, ident):
     config.test_schema_2 = "%s_ts2" % ident
 
 
+def _ora_drop_ignore(conn, dbname):
+    try:
+        conn.execute("drop user %s cascade" % dbname)
+        log.info("Reaped db: %s" % dbname)
+        return True
+    except exc.DatabaseError as err:
+        log.warn("couldn't drop db: %s" % err)
+        return False
+
 @_drop_db.for_db("oracle")
 def _oracle_drop_db(cfg, eng, ident):
     with eng.connect() as conn:
-        conn.execute("drop user %s cascade" % ident)
-        conn.execute("drop user %s_ts1 cascade" % ident)
-        conn.execute("drop user %s_ts2 cascade" % ident)
+        # cx_Oracle seems to occasionally leak open connections when a large
+        # suite it run, even if we confirm we have zero references to
+        # connection objects.
+        # while there is a "kill session" command in Oracle,
+        # it unfortunately does not release the connection sufficiently.
+        _ora_drop_ignore(conn, ident)
+        _ora_drop_ignore(conn, "%s_ts1" % ident)
+        _ora_drop_ignore(conn, "%s_ts2" % ident)
+
+def reap_oracle_dbs(eng):
+    log.info("Reaping Oracle dbs...")
+    with eng.connect() as conn:
+        to_reap = conn.execute(
+                 "select u.username from all_users u where username "
+                 "like 'TEST_%' and not exists (select username "
+                 "from v$session where username=u.username)")
+        dropped = 0
+        for total, (username, ) in enumerate(to_reap, 1):
+            if _ora_drop_ignore(conn, username):
+                dropped += 1
+        log.info("Dropped %d out of %d stale databases detected", dropped, total)
 
 
 @_follower_url_from_main.for_db("oracle")
