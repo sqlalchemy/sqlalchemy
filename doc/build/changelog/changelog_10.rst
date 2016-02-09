@@ -20,6 +20,14 @@
     :released:
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3644
+
+        Fixed bug in :func:`.expression.text` construct where a double-colon
+        expression would not escape properly, e.g. ``some\:\:expr``, as is most
+        commonly required when rendering Postgresql-style CAST expressions.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3643
         :pullreq: github:232
