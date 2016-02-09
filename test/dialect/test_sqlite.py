@@ -535,29 +535,12 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         assert e.pool.__class__ is pool.NullPool
 
 
-
-class AttachedMemoryDBTest(fixtures.TestBase):
+class AttachedDBTest(fixtures.TestBase):
     __only_on__ = 'sqlite'
-
-    dbname = None
-
-    def setUp(self):
-        self.conn = conn = testing.db.connect()
-        if self.dbname is None:
-            dbname = ':memory:'
-        else:
-            dbname = self.dbname
-        conn.execute('ATTACH DATABASE "%s" AS  test_schema' % dbname)
-        self.metadata = MetaData()
-
-    def tearDown(self):
-        self.metadata.drop_all(self.conn)
-        self.conn.execute('DETACH DATABASE test_schema')
-        if self.dbname:
-            os.remove(self.dbname)
 
     def _fixture(self):
         meta = self.metadata
+        self.conn = testing.db.connect()
         ct = Table(
             'created', meta,
             Column('id', Integer),
@@ -567,16 +550,19 @@ class AttachedMemoryDBTest(fixtures.TestBase):
         meta.create_all(self.conn)
         return ct
 
+    def setup(self):
+        self.conn = testing.db.connect()
+        self.metadata = MetaData()
+
+    def teardown(self):
+        self.metadata.drop_all(self.conn)
+        self.conn.close()
+
     def test_no_tables(self):
         insp = inspect(self.conn)
         eq_(insp.get_table_names("test_schema"), [])
 
     def test_table_names_present(self):
-        self._fixture()
-        insp = inspect(self.conn)
-        eq_(insp.get_table_names("test_schema"), ["created"])
-
-    def test_table_names_system(self):
         self._fixture()
         insp = inspect(self.conn)
         eq_(insp.get_table_names("test_schema"), ["created"])
@@ -631,10 +617,6 @@ class AttachedMemoryDBTest(fixtures.TestBase):
         row = self.conn.execute(ct.select().union(ct.select())).first()
         eq_(row['id'], 1)
         eq_(row['name'], 'foo')
-
-
-class AttachedFileDBTest(AttachedMemoryDBTest):
-    dbname = 'attached_db.db'
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
