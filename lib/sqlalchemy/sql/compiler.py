@@ -53,7 +53,7 @@ LEGAL_CHARACTERS = re.compile(r'^[A-Z0-9_$]+$', re.I)
 ILLEGAL_INITIAL_CHARACTERS = set([str(x) for x in range(0, 10)]).union(['$'])
 
 BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
-BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
+BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]*)(?![:\w\$])', re.UNICODE)
 
 BIND_TEMPLATES = {
     'pyformat': "%%(%(name)s)s",
