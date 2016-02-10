@@ -635,6 +635,18 @@ _setup_composite_listener()
 class MutableDict(Mutable, dict):
     """A dictionary type that implements :class:`.Mutable`.
 
+    The :class:`.MutableDict` object implements a dictionary that will
+    emit change events to the underlying mapping when the contents of
+    the dictionary are altered, including when values are added or removed.
+
+    Note that :class:`.MutableDict` does **not** apply mutable tracking to  the
+    *values themselves* inside the dictionary. Therefore it is not a sufficient
+    solution for the use case of tracking deep changes to a *recursive*
+    dictionary structure, such as a JSON structure.  To support this use case,
+    build a subclass of  :class:`.MutableDict` that provides appropriate
+    coersion to the values placed in the dictionary so that they too are
+    "mutable", and emit events up to their parent structure.
+
     .. versionadded:: 0.8
 
     """
