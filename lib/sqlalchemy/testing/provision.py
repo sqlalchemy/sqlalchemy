@@ -266,6 +266,7 @@ def _ora_drop_ignore(conn, dbname):
         log.warn("couldn't drop db: %s" % err)
         return False
 
+
 @_drop_db.for_db("oracle")
 def _oracle_drop_db(cfg, eng, ident):
     with eng.connect() as conn:
@@ -278,18 +279,32 @@ def _oracle_drop_db(cfg, eng, ident):
         _ora_drop_ignore(conn, "%s_ts1" % ident)
         _ora_drop_ignore(conn, "%s_ts2" % ident)
 
+
 def reap_oracle_dbs(eng):
     log.info("Reaping Oracle dbs...")
     with eng.connect() as conn:
         to_reap = conn.execute(
-                 "select u.username from all_users u where username "
-                 "like 'TEST_%' and not exists (select username "
-                 "from v$session where username=u.username)")
-        dropped = 0
-        for total, (username, ) in enumerate(to_reap, 1):
+            "select u.username from all_users u where username "
+            "like 'TEST_%' and not exists (select username "
+            "from v$session where username=u.username)")
+        all_names = set([username.lower() for (username, ) in to_reap])
+        to_drop = set()
+        for name in all_names:
+            if name.endswith("_ts1") or name.endswith("_ts2"):
+                continue
+            else:
+                to_drop.add(name)
+                if "%s_ts1" % name in all_names:
+                    to_drop.add("%s_ts1" % name)
+                if "%s_ts2" % name in all_names:
+                    to_drop.add("%s_ts2" % name)
+
+        dropped = total = 0
+        for total, username in enumerate(to_drop, 1):
             if _ora_drop_ignore(conn, username):
                 dropped += 1
-        log.info("Dropped %d out of %d stale databases detected", dropped, total)
+        log.info(
+            "Dropped %d out of %d stale databases detected", dropped, total)
 
 
 @_follower_url_from_main.for_db("oracle")
