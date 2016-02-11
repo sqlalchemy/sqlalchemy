@@ -478,8 +478,6 @@ class Query(object):
         """Return the full SELECT statement represented by this
         :class:`.Query` represented as a common table expression (CTE).
 
-        .. versionadded:: 0.7.6
-
         Parameters and usage are the same as those of the
         :meth:`.SelectBase.cte` method; see that method for
         further details.
@@ -528,7 +526,7 @@ class Query(object):
 
         .. seealso::
 
-            :meth:`.SelectBase.cte`
+            :meth:`.HasCTE.cte`
 
         """
         return self.enable_eagerloads(False).\

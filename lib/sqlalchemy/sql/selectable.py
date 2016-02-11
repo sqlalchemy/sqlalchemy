@@ -1195,6 +1195,15 @@ class CTE(Generative, HasSuffixes, Alias):
             self._suffixes = _suffixes
         super(CTE, self).__init__(selectable, name=name)
 
+    @util.dependencies("sqlalchemy.sql.dml")
+    def _populate_column_collection(self, dml):
+        if isinstance(self.element, dml.UpdateBase):
+            for col in self.element._returning:
+                col._make_proxy(self)
+        else:
+            for col in self.element.columns._all_columns:
+                col._make_proxy(self)
+
     def alias(self, name=None, flat=False):
         return CTE(
             self.original,
@@ -1221,6 +1230,164 @@ class CTE(Generative, HasSuffixes, Alias):
             _restates=self._restates.union([self]),
             _suffixes=self._suffixes
         )
+
+
+class HasCTE(object):
+    """Mixin that declares a class to include CTE support.
+
+    .. versionadded:: 1.1
+
+    """
+
+    def cte(self, name=None, recursive=False):
+        """Return a new :class:`.CTE`, or Common Table Expression instance.
+
+        Common table expressions are a SQL standard whereby SELECT
+        statements can draw upon secondary statements specified along
+        with the primary statement, using a clause called "WITH".
+        Special semantics regarding UNION can also be employed to
+        allow "recursive" queries, where a SELECT statement can draw
+        upon the set of rows that have previously been selected.
+
+        CTEs can also be applied to DML constructs UPDATE, INSERT
+        and DELETE on some databases, both as a source of CTE rows
+        when combined with RETURNING, as well as a consumer of
+        CTE rows.
+
+        SQLAlchemy detects :class:`.CTE` objects, which are treated
+        similarly to :class:`.Alias` objects, as special elements
+        to be delivered to the FROM clause of the statement as well
+        as to a WITH clause at the top of the statement.
+
+        .. versionchanged:: 1.1 Added support for UPDATE/INSERT/DELETE as
+           CTE, CTEs added to UPDATE/INSERT/DELETE.
+
+        :param name: name given to the common table expression.  Like
+         :meth:`._FromClause.alias`, the name can be left as ``None``
+         in which case an anonymous symbol will be used at query
+         compile time.
+        :param recursive: if ``True``, will render ``WITH RECURSIVE``.
+         A recursive common table expression is intended to be used in
+         conjunction with UNION ALL in order to derive rows
+         from those already selected.
+
+        The following examples include two from Postgresql's documentation at
+        http://www.postgresql.org/docs/current/static/queries-with.html,
+        as well as additional examples.
+
+        Example 1, non recursive::
+
+            from sqlalchemy import (Table, Column, String, Integer,
+                                    MetaData, select, func)
+
+            metadata = MetaData()
+
+            orders = Table('orders', metadata,
+                Column('region', String),
+                Column('amount', Integer),
+                Column('product', String),
+                Column('quantity', Integer)
+            )
+
+            regional_sales = select([
+                                orders.c.region,
+                                func.sum(orders.c.amount).label('total_sales')
+                            ]).group_by(orders.c.region).cte("regional_sales")
+
+
+            top_regions = select([regional_sales.c.region]).\\
+                    where(
+                        regional_sales.c.total_sales >
+                        select([
+                            func.sum(regional_sales.c.total_sales)/10
+                        ])
+                    ).cte("top_regions")
+
+            statement = select([
+                        orders.c.region,
+                        orders.c.product,
+                        func.sum(orders.c.quantity).label("product_units"),
+                        func.sum(orders.c.amount).label("product_sales")
+                ]).where(orders.c.region.in_(
+                    select([top_regions.c.region])
+                )).group_by(orders.c.region, orders.c.product)
+
+            result = conn.execute(statement).fetchall()
+
+        Example 2, WITH RECURSIVE::
+
+            from sqlalchemy import (Table, Column, String, Integer,
+                                    MetaData, select, func)
+
+            metadata = MetaData()
+
+            parts = Table('parts', metadata,
+                Column('part', String),
+                Column('sub_part', String),
+                Column('quantity', Integer),
+            )
+
+            included_parts = select([
+                                parts.c.sub_part,
+                                parts.c.part,
+                                parts.c.quantity]).\\
+                                where(parts.c.part=='our part').\\
+                                cte(recursive=True)
+
+
+            incl_alias = included_parts.alias()
+            parts_alias = parts.alias()
+            included_parts = included_parts.union_all(
+                select([
+                    parts_alias.c.sub_part,
+                    parts_alias.c.part,
+                    parts_alias.c.quantity
+                ]).
+                    where(parts_alias.c.part==incl_alias.c.sub_part)
+            )
+
+            statement = select([
+                        included_parts.c.sub_part,
+                        func.sum(included_parts.c.quantity).
+                          label('total_quantity')
+                    ]).\\
+                    group_by(included_parts.c.sub_part)
+
+            result = conn.execute(statement).fetchall()
+
+        Example 3, an upsert using UPDATE and INSERT with CTEs::
+
+            orders = table(
+                'orders',
+                column('region'),
+                column('amount'),
+                column('product'),
+                column('quantity')
+            )
+
+            upsert = (
+                orders.update()
+                .where(orders.c.region == 'Region1')
+                .values(amount=1.0, product='Product1', quantity=1)
+                .returning(*(orders.c._all_columns)).cte('upsert'))
+
+            insert = orders.insert().from_select(
+                orders.c.keys(),
+                select([
+                    literal('Region1'), literal(1.0),
+                    literal('Product1'), literal(1)
+                ).where(exists(upsert.select()))
+            )
+
+            connection.execute(insert)
+
+        .. seealso::
+
+            :meth:`.orm.query.Query.cte` - ORM version of
+            :meth:`.HasCTE.cte`.
+
+        """
+        return CTE(self, name=name, recursive=recursive)
 
 
 class FromGrouping(FromClause):
@@ -1497,7 +1664,7 @@ class ForUpdateArg(ClauseElement):
             self.of = None
 
 
-class SelectBase(Executable, FromClause):
+class SelectBase(HasCTE, Executable, FromClause):
     """Base class for SELECT statements.
 
 
@@ -1530,125 +1697,6 @@ class SelectBase(Executable, FromClause):
 
         """
         return self.as_scalar().label(name)
-
-    def cte(self, name=None, recursive=False):
-        """Return a new :class:`.CTE`, or Common Table Expression instance.
-
-        Common table expressions are a SQL standard whereby SELECT
-        statements can draw upon secondary statements specified along
-        with the primary statement, using a clause called "WITH".
-        Special semantics regarding UNION can also be employed to
-        allow "recursive" queries, where a SELECT statement can draw
-        upon the set of rows that have previously been selected.
-
-        SQLAlchemy detects :class:`.CTE` objects, which are treated
-        similarly to :class:`.Alias` objects, as special elements
-        to be delivered to the FROM clause of the statement as well
-        as to a WITH clause at the top of the statement.
-
-        .. versionadded:: 0.7.6
-
-        :param name: name given to the common table expression.  Like
-         :meth:`._FromClause.alias`, the name can be left as ``None``
-         in which case an anonymous symbol will be used at query
-         compile time.
-        :param recursive: if ``True``, will render ``WITH RECURSIVE``.
-         A recursive common table expression is intended to be used in
-         conjunction with UNION ALL in order to derive rows
-         from those already selected.
-
-        The following examples illustrate two examples from
-        Postgresql's documentation at
-        http://www.postgresql.org/docs/8.4/static/queries-with.html.
-
-        Example 1, non recursive::
-
-            from sqlalchemy import (Table, Column, String, Integer,
-                                    MetaData, select, func)
-
-            metadata = MetaData()
-
-            orders = Table('orders', metadata,
-                Column('region', String),
-                Column('amount', Integer),
-                Column('product', String),
-                Column('quantity', Integer)
-            )
-
-            regional_sales = select([
-                                orders.c.region,
-                                func.sum(orders.c.amount).label('total_sales')
-                            ]).group_by(orders.c.region).cte("regional_sales")
-
-
-            top_regions = select([regional_sales.c.region]).\\
-                    where(
-                        regional_sales.c.total_sales >
-                        select([
-                            func.sum(regional_sales.c.total_sales)/10
-                        ])
-                    ).cte("top_regions")
-
-            statement = select([
-                        orders.c.region,
-                        orders.c.product,
-                        func.sum(orders.c.quantity).label("product_units"),
-                        func.sum(orders.c.amount).label("product_sales")
-                ]).where(orders.c.region.in_(
-                    select([top_regions.c.region])
-                )).group_by(orders.c.region, orders.c.product)
-
-            result = conn.execute(statement).fetchall()
-
-        Example 2, WITH RECURSIVE::
-
-            from sqlalchemy import (Table, Column, String, Integer,
-                                    MetaData, select, func)
-
-            metadata = MetaData()
-
-            parts = Table('parts', metadata,
-                Column('part', String),
-                Column('sub_part', String),
-                Column('quantity', Integer),
-            )
-
-            included_parts = select([
-                                parts.c.sub_part,
-                                parts.c.part,
-                                parts.c.quantity]).\\
-                                where(parts.c.part=='our part').\\
-                                cte(recursive=True)
-
-
-            incl_alias = included_parts.alias()
-            parts_alias = parts.alias()
-            included_parts = included_parts.union_all(
-                select([
-                    parts_alias.c.sub_part,
-                    parts_alias.c.part,
-                    parts_alias.c.quantity
-                ]).
-                    where(parts_alias.c.part==incl_alias.c.sub_part)
-            )
-
-            statement = select([
-                        included_parts.c.sub_part,
-                        func.sum(included_parts.c.quantity).
-                          label('total_quantity')
-                    ]).\\
-                    group_by(included_parts.c.sub_part)
-
-            result = conn.execute(statement).fetchall()
-
-
-        .. seealso::
-
-            :meth:`.orm.query.Query.cte` - ORM version of
-            :meth:`.SelectBase.cte`.
-
-        """
-        return CTE(self, name=name, recursive=recursive)
 
     @_generative
     @util.deprecated('0.6',

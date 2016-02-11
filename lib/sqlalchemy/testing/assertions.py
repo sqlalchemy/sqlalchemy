@@ -296,6 +296,8 @@ class AssertsCompiledSQL(object):
                 dialect = config.db.dialect
             elif dialect == 'default':
                 dialect = default.DefaultDialect()
+            elif dialect == 'default_enhanced':
+                dialect = default.StrCompileDialect()
             elif isinstance(dialect, util.string_types):
                 dialect = url.URL(dialect).get_dialect()()
 

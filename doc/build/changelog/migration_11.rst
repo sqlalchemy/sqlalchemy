@@ -529,6 +529,65 @@ remains unchanged.
 New Features and Improvements - Core
 ====================================
 
+.. _change_2551:
+
+CTE Support for INSERT, UPDATE, DELETE
+--------------------------------------
+
+One of the most widely requested features is support for common table
+expressions (CTE) that work with INSERT, UPDATE, DELETE, and is now implemented.
+An INSERT/UPDATE/DELETE can both draw from a WITH clause that's stated at the
+top of the SQL, as well as can be used as a CTE itself in the context of
+a larger statement.
+
+As part of this change, an INSERT from SELECT that includes a CTE will now
+render the CTE at the top of the entire statement, rather than nested
+in the SELECT statement as was the case in 1.0.
+
+Below is an example that renders UPDATE, INSERT and SELECT all in one
+statement::
+
+    >>> from sqlalchemy import table, column, select, literal, exists
+    >>> orders = table(
+    ...     'orders',
+    ...     column('region'),
+    ...     column('amount'),
+    ...     column('product'),
+    ...     column('quantity')
+    ... )
+    >>>
+    >>> upsert = (
+    ...     orders.update()
+    ...     .where(orders.c.region == 'Region1')
+    ...     .values(amount=1.0, product='Product1', quantity=1)
+    ...     .returning(*(orders.c._all_columns)).cte('upsert'))
+    >>>
+    >>> insert = orders.insert().from_select(
+    ...     orders.c.keys(),
+    ...     select([
+    ...         literal('Region1'), literal(1.0),
+    ...         literal('Product1'), literal(1)
+    ...     ]).where(~exists(upsert.select()))
+    ... )
+    >>>
+    >>> print(insert)  # note formatting added for clarity
+    WITH upsert AS
+    (UPDATE orders SET amount=:amount, product=:product, quantity=:quantity
+     WHERE orders.region = :region_1
+     RETURNING orders.region, orders.amount, orders.product, orders.quantity
+    )
+    INSERT INTO orders (region, amount, product, quantity)
+    SELECT
+        :param_1 AS anon_1, :param_2 AS anon_2,
+        :param_3 AS anon_3, :param_4 AS anon_4
+    WHERE NOT (
+        EXISTS (
+            SELECT upsert.region, upsert.amount,
+                   upsert.product, upsert.quantity
+            FROM upsert))
+
+:ticket:`2551`
+
 .. _change_3216:
 
 The ``.autoincrement`` directive is no longer implicitly enabled for a composite primary key column

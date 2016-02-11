@@ -22,6 +22,19 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 2551
+
+        CTE functionality has been expanded to support all DML, allowing
+        INSERT, UPDATE, and DELETE statements to both specify their own
+        WITH clause, as well as for these statements themselves to be
+        CTE expressions when they include a RETURNING clause.
+
+        .. seealso::
+
+            :ref:`change_2551`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3641
 

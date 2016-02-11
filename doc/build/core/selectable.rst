@@ -57,6 +57,9 @@ elements are themselves :class:`.ColumnElement` subclasses).
    :members:
    :inherited-members:
 
+.. autoclass:: HasCTE
+   :members:
+
 .. autoclass:: HasPrefixes
    :members:
 

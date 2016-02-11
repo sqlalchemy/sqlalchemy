@@ -188,9 +188,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             from_select(("otherid", "othername"), sel)
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (otherid, othername) WITH anon_1 AS "
+            "WITH anon_1 AS "
             "(SELECT mytable.name AS name FROM mytable "
             "WHERE mytable.name = :name_1) "
+            "INSERT INTO myothertable (otherid, othername) "
             "SELECT mytable.myid, mytable.name FROM mytable, anon_1 "
             "WHERE mytable.name = anon_1.name",
             checkparams={"name_1": "bar"}
@@ -205,9 +206,9 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             ins,
-            "INSERT INTO mytable (myid, name, description) "
             "WITH c AS (SELECT mytable.myid AS myid, mytable.name AS name, "
             "mytable.description AS description FROM mytable) "
+            "INSERT INTO mytable (myid, name, description) "
             "SELECT c.myid, c.name, c.description FROM c"
         )
 

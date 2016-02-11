@@ -46,8 +46,8 @@ from .base import ColumnCollection, Generative, Executable, \
 
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
     CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
-    alias, GenerativeSelect, \
-    subquery, HasPrefixes, HasSuffixes, Exists, ScalarSelect, TextAsFrom
+    alias, GenerativeSelect, subquery, HasCTE, HasPrefixes, HasSuffixes, \
+    Exists, ScalarSelect, TextAsFrom
 
 
 from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
