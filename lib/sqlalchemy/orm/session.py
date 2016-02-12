@@ -1768,9 +1768,10 @@ class Session(_SessionClassMethods):
             self._update_impl(merged_state)
             new_instance = True
 
-        elif not _none_set.intersection(key[1]) or \
+        elif key_is_persistent and (
+            not _none_set.intersection(key[1]) or
             (mapper.allow_partial_pks and
-             not _none_set.issuperset(key[1])):
+             not _none_set.issuperset(key[1]))):
             merged = self.query(mapper.class_).get(key[1])
         else:
             merged = None

@@ -20,6 +20,16 @@
     :released:
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3647
+
+        Fixed bug in :meth:`.Session.merge` where an object with a composite
+        primary key that has values for some but not all of the PK fields
+        would emit a SELECT statement leaking the internal NEVER_SET symbol
+        into the query, rather than detecting that this object does not have
+        a searchable primary key and no SELECT should be emitted.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3644
 
