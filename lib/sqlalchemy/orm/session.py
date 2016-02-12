@@ -1726,6 +1726,9 @@ class Session(_SessionClassMethods):
                     "all changes on mapped instances before merging with "
                     "load=False.")
             key = mapper._identity_key_from_state(state)
+            key_is_persistent = attributes.NEVER_SET not in key[1]
+        else:
+            key_is_persistent = True
 
         if key in self.identity_map:
             merged = self.identity_map[key]
@@ -1742,9 +1745,10 @@ class Session(_SessionClassMethods):
             self._update_impl(merged_state)
             new_instance = True
 
-        elif not _none_set.intersection(key[1]) or \
+        elif key_is_persistent and (
+            not _none_set.intersection(key[1]) or
             (mapper.allow_partial_pks and
-             not _none_set.issuperset(key[1])):
+             not _none_set.issuperset(key[1]))):
             merged = self.query(mapper.class_).get(key[1])
         else:
             merged = None
