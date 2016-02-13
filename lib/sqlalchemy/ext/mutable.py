@@ -778,3 +778,68 @@ class MutableList(Mutable, list):
 
     def __setstate__(self, state):
         self[:] = state
+
+
+class MutableSet(Mutable, set):
+    """A set type that implements :class:`.Mutable`.
+
+    The :class:`.MutableSet` object implements a list that will
+    emit change events to the underlying mapping when the contents of
+    the set are altered, including when values are added or removed.
+    """
+
+    def update(self, *arg):
+        set.update(self, *arg)
+        self.changed()
+
+    def intersection_update(self, *arg):
+        set.intersection_update(self, *arg)
+        self.changed()
+
+    def difference_update(self, *arg):
+        set.difference_update(self, *arg)
+        self.changed()
+
+    def symmetric_difference_update(self, *arg):
+        set.symmetric_difference_update(self, *arg)
+        self.changed()
+
+    def add(self, elem):
+        set.add(self, elem)
+        self.changed()
+
+    def remove(self, elem):
+        set.remove(self, elem)
+        self.changed()
+
+    def discard(self, elem):
+        set.discard(self, elem)
+        self.changed()
+
+    def pop(self, *arg):
+        result = set.pop(self, *arg)
+        self.changed()
+        return result
+
+    def clear(self):
+        set.clear(self)
+        self.changed()
+
+    @classmethod
+    def coerce(cls, index, value):
+        """Convert plain set to instance of this class."""
+        if not isinstance(value, cls):
+            if isinstance(value, set):
+                return cls(value)
+            return Mutable.coerce(index, value)
+        else:
+            return value
+
+    def __getstate__(self):
+        return set(self)
+
+    def __setstate__(self, state):
+        self.update(state)
+
+    def __reduce_ex__(self, proto):
+        return (self.__class__, (list(self), ))
