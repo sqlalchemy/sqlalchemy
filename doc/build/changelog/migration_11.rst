@@ -526,6 +526,15 @@ remains unchanged.
 
 :ticket:`3641`
 
+New MutableList and MutableSet helpers added to the mutation tracking extension
+-------------------------------------------------------------------------------
+
+New helper classes :class:`.MutableList` and :class:`.MutableSet` have been
+added to the :ref:`mutable_toplevel` extension, to complement the existing
+:class:`.MutableDict` helper.
+
+:ticket:`3297`
+
 New Features and Improvements - Core
 ====================================
 

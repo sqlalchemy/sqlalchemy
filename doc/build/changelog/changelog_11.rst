@@ -22,6 +22,14 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, ext
+        :tickets: 3297
+
+        Added :class:`.MutableSet` and :class:`.MutableList` helper classes
+        to the :ref:`mutable_toplevel` extension.  Pull request courtesy
+        Jeong YunWon.
+
+    .. change::
         :tags: feature, sql
         :tickets: 2551
 

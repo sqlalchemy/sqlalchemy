@@ -649,6 +649,12 @@ class MutableDict(Mutable, dict):
 
     .. versionadded:: 0.8
 
+    .. seealso::
+
+        :class:`.MutableList`
+
+        :class:`.MutableSet`
+
     """
 
     def __setitem__(self, key, value):
@@ -707,6 +713,22 @@ class MutableList(Mutable, list):
     The :class:`.MutableList` object implements a list that will
     emit change events to the underlying mapping when the contents of
     the list are altered, including when values are added or removed.
+
+    Note that :class:`.MutableList` does **not** apply mutable tracking to  the
+    *values themselves* inside the list. Therefore it is not a sufficient
+    solution for the use case of tracking deep changes to a *recursive*
+    mutable structure, such as a JSON structure.  To support this use case,
+    build a subclass of  :class:`.MutableList` that provides appropriate
+    coersion to the values placed in the dictionary so that they too are
+    "mutable", and emit events up to their parent structure.
+
+    .. versionadded:: 1.1
+
+    .. seealso::
+
+        :class:`.MutableDict`
+
+        :class:`.MutableSet`
 
     """
 
@@ -783,9 +805,27 @@ class MutableList(Mutable, list):
 class MutableSet(Mutable, set):
     """A set type that implements :class:`.Mutable`.
 
-    The :class:`.MutableSet` object implements a list that will
+    The :class:`.MutableSet` object implements a set that will
     emit change events to the underlying mapping when the contents of
     the set are altered, including when values are added or removed.
+
+    Note that :class:`.MutableSet` does **not** apply mutable tracking to  the
+    *values themselves* inside the set. Therefore it is not a sufficient
+    solution for the use case of tracking deep changes to a *recursive*
+    mutable structure.  To support this use case,
+    build a subclass of  :class:`.MutableSet` that provides appropriate
+    coersion to the values placed in the dictionary so that they too are
+    "mutable", and emit events up to their parent structure.
+
+    .. versionadded:: 1.1
+
+    .. seealso::
+
+        :class:`.MutableDict`
+
+        :class:`.MutableList`
+
+
     """
 
     def update(self, *arg):
