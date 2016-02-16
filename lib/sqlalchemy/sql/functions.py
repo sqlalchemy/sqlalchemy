@@ -195,7 +195,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
             from sqlalchemy.sql import column
 
-            stmt = select([column('data')]).select_from(
+            stmt = select([column('data_view')]).select_from(
                 func.unnest(Table.data).alias('data_view')
             )
 
@@ -203,7 +203,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         .. sourcecode:: sql
 
-            SELECT data
+            SELECT data_view
             FROM unnest(sometable.data) AS data_view
 
         .. versionadded:: 0.9.8 The :meth:`.FunctionElement.alias` method
