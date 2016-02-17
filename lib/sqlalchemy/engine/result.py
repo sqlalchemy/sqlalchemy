@@ -10,7 +10,7 @@ and :class:`.RowProxy."""
 
 
 from .. import exc, util
-from ..sql import expression, sqltypes
+from ..sql import expression, sqltypes, util as sql_util
 import collections
 import operator
 
@@ -153,7 +153,7 @@ class RowProxy(BaseRowProxy):
         return self._op(other, operator.ne)
 
     def __repr__(self):
-        return repr(tuple(self))
+        return repr(sql_util._repr_row(self))
 
     def has_key(self, key):
         """Return True if this RowProxy contains the given key."""
@@ -1080,7 +1080,7 @@ class ResultProxy(object):
             log = self.context.engine.logger.debug
             l = []
             for row in rows:
-                log("Row %r", row)
+                log("Row %r", sql_util._repr_row(row))
                 l.append(process_row(metadata, row, processors, keymap))
             return l
         else:

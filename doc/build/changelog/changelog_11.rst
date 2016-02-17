@@ -22,6 +22,22 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, engine
+        :tickets: 2837
+
+        All string formatting of bound parameter sets and result rows for
+        logging, exception, and  ``repr()`` purposes now truncate very large
+        scalar values within each collection, including an
+        "N characters truncated"
+        notation, similar to how the display for large multiple-parameter sets
+        are themselves truncated.
+
+
+        .. seealso::
+
+            :ref:`change_2837`
+
+    .. change::
         :tags: feature, ext
         :tickets: 3297
 

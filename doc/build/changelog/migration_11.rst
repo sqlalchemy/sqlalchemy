@@ -883,6 +883,45 @@ this CHECK constraint can now be disabled using the new
 
 :ticket:`3095`
 
+.. _change_2837:
+
+Large parameter and row values are now truncated in logging and exception displays
+----------------------------------------------------------------------------------
+
+A large value present as a bound parameter for a SQL statement, as well as a
+large value present in a result row, will now be truncated during display
+within logging, exception reporting, as well as ``repr()`` of the row itself::
+
+    >>> from sqlalchemy import create_engine
+    >>> import random
+    >>> e = create_engine("sqlite://", echo='debug')
+    >>> some_value = ''.join(chr(random.randint(52, 85)) for i in range(5000))
+    >>> row = e.execute("select ?", [some_value]).first()
+    ... (lines are wrapped for clarity) ...
+    2016-02-17 13:23:03,027 INFO sqlalchemy.engine.base.Engine select ?
+    2016-02-17 13:23:03,027 INFO sqlalchemy.engine.base.Engine
+    ('E6@?>9HPOJB<<BHR:@=TS:5ILU=;JLM<4?B9<S48PTNG9>:=TSTLA;9K;9FPM4M8M@;NM6GU
+    LUAEBT9QGHNHTHR5EP75@OER4?SKC;D:TFUMD:M>;C6U:JLM6R67GEK<A6@S@C@J7>4=4:P
+    GJ7HQ6 ... (4702 characters truncated) ... J6IK546AJMB4N6S9L;;9AKI;=RJP
+    HDSSOTNBUEEC9@Q:RCL:I@5?FO<9K>KJAGAO@E6@A7JI8O:J7B69T6<8;F:S;4BEIJS9HM
+    K:;5OLPM@JR;R:J6<SOTTT=>Q>7T@I::OTDC:CC<=NGP6C>BC8N',)
+    2016-02-17 13:23:03,027 DEBUG sqlalchemy.engine.base.Engine Col ('?',)
+    2016-02-17 13:23:03,027 DEBUG sqlalchemy.engine.base.Engine
+    Row (u'E6@?>9HPOJB<<BHR:@=TS:5ILU=;JLM<4?B9<S48PTNG9>:=TSTLA;9K;9FPM4M8M@;
+    NM6GULUAEBT9QGHNHTHR5EP75@OER4?SKC;D:TFUMD:M>;C6U:JLM6R67GEK<A6@S@C@J7
+    >4=4:PGJ7HQ ... (4703 characters truncated) ... J6IK546AJMB4N6S9L;;9AKI;=
+    RJPHDSSOTNBUEEC9@Q:RCL:I@5?FO<9K>KJAGAO@E6@A7JI8O:J7B69T6<8;F:S;4BEIJS9HM
+    K:;5OLPM@JR;R:J6<SOTTT=>Q>7T@I::OTDC:CC<=NGP6C>BC8N',)
+    >>> print row
+    (u'E6@?>9HPOJB<<BHR:@=TS:5ILU=;JLM<4?B9<S48PTNG9>:=TSTLA;9K;9FPM4M8M@;NM6
+    GULUAEBT9QGHNHTHR5EP75@OER4?SKC;D:TFUMD:M>;C6U:JLM6R67GEK<A6@S@C@J7>4
+    =4:PGJ7HQ ... (4703 characters truncated) ... J6IK546AJMB4N6S9L;;9AKI;
+    =RJPHDSSOTNBUEEC9@Q:RCL:I@5?FO<9K>KJAGAO@E6@A7JI8O:J7B69T6<8;F:S;4BEIJS9H
+    MK:;5OLPM@JR;R:J6<SOTTT=>Q>7T@I::OTDC:CC<=NGP6C>BC8N',)
+
+
+:ticket:`2837`
+
 .. _change_2528:
 
 A UNION or similar of SELECTs with LIMIT/OFFSET/ORDER BY now parenthesizes the embedded selects

@@ -279,28 +279,125 @@ def _quote_ddl_expr(element):
         return repr(element)
 
 
-class _repr_params(object):
-    """A string view of bound parameters, truncating
-    display to the given number of 'multi' parameter sets.
+class _repr_base(object):
+    _LIST = 0
+    _TUPLE = 1
+    _DICT = 2
+
+    __slots__ = 'max_chars',
+
+    def trunc(self, value):
+        rep = repr(value)
+        lenrep = len(rep)
+        if lenrep > self.max_chars:
+            segment_length = self.max_chars // 2
+            rep = (
+                rep[0:segment_length] +
+                (" ... (%d characters truncated) ... "
+                 % (lenrep - self.max_chars)) +
+                rep[-segment_length:]
+            )
+        return rep
+
+
+class _repr_row(_repr_base):
+    """Provide a string view of a row."""
+
+    __slots__ = 'row',
+
+    def __init__(self, row, max_chars=300):
+        self.row = row
+        self.max_chars = max_chars
+
+    def __repr__(self):
+        trunc = self.trunc
+        return "(%s)" % (
+            "".join(trunc(value) + "," for value in self.row)
+        )
+
+
+class _repr_params(_repr_base):
+    """Provide a string view of bound parameters.
+
+    Truncates display to a given numnber of 'multi' parameter sets,
+    as well as long values to a given number of characters.
 
     """
 
-    def __init__(self, params, batches):
+    __slots__ = 'params', 'batches',
+
+    def __init__(self, params, batches, max_chars=300):
         self.params = params
         self.batches = batches
+        self.max_chars = max_chars
 
     def __repr__(self):
-        if isinstance(self.params, (list, tuple)) and \
-                len(self.params) > self.batches and \
-                isinstance(self.params[0], (list, dict, tuple)):
+        if isinstance(self.params, list):
+            typ = self._LIST
+            ismulti = self.params and isinstance(
+                self.params[0], (list, dict, tuple))
+        elif isinstance(self.params, tuple):
+            typ = self._TUPLE
+            ismulti = self.params and isinstance(
+                self.params[0], (list, dict, tuple))
+        elif isinstance(self.params, dict):
+            typ = self._DICT
+            ismulti = False
+        else:
+            assert False, "Unknown parameter type %s" % (type(self.params), )
+
+        if ismulti and len(self.params) > self.batches:
             msg = " ... displaying %i of %i total bound parameter sets ... "
             return ' '.join((
-                repr(self.params[:self.batches - 2])[0:-1],
+                self._repr_multi(self.params[:self.batches - 2], typ)[0:-1],
                 msg % (self.batches, len(self.params)),
-                repr(self.params[-2:])[1:]
+                self._repr_multi(self.params[-2:], typ)[1:]
             ))
+        elif ismulti:
+            return self._repr_multi(self.params, typ)
         else:
-            return repr(self.params)
+            return self._repr_params(self.params, typ)
+
+    def _repr_multi(self, multi_params, typ):
+        if multi_params:
+            if isinstance(multi_params[0], list):
+                elem_type = self._LIST
+            elif isinstance(multi_params[0], tuple):
+                elem_type = self._TUPLE
+            elif isinstance(multi_params[0], dict):
+                elem_type = self._DICT
+            else:
+                assert False, \
+                    "Unknown parameter type %s" % (type(multi_params[0]))
+
+            elements = ", ".join(
+                self._repr_params(params, elem_type)
+                for params in multi_params)
+        else:
+            elements = ""
+
+        if typ == self._LIST:
+            return "[%s]" % elements
+        else:
+            return "(%s)" % elements
+
+    def _repr_params(self, params, typ):
+        trunc = self.trunc
+        if typ is self._DICT:
+            return "{%s}" % (
+                ", ".join(
+                    "%r: %s" % (key, trunc(value))
+                    for key, value in params.items()
+                )
+            )
+        elif typ is self._TUPLE:
+            return "(%s)" % (
+                "".join(trunc(value) + "," for value in params)
+            )
+        else:
+            return "[%s]" % (
+                ", ".join(trunc(value) for value in params)
+            )
 
 
 def adapt_criterion_to_null(crit, nulls):
