@@ -1,4 +1,4 @@
-from sqlalchemy.testing import eq_, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises_message, eq_regex
 from sqlalchemy import select
 import sqlalchemy as tsa
 from sqlalchemy.testing import engines
@@ -7,6 +7,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import lazy_gc
 from sqlalchemy import util
+
 
 class LogParamsTest(fixtures.TestBase):
     __only_on__ = 'sqlite'
@@ -104,6 +105,31 @@ class LogParamsTest(fixtures.TestBase):
             "('%s ... (372 characters truncated) ... %s',)]" % (
                 lp1[0:149], lp1[-149:], lp2, lp3[0:149], lp3[-149:]
             )
+        )
+
+    def test_exception_format_dict_param(self):
+        exception = tsa.exc.IntegrityError("foo", {"x": "y"}, None)
+        eq_regex(
+            str(exception),
+            r"\(.*.NoneType\) None \[SQL: 'foo'\] \[parameters: {'x': 'y'}\]"
+        )
+
+    def test_exception_format_unexpected_parameter(self):
+        # test that if the parameters aren't any known type, we just
+        # run through repr()
+        exception = tsa.exc.IntegrityError("foo", "bar", "bat")
+        eq_regex(
+            str(exception),
+            r"\(.*.str\) bat \[SQL: 'foo'\] \[parameters: 'bar'\]"
+        )
+
+    def test_exception_format_unexpected_member_parameter(self):
+        # test that if the parameters aren't any known type, we just
+        # run through repr()
+        exception = tsa.exc.IntegrityError("foo", ["bar", "bat"], "hoho")
+        eq_regex(
+            str(exception),
+            r"\(.*.str\) hoho \[SQL: 'foo'\] \[parameters: \['bar', 'bat'\]\]"
         )
 
     def test_result_large_param(self):

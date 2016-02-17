@@ -345,7 +345,7 @@ class _repr_params(_repr_base):
             typ = self._DICT
             ismulti = False
         else:
-            assert False, "Unknown parameter type %s" % (type(self.params), )
+            return self.trunc(self.params)
 
         if ismulti and len(self.params) > self.batches:
             msg = " ... displaying %i of %i total bound parameter sets ... "

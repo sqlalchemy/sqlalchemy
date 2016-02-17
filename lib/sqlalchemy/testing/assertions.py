@@ -204,6 +204,10 @@ def _assert_no_stray_pool_connections():
         _STRAY_CONNECTION_FAILURES = 0
 
 
+def eq_regex(a, b, msg=None):
+    assert re.match(b, a), msg or "%r !~ %r" % (a, b)
+
+
 def eq_(a, b, msg=None):
     """Assert a == b, with repr messaging on failure."""
     assert a == b, msg or "%r != %r" % (a, b)
