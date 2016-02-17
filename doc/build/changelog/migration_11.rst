@@ -487,6 +487,95 @@ associated with any bound :class:`.Engine`, then the fallback to the
 
 :ticket:`3081`
 
+.. _change_3431:
+
+Joined eager loading where the same entity is present multiple times in one row
+-------------------------------------------------------------------------------
+
+A fix has been made to the case has been made whereby an attribute will be
+loaded via joined eager loading, even if the entity was already loaded from the
+row on a different "path" that doesn't include the attribute.  This is a
+deep use case that's hard to reproduce, but the general idea is as follows::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        b_id = Column(ForeignKey('b.id'))
+        c_id = Column(ForeignKey('c.id'))
+
+        b = relationship("B")
+        c = relationship("C")
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        c_id = Column(ForeignKey('c.id'))
+
+        c = relationship("C")
+
+
+    class C(Base):
+        __tablename__ = 'c'
+        id = Column(Integer, primary_key=True)
+        d_id = Column(ForeignKey('d.id'))
+        d = relationship("D")
+
+
+    class D(Base):
+        __tablename__ = 'd'
+        id = Column(Integer, primary_key=True)
+
+
+    c_alias_1 = aliased(C)
+    c_alias_2 = aliased(C)
+
+    q = s.query(A)
+    q = q.join(A.b).join(c_alias_1, B.c).join(c_alias_1.d)
+    q = q.options(contains_eager(A.b).contains_eager(B.c, alias=c_alias_1).contains_eager(C.d))
+    q = q.join(c_alias_2, A.c)
+    q = q.options(contains_eager(A.c, alias=c_alias_2))
+
+The above query emits SQL like this::
+
+    SELECT
+        d.id AS d_id,
+        c_1.id AS c_1_id, c_1.d_id AS c_1_d_id,
+        b.id AS b_id, b.c_id AS b_c_id,
+        c_2.id AS c_2_id, c_2.d_id AS c_2_d_id,
+        a.id AS a_id, a.b_id AS a_b_id, a.c_id AS a_c_id
+    FROM
+        a
+        JOIN b ON b.id = a.b_id
+        JOIN c AS c_1 ON c_1.id = b.c_id
+        JOIN d ON d.id = c_1.d_id
+        JOIN c AS c_2 ON c_2.id = a.c_id
+
+We can see that the ``c`` table is selected from twice; once in the context
+of ``A.b.c -> c_alias_1`` and another in the context of ``A.c -> c_alias_2``.
+Also, we can see that it is quite possible that the ``C`` identity for a
+single row is the **same** for both ``c_alias_1`` and ``c_alias_2``, meaning
+two sets of columns in one row result in only one new object being added
+to the identity map.
+
+The query options above only call for the attribute ``C.d`` to be loaded
+in the context of ``c_alias_1``, and not ``c_alias_2``.  So whether or not
+the final ``C`` object we get in the identity map has the ``C.d`` attribute
+loaded depends on how the mappings are traversed, which while not completely
+random, is essentially non-deterministic.   The fix is that even if the
+loader for ``c_alias_1`` is processed after that of ``c_alias_2`` for a
+single row where they both refer to the same identity, the ``C.d``
+element will still be loaded.  Previously, the loader did not seek to
+modify the load of an entity that was already loaded via a different path.
+The loader that reaches the entity first has always been non-deterministic,
+so this fix may be detectable as a behavioral change in some situations and
+not others.
+
+The fix includes tests for two variants of the "multiple paths to one entity"
+case, and the fix should hopefully cover all other scenarios of this nature.
+
+:ticket:`3431`
+
 .. _change_3641:
 
 Columns no longer added redundantly with DISTINCT + ORDER BY

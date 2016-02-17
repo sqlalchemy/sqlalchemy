@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3431
+
+        Fixed bug which would cause an eagerly loaded many-to-one attribute
+        to not be loaded, if the joined eager load were from a row where the
+        same entity were present multiple times, some calling for the attribute
+        to be eagerly loaded and others not.  The logic here is revised to
+        take in the attribute even though a different loader path has
+        handled the parent entity already.
+
+        .. seealso::
+
+            :ref:`change_3431`
+
+    .. change::
         :tags: feature, engine
         :tickets: 2837
 

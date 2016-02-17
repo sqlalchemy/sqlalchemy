@@ -1,11 +1,11 @@
 """tests of joined-eager loaded attributes"""
 
-from sqlalchemy.testing import eq_, is_, is_not_
+from sqlalchemy.testing import eq_, is_, is_not_, in_
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.orm import joinedload, deferred, undefer, \
     joinedload_all, backref, Session,\
-    defaultload, Load, load_only
+    defaultload, Load, load_only, contains_eager
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, \
     func, text
 from sqlalchemy.testing.schema import Table, Column
@@ -4177,4 +4177,149 @@ class EnsureColumnsAddedTest(
             "JOIN m2mchild AS m2mchild_1 "
             "ON m2mchild_1.id = parent_to_m2m_1.child_id) "
             "ON parent.arb = parent_to_m2m_1.parent_id"
+        )
+
+
+class EntityViaMultiplePathTestOne(fixtures.DeclarativeMappedTest):
+    """test for [ticket:3431]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+            c_id = Column(ForeignKey('c.id'))
+
+            b = relationship("B")
+            c = relationship("C")
+
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            c_id = Column(ForeignKey('c.id'))
+
+            c = relationship("C")
+
+        class C(Base):
+            __tablename__ = 'c'
+            id = Column(Integer, primary_key=True)
+            d_id = Column(ForeignKey('d.id'))
+            d = relationship("D")
+
+        class D(Base):
+            __tablename__ = 'd'
+            id = Column(Integer, primary_key=True)
+
+            @classmethod
+            def define_tables(cls, metadata):
+                Table(
+                    'a', metadata,
+                    Column('id', Integer, primary_key=True),
+                    Column('bid', ForeignKey('b.id'))
+                )
+
+    def test_multi_path_load(self):
+        A, B, C, D = self.classes('A', 'B', 'C', 'D')
+
+        s = Session()
+
+        c = C(d=D())
+
+        s.add(
+            A(b=B(c=c), c=c)
+        )
+        s.commit()
+
+        c_alias_1 = aliased(C)
+        c_alias_2 = aliased(C)
+
+        q = s.query(A)
+        q = q.join(A.b).join(c_alias_1, B.c).join(c_alias_1.d)
+        q = q.options(
+            contains_eager(A.b).
+            contains_eager(B.c, alias=c_alias_1).
+            contains_eager(C.d))
+        q = q.join(c_alias_2, A.c)
+        q = q.options(contains_eager(A.c, alias=c_alias_2))
+
+        a1 = q.all()[0]
+
+        # ensure 'd' key was populated in dict.  Varies based on
+        # PYTHONHASHSEED
+        in_('d', a1.c.__dict__)
+
+
+class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
+    """test for [ticket:3431]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = 'cs_user'
+
+            id = Column(Integer, primary_key=True)
+            data = Column(Integer)
+
+        class LD(Base):
+            """Child.  The column we reference 'A' with is an integer."""
+
+            __tablename__ = 'cs_ld'
+
+            id = Column(Integer, primary_key=True)
+            user_id = Column(Integer, ForeignKey('cs_user.id'))
+            user = relationship(User, primaryjoin=user_id == User.id)
+
+        class A(Base):
+            """Child.  The column we reference 'A' with is an integer."""
+
+            __tablename__ = 'cs_a'
+
+            id = Column(Integer, primary_key=True)
+            ld_id = Column(Integer, ForeignKey('cs_ld.id'))
+            ld = relationship(LD, primaryjoin=ld_id == LD.id)
+
+        class LDA(Base):
+            """Child.  The column we reference 'A' with is an integer."""
+
+            __tablename__ = 'cs_lda'
+
+            id = Column(Integer, primary_key=True)
+            ld_id = Column(Integer, ForeignKey('cs_ld.id'))
+            a_id = Column(Integer, ForeignKey('cs_a.id'))
+            a = relationship(A, primaryjoin=a_id == A.id)
+            ld = relationship(LD, primaryjoin=ld_id == LD.id)
+
+    def test_multi_path_load(self):
+        User, LD, A, LDA = self.classes('User', 'LD', 'A', 'LDA')
+
+        s = Session()
+
+        u0 = User(data=42)
+        l0 = LD(user=u0)
+        z0 = A(ld=l0)
+        lz0 = LDA(ld=l0, a=z0)
+        s.add_all([
+            u0, l0, z0, lz0
+        ])
+        s.commit()
+
+        l_ac = aliased(LD)
+        u_ac = aliased(User)
+
+        lz_test = (s.query(LDA)
+                   .join('ld')
+                   .options(contains_eager('ld'))
+                   .join('a', (l_ac, 'ld'), (u_ac, 'user'))
+                   .options(contains_eager('a')
+                            .contains_eager('ld', alias=l_ac)
+                            .contains_eager('user', alias=u_ac))
+                   .first())
+
+        in_(
+            'user', lz_test.a.ld.__dict__
         )
