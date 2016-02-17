@@ -69,6 +69,24 @@ class LogParamsTest(fixtures.TestBase):
             )
         )
 
+    def test_log_large_multi_parameter(self):
+        import random
+        lp1 = ''.join(chr(random.randint(52, 85)) for i in range(5))
+        lp2 = ''.join(chr(random.randint(52, 85)) for i in range(8))
+        lp3 = ''.join(chr(random.randint(52, 85)) for i in range(670))
+
+        self.eng.execute(
+            "SELECT ?, ?, ?",
+            (lp1, lp2, lp3)
+        )
+
+        eq_(
+            self.buf.buffer[1].message,
+            "('%s', '%s', '%s ... (372 characters truncated) ... %s')" % (
+                lp1, lp2, lp3[0:149], lp3[-149:]
+            )
+        )
+
     def test_log_large_parameter_multiple(self):
         import random
         lp1 = ''.join(chr(random.randint(52, 85)) for i in range(5000))

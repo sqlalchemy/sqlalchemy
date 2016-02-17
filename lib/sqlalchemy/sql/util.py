@@ -311,8 +311,9 @@ class _repr_row(_repr_base):
 
     def __repr__(self):
         trunc = self.trunc
-        return "(%s)" % (
-            "".join(trunc(value) + "," for value in self.row)
+        return "(%s%s)" % (
+            ", ".join(trunc(value) for value in self.row),
+            "," if len(self.row) == 1 else ""
         )
 
 
@@ -391,8 +392,10 @@ class _repr_params(_repr_base):
                 )
             )
         elif typ is self._TUPLE:
-            return "(%s)" % (
-                "".join(trunc(value) + "," for value in params)
+            return "(%s%s)" % (
+                ", ".join(trunc(value) for value in params),
+                "," if len(params) == 1 else ""
+
             )
         else:
             return "[%s]" % (
