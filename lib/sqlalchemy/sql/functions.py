@@ -162,14 +162,16 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         :class:`.FunctionElement`.
 
         This construct wraps the function in a named alias which
-        is suitable for the FROM clause.
+        is suitable for the FROM clause, in the style accepted for example
+        by Postgresql.
 
         e.g.::
 
             from sqlalchemy.sql import column
 
-            stmt = select([column('data_view')]).select_from(
-                func.unnest(Table.data).alias('data_view')
+            stmt = select([column('data_view')]).\\
+                select_from(SomeTable).\\
+                select_from(func.unnest(SomeTable.data).alias('data_view')
             )
 
         Would produce:
@@ -177,7 +179,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         .. sourcecode:: sql
 
             SELECT data_view
-            FROM unnest(sometable.data) AS data_view
+            FROM sometable, unnest(sometable.data) AS data_view
 
         .. versionadded:: 0.9.8 The :meth:`.FunctionElement.alias` method
            is now supported.  Previously, this method's behavior was
