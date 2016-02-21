@@ -416,11 +416,11 @@ class ResultMetaData(object):
         else:
             return self._key_fallback(key, False) is not None
 
-    def _getter(self, key):
+    def _getter(self, key, raiseerr=True):
         if key in self._keymap:
             processor, obj, index = self._keymap[key]
         else:
-            ret = self._key_fallback(key, False)
+            ret = self._key_fallback(key, raiseerr)
             if ret is None:
                 return None
             processor, obj, index = ret
@@ -494,13 +494,13 @@ class ResultProxy(object):
             context.engine._should_log_debug()
         self._init_metadata()
 
-    def _getter(self, key):
+    def _getter(self, key, raiseerr=True):
         try:
             getter = self._metadata._getter
         except AttributeError:
             return self._non_result(None)
         else:
-            return getter(key)
+            return getter(key, raiseerr)
 
     def _has_key(self, key):
         try:

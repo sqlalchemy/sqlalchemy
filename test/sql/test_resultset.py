@@ -203,7 +203,8 @@ class ResultProxyTest(fixtures.TablesTest):
                     lambda: result[0][addresses.c.address_id])
 
     def test_column_error_printing(self):
-        row = testing.db.execute(select([1])).first()
+        result = testing.db.execute(select([1]))
+        row = result.first()
 
         class unprintable(object):
 
@@ -218,6 +219,14 @@ class ResultProxyTest(fixtures.TablesTest):
             (Column("q", Integer) + 12, r"q \+ :q_1"),
             (unprintable(), "unprintable element.*"),
         ]:
+            assert_raises_message(
+                exc.NoSuchColumnError,
+                msg % repl,
+                result._getter, accessor
+            )
+
+            is_(result._getter(accessor, False), None)
+
             assert_raises_message(
                 exc.NoSuchColumnError,
                 msg % repl,

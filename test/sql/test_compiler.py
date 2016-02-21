@@ -3587,3 +3587,26 @@ class ResultMapTest(fixtures.TestBase):
                     (table1.c.description, 'description', 'description'),
                     table1.c.description.type)}
         )
+
+    def test_select_wraps_for_translate_ambiguity(self):
+        # test for issue #3657
+        t = table('a', column('x'), column('y'), column('z'))
+
+        l1, l2, l3 = t.c.z.label('a'), t.c.x.label('b'), t.c.x.label('c')
+        orig = [t.c.x, t.c.y, l1, l2, l3]
+        stmt = select(orig)
+        wrapped = stmt._generate()
+        wrapped = wrapped.column(
+            func.ROW_NUMBER().over(order_by=t.c.z)).alias()
+
+        wrapped_again = select([c for c in wrapped.c])
+
+        compiled = wrapped_again.compile(
+            compile_kwargs={'select_wraps_for': stmt})
+
+        proxied = [obj[0] for (k, n, obj, type_) in compiled._result_columns]
+        for orig_obj, proxied_obj in zip(
+            orig,
+            proxied
+        ):
+            is_(orig_obj, proxied_obj)
