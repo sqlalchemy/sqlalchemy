@@ -1,5 +1,6 @@
 # -*- encoding: utf-8
 from sqlalchemy.testing import eq_, engines, pickleable, assert_raises_message
+from sqlalchemy.testing import is_, is_not_
 import datetime
 import os
 from sqlalchemy import Table, Column, MetaData, Float, \
@@ -725,44 +726,37 @@ class TypeRoundTripTest(
     def test_autoincrement(self):
         Table(
             'ai_1', metadata,
-            Column('int_y', Integer, primary_key=True),
+            Column('int_y', Integer, primary_key=True, autoincrement=True),
             Column(
-                'int_n', Integer, DefaultClause('0'),
-                primary_key=True, autoincrement=False))
+                'int_n', Integer, DefaultClause('0'), primary_key=True))
         Table(
             'ai_2', metadata,
-            Column('int_y', Integer, primary_key=True),
-            Column('int_n', Integer, DefaultClause('0'),
-                   primary_key=True, autoincrement=False))
+            Column('int_y', Integer, primary_key=True, autoincrement=True),
+            Column('int_n', Integer, DefaultClause('0'), primary_key=True))
         Table(
             'ai_3', metadata,
-            Column('int_n', Integer, DefaultClause('0'),
-                   primary_key=True, autoincrement=False),
-            Column('int_y', Integer, primary_key=True))
+            Column('int_n', Integer, DefaultClause('0'), primary_key=True),
+            Column('int_y', Integer, primary_key=True, autoincrement=True))
 
         Table(
             'ai_4', metadata,
-            Column('int_n', Integer, DefaultClause('0'),
-                   primary_key=True, autoincrement=False),
-            Column('int_n2', Integer, DefaultClause('0'),
-                   primary_key=True, autoincrement=False))
+            Column('int_n', Integer, DefaultClause('0'), primary_key=True),
+            Column('int_n2', Integer, DefaultClause('0'), primary_key=True))
         Table(
             'ai_5', metadata,
-            Column('int_y', Integer, primary_key=True),
-            Column('int_n', Integer, DefaultClause('0'),
-                   primary_key=True, autoincrement=False))
+            Column('int_y', Integer, primary_key=True, autoincrement=True),
+            Column('int_n', Integer, DefaultClause('0'), primary_key=True))
         Table(
             'ai_6', metadata,
-            Column('o1', String(1), DefaultClause('x'),
-                   primary_key=True),
-            Column('int_y', Integer, primary_key=True))
+            Column('o1', String(1), DefaultClause('x'), primary_key=True),
+            Column('int_y', Integer, primary_key=True, autoincrement=True))
         Table(
             'ai_7', metadata,
             Column('o1', String(1), DefaultClause('x'),
                    primary_key=True),
             Column('o2', String(1), DefaultClause('x'),
                    primary_key=True),
-            Column('int_y', Integer, primary_key=True))
+            Column('int_y', Integer, autoincrement=True, primary_key=True))
         Table(
             'ai_8', metadata,
             Column('o1', String(1), DefaultClause('x'),
@@ -778,13 +772,15 @@ class TypeRoundTripTest(
         for name in table_names:
             tbl = Table(name, mr, autoload=True)
             tbl = metadata.tables[name]
-            for c in tbl.c:
-                if c.name.startswith('int_y'):
-                    assert c.autoincrement, name
-                    assert tbl._autoincrement_column is c, name
-                elif c.name.startswith('int_n'):
-                    assert not c.autoincrement, name
-                    assert tbl._autoincrement_column is not c, name
+
+            # test that the flag itself reflects appropriately
+            for col in tbl.c:
+                if 'int_y' in col.name:
+                    is_(col.autoincrement, True)
+                    is_(tbl._autoincrement_column, col)
+                else:
+                    eq_(col.autoincrement, 'auto')
+                    is_not_(tbl._autoincrement_column, col)
 
             # mxodbc can't handle scope_identity() with DEFAULT VALUES
 
