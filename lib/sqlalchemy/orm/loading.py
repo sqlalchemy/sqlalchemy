@@ -316,7 +316,7 @@ def _instance_processor(
             else:
                 if adapter:
                     col = adapter.columns[col]
-                getter = result._getter(col)
+                getter = result._getter(col, False)
                 if getter:
                     populators["quick"].append((prop.key, getter))
                 else:

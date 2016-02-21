@@ -1638,15 +1638,11 @@ class SQLCompiler(Compiled):
         if populate_result_map and select_wraps_for is not None:
             # if this select is a compiler-generated wrapper,
             # rewrite the targeted columns in the result map
-            wrapped_inner_columns = set(select_wraps_for.inner_columns)
+
             translate = dict(
-                (outer, inner.pop()) for outer, inner in [
-                    (
-                        outer,
-                        outer.proxy_set.intersection(wrapped_inner_columns))
-                    for outer in select.inner_columns
-                ] if inner
+                zip(select.inner_columns, select_wraps_for.inner_columns)
             )
+
             self._result_columns = [
                 (key, name, tuple(translate.get(o, o) for o in obj), type_)
                 for key, name, obj, type_ in self._result_columns

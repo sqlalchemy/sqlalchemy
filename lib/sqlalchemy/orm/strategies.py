@@ -174,7 +174,7 @@ class ColumnLoader(LoaderStrategy):
         for col in self.columns:
             if adapter:
                 col = adapter.columns[col]
-            getter = result._getter(col)
+            getter = result._getter(col, False)
             if getter:
                 populators["quick"].append((self.key, getter))
                 break

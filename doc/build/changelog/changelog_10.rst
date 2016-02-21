@@ -16,6 +16,32 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.13
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3658
+
+        Fixed regression appearing in the 1.0 series in ORM loading where the
+        exception raised for an expected column missing would incorrectly
+        be a ``NoneType`` error, rather than the expected
+        :class:`.NoSuchColumnError`.
+
+    .. change::
+        :tags: bug, mssql, oracle
+        :tickets: 3657
+
+        Fixed regression appearing in the 1.0 series which would cause the Oracle
+        and SQL Server dialects to incorrectly account for result set columns
+        when these dialects would wrap a SELECT in a subquery in order to
+        provide LIMIT/OFFSET behavior, and the original SELECT statement
+        referred to the same column multiple times, such as a column and
+        a label of that same column.  This issue is related
+        to :ticket:`3658` in that when the error occurred, it would also
+        cause a ``NoneType`` error, rather than reporting that it couldn't
+        locate a column.
+
+.. changelog::
     :version: 1.0.12
     :released: February 15, 2016
 
