@@ -10,7 +10,8 @@
 from __future__ import absolute_import
 import weakref
 import operator
-from .compat import threading, itertools_filterfalse, string_types
+from .compat import threading, itertools_filterfalse, string_types, \
+    binary_types
 from . import py2k
 import types
 import collections
@@ -794,7 +795,8 @@ def coerce_generator_arg(arg):
 def to_list(x, default=None):
     if x is None:
         return default
-    if not isinstance(x, collections.Iterable) or isinstance(x, string_types):
+    if not isinstance(x, collections.Iterable) or \
+            isinstance(x, string_types + binary_types):
         return [x]
     elif isinstance(x, list):
         return x

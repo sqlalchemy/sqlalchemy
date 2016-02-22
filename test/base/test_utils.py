@@ -7,7 +7,7 @@ from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock, expect_warnings
 from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
-from sqlalchemy.util import langhelpers
+from sqlalchemy.util import langhelpers, compat
 import inspect
 
 
@@ -342,6 +342,20 @@ class ToListTest(fixtures.TestBase):
             util.to_list((1, 2, 3)),
             [1, 2, 3]
         )
+
+    def test_from_bytes(self):
+
+        eq_(
+            util.to_list(compat.b('abc')),
+            [compat.b('abc')]
+        )
+
+        eq_(
+            util.to_list([
+                compat.b('abc'), compat.b('def')]),
+            [compat.b('abc'), compat.b('def')]
+        )
+
 
 class ColumnCollectionTest(fixtures.TestBase):
 
