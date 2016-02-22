@@ -1640,7 +1640,10 @@ class SQLCompiler(Compiled):
             # rewrite the targeted columns in the result map
 
             translate = dict(
-                zip(select.inner_columns, select_wraps_for.inner_columns)
+                zip(
+                    [name for (key, name) in select._columns_plus_names],
+                    [name for (key, name) in
+                     select_wraps_for._columns_plus_names])
             )
 
             self._result_columns = [
