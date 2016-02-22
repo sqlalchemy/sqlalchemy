@@ -19,6 +19,15 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, py3k
+        :tickets: 3660
+
+        Fixed bug in "to_list" conversion where a single bytes object
+        would be turned into a list of individual characters.  This would
+        impact among other things using the :meth:`.Query.get` method
+        on a primary key that's a bytes object.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3658
 

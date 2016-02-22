@@ -62,6 +62,7 @@ if py3k:
         )
 
     string_types = str,
+    binary_types = bytes,
     binary_type = bytes
     text_type = str
     int_types = int,
@@ -115,6 +116,7 @@ else:
     from cStringIO import StringIO as byte_buffer
 
     string_types = basestring,
+    binary_types = bytes,
     binary_type = str
     text_type = unicode
     int_types = int, long
