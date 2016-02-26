@@ -3687,8 +3687,10 @@ def _cloned_difference(a, b):
                if not all_overlap.intersection(elem._cloned_set))
 
 
-def _labeled(element):
-    if not hasattr(element, 'name') or not getattr(element, '_label', None):
+@util.dependencies("sqlalchemy.sql.functions")
+def _labeled(functions, element):
+    if not hasattr(element, 'name') or \
+            isinstance(element, functions.FunctionElement):
         return element.label(None)
     else:
         return element
