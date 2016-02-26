@@ -882,12 +882,15 @@ class Query(object):
         a subquery as returned by :meth:`.Query.subquery` is
         embedded in another :func:`~.expression.select` construct.
 
-         """
+        """
 
-        self._correlate = self._correlate.union(
-            _interpret_as_from(s)
-            if s is not None else None
-            for s in args)
+        for s in args:
+            if s is None:
+                self._correlate = self._correlate.union([None])
+            else:
+                self._correlate = self._correlate.union(
+                    sql_util.surface_selectables(_interpret_as_from(s))
+                )
 
     @_generative()
     def autoflush(self, setting):

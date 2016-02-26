@@ -23,6 +23,19 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3662
+
+        An improvement to the workings of :meth:`.Query.correlate` such
+        that when a "polymorphic" entity is used which represents a straight
+        join of several tables, the statement will ensure that all the
+        tables within the join are part of what's correlating.
+
+        .. seealso::
+
+            :ref:`change_3662`
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3431
 
         Fixed bug which would cause an eagerly loaded many-to-one attribute
