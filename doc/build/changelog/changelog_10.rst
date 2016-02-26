@@ -19,6 +19,17 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3663
+
+        Anonymous labeling is applied to a :attr:`.func` construct that is
+        passed to :func:`.column_property`, so that if the same attribute
+        is referred to as a column expression twice the names are de-duped,
+        thus avoiding "ambiguous column" errors.   Previously, the
+        ``.label(None)`` would need to be applied in order for the name
+        to be de-anonymized.
+
+    .. change::
         :tags: bug, py3k
         :tickets: 3660
 

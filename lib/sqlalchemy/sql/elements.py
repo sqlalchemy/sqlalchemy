@@ -4006,7 +4006,7 @@ def _cloned_difference(a, b):
 
 
 def _labeled(element):
-    if not hasattr(element, 'name'):
+    if not hasattr(element, 'name') or not getattr(element, '_label', None):
         return element.label(None)
     else:
         return element
