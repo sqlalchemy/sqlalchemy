@@ -101,7 +101,7 @@ def _get_crud_params(compiler, stmt, **kw):
 
     if parameters and stmt_parameters:
         check = set(parameters).intersection(
-            _column_as_key(k) for k in stmt.parameters
+            _column_as_key(k) for k in stmt_parameters
         ).difference(check_columns)
         if check:
             raise exc.CompileError(
