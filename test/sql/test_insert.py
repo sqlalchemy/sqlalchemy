@@ -55,6 +55,44 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'INSERT INTO mytable (myid, name) VALUES (:myid, :name)',
             checkparams=checkparams)
 
+    def test_insert_with_values_dict_unknown_column(self):
+        table1 = self.tables.mytable
+
+        checkparams = {
+            'myid': 3,
+            'name': 'jack',
+            'unknowncol': 'oops'
+        }
+
+        stmt = insert(table1, values=checkparams)
+        assert_raises_message(
+            exc.CompileError,
+            'Unconsumed column names: unknowncol',
+            stmt.compile,
+            dialect=postgresql.dialect()
+        )
+
+    def test_insert_with_values_dict_unknown_column_multiple(self):
+        table1 = self.tables.mytable
+
+        checkparams = [{
+            'myid': 3,
+            'name': 'jack',
+            'unknowncol': 'oops'
+        }, {
+            'myid': 4,
+            'name': 'someone',
+            'unknowncol': 'oops'
+        }]
+
+        stmt = insert(table1, values=checkparams)
+        assert_raises_message(
+            exc.CompileError,
+            'Unconsumed column names: unknowncol',
+            stmt.compile,
+            dialect=postgresql.dialect()
+        )
+
     def test_insert_with_values_tuple(self):
         table1 = self.tables.mytable
 
