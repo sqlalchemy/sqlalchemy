@@ -1,8 +1,10 @@
-from sqlalchemy import *
+from sqlalchemy import Integer, String, ForeignKey, and_, or_, func, \
+    literal, update, table, bindparam, column, select, exc
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import default
-from sqlalchemy.testing import AssertsCompiledSQL, eq_, fixtures
+from sqlalchemy.testing import AssertsCompiledSQL, eq_, fixtures, \
+    assert_raises_message
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import util
 
@@ -187,6 +189,36 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             'WHERE '
             'mytable.myid = hoho(:hoho_1) AND '
             'mytable.name = :param_2 || mytable.name || :param_3')
+
+    def test_unconsumed_names_kwargs(self):
+        t = table("t", column("x"), column("y"))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unconsumed column names: z",
+            t.update().values(x=5, z=5).compile,
+        )
+
+    def test_unconsumed_names_values_dict(self):
+        t = table("t", column("x"), column("y"))
+        t2 = table("t2", column("q"), column("z"))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unconsumed column names: j",
+            t.update().values(x=5, j=7).values({t2.c.z: 5}).
+            where(t.c.x == t2.c.q).compile,
+        )
+
+    def test_unconsumed_names_kwargs_w_keys(self):
+        t = table("t", column("x"), column("y"))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unconsumed column names: j",
+            t.update().values(x=5, j=7).compile,
+            column_keys=['j']
+        )
 
     def test_update_ordered_parameters_1(self):
         table1 = self.tables.mytable
