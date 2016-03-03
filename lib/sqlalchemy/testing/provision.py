@@ -223,18 +223,9 @@ def _sqlite_drop_db(cfg, eng, ident):
 @_drop_db.for_db("mysql")
 def _mysql_drop_db(cfg, eng, ident):
     with eng.connect() as conn:
-        try:
-            conn.execute("DROP DATABASE %s_test_schema" % ident)
-        except Exception:
-            pass
-        try:
-            conn.execute("DROP DATABASE %s_test_schema_2" % ident)
-        except Exception:
-            pass
-        try:
-            conn.execute("DROP DATABASE %s" % ident)
-        except Exception:
-            pass
+        conn.execute("DROP DATABASE %s_test_schema" % ident)
+        conn.execute("DROP DATABASE %s_test_schema_2" % ident)
+        conn.execute("DROP DATABASE %s" % ident)
 
 
 @_create_db.for_db("oracle")
