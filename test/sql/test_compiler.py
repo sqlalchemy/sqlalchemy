@@ -2898,48 +2898,6 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                 'x2': 1,
                 'y': 2})
 
-    def test_unconsumed_names(self):
-        t = table("t", column("x"), column("y"))
-        t2 = table("t2", column("q"), column("z"))
-        assert_raises_message(
-            exc.CompileError,
-            "Unconsumed column names: z",
-            t.insert().values(x=5, z=5).compile,
-        )
-        assert_raises_message(
-            exc.CompileError,
-            "Unconsumed column names: z",
-            t.update().values(x=5, z=5).compile,
-        )
-
-        assert_raises_message(
-            exc.CompileError,
-            "Unconsumed column names: j",
-            t.update().values(x=5, j=7).values({t2.c.z: 5}).
-            where(t.c.x == t2.c.q).compile,
-        )
-
-        # bindparam names don't get counted
-        i = t.insert().values(x=3 + bindparam('x2'))
-        self.assert_compile(
-            i,
-            "INSERT INTO t (x) VALUES ((:param_1 + :x2))"
-        )
-
-        # even if in the params list
-        i = t.insert().values(x=3 + bindparam('x2'))
-        self.assert_compile(
-            i,
-            "INSERT INTO t (x) VALUES ((:param_1 + :x2))",
-            params={"x2": 1}
-        )
-
-        assert_raises_message(
-            exc.CompileError,
-            "Unconsumed column names: j",
-            t.update().values(x=5, j=7).compile,
-            column_keys=['j']
-        )
 
     def test_labels_no_collision(self):
 
