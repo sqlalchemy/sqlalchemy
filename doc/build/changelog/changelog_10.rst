@@ -19,6 +19,15 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3666
+
+        Fixed bug where "unconsumed column names" exception would fail to
+        be raised in the case where :meth:`.Insert.values` were called
+        with a list of parameter mappings, instead of a single mapping
+        of parameters.  Pull request courtesy Athena Yao.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3663
 
