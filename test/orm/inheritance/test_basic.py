@@ -2334,7 +2334,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
 class TransientInheritingGCTest(fixtures.TestBase):
-    __requires__ = ('cpython',)
+    __requires__ = ('cpython', 'no_coverage')
 
     def _fixture(self):
         Base = declarative_base()
