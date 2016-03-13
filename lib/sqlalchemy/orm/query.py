@@ -2463,9 +2463,35 @@ class Query(object):
 
     @_generative(_no_statement_condition)
     def slice(self, start, stop):
-        """apply LIMIT/OFFSET to the ``Query`` based on a "
-        "range and return the newly resulting ``Query``."""
+        """Computes the "slice" of the :class:`.Query` represented by
+        the given indices and returns the resulting :class:`.Query`.
 
+        The start and stop indices behave like the argument to Python's
+        built-in :func:`range` function. This method provides an
+        alternative to using ``LIMIT``/``OFFSET`` to get a slice of the
+        query.
+
+        For example, ::
+
+            session.query(User).order_by(User.id).slice(1, 3)
+
+        renders as
+
+        .. sourcecode:: sql
+
+           SELECT users.id AS users_id,
+                  users.name AS users_name
+           FROM users ORDER BY users.id
+           LIMIT ? OFFSET ?
+           (2, 1)
+
+        .. seealso::
+
+           :meth:`.Query.limit`
+
+           :meth:`.Query.offset`
+
+        """
         if start is not None and stop is not None:
             self._offset = (self._offset or 0) + start
             self._limit = stop - start
@@ -2480,7 +2506,6 @@ class Query(object):
     @_generative(_no_statement_condition)
     def limit(self, limit):
         """Apply a ``LIMIT`` to the query and return the newly resulting
-
         ``Query``.
 
         """
