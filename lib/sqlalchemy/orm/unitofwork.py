@@ -16,6 +16,7 @@ organizes them in order of dependency, and executes.
 from .. import util, event
 from ..util import topological
 from . import attributes, persistence, util as orm_util
+from . import exc as orm_exc
 import itertools
 
 
@@ -154,6 +155,18 @@ class UOWTransaction(object):
     @property
     def has_work(self):
         return bool(self.states)
+
+    def was_already_deleted(self, state):
+        """return true if the given state is expired and was deleted
+        previously.
+        """
+        if state.expired:
+            try:
+                state._load_expired(state, attributes.PASSIVE_OFF)
+            except orm_exc.ObjectDeletedError:
+                self.session._remove_newly_deleted([state])
+                return True
+        return False
 
     def is_deleted(self, state):
         """return true if the given state is marked as deleted

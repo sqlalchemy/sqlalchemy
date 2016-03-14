@@ -9,7 +9,7 @@ from sqlalchemy.orm import (
     relationship, attributes)
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
-
+from sqlalchemy import inspect
 
 class SessionTransactionTest(FixtureTest):
     run_inserts = None
@@ -1517,6 +1517,30 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
         assert u2 not in session.deleted
 
         session.rollback()
+
+    def test_reloaded_deleted_checked_for_expiry(self):
+        """test issue #3677"""
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        u1 = User(name='u1')
+
+        s = Session()
+        s.add(u1)
+        s.flush()
+        del u1
+        gc_collect()
+
+        u1 = s.query(User).first()  # noqa
+
+        s.rollback()
+
+        u2 = User(name='u1')
+        s.add(u2)
+        s.commit()
+
+        assert inspect(u2).persistent
 
     def test_key_replaced_by_update(self):
         users, User = self.tables.users, self.classes.User

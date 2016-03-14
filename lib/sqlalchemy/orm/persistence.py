@@ -295,22 +295,24 @@ def _organize_states_for_save(base_mapper, states, uowtransaction):
             instance = \
                 uowtransaction.session.identity_map[instance_key]
             existing = attributes.instance_state(instance)
-            if not uowtransaction.is_deleted(existing):
-                raise orm_exc.FlushError(
-                    "New instance %s with identity key %s conflicts "
-                    "with persistent instance %s" %
-                    (state_str(state), instance_key,
-                     state_str(existing)))
 
-            base_mapper._log_debug(
-                "detected row switch for identity %s.  "
-                "will update %s, remove %s from "
-                "transaction", instance_key,
-                state_str(state), state_str(existing))
+            if not uowtransaction.was_already_deleted(existing):
+                if not uowtransaction.is_deleted(existing):
+                    raise orm_exc.FlushError(
+                        "New instance %s with identity key %s conflicts "
+                        "with persistent instance %s" %
+                        (state_str(state), instance_key,
+                         state_str(existing)))
 
-            # remove the "delete" flag from the existing element
-            uowtransaction.remove_state_actions(existing)
-            row_switch = existing
+                base_mapper._log_debug(
+                    "detected row switch for identity %s.  "
+                    "will update %s, remove %s from "
+                    "transaction", instance_key,
+                    state_str(state), state_str(existing))
+
+                # remove the "delete" flag from the existing element
+                uowtransaction.remove_state_actions(existing)
+                row_switch = existing
 
         if (has_identity or row_switch) and mapper.version_id_col is not None:
             update_version_id = mapper._get_committed_state_attr_by_column(

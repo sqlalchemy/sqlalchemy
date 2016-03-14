@@ -290,6 +290,98 @@ time on the outside of the subquery.
 
 :ticket:`3582`
 
+.. _change_3677:
+
+Erroneous "new instance X conflicts with persistent instance Y" flush errors fixed
+----------------------------------------------------------------------------------
+
+The :meth:`.Session.rollback` method is responsible for removing objects
+that were INSERTed into the database, e.g. moved from pending to persistent,
+within that now rolled-back transaction.   Objects that make this state
+change are tracked in a weak-referencing collection, and if an object is
+garbage collected from that collection, the :class:`.Session` no longer worries
+about it (it would otherwise not scale for operations that insert many new
+objects within a transaction).  However, an issue arises if the application
+re-loads that same garbage-collected row within the transaction, before the
+rollback occurs; if a strong reference to this object remains into the next
+transaction, the fact that this object was not inserted and should be
+removed would be lost, and the flush would incorrectly raise an error::
+
+    from sqlalchemy import Column, create_engine
+    from sqlalchemy.orm import Session
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+    e = create_engine("sqlite://", echo=True)
+    Base.metadata.create_all(e)
+
+    s = Session(e)
+
+    # persist an object
+    s.add(A(id=1))
+    s.flush()
+
+    # rollback buffer loses reference to A
+
+    # load it again, rollback buffer knows nothing
+    # about it
+    a1 = s.query(A).first()
+
+    # roll back the transaction; all state is expired but the
+    # "a1" reference remains
+    s.rollback()
+
+    # previous "a1" conflicts with the new one because we aren't
+    # checking that it never got committed
+    s.add(A(id=1))
+    s.commit()
+
+The above program would raise::
+
+    FlushError: New instance <User at 0x7f0287eca4d0> with identity key
+    (<class 'test.orm.test_transaction.User'>, ('u1',)) conflicts
+    with persistent instance <User at 0x7f02889c70d0>
+
+The bug is that when the above exception is raised, the unit of work
+is operating upon the original object assuming it's a live row, when in
+fact the object is expired and upon testing reveals that it's gone.  The
+fix tests this condition now, so in the SQL log we see:
+
+.. sourcecode:: sql
+
+    BEGIN (implicit)
+
+    INSERT INTO a (id) VALUES (?)
+    (1,)
+
+    SELECT a.id AS a_id FROM a LIMIT ? OFFSET ?
+    (1, 0)
+
+    ROLLBACK
+
+    BEGIN (implicit)
+
+    SELECT a.id AS a_id FROM a WHERE a.id = ?
+    (1,)
+
+    INSERT INTO a (id) VALUES (?)
+    (1,)
+
+    COMMIT
+
+Above, the unit of work now does a SELECT for the row we're about to report
+as a conflict for, sees that it doesn't exist, and proceeds normally.
+The expense of this SELECT is only incurred in the case when we would have
+erroneously raised an exception in any case.
+
+
+:ticket:`3677`
+
 .. _change_2349:
 
 passive_deletes feature for joined-inheritance mappings

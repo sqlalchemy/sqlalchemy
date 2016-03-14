@@ -23,6 +23,21 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3677
+
+        Fixed bug where a newly inserted instance that is rolled back
+        would still potentially cause persistence conflicts on the next
+        transaction, because the instance would not be checked that it
+        was expired.   This fix will resolve a large class of cases that
+        erronously cause the "New instance with identity X conflicts with
+        persistent instance Y" error.
+
+        .. seealso::
+
+            :ref:`change_3677`
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3662
 
         An improvement to the workings of :meth:`.Query.correlate` such
