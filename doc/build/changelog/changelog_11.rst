@@ -22,6 +22,19 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, mssql
+        :tickets: 3534
+
+        Added basic isolation level support to the SQL Server dialects
+        via :paramref:`.create_engine.isolation_level` and
+        :paramref:`.Connection.execution_options.isolation_level`
+        parameters.
+
+        .. seealso::
+
+            :ref:`change_3534`
+
+    .. change::
         :tags: feature, mysql
         :tickets: 3332
 

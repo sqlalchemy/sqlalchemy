@@ -273,6 +273,8 @@ class Connection(Connectable):
 
                 :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
 
+                :ref:`SQL Server Transaction Isolation <mssql_isolation_level>`
+
                 :ref:`session_transaction_isolation` - for the ORM
 
         :param no_parameters: When ``True``, if the final parameter

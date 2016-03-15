@@ -225,7 +225,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def isolation_level(self):
         return only_on(
-                    ('postgresql', 'sqlite', 'mysql'),
+                    ('postgresql', 'sqlite', 'mysql', 'mssql'),
                     "DBAPI has no isolation level support"
                 ) + fails_on('postgresql+pypostgresql',
                           'pypostgresql bombs on multiple isolation level calls')

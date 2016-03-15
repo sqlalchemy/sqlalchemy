@@ -199,6 +199,47 @@ If using SQL Server 2005 or above, LIMIT with OFFSET
 support is available through the ``ROW_NUMBER OVER`` construct.
 For versions below 2005, LIMIT with OFFSET usage will fail.
 
+.. _mssql_isolation_level:
+
+Transaction Isolation Level
+---------------------------
+
+All SQL Server dialects support setting of transaction isolation level
+both via a dialect-specific parameter
+:paramref:`.create_engine.isolation_level`
+accepted by :func:`.create_engine`,
+as well as the :paramref:`.Connection.execution_options.isolation_level`
+argument as passed to
+:meth:`.Connection.execution_options`.  This feature works by issuing the
+command ``SET TRANSACTION ISOLATION LEVEL <level>`` for
+each new connection.
+
+To set isolation level using :func:`.create_engine`::
+
+    engine = create_engine(
+        "mssql+pyodbc://scott:tiger@ms_2008",
+        isolation_level="REPEATABLE READ"
+    )
+
+To set using per-connection execution options::
+
+    connection = engine.connect()
+    connection = connection.execution_options(
+        isolation_level="READ COMMITTED"
+    )
+
+Valid values for ``isolation_level`` include:
+
+* ``READ COMMITTED``
+* ``READ UNCOMMITTED``
+* ``REPEATABLE READ``
+* ``SERIALIZABLE``
+* ``SNAPSHOT`` - specific to SQL Server
+
+.. versionadded:: 1.1 support for isolation level setting on Microsoft
+   SQL Server.
+
+
 Nullability
 -----------
 MSSQL has support for three levels of column nullability. The default
@@ -1547,6 +1588,7 @@ class MSDialect(default.DefaultDialect):
                  use_scope_identity=True,
                  max_identifier_length=None,
                  schema_name="dbo",
+                 isolation_level=None,
                  deprecate_large_types=None,
                  legacy_schema_aliasing=False, **opts):
         self.query_timeout = int(query_timeout or 0)
@@ -1560,6 +1602,8 @@ class MSDialect(default.DefaultDialect):
 
         super(MSDialect, self).__init__(**opts)
 
+        self.isolation_level = isolation_level
+
     def do_savepoint(self, connection, name):
         # give the DBAPI a push
         connection.execute("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
@@ -1569,9 +1613,51 @@ class MSDialect(default.DefaultDialect):
         # SQL Server does not support RELEASE SAVEPOINT
         pass
 
+    _isolation_lookup = set(['SERIALIZABLE', 'READ UNCOMMITTED',
+                             'READ COMMITTED', 'REPEATABLE READ',
+                             'SNAPSHOT'])
+
+    def set_isolation_level(self, connection, level):
+        level = level.replace('_', ' ')
+        if level not in self._isolation_lookup:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s" %
+                (level, self.name, ", ".join(self._isolation_lookup))
+            )
+        cursor = connection.cursor()
+        cursor.execute(
+            "SET TRANSACTION ISOLATION LEVEL %s" % level)
+        cursor.close()
+
+    def get_isolation_level(self, connection):
+        cursor = connection.cursor()
+        cursor.execute("""
+          SELECT CASE transaction_isolation_level
+            WHEN 0 THEN NULL
+            WHEN 1 THEN 'READ UNCOMMITTED'
+            WHEN 2 THEN 'READ COMMITTED'
+            WHEN 3 THEN 'REPEATABLE READ'
+            WHEN 4 THEN 'SERIALIZABLE'
+            WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
+            FROM sys.dm_exec_sessions
+            where session_id = @@SPID
+          """)
+        val = cursor.fetchone()[0]
+        cursor.close()
+        return val.upper()
+
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)
         self._setup_version_attributes()
+
+    def on_connect(self):
+        if self.isolation_level is not None:
+            def connect(conn):
+                self.set_isolation_level(conn, self.isolation_level)
+            return connect
+        else:
+            return None
 
     def _setup_version_attributes(self):
         if self.server_version_info[0] not in list(range(8, 17)):

@@ -2001,6 +2001,28 @@ given schema in the results.  Cross-schema foreign keys aren't supported.
 Dialect Improvements and Changes - SQL Server
 =============================================
 
+.. _change_3534:
+
+Added transaction isolation level support for SQL Server
+--------------------------------------------------------
+
+All SQL Server dialects support transaction isolation level settings
+via the :paramref:`.create_engine.isolation_level` and
+:paramref:`.Connection.execution_options.isolation_level`
+parameters.  The four standard levels are supported as well as
+``SNAPSHOT``::
+
+    engine = create_engine(
+        "mssql+pyodbc://scott:tiger@ms_2008",
+        isolation_level="REPEATABLE READ"
+    )
+
+.. seealso::
+
+    :ref:`mssql_isolation_level`
+
+:ticket:`3534`
+
 .. _change_3504:
 
 String / varlength types no longer represent "max" explicitly on reflection

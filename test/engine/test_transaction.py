@@ -1247,6 +1247,8 @@ class IsolationLevelTest(fixtures.TestBase):
             return 'READ COMMITTED'
         elif testing.against('mysql'):
             return "REPEATABLE READ"
+        elif testing.against('mssql'):
+            return "READ COMMITTED"
         else:
             assert False, "default isolation level not known"
 
@@ -1256,6 +1258,8 @@ class IsolationLevelTest(fixtures.TestBase):
         elif testing.against('postgresql'):
             return 'SERIALIZABLE'
         elif testing.against('mysql'):
+            return "SERIALIZABLE"
+        elif testing.against('mssql'):
             return "SERIALIZABLE"
         else:
             assert False, "non default isolation level not known"
