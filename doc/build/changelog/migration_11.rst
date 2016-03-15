@@ -1861,6 +1861,25 @@ common to both MySQL and Postgresql.
 
 :ticket:`3547`
 
+.. _change_3332:
+
+Added support for AUTOCOMMIT "isolation level"
+----------------------------------------------
+
+The MySQL dialect now accepts the value "AUTOCOMMIT" for the
+:paramref:`.create_engine.isolation_level` and
+:paramref:`.Connection.execution_options.isolation_level`
+parameters::
+
+    connection = engine.connect()
+    connection = connection.execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
+
+The isolation level makes use of the various "autocommit" attributes
+provided by most MySQL DBAPIs.
+
+:ticket:`3332`
 
 .. _change_mysql_3216:
 

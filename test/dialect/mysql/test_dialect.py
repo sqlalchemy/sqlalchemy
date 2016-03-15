@@ -11,6 +11,7 @@ import datetime
 
 class DialectTest(fixtures.TestBase):
     __backend__ = True
+    __only_on__ = 'mysql'
 
     def test_ssl_arguments_mysqldb(self):
         from sqlalchemy.dialects.mysql import mysqldb
@@ -97,6 +98,29 @@ class DialectTest(fixtures.TestBase):
             conn = eng.connect()
             eq_(conn.dialect._connection_charset, enc)
 
+    def test_autocommit_isolation_level(self):
+        c = testing.db.connect().execution_options(
+            isolation_level='AUTOCOMMIT'
+        )
+        assert c.execute('SELECT @@autocommit;').scalar()
+
+        c = c.execution_options(isolation_level='READ COMMITTED')
+        assert not c.execute('SELECT @@autocommit;').scalar()
+
+    def test_isolation_level(self):
+        values = {
+            # sqlalchemy -> mysql
+            'READ UNCOMMITTED': 'READ-UNCOMMITTED',
+            'READ COMMITTED': 'READ-COMMITTED',
+            'REPEATABLE READ': 'REPEATABLE-READ',
+            'SERIALIZABLE': 'SERIALIZABLE'
+        }
+        for sa_value, mysql_value in values.items():
+            c = testing.db.connect().execution_options(
+                isolation_level=sa_value
+            )
+            assert c.execute('SELECT @@tx_isolation;').scalar() == mysql_value
+
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
     __backend__ = True
@@ -163,26 +187,3 @@ class ExecutionTest(fixtures.TestBase):
         d = testing.db.scalar(func.sysdate())
         assert isinstance(d, datetime.datetime)
 
-    @testing.only_on(['mysql+mysqldb',
-                      'mysql+mysqlconnector',
-                      'mysql+pymysql',
-                      'mysql+cymysql'])
-    def test_autocommit_isolation_level(self):
-        c = testing.db.connect().execution_options(
-            isolation_level='AUTOCOMMIT'
-        )
-        assert c.execute('SELECT @@autocommit;').scalar()
-
-    def test_isolation_level(self):
-        values = {
-            # sqlalchemy -> mysql
-            'READ UNCOMMITTED': 'READ-UNCOMMITTED',
-            'READ COMMITTED': 'READ-COMMITTED',
-            'REPEATABLE READ': 'REPEATABLE-READ',
-            'SERIALIZABLE': 'SERIALIZABLE'
-        }
-        for sa_value, mysql_value in values.items():
-            c = testing.db.connect().execution_options(
-                isolation_level=sa_value
-            )
-            assert c.execute('SELECT @@tx_isolation;').scalar() == mysql_value

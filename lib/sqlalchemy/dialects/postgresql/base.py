@@ -50,11 +50,12 @@ Transaction Isolation Level
 All Postgresql dialects support setting of transaction isolation level
 both via a dialect-specific parameter :paramref:`.create_engine.isolation_level`
 accepted by :func:`.create_engine`,
-as well as the ``isolation_level`` argument as passed to
+as well as the :paramref:`.Connection.execution_options.isolation_level` argument as passed to
 :meth:`.Connection.execution_options`.  When using a non-psycopg2 dialect,
 this feature works by issuing the command
 ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL <level>`` for
-each new connection.
+each new connection.  For the special AUTOCOMMIT isolation level, DBAPI-specific
+techniques are used.
 
 To set isolation level using :func:`.create_engine`::
 
@@ -76,10 +77,7 @@ Valid values for ``isolation_level`` include:
 * ``READ UNCOMMITTED``
 * ``REPEATABLE READ``
 * ``SERIALIZABLE``
-
-The :mod:`~sqlalchemy.dialects.postgresql.psycopg2` and
-:mod:`~sqlalchemy.dialects.postgresql.pg8000` dialects also offer the
-special level ``AUTOCOMMIT``.
+* ``AUTOCOMMIT`` - on psycopg2 / pg8000 only
 
 .. seealso::
 

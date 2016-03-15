@@ -22,6 +22,18 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, mysql
+        :tickets: 3332
+
+        Added support for "autocommit" on MySQL drivers, via the
+        AUTOCOMMIT isolation level setting.  Pull request courtesy
+        Roman Podoliaka.
+
+        .. seealso::
+
+            :ref:`change_3332`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3677
 
