@@ -111,19 +111,35 @@ to be used.
 Transaction Isolation Level
 ---------------------------
 
-:func:`.create_engine` accepts an :paramref:`.create_engine.isolation_level`
-parameter which results in the command ``SET SESSION
-TRANSACTION ISOLATION LEVEL <level>`` being invoked for
-every new connection. Valid values for this parameter are
-``READ COMMITTED``, ``READ UNCOMMITTED``,
-``REPEATABLE READ``, and ``SERIALIZABLE``::
+All MySQL dialects support setting of transaction isolation level
+both via a dialect-specific parameter :paramref:`.create_engine.isolation_level`
+accepted by :func:`.create_engine`,
+as well as the :paramref:`.Connection.execution_options.isolation_level`
+argument as passed to :meth:`.Connection.execution_options`.
+This feature works by issuing the command
+``SET SESSION TRANSACTION ISOLATION LEVEL <level>`` for
+each new connection.
+
+To set isolation level using :func:`.create_engine`::
 
     engine = create_engine(
                     "mysql://scott:tiger@localhost/test",
                     isolation_level="READ UNCOMMITTED"
                 )
 
-.. versionadded:: 0.7.6
+To set using per-connection execution options::
+
+    connection = engine.connect()
+    connection = connection.execution_options(
+        isolation_level="READ COMMITTED"
+    )
+
+Valid values for ``isolation_level`` include:
+
+* ``READ COMMITTED``
+* ``READ UNCOMMITTED``
+* ``REPEATABLE READ``
+* ``SERIALIZABLE``
 
 AUTO_INCREMENT Behavior
 -----------------------
