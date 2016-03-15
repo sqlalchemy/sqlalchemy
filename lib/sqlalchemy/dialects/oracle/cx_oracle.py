@@ -1,5 +1,5 @@
 # oracle/cx_oracle.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -293,6 +293,7 @@ from .base import OracleCompiler, OracleDialect, OracleExecutionContext
 from . import base as oracle
 from ...engine import result as _result
 from sqlalchemy import types as sqltypes, util, exc, processors
+from sqlalchemy import util
 import random
 import collections
 import decimal
@@ -413,6 +414,21 @@ class _OracleLong(oracle.LONG):
 
 class _OracleString(_NativeUnicodeMixin, sqltypes.String):
     pass
+
+class _OracleEnum(_NativeUnicodeMixin, sqltypes.Enum):
+    def bind_processor(self, dialect):
+        enum_proc = sqltypes.Enum.bind_processor(self, dialect)
+        if util.py2k:
+            unicode_proc = _NativeUnicodeMixin.bind_processor(self, dialect)
+        else:
+            unicode_proc = None
+
+        def process(value):
+            raw_str = enum_proc(value)
+            if unicode_proc:
+                raw_str = unicode_proc(raw_str)
+            return raw_str
+        return process
 
 
 class _OracleUnicodeText(
@@ -650,6 +666,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         sqltypes.String: _OracleString,
         sqltypes.UnicodeText: _OracleUnicodeText,
         sqltypes.CHAR: _OracleChar,
+        sqltypes.Enum: _OracleEnum,
 
         # a raw LONG is a text type, but does *not*
         # get the LobMixin with cx_oracle.
@@ -719,8 +736,10 @@ class OracleDialect_cx_oracle(OracleDialect):
             # this occurs in tests with mock DBAPIs
             self._cx_oracle_string_types = set()
             self._cx_oracle_with_unicode = False
-        elif self.cx_oracle_ver >= (5,) and not \
-                hasattr(self.dbapi, 'UNICODE'):
+        elif util.py3k or (
+                self.cx_oracle_ver >= (5,) and not \
+                hasattr(self.dbapi, 'UNICODE')
+        ):
             # cx_Oracle WITH_UNICODE mode.  *only* python
             # unicode objects accepted for anything
             self.supports_unicode_statements = True

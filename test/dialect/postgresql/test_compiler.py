@@ -5,14 +5,17 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL, is_, \
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
-    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text
+    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text, \
+    Text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
-from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.orm import mapper, aliased, Session
-from sqlalchemy.sql import table, column, operators
+from sqlalchemy.sql import table, column, operators, literal_column
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.util import u
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -20,7 +23,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_format(self):
         seq = Sequence('my_seq_no_schema')
-        dialect = postgresql.PGDialect()
+        dialect = postgresql.dialect()
         assert dialect.identifier_preparer.format_sequence(seq) \
             == 'my_seq_no_schema'
         seq = Sequence('my_seq', schema='some_schema')
@@ -165,6 +168,24 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "CREATE TABLE sometable (somecolumn "
                             "VARCHAR(1), CHECK (somecolumn IN ('x', "
                             "'y', 'z')))")
+
+    def test_create_type_schema_translate(self):
+        e1 = Enum('x', 'y', 'z', name='somename')
+        e2 = Enum('x', 'y', 'z', name='somename', schema='someschema')
+        schema_translate_map = {None: "foo", "someschema": "bar"}
+
+        self.assert_compile(
+            postgresql.CreateEnumType(e1),
+            "CREATE TYPE foo.somename AS ENUM ('x', 'y', 'z')",
+            schema_translate_map=schema_translate_map
+        )
+
+        self.assert_compile(
+            postgresql.CreateEnumType(e2),
+            "CREATE TYPE bar.somename AS ENUM ('x', 'y', 'z')",
+            schema_translate_map=schema_translate_map
+        )
+
 
     def test_create_table_with_tablespace(self):
         m = MetaData()
@@ -369,6 +390,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'USING hash (data)',
                             dialect=postgresql.dialect())
 
+    def test_create_index_with_with(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String))
+
+        idx1 = Index('test_idx1', tbl.c.data)
+        idx2 = Index(
+            'test_idx2', tbl.c.data, postgresql_with={"fillfactor": 50})
+        idx3 = Index('test_idx3', tbl.c.data, postgresql_using="gist",
+                     postgresql_with={"buffering": "off"})
+
+        self.assert_compile(schema.CreateIndex(idx1),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(data)')
+        self.assert_compile(schema.CreateIndex(idx2),
+                            'CREATE INDEX test_idx2 ON testtbl '
+                            '(data) '
+                            'WITH (fillfactor = 50)')
+        self.assert_compile(schema.CreateIndex(idx3),
+                            'CREATE INDEX test_idx3 ON testtbl '
+                            'USING gist (data) '
+                            'WITH (buffering = off)')
+
     def test_create_index_expr_gets_parens(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('x', Integer), Column('y', Integer))
@@ -387,6 +430,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl ((data + 5))"
+        )
+
+    def test_create_index_concurrently(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', Integer))
+
+        idx1 = Index('test_idx1', tbl.c.data, postgresql_concurrently=True)
+        self.assert_compile(
+            schema.CreateIndex(idx1),
+            "CREATE INDEX CONCURRENTLY test_idx1 ON testtbl (data)"
         )
 
     def test_exclude_constraint_min(self):
@@ -433,7 +486,59 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl.append_constraint(cons_copy)
         self.assert_compile(schema.AddConstraint(cons_copy),
                             'ALTER TABLE testtbl ADD EXCLUDE USING gist '
-                            '(room WITH =)',
+                            '(room WITH =)')
+
+    def test_exclude_constraint_text(self):
+        m = MetaData()
+        cons = ExcludeConstraint((text('room::TEXT'), '='))
+        Table(
+            'testtbl', m,
+            Column('room', String),
+            cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(room::TEXT WITH =)')
+
+    def test_exclude_constraint_cast(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('room', String)
+        )
+        cons = ExcludeConstraint((cast(tbl.c.room, Text), '='))
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(CAST(room AS TEXT) WITH =)'
+        )
+
+    def test_exclude_constraint_cast_quote(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('Room', String)
+        )
+        cons = ExcludeConstraint((cast(tbl.c.Room, Text), '='))
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+            '(CAST("Room" AS TEXT) WITH =)'
+        )
+
+    def test_exclude_constraint_when(self):
+        m = MetaData()
+        tbl = Table(
+            'testtbl', m,
+            Column('room', String)
+        )
+        cons = ExcludeConstraint(('room', '='), where=tbl.c.room.in_(['12']))
+        tbl.append_constraint(cons)
+        self.assert_compile(schema.AddConstraint(cons),
+                            'ALTER TABLE testtbl ADD EXCLUDE USING gist '
+                            '(room WITH =) WHERE (testtbl.room IN (\'12\'))',
                             dialect=postgresql.dialect())
 
     def test_substring(self):
@@ -505,6 +610,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable AS mytable_1 "
             "WHERE mytable_1.myid = %(myid_1)s FOR UPDATE OF mytable_1"
         )
+
+    def test_for_update_with_schema(self):
+        m = MetaData()
+        table1 = Table(
+            'mytable', m,
+            Column('myid'),
+            Column('name'),
+            schema='testschema'
+        )
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(of=table1),
+            "SELECT testschema.mytable.myid, testschema.mytable.name "
+            "FROM testschema.mytable "
+            "WHERE testschema.mytable.myid = %(myid_1)s "
+            "FOR UPDATE OF mytable")
 
     def test_reserved_words(self):
         table = Table("pg_table", MetaData(),
@@ -621,7 +742,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self._test_array_zero_indexes(False)
 
     def test_array_literal_type(self):
-        is_(postgresql.array([1, 2]).type._type_affinity, postgresql.ARRAY)
+        isinstance(postgresql.array([1, 2]).type, postgresql.ARRAY)
         is_(postgresql.array([1, 2]).type.item_type._type_affinity, Integer)
 
         is_(postgresql.array([1, 2], type_=String).
@@ -726,6 +847,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.CompileError,
             tbl3.select().with_hint(tbl3, "FAKE", "postgresql").compile,
             dialect=postgresql.dialect()
+        )
+
+    def test_aggregate_order_by_one(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select([expr])
+
+        # note this tests that the object exports FROM objects
+        # correctly
+        self.assert_compile(
+            stmt,
+            "SELECT array_agg(table1.a ORDER BY table1.b DESC) "
+            "AS array_agg_1 FROM table1"
+        )
+
+    def test_aggregate_order_by_two(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.string_agg(
+            table.c.a,
+            aggregate_order_by(literal_column("','"), table.c.a)
+        )
+        stmt = select([expr])
+
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(table1.a, ',' ORDER BY table1.a) "
+            "AS string_agg_1 FROM table1"
+        )
+
+    def test_aggregate_order_by_adapt(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select([expr])
+
+        a1 = table.alias('foo')
+        stmt2 = sql_util.ClauseAdapter(a1).traverse(stmt)
+        self.assert_compile(
+            stmt2,
+            "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 FROM table1 AS foo"
         )
 
 

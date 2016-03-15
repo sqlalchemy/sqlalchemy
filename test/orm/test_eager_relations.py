@@ -1,11 +1,11 @@
 """tests of joined-eager loaded attributes"""
 
-from sqlalchemy.testing import eq_, is_, is_not_
+from sqlalchemy.testing import eq_, is_, is_not_, in_
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.orm import joinedload, deferred, undefer, \
     joinedload_all, backref, Session,\
-    defaultload, Load
+    defaultload, Load, load_only, contains_eager
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, \
     func, text
 from sqlalchemy.testing.schema import Table, Column
@@ -294,20 +294,21 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess.expunge_all()
         a = sess.query(Address).filter(Address.id == 1).all()[0]
 
+        # 1.0 change!  we don't automatically undefer user_id here.
+        # if the user wants a column undeferred, add the option.
         def go():
             eq_(a.user_id, 7)
-        # assert that the eager loader added 'user_id' to the row and deferred
-        # loading of that col was disabled
-        self.assert_sql_count(testing.db, go, 0)
+        # self.assert_sql_count(testing.db, go, 0)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
         a = sess.query(Address).filter(Address.id == 1).first()
 
         def go():
             eq_(a.user_id, 7)
-        # assert that the eager loader added 'user_id' to the row and deferred
-        # loading of that col was disabled
-        self.assert_sql_count(testing.db, go, 0)
+        # same, 1.0 doesn't check these
+        # self.assert_sql_count(testing.db, go, 0)
+        self.assert_sql_count(testing.db, go, 1)
 
         # do the mapping in reverse
         # (we would have just used an "addresses" backref but the test
@@ -1072,6 +1073,32 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_([User(id=7, address=Address(id=1))], l)
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_one_to_many_scalar_subq_wrapping(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
+
+        mapper(User, users, properties=dict(
+            address=relationship(mapper(Address, addresses),
+                                 lazy='joined', uselist=False)
+        ))
+        q = create_session().query(User)
+        q = q.filter(users.c.id == 7).limit(1)
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM users LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id "
+            "WHERE users.id = :id_1 "
+            "LIMIT :param_1",
+            checkparams={'id_1': 7, 'param_1': 1}
+        )
+
     def test_many_to_one(self):
         users, Address, addresses, User = (
             self.tables.users,
@@ -1672,6 +1699,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "ON users.id = addresses_1.user_id"
         )
 
+
     def test_catch_the_right_target(self):
         # test eager join chaining to the "nested" join on the left,
         # a new feature as of [ticket:2369]
@@ -1979,11 +2007,442 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         ])
 
 
+class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+    __backend__ = True  # exercise hardcore join nesting on backends
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+              Column('id', Integer, primary_key=True)
+              )
+
+        Table('b', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('a_id', Integer, ForeignKey('a.id')),
+              Column('value', String(10)),
+              )
+        Table('c1', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('b_id', Integer, ForeignKey('b.id')),
+              Column('value', String(10)),
+              )
+        Table('c2', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('b_id', Integer, ForeignKey('b.id')),
+              Column('value', String(10)),
+              )
+        Table('d1', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('c1_id', Integer, ForeignKey('c1.id')),
+              Column('value', String(10)),
+              )
+        Table('d2', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('c2_id', Integer, ForeignKey('c2.id')),
+              Column('value', String(10)),
+              )
+        Table('e1', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('d1_id', Integer, ForeignKey('d1.id')),
+              Column('value', String(10)),
+              )
+
+    @classmethod
+    def setup_classes(cls):
+
+        class A(cls.Comparable):
+            pass
+
+        class B(cls.Comparable):
+            pass
+
+        class C1(cls.Comparable):
+            pass
+
+        class C2(cls.Comparable):
+            pass
+
+        class D1(cls.Comparable):
+            pass
+
+        class D2(cls.Comparable):
+            pass
+
+        class E1(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C1, C2, D1, D2, E1 = (
+            cls.classes.A, cls.classes.B, cls.classes.C1,
+            cls.classes.C2, cls.classes.D1, cls.classes.D2, cls.classes.E1)
+        mapper(A, cls.tables.a, properties={
+            'bs': relationship(B)
+        })
+        mapper(B, cls.tables.b, properties=odict([
+            ('c1s', relationship(C1, order_by=cls.tables.c1.c.id)),
+            ('c2s', relationship(C2, order_by=cls.tables.c2.c.id))
+        ]))
+        mapper(C1, cls.tables.c1, properties={
+            'd1s': relationship(D1, order_by=cls.tables.d1.c.id)
+        })
+        mapper(C2, cls.tables.c2, properties={
+            'd2s': relationship(D2, order_by=cls.tables.d2.c.id)
+        })
+        mapper(D1, cls.tables.d1, properties={
+            'e1s': relationship(E1, order_by=cls.tables.e1.c.id)
+        })
+        mapper(D2, cls.tables.d2)
+        mapper(E1, cls.tables.e1)
+
+    @classmethod
+    def _fixture_data(cls):
+        A, B, C1, C2, D1, D2, E1 = (
+            cls.classes.A, cls.classes.B, cls.classes.C1,
+            cls.classes.C2, cls.classes.D1, cls.classes.D2, cls.classes.E1)
+        return [
+            A(id=1, bs=[
+                B(
+                    id=1,
+                    c1s=[C1(
+                        id=1, value='C11',
+                        d1s=[
+                            D1(id=1, e1s=[E1(id=1)]), D1(id=2, e1s=[E1(id=2)])
+                        ]
+                    )
+                    ],
+                    c2s=[C2(id=1, value='C21', d2s=[D2(id=3)]),
+                         C2(id=2, value='C22', d2s=[D2(id=4)])]
+                ),
+                B(
+                    id=2,
+                    c1s=[
+                        C1(
+                            id=4, value='C14',
+                            d1s=[D1(
+                                id=3, e1s=[
+                                    E1(id=3, value='E13'),
+                                    E1(id=4, value="E14")
+                                ]),
+                                D1(id=4, e1s=[E1(id=5)])
+                            ]
+                        )
+                    ],
+                    c2s=[C2(id=4, value='C24', d2s=[])]
+                ),
+            ]),
+            A(id=2, bs=[
+                B(
+                    id=3,
+                    c1s=[
+                        C1(
+                            id=8,
+                            d1s=[D1(id=5, value='D15', e1s=[E1(id=6)])]
+                        )
+                    ],
+                    c2s=[C2(id=8, d2s=[D2(id=6, value='D26')])]
+                )
+            ])
+        ]
+
+    @classmethod
+    def insert_data(cls):
+        s = Session(testing.db)
+        s.add_all(cls._fixture_data())
+        s.commit()
+
+    def _assert_result(self, query):
+        eq_(
+            query.all(),
+            self._fixture_data()
+        )
+
+    def test_nested_innerjoin_propagation_multiple_paths_one(self):
+        A, B, C1, C2 = (
+            self.classes.A, self.classes.B, self.classes.C1,
+            self.classes.C2)
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload(A.bs, innerjoin=False).
+            joinedload(B.c1s, innerjoin=True).
+            joinedload(C1.d1s, innerjoin=True),
+            defaultload(A.bs).joinedload(B.c2s, innerjoin=True).
+            joinedload(C2.d2s, innerjoin=False)
+        )
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, d1_1.id AS d1_1_id, "
+            "d1_1.c1_id AS d1_1_c1_id, d1_1.value AS d1_1_value, "
+            "c1_1.id AS c1_1_id, c1_1.b_id AS c1_1_b_id, "
+            "c1_1.value AS c1_1_value, d2_1.id AS d2_1_id, "
+            "d2_1.c2_id AS d2_1_c2_id, d2_1.value AS d2_1_value, "
+            "c2_1.id AS c2_1_id, c2_1.b_id AS c2_1_b_id, "
+            "c2_1.value AS c2_1_value, b_1.id AS b_1_id, "
+            "b_1.a_id AS b_1_a_id, b_1.value AS b_1_value "
+            "FROM a "
+            "LEFT OUTER JOIN "
+            "(b AS b_1 JOIN c2 AS c2_1 ON b_1.id = c2_1.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id "
+            "JOIN d1 AS d1_1 ON c1_1.id = d1_1.c1_id) ON a.id = b_1.a_id "
+            "LEFT OUTER JOIN d2 AS d2_1 ON c2_1.id = d2_1.c2_id "
+            "ORDER BY c1_1.id, d1_1.id, c2_1.id, d2_1.id"
+        )
+        self._assert_result(q)
+
+    def test_nested_innerjoin_propagation_multiple_paths_two(self):
+        # test #3447
+        A = self.classes.A
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload('bs'),
+            joinedload('bs.c2s', innerjoin=True),
+            joinedload('bs.c1s', innerjoin=True),
+            joinedload('bs.c1s.d1s')
+        )
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, d1_1.id AS d1_1_id, "
+            "d1_1.c1_id AS d1_1_c1_id, d1_1.value AS d1_1_value, "
+            "c1_1.id AS c1_1_id, c1_1.b_id AS c1_1_b_id, "
+            "c1_1.value AS c1_1_value, c2_1.id AS c2_1_id, "
+            "c2_1.b_id AS c2_1_b_id, c2_1.value AS c2_1_value, "
+            "b_1.id AS b_1_id, b_1.a_id AS b_1_a_id, "
+            "b_1.value AS b_1_value "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN c2 AS c2_1 ON b_1.id = c2_1.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id) ON a.id = b_1.a_id "
+            "LEFT OUTER JOIN d1 AS d1_1 ON c1_1.id = d1_1.c1_id "
+            "ORDER BY c1_1.id, d1_1.id, c2_1.id"
+        )
+        self._assert_result(q)
+
+    def test_multiple_splice_points(self):
+        A = self.classes.A
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload('bs', innerjoin=False),
+            joinedload('bs.c1s', innerjoin=True),
+            joinedload('bs.c2s', innerjoin=True),
+            joinedload('bs.c1s.d1s', innerjoin=False),
+            joinedload('bs.c2s.d2s'),
+            joinedload('bs.c1s.d1s.e1s', innerjoin=True)
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, e1_1.id AS e1_1_id, "
+            "e1_1.d1_id AS e1_1_d1_id, e1_1.value AS e1_1_value, "
+            "d1_1.id AS d1_1_id, d1_1.c1_id AS d1_1_c1_id, "
+            "d1_1.value AS d1_1_value, c1_1.id AS c1_1_id, "
+            "c1_1.b_id AS c1_1_b_id, c1_1.value AS c1_1_value, "
+            "d2_1.id AS d2_1_id, d2_1.c2_id AS d2_1_c2_id, "
+            "d2_1.value AS d2_1_value, c2_1.id AS c2_1_id, "
+            "c2_1.b_id AS c2_1_b_id, c2_1.value AS c2_1_value, "
+            "b_1.id AS b_1_id, b_1.a_id AS b_1_a_id, b_1.value AS b_1_value "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN c2 AS c2_1 ON b_1.id = c2_1.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id) ON a.id = b_1.a_id "
+            "LEFT OUTER JOIN ("
+            "d1 AS d1_1 JOIN e1 AS e1_1 ON d1_1.id = e1_1.d1_id) "
+            "ON c1_1.id = d1_1.c1_id "
+            "LEFT OUTER JOIN d2 AS d2_1 ON c2_1.id = d2_1.c2_id "
+            "ORDER BY c1_1.id, d1_1.id, e1_1.id, c2_1.id, d2_1.id"
+        )
+        self._assert_result(q)
+
+    def test_splice_onto_np_mapper(self):
+        A = self.classes.A
+        B = self.classes.B
+        C1 = self.classes.C1
+        b_table = self.tables.b
+        c1_table = self.tables.c1
+
+        from sqlalchemy import inspect
+
+        weird_selectable = b_table.outerjoin(c1_table)
+
+        b_np = mapper(
+            B, weird_selectable, non_primary=True, properties=odict([
+                # note we need to make this fixed with lazy=False until
+                # [ticket:3348] is resolved
+                ('c1s', relationship(C1, lazy=False, innerjoin=True)),
+                ('c_id', c1_table.c.id),
+                ('b_value', b_table.c.value),
+            ])
+        )
+
+        a_mapper = inspect(A)
+        a_mapper.add_property(
+            "bs_np", relationship(b_np)
+        )
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload('bs_np', innerjoin=False)
+        )
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, c1_1.id AS c1_1_id, c1_1.b_id AS c1_1_b_id, "
+            "c1_1.value AS c1_1_value, c1_2.id AS c1_2_id, "
+            "b_1.value AS b_1_value, b_1.id AS b_1_id, "
+            "b_1.a_id AS b_1_a_id, c1_2.b_id AS c1_2_b_id, "
+            "c1_2.value AS c1_2_value "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 LEFT OUTER JOIN c1 AS c1_2 ON b_1.id = c1_2.b_id "
+            "JOIN c1 AS c1_1 ON b_1.id = c1_1.b_id) ON a.id = b_1.a_id"
+        )
+
+
+class InnerJoinSplicingWSecondaryTest(
+        fixtures.MappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+    __backend__ = True  # exercise hardcore join nesting on backends
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('bid', ForeignKey('b.id'))
+        )
+
+        Table(
+            'b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('cid', ForeignKey('c.id'))
+        )
+
+        Table(
+            'c', metadata,
+            Column('id', Integer, primary_key=True),
+        )
+
+        Table('ctod', metadata,
+              Column('cid', ForeignKey('c.id'), primary_key=True),
+              Column('did', ForeignKey('d.id'), primary_key=True),
+              )
+        Table('d', metadata,
+              Column('id', Integer, primary_key=True),
+              )
+
+    @classmethod
+    def setup_classes(cls):
+
+        class A(cls.Comparable):
+            pass
+
+        class B(cls.Comparable):
+            pass
+
+        class C(cls.Comparable):
+            pass
+
+        class D(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C, D = (
+            cls.classes.A, cls.classes.B, cls.classes.C,
+            cls.classes.D)
+        mapper(A, cls.tables.a, properties={
+            'b': relationship(B)
+        })
+        mapper(B, cls.tables.b, properties=odict([
+            ('c', relationship(C)),
+        ]))
+        mapper(C, cls.tables.c, properties=odict([
+            ('ds', relationship(D, secondary=cls.tables.ctod,
+                                order_by=cls.tables.d.c.id)),
+        ]))
+        mapper(D, cls.tables.d)
+
+    @classmethod
+    def _fixture_data(cls):
+        A, B, C, D = (
+            cls.classes.A, cls.classes.B, cls.classes.C,
+            cls.classes.D)
+
+        d1, d2, d3 = D(id=1), D(id=2), D(id=3)
+        return [
+            A(
+                id=1,
+                b=B(
+                    id=1,
+                    c=C(
+                        id=1,
+                        ds=[d1, d2]
+                    )
+                )
+            ),
+            A(
+                id=2,
+                b=B(
+                    id=2,
+                    c=C(
+                        id=2,
+                        ds=[d2, d3]
+                    )
+                )
+            )
+        ]
+
+    @classmethod
+    def insert_data(cls):
+        s = Session(testing.db)
+        s.add_all(cls._fixture_data())
+        s.commit()
+
+    def _assert_result(self, query):
+        def go():
+            eq_(
+                query.all(),
+                self._fixture_data()
+            )
+
+        self.assert_sql_count(
+            testing.db,
+            go,
+            1
+        )
+
+    def test_joined_across(self):
+        A = self.classes.A
+
+        s = Session()
+        q = s.query(A) \
+            .options(
+                joinedload('b').
+                joinedload('c', innerjoin=True).
+                joinedload('ds', innerjoin=True))
+        self.assert_compile(
+            q,
+            "SELECT a.id AS a_id, a.bid AS a_bid, d_1.id AS d_1_id, "
+            "c_1.id AS c_1_id, b_1.id AS b_1_id, b_1.cid AS b_1_cid "
+            "FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN "
+            "(c AS c_1 JOIN ctod AS ctod_1 ON c_1.id = ctod_1.cid) "
+            "ON c_1.id = b_1.cid "
+            "JOIN d AS d_1 ON d_1.id = ctod_1.did) ON b_1.id = a.bid "
+            "ORDER BY d_1.id"
+        )
+        self._assert_result(q)
+
+
 class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
     """test #2188"""
 
     __dialect__ = 'default'
+    run_create_tables = None
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3555,6 +4014,7 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
 class CyclicalInheritingEagerTestThree(fixtures.DeclarativeMappedTest,
                                        testing.AssertsCompiledSQL):
     __dialect__ = 'default'
+    run_create_tables = None
 
     @classmethod
     def setup_classes(cls):
@@ -3608,4 +4068,258 @@ class CyclicalInheritingEagerTestThree(fixtures.DeclarativeMappedTest,
             "LEFT OUTER JOIN director AS director_1 ON "
             "director_1.id = persistent_1.id) "
             "ON director.other_id = persistent_1.id"
+        )
+
+
+class EnsureColumnsAddedTest(
+        fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            arb = Column(Integer, unique=True)
+            data = Column(Integer)
+            o2mchild = relationship("O2MChild")
+            m2mchild = relationship("M2MChild", secondary=Table(
+                'parent_to_m2m', Base.metadata,
+                Column('parent_id', ForeignKey('parent.arb')),
+                Column('child_id', ForeignKey('m2mchild.id'))
+            ))
+
+        class O2MChild(Base):
+            __tablename__ = 'o2mchild'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            parent_id = Column(ForeignKey('parent.arb'))
+
+        class M2MChild(Base):
+            __tablename__ = 'm2mchild'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+
+    def test_joinedload_defered_pk_limit_o2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.o2mchild)).limit(10),
+            "SELECT anon_1.parent_id AS anon_1_parent_id, "
+            "anon_1.parent_data AS anon_1_parent_data, "
+            "anon_1.parent_arb AS anon_1_parent_arb, "
+            "o2mchild_1.id AS o2mchild_1_id, "
+            "o2mchild_1.parent_id AS o2mchild_1_parent_id "
+            "FROM (SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "parent.arb AS parent_arb FROM parent LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN o2mchild AS o2mchild_1 "
+            "ON anon_1.parent_arb = o2mchild_1.parent_id"
+        )
+
+    def test_joinedload_defered_pk_limit_m2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.m2mchild)).limit(10),
+            "SELECT anon_1.parent_id AS anon_1_parent_id, "
+            "anon_1.parent_data AS anon_1_parent_data, "
+            "anon_1.parent_arb AS anon_1_parent_arb, "
+            "m2mchild_1.id AS m2mchild_1_id "
+            "FROM (SELECT parent.id AS parent_id, "
+            "parent.data AS parent_data, parent.arb AS parent_arb "
+            "FROM parent LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN (parent_to_m2m AS parent_to_m2m_1 "
+            "JOIN m2mchild AS m2mchild_1 "
+            "ON m2mchild_1.id = parent_to_m2m_1.child_id) "
+            "ON anon_1.parent_arb = parent_to_m2m_1.parent_id"
+        )
+
+    def test_joinedload_defered_pk_o2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.o2mchild)),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "parent.arb AS parent_arb, o2mchild_1.id AS o2mchild_1_id, "
+            "o2mchild_1.parent_id AS o2mchild_1_parent_id "
+            "FROM parent LEFT OUTER JOIN o2mchild AS o2mchild_1 "
+            "ON parent.arb = o2mchild_1.parent_id"
+        )
+
+    def test_joinedload_defered_pk_m2m(self):
+        Parent = self.classes.Parent
+
+        s = Session()
+
+        self.assert_compile(
+            s.query(Parent).options(
+                load_only('data'),
+                joinedload(Parent.m2mchild)),
+            "SELECT parent.id AS parent_id, parent.data AS parent_data, "
+            "parent.arb AS parent_arb, m2mchild_1.id AS m2mchild_1_id "
+            "FROM parent LEFT OUTER JOIN (parent_to_m2m AS parent_to_m2m_1 "
+            "JOIN m2mchild AS m2mchild_1 "
+            "ON m2mchild_1.id = parent_to_m2m_1.child_id) "
+            "ON parent.arb = parent_to_m2m_1.parent_id"
+        )
+
+
+class EntityViaMultiplePathTestOne(fixtures.DeclarativeMappedTest):
+    """test for [ticket:3431]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+            c_id = Column(ForeignKey('c.id'))
+
+            b = relationship("B")
+            c = relationship("C")
+
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            c_id = Column(ForeignKey('c.id'))
+
+            c = relationship("C")
+
+        class C(Base):
+            __tablename__ = 'c'
+            id = Column(Integer, primary_key=True)
+            d_id = Column(ForeignKey('d.id'))
+            d = relationship("D")
+
+        class D(Base):
+            __tablename__ = 'd'
+            id = Column(Integer, primary_key=True)
+
+            @classmethod
+            def define_tables(cls, metadata):
+                Table(
+                    'a', metadata,
+                    Column('id', Integer, primary_key=True),
+                    Column('bid', ForeignKey('b.id'))
+                )
+
+    def test_multi_path_load(self):
+        A, B, C, D = self.classes('A', 'B', 'C', 'D')
+
+        s = Session()
+
+        c = C(d=D())
+
+        s.add(
+            A(b=B(c=c), c=c)
+        )
+        s.commit()
+
+        c_alias_1 = aliased(C)
+        c_alias_2 = aliased(C)
+
+        q = s.query(A)
+        q = q.join(A.b).join(c_alias_1, B.c).join(c_alias_1.d)
+        q = q.options(
+            contains_eager(A.b).
+            contains_eager(B.c, alias=c_alias_1).
+            contains_eager(C.d))
+        q = q.join(c_alias_2, A.c)
+        q = q.options(contains_eager(A.c, alias=c_alias_2))
+
+        a1 = q.all()[0]
+
+        # ensure 'd' key was populated in dict.  Varies based on
+        # PYTHONHASHSEED
+        in_('d', a1.c.__dict__)
+
+
+class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
+    """test for [ticket:3431]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = 'cs_user'
+
+            id = Column(Integer, primary_key=True)
+            data = Column(Integer)
+
+        class LD(Base):
+            """Child.  The column we reference 'A' with is an integer."""
+
+            __tablename__ = 'cs_ld'
+
+            id = Column(Integer, primary_key=True)
+            user_id = Column(Integer, ForeignKey('cs_user.id'))
+            user = relationship(User, primaryjoin=user_id == User.id)
+
+        class A(Base):
+            """Child.  The column we reference 'A' with is an integer."""
+
+            __tablename__ = 'cs_a'
+
+            id = Column(Integer, primary_key=True)
+            ld_id = Column(Integer, ForeignKey('cs_ld.id'))
+            ld = relationship(LD, primaryjoin=ld_id == LD.id)
+
+        class LDA(Base):
+            """Child.  The column we reference 'A' with is an integer."""
+
+            __tablename__ = 'cs_lda'
+
+            id = Column(Integer, primary_key=True)
+            ld_id = Column(Integer, ForeignKey('cs_ld.id'))
+            a_id = Column(Integer, ForeignKey('cs_a.id'))
+            a = relationship(A, primaryjoin=a_id == A.id)
+            ld = relationship(LD, primaryjoin=ld_id == LD.id)
+
+    def test_multi_path_load(self):
+        User, LD, A, LDA = self.classes('User', 'LD', 'A', 'LDA')
+
+        s = Session()
+
+        u0 = User(data=42)
+        l0 = LD(user=u0)
+        z0 = A(ld=l0)
+        lz0 = LDA(ld=l0, a=z0)
+        s.add_all([
+            u0, l0, z0, lz0
+        ])
+        s.commit()
+
+        l_ac = aliased(LD)
+        u_ac = aliased(User)
+
+        lz_test = (s.query(LDA)
+                   .join('ld')
+                   .options(contains_eager('ld'))
+                   .join('a', (l_ac, 'ld'), (u_ac, 'user'))
+                   .options(contains_eager('a')
+                            .contains_eager('ld', alias=l_ac)
+                            .contains_eager('user', alias=u_ac))
+                   .first())
+
+        in_(
+            'user', lz_test.a.ld.__dict__
         )

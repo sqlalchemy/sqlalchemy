@@ -485,6 +485,41 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                                            ).one(),
             Engineer(name='vlad', primary_language='cobol'))
 
+    def test_single_constraint_on_sub(self):
+        """test the somewhat unusual case of [ticket:3341]"""
+
+        class Person(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on': discriminator}
+
+        class Engineer(Person):
+
+            __mapper_args__ = {'polymorphic_identity': 'engineer'}
+            primary_language = Column(String(50))
+
+            __hack_args_one__ = sa.UniqueConstraint(
+                Person.name, primary_language)
+            __hack_args_two__ = sa.CheckConstraint(
+                Person.name != primary_language)
+
+        uq = [c for c in Person.__table__.constraints
+              if isinstance(c, sa.UniqueConstraint)][0]
+        ck = [c for c in Person.__table__.constraints
+              if isinstance(c, sa.CheckConstraint)][0]
+        eq_(
+            list(uq.columns),
+            [Person.__table__.c.name, Person.__table__.c.primary_language]
+        )
+        eq_(
+            list(ck.columns),
+            [Person.__table__.c.name, Person.__table__.c.primary_language]
+        )
+
     @testing.skip_if(lambda: testing.against('oracle'),
                      "Test has an empty insert in it at the moment")
     def test_columns_single_inheritance_conflict_resolution(self):
@@ -1416,4 +1451,35 @@ class ConcreteExtensionConfigTest(
             "actual_documents.send_method AS send_method, "
             "actual_documents.id AS id, 'actual' AS type "
             "FROM actual_documents) AS pjoin"
+        )
+
+    def test_column_attr_names(self):
+        """test #3480"""
+
+        class Document(Base, AbstractConcreteBase):
+            documentType = Column('documenttype', String)
+
+        class Offer(Document):
+            __tablename__ = 'offers'
+
+            id = Column(Integer, primary_key=True)
+            __mapper_args__ = {
+                'polymorphic_identity': 'offer'
+            }
+
+        configure_mappers()
+        session = Session()
+        self.assert_compile(
+            session.query(Document),
+            "SELECT pjoin.documenttype AS pjoin_documenttype, "
+            "pjoin.id AS pjoin_id, pjoin.type AS pjoin_type FROM "
+            "(SELECT offers.documenttype AS documenttype, offers.id AS id, "
+            "'offer' AS type FROM offers) AS pjoin"
+        )
+
+        self.assert_compile(
+            session.query(Document.documentType),
+            "SELECT pjoin.documenttype AS pjoin_documenttype FROM "
+            "(SELECT offers.documenttype AS documenttype, offers.id AS id, "
+            "'offer' AS type FROM offers) AS pjoin"
         )

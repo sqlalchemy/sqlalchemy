@@ -75,7 +75,10 @@ class ExecutionTest(fixtures.TestBase):
         @profiling.function_call_count()
         def go():
             c.execute("select 1")
-        go()
+        try:
+            go()
+        finally:
+            c.close()
 
     def test_minimal_engine_execute(self, variance=0.10):
         # create an engine without any instrumentation.

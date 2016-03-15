@@ -23,5 +23,12 @@ API Reference
 	:members:
 	:undoc-members:
 
+.. autoclass:: MutableList
+	:members:
+	:undoc-members:
+
+.. autoclass:: MutableSet
+	:members:
+	:undoc-members:
 
 

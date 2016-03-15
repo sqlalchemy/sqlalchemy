@@ -1,5 +1,5 @@
 # plugin/noseplugin.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,6 +24,7 @@ import os
 import sys
 
 from nose.plugins import Plugin
+import nose
 fixtures = None
 
 py3k = sys.version_info >= (3, 0)
@@ -55,6 +56,8 @@ class NoseSQLAlchemy(Plugin):
         plugin_base.pre_begin(options)
 
         plugin_base.set_coverage_flag(options.enable_plugin_coverage)
+
+        plugin_base.set_skip_test(nose.SkipTest)
 
     def begin(self):
         global fixtures

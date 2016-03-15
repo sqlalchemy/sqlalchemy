@@ -1,5 +1,5 @@
 # postgresql/json.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,144 +7,104 @@
 from __future__ import absolute_import
 
 import json
+import collections
 
-from .base import ischema_names
+from .base import ischema_names, colspecs
 from ... import types as sqltypes
-from ...sql.operators import custom_op
-from ... import sql
-from ...sql import elements, default_comparator
+from ...sql import operators
+from ...sql import elements
 from ... import util
 
-__all__ = ('JSON', 'JSONElement', 'JSONB')
+__all__ = ('JSON', 'JSONB')
+
+ASTEXT = operators.custom_op(
+    "->>", precedence=15, natural_self_precedent=True,
+)
+
+JSONPATH_ASTEXT = operators.custom_op(
+    "#>>", precedence=15, natural_self_precedent=True,
+)
 
 
-class JSONElement(elements.BinaryExpression):
-    """Represents accessing an element of a :class:`.JSON` value.
+HAS_KEY = operators.custom_op(
+    "?", precedence=15, natural_self_precedent=True
+)
 
-    The :class:`.JSONElement` is produced whenever using the Python index
-    operator on an expression that has the type :class:`.JSON`::
+HAS_ALL = operators.custom_op(
+    "?&", precedence=15, natural_self_precedent=True
+)
 
-        expr = mytable.c.json_data['some_key']
+HAS_ANY = operators.custom_op(
+    "?|", precedence=15, natural_self_precedent=True
+)
 
-    The expression typically compiles to a JSON access such as ``col -> key``.
-    Modifiers are then available for typing behavior, including
-    :meth:`.JSONElement.cast` and :attr:`.JSONElement.astext`.
+CONTAINS = operators.custom_op(
+    "@>", precedence=15, natural_self_precedent=True
+)
 
-    """
-
-    def __init__(self, left, right, astext=False,
-                 opstring=None, result_type=None):
-        self._astext = astext
-        if opstring is None:
-            if hasattr(right, '__iter__') and \
-                    not isinstance(right, util.string_types):
-                opstring = "#>"
-                right = "{%s}" % (
-                    ", ".join(util.text_type(elem) for elem in right))
-            else:
-                opstring = "->"
-
-        self._json_opstring = opstring
-        operator = custom_op(opstring, precedence=5)
-        right = default_comparator._check_literal(
-            left, operator, right)
-        super(JSONElement, self).__init__(
-            left, right, operator, type_=result_type)
-
-    @property
-    def astext(self):
-        """Convert this :class:`.JSONElement` to use the 'astext' operator
-        when evaluated.
-
-        E.g.::
-
-            select([data_table.c.data['some key'].astext])
-
-        .. seealso::
-
-            :meth:`.JSONElement.cast`
-
-        """
-        if self._astext:
-            return self
-        else:
-            return JSONElement(
-                self.left,
-                self.right,
-                astext=True,
-                opstring=self._json_opstring + ">",
-                result_type=sqltypes.String(convert_unicode=True)
-            )
-
-    def cast(self, type_):
-        """Convert this :class:`.JSONElement` to apply both the 'astext' operator
-        as well as an explicit type cast when evaluated.
-
-        E.g.::
-
-            select([data_table.c.data['some key'].cast(Integer)])
-
-        .. seealso::
-
-            :attr:`.JSONElement.astext`
-
-        """
-        if not self._astext:
-            return self.astext.cast(type_)
-        else:
-            return sql.cast(self, type_)
+CONTAINED_BY = operators.custom_op(
+    "<@", precedence=15, natural_self_precedent=True
+)
 
 
-class JSON(sqltypes.TypeEngine):
+class JSONPathType(sqltypes.JSON.JSONPathType):
+    def bind_processor(self, dialect):
+        def process(value):
+            assert isinstance(value, collections.Sequence)
+            tokens = [util.text_type(elem) for elem in value]
+            return "{%s}" % (", ".join(tokens))
+
+        return process
+
+colspecs[sqltypes.JSON.JSONPathType] = JSONPathType
+
+
+class JSON(sqltypes.JSON):
     """Represent the Postgresql JSON type.
 
-    The :class:`.JSON` type stores arbitrary JSON format data, e.g.::
+    This type is a specialization of the Core-level :class:`.types.JSON`
+    type.   Be sure to read the documentation for :class:`.types.JSON` for
+    important tips regarding treatment of NULL values and ORM use.
 
-        data_table = Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', JSON)
-        )
+    .. versionchanged:: 1.1 :class:`.postgresql.JSON` is now a Postgresql-
+       specific specialization of the new :class:`.types.JSON` type.
 
-        with engine.connect() as conn:
-            conn.execute(
-                data_table.insert(),
-                data = {"key1": "value1", "key2": "value2"}
-            )
+    The operators provided by the Postgresql version of :class:`.JSON`
+    include:
 
-    :class:`.JSON` provides several operations:
-
-    * Index operations::
+    * Index operations (the ``->`` operator)::
 
         data_table.c.data['some key']
 
-    * Index operations returning text (required for text comparison)::
+        data_table.c.data[5]
+
+
+    * Index operations returning text (the ``->>`` operator)::
 
         data_table.c.data['some key'].astext == 'some value'
 
-    * Index operations with a built-in CAST call::
+    * Index operations with CAST
+      (equivalent to ``CAST(col ->> ['some key'] AS <type>)``)::
 
-        data_table.c.data['some key'].cast(Integer) == 5
+        data_table.c.data['some key'].astext.cast(Integer) == 5
 
-    * Path index operations::
+    * Path index operations (the ``#>`` operator)::
 
-        data_table.c.data[('key_1', 'key_2', ..., 'key_n')]
+        data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')]
 
-    * Path index operations returning text (required for text comparison)::
+    * Path index operations returning text (the ``#>>`` operator)::
 
-        data_table.c.data[('key_1', 'key_2', ..., 'key_n')].astext == \\
-            'some value'
+        data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')].astext == \
+'some value'
 
-    Index operations return an instance of :class:`.JSONElement`, which
-    represents an expression such as ``column -> index``.  This element then
-    defines methods such as :attr:`.JSONElement.astext` and
-    :meth:`.JSONElement.cast` for setting up type behavior.
+    .. versionchanged:: 1.1  The :meth:`.ColumnElement.cast` operator on
+       JSON objects now requires that the :attr:`.JSON.Comparator.astext`
+       modifier be called explicitly, if the cast works only from a textual
+       string.
 
-    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not
-    detect in-place mutations to the structure.  In order to detect these, the
-    :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
-    allow "in-place" changes to the datastructure to produce events which
-    will be detected by the unit of work.  See the example at :class:`.HSTORE`
-    for a simple example involving a dictionary.
+    Index operations return an expression object whose type defaults to
+    :class:`.JSON` by default, so that further JSON-oriented instructions
+    may be called upon the result type.
 
     Custom serializers and deserializers are specified at the dialect level,
     that is using :func:`.create_engine`.  The reason for this is that when
@@ -159,13 +119,17 @@ class JSON(sqltypes.TypeEngine):
     When using the psycopg2 dialect, the json_deserializer is registered
     against the database using ``psycopg2.extras.register_default_json``.
 
-    .. versionadded:: 0.9
+    .. seealso::
+
+        :class:`.types.JSON` - Core level JSON type
+
+        :class:`.JSONB`
 
     """
 
-    __visit_name__ = 'JSON'
+    astext_type = sqltypes.Text()
 
-    def __init__(self, none_as_null=False):
+    def __init__(self, none_as_null=False, astext_type=None):
         """Construct a :class:`.JSON` type.
 
         :param none_as_null: if True, persist the value ``None`` as a
@@ -179,61 +143,51 @@ class JSON(sqltypes.TypeEngine):
          .. versionchanged:: 0.9.8 - Added ``none_as_null``, and :func:`.null`
             is now supported in order to persist a NULL value.
 
-         """
-        self.none_as_null = none_as_null
+         .. seealso::
 
-    class comparator_factory(sqltypes.Concatenable.Comparator):
+              :attr:`.JSON.NULL`
+
+        :param astext_type: the type to use for the
+         :attr:`.JSON.Comparator.astext`
+         accessor on indexed attributes.  Defaults to :class:`.types.Text`.
+
+         .. versionadded:: 1.1
+
+         """
+        super(JSON, self).__init__(none_as_null=none_as_null)
+        if astext_type is not None:
+            self.astext_type = astext_type
+
+    class Comparator(sqltypes.JSON.Comparator):
         """Define comparison operations for :class:`.JSON`."""
 
-        def __getitem__(self, other):
-            """Get the value at a given key."""
+        @property
+        def astext(self):
+            """On an indexed expression, use the "astext" (e.g. "->>")
+            conversion when rendered in SQL.
 
-            return JSONElement(self.expr, other)
+            E.g.::
 
-        def _adapt_expression(self, op, other_comparator):
-            if isinstance(op, custom_op):
-                if op.opstring == '->':
-                    return op, sqltypes.Text
-            return sqltypes.Concatenable.Comparator.\
-                _adapt_expression(self, op, other_comparator)
+                select([data_table.c.data['some key'].astext])
 
-    def bind_processor(self, dialect):
-        json_serializer = dialect._json_serializer or json.dumps
-        if util.py2k:
-            encoding = dialect.encoding
+            .. seealso::
 
-            def process(value):
-                if isinstance(value, elements.Null) or (
-                    value is None and self.none_as_null
-                ):
-                    return None
-                return json_serializer(value).encode(encoding)
-        else:
-            def process(value):
-                if isinstance(value, elements.Null) or (
-                    value is None and self.none_as_null
-                ):
-                    return None
-                return json_serializer(value)
-        return process
+                :meth:`.ColumnElement.cast`
 
-    def result_processor(self, dialect, coltype):
-        json_deserializer = dialect._json_deserializer or json.loads
-        if util.py2k:
-            encoding = dialect.encoding
+            """
 
-            def process(value):
-                if value is None:
-                    return None
-                return json_deserializer(value.decode(encoding))
-        else:
-            def process(value):
-                if value is None:
-                    return None
-                return json_deserializer(value)
-        return process
+            if isinstance(self.expr.right.type, sqltypes.JSON.JSONPathType):
+                return self.expr.left.operate(
+                    JSONPATH_ASTEXT,
+                    self.expr.right, result_type=self.type.astext_type)
+            else:
+                return self.expr.left.operate(
+                    ASTEXT, self.expr.right, result_type=self.type.astext_type)
+
+    comparator_factory = Comparator
 
 
+colspecs[sqltypes.JSON] = JSON
 ischema_names['json'] = JSON
 
 
@@ -253,106 +207,68 @@ class JSONB(JSON):
                 data = {"key1": "value1", "key2": "value2"}
             )
 
-    :class:`.JSONB` provides several operations:
+    The :class:`.JSONB` type includes all operations provided by
+    :class:`.JSON`, including the same behaviors for indexing operations.
+    It also adds additional operators specific to JSONB, including
+    :meth:`.JSONB.Comparator.has_key`, :meth:`.JSONB.Comparator.has_all`,
+    :meth:`.JSONB.Comparator.has_any`, :meth:`.JSONB.Comparator.contains`,
+    and :meth:`.JSONB.Comparator.contained_by`.
 
-    * Index operations::
+    Like the :class:`.JSON` type, the :class:`.JSONB` type does not detect
+    in-place changes when used with the ORM, unless the
+    :mod:`sqlalchemy.ext.mutable` extension is used.
 
-        data_table.c.data['some key']
-
-    * Index operations returning text (required for text comparison)::
-
-        data_table.c.data['some key'].astext == 'some value'
-
-    * Index operations with a built-in CAST call::
-
-        data_table.c.data['some key'].cast(Integer) == 5
-
-    * Path index operations::
-
-        data_table.c.data[('key_1', 'key_2', ..., 'key_n')]
-
-    * Path index operations returning text (required for text comparison)::
-
-        data_table.c.data[('key_1', 'key_2', ..., 'key_n')].astext == \\
-            'some value'
-
-    Index operations return an instance of :class:`.JSONElement`, which
-    represents an expression such as ``column -> index``.  This element then
-    defines methods such as :attr:`.JSONElement.astext` and
-    :meth:`.JSONElement.cast` for setting up type behavior.
-
-    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not
-    detect in-place mutations to the structure.  In order to detect these, the
-    :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
-    allow "in-place" changes to the datastructure to produce events which
-    will be detected by the unit of work.  See the example at :class:`.HSTORE`
-    for a simple example involving a dictionary.
-
-    Custom serializers and deserializers are specified at the dialect level,
-    that is using :func:`.create_engine`.  The reason for this is that when
-    using psycopg2, the DBAPI only allows serializers at the per-cursor
-    or per-connection level.   E.g.::
-
-        engine = create_engine("postgresql://scott:tiger@localhost/test",
-                                json_serializer=my_serialize_fn,
-                                json_deserializer=my_deserialize_fn
-                        )
-
-    When using the psycopg2 dialect, the json_deserializer is registered
-    against the database using ``psycopg2.extras.register_default_json``.
+    Custom serializers and deserializers
+    are shared with the :class:`.JSON` class, using the ``json_serializer``
+    and ``json_deserializer`` keyword arguments.  These must be specified
+    at the dialect level using :func:`.create_engine`.  When using
+    psycopg2, the serializers are associated with the jsonb type using
+    ``psycopg2.extras.register_default_jsonb`` on a per-connection basis,
+    in the same way that ``psycopg2.extras.register_default_json`` is used
+    to register these handlers with the json type.
 
     .. versionadded:: 0.9.7
+
+    .. seealso::
+
+        :class:`.JSON`
 
     """
 
     __visit_name__ = 'JSONB'
-    hashable = False
 
-    class comparator_factory(sqltypes.Concatenable.Comparator):
+    class Comparator(JSON.Comparator):
         """Define comparison operations for :class:`.JSON`."""
-
-        def __getitem__(self, other):
-            """Get the value at a given key."""
-
-            return JSONElement(self.expr, other)
-
-        def _adapt_expression(self, op, other_comparator):
-            # How does one do equality?? jsonb also has "=" eg.
-            # '[1,2,3]'::jsonb = '[1,2,3]'::jsonb
-            if isinstance(op, custom_op):
-                if op.opstring in ['?', '?&', '?|', '@>', '<@']:
-                    return op, sqltypes.Boolean
-                if op.opstring == '->':
-                    return op, sqltypes.Text
-            return sqltypes.Concatenable.Comparator.\
-                _adapt_expression(self, op, other_comparator)
 
         def has_key(self, other):
             """Boolean expression.  Test for presence of a key.  Note that the
             key may be a SQLA expression.
             """
-            return self.expr.op('?')(other)
+            return self.operate(HAS_KEY, other, result_type=sqltypes.Boolean)
 
         def has_all(self, other):
             """Boolean expression.  Test for presence of all keys in jsonb
             """
-            return self.expr.op('?&')(other)
+            return self.operate(HAS_ALL, other, result_type=sqltypes.Boolean)
 
         def has_any(self, other):
             """Boolean expression.  Test for presence of any key in jsonb
             """
-            return self.expr.op('?|')(other)
+            return self.operate(HAS_ANY, other, result_type=sqltypes.Boolean)
 
         def contains(self, other, **kwargs):
-            """Boolean expression.  Test if keys (or array) are a superset of/contained
-            the keys of the argument jsonb expression.
+            """Boolean expression.  Test if keys (or array) are a superset
+            of/contained the keys of the argument jsonb expression.
             """
-            return self.expr.op('@>')(other)
+            return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
 
         def contained_by(self, other):
             """Boolean expression.  Test if keys are a proper subset of the
             keys of the argument jsonb expression.
             """
-            return self.expr.op('<@')(other)
+            return self.operate(
+                CONTAINED_BY, other, result_type=sqltypes.Boolean)
+
+    comparator_factory = Comparator
 
 ischema_names['jsonb'] = JSONB

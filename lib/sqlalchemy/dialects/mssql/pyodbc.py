@@ -1,5 +1,5 @@
 # mssql/pyodbc.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -93,9 +93,16 @@ for unix + PyODBC.
 .. versionadded:: 0.7.7
     ``supports_unicode_binds`` parameter to ``create_engine()``\ .
 
+Rowcount Support
+----------------
+
+Pyodbc only has partial support for rowcount.  See the notes at
+:ref:`mssql_rowcount_versioning` for important notes when using ORM
+versioning.
+
 """
 
-from .base import MSExecutionContext, MSDialect
+from .base import MSExecutionContext, MSDialect, VARBINARY
 from ...connectors.pyodbc import PyODBCConnector
 from ... import types as sqltypes, util
 import decimal
@@ -174,6 +181,22 @@ class _MSFloat_pyodbc(_ms_numeric_pyodbc, sqltypes.Float):
     pass
 
 
+class _VARBINARY_pyodbc(VARBINARY):
+    def bind_processor(self, dialect):
+        if dialect.dbapi is None:
+            return None
+
+        DBAPIBinary = dialect.dbapi.Binary
+
+        def process(value):
+            if value is not None:
+                return DBAPIBinary(value)
+            else:
+                # pyodbc-specific
+                return dialect.dbapi.BinaryNull
+        return process
+
+
 class MSExecutionContext_pyodbc(MSExecutionContext):
     _embedded_scope_identity = False
 
@@ -230,7 +253,9 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         MSDialect.colspecs,
         {
             sqltypes.Numeric: _MSNumeric_pyodbc,
-            sqltypes.Float: _MSFloat_pyodbc
+            sqltypes.Float: _MSFloat_pyodbc,
+            VARBINARY: _VARBINARY_pyodbc,
+            sqltypes.LargeBinary: _VARBINARY_pyodbc,
         }
     )
 

@@ -57,8 +57,10 @@ class PyDateProcessorTest(_DateProcessorTest):
                 )
             )
 
+
 class CDateProcessorTest(_DateProcessorTest):
     __requires__ = ('cextensions',)
+
     @classmethod
     def setup_class(cls):
         from sqlalchemy import cprocessors
@@ -104,7 +106,8 @@ class _DistillArgsTest(fixtures.TestBase):
 
     def test_distill_single_list_tuples(self):
         eq_(
-            self.module._distill_params(([("foo", "bar"), ("bat", "hoho")],), {}),
+            self.module._distill_params(
+                ([("foo", "bar"), ("bat", "hoho")],), {}),
             [('foo', 'bar'), ('bat', 'hoho')]
         )
 
@@ -117,9 +120,7 @@ class _DistillArgsTest(fixtures.TestBase):
     def test_distill_multi_list_tuple(self):
         eq_(
             self.module._distill_params(
-                ([("foo", "bar")], [("bar", "bat")]),
-                {}
-            ),
+                ([("foo", "bar")], [("bar", "bat")]), {}),
             ([('foo', 'bar')], [('bar', 'bat')])
         )
 
@@ -131,7 +132,8 @@ class _DistillArgsTest(fixtures.TestBase):
 
     def test_distill_single_list_dicts(self):
         eq_(
-            self.module._distill_params(([{"foo": "bar"}, {"foo": "hoho"}],), {}),
+            self.module._distill_params(
+                ([{"foo": "bar"}, {"foo": "hoho"}],), {}),
             [{'foo': 'bar'}, {'foo': 'hoho'}]
         )
 
@@ -148,7 +150,6 @@ class _DistillArgsTest(fixtures.TestBase):
         )
 
 
-
 class PyDistillArgsTest(_DistillArgsTest):
     @classmethod
     def setup_class(cls):
@@ -160,8 +161,10 @@ class PyDistillArgsTest(_DistillArgsTest):
                 )
         )
 
+
 class CDistillArgsTest(_DistillArgsTest):
     __requires__ = ('cextensions', )
+
     @classmethod
     def setup_class(cls):
         from sqlalchemy import cutils as util

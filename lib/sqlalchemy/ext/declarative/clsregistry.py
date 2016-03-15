@@ -1,5 +1,5 @@
 # ext/declarative/clsregistry.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -321,7 +321,8 @@ def _deferred_relationship(cls, prop):
             key, kwargs = prop.backref
             for attr in ('primaryjoin', 'secondaryjoin', 'secondary',
                          'foreign_keys', 'remote_side', 'order_by'):
-                if attr in kwargs and isinstance(kwargs[attr], str):
+                if attr in kwargs and isinstance(kwargs[attr],
+                                                 util.string_types):
                     kwargs[attr] = resolve_arg(kwargs[attr])
 
     return prop

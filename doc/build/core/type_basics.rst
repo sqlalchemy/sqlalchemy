@@ -98,12 +98,19 @@ Standard Types`_ and the other sections of this chapter.
 
 .. _types_sqlstandard:
 
-SQL Standard Types
-------------------
+SQL Standard and Multiple Vendor Types
+--------------------------------------
 
-The SQL standard types always create database column types of the same
-name when ``CREATE TABLE`` is issued.  Some types may not be supported
-on all databases.
+This category of types refers to types that are either part of the
+SQL standard, or are potentially found within a subset of database backends.
+Unlike the "generic" types, the SQL standard/multi-vendor types have **no**
+guarantee of working on all backends, and will only work on those backends
+that explicitly support them by name.  That is, the type will always emit
+its exact name in DDL with ``CREATE TABLE`` is issued.
+
+
+.. autoclass:: ARRAY
+   :members:
 
 .. autoclass:: BIGINT
 
@@ -136,6 +143,9 @@ on all databases.
 
 
 .. autoclass:: INT
+
+.. autoclass:: JSON
+    :members:
 
 
 .. autoclass:: sqlalchemy.types.INTEGER

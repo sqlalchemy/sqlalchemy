@@ -12,6 +12,8 @@ from sqlalchemy.testing import fixtures
 
 
 users, metadata = None, None
+
+
 class TransactionTest(fixtures.TestBase):
     __backend__ = True
 
@@ -20,7 +22,7 @@ class TransactionTest(fixtures.TestBase):
         global users, metadata
         metadata = MetaData()
         users = Table('query_users', metadata,
-            Column('user_id', INT, primary_key = True),
+            Column('user_id', INT, primary_key=True),
             Column('user_name', VARCHAR(20)),
             test_needs_acid=True,
         )
@@ -215,6 +217,27 @@ class TransactionTest(fixtures.TestBase):
 
         finally:
             connection.close()
+
+    @testing.requires.python2
+    @testing.requires.savepoints_w_release
+    def test_savepoint_release_fails_warning(self):
+        with testing.db.connect() as connection:
+            connection.begin()
+
+            with expect_warnings(
+                "An exception has occurred during handling of a previous "
+                "exception.  The previous exception "
+                "is:.*..SQL\:.*RELEASE SAVEPOINT"
+            ):
+                def go():
+                    with connection.begin_nested() as savepoint:
+                        connection.dialect.do_release_savepoint(
+                            connection, savepoint._savepoint)
+                assert_raises_message(
+                    exc.DBAPIError,
+                    ".*SQL\:.*ROLLBACK TO SAVEPOINT",
+                    go
+                )
 
     def test_retains_through_options(self):
         connection = testing.db.connect()
@@ -497,6 +520,7 @@ class TransactionTest(fixtures.TestBase):
                     order_by(users.c.user_id))
             eq_(result.fetchall(), [])
 
+
 class ResetAgentTest(fixtures.TestBase):
     __backend__ = True
 
@@ -600,6 +624,7 @@ class ResetAgentTest(fixtures.TestBase):
             trans.rollback()
             assert connection.connection._reset_agent is None
 
+
 class AutoRollbackTest(fixtures.TestBase):
     __backend__ = True
 
@@ -632,6 +657,7 @@ class AutoRollbackTest(fixtures.TestBase):
 
         users.drop(conn2)
         conn2.close()
+
 
 class ExplicitAutoCommitTest(fixtures.TestBase):
 
@@ -1440,4 +1466,3 @@ class IsolationLevelTest(fixtures.TestBase):
             eq_(conn.get_isolation_level(),
                 self._non_default_isolation_level())
             eq_(c2.get_isolation_level(), self._non_default_isolation_level())
-

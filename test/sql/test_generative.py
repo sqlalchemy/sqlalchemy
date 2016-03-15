@@ -454,6 +454,27 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             str(f1), str(f2)
         )
 
+    def test_labeled_expression_adapt(self):
+        lbl_x = (t3.c.col1 == 1).label('x')
+        t3_alias = t3.alias()
+
+        adapter = sql_util.ColumnAdapter(t3_alias)
+
+        lblx_adapted = adapter.traverse(lbl_x)
+        is_not_(lblx_adapted._element, lbl_x._element)
+
+        lblx_adapted = adapter.traverse(lbl_x)
+        self.assert_compile(
+            select([lblx_adapted.self_group()]),
+            "SELECT (table3_1.col1 = :col1_1) AS x FROM table3 AS table3_1"
+        )
+
+        self.assert_compile(
+            select([lblx_adapted.is_(True)]),
+            "SELECT (table3_1.col1 = :col1_1) IS 1 AS anon_1 "
+            "FROM table3 AS table3_1"
+        )
+
     def test_text(self):
         clause = text(
             "select * from table where foo=:bar",
@@ -877,7 +898,6 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(
             a2_to_a1.columns[t2.c.col2], stmt2.c.col2
         )
-
 
     def test_wrapping_multiple(self):
         """illustrate that wrapping runs both adapters"""
@@ -1529,7 +1549,6 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         l3 = adapter.traverse(expr)
         is_(l3._order_by_label_element, l3)
         eq_(l3._allow_label_resolve, False)
-
 
 
 class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):

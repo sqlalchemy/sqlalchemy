@@ -1,5 +1,5 @@
 # orm/mapper.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -112,6 +112,7 @@ class Mapper(InspectionAttr):
                  include_properties=None,
                  exclude_properties=None,
                  passive_updates=True,
+                 passive_deletes=False,
                  confirm_deleted_rows=True,
                  eager_defaults=False,
                  legacy_is_orphan=False,
@@ -319,6 +320,40 @@ class Mapper(InspectionAttr):
            ordering for entities.  By default mappers have no pre-defined
            ordering.
 
+        :param passive_deletes: Indicates DELETE behavior of foreign key
+           columns when a joined-table inheritance entity is being deleted.
+           Defaults to ``False`` for a base mapper; for an inheriting mapper,
+           defaults to ``False`` unless the value is set to ``True``
+           on the superclass mapper.
+
+           When ``True``, it is assumed that ON DELETE CASCADE is configured
+           on the foreign key relationships that link this mapper's table
+           to its superclass table, so that when the unit of work attempts
+           to delete the entity, it need only emit a DELETE statement for the
+           superclass table, and not this table.
+
+           When ``False``, a DELETE statement is emitted for this mapper's
+           table individually.  If the primary key attributes local to this
+           table are unloaded, then a SELECT must be emitted in order to
+           validate these attributes; note that the primary key columns
+           of a joined-table subclass are not part of the "primary key" of
+           the object as a whole.
+
+           Note that a value of ``True`` is **always** forced onto the
+           subclass mappers; that is, it's not possible for a superclass
+           to specify passive_deletes without this taking effect for
+           all subclass mappers.
+
+           .. versionadded:: 1.1
+
+           .. seealso::
+
+               :ref:`passive_deletes` - description of similar feature as
+               used with :func:`.relationship`
+
+               :paramref:`.mapper.passive_updates` - supporting ON UPDATE
+               CASCADE for joined-table inheritance mappers
+
         :param passive_updates: Indicates UPDATE behavior of foreign key
            columns when a primary key column changes on a joined-table
            inheritance mapping.   Defaults to ``True``.
@@ -338,6 +373,9 @@ class Mapper(InspectionAttr):
 
                :ref:`passive_updates` - description of a similar feature as
                used with :func:`.relationship`
+
+               :paramref:`.mapper.passive_deletes` - supporting ON DELETE
+               CASCADE for joined-table inheritance mappers
 
         :param polymorphic_on: Specifies the column, attribute, or
           SQL expression used to determine the target class for an
@@ -559,6 +597,7 @@ class Mapper(InspectionAttr):
         self._dependency_processors = []
         self.validators = util.immutabledict()
         self.passive_updates = passive_updates
+        self.passive_deletes = passive_deletes
         self.legacy_is_orphan = legacy_is_orphan
         self._clause_adapter = None
         self._requires_row_aliasing = False
@@ -971,6 +1010,8 @@ class Mapper(InspectionAttr):
             self.inherits._inheriting_mappers.append(self)
             self.base_mapper = self.inherits.base_mapper
             self.passive_updates = self.inherits.passive_updates
+            self.passive_deletes = self.inherits.passive_deletes or \
+                self.passive_deletes
             self._all_tables = self.inherits._all_tables
 
             if self.polymorphic_identity is not None:
@@ -982,7 +1023,7 @@ class Mapper(InspectionAttr):
                         (self.polymorphic_identity,
                          self.polymorphic_map[self.polymorphic_identity],
                          self, self.polymorphic_identity)
-                )
+                    )
                 self.polymorphic_map[self.polymorphic_identity] = self
 
         else:
@@ -1096,8 +1137,6 @@ class Mapper(InspectionAttr):
 
         """
 
-        # when using declarative as of 1.0, the register_class has
-        # already happened from within declarative.
         manager = attributes.manager_of_class(self.class_)
 
         if self.non_primary:
@@ -1120,13 +1159,19 @@ class Mapper(InspectionAttr):
                     "create a non primary Mapper.  clear_mappers() will "
                     "remove *all* current mappers from all classes." %
                     self.class_)
-
-        if manager is None:
-            manager = instrumentation.register_class(self.class_)
+            # else:
+                # a ClassManager may already exist as
+                # ClassManager.instrument_attribute() creates
+                # new managers for each subclass if they don't yet exist.
 
         _mapper_registry[self] = True
 
+        # note: this *must be called before instrumentation.register_class*
+        # to maintain the documented behavior of instrument_class
         self.dispatch.instrument_class(self, self.class_)
+
+        if manager is None:
+            manager = instrumentation.register_class(self.class_)
 
         self.class_manager = manager
 
@@ -1501,6 +1546,10 @@ class Mapper(InspectionAttr):
 
         return identities
 
+    @_memoized_configured_property
+    def _prop_set(self):
+        return frozenset(self._props.values())
+
     def _adapt_inherited_property(self, key, prop, init):
         if not self.concrete:
             self._configure_property(key, prop, init=False, setparent=False)
@@ -1583,7 +1632,12 @@ class Mapper(InspectionAttr):
 
         if key in self._props and \
                 not isinstance(prop, properties.ColumnProperty) and \
-                not isinstance(self._props[key], properties.ColumnProperty):
+                not isinstance(
+                    self._props[key],
+                    (
+                        properties.ColumnProperty,
+                        properties.ConcreteInheritedProperty)
+                ):
             util.warn("Property %s on %s being replaced with new "
                       "property %s; the old property will be discarded" % (
                           self._props[key],
@@ -1907,6 +1961,19 @@ class Mapper(InspectionAttr):
     """
 
     @_memoized_configured_property
+    def _insert_cols_evaluating_none(self):
+        return dict(
+            (
+                table,
+                frozenset(
+                    col.key for col in columns
+                    if col.type.should_evaluate_none
+                )
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
     def _insert_cols_as_none(self):
         return dict(
             (
@@ -1914,7 +1981,8 @@ class Mapper(InspectionAttr):
                 frozenset(
                     col.key for col in columns
                     if not col.primary_key and
-                    not col.server_default and not col.default)
+                    not col.server_default and not col.default
+                    and not col.type.should_evaluate_none)
             )
             for table, columns in self._cols_by_table.items()
         )
@@ -1948,8 +2016,20 @@ class Mapper(InspectionAttr):
             (
                 table,
                 frozenset([
-                    col for col in columns
+                    col.key for col in columns
                     if col.server_default is not None])
+            )
+            for table, columns in self._cols_by_table.items()
+        )
+
+    @_memoized_configured_property
+    def _server_onupdate_default_cols(self):
+        return dict(
+            (
+                table,
+                frozenset([
+                    col.key for col in columns
+                    if col.server_onupdate is not None])
             )
             for table, columns in self._cols_by_table.items()
         )
@@ -2030,6 +2110,17 @@ class Mapper(InspectionAttr):
         returned, inclding :attr:`.synonyms`, :attr:`.column_attrs`,
         :attr:`.relationships`, and :attr:`.composites`.
 
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
+
         .. seealso::
 
             :attr:`.Mapper.all_orm_descriptors`
@@ -2064,6 +2155,17 @@ class Mapper(InspectionAttr):
         :class:`.MapperProperty` property, which is what you get when
         referring to the collection of mapped properties via
         :attr:`.Mapper.attrs`.
+
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
 
         .. versionadded:: 0.8.0
 
@@ -2105,6 +2207,17 @@ class Mapper(InspectionAttr):
     def relationships(self):
         """Return a namespace of all :class:`.RelationshipProperty`
         properties maintained by this :class:`.Mapper`.
+
+        .. warning::
+
+            the :attr:`.Mapper.relationships` accessor namespace is an
+            instance of :class:`.OrderedProperties`.  This is
+            a dictionary-like object which includes a small number of
+            named methods such as :meth:`.OrderedProperties.items`
+            and :meth:`.OrderedProperties.values`.  When
+            accessing attributes dynamically, favor using the dict-access
+            scheme, e.g. ``mapper.attrs[somename]`` over
+            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
 
         .. seealso::
 
@@ -2373,15 +2486,15 @@ class Mapper(InspectionAttr):
 
         """
         state = attributes.instance_state(instance)
-        return self._primary_key_from_state(state)
+        return self._primary_key_from_state(state, attributes.PASSIVE_OFF)
 
-    def _primary_key_from_state(self, state):
+    def _primary_key_from_state(
+            self, state, passive=attributes.PASSIVE_RETURN_NEVER_SET):
         dict_ = state.dict
         manager = state.manager
         return [
             manager[prop.key].
-            impl.get(state, dict_,
-                     attributes.PASSIVE_RETURN_NEVER_SET)
+            impl.get(state, dict_, passive)
             for prop in self._identity_key_props
         ]
 
@@ -2424,7 +2537,8 @@ class Mapper(InspectionAttr):
     def _get_committed_attr_by_column(self, obj, column):
         state = attributes.instance_state(obj)
         dict_ = attributes.instance_dict(obj)
-        return self._get_committed_state_attr_by_column(state, dict_, column)
+        return self._get_committed_state_attr_by_column(
+            state, dict_, column, passive=attributes.PASSIVE_OFF)
 
     def _get_committed_state_attr_by_column(
             self, state, dict_, column,
@@ -2515,15 +2629,24 @@ class Mapper(InspectionAttr):
         for all relationships that meet the given cascade rule.
 
         :param type_:
-          The name of the cascade rule (i.e. save-update, delete,
-          etc.)
+          The name of the cascade rule (i.e. ``"save-update"``, ``"delete"``,
+          etc.).
+
+          .. note::  the ``"all"`` cascade is not accepted here.  For a generic
+             object traversal function, see :ref:`faq_walk_objects`.
 
         :param state:
           The lead InstanceState.  child items will be processed per
           the relationships defined for this object's mapper.
 
-        the return value are object instances; this provides a strong
-        reference so that they don't fall out of scope immediately.
+        :return: the method yields individual object instances.
+
+        .. seealso::
+
+            :ref:`unitofwork_cascades`
+
+            :ref:`faq_walk_objects` - illustrates a generic function to
+            traverse all objects without relying on cascades.
 
         """
         visited_states = set()
@@ -2640,7 +2763,33 @@ def configure_mappers():
     have been constructed thus far.
 
     This function can be called any number of times, but in
-    most cases is handled internally.
+    most cases is invoked automatically, the first time mappings are used,
+    as well as whenever mappings are used and additional not-yet-configured
+    mappers have been constructed.
+
+    Points at which this occur include when a mapped class is instantiated
+    into an instance, as well as when the :meth:`.Session.query` method
+    is used.
+
+    The :func:`.configure_mappers` function provides several event hooks
+    that can be used to augment its functionality.  These methods include:
+
+    * :meth:`.MapperEvents.before_configured` - called once before
+      :func:`.configure_mappers` does any work; this can be used to establish
+      additional options, properties, or related mappings before the operation
+      proceeds.
+
+    * :meth:`.MapperEvents.mapper_configured` - called as each indivudal
+      :class:`.Mapper` is configured within the process; will include all
+      mapper state except for backrefs set up by other mappers that are still
+      to be configured.
+
+    * :meth:`.MapperEvents.after_configured` - called once after
+      :func:`.configure_mappers` is complete; at this stage, all
+      :class:`.Mapper` objects that are known  to SQLAlchemy will be fully
+      configured.  Note that the calling application may still have other
+      mappings that haven't been produced yet, such as if they are in modules
+      as yet unimported.
 
     """
 

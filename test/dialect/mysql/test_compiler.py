@@ -184,6 +184,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t2).compile, dialect=mysql.dialect()
         )
 
+    def test_match(self):
+        matchtable = table('matchtable', column('title', String))
+        self.assert_compile(
+            matchtable.c.title.match('somstr'),
+            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)")
+
     def test_for_update(self):
         table1 = table('mytable',
                        column('myid'), column('name'), column('description'))
@@ -511,9 +517,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(schema.CreateTable(t1),
                             'CREATE TABLE sometable (assigned_id '
                             'INTEGER NOT NULL, id INTEGER NOT NULL '
-                            'AUTO_INCREMENT, PRIMARY KEY (assigned_id, '
-                            'id), KEY idx_autoinc_id (id))ENGINE=Inn'
-                            'oDB')
+                            'AUTO_INCREMENT, PRIMARY KEY (id, assigned_id)'
+                            ')ENGINE=InnoDB')
 
         t1 = Table('sometable', MetaData(),
                    Column('assigned_id', Integer(), primary_key=True,
@@ -537,8 +542,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'CREATE TABLE sometable ('
             'id INTEGER NOT NULL, '
             '`order` INTEGER NOT NULL AUTO_INCREMENT, '
-            'PRIMARY KEY (id, `order`), '
-            'KEY idx_autoinc_order (`order`)'
+            'PRIMARY KEY (`order`, id)'
             ')ENGINE=InnoDB')
 
     def test_create_table_with_partition(self):

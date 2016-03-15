@@ -1,5 +1,5 @@
 # engine/__init__.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -53,6 +53,7 @@ url.py
 
 from .interfaces import (
     Connectable,
+    CreateEnginePlugin,
     Dialect,
     ExecutionContext,
     ExceptionContext,
@@ -389,14 +390,33 @@ def create_engine(*args, **kwargs):
 def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     """Create a new Engine instance using a configuration dictionary.
 
-    The dictionary is typically produced from a config file where keys
-    are prefixed, such as sqlalchemy.url, sqlalchemy.echo, etc.  The
-    'prefix' argument indicates the prefix to be searched for.
+    The dictionary is typically produced from a config file.
+
+    The keys of interest to ``engine_from_config()`` should be prefixed, e.g.
+    ``sqlalchemy.url``, ``sqlalchemy.echo``, etc.  The 'prefix' argument
+    indicates the prefix to be searched for.  Each matching key (after the
+    prefix is stripped) is treated as though it were the corresponding keyword
+    argument to a :func:`.create_engine` call.
+
+    The only required key is (assuming the default prefix) ``sqlalchemy.url``,
+    which provides the :ref:`database URL <database_urls>`.
 
     A select set of keyword arguments will be "coerced" to their
-    expected type based on string values.  In a future release, this
-    functionality will be expanded and include dialect-specific
-    arguments.
+    expected type based on string values.    The set of arguments
+    is extensible per-dialect using the ``engine_config_types`` accessor.
+
+    :param configuration: A dictionary (typically produced from a config file,
+        but this is not a requirement).  Items whose keys start with the value
+        of 'prefix' will have that prefix stripped, and will then be passed to
+        :ref:`create_engine`.
+
+    :param prefix: Prefix to match and then strip from keys
+        in 'configuration'.
+
+    :param kwargs: Each keyword argument to ``engine_from_config()`` itself
+        overrides the corresponding item taken from the 'configuration'
+        dictionary.  Keyword arguments should *not* be prefixed.
+
     """
 
     options = dict((key[len(prefix):], configuration[key])

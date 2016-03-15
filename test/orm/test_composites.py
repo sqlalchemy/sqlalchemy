@@ -313,8 +313,7 @@ class PrimaryKeyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
-            Column('id', Integer, primary_key=True,
-                        test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True),
             Column('version_id', Integer, primary_key=True,
                                             nullable=True),
             Column('name', String(30)))

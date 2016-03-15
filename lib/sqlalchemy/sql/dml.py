@@ -1,5 +1,5 @@
 # sql/dml.py
-# Copyright (C) 2009-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2009-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,14 +9,18 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 
 """
 
-from .base import Executable, _generative, _from_objects, DialectKWArgs
-from .elements import ClauseElement, _literal_as_text, Null, and_, _clone
-from .selectable import _interpret_as_from, _interpret_as_select, HasPrefixes
+from .base import Executable, _generative, _from_objects, DialectKWArgs, \
+    ColumnCollection
+from .elements import ClauseElement, _literal_as_text, Null, and_, _clone, \
+    _column_as_key
+from .selectable import _interpret_as_from, _interpret_as_select, \
+    HasPrefixes, HasCTE
 from .. import util
 from .. import exc
 
 
-class UpdateBase(DialectKWArgs, HasPrefixes, Executable, ClauseElement):
+class UpdateBase(
+        HasCTE, DialectKWArgs, HasPrefixes, Executable, ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
 
     """
@@ -26,6 +30,7 @@ class UpdateBase(DialectKWArgs, HasPrefixes, Executable, ClauseElement):
     _execution_options = \
         Executable._execution_options.union({'autocommit': True})
     _hints = util.immutabledict()
+    _parameter_ordering = None
     _prefixes = ()
 
     def _process_colparams(self, parameters):
@@ -37,6 +42,16 @@ class UpdateBase(DialectKWArgs, HasPrefixes, Executable, ClauseElement):
                 )
             else:
                 return p
+
+        if self._preserve_parameter_order and parameters is not None:
+            if not isinstance(parameters, list) or \
+                    (parameters and not isinstance(parameters[0], tuple)):
+                raise ValueError(
+                    "When preserve_parameter_order is True, "
+                    "values() only accepts a list of 2-tuples")
+            self._parameter_ordering = [key for key, value in parameters]
+
+            return dict(parameters), False
 
         if (isinstance(parameters, (list, tuple)) and parameters and
                 isinstance(parameters[0], (list, tuple, dict))):
@@ -177,6 +192,7 @@ class ValuesBase(UpdateBase):
 
     _supports_multi_parameters = False
     _has_multi_parameters = False
+    _preserve_parameter_order = False
     select = None
 
     def __init__(self, table, values, prefixes):
@@ -213,23 +229,32 @@ class ValuesBase(UpdateBase):
 
                 users.update().where(users.c.id==5).values(name="some name")
 
-        :param \*args: Alternatively, a dictionary, tuple or list
-         of dictionaries or tuples can be passed as a single positional
-         argument in order to form the VALUES or
-         SET clause of the statement.  The single dictionary form
-         works the same as the kwargs form::
+        :param \*args: As an alternative to passing key/value parameters,
+         a dictionary, tuple, or list of dictionaries or tuples can be passed
+         as a single positional argument in order to form the VALUES or
+         SET clause of the statement.  The forms that are accepted vary
+         based on whether this is an :class:`.Insert` or an :class:`.Update`
+         construct.
+
+         For either an :class:`.Insert` or :class:`.Update` construct, a
+         single dictionary can be passed, which works the same as that of
+         the kwargs form::
 
             users.insert().values({"name": "some name"})
 
-         If a tuple is passed, the tuple should contain the same number
-         of columns as the target :class:`.Table`::
+            users.update().values({"name": "some new name"})
+
+         Also for either form but more typically for the :class:`.Insert`
+         construct, a tuple that contains an entry for every column in the
+         table is also accepted::
 
             users.insert().values((5, "some name"))
 
-         The :class:`.Insert` construct also supports multiply-rendered VALUES
-         construct, for those backends which support this SQL syntax
-         (SQLite, Postgresql, MySQL).  This mode is indicated by passing a
-         list of one or more dictionaries/tuples::
+         The :class:`.Insert` construct also supports being passed a list
+         of dictionaries or full-table-tuples, which on the server will
+         render the less common SQL syntax of "multiple values" - this
+         syntax is supported on backends such as SQLite, Postgresql, MySQL,
+         but not necessarily others::
 
             users.insert().values([
                                 {"name": "some name"},
@@ -237,51 +262,61 @@ class ValuesBase(UpdateBase):
                                 {"name": "yet another name"},
                             ])
 
-         In the case of an :class:`.Update`
-         construct, only the single dictionary/tuple form is accepted,
-         else an exception is raised.  It is also an exception case to
-         attempt to mix the single-/multiple- value styles together,
-         either through multiple :meth:`.ValuesBase.values` calls
-         or by sending a list + kwargs at the same time.
+         The above form would render a multiple VALUES statement similar to::
 
-         .. note::
+                INSERT INTO users (name) VALUES
+                                (:name_1),
+                                (:name_2),
+                                (:name_3)
 
-             Passing a multiple values list is *not* the same
-             as passing a multiple values list to the
-             :meth:`.Connection.execute` method.  Passing a list of parameter
-             sets to :meth:`.ValuesBase.values` produces a construct of this
-             form::
+         It is essential to note that **passing multiple values is
+         NOT the same as using traditional executemany() form**.  The above
+         syntax is a **special** syntax not typically used.  To emit an
+         INSERT statement against multiple rows, the normal method is
+         to pass a multiple values list to the :meth:`.Connection.execute`
+         method, which is supported by all database backends and is generally
+         more efficient for a very large number of parameters.
 
-                INSERT INTO table (col1, col2, col3) VALUES
-                                (col1_0, col2_0, col3_0),
-                                (col1_1, col2_1, col3_1),
-                                ...
+           .. seealso::
 
-             whereas a multiple list passed to :meth:`.Connection.execute`
-             has the effect of using the DBAPI
-             `executemany() <http://www.python.org/dev/peps/pep-0249/#id18>`_
-             method, which provides a high-performance system of invoking
-             a single-row INSERT statement many times against a series
-             of parameter sets.   The "executemany" style is supported by
-             all database backends, as it does not depend on a special SQL
-             syntax.
+               :ref:`execute_multiple` - an introduction to
+               the traditional Core method of multiple parameter set
+               invocation for INSERTs and other statements.
 
-         .. versionadded:: 0.8
-             Support for multiple-VALUES INSERT statements.
+           .. versionchanged:: 1.0.0 an INSERT that uses a multiple-VALUES
+              clause, even a list of length one,
+              implies that the :paramref:`.Insert.inline` flag is set to
+              True, indicating that the statement will not attempt to fetch
+              the "last inserted primary key" or other defaults.  The
+              statement deals with an arbitrary number of rows, so the
+              :attr:`.ResultProxy.inserted_primary_key` accessor does not
+              apply.
 
-        .. versionchanged:: 1.0.0 an INSERT that uses a multiple-VALUES
-           clause, even a list of length one,
-           implies that the :paramref:`.Insert.inline` flag is set to
-           True, indicating that the statement will not attempt to fetch
-           the "last inserted primary key" or other defaults.  The statement
-           deals with an arbitrary number of rows, so the
-           :attr:`.ResultProxy.inserted_primary_key` accessor does not apply.
+           .. versionchanged:: 1.0.0 A multiple-VALUES INSERT now supports
+              columns with Python side default values and callables in the
+              same way as that of an "executemany" style of invocation; the
+              callable is invoked for each row.   See :ref:`bug_3288`
+              for other details.
 
-        .. versionchanged:: 1.0.0 A multiple-VALUES INSERT now supports
-           columns with Python side default values and callables in the
-           same way as that of an "executemany" style of invocation; the
-           callable is invoked for each row.   See :ref:`bug_3288`
-           for other details.
+         The :class:`.Update` construct supports a special form which is a
+         list of 2-tuples, which when provided must be passed in conjunction
+         with the
+         :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+         parameter.
+         This form causes the UPDATE statement to render the SET clauses
+         using the order of parameters given to :meth:`.Update.values`, rather
+         than the ordering of columns given in the :class:`.Table`.
+
+           .. versionadded:: 1.0.10 - added support for parameter-ordered
+              UPDATE statements via the
+              :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+              flag.
+
+           .. seealso::
+
+              :ref:`updates_order_parameters` - full example of the
+              :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+              flag
 
         .. seealso::
 
@@ -371,7 +406,7 @@ class ValuesBase(UpdateBase):
            SELECT, multi-valued VALUES clause),
            :meth:`.ValuesBase.return_defaults` is intended only for an
            "ORM-style" single-row INSERT/UPDATE statement.  The row returned
-           by the statement is also consumed implcitly when
+           by the statement is also consumed implicitly when
            :meth:`.ValuesBase.return_defaults` is used.  By contrast,
            :meth:`.UpdateBase.returning` leaves the RETURNING result-set
            intact with a collection of any number of rows.
@@ -544,7 +579,8 @@ class Insert(ValuesBase):
                 "This construct already inserts value expressions")
 
         self.parameters, self._has_multi_parameters = \
-            self._process_colparams(dict((n, Null()) for n in names))
+            self._process_colparams(
+                dict((_column_as_key(n), Null()) for n in names))
 
         self.select_names = names
         self.inline = True
@@ -576,6 +612,7 @@ class Update(ValuesBase):
                  prefixes=None,
                  returning=None,
                  return_defaults=False,
+                 preserve_parameter_order=False,
                  **dialect_kw):
         """Construct an :class:`.Update` object.
 
@@ -638,6 +675,19 @@ class Update(ValuesBase):
           be available in the dictionary returned from
           :meth:`.ResultProxy.last_updated_params`.
 
+        :param preserve_parameter_order: if True, the update statement is
+          expected to receive parameters **only** via the :meth:`.Update.values`
+          method, and they must be passed as a Python ``list`` of 2-tuples.
+          The rendered UPDATE statement will emit the SET clause for each
+          referenced column maintaining this order.
+
+          .. versionadded:: 1.0.10
+
+          .. seealso::
+
+            :ref:`updates_order_parameters` - full example of the
+            :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order` flag
+
         If both ``values`` and compile-time bind parameters are present, the
         compile-time bind parameters override the information specified
         within ``values`` on a per-key basis.
@@ -679,6 +729,7 @@ class Update(ValuesBase):
 
 
         """
+        self._preserve_parameter_order = preserve_parameter_order
         ValuesBase.__init__(self, table, values, prefixes)
         self._bind = bind
         self._returning = returning

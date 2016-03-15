@@ -1,12 +1,14 @@
 import copy
+import sys
 
 from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
-from sqlalchemy.testing import eq_, is_, ne_, fails_if
+from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock, expect_warnings
 from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
-from sqlalchemy.util import langhelpers
+from sqlalchemy.util import langhelpers, compat
+import inspect
 
 
 class _KeyedTupleTest(object):
@@ -276,12 +278,109 @@ class MemoizedAttrTest(fixtures.TestBase):
                 val[0] += 1
                 return v
 
+        assert inspect.ismethod(Foo().bar)
         ne_(Foo.bar, None)
         f1 = Foo()
         assert 'bar' not in f1.__dict__
         eq_(f1.bar(), 20)
         eq_(f1.bar(), 20)
         eq_(val[0], 21)
+
+    def test_memoized_slots(self):
+        canary = mock.Mock()
+
+        class Foob(util.MemoizedSlots):
+            __slots__ = ('foo_bar', 'gogo')
+
+            def _memoized_method_gogo(self):
+                canary.method()
+                return "gogo"
+
+            def _memoized_attr_foo_bar(self):
+                canary.attr()
+                return "foobar"
+
+        f1 = Foob()
+        assert_raises(AttributeError, setattr, f1, "bar", "bat")
+
+        eq_(f1.foo_bar, "foobar")
+
+        eq_(f1.foo_bar, "foobar")
+
+        eq_(f1.gogo(), "gogo")
+
+        eq_(f1.gogo(), "gogo")
+
+        eq_(canary.mock_calls, [mock.call.attr(), mock.call.method()])
+
+
+class WrapCallableTest(fixtures.TestBase):
+    def test_wrapping_update_wrapper_fn(self):
+        def my_fancy_default():
+            """run the fancy default"""
+            return 10
+
+        c = util.wrap_callable(lambda: my_fancy_default, my_fancy_default)
+
+        eq_(c.__name__, "my_fancy_default")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_fn_nodocstring(self):
+        def my_fancy_default():
+            return 10
+
+        c = util.wrap_callable(lambda: my_fancy_default, my_fancy_default)
+        eq_(c.__name__, "my_fancy_default")
+        eq_(c.__doc__, None)
+
+    def test_wrapping_update_wrapper_cls(self):
+        class MyFancyDefault(object):
+            """a fancy default"""
+
+            def __call__(self):
+                """run the fancy default"""
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_cls_noclsdocstring(self):
+        class MyFancyDefault(object):
+
+            def __call__(self):
+                """run the fancy default"""
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "run the fancy default")
+
+    def test_wrapping_update_wrapper_cls_nomethdocstring(self):
+        class MyFancyDefault(object):
+            """a fancy default"""
+
+            def __call__(self):
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, "a fancy default")
+
+    def test_wrapping_update_wrapper_cls_noclsdocstring_nomethdocstring(self):
+        class MyFancyDefault(object):
+
+            def __call__(self):
+                return 10
+
+        def_ = MyFancyDefault()
+        c = util.wrap_callable(lambda: def_(), def_)
+        eq_(c.__name__, "MyFancyDefault")
+        eq_(c.__doc__, None)
 
 
 class ToListTest(fixtures.TestBase):
@@ -312,6 +411,20 @@ class ToListTest(fixtures.TestBase):
             util.to_list((1, 2, 3)),
             [1, 2, 3]
         )
+
+    def test_from_bytes(self):
+
+        eq_(
+            util.to_list(compat.b('abc')),
+            [compat.b('abc')]
+        )
+
+        eq_(
+            util.to_list([
+                compat.b('abc'), compat.b('def')]),
+            [compat.b('abc'), compat.b('def')]
+        )
+
 
 class ColumnCollectionTest(fixtures.TestBase):
 
@@ -1102,7 +1215,10 @@ class IdentitySetTest(fixtures.TestBase):
         return super_, sub_, twin1, twin2, unique1, unique2
 
     def _assert_unorderable_types(self, callable_):
-        if util.py3k:
+        if util.py36:
+            assert_raises_message(
+                TypeError, 'not supported between instances of', callable_)
+        elif util.py3k:
             assert_raises_message(
                 TypeError, 'unorderable types', callable_)
         else:
@@ -2031,6 +2147,96 @@ class TestClassHierarchy(fixtures.TestBase):
             eq_(set(util.class_hierarchy(B)), set((A, B, object)))
             eq_(set(util.class_hierarchy(Mixin)), set())
             eq_(set(util.class_hierarchy(A)), set((A, B, object)))
+
+
+class ReraiseTest(fixtures.TestBase):
+    @testing.requires.python3
+    def test_raise_from_cause_same_cause(self):
+        class MyException(Exception):
+            pass
+
+        def go():
+            try:
+                raise MyException("exc one")
+            except Exception as err:
+                util.raise_from_cause(err)
+
+        try:
+            go()
+            assert False
+        except MyException as err:
+            is_(err.__cause__, None)
+
+    def test_reraise_disallow_same_cause(self):
+        class MyException(Exception):
+            pass
+
+        def go():
+            try:
+                raise MyException("exc one")
+            except Exception as err:
+                type_, value, tb = sys.exc_info()
+                util.reraise(type_, err, tb, value)
+
+        assert_raises_message(
+            AssertionError,
+            "Same cause emitted",
+            go
+        )
+
+    def test_raise_from_cause(self):
+        class MyException(Exception):
+            pass
+
+        class MyOtherException(Exception):
+            pass
+
+        me = MyException("exc on")
+
+        def go():
+            try:
+                raise me
+            except Exception:
+                util.raise_from_cause(MyOtherException("exc two"))
+
+        try:
+            go()
+            assert False
+        except MyOtherException as moe:
+            if testing.requires.python3.enabled:
+                is_(moe.__cause__, me)
+
+    @testing.requires.python2
+    def test_safe_reraise_py2k_warning(self):
+        class MyException(Exception):
+            pass
+
+        class MyOtherException(Exception):
+            pass
+
+        m1 = MyException("exc one")
+        m2 = MyOtherException("exc two")
+
+        def go2():
+            raise m2
+
+        def go():
+            try:
+                raise m1
+            except:
+                with util.safe_reraise():
+                    go2()
+
+        with expect_warnings(
+            "An exception has occurred during handling of a previous "
+            "exception.  The previous exception "
+            "is:.*MyException.*exc one"
+        ):
+            try:
+                go()
+                assert False
+            except MyOtherException:
+                pass
 
 
 class TestClassProperty(fixtures.TestBase):

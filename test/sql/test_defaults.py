@@ -123,6 +123,14 @@ class DefaultTest(fixtures.TestBase):
             def gen_default(cls, ctx):
                 return "hi"
 
+        class MyType(TypeDecorator):
+            impl = String(50)
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    value = "BIND" + value
+                return value
+
         # select "count(1)" returns different results on different DBs also
         # correct for "current_date" compatible as column default, value
         # differences
@@ -133,7 +141,7 @@ class DefaultTest(fixtures.TestBase):
                     [
                         func.trunc(
                             func.sysdate(), sa.literal_column("'DAY'"),
-                            type_=sa.Date).label('today')]))
+                            type_=sa.Date)]))
             assert isinstance(ts, datetime.date) and not isinstance(
                 ts, datetime.datetime)
             f = sa.select([func.length('abcdef')], bind=db).scalar()
@@ -211,7 +219,10 @@ class DefaultTest(fixtures.TestBase):
                    server_default='ddl'),
 
             # python method w/ context
-            Column('col10', String(20), default=MyClass.gen_default)
+            Column('col10', String(20), default=MyClass.gen_default),
+
+            # fixed default w/ type that has bound processor
+            Column('col11', MyType(), default='foo')
         )
 
         t.create()
@@ -289,6 +300,7 @@ class DefaultTest(fixtures.TestBase):
         for fn in fn1, fn2, fn3, fn4, fn5, fn6a, fn6b, fn7, fn8:
             c = sa.ColumnDefault(fn)
             c.arg("context")
+
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_standalone(self):
@@ -391,7 +403,7 @@ class DefaultTest(fixtures.TestBase):
         today = datetime.date.today()
         eq_(l.fetchall(), [
             (x, 'imthedefault', f, ts, ts, ctexec, True, False,
-             12, today, 'py', 'hi')
+             12, today, 'py', 'hi', 'BINDfoo')
             for x in range(51, 54)])
 
         t.insert().execute(col9=None)
@@ -401,7 +413,7 @@ class DefaultTest(fixtures.TestBase):
 
         eq_(t.select(t.c.col1 == 54).execute().fetchall(),
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, None, 'hi')])
+              12, today, None, 'hi', 'BINDfoo')])
 
     def test_insertmany(self):
         t.insert().execute({}, {}, {})
@@ -411,11 +423,11 @@ class DefaultTest(fixtures.TestBase):
         today = datetime.date.today()
         eq_(l.fetchall(),
             [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py', 'hi'),
+              12, today, 'py', 'hi', 'BINDfoo'),
              (52, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py', 'hi'),
+              12, today, 'py', 'hi', 'BINDfoo'),
              (53, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py', 'hi')])
+              12, today, 'py', 'hi', 'BINDfoo')])
 
     @testing.requires.multivalues_inserts
     def test_insert_multivalues(self):
@@ -427,11 +439,11 @@ class DefaultTest(fixtures.TestBase):
         today = datetime.date.today()
         eq_(l.fetchall(),
             [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py', 'hi'),
+              12, today, 'py', 'hi', 'BINDfoo'),
              (52, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py', 'hi'),
+              12, today, 'py', 'hi', 'BINDfoo'),
              (53, 'imthedefault', f, ts, ts, ctexec, True, False,
-              12, today, 'py', 'hi')])
+              12, today, 'py', 'hi', 'BINDfoo')])
 
     def test_no_embed_in_sql(self):
         """Using a DefaultGenerator, Sequence, DefaultClause
@@ -498,11 +510,11 @@ class DefaultTest(fixtures.TestBase):
         today = datetime.date.today()
         eq_(l.fetchall(),
             [(51, 'im the update', f2, ts, ts, ctexec, False, False,
-              13, today, 'py', 'hi'),
+              13, today, 'py', 'hi', 'BINDfoo'),
              (52, 'im the update', f2, ts, ts, ctexec, True, False,
-              13, today, 'py', 'hi'),
+              13, today, 'py', 'hi', 'BINDfoo'),
              (53, 'im the update', f2, ts, ts, ctexec, True, False,
-              13, today, 'py', 'hi')])
+              13, today, 'py', 'hi', 'BINDfoo')])
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_update(self):
@@ -514,7 +526,7 @@ class DefaultTest(fixtures.TestBase):
         l = l.first()
         eq_(l,
             (pk, 'im the update', f2, None, None, ctexec, True, False,
-             13, datetime.date.today(), 'py', 'hi'))
+             13, datetime.date.today(), 'py', 'hi', 'BINDfoo'))
         eq_(11, f2)
 
     @testing.fails_on('firebird', 'Data type unknown')
@@ -721,7 +733,6 @@ class AutoIncrementTest(fixtures.TablesTest):
         )
         assert x._autoincrement_column is None
 
-    @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_non_autoincrement(self):
         # sqlite INT primary keys can be non-unique! (only for ints)
         nonai = Table(
@@ -735,8 +746,9 @@ class AutoIncrementTest(fixtures.TablesTest):
             # mysql in legacy mode fails on second row
             nonai.insert().execute(data='row 1')
             nonai.insert().execute(data='row 2')
-        assert_raises(
-            sa.exc.DBAPIError,
+        assert_raises_message(
+            sa.exc.CompileError,
+            ".*has no Python-side or server-side default.*",
             go
         )
 
@@ -790,6 +802,36 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             CreateSequence(Sequence('foo_seq', increment=2, start=5)),
             "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 5",
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', increment=2, start=0, minvalue=0)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 MINVALUE 0",
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', increment=2, start=1, maxvalue=5)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 MAXVALUE 5",
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', increment=2, start=1, nomaxvalue=True)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 NO MAXVALUE",
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', increment=2, start=0, nominvalue=True)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 NO MINVALUE",
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', start=1, maxvalue=10, cycle=True)),
+            "CREATE SEQUENCE foo_seq START WITH 1 MAXVALUE 10 CYCLE",
         )
 
         self.assert_compile(
@@ -1038,6 +1080,23 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         metadata.drop_all(testing.db)
         assert not self._has_sequence('s1')
         assert not self._has_sequence('s2')
+
+    @testing.requires.returning
+    @testing.provide_metadata
+    def test_freestanding_sequence_via_autoinc(self):
+        t = Table(
+            'some_table', self.metadata,
+            Column(
+                'id', Integer,
+                autoincrement=True,
+                primary_key=True,
+                default=Sequence(
+                    'my_sequence', metadata=self.metadata).next_value())
+        )
+        self.metadata.create_all(testing.db)
+
+        result = testing.db.execute(t.insert())
+        eq_(result.inserted_primary_key, [1])
 
 cartitems = sometable = metadata = None
 

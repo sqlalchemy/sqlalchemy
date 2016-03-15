@@ -30,10 +30,10 @@ The remaining positional arguments are mostly
 :class:`~sqlalchemy.schema.Column` objects describing each column::
 
     user = Table('user', metadata,
-        Column('user_id', Integer, primary_key = True),
-        Column('user_name', String(16), nullable = False),
+        Column('user_id', Integer, primary_key=True),
+        Column('user_name', String(16), nullable=False),
         Column('email_address', String(60)),
-        Column('password', String(20), nullable = False)
+        Column('password', String(20), nullable=False)
     )
 
 Above, a table called ``user`` is described, which contains four columns. The
@@ -45,7 +45,7 @@ Note also that each column describes its datatype using objects corresponding
 to genericized types, such as :class:`~sqlalchemy.types.Integer` and
 :class:`~sqlalchemy.types.String`. SQLAlchemy features dozens of types of
 varying levels of specificity as well as the ability to create custom types.
-Documentation on the type system can be found at :ref:`types`.
+Documentation on the type system can be found at :ref:`types_toplevel`.
 
 Accessing Tables and Columns
 ----------------------------
@@ -151,10 +151,10 @@ will issue the CREATE statements:
         metadata = MetaData()
 
         user = Table('user', metadata,
-            Column('user_id', Integer, primary_key = True),
-            Column('user_name', String(16), nullable = False),
+            Column('user_id', Integer, primary_key=True),
+            Column('user_name', String(16), nullable=False),
             Column('email_address', String(60), key='email'),
-            Column('password', String(20), nullable = False)
+            Column('password', String(20), nullable=False)
         )
 
         user_prefs = Table('user_prefs', metadata,
@@ -248,7 +248,7 @@ There are two major migration tools available for SQLAlchemy:
   supporting such features as transactional DDL, automatic generation of "candidate"
   migrations, an "offline" mode which generates SQL scripts, and support for branch
   resolution.
-* `SQLAlchemy-Migrate <http://code.google.com/p/sqlalchemy-migrate/>`_ - The original
+* `SQLAlchemy-Migrate <https://github.com/openstack/sqlalchemy-migrate>`_ - The original
   migration tool for SQLAlchemy, SQLAlchemy-Migrate is widely used and continues
   under active development.   SQLAlchemy-Migrate includes features such as
   SQL script generation, ORM class generation, ORM model comparison, and extensive
@@ -291,7 +291,7 @@ example, MySQL has different table backend types, including "MyISAM" and
 ``mysql_engine``::
 
     addresses = Table('engine_email_addresses', meta,
-        Column('address_id', Integer, primary_key = True),
+        Column('address_id', Integer, primary_key=True),
         Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
         Column('email_address', String(20)),
         mysql_engine='InnoDB'
@@ -306,26 +306,21 @@ Column, Table, MetaData API
 .. autoclass:: Column
     :members:
     :inherited-members:
-    :undoc-members:
 
 
 .. autoclass:: MetaData
     :members:
-    :undoc-members:
 
 
 .. autoclass:: SchemaItem
     :members:
-    :undoc-members:
 
 .. autoclass:: Table
     :members:
     :inherited-members:
-    :undoc-members:
 
 
 .. autoclass:: ThreadLocalMetaData
     :members:
-    :undoc-members:
 
 

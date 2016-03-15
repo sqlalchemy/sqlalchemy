@@ -494,6 +494,50 @@ Or using the class-bound descriptor::
 
     query(User).options(contains_eager(User.orders).contains_eager(Order.items))
 
+Using contains_eager() to load a custom-filtered collection result
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When we use :func:`.contains_eager`, *we* are constructing ourselves the
+SQL that will be used to populate collections.  From this, it naturally follows
+that we can opt to **modify** what values the collection is intended to store,
+by writing our SQL to load a subset of elements for collections or
+scalar attributes.
+
+As an example, we can load a ``User`` object and eagerly load only particular
+addresses into its ``.addresses`` collection just by filtering::
+
+    q = session.query(User).join(User.addresses).\
+                filter(Address.email.like('%ed%')).\
+                options(contains_eager(User.addresses))
+
+The above query will load only ``User`` objects which contain at
+least ``Address`` object that contains the substring ``'ed'`` in its
+``email`` field; the ``User.addresses`` collection will contain **only**
+these ``Address`` entries, and *not* any other ``Address`` entries that are
+in fact associated with the collection.
+
+.. warning::
+
+    Keep in mind that when we load only a subset of objects into a collection,
+    that collection no longer represents what's actually in the database.  If
+    we attempted to add entries to this collection, we might find ourselves
+    conflicting with entries that are already in the database but not locally
+    loaded.
+
+    In addition, the **collection will fully reload normally** once the
+    object or attribute is expired.  This expiration occurs whenever the
+    :meth:`.Session.commit`, :meth:`.Session.rollback` methods are used
+    assuming default session settings, or the :meth:`.Session.expire_all`
+    or :meth:`.Session.expire` methods are used.
+
+    For these reasons, prefer returning separate fields in a tuple rather
+    than artificially altering a collection, when an object plus a custom
+    set of related objects is desired::
+
+        q = session.query(User, Address).join(User.addresses).\
+                    filter(Address.email.like('%ed%'))
+
+
 Advanced Usage with Arbitrary Statements
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

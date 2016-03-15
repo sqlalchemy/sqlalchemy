@@ -1,5 +1,5 @@
 # testing/fixtures.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -134,13 +134,14 @@ class TablesTest(TestBase):
     def _teardown_each_tables(self):
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != 'each' and self.run_deletes == 'each':
-            for table in reversed(self.metadata.sorted_tables):
-                try:
-                    table.delete().execute().close()
-                except sa.exc.DBAPIError as ex:
-                    util.print_(
-                        ("Error emptying table %s: %r" % (table, ex)),
-                        file=sys.stderr)
+            with self.bind.connect() as conn:
+                for table in reversed(self.metadata.sorted_tables):
+                    try:
+                        conn.execute(table.delete())
+                    except sa.exc.DBAPIError as ex:
+                        util.print_(
+                            ("Error emptying table %s: %r" % (table, ex)),
+                            file=sys.stderr)
 
     def setup(self):
         self._setup_each_tables()
@@ -274,12 +275,14 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
 
     def setup(self):
         self._setup_each_tables()
+        self._setup_each_classes()
         self._setup_each_mappers()
         self._setup_each_inserts()
 
     def teardown(self):
         sa.orm.session.Session.close_all()
         self._teardown_each_mappers()
+        self._teardown_each_classes()
         self._teardown_each_tables()
 
     @classmethod
@@ -300,6 +303,10 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
     def _setup_each_mappers(self):
         if self.run_setup_mappers == 'each':
             self._with_register_classes(self.setup_mappers)
+
+    def _setup_each_classes(self):
+        if self.run_setup_classes == 'each':
+            self._with_register_classes(self.setup_classes)
 
     @classmethod
     def _with_register_classes(cls, fn):
@@ -334,6 +341,10 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
         # clear mappers in any case
         if self.run_setup_mappers != 'once':
             sa.orm.clear_mappers()
+
+    def _teardown_each_classes(self):
+        if self.run_setup_classes != 'once':
+            self.classes.clear()
 
     @classmethod
     def setup_classes(cls):

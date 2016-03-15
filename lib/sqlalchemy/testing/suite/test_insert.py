@@ -109,7 +109,8 @@ class InsertBehaviorTest(fixtures.TablesTest):
             self.tables.autoinc_pk.insert(),
             data="some data"
         )
-        assert r.closed
+        assert r._soft_closed
+        assert not r.closed
         assert r.is_insert
         assert not r.returns_rows
 
@@ -119,7 +120,8 @@ class InsertBehaviorTest(fixtures.TablesTest):
             self.tables.autoinc_pk.insert(),
             data="some data"
         )
-        assert r.closed
+        assert r._soft_closed
+        assert not r.closed
         assert r.is_insert
         assert not r.returns_rows
 
@@ -128,7 +130,8 @@ class InsertBehaviorTest(fixtures.TablesTest):
         r = config.db.execute(
             self.tables.autoinc_pk.insert(),
         )
-        assert r.closed
+        assert r._soft_closed
+        assert not r.closed
 
         r = config.db.execute(
             self.tables.autoinc_pk.select().

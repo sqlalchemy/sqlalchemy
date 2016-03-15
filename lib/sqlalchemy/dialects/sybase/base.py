@@ -1,5 +1,5 @@
 # sybase/base.py
-# Copyright (C) 2010-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2010-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # get_select_precolumns(), limit_clause() implementation
 # copyright (C) 2007 Fisch Asset Management
@@ -323,7 +323,7 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
             'milliseconds': 'millisecond'
         })
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         s = select._distinct and "DISTINCT " or ""
         # TODO: don't think Sybase supports
         # bind params for FIRST / TOP
@@ -336,11 +336,7 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
             s += "TOP %s " % (limit,)
         offset = select._offset
         if offset:
-            if not limit:
-                # FIXME: sybase doesn't allow an offset without a limit
-                # so use a huge value for TOP here
-                s += "TOP 1000000 "
-            s += "START AT %s " % (offset + 1,)
+            raise NotImplementedError("Sybase ASE does not support OFFSET")
         return s
 
     def get_from_hint_text(self, table, text):
@@ -608,8 +604,8 @@ class SybaseDialect(default.DefaultDialect):
           FROM sysreferences r JOIN sysobjects o on r.tableid = o.id
           WHERE r.tableid = :table_id
         """)
-        referential_constraints = connection.execute(REFCONSTRAINT_SQL,
-                                                     table_id=table_id)
+        referential_constraints = connection.execute(
+            REFCONSTRAINT_SQL, table_id=table_id).fetchall()
 
         REFTABLE_SQL = text("""
           SELECT o.name AS name, u.name AS 'schema'
@@ -740,10 +736,13 @@ class SybaseDialect(default.DefaultDialect):
         results.close()
 
         constrained_columns = []
-        for i in range(1, pks["count"] + 1):
-            constrained_columns.append(pks["pk_%i" % (i,)])
-        return {"constrained_columns": constrained_columns,
-                "name": pks["name"]}
+        if pks:
+            for i in range(1, pks["count"] + 1):
+                constrained_columns.append(pks["pk_%i" % (i,)])
+            return {"constrained_columns": constrained_columns,
+                    "name": pks["name"]}
+        else:
+            return {"constrained_columns": [], "name": None}
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):

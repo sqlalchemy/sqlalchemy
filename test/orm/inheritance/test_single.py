@@ -9,6 +9,8 @@ from sqlalchemy.testing.schema import Table, Column
 
 
 class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
+    __dialect__ = 'default'
+
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -207,6 +209,19 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         eq_(sess.query(Manager).filter(Manager.name.like('%m%')).count(), 2)
         eq_(sess.query(Employee).filter(Employee.name.like('%m%')).count(), 3)
+
+    def test_exists_standalone(self):
+        Engineer = self.classes.Engineer
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(
+                sess.query(Engineer).filter(Engineer.name == 'foo').exists()),
+            "SELECT EXISTS (SELECT 1 FROM employees WHERE "
+            "employees.name = :name_1 AND employees.type "
+            "IN (:type_1, :type_2)) AS anon_1"
+        )
 
     def test_type_filtering(self):
         Employee, Manager, reports, Engineer = (self.classes.Employee,
@@ -408,6 +423,31 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "LEFT OUTER JOIN employees AS employees_1 ON "
             "companies.company_id = employees_1.company_id "
             "AND employees_1.type IN (:type_1)"
+        )
+
+    def test_join_explicit_onclause_no_discriminator(self):
+        # test issue #3462
+        Company, Employee, Engineer = (
+            self.classes.Company,
+            self.classes.Employee,
+            self.classes.Engineer)
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies, properties={
+            'employees': relationship(Employee)
+        })
+        mapper(Employee, employees)
+        mapper(Engineer, inherits=Employee)
+
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Company, Engineer.name).join(
+                Engineer, Company.company_id == Engineer.company_id),
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, "
+            "employees.name AS employees_name "
+            "FROM companies JOIN "
+            "employees ON companies.company_id = employees.company_id"
         )
 
     def test_outer_join_prop(self):

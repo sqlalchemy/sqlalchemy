@@ -1,7 +1,7 @@
 from sqlalchemy import func, desc
 from sqlalchemy.orm import interfaces, create_session, joinedload, joinedload_all, \
     subqueryload, subqueryload_all, aliased,\
-    class_mapper
+    class_mapper, with_polymorphic
 from sqlalchemy import exc as sa_exc
 
 from sqlalchemy import testing
@@ -1250,6 +1250,44 @@ class _PolymorphicTestBase(object):
         assert row.name == 'dilbert'
         assert row.primary_language == 'java'
 
+    def test_correlation_one(self):
+        sess = create_session()
+
+        # unfortunately this pattern can't yet work for PolymorphicAliased
+        # and PolymorphicUnions, because the subquery does not compile
+        # out including the polymorphic selectable; only if Person is in
+        # the query() list does that happen.
+        eq_(sess.query(Person.name)
+                .filter(
+                    sess.query(Company.name).
+                    filter(Company.company_id == Person.company_id).
+                    correlate(Person).as_scalar() == "Elbonia, Inc.").all(),
+            [(e3.name, )])
+
+    def test_correlation_two(self):
+        sess = create_session()
+
+        paliased = aliased(Person)
+
+        eq_(sess.query(paliased.name)
+                .filter(
+                    sess.query(Company.name).
+                    filter(Company.company_id == paliased.company_id).
+                    correlate(paliased).as_scalar() == "Elbonia, Inc.").all(),
+            [(e3.name, )])
+
+    def test_correlation_three(self):
+        sess = create_session()
+
+        paliased = aliased(Person, flat=True)
+
+        eq_(sess.query(paliased.name)
+                .filter(
+                    sess.query(Company.name).
+                    filter(Company.company_id == paliased.company_id).
+                    correlate(paliased).as_scalar() == "Elbonia, Inc.").all(),
+            [(e3.name, )])
+
 class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
     def test_join_to_subclass_four(self):
         sess = create_session()
@@ -1266,6 +1304,31 @@ class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
                 .filter(Machine.name.ilike("%ibm%")).all(),
             [e1, e3])
 
+    def test_correlation_w_polymorphic(self):
+
+        sess = create_session()
+
+        p_poly = with_polymorphic(Person, '*')
+
+        eq_(sess.query(p_poly.name)
+                .filter(
+                    sess.query(Company.name).
+                    filter(Company.company_id == p_poly.company_id).
+                    correlate(p_poly).as_scalar() == "Elbonia, Inc.").all(),
+            [(e3.name, )])
+
+    def test_correlation_w_polymorphic_flat(self):
+
+        sess = create_session()
+
+        p_poly = with_polymorphic(Person, '*', flat=True)
+
+        eq_(sess.query(p_poly.name)
+                .filter(
+                    sess.query(Company.name).
+                    filter(Company.company_id == p_poly.company_id).
+                    correlate(p_poly).as_scalar() == "Elbonia, Inc.").all(),
+            [(e3.name, )])
 
     def test_join_to_subclass_ten(self):
         pass
@@ -1377,10 +1440,16 @@ class PolymorphicPolymorphicTest(_PolymorphicTestBase, _PolymorphicPolymorphic):
 
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
-    pass
+
+    @testing.fails()
+    def test_correlation_one(self):
+        super(PolymorphicUnionsTest, self).test_correlation_one()
+
 
 class PolymorphicAliasedJoinsTest(_PolymorphicTestBase, _PolymorphicAliasedJoins):
-    pass
+    @testing.fails()
+    def test_correlation_one(self):
+        super(PolymorphicAliasedJoinsTest, self).test_correlation_one()
 
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
     pass

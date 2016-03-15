@@ -1,5 +1,5 @@
 # sqlalchemy/__init__.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,7 +8,9 @@
 
 from .sql import (
     alias,
+    all_,
     and_,
+    any_,
     asc,
     between,
     bindparam,
@@ -49,9 +51,11 @@ from .sql import (
     union,
     union_all,
     update,
+    within_group,
     )
 
 from .types import (
+    ARRAY,
     BIGINT,
     BINARY,
     BLOB,
@@ -73,6 +77,7 @@ from .types import (
     INTEGER,
     Integer,
     Interval,
+    JSON,
     LargeBinary,
     NCHAR,
     NVARCHAR,
@@ -120,7 +125,7 @@ from .schema import (
 from .inspection import inspect
 from .engine import create_engine, engine_from_config
 
-__version__ = '1.0.0'
+__version__ = '1.1.0b1'
 
 
 def __go(lcls):

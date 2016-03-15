@@ -1,6 +1,6 @@
 /*
 resultproxy.c
-Copyright (C) 2010-2014 the SQLAlchemy authors and contributors <see AUTHORS file>
+Copyright (C) 2010-2016 the SQLAlchemy authors and contributors <see AUTHORS file>
 Copyright (C) 2010-2011 Gaetan de Menten gdementen@gmail.com
 
 This module is part of SQLAlchemy and is released under
@@ -263,7 +263,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
 #if PY_MAJOR_VERSION < 3
     if (PyInt_CheckExact(key)) {
         index = PyInt_AS_LONG(key);
-    }
+    } else
 #endif
 
     if (PyLong_CheckExact(key)) {
@@ -315,8 +315,11 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
             if (exception == NULL)
                 return NULL;
 
-            // wow.  this seems quite excessive.
-            cstr_obj = PyObject_Str(key);
+            cstr_obj = PyTuple_GetItem(record, 1);
+            if (cstr_obj == NULL)
+                return NULL;
+
+            cstr_obj = PyObject_Str(cstr_obj);
             if (cstr_obj == NULL)
                 return NULL;
 
@@ -326,6 +329,8 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
            InvalidRequestError without any message like in the
            python version.
 */
+
+
 #if PY_MAJOR_VERSION >= 3
             bytes = PyUnicode_AsASCIIString(cstr_obj);
             if (bytes == NULL)
@@ -341,8 +346,8 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
             Py_DECREF(cstr_obj);
 
             PyErr_Format(exception,
-                    "Ambiguous column name '%.200s' in result set! "
-                    "try 'use_labels' option on select statement.", cstr_key);
+                    "Ambiguous column name '%.200s' in "
+                    "result set column descriptions", cstr_key);
             return NULL;
         }
 

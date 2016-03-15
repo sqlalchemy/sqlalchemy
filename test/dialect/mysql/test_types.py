@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema
 from sqlalchemy.util import u
@@ -10,6 +10,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL, AssertsExecutionRes
 from sqlalchemy import testing
 import datetime
 import decimal
+from sqlalchemy import types as sqltypes
 
 
 class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
@@ -602,6 +603,49 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             eq_(colspec(table.c.y5), 'y5 YEAR(4)')
 
 
+class JSONTest(fixtures.TestBase):
+    __requires__ = ('json_type', )
+    __only_on__ = 'mysql'
+    __backend__ = True
+
+    @testing.provide_metadata
+    def test_reflection(self):
+
+        Table(
+            'mysql_json', self.metadata,
+            Column('foo', mysql.JSON)
+        )
+        self.metadata.create_all()
+
+        reflected = Table('mysql_json', MetaData(), autoload_with=testing.db)
+        is_(reflected.c.foo.type._type_affinity, sqltypes.JSON)
+        assert isinstance(reflected.c.foo.type, mysql.JSON)
+
+    @testing.provide_metadata
+    def test_rudimental_round_trip(self):
+        # note that test_suite has many more JSON round trip tests
+        # using the backend-agnostic JSON type
+
+        mysql_json = Table(
+            'mysql_json', self.metadata,
+            Column('foo', mysql.JSON)
+        )
+        self.metadata.create_all()
+
+        value = {
+            'json': {'foo': 'bar'},
+            'recs': ['one', 'two']
+        }
+
+        with testing.db.connect() as conn:
+            conn.execute(mysql_json.insert(), foo=value)
+
+            eq_(
+                conn.scalar(select([mysql_json.c.foo])),
+                value
+            )
+
+
 class EnumSetTest(
         fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
@@ -932,12 +976,12 @@ class EnumSetTest(
 
         eq_(
             t2.c.value.type.enums[0:2],
-            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+            [u('réveillé'), u('drôle')]  # u'S’il') # eh ?
         )
 
         eq_(
             t2.c.value2.type.enums[0:2],
-            (u('réveillé'), u('drôle'))  # u'S’il') # eh ?
+            [u('réveillé'), u('drôle')]  # u'S’il') # eh ?
         )
 
     def test_enum_compile(self):
@@ -975,13 +1019,13 @@ class EnumSetTest(
         reflected = Table('mysql_enum', MetaData(testing.db),
                           autoload=True)
         for t in enum_table, reflected:
-            eq_(t.c.e1.type.enums, ("a",))
-            eq_(t.c.e2.type.enums, ("",))
-            eq_(t.c.e3.type.enums, ("a",))
-            eq_(t.c.e4.type.enums, ("",))
-            eq_(t.c.e5.type.enums, ("a", ""))
-            eq_(t.c.e6.type.enums, ("", "a"))
-            eq_(t.c.e7.type.enums, ("", "'a'", "b'b", "'"))
+            eq_(t.c.e1.type.enums, ["a"])
+            eq_(t.c.e2.type.enums, [""])
+            eq_(t.c.e3.type.enums, ["a"])
+            eq_(t.c.e4.type.enums, [""])
+            eq_(t.c.e5.type.enums, ["a", ""])
+            eq_(t.c.e6.type.enums, ["", "a"])
+            eq_(t.c.e7.type.enums, ["", "'a'", "b'b", "'"])
 
     @testing.provide_metadata
     @testing.exclude('mysql', '<', (5,))

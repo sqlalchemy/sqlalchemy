@@ -24,15 +24,18 @@ construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.postgresql
 
+.. autoclass:: aggregate_order_by
+
 .. autoclass:: array
 
 .. autoclass:: ARRAY
     :members: __init__, Comparator
 
+.. autofunction:: array_agg
 
-.. autoclass:: Any
+.. autofunction:: Any
 
-.. autoclass:: All
+.. autofunction:: All
 
 .. autoclass:: BIT
     :members: __init__
@@ -41,9 +44,7 @@ construction arguments, are as follows:
 .. autoclass:: BYTEA
     :members: __init__
 
-
 .. autoclass:: CIDR
-    :members: __init__
 
 
 .. autoclass:: DOUBLE_PRECISION
@@ -73,9 +74,6 @@ construction arguments, are as follows:
     :members:
 
 .. autoclass:: JSONB
-    :members:
-
-.. autoclass:: JSONElement
     :members:
 
 .. autoclass:: MACADDR

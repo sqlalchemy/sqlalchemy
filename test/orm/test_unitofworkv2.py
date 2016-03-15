@@ -5,7 +5,8 @@ from sqlalchemy.testing.schema import Table, Column
 from test.orm import _fixtures
 from sqlalchemy import exc, util
 from sqlalchemy.testing import fixtures, config
-from sqlalchemy import Integer, String, ForeignKey, func, literal
+from sqlalchemy import Integer, String, ForeignKey, func, \
+    literal, FetchedValue, text
 from sqlalchemy.orm import mapper, relationship, backref, \
     create_session, unitofwork, attributes,\
     Session, exc as orm_exc
@@ -1800,7 +1801,13 @@ class LoadersUsingCommittedTest(UOWTest):
 
 
 class NoAttrEventInFlushTest(fixtures.MappedTest):
-    """test [ticket:3167]"""
+    """test [ticket:3167].
+
+    See also RefreshFlushInReturningTest in test/orm/test_events.py which
+    tests the positive case for the refresh_flush event, added in
+    [ticket:3427].
+
+    """
 
     __backend__ = True
 
@@ -1840,3 +1847,767 @@ class NoAttrEventInFlushTest(fixtures.MappedTest):
         eq_(t1.id, 1)
         eq_(t1.prefetch_val, 5)
         eq_(t1.returning_val, 5)
+
+
+class EagerDefaultsTest(fixtures.MappedTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('foo', Integer, server_default="3")
+        )
+
+        Table(
+            'test2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('foo', Integer),
+            Column('bar', Integer, server_onupdate=FetchedValue())
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+        class Thing2(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test, eager_defaults=True)
+
+        Thing2 = cls.classes.Thing2
+
+        mapper(Thing2, cls.tables.test2, eager_defaults=True)
+
+    def test_insert_defaults_present(self):
+        Thing = self.classes.Thing
+        s = Session()
+
+        t1, t2 = (
+            Thing(id=1, foo=5),
+            Thing(id=2, foo=10)
+        )
+
+        s.add_all([t1, t2])
+
+        self.assert_sql_execution(
+            testing.db,
+            s.flush,
+            CompiledSQL(
+                "INSERT INTO test (id, foo) VALUES (:id, :foo)",
+                [{'foo': 5, 'id': 1}, {'foo': 10, 'id': 2}]
+            ),
+        )
+
+        def go():
+            eq_(t1.foo, 5)
+            eq_(t2.foo, 10)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_insert_defaults_present_as_expr(self):
+        Thing = self.classes.Thing
+        s = Session()
+
+        t1, t2 = (
+            Thing(id=1, foo=text("2 + 5")),
+            Thing(id=2, foo=text("5 + 5"))
+        )
+
+        s.add_all([t1, t2])
+
+        if testing.db.dialect.implicit_returning:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (%(id)s, 2 + 5) "
+                    "RETURNING test.foo",
+                    [{'id': 1}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (%(id)s, 5 + 5) "
+                    "RETURNING test.foo",
+                    [{'id': 2}],
+                    dialect='postgresql'
+                )
+            )
+
+        else:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (:id, 2 + 5)",
+                    [{'id': 1}]
+                ),
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (:id, 5 + 5)",
+                    [{'id': 2}]
+                ),
+                CompiledSQL(
+                    "SELECT test.foo AS test_foo FROM test "
+                    "WHERE test.id = :param_1",
+                    [{'param_1': 1}]
+                ),
+                CompiledSQL(
+                    "SELECT test.foo AS test_foo FROM test "
+                    "WHERE test.id = :param_1",
+                    [{'param_1': 2}]
+                ),
+            )
+
+        def go():
+            eq_(t1.foo, 7)
+            eq_(t2.foo, 10)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_insert_defaults_nonpresent(self):
+        Thing = self.classes.Thing
+        s = Session()
+
+        t1, t2 = (
+            Thing(id=1),
+            Thing(id=2)
+        )
+
+        s.add_all([t1, t2])
+
+        if testing.db.dialect.implicit_returning:
+            self.assert_sql_execution(
+                testing.db,
+                s.commit,
+                CompiledSQL(
+                    "INSERT INTO test (id) VALUES (%(id)s) RETURNING test.foo",
+                    [{'id': 1}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "INSERT INTO test (id) VALUES (%(id)s) RETURNING test.foo",
+                    [{'id': 2}],
+                    dialect='postgresql'
+                ),
+            )
+        else:
+            self.assert_sql_execution(
+                testing.db,
+                s.commit,
+                CompiledSQL(
+                    "INSERT INTO test (id) VALUES (:id)",
+                    [{'id': 1}, {'id': 2}]
+                ),
+                CompiledSQL(
+                    "SELECT test.foo AS test_foo FROM test "
+                    "WHERE test.id = :param_1",
+                    [{'param_1': 1}]
+                ),
+                CompiledSQL(
+                    "SELECT test.foo AS test_foo FROM test "
+                    "WHERE test.id = :param_1",
+                    [{'param_1': 2}]
+                )
+            )
+
+    def test_update_defaults_nonpresent(self):
+        Thing2 = self.classes.Thing2
+        s = Session()
+
+        t1, t2, t3, t4 = (
+            Thing2(id=1, foo=1, bar=2),
+            Thing2(id=2, foo=2, bar=3),
+            Thing2(id=3, foo=3, bar=4),
+            Thing2(id=4, foo=4, bar=5)
+        )
+
+        s.add_all([t1, t2, t3, t4])
+        s.flush()
+
+        t1.foo = 5
+        t2.foo = 6
+        t2.bar = 10
+        t3.foo = 7
+        t4.foo = 8
+        t4.bar = 12
+
+        if testing.db.dialect.implicit_returning:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s "
+                    "WHERE test2.id = %(test2_id)s "
+                    "RETURNING test2.bar",
+                    [{'foo': 5, 'test2_id': 1}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
+                    "WHERE test2.id = %(test2_id)s",
+                    [{'foo': 6, 'bar': 10, 'test2_id': 2}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s "
+                    "WHERE test2.id = %(test2_id)s "
+                    "RETURNING test2.bar",
+                    [{'foo': 7, 'test2_id': 3}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
+                    "WHERE test2.id = %(test2_id)s",
+                    [{'foo': 8, 'bar': 12, 'test2_id': 4}],
+                    dialect='postgresql'
+                ),
+            )
+        else:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
+                    [{'foo': 5, 'test2_id': 1}]
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo, bar=:bar "
+                    "WHERE test2.id = :test2_id",
+                    [{'foo': 6, 'bar': 10, 'test2_id': 2}],
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
+                    [{'foo': 7, 'test2_id': 3}]
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo, bar=:bar "
+                    "WHERE test2.id = :test2_id",
+                    [{'foo': 8, 'bar': 12, 'test2_id': 4}],
+                ),
+                CompiledSQL(
+                    "SELECT test2.bar AS test2_bar FROM test2 "
+                    "WHERE test2.id = :param_1",
+                    [{'param_1': 1}]
+                ),
+                CompiledSQL(
+                    "SELECT test2.bar AS test2_bar FROM test2 "
+                    "WHERE test2.id = :param_1",
+                    [{'param_1': 3}]
+                )
+            )
+
+        def go():
+            eq_(t1.bar, 2)
+            eq_(t2.bar, 10)
+            eq_(t3.bar, 4)
+            eq_(t4.bar, 12)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_update_defaults_present_as_expr(self):
+        Thing2 = self.classes.Thing2
+        s = Session()
+
+        t1, t2, t3, t4 = (
+            Thing2(id=1, foo=1, bar=2),
+            Thing2(id=2, foo=2, bar=3),
+            Thing2(id=3, foo=3, bar=4),
+            Thing2(id=4, foo=4, bar=5)
+        )
+
+        s.add_all([t1, t2, t3, t4])
+        s.flush()
+
+        t1.foo = 5
+        t1.bar = text("1 + 1")
+        t2.foo = 6
+        t2.bar = 10
+        t3.foo = 7
+        t4.foo = 8
+        t4.bar = text("5 + 7")
+
+        if testing.db.dialect.implicit_returning:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s, bar=1 + 1 "
+                    "WHERE test2.id = %(test2_id)s "
+                    "RETURNING test2.bar",
+                    [{'foo': 5, 'test2_id': 1}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
+                    "WHERE test2.id = %(test2_id)s",
+                    [{'foo': 6, 'bar': 10, 'test2_id': 2}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s "
+                    "WHERE test2.id = %(test2_id)s "
+                    "RETURNING test2.bar",
+                    [{'foo': 7, 'test2_id': 3}],
+                    dialect='postgresql'
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=%(foo)s, bar=5 + 7 "
+                    "WHERE test2.id = %(test2_id)s RETURNING test2.bar",
+                    [{'foo': 8, 'test2_id': 4}],
+                    dialect='postgresql'
+                ),
+            )
+        else:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo, bar=1 + 1 "
+                    "WHERE test2.id = :test2_id",
+                    [{'foo': 5, 'test2_id': 1}]
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo, bar=:bar "
+                    "WHERE test2.id = :test2_id",
+                    [{'foo': 6, 'bar': 10, 'test2_id': 2}],
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
+                    [{'foo': 7, 'test2_id': 3}]
+                ),
+                CompiledSQL(
+                    "UPDATE test2 SET foo=:foo, bar=5 + 7 "
+                    "WHERE test2.id = :test2_id",
+                    [{'foo': 8, 'test2_id': 4}],
+                ),
+                CompiledSQL(
+                    "SELECT test2.bar AS test2_bar FROM test2 "
+                    "WHERE test2.id = :param_1",
+                    [{'param_1': 1}]
+                ),
+                CompiledSQL(
+                    "SELECT test2.bar AS test2_bar FROM test2 "
+                    "WHERE test2.id = :param_1",
+                    [{'param_1': 3}]
+                ),
+                CompiledSQL(
+                    "SELECT test2.bar AS test2_bar FROM test2 "
+                    "WHERE test2.id = :param_1",
+                    [{'param_1': 4}]
+                )
+            )
+
+        def go():
+            eq_(t1.bar, 2)
+            eq_(t2.bar, 10)
+            eq_(t3.bar, 4)
+            eq_(t4.bar, 12)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_insert_defaults_bulk_insert(self):
+        Thing = self.classes.Thing
+        s = Session()
+
+        mappings = [
+            {"id": 1},
+            {"id": 2}
+        ]
+
+        self.assert_sql_execution(
+            testing.db,
+            lambda: s.bulk_insert_mappings(Thing, mappings),
+            CompiledSQL(
+                "INSERT INTO test (id) VALUES (:id)",
+                [{'id': 1}, {'id': 2}]
+            )
+        )
+
+    def test_update_defaults_bulk_update(self):
+        Thing2 = self.classes.Thing2
+        s = Session()
+
+        t1, t2, t3, t4 = (
+            Thing2(id=1, foo=1, bar=2),
+            Thing2(id=2, foo=2, bar=3),
+            Thing2(id=3, foo=3, bar=4),
+            Thing2(id=4, foo=4, bar=5)
+        )
+
+        s.add_all([t1, t2, t3, t4])
+        s.flush()
+
+        mappings = [
+            {"id": 1, "foo": 5},
+            {"id": 2, "foo": 6, "bar": 10},
+            {"id": 3, "foo": 7},
+            {"id": 4, "foo": 8}
+        ]
+
+        self.assert_sql_execution(
+            testing.db,
+            lambda: s.bulk_update_mappings(Thing2, mappings),
+            CompiledSQL(
+                "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
+                [{'foo': 5, 'test2_id': 1}]
+            ),
+            CompiledSQL(
+                "UPDATE test2 SET foo=:foo, bar=:bar "
+                "WHERE test2.id = :test2_id",
+                [{'foo': 6, 'bar': 10, 'test2_id': 2}]
+            ),
+            CompiledSQL(
+                "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
+                [{'foo': 7, 'test2_id': 3}, {'foo': 8, 'test2_id': 4}]
+            )
+        )
+
+    def test_update_defaults_present(self):
+        Thing2 = self.classes.Thing2
+        s = Session()
+
+        t1, t2 = (
+            Thing2(id=1, foo=1, bar=2),
+            Thing2(id=2, foo=2, bar=3)
+        )
+
+        s.add_all([t1, t2])
+        s.flush()
+
+        t1.bar = 5
+        t2.bar = 10
+
+        self.assert_sql_execution(
+            testing.db,
+            s.commit,
+            CompiledSQL(
+                "UPDATE test2 SET bar=%(bar)s WHERE test2.id = %(test2_id)s",
+                [{'bar': 5, 'test2_id': 1}, {'bar': 10, 'test2_id': 2}],
+                dialect='postgresql'
+            )
+        )
+
+class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
+    """test support for custom datatypes that return a non-__bool__ value
+    when compared via __eq__(), eg. ticket 3469"""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy import TypeDecorator
+
+        class NoBool(object):
+            def __nonzero__(self):
+                raise NotImplementedError("not supported")
+
+        class MyWidget(object):
+            def __init__(self, text):
+                self.text = text
+
+            def __eq__(self, other):
+                return NoBool()
+
+        cls.MyWidget = MyWidget
+
+        class MyType(TypeDecorator):
+            impl = String(50)
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    value = value.text
+                return value
+
+            def process_result_value(self, value, dialect):
+                if value is not None:
+                    value = MyWidget(value)
+                return value
+
+        Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('value', MyType),
+            Column('unrelated', String(50))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test)
+
+    def test_update_against_none(self):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.add(Thing(value=self.MyWidget("foo")))
+        s.commit()
+
+        t1 = s.query(Thing).first()
+        t1.value = None
+        s.commit()
+
+        eq_(
+            s.query(Thing.value).scalar(), None
+        )
+
+    def test_update_against_something_else(self):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.add(Thing(value=self.MyWidget("foo")))
+        s.commit()
+
+        t1 = s.query(Thing).first()
+        t1.value = self.MyWidget("bar")
+        s.commit()
+
+        eq_(
+            s.query(Thing.value).scalar().text, "bar"
+        )
+
+    def test_no_update_no_change(self):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.add(Thing(value=self.MyWidget("foo"), unrelated='unrelated'))
+        s.commit()
+
+        t1 = s.query(Thing).first()
+        t1.unrelated = 'something else'
+
+        self.assert_sql_execution(
+            testing.db,
+            s.commit,
+            CompiledSQL(
+                "UPDATE test SET unrelated=:unrelated "
+                "WHERE test.id = :test_id",
+                [{'test_id': 1, 'unrelated': 'something else'}]
+            ),
+        )
+
+        eq_(
+            s.query(Thing.value).scalar().text, "foo"
+        )
+
+
+class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy import TypeDecorator
+
+        class EvalsNull(TypeDecorator):
+            impl = String(50)
+
+            should_evaluate_none = True
+
+            def process_bind_param(self, value, dialect):
+                if value is None:
+                    value = 'nothing'
+                return value
+
+        Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('evals_null_no_default', EvalsNull()),
+            Column('evals_null_default', EvalsNull(), default='default_val'),
+            Column('no_eval_null_no_default', String(50)),
+            Column('no_eval_null_default', String(50), default='default_val'),
+            Column(
+                'builtin_evals_null_no_default', String(50).evaluates_none()),
+            Column(
+                'builtin_evals_null_default',
+                String(50).evaluates_none(), default='default_val'),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test)
+
+    def _assert_col(self, name, value):
+        Thing = self.classes.Thing
+        s = Session()
+
+        col = getattr(Thing, name)
+        obj = s.query(col).filter(col == value).one()
+        eq_(obj[0], value)
+
+    def _test_insert(self, attr, expected):
+        Thing = self.classes.Thing
+
+        s = Session()
+        t1 = Thing(**{attr: None})
+        s.add(t1)
+        s.commit()
+
+        self._assert_col(attr, expected)
+
+    def _test_bulk_insert(self, attr, expected):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.bulk_insert_mappings(
+            Thing, [{attr: None}]
+        )
+        s.commit()
+
+        self._assert_col(attr, expected)
+
+    def _test_insert_novalue(self, attr, expected):
+        Thing = self.classes.Thing
+
+        s = Session()
+        t1 = Thing()
+        s.add(t1)
+        s.commit()
+
+        self._assert_col(attr, expected)
+
+    def _test_bulk_insert_novalue(self, attr, expected):
+        Thing = self.classes.Thing
+
+        s = Session()
+        s.bulk_insert_mappings(
+            Thing, [{}]
+        )
+        s.commit()
+
+        self._assert_col(attr, expected)
+
+    def test_evalnull_nodefault_insert(self):
+        self._test_insert(
+            "evals_null_no_default", 'nothing'
+        )
+
+    def test_evalnull_nodefault_bulk_insert(self):
+        self._test_bulk_insert(
+            "evals_null_no_default", 'nothing'
+        )
+
+    def test_evalnull_nodefault_insert_novalue(self):
+        self._test_insert_novalue(
+            "evals_null_no_default", None
+        )
+
+    def test_evalnull_nodefault_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "evals_null_no_default", None
+        )
+
+    def test_evalnull_default_insert(self):
+        self._test_insert(
+            "evals_null_default", 'nothing'
+        )
+
+    def test_evalnull_default_bulk_insert(self):
+        self._test_bulk_insert(
+            "evals_null_default", 'nothing'
+        )
+
+    def test_evalnull_default_insert_novalue(self):
+        self._test_insert_novalue(
+            "evals_null_default", 'default_val'
+        )
+
+    def test_evalnull_default_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "evals_null_default", 'default_val'
+        )
+
+    def test_no_evalnull_nodefault_insert(self):
+        self._test_insert(
+            "no_eval_null_no_default", None
+        )
+
+    def test_no_evalnull_nodefault_bulk_insert(self):
+        self._test_bulk_insert(
+            "no_eval_null_no_default", None
+        )
+
+    def test_no_evalnull_nodefault_insert_novalue(self):
+        self._test_insert_novalue(
+            "no_eval_null_no_default", None
+        )
+
+    def test_no_evalnull_nodefault_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "no_eval_null_no_default", None
+        )
+
+    def test_no_evalnull_default_insert(self):
+        self._test_insert(
+            "no_eval_null_default", 'default_val'
+        )
+
+    def test_no_evalnull_default_bulk_insert(self):
+        self._test_bulk_insert(
+            "no_eval_null_default", 'default_val'
+        )
+
+    def test_no_evalnull_default_insert_novalue(self):
+        self._test_insert_novalue(
+            "no_eval_null_default", 'default_val'
+        )
+
+    def test_no_evalnull_default_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "no_eval_null_default", 'default_val'
+        )
+
+    def test_builtin_evalnull_nodefault_insert(self):
+        self._test_insert(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_nodefault_bulk_insert(self):
+        self._test_bulk_insert(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_nodefault_insert_novalue(self):
+        self._test_insert_novalue(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_nodefault_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "builtin_evals_null_no_default", None
+        )
+
+    def test_builtin_evalnull_default_insert(self):
+        self._test_insert(
+            "builtin_evals_null_default", None
+        )
+
+    def test_builtin_evalnull_default_bulk_insert(self):
+        self._test_bulk_insert(
+            "builtin_evals_null_default", None
+        )
+
+    def test_builtin_evalnull_default_insert_novalue(self):
+        self._test_insert_novalue(
+            "builtin_evals_null_default", 'default_val'
+        )
+
+    def test_builtin_evalnull_default_bulk_insert_novalue(self):
+        self._test_bulk_insert_novalue(
+            "builtin_evals_null_default", 'default_val'
+        )

@@ -1,5 +1,5 @@
 # sql/default_comparator.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,7 +14,8 @@ from . import operators
 from .elements import BindParameter, True_, False_, BinaryExpression, \
     Null, _const_expr, _clause_element_as_expr, \
     ClauseList, ColumnElement, TextClause, UnaryExpression, \
-    collate, _is_literal, _literal_as_text, ClauseElement, and_, or_
+    collate, _is_literal, _literal_as_text, ClauseElement, and_, or_, \
+    Slice, Visitable, _literal_as_binds
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 
@@ -161,6 +162,14 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
                             negate=negate_op)
 
 
+def _getitem_impl(expr, op, other, **kw):
+    if isinstance(expr.type, type_api.INDEXABLE):
+        other = _check_literal(expr, op, other)
+        return _binary_operate(expr, op, other, **kw)
+    else:
+        _unsupported_impl(expr, op, other, **kw)
+
+
 def _unsupported_impl(expr, op, *arg, **kw):
     raise NotImplementedError("Operator '%s' is not supported on "
                               "this expression" % op.__name__)
@@ -231,6 +240,8 @@ operator_lookup = {
     "mod": (_binary_operate,),
     "truediv": (_binary_operate,),
     "custom_op": (_binary_operate,),
+    "json_path_getitem_op": (_binary_operate, ),
+    "json_getitem_op": (_binary_operate, ),
     "concat_op": (_binary_operate,),
     "lt": (_boolean_compare, operators.ge),
     "le": (_boolean_compare, operators.gt),
@@ -260,13 +271,14 @@ operator_lookup = {
     "between_op": (_between_impl, ),
     "notbetween_op": (_between_impl, ),
     "neg": (_neg_impl,),
-    "getitem": (_unsupported_impl,),
+    "getitem": (_getitem_impl,),
     "lshift": (_unsupported_impl,),
     "rshift": (_unsupported_impl,),
+    "contains": (_unsupported_impl,),
 }
 
 
-def _check_literal(expr, operator, other):
+def _check_literal(expr, operator, other, bindparam_type=None):
     if isinstance(other, (ColumnElement, TextClause)):
         if isinstance(other, BindParameter) and \
                 other.type._isnull:
@@ -280,8 +292,8 @@ def _check_literal(expr, operator, other):
 
     if isinstance(other, (SelectBase, Alias)):
         return other.as_scalar()
-    elif not isinstance(other, (ColumnElement, TextClause)):
-        return expr._bind_param(operator, other)
+    elif not isinstance(other, Visitable):
+        return expr._bind_param(operator, other, type_=bindparam_type)
     else:
         return other
 

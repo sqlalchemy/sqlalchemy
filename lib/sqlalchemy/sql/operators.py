@@ -1,5 +1,5 @@
 # sql/operators.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,10 +12,9 @@
 
 from .. import util
 
-
 from operator import (
     and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg,
-    getitem, lshift, rshift
+    getitem, lshift, rshift, contains
 )
 
 if util.py2k:
@@ -214,10 +213,13 @@ class custom_op(object):
     """
     __name__ = 'custom_op'
 
-    def __init__(self, opstring, precedence=0, is_comparison=False):
+    def __init__(
+            self, opstring, precedence=0, is_comparison=False,
+            natural_self_precedent=False):
         self.opstring = opstring
         self.precedence = precedence
         self.is_comparison = is_comparison
+        self.natural_self_precedent = natural_self_precedent
 
     def __eq__(self, other):
         return isinstance(other, custom_op) and \
@@ -332,6 +334,9 @@ class ColumnOperators(Operators):
 
         """
         return self.operate(neg)
+
+    def __contains__(self, other):
+        return self.operate(contains, other)
 
     def __getitem__(self, index):
         """Implement the [] operator.
@@ -532,8 +537,10 @@ class ColumnOperators(Operators):
         * Postgresql - renders ``x @@ to_tsquery(y)``
         * MySQL - renders ``MATCH (x) AGAINST (y IN BOOLEAN MODE)``
         * Oracle - renders ``CONTAINS(x, y)``
-        * other backends may provide special implementations;
-          some backends such as SQLite have no support.
+        * other backends may provide special implementations.
+        * Backends without any special implementation will emit
+          the operator as "MATCH".  This is compatible with SQlite, for
+          example.
 
         """
         return self.operate(match_op, other, **kwargs)
@@ -595,6 +602,14 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(div, other)
 
+    def __rmod__(self, other):
+        """Implement the ``%`` operator in reverse.
+
+        See :meth:`.ColumnOperators.__mod__`.
+
+        """
+        return self.reverse_operate(mod, other)
+
     def between(self, cleft, cright, symmetric=False):
         """Produce a :func:`~.expression.between` clause against
         the parent object, given the lower and upper range.
@@ -608,6 +623,24 @@ class ColumnOperators(Operators):
 
         """
         return self.operate(distinct_op)
+
+    def any_(self):
+        """Produce a :func:`~.expression.any_` clause against the
+        parent object.
+
+        .. versionadded:: 1.1
+
+        """
+        return self.operate(any_op)
+
+    def all_(self):
+        """Produce a :func:`~.expression.all_` clause against the
+        parent object.
+
+        .. versionadded:: 1.1
+
+        """
+        return self.operate(all_op)
 
     def __add__(self, other):
         """Implement the ``+`` operator.
@@ -689,7 +722,6 @@ def istrue(a):
 def isfalse(a):
     raise NotImplementedError()
 
-
 def is_(a, b):
     return a.is_(b)
 
@@ -740,6 +772,14 @@ def notin_op(a, b):
 
 def distinct_op(a):
     return a.distinct()
+
+
+def any_op(a):
+    return a.any_()
+
+
+def all_op(a):
+    return a.all_()
 
 
 def startswith_op(a, b, escape=None):
@@ -798,6 +838,14 @@ def nullslast_op(a):
     return a.nullslast()
 
 
+def json_getitem_op(a, b):
+    raise NotImplementedError()
+
+
+def json_path_getitem_op(a, b):
+    raise NotImplementedError()
+
+
 _commutative = set([eq, ne, add, mul])
 
 _comparison = set([eq, ne, lt, gt, ge, le, between_op, like_op])
@@ -816,13 +864,37 @@ def is_ordering_modifier(op):
     return op in (asc_op, desc_op,
                   nullsfirst_op, nullslast_op)
 
+
+def is_natural_self_precedent(op):
+    return op in _natural_self_precedent or \
+        isinstance(op, custom_op) and op.natural_self_precedent
+
+_mirror = {
+    gt: lt,
+    ge: le,
+    lt: gt,
+    le: ge
+}
+
+
+def mirror(op):
+    """rotate a comparison operator 180 degrees.
+
+    Note this is not the same as negation.
+
+    """
+    return _mirror.get(op, op)
+
+
 _associative = _commutative.union([concat_op, and_, or_])
 
-_natural_self_precedent = _associative.union([getitem])
+_natural_self_precedent = _associative.union([
+    getitem, json_getitem_op, json_path_getitem_op])
 """Operators where if we have (a op b) op c, we don't want to
 parenthesize (a op b).
 
 """
+
 
 _asbool = util.symbol('_asbool', canonical=-10)
 _smallest = util.symbol('_smallest', canonical=-100)
@@ -830,6 +902,10 @@ _largest = util.symbol('_largest', canonical=100)
 
 _PRECEDENCE = {
     from_: 15,
+    any_op: 15,
+    all_op: 15,
+    json_getitem_op: 15,
+    json_path_getitem_op: 15,
     getitem: 15,
     mul: 8,
     truediv: 8,
@@ -883,7 +959,7 @@ _PRECEDENCE = {
 
 
 def is_precedent(operator, against):
-    if operator is against and operator in _natural_self_precedent:
+    if operator is against and is_natural_self_precedent(operator):
         return False
     else:
         return (_PRECEDENCE.get(operator,

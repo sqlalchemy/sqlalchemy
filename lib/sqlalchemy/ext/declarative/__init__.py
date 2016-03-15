@@ -1,5 +1,5 @@
 # ext/declarative/__init__.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,5 +13,6 @@ from .api import declarative_base, synonym_for, comparable_using, \
 
 __all__ = ['declarative_base', 'synonym_for', 'has_inherited_table',
            'comparable_using', 'instrument_declarative', 'declared_attr',
+           'as_declarative',
            'ConcreteBase', 'AbstractConcreteBase', 'DeclarativeMeta',
            'DeferredReflection']

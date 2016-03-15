@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -98,7 +98,14 @@ def drop_all_tables(metadata, bind):
     testing_reaper.close_all()
     if hasattr(bind, 'close'):
         bind.close()
-    metadata.drop_all(bind)
+
+    if not config.db.dialect.supports_alter:
+        from . import assertions
+        with assertions.expect_warnings(
+                "Can't sort tables", assert_=False):
+            metadata.drop_all(bind)
+    else:
+        metadata.drop_all(bind)
 
 
 @decorator
@@ -204,6 +211,7 @@ def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
 
     from sqlalchemy import create_engine
+    from sqlalchemy.engine.url import make_url
 
     if not options:
         use_reaper = True
@@ -211,12 +219,16 @@ def testing_engine(url=None, options=None):
         use_reaper = options.pop('use_reaper', True)
 
     url = url or config.db.url
+
+    url = make_url(url)
     if options is None:
-        options = config.db_opts
+        if config.db is None or url.drivername == config.db.url.drivername:
+            options = config.db_opts
+        else:
+            options = {}
 
     engine = create_engine(url, **options)
-    engine._has_events = True   # enable event blocks, helps with
-                                # profiling
+    engine._has_events = True   # enable event blocks, helps with profiling
 
     if isinstance(engine.pool, pool.QueuePool):
         engine.pool._timeout = 0

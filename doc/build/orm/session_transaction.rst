@@ -277,7 +277,7 @@ transactions set the flag ``twophase=True`` on the session::
 Setting Transaction Isolation Levels
 ------------------------------------
 
-:term:`isolation` refers to the behavior of the transaction at the database
+:term:`Isolation` refers to the behavior of the transaction at the database
 level in relation to other transactions occurring concurrently.  There
 are four well-known modes of isolation, and typically the Python DBAPI
 allows these to be set on a per-connection basis, either through explicit
@@ -414,6 +414,12 @@ on the target connection, a warning is emitted::
     :paramref:`.Session.connection.execution_options`
     parameter to :meth:`.Session.connection`.
 
+Tracking Transaction State with Events
+--------------------------------------
+
+See the section :ref:`session_transaction_events` for an overview
+of the available event hooks for session transaction state changes.
+
 .. _session_external_transaction:
 
 Joining a Session into an External Transaction (such as for test suites)
@@ -484,7 +490,9 @@ everything is rolled back.
 
       from sqlalchemy import event
 
+
       class SomeTest(TestCase):
+
           def setUp(self):
               # connect to the database
               self.connection = engine.connect()
@@ -502,7 +510,13 @@ everything is rolled back.
               @event.listens_for(self.session, "after_transaction_end")
               def restart_savepoint(session, transaction):
                   if transaction.nested and not transaction._parent.nested:
+
+                      # ensure that state is expired the way
+                      # session.commit() at the top level normally does
+                      # (optional step)
+                      session.expire_all()
+
                       session.begin_nested()
 
-
           # ... the tearDown() method stays the same
+

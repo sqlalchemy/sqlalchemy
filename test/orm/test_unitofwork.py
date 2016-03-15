@@ -7,7 +7,8 @@ from sqlalchemy.orm import mapper as orm_mapper
 
 import sqlalchemy as sa
 from sqlalchemy.util import u, ue, b
-from sqlalchemy import Integer, String, ForeignKey, literal_column, event
+from sqlalchemy import Integer, String, ForeignKey, \
+    literal_column, event, Boolean
 from sqlalchemy.testing import engines
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table
@@ -17,6 +18,7 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
+
 
 class UnitOfWorkTest(object):
     pass
@@ -258,7 +260,7 @@ class PKTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table('multipk1', metadata,
               Column('multi_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+                     test_needs_autoincrement=not testing.against('sqlite')),
               Column('multi_rev', Integer, primary_key=True),
               Column('name', String(50), nullable=False),
               Column('value', String(100)))
@@ -383,16 +385,26 @@ class ClauseAttributesTest(fixtures.MappedTest):
             Column('name', String(30)),
             Column('counter', Integer, default=1))
 
+        Table('boolean_t', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('value', Boolean),
+            )
+
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
             pass
 
+        class HasBoolean(cls.Comparable):
+            pass
+
     @classmethod
     def setup_mappers(cls):
         User, users_t = cls.classes.User, cls.tables.users_t
-
+        HasBoolean, boolean_t = cls.classes.HasBoolean, cls.tables.boolean_t
         mapper(User, users_t)
+        mapper(HasBoolean, boolean_t)
 
     def test_update(self):
         User = self.classes.User
@@ -445,6 +457,30 @@ class ClauseAttributesTest(fixtures.MappedTest):
         session.flush()
 
         assert (u.counter == 5) is True
+
+    def test_update_special_comparator(self):
+        HasBoolean = self.classes.HasBoolean
+
+        # make sure the comparison we're shooting
+        # for is invalid, otherwise we need to
+        # test something else here
+        assert_raises_message(
+            TypeError,
+            "Boolean value of this clause is not defined",
+            bool, None == sa.false()
+        )
+        s = create_session()
+        hb = HasBoolean(value=None)
+        s.add(hb)
+        s.flush()
+
+        hb.value = sa.false()
+
+        s.flush()
+
+        # needs to be refreshed
+        assert 'value' not in hb.__dict__
+        eq_(hb.value, False)
 
 
 class PassiveDeletesTest(fixtures.MappedTest):

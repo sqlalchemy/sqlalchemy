@@ -9,7 +9,7 @@ What's New in SQLAlchemy 0.9?
     and SQLAlchemy version 0.9, which had its first production
     release on December 30, 2013.
 
-    Document last updated: February 28, 2014
+    Document last updated: June 10, 2015
 
 Introduction
 ============
@@ -64,7 +64,7 @@ columns.   Using the mapping setup at :ref:`mapper_composite`::
     ...     filter(Vertex.start == Point(3, 4)).all()
     [(Point(x=3, y=4), Point(x=5, y=6))]
 
-This change is backwards-incompatible with code that expects the indivdual attribute
+This change is backwards-incompatible with code that expects the individual attribute
 to be expanded into individual columns.  To get that behavior, use the ``.clauses``
 accessor::
 
@@ -401,6 +401,70 @@ This is a small change demonstrated as follows::
 
 Behavioral Changes - Core
 =========================
+
+Type objects no longer accept ignored keyword arguments
+-------------------------------------------------------
+
+Up through the 0.8 series, most type objects accepted arbitrary keyword
+arguments which were silently ignored::
+
+    from sqlalchemy import Date, Integer
+
+    # storage_format argument here has no effect on any backend;
+    # it needs to be on the SQLite-specific type
+    d = Date(storage_format="%(day)02d.%(month)02d.%(year)04d")
+
+    # display_width argument here has no effect on any backend;
+    # it needs to be on the MySQL-specific type
+    i = Integer(display_width=5)
+
+This was a very old bug for which a deprecation warning was added to the
+0.8 series, but because nobody ever runs Python with the "-W" flag, it
+was mostly never seen::
+
+
+    $ python -W always::DeprecationWarning ~/dev/sqlalchemy/test.py
+    /Users/classic/dev/sqlalchemy/test.py:5: SADeprecationWarning: Passing arguments to
+    type object constructor <class 'sqlalchemy.types.Date'> is deprecated
+      d = Date(storage_format="%(day)02d.%(month)02d.%(year)04d")
+    /Users/classic/dev/sqlalchemy/test.py:9: SADeprecationWarning: Passing arguments to
+    type object constructor <class 'sqlalchemy.types.Integer'> is deprecated
+      i = Integer(display_width=5)
+
+As of the 0.9 series the "catch all" constructor is removed from
+:class:`.TypeEngine`, and these meaningless arguments are no longer accepted.
+
+The correct way to make use of dialect-specific arguments such as
+``storage_format`` and ``display_width`` is to use the appropriate
+dialect-specific types::
+
+    from sqlalchemy.dialects.sqlite import DATE
+    from sqlalchemy.dialects.mysql import INTEGER
+
+    d = DATE(storage_format="%(day)02d.%(month)02d.%(year)04d")
+
+    i = INTEGER(display_width=5)
+
+What about the case where we want the dialect-agnostic type also?  We
+use the :meth:`.TypeEngine.with_variant` method::
+
+    from sqlalchemy import Date, Integer
+    from sqlalchemy.dialects.sqlite import DATE
+    from sqlalchemy.dialects.mysql import INTEGER
+
+    d = Date().with_variant(
+            DATE(storage_format="%(day)02d.%(month)02d.%(year)04d"),
+            "sqlite"
+        )
+
+    i = Integer().with_variant(
+            INTEGER(display_width=5),
+            "mysql"
+        )
+
+:meth:`.TypeEngine.with_variant` isn't new, it was added in SQLAlchemy
+0.7.2.  So code that is running on the 0.8 series can be corrected to use
+this approach and tested before upgrading to 0.9.
 
 ``None`` can no longer be used as a "partial AND" constructor
 --------------------------------------------------------------
@@ -1061,7 +1125,7 @@ as INNER JOINs could always be flattened)::
 
     SELECT a.*, b.*, c.* FROM a LEFT OUTER JOIN (b JOIN c ON b.id = c.id) ON a.id
 
-This was due to the fact that SQLite, even today, cannot parse a statement of the above format::
+This was due to the fact that SQLite up until version **3.7.16** cannot parse a statement of the above format::
 
     SQLite version 3.7.15.2 2013-01-09 11:53:05
     Enter ".help" for instructions
@@ -1183,6 +1247,12 @@ with the above queries rewritten as::
     FROM order_item AS order_item_1
         JOIN item ON item.id = order_item_1.item_id AND item.type IN (?)
     ) AS anon_1 ON "order".id = anon_1.order_item_1_order_id
+
+.. note::
+
+    As of SQLAlchemy 1.1, the workarounds present in this feature for SQLite
+    will automatically disable themselves when SQLite version **3.7.16**
+    or greater is detected, as SQLite has repaired support for right-nested joins.
 
 The :meth:`.Join.alias`, :func:`.aliased` and :func:`.with_polymorphic` functions now
 support a new argument, ``flat=True``, which is used to construct aliases of joined-table

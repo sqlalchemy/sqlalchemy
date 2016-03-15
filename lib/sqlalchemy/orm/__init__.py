@@ -1,5 +1,5 @@
 # orm/__init__.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -149,7 +149,12 @@ def backref(name, **kwargs):
         'items':relationship(
             SomeItem, backref=backref('parent', lazy='subquery'))
 
+    .. seealso::
+
+        :ref:`relationships_backref`
+
     """
+
     return (name, kwargs)
 
 

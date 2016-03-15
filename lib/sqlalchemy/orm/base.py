@@ -1,5 +1,5 @@
 # orm/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -181,7 +181,13 @@ NOT_EXTENSION = util.symbol(
 
     """)
 
+_never_set = frozenset([NEVER_SET])
+
 _none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
+
+_SET_DEFERRED_EXPIRED = util.symbol("SET_DEFERRED_EXPIRED")
+
+_DEFER_FOR_STATE = util.symbol("DEFER_FOR_STATE")
 
 
 def _generative(*assertions):
@@ -323,10 +329,9 @@ def _is_mapped_class(entity):
 
     insp = inspection.inspect(entity, False)
     return insp is not None and \
-        hasattr(insp, "mapper") and \
+        not insp.is_clause_element and \
         (
-            insp.is_mapper
-            or insp.is_aliased_class
+            insp.is_mapper or insp.is_aliased_class
         )
 
 

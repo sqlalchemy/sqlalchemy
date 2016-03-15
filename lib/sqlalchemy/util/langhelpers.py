@@ -1,5 +1,5 @@
 # util/langhelpers.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -59,6 +59,13 @@ class safe_reraise(object):
             self._exc_info = None   # remove potential circular references
             compat.reraise(exc_type, exc_value, exc_tb)
         else:
+            if not compat.py3k and self._exc_info and self._exc_info[1]:
+                # emulate Py3K's behavior of telling us when an exception
+                # occurs in an exception handler.
+                warn(
+                    "An exception has occurred during handling of a "
+                    "previous exception.  The previous exception "
+                    "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1]))
             self._exc_info = None   # remove potential circular references
             compat.reraise(type_, value, traceback)
 
@@ -426,7 +433,7 @@ def getargspec_init(method):
 
     """
     try:
-        return inspect.getargspec(method)
+        return compat.inspect_getargspec(method)
     except TypeError:
         if method is object.__init__:
             return (['self'], None, None, None)
@@ -464,7 +471,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     for i, insp in enumerate(to_inspect):
         try:
             (_args, _vargs, vkw, defaults) = \
-                inspect.getargspec(insp.__init__)
+                compat.inspect_getargspec(insp.__init__)
         except TypeError:
             continue
         else:
@@ -625,7 +632,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
         except AttributeError:
             continue
         try:
-            spec = inspect.getargspec(fn)
+            spec = compat.inspect_getargspec(fn)
             fn_args = inspect.formatargspec(spec[0])
             d_args = inspect.formatargspec(spec[0][1:])
         except TypeError:
@@ -755,7 +762,7 @@ class memoized_property(object):
         obj.__dict__.pop(name, None)
 
 
-class memoized_instancemethod(object):
+def memoized_instancemethod(fn):
     """Decorate a method memoize its return value.
 
     Best applied to no-arg methods: memoization is not sensitive to
@@ -764,26 +771,14 @@ class memoized_instancemethod(object):
 
     """
 
-    def __init__(self, fget, doc=None):
-        self.fget = fget
-        self.__doc__ = doc or fget.__doc__
-        self.__name__ = fget.__name__
-
-    def __get__(self, obj, cls):
-        if obj is None:
-            return self
-
-        def oneshot(*args, **kw):
-            result = self.fget(obj, *args, **kw)
-            memo = lambda *a, **kw: result
-            memo.__name__ = self.__name__
-            memo.__doc__ = self.__doc__
-            obj.__dict__[self.__name__] = memo
-            return result
-
-        oneshot.__name__ = self.__name__
-        oneshot.__doc__ = self.__doc__
-        return oneshot
+    def oneshot(self, *args, **kw):
+        result = fn(self, *args, **kw)
+        memo = lambda *a, **kw: result
+        memo.__name__ = fn.__name__
+        memo.__doc__ = fn.__doc__
+        self.__dict__[fn.__name__] = memo
+        return result
+    return update_wrapper(oneshot, fn)
 
 
 class group_expirable_memoized_property(object):
@@ -816,6 +811,8 @@ class MemoizedSlots(object):
     memoized_instancemethod to be available to a class using __slots__.
 
     """
+
+    __slots__ = ()
 
     def _fallback_getattr(self, key):
         raise AttributeError(key)
@@ -1029,7 +1026,9 @@ def constructor_copy(obj, cls, *args, **kw):
     """
 
     names = get_cls_kwargs(cls)
-    kw.update((k, obj.__dict__[k]) for k in names if k in obj.__dict__)
+    kw.update(
+        (k, obj.__dict__[k]) for k in names.difference(kw)
+        if k in obj.__dict__)
     return cls(*args, **kw)
 
 
@@ -1257,9 +1256,12 @@ def warn_exception(func, *args, **kwargs):
 
 
 def ellipses_string(value, len_=25):
-    if len(value) > len_:
-        return "%s..." % value[0:len_]
-    else:
+    try:
+        if len(value) > len_:
+            return "%s..." % value[0:len_]
+        else:
+            return value
+    except TypeError:
         return value
 
 
@@ -1370,7 +1372,7 @@ class EnsureKWArgType(type):
                 m = re.match(fn_reg, key)
                 if m:
                     fn = clsdict[key]
-                    spec = inspect.getargspec(fn)
+                    spec = compat.inspect_getargspec(fn)
                     if not spec.keywords:
                         clsdict[key] = wrapped = cls._wrap_w_kw(fn)
                         setattr(cls, key, wrapped)
@@ -1382,3 +1384,25 @@ class EnsureKWArgType(type):
             return fn(*arg)
         return update_wrapper(wrap, fn)
 
+
+def wrap_callable(wrapper, fn):
+    """Augment functools.update_wrapper() to work with objects with
+    a ``__call__()`` method.
+
+    :param fn:
+      object with __call__ method
+
+    """
+    if hasattr(fn, '__name__'):
+        return update_wrapper(wrapper, fn)
+    else:
+        _f = wrapper
+        _f.__name__ = fn.__class__.__name__
+        _f.__module__ = fn.__module__
+
+        if hasattr(fn.__call__, '__doc__') and fn.__call__.__doc__:
+            _f.__doc__ = fn.__call__.__doc__
+        elif fn.__doc__:
+            _f.__doc__ = fn.__doc__
+
+        return _f

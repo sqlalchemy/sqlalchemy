@@ -5,7 +5,7 @@ from sqlalchemy import exc as sa_exc, util, event
 from sqlalchemy.orm import *
 from sqlalchemy.orm.util import instance_str
 from sqlalchemy.orm import exc as orm_exc, attributes
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, Or
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, RegexSQL, Or
 from sqlalchemy.sql import table, column
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
@@ -1148,6 +1148,298 @@ class FlushTest(fixtures.MappedTest):
         sess.flush()
         assert user_roles.count().scalar() == 1
 
+
+class PassiveDeletesTest(fixtures.MappedTest):
+    __requires__ = ('foreign_keys',)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('type', String(30))
+        )
+        Table(
+            "b", metadata,
+            Column(
+                'id', Integer, ForeignKey('a.id', ondelete="CASCADE"),
+                primary_key=True),
+            Column('data', String(10))
+        )
+
+        Table(
+            "c", metadata,
+            Column('cid', Integer, primary_key=True),
+            Column('bid', ForeignKey('b.id', ondelete="CASCADE"))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(A):
+            pass
+
+        class C(B):
+            pass
+
+    def _fixture(self, a_p=False, b_p=False, c_p=False):
+        A, B, C = self.classes("A", "B", "C")
+        a, b, c = self.tables("a", "b", "c")
+
+        mapper(
+            A, a, passive_deletes=a_p,
+            polymorphic_on=a.c.type, polymorphic_identity='a')
+        mapper(
+            B, b, inherits=A, passive_deletes=b_p, polymorphic_identity='b')
+        mapper(
+            C, c, inherits=B, passive_deletes=c_p, polymorphic_identity='c')
+
+    def test_none(self):
+        A, B, C = self.classes("A", "B", "C")
+        self._fixture()
+
+        s = Session()
+        a1, b1, c1 = A(id=1), B(id=2), C(cid=1, id=3)
+        s.add_all([a1, b1, c1])
+        s.commit()
+
+        # want to see if the 'C' table loads even though
+        # a and b are loaded
+        c1 = s.query(B).filter_by(id=3).first()
+        s.delete(c1)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            RegexSQL(
+                "SELECT .* "
+                "FROM c WHERE :param_1 = c.bid",
+                [{'param_1': 3}]
+            ),
+            CompiledSQL(
+                "DELETE FROM c WHERE c.cid = :cid",
+                [{'cid': 1}]
+            ),
+            CompiledSQL(
+                "DELETE FROM b WHERE b.id = :id",
+                [{'id': 3}]
+            ),
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 3}]
+            )
+        )
+
+    def test_c_only(self):
+        A, B, C = self.classes("A", "B", "C")
+        self._fixture(c_p=True)
+
+        s = Session()
+        a1, b1, c1 = A(id=1), B(id=2), C(cid=1, id=3)
+        s.add_all([a1, b1, c1])
+        s.commit()
+
+        s.delete(a1)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.type AS a_type "
+                "FROM a WHERE a.id = :param_1",
+                [{'param_1': 1}]
+            ),
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 1}]
+            )
+        )
+
+        b1.id
+        s.delete(b1)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM b WHERE b.id = :id",
+                [{'id': 2}]
+            ),
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 2}]
+            )
+        )
+
+        # want to see if the 'C' table loads even though
+        # a and b are loaded
+        c1 = s.query(A).filter_by(id=3).first()
+        s.delete(c1)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM b WHERE b.id = :id",
+                [{'id': 3}]
+            ),
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 3}]
+            )
+        )
+
+    def test_b_only(self):
+        A, B, C = self.classes("A", "B", "C")
+        self._fixture(b_p=True)
+
+        s = Session()
+        a1, b1, c1 = A(id=1), B(id=2), C(cid=1, id=3)
+        s.add_all([a1, b1, c1])
+        s.commit()
+
+        s.delete(a1)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.type AS a_type "
+                "FROM a WHERE a.id = :param_1",
+                [{'param_1': 1}]
+            ),
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 1}]
+            )
+        )
+
+        b1.id
+        s.delete(b1)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 2}]
+            )
+        )
+
+        c1.id
+        s.delete(c1)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 3}]
+            )
+        )
+
+    def test_a_only(self):
+        A, B, C = self.classes("A", "B", "C")
+        self._fixture(a_p=True)
+
+        s = Session()
+        a1, b1, c1 = A(id=1), B(id=2), C(cid=1, id=3)
+        s.add_all([a1, b1, c1])
+        s.commit()
+
+        s.delete(a1)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.type AS a_type "
+                "FROM a WHERE a.id = :param_1",
+                [{'param_1': 1}]
+            ),
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 1}]
+            )
+        )
+
+        b1.id
+        s.delete(b1)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 2}]
+            )
+        )
+
+        # want to see if the 'C' table loads even though
+        # a and b are loaded
+        c1 = s.query(A).filter_by(id=3).first()
+        s.delete(c1)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.flush()
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id",
+                [{'id': 3}]
+            )
+        )
+
+
+class OptimizedGetOnDeferredTest(fixtures.MappedTest):
+    """test that the 'optimized get' path accommodates deferred columns."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a", metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True)
+        )
+        Table(
+            "b", metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+            Column('data', String(10))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(A):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B = cls.classes("A", "B")
+        a, b = cls.tables("a", "b")
+
+        mapper(A, a)
+        mapper(B, b, inherits=A, properties={
+            'data': deferred(b.c.data),
+            'expr': column_property(b.c.data + 'q', deferred=True)
+        })
+
+    def test_column_property(self):
+        A, B = self.classes("A", "B")
+        sess = Session()
+        b1 = B(data='x')
+        sess.add(b1)
+        sess.flush()
+
+        eq_(b1.expr, 'xq')
+
+    def test_expired_column(self):
+        A, B = self.classes("A", "B")
+        sess = Session()
+        b1 = B(data='x')
+        sess.add(b1)
+        sess.flush()
+        sess.expire(b1, ['data'])
+
+        eq_(b1.data, 'x')
+
+
 class JoinedNoFKSortingTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -2042,7 +2334,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
 class TransientInheritingGCTest(fixtures.TestBase):
-    __requires__ = ('cpython',)
+    __requires__ = ('cpython', 'no_coverage')
 
     def _fixture(self):
         Base = declarative_base()

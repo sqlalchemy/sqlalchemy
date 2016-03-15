@@ -1,5 +1,5 @@
 # ext/declarative/api.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,7 +7,7 @@
 """Public API functions and helpers for declarative."""
 
 
-from ...schema import Table, MetaData
+from ...schema import Table, MetaData, Column
 from ...orm import synonym as _orm_synonym, \
     comparable_property,\
     interfaces, properties, attributes
@@ -163,27 +163,19 @@ class declared_attr(interfaces._MappedAttribute, property):
         self._cascading = cascading
 
     def __get__(desc, self, cls):
-        # use the ClassManager for memoization of values.  This is better than
-        # adding yet another attribute onto the class, or using weakrefs
-        # here which are slow and take up memory.  It also allows us to
-        # warn for non-mapped use of declared_attr.
-
-        manager = attributes.manager_of_class(cls)
-        if manager is None:
-            util.warn(
-                "Unmanaged access of declarative attribute %s from "
-                "non-mapped class %s" %
-                (desc.fget.__name__, cls.__name__))
+        reg = cls.__dict__.get('_sa_declared_attr_reg', None)
+        if reg is None:
+            manager = attributes.manager_of_class(cls)
+            if manager is None:
+                util.warn(
+                    "Unmanaged access of declarative attribute %s from "
+                    "non-mapped class %s" %
+                    (desc.fget.__name__, cls.__name__))
             return desc.fget(cls)
-        try:
-            reg = manager.info['declared_attr_reg']
-        except KeyError:
-            raise exc.InvalidRequestError(
-                "@declared_attr called outside of the "
-                "declarative mapping process; is declarative_base() being "
-                "used correctly?")
 
-        if desc in reg:
+        if reg is None:
+            return desc.fget(cls)
+        elif desc in reg:
             return reg[desc]
         else:
             reg[desc] = obj = desc.fget(cls)
@@ -405,6 +397,15 @@ class ConcreteBase(object):
                             'polymorphic_identity':'manager',
                             'concrete':True}
 
+    .. seealso::
+
+        :class:`.AbstractConcreteBase`
+
+        :ref:`concrete_inheritance`
+
+        :ref:`inheritance_concrete_helpers`
+
+
     """
 
     @classmethod
@@ -503,6 +504,13 @@ class AbstractConcreteBase(ConcreteBase):
        have been reworked to support relationships established directly
        on the abstract base, without any special configurational steps.
 
+    .. seealso::
+
+        :class:`.ConcreteBase`
+
+        :ref:`concrete_inheritance`
+
+        :ref:`inheritance_concrete_helpers`
 
     """
 
@@ -532,6 +540,17 @@ class AbstractConcreteBase(ConcreteBase):
             if mn is not None:
                 mappers.append(mn)
         pjoin = cls._create_polymorphic_union(mappers)
+
+        # For columns that were declared on the class, these
+        # are normally ignored with the "__no_table__" mapping,
+        # unless they have a different attribute key vs. col name
+        # and are in the properties argument.
+        # In that case, ensure we update the properties entry
+        # to the correct column from the pjoin target table.
+        declared_cols = set(to_map.declared_columns)
+        for k, v in list(to_map.properties.items()):
+            if v in declared_cols:
+                to_map.properties[k] = pjoin.c[v.key]
 
         to_map.local_table = pjoin
 

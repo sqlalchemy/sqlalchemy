@@ -1,5 +1,5 @@
 # testing/profiling.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,7 +16,6 @@ import os
 import sys
 from .util import gc_collect
 from . import config
-from .plugin.plugin_base import SkipTest
 import pstats
 import collections
 import contextlib
@@ -76,6 +75,11 @@ class ProfileStatsFile(object):
             platform_tokens.append("pypy")
         if win32:
             platform_tokens.append("win")
+        platform_tokens.append(
+            "nativeunicode"
+            if config.db.dialect.convert_unicode
+            else "dbapiunicode"
+        )
         _has_cext = config.requirements._has_cextensions()
         platform_tokens.append(_has_cext and "cextensions" or "nocextensions")
         return "_".join(platform_tokens)
@@ -205,10 +209,11 @@ def count_functions(variance=0.05):
         raise SkipTest("cProfile is not installed")
 
     if not _profile_stats.has_stats() and not _profile_stats.write:
-        raise SkipTest("No profiling stats available on this "
-                       "platform for this function.  Run tests with "
-                       "--write-profiles to add statistics to %s for "
-                       "this platform." % _profile_stats.short_fname)
+        config.skip_test(
+            "No profiling stats available on this "
+            "platform for this function.  Run tests with "
+            "--write-profiles to add statistics to %s for "
+            "this platform." % _profile_stats.short_fname)
 
     gc_collect()
 

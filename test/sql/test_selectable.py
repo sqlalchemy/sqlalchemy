@@ -155,15 +155,19 @@ class SelectableTest(
         assert c in s.c.bar.proxy_set
 
     def test_no_error_on_unsupported_expr_key(self):
-        from sqlalchemy.dialects.postgresql import ARRAY
+        from sqlalchemy.sql.expression import BinaryExpression
 
-        t = table('t', column('x', ARRAY(Integer)))
+        def myop(x, y):
+            pass
 
-        expr = t.c.x[5]
+        t = table('t', column('x'), column('y'))
+
+        expr = BinaryExpression(t.c.x, t.c.y, myop)
+
         s = select([t, expr])
         eq_(
             s.c.keys(),
-            ['x', expr.anon_label]
+            ['x', 'y', expr.anon_label]
         )
 
     def test_cloned_intersection(self):
@@ -443,6 +447,26 @@ class SelectableTest(
     def test_union_alias_dupe_keys(self):
         s1 = select([table1.c.col1, table1.c.col2, table2.c.col1]).alias()
         s2 = select([table2.c.col1, table2.c.col2, table2.c.col3])
+        u1 = union(s1, s2)
+
+        assert u1.corresponding_column(
+            s1.c._all_columns[0]) is u1.c._all_columns[0]
+        assert u1.corresponding_column(s2.c.col1) is u1.c._all_columns[0]
+        assert u1.corresponding_column(s1.c.col2) is u1.c.col2
+        assert u1.corresponding_column(s2.c.col2) is u1.c.col2
+
+        assert u1.corresponding_column(s2.c.col3) is u1.c._all_columns[2]
+
+        # this differs from the non-alias test because table2.c.col1 is
+        # more directly at s2.c.col1 than it is s1.c.col1.
+        assert u1.corresponding_column(table2.c.col1) is u1.c._all_columns[0]
+        assert u1.corresponding_column(table2.c.col3) is u1.c._all_columns[2]
+
+    @testing.emits_warning("Column 'col1'")
+    def test_union_alias_dupe_keys_grouped(self):
+        s1 = select([table1.c.col1, table1.c.col2, table2.c.col1]).\
+            limit(1).alias()
+        s2 = select([table2.c.col1, table2.c.col2, table2.c.col3]).limit(1)
         u1 = union(s1, s2)
 
         assert u1.corresponding_column(
@@ -912,10 +936,10 @@ class AnonLabelTest(fixtures.TestBase):
         c1 = func.count('*')
         assert c1.label(None) is not c1
 
-        eq_(str(select([c1])), "SELECT count(:param_1) AS count_1")
+        eq_(str(select([c1])), "SELECT count(:count_2) AS count_1")
         c2 = select([c1]).compile()
 
-        eq_(str(select([c1.label(None)])), "SELECT count(:param_1) AS count_1")
+        eq_(str(select([c1.label(None)])), "SELECT count(:count_2) AS count_1")
 
     def test_named_labels_named_column(self):
         c1 = column('x')
@@ -1969,11 +1993,11 @@ class WithLabelsTest(fixtures.TestBase):
 
     def _assert_result_keys(self, s, keys):
         compiled = s.compile()
-        eq_(set(compiled.result_map), set(keys))
+        eq_(set(compiled._create_result_map()), set(keys))
 
     def _assert_subq_result_keys(self, s, keys):
         compiled = s.select().compile()
-        eq_(set(compiled.result_map), set(keys))
+        eq_(set(compiled._create_result_map()), set(keys))
 
     def _names_overlap(self):
         m = MetaData()
@@ -2113,7 +2137,7 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_result_keys(sel, ['t1_a', 't2_b'])
 
 
-class SelectProxyTest(fixtures.TestBase):
+class ResultMapTest(fixtures.TestBase):
 
     def _fixture(self):
         m = MetaData()
@@ -2124,7 +2148,7 @@ class SelectProxyTest(fixtures.TestBase):
         compiled = stmt.compile()
         return dict(
             (elem, key)
-            for key, elements in compiled.result_map.items()
+            for key, elements in compiled._create_result_map().items()
             for elem in elements[1]
         )
 
@@ -2183,6 +2207,35 @@ class SelectProxyTest(fixtures.TestBase):
         assert l1 in mapping
         assert ta.c.x not in mapping
 
+    def test_column_subquery_exists(self):
+        t = self._fixture()
+        s = exists().where(t.c.x == 5).select()
+        mapping = self._mapping(s)
+        assert t.c.x not in mapping
+        eq_(
+            [type(entry[-1]) for entry in s.compile()._result_columns],
+            [Boolean]
+        )
+
+    def test_column_subquery_plain(self):
+        t = self._fixture()
+        s1 = select([t.c.x]).where(t.c.x > 5).as_scalar()
+        s2 = select([s1])
+        mapping = self._mapping(s2)
+        assert t.c.x not in mapping
+        assert s1 in mapping
+        eq_(
+            [type(entry[-1]) for entry in s2.compile()._result_columns],
+            [Integer]
+        )
+
+    def test_unary_boolean(self):
+
+        s1 = select([not_(True)], use_labels=True)
+        eq_(
+            [type(entry[-1]) for entry in s1.compile()._result_columns],
+            [Boolean]
+        )
 
 class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"

@@ -42,12 +42,13 @@ def setup_database(dburl, echo, num):
 
     s = Session(engine)
     for chunk in range(0, num, 10000):
-        s.bulk_insert_mappings(Customer, [
-            {
-                'name': 'customer name %d' % i,
-                'description': 'customer description %d' % i
-            } for i in range(chunk, chunk + 10000)
-        ])
+        s.execute(
+            Customer.__table__.insert(),
+            params=[
+                {
+                    'name': 'customer name %d' % i,
+                    'description': 'customer description %d' % i
+                } for i in range(chunk, chunk + 10000)])
     s.commit()
 
 

@@ -1,5 +1,5 @@
 # engine/interfaces.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,7 +7,7 @@
 
 """Define core interfaces used by the engine system."""
 
-from .. import util, event
+from .. import util
 
 # backwards compat
 from ..sql.compiler import Compiled, TypeCompiler
@@ -150,6 +150,16 @@ class Dialect(object):
       This will prevent types.Boolean from generating a CHECK
       constraint when that type is used.
 
+    dbapi_exception_translation_map
+       A dictionary of names that will contain as values the names of
+       pep-249 exceptions ("IntegrityError", "OperationalError", etc)
+       keyed to alternate class names, to support the case where a
+       DBAPI has exception classes that aren't named as they are
+       referred to (e.g. IntegrityError = MyException).   In the vast
+       majority of cases this dictionary is empty.
+
+       .. versionadded:: 1.0.5
+
     """
 
     _has_events = False
@@ -242,7 +252,9 @@ class Dialect(object):
 
         sequence
           a dictionary of the form
-              {'name' : str, 'start' :int, 'increment': int}
+              {'name' : str, 'start' :int, 'increment': int, 'minvalue': int,
+               'maxvalue': int, 'nominvalue': bool, 'nomaxvalue': bool,
+               'cycle': bool}
 
         Additional column attributes may be present.
         """
@@ -733,6 +745,146 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    @classmethod
+    def get_dialect_cls(cls, url):
+        """Given a URL, return the :class:`.Dialect` that will be used.
+
+        This is a hook that allows an external plugin to provide functionality
+        around an existing dialect, by allowing the plugin to be loaded
+        from the url based on an entrypoint, and then the plugin returns
+        the actual dialect to be used.
+
+        By default this just returns the cls.
+
+        .. versionadded:: 1.0.3
+
+        """
+        return cls
+
+    @classmethod
+    def engine_created(cls, engine):
+        """A convenience hook called before returning the final :class:`.Engine`.
+
+        If the dialect returned a different class from the
+        :meth:`.get_dialect_cls`
+        method, then the hook is called on both classes, first on
+        the dialect class returned by the :meth:`.get_dialect_cls` method and
+        then on the class on which the method was called.
+
+        The hook should be used by dialects and/or wrappers to apply special
+        events to the engine or its components.   In particular, it allows
+        a dialect-wrapping class to apply dialect-level events.
+
+        .. versionadded:: 1.0.3
+
+        """
+        pass
+
+
+class CreateEnginePlugin(object):
+    """A set of hooks intended to augment the construction of an
+    :class:`.Engine` object based on entrypoint names in a URL.
+
+    The purpose of :class:`.CreateEnginePlugin` is to allow third-party
+    systems to apply engine, pool and dialect level event listeners without
+    the need for the target application to be modified; instead, the plugin
+    names can be added to the database URL.  Target applications for
+    :class:`.CreateEnginePlugin` include:
+
+    * connection and SQL performance tools, e.g. which use events to track
+      number of checkouts and/or time spent with statements
+
+    * connectivity plugins such as proxies
+
+    Plugins are registered using entry points in a similar way as that
+    of dialects::
+
+        entry_points={
+            'sqlalchemy.plugins': [
+                'myplugin = myapp.plugins:MyPlugin'
+            ]
+
+    A plugin that uses the above names would be invoked from a database
+    URL as in::
+
+        from sqlalchemy import create_engine
+
+        engine = create_engine(
+          "mysql+pymysql://scott:tiger@localhost/test?plugin=myplugin")
+
+    The ``plugin`` argument supports multiple instances, so that a URL
+    may specify multiple plugins; they are loaded in the order stated
+    in the URL::
+
+        engine = create_engine(
+          "mysql+pymysql://scott:tiger@localhost/"
+          "test?plugin=plugin_one&plugin=plugin_twp&plugin=plugin_three")
+
+    A plugin can receive additional arguments from the URL string as
+    well as from the keyword arguments passed to :func:`.create_engine`.
+    The :class:`.URL` object and the keyword dictionary are passed to the
+    constructor so that these arguments can be extracted from the url's
+    :attr:`.URL.query` collection as well as from the dictionary::
+
+        class MyPlugin(CreateEnginePlugin):
+            def __init__(self, url, kwargs):
+                self.my_argument_one = url.query.pop('my_argument_one')
+                self.my_argument_two = url.query.pop('my_argument_two')
+                self.my_argument_three = kwargs.pop('my_argument_three', None)
+
+    Arguments like those illustrated above would be consumed from the
+    following::
+
+        from sqlalchemy import create_engine
+
+        engine = create_engine(
+          "mysql+pymysql://scott:tiger@localhost/"
+          "test?plugin=myplugin&my_argument_one=foo&my_argument_two=bar",
+          my_argument_three='bat')
+
+    The URL and dictionary are used for subsequent setup of the engine
+    as they are, so the plugin can modify their arguments in-place.
+    Arguments that are only understood by the plugin should be popped
+    or otherwise removed so that they aren't interpreted as erroneous
+    arguments afterwards.
+
+    When the engine creation process completes and produces the
+    :class:`.Engine` object, it is again passed to the plugin via the
+    :meth:`.CreateEnginePlugin.engine_created` hook.  In this hook, additional
+    changes can be made to the engine, most typically involving setup of
+    events (e.g. those defined in :ref:`core_event_toplevel`).
+
+    .. versionadded:: 1.1
+
+    """
+    def __init__(self, url, kwargs):
+        """Contruct a new :class:`.CreateEnginePlugin`.
+
+        The plugin object is instantiated individually for each call
+        to :func:`.create_engine`.  A single :class:`.Engine` will be
+        passed to the :meth:`.CreateEnginePlugin.engine_created` method
+        corresponding to this URL.
+
+        :param url: the :class:`.URL` object.  The plugin should inspect
+         what it needs here as well as remove its custom arguments from the
+         :attr:`.URL.query` collection.  The URL can be modified in-place
+         in any other way as well.
+        :param kwargs: The keyword arguments passed to :func`.create_engine`.
+         The plugin can read and modify this dictionary in-place, to affect
+         the ultimate arguments used to create the engine.  It should
+         remove its custom arguments from the dictionary as well.
+
+        """
+        self.url = url
+
+    def engine_created(self, engine):
+        """Receive the :class:`.Engine` object when it is fully constructed.
+
+        The plugin may make additional changes to the engine, such as
+        registering engine or connection pool events.
+
+        """
+
 
 class ExecutionContext(object):
     """A messenger object for a Dialect that corresponds to a single
@@ -1083,5 +1235,23 @@ class ExceptionContext(object):
     assigning to this flag, a "disconnect" event which then results in
     a connection and pool invalidation can be invoked or prevented by
     changing this flag.
+
+    """
+
+    invalidate_pool_on_disconnect = True
+    """Represent whether all connections in the pool should be invalidated
+    when a "disconnect" condition is in effect.
+
+    Setting this flag to False within the scope of the
+    :meth:`.ConnectionEvents.handle_error` event will have the effect such
+    that the full collection of connections in the pool will not be
+    invalidated during a disconnect; only the current connection that is the
+    subject of the error will actually be invalidated.
+
+    The purpose of this flag is for custom disconnect-handling schemes where
+    the invalidation of other connections in the pool is to be performed
+    based on other conditions, or even on a per-connection basis.
+
+    .. versionadded:: 1.0.3
 
     """

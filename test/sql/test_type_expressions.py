@@ -53,19 +53,20 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         table = self._fixture()
 
         compiled = select([table]).apply_labels().compile()
-        assert table.c.y in compiled.result_map['test_table_y'][1]
-        assert table.c.x in compiled.result_map['test_table_x'][1]
+        assert table.c.y in compiled._create_result_map()['test_table_y'][1]
+        assert table.c.x in compiled._create_result_map()['test_table_x'][1]
 
         # the lower() function goes into the result_map, we don't really
         # need this but it's fine
         self.assert_compile(
-            compiled.result_map['test_table_y'][1][2],
+            compiled._create_result_map()['test_table_y'][1][3],
             "lower(test_table.y)"
         )
         # then the original column gets put in there as well.
-        # it's not important that it's the last value.
+        # as of 1.1 it's important that it is first as this is
+        # taken as significant by the result processor.
         self.assert_compile(
-            compiled.result_map['test_table_y'][1][-1],
+            compiled._create_result_map()['test_table_y'][1][0],
             "test_table.y"
         )
 

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import create_session, relationship, mapper, \
     contains_eager, joinedload, subqueryload, subqueryload_all,\
-    Session, aliased, with_polymorphic
+    Session, aliased, with_polymorphic, joinedload_all
 
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.engine import default
@@ -571,20 +571,20 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         # test that the splicing of the join works here, doesn't break in
         # the middle of "parent join child1"
         q = sess.query(Child1).options(joinedload('left_child2'))
-        self.assert_compile(q.limit(1).with_labels().statement,
-            "SELECT anon_1.child1_id AS anon_1_child1_id, anon_1.parent_id "
-            "AS anon_1_parent_id, anon_1.parent_cls AS anon_1_parent_cls, "
-            "child2_1.id AS child2_1_id, parent_1.id AS "
-            "parent_1_id, parent_1.cls AS parent_1_cls FROM "
-            "(SELECT child1.id AS child1_id, parent.id AS parent_id, "
-            "parent.cls AS parent_cls "
+        self.assert_compile(
+            q.limit(1).with_labels().statement,
+            "SELECT child1.id AS child1_id, parent.id AS parent_id, "
+            "parent.cls AS parent_cls, child2_1.id AS child2_1_id, "
+            "parent_1.id AS parent_1_id, parent_1.cls AS parent_1_cls "
             "FROM parent JOIN child1 ON parent.id = child1.id "
-            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN "
-            "(secondary AS secondary_1 JOIN "
+            "LEFT OUTER JOIN (secondary AS secondary_1 JOIN "
             "(parent AS parent_1 JOIN child2 AS child2_1 "
-            "ON parent_1.id = child2_1.id) ON parent_1.id = secondary_1.left_id) "
-            "ON anon_1.parent_id = secondary_1.right_id",
-            {'param_1':1})
+            "ON parent_1.id = child2_1.id) "
+            "ON parent_1.id = secondary_1.left_id) "
+            "ON parent.id = secondary_1.right_id "
+            "LIMIT :param_1",
+            checkparams={'param_1': 1}
+        )
 
         # another way to check
         assert q.limit(1).with_labels().subquery().count().scalar() == 1
@@ -1360,6 +1360,276 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "JOIN ep2 ON anon_1.base2_id = ep2.base2_id"
         )
 
+
+class JoinedloadSinglePolysubSingle(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsCompiledSQL):
+    """exercise issue #3611, using the test from dupe issue 3614"""
+
+    run_define_tables = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+
+        class UserRole(Base):
+            __tablename__ = 'user_roles'
+
+            id = Column(Integer, primary_key=True)
+
+            row_type = Column(String(50), nullable=False)
+            __mapper_args__ = {'polymorphic_on': row_type}
+
+            user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+            user = relationship('User', lazy=False)
+
+        class Admin(UserRole):
+            __tablename__ = 'admins'
+            __mapper_args__ = {'polymorphic_identity': 'admin'}
+
+            id = Column(Integer, ForeignKey('user_roles.id'), primary_key=True)
+
+        class Thing(Base):
+            __tablename__ = 'things'
+
+            id = Column(Integer, primary_key=True)
+
+            admin_id = Column(Integer, ForeignKey('admins.id'))
+            admin = relationship('Admin', lazy=False)
+
+    def test_query(self):
+        Thing = self.classes.Thing
+        sess = Session()
+        self.assert_compile(
+            sess.query(Thing),
+            "SELECT things.id AS things_id, "
+            "things.admin_id AS things_admin_id, "
+            "users_1.id AS users_1_id, admins_1.id AS admins_1_id, "
+            "user_roles_1.id AS user_roles_1_id, "
+            "user_roles_1.row_type AS user_roles_1_row_type, "
+            "user_roles_1.user_id AS user_roles_1_user_id FROM things "
+            "LEFT OUTER JOIN (user_roles AS user_roles_1 JOIN admins "
+            "AS admins_1 ON user_roles_1.id = admins_1.id) ON "
+            "admins_1.id = things.admin_id "
+            "LEFT OUTER JOIN users AS "
+            "users_1 ON users_1.id = user_roles_1.user_id"
+        )
+
+
+class JoinedloadOverWPolyAliased(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsCompiledSQL):
+    """exercise issues in #3593 and #3611"""
+
+    run_setup_mappers = 'each'
+    run_setup_classes = 'each'
+    run_define_tables = 'each'
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Owner(Base):
+            __tablename__ = 'owner'
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'with_polymorphic': ('*', None),
+            }
+
+        class SubOwner(Owner):
+            __mapper_args__ = {'polymorphic_identity': 'so'}
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'with_polymorphic': ('*', None),
+            }
+
+        class Sub1(Parent):
+            __mapper_args__ = {'polymorphic_identity': 's1'}
+
+        class Link(Base):
+            __tablename__ = 'link'
+
+            parent_id = Column(
+                Integer, ForeignKey('parent.id'), primary_key=True)
+            child_id = Column(
+                Integer, ForeignKey('parent.id'), primary_key=True)
+
+    def _fixture_from_base(self):
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+        Link.child = relationship(
+            Parent, primaryjoin=Link.child_id == Parent.id)
+
+        Parent.links = relationship(
+            Link,
+            primaryjoin=Parent.id == Link.parent_id,
+        )
+        return Parent
+
+    def _fixture_from_subclass(self):
+        Sub1 = self.classes.Sub1
+        Link = self.classes.Link
+        Parent = self.classes.Parent
+        Link.child = relationship(
+            Parent, primaryjoin=Link.child_id == Parent.id)
+
+        Sub1.links = relationship(
+            Link,
+            primaryjoin=Sub1.id == Link.parent_id,
+        )
+        return Sub1
+
+    def _fixture_to_subclass_to_base(self):
+        Owner = self.classes.Owner
+        Parent = self.classes.Parent
+        Sub1 = self.classes.Sub1
+        Link = self.classes.Link
+
+        # Link -> Sub1 -> Owner
+
+        Link.child = relationship(
+            Sub1, primaryjoin=Link.child_id == Sub1.id)
+
+        Parent.owner_id = Column(ForeignKey('owner.id'))
+
+        Parent.owner = relationship(Owner)
+        return Parent
+
+    def _fixture_to_base_to_base(self):
+        Owner = self.classes.Owner
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+
+        # Link -> Parent -> Owner
+
+        Link.child = relationship(
+            Parent, primaryjoin=Link.child_id == Parent.id)
+
+        Parent.owner_id = Column(ForeignKey('owner.id'))
+
+        Parent.owner = relationship(Owner)
+        return Parent
+
+    def test_from_base(self):
+        self._test_poly_single_poly(self._fixture_from_base)
+
+    def test_from_sub(self):
+        self._test_poly_single_poly(self._fixture_from_subclass)
+
+    def test_to_sub_to_base(self):
+        self._test_single_poly_poly(self._fixture_to_subclass_to_base)
+
+    def test_to_base_to_base(self):
+        self._test_single_poly_poly(self._fixture_to_base_to_base)
+
+    def _test_poly_single_poly(self, fn):
+        cls = fn()
+        Link = self.classes.Link
+
+        session = Session()
+        q = session.query(cls).options(
+            joinedload_all(
+                cls.links,
+                Link.child,
+                cls.links
+            )
+        )
+        if cls is self.classes.Sub1:
+            extra = " WHERE parent.type IN (:type_1)"
+        else:
+            extra = ""
+
+        self.assert_compile(
+            q,
+            "SELECT parent.id AS parent_id, parent.type AS parent_type, "
+            "link_1.parent_id AS link_1_parent_id, "
+            "link_1.child_id AS link_1_child_id, "
+            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
+            "link_2.parent_id AS link_2_parent_id, "
+            "link_2.child_id AS link_2_child_id "
+            "FROM parent "
+            "LEFT OUTER JOIN link AS link_1 ON parent.id = link_1.parent_id "
+            "LEFT OUTER JOIN parent "
+            "AS parent_1 ON link_1.child_id = parent_1.id "
+            "LEFT OUTER JOIN link AS link_2 "
+            "ON parent_1.id = link_2.parent_id" + extra
+        )
+
+    def _test_single_poly_poly(self, fn):
+        parent_cls = fn()
+        Link = self.classes.Link
+
+        session = Session()
+        q = session.query(Link).options(
+            joinedload_all(
+                Link.child,
+                parent_cls.owner
+            )
+        )
+
+        if Link.child.property.mapper.class_ is self.classes.Sub1:
+            extra = "AND parent_1.type IN (:type_1) "
+        else:
+            extra = ""
+
+        self.assert_compile(
+            q,
+            "SELECT link.parent_id AS link_parent_id, "
+            "link.child_id AS link_child_id, parent_1.id AS parent_1_id, "
+            "parent_1.type AS parent_1_type, "
+            "parent_1.owner_id AS parent_1_owner_id, "
+            "owner_1.id AS owner_1_id, owner_1.type AS owner_1_type "
+            "FROM link LEFT OUTER JOIN parent AS parent_1 "
+            "ON link.child_id = parent_1.id "  + extra +
+            "LEFT OUTER JOIN owner AS owner_1 "
+            "ON owner_1.id = parent_1.owner_id"
+        )
+
+    def test_local_wpoly(self):
+        Sub1 = self._fixture_from_subclass()
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+
+        poly = with_polymorphic(Parent, [Sub1])
+
+        session = Session()
+        q = session.query(poly).options(
+            joinedload(poly.Sub1.links).
+            joinedload(Link.child.of_type(Sub1)).
+            joinedload(poly.Sub1.links)
+        )
+        self.assert_compile(
+            q,
+            "SELECT parent.id AS parent_id, parent.type AS parent_type, "
+            "link_1.parent_id AS link_1_parent_id, "
+            "link_1.child_id AS link_1_child_id, "
+            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
+            "link_2.parent_id AS link_2_parent_id, "
+            "link_2.child_id AS link_2_child_id FROM parent "
+            "LEFT OUTER JOIN link AS link_1 ON parent.id = link_1.parent_id "
+            "LEFT OUTER JOIN parent AS parent_1 "
+            "ON link_1.child_id = parent_1.id "
+            "LEFT OUTER JOIN link AS link_2 ON parent_1.id = link_2.parent_id"
+        )
+
+
 class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
                                         testing.AssertsCompiledSQL):
     """test long join paths with a joined-inh in the middle, where we go multiple
@@ -1564,12 +1834,9 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
 
         bname, cname, dname = q._entities
 
-        b_name_adapted = bname._resolve_expr_against_query_aliases(
-                                        q, bname.column, None)
-        c_name_adapted = cname._resolve_expr_against_query_aliases(
-                                        q, cname.column, None)
-        d_name_adapted = dname._resolve_expr_against_query_aliases(
-                                        q, dname.column, None)
+        b_name_adapted = q._adapt_clause(bname.column, False, True)
+        c_name_adapted = q._adapt_clause(cname.column, False, True)
+        d_name_adapted = q._adapt_clause(dname.column, False, True)
 
         assert bool(b_name_adapted == a.c.name)
         assert bool(c_name_adapted == ac_adapted.c.name)

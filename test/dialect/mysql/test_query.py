@@ -2,11 +2,11 @@
 
 from sqlalchemy.testing import eq_, is_
 from sqlalchemy import *
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 
 
-class IdiosyncrasyTest(fixtures.TestBase, AssertsCompiledSQL):
+class IdiosyncrasyTest(fixtures.TestBase):
     __only_on__ = 'mysql'
     __backend__ = True
 
@@ -28,7 +28,7 @@ class IdiosyncrasyTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TestBase):
     __only_on__ = 'mysql'
     __backend__ = True
 
@@ -75,25 +75,6 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
-
-    @testing.fails_on('mysql+mysqlconnector', 'uses pyformat')
-    def test_expression_format(self):
-        format = testing.db.dialect.paramstyle == 'format' and '%s' or '?'
-        self.assert_compile(
-            matchtable.c.title.match('somstr'),
-            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
-
-    @testing.fails_on('mysql+mysqldb', 'uses format')
-    @testing.fails_on('mysql+pymysql', 'uses format')
-    @testing.fails_on('mysql+cymysql', 'uses format')
-    @testing.fails_on('mysql+oursql', 'uses format')
-    @testing.fails_on('mysql+pyodbc', 'uses format')
-    @testing.fails_on('mysql+zxjdbc', 'uses format')
-    def test_expression_pyformat(self):
-        format = '%(title_1)s'
-        self.assert_compile(
-            matchtable.c.title.match('somstr'),
-            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
 
     def test_simple_match(self):
         results = (matchtable.select().
@@ -176,4 +157,58 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                    fetchall())
         eq_([1, 3, 5], [r.id for r in results])
 
+
+class AnyAllTest(fixtures.TablesTest):
+    __only_on__ = 'mysql'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'stuff', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', Integer)
+        )
+
+    @classmethod
+    def insert_data(cls):
+        stuff = cls.tables.stuff
+        testing.db.execute(
+            stuff.insert(),
+            [
+                {'id': 1, 'value': 1},
+                {'id': 2, 'value': 2},
+                {'id': 3, 'value': 3},
+                {'id': 4, 'value': 4},
+                {'id': 5, 'value': 5},
+            ]
+        )
+
+    def test_any_w_comparator(self):
+        stuff = self.tables.stuff
+        stmt = select([stuff.c.id]).where(
+            stuff.c.value > any_(select([stuff.c.value])))
+
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [(2,), (3,), (4,), (5,)]
+        )
+
+    def test_all_w_comparator(self):
+        stuff = self.tables.stuff
+        stmt = select([stuff.c.id]).where(
+            stuff.c.value >= all_(select([stuff.c.value])))
+
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [(5,)]
+        )
+
+    def test_any_literal(self):
+        stuff = self.tables.stuff
+        stmt = select([4 == any_(select([stuff.c.value]))])
+
+        is_(
+            testing.db.execute(stmt).scalar(), True
+        )
 

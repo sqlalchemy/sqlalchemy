@@ -40,6 +40,15 @@ class ComponentReflectionTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
+    def setup_bind(cls):
+        if config.requirements.independent_connections.enabled:
+            from sqlalchemy import pool
+            return engines.testing_engine(
+                options=dict(poolclass=pool.StaticPool))
+        else:
+            return config.db
+
+    @classmethod
     def define_tables(cls, metadata):
         cls.define_reflected_tables(metadata, None)
         if testing.requires.schemas.enabled:
@@ -202,7 +211,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.requires.temp_table_names
     def test_get_temp_table_names(self):
-        insp = inspect(testing.db)
+        insp = inspect(self.bind)
         temp_table_names = insp.get_temp_table_names()
         eq_(sorted(temp_table_names), ['user_tmp'])
 
@@ -210,7 +219,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.temp_table_names
     @testing.requires.temporary_views
     def test_get_temp_view_names(self):
-        insp = inspect(self.metadata.bind)
+        insp = inspect(self.bind)
         temp_table_names = insp.get_temp_view_names()
         eq_(sorted(temp_table_names), ['user_tmp_v'])
 
@@ -348,7 +357,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.requires.temp_table_reflection
     def test_get_temp_table_columns(self):
-        meta = MetaData(testing.db)
+        meta = MetaData(self.bind)
         user_tmp = self.tables.user_tmp
         insp = inspect(meta.bind)
         cols = insp.get_columns('user_tmp')
@@ -361,7 +370,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.view_column_reflection
     @testing.requires.temporary_views
     def test_get_temp_view_columns(self):
-        insp = inspect(self.metadata.bind)
+        insp = inspect(self.bind)
         cols = insp.get_columns('user_tmp_v')
         eq_(
             [col['name'] for col in cols],
@@ -503,7 +512,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.temp_table_reflection
     @testing.requires.unique_constraint_reflection
     def test_get_temp_table_unique_constraints(self):
-        insp = inspect(self.metadata.bind)
+        insp = inspect(self.bind)
         reflected = insp.get_unique_constraints('user_tmp')
         for refl in reflected:
             # Different dialects handle duplicate index and constraints
@@ -513,7 +522,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.requires.temp_table_reflection
     def test_get_temp_table_indexes(self):
-        insp = inspect(self.metadata.bind)
+        insp = inspect(self.bind)
         indexes = insp.get_indexes('user_tmp')
         for ind in indexes:
             ind.pop('dialect_options', None)
@@ -531,12 +540,20 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.provide_metadata
     def _test_get_unique_constraints(self, schema=None):
+        # SQLite dialect needs to parse the names of the constraints
+        # separately from what it gets from PRAGMA index_list(), and
+        # then matches them up.  so same set of column_names in two
+        # constraints will confuse it.    Perhaps we should no longer
+        # bother with index_list() here since we have the whole
+        # CREATE TABLE?
         uniques = sorted(
             [
                 {'name': 'unique_a', 'column_names': ['a']},
                 {'name': 'unique_a_b_c', 'column_names': ['a', 'b', 'c']},
                 {'name': 'unique_c_a_b', 'column_names': ['c', 'a', 'b']},
                 {'name': 'unique_asc_key', 'column_names': ['asc', 'key']},
+                {'name': 'i.have.dots', 'column_names': ['b']},
+                {'name': 'i have spaces', 'column_names': ['c']},
             ],
             key=operator.itemgetter('name')
         )

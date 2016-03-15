@@ -12,7 +12,7 @@ import collections
 import itertools
 
 try:
-    import xdist
+    import xdist  # noqa
     has_xdist = True
 except ImportError:
     has_xdist = False
@@ -48,12 +48,18 @@ def pytest_configure(config):
     plugin_base.set_coverage_flag(bool(getattr(config.option,
                                                "cov_source", False)))
 
+    plugin_base.set_skip_test(pytest.skip.Exception)
+
 
 def pytest_sessionstart(session):
     plugin_base.post_begin()
 
+
+def pytest_sessionfinish(session):
+    plugin_base.final_process_cleanup()
+
 if has_xdist:
-    _follower_count = itertools.count(1)
+    import uuid
 
     def pytest_configure_node(node):
         # the master for each node fills slaveinput dictionary
@@ -61,7 +67,7 @@ if has_xdist:
 
         plugin_base.memoize_important_follower_config(node.slaveinput)
 
-        node.slaveinput["follower_ident"] = "test_%s" % next(_follower_count)
+        node.slaveinput["follower_ident"] = "test_%s" % uuid.uuid4().hex[0:12]
         from sqlalchemy.testing import provision
         provision.create_follower_db(node.slaveinput["follower_ident"])
 
@@ -126,6 +132,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
         return []
 
 _current_class = None
+
 
 def pytest_runtest_setup(item):
     # here we seem to get called only based on what we collected

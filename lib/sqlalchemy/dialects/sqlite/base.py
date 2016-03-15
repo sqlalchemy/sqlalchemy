@@ -1,5 +1,5 @@
 # sqlite/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -45,14 +45,20 @@ SQLite Auto Incrementing Behavior
 
 Background on SQLite's autoincrement is at: http://sqlite.org/autoinc.html
 
-Two things to note:
+Key concepts:
 
-* The AUTOINCREMENT keyword is **not** required for SQLite tables to
-  generate primary key values automatically. AUTOINCREMENT only means that the
-  algorithm used to generate ROWID values should be slightly different.
-* SQLite does **not** generate primary key (i.e. ROWID) values, even for
-  one column, if the table has a composite (i.e. multi-column) primary key.
-  This is regardless of the AUTOINCREMENT keyword being present or not.
+* SQLite has an implicit "auto increment" feature that takes place for any
+  non-composite primary-key column that is specifically created using
+  "INTEGER PRIMARY KEY" for the type + primary key.
+
+* SQLite also has an explicit "AUTOINCREMENT" keyword, that is **not**
+  equivalent to the implicit autoincrement feature; this keyword is not
+  recommended for general use.  SQLAlchemy does not render this keyword
+  unless a special SQLite-specific directive is used (see below).  However,
+  it still requires that the column's type is named "INTEGER".
+
+Using the AUTOINCREMENT Keyword
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To specifically render the AUTOINCREMENT keyword on the primary key column
 when rendering DDL, add the flag ``sqlite_autoincrement=True`` to the Table
@@ -62,6 +68,60 @@ construct::
             Column('id', Integer, primary_key=True),
             sqlite_autoincrement=True)
 
+Allowing autoincrement behavior SQLAlchemy types other than Integer/INTEGER
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLite's typing model is based on naming conventions.  Among
+other things, this means that any type name which contains the
+substring ``"INT"`` will be determined to be of "integer affinity".  A
+type named ``"BIGINT"``, ``"SPECIAL_INT"`` or even ``"XYZINTQPR"``, will be considered by
+SQLite to be of "integer" affinity.  However, **the SQLite
+autoincrement feature, whether implicitly or explicitly enabled,
+requires that the name of the column's type
+is exactly the string "INTEGER"**.  Therefore, if an
+application uses a type like :class:`.BigInteger` for a primary key, on
+SQLite this type will need to be rendered as the name ``"INTEGER"`` when
+emitting the initial ``CREATE TABLE`` statement in order for the autoincrement
+behavior to be available.
+
+One approach to achieve this is to use :class:`.Integer` on SQLite
+only using :meth:`.TypeEngine.with_variant`::
+
+    table = Table(
+        "my_table", metadata,
+        Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+    )
+
+Another is to use a subclass of :class:`.BigInteger` that overrides its DDL name
+to be ``INTEGER`` when compiled against SQLite::
+
+    from sqlalchemy import BigInteger
+    from sqlalchemy.ext.compiler import compiles
+
+    class SLBigInteger(BigInteger):
+        pass
+
+    @compiles(SLBigInteger, 'sqlite')
+    def bi_c(element, compiler, **kw):
+        return "INTEGER"
+
+    @compiles(SLBigInteger)
+    def bi_c(element, compiler, **kw):
+        return compiler.visit_BIGINT(element, **kw)
+
+
+    table = Table(
+        "my_table", metadata,
+        Column("id", SLBigInteger(), primary_key=True)
+    )
+
+.. seealso::
+
+    :meth:`.TypeEngine.with_variant`
+
+    :ref:`sqlalchemy.ext.compiler_toplevel`
+
+    `Datatypes In SQLite Version 3 <http://sqlite.org/datatype3.html>`_
 
 .. _sqlite_concurrency:
 
@@ -271,6 +331,137 @@ lookup is used instead:
 
 .. versionadded:: 0.9.3 Support for SQLite type affinity rules when reflecting
    columns.
+
+
+.. _sqlite_partial_index:
+
+Partial Indexes
+---------------
+
+A partial index, e.g. one which uses a WHERE clause, can be specified
+with the DDL system using the argument ``sqlite_where``::
+
+    tbl = Table('testtbl', m, Column('data', Integer))
+    idx = Index('test_idx1', tbl.c.data,
+                sqlite_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+
+The index will be rendered at create time as::
+
+    CREATE INDEX test_idx1 ON testtbl (data)
+    WHERE data > 5 AND data < 10
+
+.. versionadded:: 0.9.9
+
+.. _sqlite_dotted_column_names:
+
+Dotted Column Names
+-------------------
+
+Using table or column names that explicitly have periods in them is
+**not recommended**.   While this is generally a bad idea for relational
+databases in general, as the dot is a syntactically significant character,
+the SQLite driver up until version **3.10.0** of SQLite has a bug which
+requires that SQLAlchemy filter out these dots in result sets.
+
+.. versionchanged:: 1.1
+
+    The following SQLite issue has been resolved as of version 3.10.0
+    of SQLite.  SQLAlchemy as of **1.1** automatically disables its internal
+    workarounds based on detection of this version.
+
+The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
+
+    import sqlite3
+
+    assert sqlite3.sqlite_version_info < (3, 10, 0), "bug is fixed in this version"
+
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+
+    cursor.execute("create table x (a integer, b integer)")
+    cursor.execute("insert into x (a, b) values (1, 1)")
+    cursor.execute("insert into x (a, b) values (2, 2)")
+
+    cursor.execute("select x.a, x.b from x")
+    assert [c[0] for c in cursor.description] == ['a', 'b']
+
+    cursor.execute('''
+        select x.a, x.b from x where a=1
+        union
+        select x.a, x.b from x where a=2
+    ''')
+    assert [c[0] for c in cursor.description] == ['a', 'b'], \\
+        [c[0] for c in cursor.description]
+
+The second assertion fails::
+
+    Traceback (most recent call last):
+      File "test.py", line 19, in <module>
+        [c[0] for c in cursor.description]
+    AssertionError: ['x.a', 'x.b']
+
+Where above, the driver incorrectly reports the names of the columns
+including the name of the table, which is entirely inconsistent vs.
+when the UNION is not present.
+
+SQLAlchemy relies upon column names being predictable in how they match
+to the original statement, so the SQLAlchemy dialect has no choice but
+to filter these out::
+
+
+    from sqlalchemy import create_engine
+
+    eng = create_engine("sqlite://")
+    conn = eng.connect()
+
+    conn.execute("create table x (a integer, b integer)")
+    conn.execute("insert into x (a, b) values (1, 1)")
+    conn.execute("insert into x (a, b) values (2, 2)")
+
+    result = conn.execute("select x.a, x.b from x")
+    assert result.keys() == ["a", "b"]
+
+    result = conn.execute('''
+        select x.a, x.b from x where a=1
+        union
+        select x.a, x.b from x where a=2
+    ''')
+    assert result.keys() == ["a", "b"]
+
+Note that above, even though SQLAlchemy filters out the dots, *both
+names are still addressable*::
+
+    >>> row = result.first()
+    >>> row["a"]
+    1
+    >>> row["x.a"]
+    1
+    >>> row["b"]
+    1
+    >>> row["x.b"]
+    1
+
+Therefore, the workaround applied by SQLAlchemy only impacts
+:meth:`.ResultProxy.keys` and :meth:`.RowProxy.keys()` in the public API.
+In the very specific case where
+an application is forced to use column names that contain dots, and the
+functionality of :meth:`.ResultProxy.keys` and :meth:`.RowProxy.keys()`
+is required to return these dotted names unmodified, the ``sqlite_raw_colnames``
+execution option may be provided, either on a per-:class:`.Connection` basis::
+
+    result = conn.execution_options(sqlite_raw_colnames=True).execute('''
+        select x.a, x.b from x where a=1
+        union
+        select x.a, x.b from x where a=2
+    ''')
+    assert result.keys() == ["x.a", "x.b"]
+
+or on a per-:class:`.Engine` basis::
+
+    engine = create_engine("sqlite://", execution_options={"sqlite_raw_colnames": True})
+
+When using the per-:class:`.Engine` execution option, note that
+**Core and ORM queries that use UNION may not function properly**.
 
 """
 
@@ -672,12 +863,20 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec += " NOT NULL"
 
-        if (column.primary_key and
-                column.table.dialect_options['sqlite']['autoincrement'] and
-                len(column.table.primary_key.columns) == 1 and
-                issubclass(column.type._type_affinity, sqltypes.Integer) and
-                not column.foreign_keys):
-            colspec += " PRIMARY KEY AUTOINCREMENT"
+        if column.primary_key:
+            if (
+                column.autoincrement is True and
+                len(column.table.primary_key.columns) != 1
+            ):
+                raise exc.CompileError(
+                    "SQLite does not support autoincrement for "
+                    "composite primary keys")
+
+            if (column.table.dialect_options['sqlite']['autoincrement'] and
+                    len(column.table.primary_key.columns) == 1 and
+                    issubclass(column.type._type_affinity, sqltypes.Integer) and
+                    not column.foreign_keys):
+                colspec += " PRIMARY KEY AUTOINCREMENT"
 
         return colspec
 
@@ -713,9 +912,34 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return preparer.format_table(table, use_schema=False)
 
-    def visit_create_index(self, create):
-        return super(SQLiteDDLCompiler, self).visit_create_index(
-            create, include_table_schema=False)
+    def visit_create_index(self, create, include_schema=False,
+                           include_table_schema=True):
+        index = create.element
+        self._verify_index_table(index)
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        text += "INDEX %s ON %s (%s)" \
+            % (
+                self._prepared_index_name(index,
+                                          include_schema=True),
+                preparer.format_table(index.table,
+                                      use_schema=False),
+                ', '.join(
+                    self.sql_compiler.process(
+                        expr, include_table=False, literal_binds=True) for
+                    expr in index.expressions)
+            )
+
+        whereclause = index.dialect_options["sqlite"]["where"]
+        if whereclause is not None:
+            where_compiled = self.sql_compiler.process(
+                whereclause, include_table=False,
+                literal_binds=True)
+            text += " WHERE " + where_compiled
+
+        return text
 
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
@@ -783,9 +1007,13 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     @util.memoized_property
     def _preserve_raw_colnames(self):
-        return self.execution_options.get("sqlite_raw_colnames", False)
+        return not self.dialect._broken_dotted_colnames or \
+            self.execution_options.get("sqlite_raw_colnames", False)
 
     def _translate_colname(self, colname):
+        # TODO: detect SQLite version 3.10.0 or greater;
+        # see [ticket:3633]
+
         # adjust for dotted column names.  SQLite
         # in the case of UNION may store col names as
         # "tablename.colname", or if using an attached database,
@@ -805,7 +1033,6 @@ class SQLiteDialect(default.DefaultDialect):
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True
-    supports_right_nested_joins = False
 
     default_paramstyle = 'qmark'
     execution_ctx_cls = SQLiteExecutionContext
@@ -823,10 +1050,14 @@ class SQLiteDialect(default.DefaultDialect):
     construct_arguments = [
         (sa_schema.Table, {
             "autoincrement": False
-        })
+        }),
+        (sa_schema.Index, {
+            "where": None,
+        }),
     ]
 
     _broken_fk_pragma_quotes = False
+    _broken_dotted_colnames = False
 
     def __init__(self, isolation_level=None, native_datetime=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -839,6 +1070,11 @@ class SQLiteDialect(default.DefaultDialect):
         self.native_datetime = native_datetime
 
         if self.dbapi is not None:
+            self.supports_right_nested_joins = (
+                self.dbapi.sqlite_version_info >= (3, 7, 16))
+            self._broken_dotted_colnames = (
+                self.dbapi.sqlite_version_info < (3, 10, 0)
+            )
             self.supports_default_values = (
                 self.dbapi.sqlite_version_info >= (3, 3, 8))
             self.supports_cast = (
@@ -898,6 +1134,13 @@ class SQLiteDialect(default.DefaultDialect):
             return connect
         else:
             return None
+
+    @reflection.cache
+    def get_schema_names(self, connection, **kw):
+        s = "PRAGMA database_list"
+        dl = connection.execute(s)
+
+        return [db[1] for db in dl if db[1] != "temp"]
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
@@ -995,7 +1238,7 @@ class SQLiteDialect(default.DefaultDialect):
             'type': coltype,
             'nullable': nullable,
             'default': default,
-            'autoincrement': default is None,
+            'autoincrement': 'auto',
             'primary_key': primary_key,
         }
 
@@ -1088,7 +1331,7 @@ class SQLiteDialect(default.DefaultDialect):
                 fk = fks[numerical_id] = {
                     'name': None,
                     'constrained_columns': [],
-                    'referred_schema': None,
+                    'referred_schema': schema,
                     'referred_table': rtbl,
                     'referred_columns': [],
                 }
@@ -1192,7 +1435,7 @@ class SQLiteDialect(default.DefaultDialect):
         unique_constraints = []
 
         def parse_uqs():
-            UNIQUE_PATTERN = '(?:CONSTRAINT (\w+) +)?UNIQUE *\((.+?)\)'
+            UNIQUE_PATTERN = '(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
                 '(?:(".+?")|([a-z0-9]+)) '
                 '+[a-z0-9_ ]+? +UNIQUE')
@@ -1271,7 +1514,7 @@ class SQLiteDialect(default.DefaultDialect):
         qtable = quote(table_name)
         statement = "%s%s(%s)" % (statement, pragma, qtable)
         cursor = connection.execute(statement)
-        if not cursor.closed:
+        if not cursor._soft_closed:
             # work around SQLite issue whereby cursor.description
             # is blank when PRAGMA returns no rows:
             # http://www.sqlite.org/cvstrac/tktview?tn=1884

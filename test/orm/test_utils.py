@@ -222,6 +222,56 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE point_1.x > point.x"
         )
 
+    def test_parententity_vs_parentmapper(self):
+        class Point(object):
+            pass
+
+        self._fixture(Point, properties={
+            'x_syn': synonym("x")
+        })
+        pa = aliased(Point)
+
+        is_(Point.x_syn._parententity, inspect(Point))
+        is_(Point.x._parententity, inspect(Point))
+        is_(Point.x_syn._parentmapper, inspect(Point))
+        is_(Point.x._parentmapper, inspect(Point))
+
+        is_(
+            Point.x_syn.__clause_element__()._annotations['parententity'],
+            inspect(Point))
+        is_(
+            Point.x.__clause_element__()._annotations['parententity'],
+            inspect(Point))
+        is_(
+            Point.x_syn.__clause_element__()._annotations['parentmapper'],
+            inspect(Point))
+        is_(
+            Point.x.__clause_element__()._annotations['parentmapper'],
+            inspect(Point))
+
+        pa = aliased(Point)
+
+        is_(pa.x_syn._parententity, inspect(pa))
+        is_(pa.x._parententity, inspect(pa))
+        is_(pa.x_syn._parentmapper, inspect(Point))
+        is_(pa.x._parentmapper, inspect(Point))
+
+        is_(
+            pa.x_syn.__clause_element__()._annotations['parententity'],
+            inspect(pa)
+        )
+        is_(
+            pa.x.__clause_element__()._annotations['parententity'],
+            inspect(pa)
+        )
+        is_(
+            pa.x_syn.__clause_element__()._annotations['parentmapper'],
+            inspect(Point))
+        is_(
+            pa.x.__clause_element__()._annotations['parentmapper'],
+            inspect(Point))
+
+
 class IdentityKeyTest(_fixtures.FixtureTest):
     run_inserts = None
 

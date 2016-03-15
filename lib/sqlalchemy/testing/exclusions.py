@@ -1,5 +1,5 @@
 # testing/exclusions.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,12 +7,12 @@
 
 
 import operator
-from .plugin.plugin_base import SkipTest
 from ..util import decorator
 from . import config
 from .. import util
 import inspect
 import contextlib
+from sqlalchemy.util.compat import inspect_getargspec
 
 
 def skip_if(predicate, reason=None):
@@ -116,7 +116,7 @@ class compound(object):
                     fn.__name__,
                     skip._as_string(config)
                 )
-                raise SkipTest(msg)
+                config.skip_test(msg)
 
         try:
             return_value = fn(*args, **kw)
@@ -296,7 +296,7 @@ class SpecPredicate(Predicate):
 
 class LambdaPredicate(Predicate):
     def __init__(self, lambda_, description=None, args=None, kw=None):
-        spec = inspect.getargspec(lambda_)
+        spec = inspect_getargspec(lambda_)
         if not spec[0]:
             self.lambda_ = lambda db: lambda_()
         else:
@@ -398,8 +398,8 @@ def closed():
     return skip_if(BooleanPredicate(True, "marked as skip"))
 
 
-def fails():
-    return fails_if(BooleanPredicate(True, "expected to fail"))
+def fails(reason=None):
+    return fails_if(BooleanPredicate(True, reason or "expected to fail"))
 
 
 @decorator
@@ -408,19 +408,19 @@ def future(fn, *arg):
 
 
 def fails_on(db, reason=None):
-    return fails_if(SpecPredicate(db), reason)
+    return fails_if(Predicate.as_predicate(db), reason)
 
 
 def fails_on_everything_except(*dbs):
     return succeeds_if(
         OrPredicate([
-            SpecPredicate(db) for db in dbs
+            Predicate.as_predicate(db) for db in dbs
         ])
     )
 
 
 def skip(db, reason=None):
-    return skip_if(SpecPredicate(db), reason)
+    return skip_if(Predicate.as_predicate(db), reason)
 
 
 def only_on(dbs, reason=None):

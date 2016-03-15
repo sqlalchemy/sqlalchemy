@@ -1,5 +1,5 @@
 # sql/util.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,7 +16,8 @@ from itertools import chain
 from collections import deque
 
 from .elements import BindParameter, ColumnClause, ColumnElement, \
-    Null, UnaryExpression, literal_column, Label, _label_reference
+    Null, UnaryExpression, literal_column, Label, _label_reference, \
+    _textual_label_reference
 from .selectable import ScalarSelect, Join, FromClause, FromGrouping
 from .schema import Column
 
@@ -153,6 +154,7 @@ def unwrap_order_by(clause):
     without DESC/ASC/NULLS FIRST/NULLS LAST"""
 
     cols = util.column_set()
+    result = []
     stack = deque([clause])
     while stack:
         t = stack.popleft()
@@ -163,11 +165,37 @@ def unwrap_order_by(clause):
         ):
             if isinstance(t, _label_reference):
                 t = t.element
-            cols.add(t)
+            if isinstance(t, (_textual_label_reference)):
+                continue
+            if t not in cols:
+                cols.add(t)
+                result.append(t)
         else:
             for c in t.get_children():
                 stack.append(c)
-    return cols
+    return result
+
+
+def expand_column_list_from_order_by(collist, order_by):
+    """Given the columns clause and ORDER BY of a selectable,
+    return a list of column expressions that can be added to the collist
+    corresponding to the ORDER BY, without repeating those already
+    in the collist.
+
+    """
+    cols_already_present = set([
+        col.element if col._order_by_label_element is not None
+        else col for col in collist
+    ])
+
+    return [
+        col for col in
+        chain(*[
+            unwrap_order_by(o)
+            for o in order_by
+        ])
+        if col not in cols_already_present
+    ]
 
 
 def clause_is_present(clause, search):
@@ -195,6 +223,21 @@ def surface_selectables(clause):
             stack.extend((elem.left, elem.right))
         elif isinstance(elem, FromGrouping):
             stack.append(elem.element)
+
+
+def surface_column_elements(clause):
+    """traverse and yield only outer-exposed column elements, such as would
+    be addressable in the WHERE clause of a SELECT if this element were
+    in the columns clause."""
+
+    stack = deque([clause])
+    while stack:
+        elem = stack.popleft()
+        yield elem
+        for sub in elem.get_children():
+            if isinstance(sub, FromGrouping):
+                continue
+            stack.append(sub)
 
 
 def selectables_overlap(left, right):
@@ -236,28 +279,128 @@ def _quote_ddl_expr(element):
         return repr(element)
 
 
-class _repr_params(object):
-    """A string view of bound parameters, truncating
-    display to the given number of 'multi' parameter sets.
+class _repr_base(object):
+    _LIST = 0
+    _TUPLE = 1
+    _DICT = 2
+
+    __slots__ = 'max_chars',
+
+    def trunc(self, value):
+        rep = repr(value)
+        lenrep = len(rep)
+        if lenrep > self.max_chars:
+            segment_length = self.max_chars // 2
+            rep = (
+                rep[0:segment_length] +
+                (" ... (%d characters truncated) ... "
+                 % (lenrep - self.max_chars)) +
+                rep[-segment_length:]
+            )
+        return rep
+
+
+class _repr_row(_repr_base):
+    """Provide a string view of a row."""
+
+    __slots__ = 'row',
+
+    def __init__(self, row, max_chars=300):
+        self.row = row
+        self.max_chars = max_chars
+
+    def __repr__(self):
+        trunc = self.trunc
+        return "(%s%s)" % (
+            ", ".join(trunc(value) for value in self.row),
+            "," if len(self.row) == 1 else ""
+        )
+
+
+class _repr_params(_repr_base):
+    """Provide a string view of bound parameters.
+
+    Truncates display to a given numnber of 'multi' parameter sets,
+    as well as long values to a given number of characters.
 
     """
 
-    def __init__(self, params, batches):
+    __slots__ = 'params', 'batches',
+
+    def __init__(self, params, batches, max_chars=300):
         self.params = params
         self.batches = batches
+        self.max_chars = max_chars
 
     def __repr__(self):
-        if isinstance(self.params, (list, tuple)) and \
-                len(self.params) > self.batches and \
-                isinstance(self.params[0], (list, dict, tuple)):
+        if isinstance(self.params, list):
+            typ = self._LIST
+            ismulti = self.params and isinstance(
+                self.params[0], (list, dict, tuple))
+        elif isinstance(self.params, tuple):
+            typ = self._TUPLE
+            ismulti = self.params and isinstance(
+                self.params[0], (list, dict, tuple))
+        elif isinstance(self.params, dict):
+            typ = self._DICT
+            ismulti = False
+        else:
+            return self.trunc(self.params)
+
+        if ismulti and len(self.params) > self.batches:
             msg = " ... displaying %i of %i total bound parameter sets ... "
             return ' '.join((
-                repr(self.params[:self.batches - 2])[0:-1],
+                self._repr_multi(self.params[:self.batches - 2], typ)[0:-1],
                 msg % (self.batches, len(self.params)),
-                repr(self.params[-2:])[1:]
+                self._repr_multi(self.params[-2:], typ)[1:]
             ))
+        elif ismulti:
+            return self._repr_multi(self.params, typ)
         else:
-            return repr(self.params)
+            return self._repr_params(self.params, typ)
+
+    def _repr_multi(self, multi_params, typ):
+        if multi_params:
+            if isinstance(multi_params[0], list):
+                elem_type = self._LIST
+            elif isinstance(multi_params[0], tuple):
+                elem_type = self._TUPLE
+            elif isinstance(multi_params[0], dict):
+                elem_type = self._DICT
+            else:
+                assert False, \
+                    "Unknown parameter type %s" % (type(multi_params[0]))
+
+            elements = ", ".join(
+                self._repr_params(params, elem_type)
+                for params in multi_params)
+        else:
+            elements = ""
+
+        if typ == self._LIST:
+            return "[%s]" % elements
+        else:
+            return "(%s)" % elements
+
+    def _repr_params(self, params, typ):
+        trunc = self.trunc
+        if typ is self._DICT:
+            return "{%s}" % (
+                ", ".join(
+                    "%r: %s" % (key, trunc(value))
+                    for key, value in params.items()
+                )
+            )
+        elif typ is self._TUPLE:
+            return "(%s%s)" % (
+                ", ".join(trunc(value) for value in params),
+                "," if len(params) == 1 else ""
+
+            )
+        else:
+            return "[%s]" % (
+                ", ".join(trunc(value) for value in params)
+            )
 
 
 def adapt_criterion_to_null(crit, nulls):
@@ -428,7 +571,6 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
     pairs = []
     visitors.traverse(expression, {}, {'binary': visit_binary})
     return pairs
-
 
 
 class ClauseAdapter(visitors.ReplacingCloningVisitor):

@@ -1,4 +1,4 @@
-from sqlalchemy.testing import eq_, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises_message, eq_regex
 from sqlalchemy import select
 import sqlalchemy as tsa
 from sqlalchemy.testing import engines
@@ -6,6 +6,7 @@ import logging.handlers
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import lazy_gc
+from sqlalchemy import util
 
 
 class LogParamsTest(fixtures.TestBase):
@@ -52,6 +53,133 @@ class LogParamsTest(fixtures.TestBase):
             "('6',), ('7',)  ... displaying 10 of 100 total "
             "bound parameter sets ...  ('98',), ('99',)]"
         )
+
+    def test_log_large_parameter_single(self):
+        import random
+        largeparam = ''.join(chr(random.randint(52, 85)) for i in range(5000))
+
+        self.eng.execute(
+            "INSERT INTO foo (data) values (?)",
+            (largeparam, )
+        )
+
+        eq_(
+            self.buf.buffer[1].message,
+            "('%s ... (4702 characters truncated) ... %s',)" % (
+                largeparam[0:149], largeparam[-149:]
+            )
+        )
+
+    def test_log_large_multi_parameter(self):
+        import random
+        lp1 = ''.join(chr(random.randint(52, 85)) for i in range(5))
+        lp2 = ''.join(chr(random.randint(52, 85)) for i in range(8))
+        lp3 = ''.join(chr(random.randint(52, 85)) for i in range(670))
+
+        self.eng.execute(
+            "SELECT ?, ?, ?",
+            (lp1, lp2, lp3)
+        )
+
+        eq_(
+            self.buf.buffer[1].message,
+            "('%s', '%s', '%s ... (372 characters truncated) ... %s')" % (
+                lp1, lp2, lp3[0:149], lp3[-149:]
+            )
+        )
+
+    def test_log_large_parameter_multiple(self):
+        import random
+        lp1 = ''.join(chr(random.randint(52, 85)) for i in range(5000))
+        lp2 = ''.join(chr(random.randint(52, 85)) for i in range(200))
+        lp3 = ''.join(chr(random.randint(52, 85)) for i in range(670))
+
+        self.eng.execute(
+            "INSERT INTO foo (data) values (?)",
+            [(lp1, ), (lp2, ), (lp3, )]
+        )
+
+        eq_(
+            self.buf.buffer[1].message,
+            "[('%s ... (4702 characters truncated) ... %s',), ('%s',), "
+            "('%s ... (372 characters truncated) ... %s',)]" % (
+                lp1[0:149], lp1[-149:], lp2, lp3[0:149], lp3[-149:]
+            )
+        )
+
+    def test_exception_format_dict_param(self):
+        exception = tsa.exc.IntegrityError("foo", {"x": "y"}, None)
+        eq_regex(
+            str(exception),
+            r"\(.*.NoneType\) None \[SQL: 'foo'\] \[parameters: {'x': 'y'}\]"
+        )
+
+    def test_exception_format_unexpected_parameter(self):
+        # test that if the parameters aren't any known type, we just
+        # run through repr()
+        exception = tsa.exc.IntegrityError("foo", "bar", "bat")
+        eq_regex(
+            str(exception),
+            r"\(.*.str\) bat \[SQL: 'foo'\] \[parameters: 'bar'\]"
+        )
+
+    def test_exception_format_unexpected_member_parameter(self):
+        # test that if the parameters aren't any known type, we just
+        # run through repr()
+        exception = tsa.exc.IntegrityError("foo", ["bar", "bat"], "hoho")
+        eq_regex(
+            str(exception),
+            r"\(.*.str\) hoho \[SQL: 'foo'\] \[parameters: \['bar', 'bat'\]\]"
+        )
+
+    def test_result_large_param(self):
+        import random
+        largeparam = ''.join(chr(random.randint(52, 85)) for i in range(5000))
+
+        self.eng.echo = 'debug'
+        result = self.eng.execute(
+            "SELECT ?",
+            (largeparam, )
+        )
+
+        row = result.first()
+
+        eq_(
+            self.buf.buffer[1].message,
+            "('%s ... (4702 characters truncated) ... %s',)" % (
+                largeparam[0:149], largeparam[-149:]
+            )
+        )
+
+        if util.py3k:
+            eq_(
+                self.buf.buffer[3].message,
+                "Row ('%s ... (4702 characters truncated) ... %s',)" % (
+                    largeparam[0:149], largeparam[-149:]
+                )
+            )
+        else:
+            eq_(
+                self.buf.buffer[3].message,
+                "Row (u'%s ... (4703 characters truncated) ... %s',)" % (
+                    largeparam[0:148], largeparam[-149:]
+                )
+            )
+
+        if util.py3k:
+            eq_(
+                repr(row),
+                "('%s ... (4702 characters truncated) ... %s',)" % (
+                    largeparam[0:149], largeparam[-149:]
+                )
+            )
+        else:
+            eq_(
+                repr(row),
+                "(u'%s ... (4703 characters truncated) ... %s',)" % (
+                    largeparam[0:148], largeparam[-149:]
+                )
+            )
 
     def test_error_large_dict(self):
         assert_raises_message(

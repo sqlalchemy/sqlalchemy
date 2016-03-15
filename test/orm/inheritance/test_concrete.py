@@ -486,6 +486,45 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         assert dest1.many_b == [b1, b2]
         assert sess.query(B).filter(B.bname == 'b1').one() is b1
 
+    def test_overlapping_backref_relationship(self):
+        A, B, b_table, a_table, Dest, dest_table = (
+            self.classes.A,
+            self.classes.B,
+            self.tables.b_table,
+            self.tables.a_table,
+            self.classes.Dest,
+            self.tables.dest_table)
+
+        # test issue #3630, no error or warning is generated
+        mapper(A, a_table)
+        mapper(B, b_table, inherits=A, concrete=True)
+        mapper(Dest, dest_table, properties={
+            'a': relationship(A, backref='dest'),
+            'a1': relationship(B, backref='dest')
+        })
+        configure_mappers()
+
+    def test_overlapping_forwards_relationship(self):
+        A, B, b_table, a_table, Dest, dest_table = (
+            self.classes.A,
+            self.classes.B,
+            self.tables.b_table,
+            self.tables.a_table,
+            self.classes.Dest,
+            self.tables.dest_table)
+
+        # this is the opposite mapping as that of #3630, never generated
+        # an error / warning
+        mapper(A, a_table, properties={
+            'dest': relationship(Dest, backref='a')
+        })
+        mapper(B, b_table, inherits=A, concrete=True, properties={
+            'dest': relationship(Dest, backref='a1')
+        })
+        mapper(Dest, dest_table)
+        configure_mappers()
+
+
     def test_polymorphic_backref(self):
         """test multiple backrefs to the same polymorphically-loading
         attribute."""

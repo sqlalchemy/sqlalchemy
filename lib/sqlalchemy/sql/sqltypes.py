@@ -1,5 +1,5 @@
 # sql/sqltypes.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,12 +11,17 @@
 
 import datetime as dt
 import codecs
+import collections
+import json
 
+from . import elements
 from .type_api import TypeEngine, TypeDecorator, to_instance
-from .elements import quoted_name, type_coerce, _defer_name
+from .elements import quoted_name, TypeCoerce as type_coerce, _defer_name, \
+    Slice, _literal_as_binds
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
 from . import operators
+from .. import inspection
 from .. import event
 from ..util import pickle
 import decimal
@@ -68,7 +73,35 @@ class Concatenable(object):
                     )):
                 return operators.concat_op, self.expr.type
             else:
-                return op, self.expr.type
+                return super(Concatenable.Comparator, self)._adapt_expression(
+                    op, other_comparator)
+
+    comparator_factory = Comparator
+
+
+class Indexable(object):
+    """A mixin that marks a type as supporting indexing operations,
+    such as array or JSON structures.
+
+
+    .. versionadded:: 1.1.0
+
+
+    """
+
+    class Comparator(TypeEngine.Comparator):
+
+        def _setup_getitem(self, index):
+            raise NotImplementedError()
+
+        def __getitem__(self, index):
+            adjusted_op, adjusted_right_expr, result_type = \
+                self._setup_getitem(index)
+            return self.operate(
+                adjusted_op,
+                adjusted_right_expr,
+                result_type=result_type
+            )
 
     comparator_factory = Comparator
 
@@ -215,9 +248,6 @@ class String(Concatenable, TypeEngine):
             self.convert_unicode != 'force_nocheck'
         )
         if needs_convert:
-            to_unicode = processors.to_unicode_processor_factory(
-                dialect.encoding, self.unicode_error)
-
             if needs_isinstance:
                 return processors.to_conditional_unicode_processor_factory(
                     dialect.encoding, self.unicode_error)
@@ -879,9 +909,9 @@ class LargeBinary(_Binary):
 
     """A type for large binary byte data.
 
-    The Binary type generates BLOB or BYTEA when tables are created,
-    and also converts incoming values using the ``Binary`` callable
-    provided by each DB-API.
+    The :class:`.LargeBinary` type corresponds to a large and/or unlengthed
+    binary type for the target platform, such as BLOB on MySQL and BYTEA for
+    Postgresql.  It also handles the necessary conversions for the DBAPI.
 
     """
 
@@ -892,13 +922,8 @@ class LargeBinary(_Binary):
         Construct a LargeBinary type.
 
         :param length: optional, a length for the column for use in
-          DDL statements, for those BLOB types that accept a length
-          (i.e. MySQL).  It does *not* produce a *lengthed* BINARY/VARBINARY
-          type - use the BINARY/VARBINARY types specifically for those.
-          May be safely omitted if no ``CREATE
-          TABLE`` will be issued.  Certain databases may require a
-          *length* for use in DDL, and will raise an exception when
-          the ``CREATE TABLE`` DDL is issued.
+          DDL statements, for those binary types that accept a length,
+          such as the MySQL BLOB type.
 
         """
         _Binary.__init__(self, length=length)
@@ -938,7 +963,7 @@ class SchemaType(SchemaEventTarget):
     """
 
     def __init__(self, name=None, schema=None, metadata=None,
-                 inherit_schema=False, quote=None):
+                 inherit_schema=False, quote=None, _create_events=True):
         if name is not None:
             self.name = quoted_name(name, quote)
         else:
@@ -946,8 +971,9 @@ class SchemaType(SchemaEventTarget):
         self.schema = schema
         self.metadata = metadata
         self.inherit_schema = inherit_schema
+        self._create_events = _create_events
 
-        if self.metadata:
+        if _create_events and self.metadata:
             event.listen(
                 self.metadata,
                 "before_create",
@@ -965,6 +991,9 @@ class SchemaType(SchemaEventTarget):
     def _set_table(self, column, table):
         if self.inherit_schema:
             self.schema = table.schema
+
+        if not self._create_events:
+            return
 
         event.listen(
             table,
@@ -992,17 +1021,18 @@ class SchemaType(SchemaEventTarget):
             )
 
     def copy(self, **kw):
-        return self.adapt(self.__class__)
+        return self.adapt(self.__class__, _create_events=True)
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
+        metadata = kw.pop('metadata', self.metadata)
+        _create_events = kw.pop('_create_events', False)
 
-        # don't associate with self.metadata as the hosting type
-        # is already associated with it, avoid creating event
-        # listeners
         return impltype(name=self.name,
                         schema=schema,
                         inherit_schema=self.inherit_schema,
+                        metadata=metadata,
+                        _create_events=_create_events,
                         **kw)
 
     @property
@@ -1052,11 +1082,52 @@ class Enum(String, SchemaType):
 
     """Generic Enum Type.
 
-    The Enum type provides a set of possible string values which the
-    column is constrained towards.
+    The :class:`.Enum` type provides a set of possible string values
+    which the column is constrained towards.
 
-    By default, uses the backend's native ENUM type if available,
-    else uses VARCHAR + a CHECK constraint.
+    The :class:`.Enum` type will make use of the backend's native "ENUM"
+    type if one is available; otherwise, it uses a VARCHAR datatype and
+    produces a CHECK constraint.  Use of the backend-native enum type
+    can be disabled using the :paramref:`.Enum.native_enum` flag, and
+    the production of the CHECK constraint is configurable using the
+    :paramref:`.Enum.create_constraint` flag.
+
+    The :class:`.Enum` type also provides in-Python validation of both
+    input values and database-returned values.   A ``LookupError`` is raised
+    for any Python value that's not located in the given list of possible
+    values.
+
+    .. versionchanged:: 1.1 the :class:`.Enum` type now provides in-Python
+       validation of input values as well as on data being returned by
+       the database.
+
+    The source of enumerated values may be a list of string values, or
+    alternatively a PEP-435-compliant enumerated class.  For the purposes
+    of the :class:`.Enum` datatype, this class need only provide a
+    ``__members__`` method.
+
+    When using an enumerated class, the enumerated objects are used
+    both for input and output, rather than strings as is the case with
+    a plain-string enumerated type::
+
+        import enum
+        class MyEnum(enum.Enum):
+            one = "one"
+            two = "two"
+            three = "three"
+
+
+        t = Table(
+            'data', MetaData(),
+            Column('value', Enum(MyEnum))
+        )
+
+        connection.execute(t.insert(), {"value": MyEnum.two})
+        assert connection.scalar(t.select()) is MyEnum.two
+
+    .. versionadded:: 1.1 - support for PEP-435-style enumerated
+       classes.
+
 
     .. seealso::
 
@@ -1073,12 +1144,24 @@ class Enum(String, SchemaType):
         Keyword arguments which don't apply to a specific backend are ignored
         by that backend.
 
-        :param \*enums: string or unicode enumeration labels. If unicode
+        :param \*enums: either exactly one PEP-435 compliant enumerated type
+           or one or more string or unicode enumeration labels. If unicode
            labels are present, the `convert_unicode` flag is auto-enabled.
+
+           .. versionadded:: 1.1 a PEP-435 style enumerated class may be
+              passed.
 
         :param convert_unicode: Enable unicode-aware bind parameter and
            result-set processing for this Enum's data. This is set
            automatically based on the presence of unicode label strings.
+
+        :param create_constraint: defaults to True.  When creating a non-native
+           enumerated type, also build a CHECK constraint on the database
+           against the valid values.
+
+           .. versionadded:: 1.1 - added :paramref:`.Enum.create_constraint`
+              which provides the option to disable the production of the
+              CHECK constraint for a non-native enumerated type.
 
         :param metadata: Associate this type directly with a ``MetaData``
            object. For types that exist on the target database as an
@@ -1094,7 +1177,9 @@ class Enum(String, SchemaType):
         :param name: The name of this type. This is required for Postgresql
            and any future supported database which requires an explicitly
            named type, or an explicitly named constraint in order to generate
-           the type and/or a table that uses it.
+           the type and/or a table that uses it. If a PEP-435 enumerated
+           class was used, its name (converted to lower case) is used by
+           default.
 
         :param native_enum: Use the database's native ENUM type when
            available. Defaults to True. When False, uses VARCHAR + check
@@ -1120,14 +1205,16 @@ class Enum(String, SchemaType):
            ``schema`` attribute.   This also takes effect when using the
            :meth:`.Table.tometadata` operation.
 
-           .. versionadded:: 0.8
-
         """
-        self.enums = enums
+
+        values, objects = self._parse_into_values(enums, kw)
+        self._setup_for_values(values, objects, kw)
+
         self.native_enum = kw.pop('native_enum', True)
         convert_unicode = kw.pop('convert_unicode', None)
+        self.create_constraint = kw.pop('create_constraint', True)
         if convert_unicode is None:
-            for e in enums:
+            for e in self.enums:
                 if isinstance(e, util.text_type):
                     convert_unicode = True
                     break
@@ -1138,11 +1225,52 @@ class Enum(String, SchemaType):
             length = max(len(x) for x in self.enums)
         else:
             length = 0
+        self._valid_lookup[None] = self._object_lookup[None] = None
+
         String.__init__(self,
                         length=length,
                         convert_unicode=convert_unicode,
                         )
         SchemaType.__init__(self, **kw)
+
+    def _parse_into_values(self, enums, kw):
+        if len(enums) == 1 and hasattr(enums[0], '__members__'):
+            self.enum_class = enums[0]
+            values = list(self.enum_class.__members__)
+            objects = [self.enum_class.__members__[k] for k in values]
+            kw.setdefault('name', self.enum_class.__name__.lower())
+
+            return values, objects
+        else:
+            self.enum_class = None
+            return enums, enums
+
+    def _setup_for_values(self, values, objects, kw):
+        self.enums = list(values)
+
+        self._valid_lookup = dict(
+            zip(objects, values)
+        )
+        self._object_lookup = dict(
+            (value, key) for key, value in self._valid_lookup.items()
+        )
+        self._valid_lookup.update(
+            [(value, value) for value in self._valid_lookup.values()]
+        )
+
+    def _db_value_for_elem(self, elem):
+        try:
+            return self._valid_lookup[elem]
+        except KeyError:
+            raise LookupError(
+                '"%s" is not among the defined enum values' % elem)
+
+    def _object_value_for_elem(self, elem):
+        try:
+            return self._object_lookup[elem]
+        except KeyError:
+            raise LookupError(
+                '"%s" is not among the defined enum values' % elem)
 
     def __repr__(self):
         return util.generic_repr(self,
@@ -1159,6 +1287,9 @@ class Enum(String, SchemaType):
         if self.native_enum:
             SchemaType._set_table(self, column, table)
 
+        if not self.create_constraint:
+            return
+
         e = schema.CheckConstraint(
             type_coerce(column, self).in_(self.enums),
             name=_defer_name(self.name),
@@ -1170,22 +1301,68 @@ class Enum(String, SchemaType):
 
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', None)
+        metadata = kw.pop('metadata', self.metadata)
+        _create_events = kw.pop('_create_events', False)
         if issubclass(impltype, Enum):
+            if self.enum_class is not None:
+                args = [self.enum_class]
+            else:
+                args = self.enums
             return impltype(name=self.name,
                             schema=schema,
                             metadata=metadata,
                             convert_unicode=self.convert_unicode,
                             native_enum=self.native_enum,
                             inherit_schema=self.inherit_schema,
-                            *self.enums,
+                            _create_events=_create_events,
+                            *args,
                             **kw)
         else:
+            # TODO: why would we be here?
             return super(Enum, self).adapt(impltype, **kw)
+
+    def literal_processor(self, dialect):
+        parent_processor = super(Enum, self).literal_processor(dialect)
+
+        def process(value):
+            value = self._db_value_for_elem(value)
+            if parent_processor:
+                value = parent_processor(value)
+            return value
+        return process
+
+    def bind_processor(self, dialect):
+        def process(value):
+            value = self._db_value_for_elem(value)
+            if parent_processor:
+                value = parent_processor(value)
+            return value
+
+        parent_processor = super(Enum, self).bind_processor(dialect)
+        return process
+
+    def result_processor(self, dialect, coltype):
+        parent_processor = super(Enum, self).result_processor(
+            dialect, coltype)
+
+        def process(value):
+            if parent_processor:
+                value = parent_processor(value)
+
+            value = self._object_value_for_elem(value)
+            return value
+
+        return process
+
+    @property
+    def python_type(self):
+        if self.enum_class:
+            return self.enum_class
+        else:
+            return super(Enum, self).python_type
 
 
 class PickleType(TypeDecorator):
-
     """Holds Python objects, which are serialized using pickle.
 
     PickleType builds upon the Binary type to apply Python's
@@ -1276,7 +1453,8 @@ class Boolean(TypeEngine, SchemaType):
 
     __visit_name__ = 'boolean'
 
-    def __init__(self, create_constraint=True, name=None):
+    def __init__(
+            self, create_constraint=True, name=None, _create_events=True):
         """Construct a Boolean.
 
         :param create_constraint: defaults to True.  If the boolean
@@ -1289,6 +1467,7 @@ class Boolean(TypeEngine, SchemaType):
         """
         self.create_constraint = create_constraint
         self.name = name
+        self._create_events = _create_events
 
     def _should_create_constraint(self, compiler):
         return not compiler.dialect.supports_native_boolean
@@ -1454,6 +1633,485 @@ class Interval(_DateAffinity, TypeDecorator):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
         return self.impl.coerce_compared_value(op, value)
+
+
+class JSON(Indexable, TypeEngine):
+    """Represent a SQL JSON type.
+
+    .. note::  :class:`.types.JSON` is provided as a facade for vendor-specific
+       JSON types.  Since it supports JSON SQL operations, it only
+       works on backends that have an actual JSON type, currently
+       Postgresql as well as certain versions of MySQL.
+
+    :class:`.types.JSON` is part of the Core in support of the growing
+    popularity of native JSON datatypes.
+
+    The :class:`.types.JSON` type stores arbitrary JSON format data, e.g.::
+
+        data_table = Table('data_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', JSON)
+        )
+
+        with engine.connect() as conn:
+            conn.execute(
+                data_table.insert(),
+                data = {"key1": "value1", "key2": "value2"}
+            )
+
+    The base :class:`.types.JSON` provides these two operations:
+
+    * Keyed index operations::
+
+        data_table.c.data['some key']
+
+    * Integer index operations::
+
+        data_table.c.data[3]
+
+    * Path index operations::
+
+        data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')]
+
+    Additional operations are available from the dialect-specific versions
+    of :class:`.types.JSON`, such as :class:`.postgresql.JSON` and
+    :class:`.postgresql.JSONB`, each of which offer more operators than
+    just the basic type.
+
+    Index operations return an expression object whose type defaults to
+    :class:`.JSON` by default, so that further JSON-oriented instructions
+    may be called upon the result type.
+
+    The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not
+    detect in-place mutations to the structure.  In order to detect these, the
+    :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
+    allow "in-place" changes to the datastructure to produce events which
+    will be detected by the unit of work.  See the example at :class:`.HSTORE`
+    for a simple example involving a dictionary.
+
+    When working with NULL values, the :class:`.JSON` type recommends the
+    use of two specific constants in order to differentiate between a column
+    that evaluates to SQL NULL, e.g. no value, vs. the JSON-encoded string
+    of ``"null"``.   To insert or select against a value that is SQL NULL,
+    use the constant :func:`.null`::
+
+        from sqlalchemy import null
+        conn.execute(table.insert(), json_value=null())
+
+    To insert or select against a value that is JSON ``"null"``, use the
+    constant :attr:`.JSON.NULL`::
+
+        conn.execute(table.insert(), json_value=JSON.NULL)
+
+    The :class:`.JSON` type supports a flag
+    :paramref:`.JSON.none_as_null` which when set to True will result
+    in the Python constant ``None`` evaluating to the value of SQL
+    NULL, and when set to False results in the Python constant
+    ``None`` evaluating to the value of JSON ``"null"``.    The Python
+    value ``None`` may be used in conjunction with either
+    :attr:`.JSON.NULL` and :func:`.null` in order to indicate NULL
+    values, but care must be taken as to the value of the
+    :paramref:`.JSON.none_as_null` in these cases.
+
+    .. seealso::
+
+        :class:`.postgresql.JSON`
+
+        :class:`.postgresql.JSONB`
+
+        :class:`.mysql.JSON`
+
+    .. versionadded:: 1.1
+
+
+    """
+    __visit_name__ = 'JSON'
+
+    hashable = False
+    NULL = util.symbol('JSON_NULL')
+    """Describe the json value of NULL.
+
+    This value is used to force the JSON value of ``"null"`` to be
+    used as the value.   A value of Python ``None`` will be recognized
+    either as SQL NULL or JSON ``"null"``, based on the setting
+    of the :paramref:`.JSON.none_as_null` flag; the :attr:`.JSON.NULL`
+    constant can be used to always resolve to JSON ``"null"`` regardless
+    of this setting.  This is in contrast to the :func:`.sql.null` construct,
+    which always resolves to SQL NULL.  E.g.::
+
+        from sqlalchemy import null
+        from sqlalchemy.dialects.postgresql import JSON
+
+        obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
+        obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
+
+        session.add_all([obj1, obj2])
+        session.commit()
+
+    """
+
+    def __init__(self, none_as_null=False):
+        """Construct a :class:`.types.JSON` type.
+
+        :param none_as_null=False: if True, persist the value ``None`` as a
+         SQL NULL value, not the JSON encoding of ``null``.   Note that
+         when this flag is False, the :func:`.null` construct can still
+         be used to persist a NULL value::
+
+             from sqlalchemy import null
+             conn.execute(table.insert(), data=null())
+
+         .. seealso::
+
+              :attr:`.types.JSON.NULL`
+
+         """
+        self.none_as_null = none_as_null
+
+    class JSONIndexType(TypeEngine):
+        """Placeholder for the datatype of a JSON index value.
+
+        This allows execution-time processing of JSON index values
+        for special syntaxes.
+
+        """
+
+    class JSONPathType(TypeEngine):
+        """Placeholder type for JSON path operations.
+
+        This allows execution-time processing of a path-based
+        index value into a specific SQL syntax.
+
+        """
+
+    class Comparator(Indexable.Comparator, Concatenable.Comparator):
+        """Define comparison operations for :class:`.types.JSON`."""
+
+        @util.dependencies('sqlalchemy.sql.default_comparator')
+        def _setup_getitem(self, default_comparator, index):
+            if not isinstance(index, util.string_types) and \
+                    isinstance(index, collections.Sequence):
+                index = default_comparator._check_literal(
+                    self.expr, operators.json_path_getitem_op,
+                    index, bindparam_type=JSON.JSONPathType
+                )
+
+                operator = operators.json_path_getitem_op
+            else:
+                index = default_comparator._check_literal(
+                    self.expr, operators.json_getitem_op,
+                    index, bindparam_type=JSON.JSONIndexType
+                )
+                operator = operators.json_getitem_op
+
+            return operator, index, self.type
+
+    comparator_factory = Comparator
+
+    @property
+    def should_evaluate_none(self):
+        return not self.none_as_null
+
+    @util.memoized_property
+    def _str_impl(self):
+        return String(convert_unicode=True)
+
+    def bind_processor(self, dialect):
+        string_process = self._str_impl.bind_processor(dialect)
+
+        json_serializer = dialect._json_serializer or json.dumps
+
+        def process(value):
+            if value is self.NULL:
+                value = None
+            elif isinstance(value, elements.Null) or (
+                value is None and self.none_as_null
+            ):
+                return None
+
+            serialized = json_serializer(value)
+            if string_process:
+                serialized = string_process(serialized)
+            return serialized
+
+        return process
+
+    def result_processor(self, dialect, coltype):
+        string_process = self._str_impl.result_processor(dialect, coltype)
+        json_deserializer = dialect._json_deserializer or json.loads
+
+        def process(value):
+            if value is None:
+                return None
+            if string_process:
+                value = string_process(value)
+            return json_deserializer(value)
+        return process
+
+
+class ARRAY(Indexable, Concatenable, TypeEngine):
+    """Represent a SQL Array type.
+
+    .. note::  This type serves as the basis for all ARRAY operations.
+       However, currently **only the Postgresql backend has support
+       for SQL arrays in SQLAlchemy**.  It is recommended to use the
+       :class:`.postgresql.ARRAY` type directly when using ARRAY types
+       with PostgreSQL, as it provides additional operators specific
+       to that backend.
+
+    :class:`.types.ARRAY` is part of the Core in support of various SQL standard
+    functions such as :class:`.array_agg` which explicitly involve arrays;
+    however, with the exception of the PostgreSQL backend and possibly
+    some third-party dialects, no other SQLAlchemy built-in dialect has
+    support for this type.
+
+    An :class:`.types.ARRAY` type is constructed given the "type"
+    of element::
+
+        mytable = Table("mytable", metadata,
+                Column("data", ARRAY(Integer))
+            )
+
+    The above type represents an N-dimensional array,
+    meaning a supporting backend such as Postgresql will interpret values
+    with any number of dimensions automatically.   To produce an INSERT
+    construct that passes in a 1-dimensional array of integers::
+
+        connection.execute(
+                mytable.insert(),
+                data=[1,2,3]
+        )
+
+    The :class:`.types.ARRAY` type can be constructed given a fixed number
+    of dimensions::
+
+        mytable = Table("mytable", metadata,
+                Column("data", ARRAY(Integer, dimensions=2))
+            )
+
+    Sending a number of dimensions is optional, but recommended if the
+    datatype is to represent arrays of more than one dimension.  This number
+    is used:
+
+    * When emitting the type declaration itself to the database, e.g.
+      ``INTEGER[][]``
+
+    * When translating Python values to database values, and vice versa, e.g.
+      an ARRAY of :class:`.Unicode` objects uses this number to efficiently
+      access the string values inside of array structures without resorting
+      to per-row type inspection
+
+    * When used with the Python ``getitem`` accessor, the number of dimensions
+      serves to define the kind of type that the ``[]`` operator should
+      return, e.g. for an ARRAY of INTEGER with two dimensions::
+
+            >>> expr = table.c.column[5]  # returns ARRAY(Integer, dimensions=1)
+            >>> expr = expr[6]  # returns Integer
+
+    For 1-dimensional arrays, an :class:`.types.ARRAY` instance with no
+    dimension parameter will generally assume single-dimensional behaviors.
+
+    SQL expressions of type :class:`.types.ARRAY` have support for "index" and
+    "slice" behavior.  The Python ``[]`` operator works normally here, given
+    integer indexes or slices.  Arrays default to 1-based indexing.
+    The operator produces binary expression
+    constructs which will produce the appropriate SQL, both for
+    SELECT statements::
+
+        select([mytable.c.data[5], mytable.c.data[2:7]])
+
+    as well as UPDATE statements when the :meth:`.Update.values` method
+    is used::
+
+        mytable.update().values({
+            mytable.c.data[5]: 7,
+            mytable.c.data[2:7]: [1, 2, 3]
+        })
+
+    The :class:`.types.ARRAY` type also provides for the operators
+    :meth:`.types.ARRAY.Comparator.any` and :meth:`.types.ARRAY.Comparator.all`.
+    The PostgreSQL-specific version of :class:`.types.ARRAY` also provides additional
+    operators.
+
+    .. versionadded:: 1.1.0
+
+    .. seealso::
+
+        :class:`.postgresql.ARRAY`
+
+    """
+    __visit_name__ = 'ARRAY'
+
+    zero_indexes = False
+    """if True, Python zero-based indexes should be interpreted as one-based
+    on the SQL expression side."""
+
+    class Comparator(Indexable.Comparator, Concatenable.Comparator):
+
+        """Define comparison operations for :class:`.types.ARRAY`.
+
+        More operators are available on the dialect-specific form
+        of this type.  See :class:`.postgresql.ARRAY.Comparator`.
+
+        """
+
+        def _setup_getitem(self, index):
+            if isinstance(index, slice):
+                return_type = self.type
+                if self.type.zero_indexes:
+                    index = slice(
+                        index.start + 1,
+                        index.stop + 1,
+                        index.step
+                    )
+                index = Slice(
+                    _literal_as_binds(
+                        index.start, name=self.expr.key,
+                        type_=type_api.INTEGERTYPE),
+                    _literal_as_binds(
+                        index.stop, name=self.expr.key,
+                        type_=type_api.INTEGERTYPE),
+                    _literal_as_binds(
+                        index.step, name=self.expr.key,
+                        type_=type_api.INTEGERTYPE)
+                )
+            else:
+                if self.type.zero_indexes:
+                    index += 1
+                if self.type.dimensions is None or self.type.dimensions == 1:
+                    return_type = self.type.item_type
+                else:
+                    adapt_kw = {'dimensions': self.type.dimensions - 1}
+                    return_type = self.type.adapt(
+                        self.type.__class__, **adapt_kw)
+
+            return operators.getitem, index, return_type
+
+        @util.dependencies("sqlalchemy.sql.elements")
+        def any(self, elements, other, operator=None):
+            """Return ``other operator ANY (array)`` clause.
+
+            Argument places are switched, because ANY requires array
+            expression to be on the right hand-side.
+
+            E.g.::
+
+                from sqlalchemy.sql import operators
+
+                conn.execute(
+                    select([table.c.data]).where(
+                            table.c.data.any(7, operator=operators.lt)
+                        )
+                )
+
+            :param other: expression to be compared
+            :param operator: an operator object from the
+             :mod:`sqlalchemy.sql.operators`
+             package, defaults to :func:`.operators.eq`.
+
+            .. seealso::
+
+                :func:`.sql.expression.any_`
+
+                :meth:`.types.ARRAY.Comparator.all`
+
+            """
+            operator = operator if operator else operators.eq
+            return operator(
+                elements._literal_as_binds(other),
+                elements.CollectionAggregate._create_any(self.expr)
+            )
+
+        @util.dependencies("sqlalchemy.sql.elements")
+        def all(self, elements, other, operator=None):
+            """Return ``other operator ALL (array)`` clause.
+
+            Argument places are switched, because ALL requires array
+            expression to be on the right hand-side.
+
+            E.g.::
+
+                from sqlalchemy.sql import operators
+
+                conn.execute(
+                    select([table.c.data]).where(
+                            table.c.data.all(7, operator=operators.lt)
+                        )
+                )
+
+            :param other: expression to be compared
+            :param operator: an operator object from the
+             :mod:`sqlalchemy.sql.operators`
+             package, defaults to :func:`.operators.eq`.
+
+            .. seealso::
+
+                :func:`.sql.expression.all_`
+
+                :meth:`.types.ARRAY.Comparator.any`
+
+            """
+            operator = operator if operator else operators.eq
+            return operator(
+                elements._literal_as_binds(other),
+                elements.CollectionAggregate._create_all(self.expr)
+            )
+
+    comparator_factory = Comparator
+
+    def __init__(self, item_type, as_tuple=False, dimensions=None,
+                 zero_indexes=False):
+        """Construct an :class:`.types.ARRAY`.
+
+        E.g.::
+
+          Column('myarray', ARRAY(Integer))
+
+        Arguments are:
+
+        :param item_type: The data type of items of this array. Note that
+          dimensionality is irrelevant here, so multi-dimensional arrays like
+          ``INTEGER[][]``, are constructed as ``ARRAY(Integer)``, not as
+          ``ARRAY(ARRAY(Integer))`` or such.
+
+        :param as_tuple=False: Specify whether return results
+          should be converted to tuples from lists.  This parameter is
+          not generally needed as a Python list corresponds well
+          to a SQL array.
+
+        :param dimensions: if non-None, the ARRAY will assume a fixed
+         number of dimensions.   This impacts how the array is declared
+         on the database, how it goes about interpreting Python and
+         result values, as well as how expression behavior in conjunction
+         with the "getitem" operator works.  See the description at
+         :class:`.types.ARRAY` for additional detail.
+
+        :param zero_indexes=False: when True, index values will be converted
+         between Python zero-based and SQL one-based indexes, e.g.
+         a value of one will be added to all index values before passing
+         to the database.
+
+        """
+        if isinstance(item_type, ARRAY):
+            raise ValueError("Do not nest ARRAY types; ARRAY(basetype) "
+                             "handles multi-dimensional arrays of basetype")
+        if isinstance(item_type, type):
+            item_type = item_type()
+        self.item_type = item_type
+        self.as_tuple = as_tuple
+        self.dimensions = dimensions
+        self.zero_indexes = zero_indexes
+
+    @property
+    def hashable(self):
+        return self.as_tuple
+
+    @property
+    def python_type(self):
+        return list
+
+    def compare_values(self, x, y):
+        return x == y
 
 
 class REAL(Float):
@@ -1638,6 +2296,8 @@ class NullType(TypeEngine):
 
     _isnull = True
 
+    hashable = False
+
     def literal_processor(self, dialect):
         def process(value):
             return "NULL"
@@ -1694,6 +2354,26 @@ else:
     _type_map[unicode] = Unicode()
     _type_map[str] = String()
 
+_type_map_get = _type_map.get
+
+
+def _resolve_value_to_type(value):
+    _result_type = _type_map_get(type(value), False)
+    if _result_type is False:
+        # use inspect() to detect SQLAlchemy built-in
+        # objects.
+        insp = inspection.inspect(value, False)
+        if (
+                insp is not None and
+                # foil mock.Mock() and other impostors by ensuring
+                # the inspection target itself self-inspects
+                insp.__class__ in inspection._registrars
+        ):
+            raise exc.ArgumentError(
+                "Object %r is not legal as a SQL literal value" % value)
+        return NULLTYPE
+    else:
+        return _result_type
 
 # back-assign to type_api
 from . import type_api
@@ -1702,6 +2382,6 @@ type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
 type_api.MATCHTYPE = MATCHTYPE
-type_api._type_map = _type_map
-
+type_api.INDEXABLE = Indexable
+type_api._resolve_value_to_type = _resolve_value_to_type
 TypeEngine.Comparator.BOOLEANTYPE = BOOLEANTYPE

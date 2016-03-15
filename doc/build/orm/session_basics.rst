@@ -158,7 +158,7 @@ Session Frequently Asked Questions
 ===================================
 
 By this point, many users already have questions about sessions.
-This section presents a mini-FAQ (note that we have also a `real FAQ </faq/index>`)
+This section presents a mini-FAQ (note that we have also a :doc:`real FAQ </faq/index>`)
 of the most basic issues one is presented with when using a :class:`.Session`.
 
 When do I make a :class:`.sessionmaker`?
@@ -192,9 +192,15 @@ When do I construct a :class:`.Session`, when do I commit it, and when do I clos
 
 .. topic:: tl;dr;
 
-    As a general rule, keep the lifecycle of the session **separate and
-    external** from functions and objects that access and/or manipulate
-    database data.
+    1. As a general rule, keep the lifecycle of the session **separate and
+       external** from functions and objects that access and/or manipulate
+       database data.  This will greatly help with achieving a predictable
+       and consistent transactional scope.
+
+    2. Make sure you have a clear notion of where transactions
+       begin and end, and keep transactions **short**, meaning, they end
+       at the series of a sequence of operations, instead of being held
+       open indefinitely.
 
 A :class:`.Session` is typically constructed at the beginning of a logical
 operation where database access is potentially anticipated.
@@ -241,7 +247,7 @@ While there's no one-size-fits-all recommendation for how transaction
 scope should be determined, there are common patterns.   Especially
 if one is writing a web application, the choice is pretty much established.
 
-A web application is the easiest case because such an appication is already
+A web application is the easiest case because such an application is already
 constructed around a single, consistent scope - this is the **request**,
 which represents an incoming request from a browser, the processing
 of that request to formulate a response, and finally the delivery of that

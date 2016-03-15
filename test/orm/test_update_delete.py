@@ -1,10 +1,11 @@
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, or_, exc, \
     select, func, Boolean, case, text, column
 from sqlalchemy.orm import mapper, relationship, backref, Session, \
-    joinedload, synonym
+    joinedload, synonym, query
 from sqlalchemy import testing
+from sqlalchemy.testing import mock
 
 from sqlalchemy.testing.schema import Table, Column
 
@@ -19,10 +20,18 @@ class UpdateDeleteTest(fixtures.MappedTest):
                      test_needs_autoincrement=True),
               Column('name', String(32)),
               Column('age_int', Integer))
+        Table(
+            "addresses", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('user_id', ForeignKey('users.id'))
+        )
 
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
+            pass
+
+        class Address(cls.Comparable):
             pass
 
     @classmethod
@@ -41,9 +50,14 @@ class UpdateDeleteTest(fixtures.MappedTest):
         User = cls.classes.User
         users = cls.tables.users
 
+        Address = cls.classes.Address
+        addresses = cls.tables.addresses
+
         mapper(User, users, properties={
-            'age': users.c.age_int
+            'age': users.c.age_int,
+            'addresses': relationship(Address)
         })
+        mapper(Address, addresses)
 
     def test_illegal_eval(self):
         User = self.classes.User
@@ -59,27 +73,36 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
     def test_illegal_operations(self):
         User = self.classes.User
+        Address = self.classes.Address
 
         s = Session()
 
         for q, mname in (
-            (s.query(User).limit(2), "limit"),
-            (s.query(User).offset(2), "offset"),
-            (s.query(User).limit(2).offset(2), "limit"),
-            (s.query(User).order_by(User.id), "order_by"),
-            (s.query(User).group_by(User.id), "group_by"),
-            (s.query(User).distinct(), "distinct")
+            (s.query(User).limit(2), r"limit\(\)"),
+            (s.query(User).offset(2), r"offset\(\)"),
+            (s.query(User).limit(2).offset(2), r"limit\(\)"),
+            (s.query(User).order_by(User.id), r"order_by\(\)"),
+            (s.query(User).group_by(User.id), r"group_by\(\)"),
+            (s.query(User).distinct(), r"distinct\(\)"),
+            (s.query(User).join(User.addresses),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
+            (s.query(User).outerjoin(User.addresses),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
+            (s.query(User).select_from(Address),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
+            (s.query(User).from_self(),
+                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)"),
         ):
             assert_raises_message(
                 exc.InvalidRequestError,
-                r"Can't call Query.update\(\) when "
-                "%s\(\) has been called" % mname,
+                r"Can't call Query.update\(\) or Query.delete\(\) when "
+                "%s has been called" % mname,
                 q.update,
                 {'name': 'ed'})
             assert_raises_message(
                 exc.InvalidRequestError,
-                r"Can't call Query.delete\(\) when "
-                "%s\(\) has been called" % mname,
+                r"Can't call Query.update\(\) or Query.delete\(\) when "
+                "%s has been called" % mname,
                 q.delete)
 
     def test_evaluate_clauseelement(self):
@@ -587,6 +610,42 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 synchronize_session='fetch')
         assert john not in sess
 
+    def test_update_unordered_dict(self):
+        User = self.classes.User
+        session = Session()
+
+        # Do an update using unordered dict and check that the parameters used
+        # are ordered in table order
+        with mock.patch.object(session, "execute") as exec_:
+            session.query(User).filter(User.id == 15).update(
+                {'name': 'foob', 'id': 123})
+            # Confirm that parameters are a dict instead of tuple or list
+            params_type = type(exec_.mock_calls[0][1][0].parameters)
+            is_(params_type, dict)
+
+    def test_update_preserve_parameter_order(self):
+        User = self.classes.User
+        session = Session()
+
+        # Do update using a tuple and check that order is preserved
+        with mock.patch.object(session, "execute") as exec_:
+            session.query(User).filter(User.id == 15).update(
+                (('id', 123), ('name', 'foob')),
+                update_args={"preserve_parameter_order": True})
+            cols = [c.key
+                    for c in exec_.mock_calls[0][1][0]._parameter_ordering]
+            eq_(['id', 'name'], cols)
+
+        # Now invert the order and use a list instead, and check that order is
+        # also preserved
+        with mock.patch.object(session, "execute") as exec_:
+            session.query(User).filter(User.id == 15).update(
+                [('name', 'foob'), ('id', 123)],
+                update_args={"preserve_parameter_order": True})
+            cols = [c.key
+                    for c in exec_.mock_calls[0][1][0]._parameter_ordering]
+            eq_(['name', 'id'], cols)
+
 
 class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
 
@@ -884,6 +943,18 @@ class ExpressionUpdateTest(fixtures.MappedTest):
 
         eq_(d1.cnt, 2)
         sess.close()
+
+    def test_update_args(self):
+        Data = self.classes.Data
+        session = testing.mock.Mock(wraps=Session())
+        update_args = {"mysql_limit": 1}
+        query.Query(Data, session).update({Data.cnt: Data.cnt + 1},
+                                          update_args=update_args)
+        eq_(session.execute.call_count, 1)
+        args, kwargs = session.execute.call_args
+        eq_(len(args), 1)
+        update_stmt = args[0]
+        eq_(update_stmt.dialect_kwargs, update_args)
 
 
 class InheritTest(fixtures.DeclarativeMappedTest):

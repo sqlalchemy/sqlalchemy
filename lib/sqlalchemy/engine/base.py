@@ -1,5 +1,5 @@
 # engine/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,6 +14,7 @@ from __future__ import with_statement
 import sys
 from .. import exc, util, log, interfaces
 from ..sql import util as sql_util
+from ..sql import schema
 from .interfaces import Connectable, ExceptionContext
 from .util import _distill_params
 import contextlib
@@ -44,6 +45,22 @@ class Connection(Connectable):
 
     """
 
+    schema_for_object = schema._schema_getter(None)
+    """Return the ".schema" attribute for an object.
+
+    Used for :class:`.Table`, :class:`.Sequence` and similar objects,
+    and takes into account
+    the :paramref:`.Connection.execution_options.schema_translate_map`
+    parameter.
+
+      .. versionadded:: 1.1
+
+      .. seealso::
+
+          :ref:`schema_translating`
+
+    """
+
     def __init__(self, engine, connection=None, close_with_result=False,
                  _branch_from=None, _execution_options=None,
                  _dispatch=None,
@@ -67,6 +84,7 @@ class Connection(Connectable):
             self.should_close_with_result = False
             self.dispatch = _dispatch
             self._has_events = _branch_from._has_events
+            self.schema_for_object = _branch_from.schema_for_object
         else:
             self.__connection = connection \
                 if connection is not None else engine.raw_connection()
@@ -276,6 +294,19 @@ class Connection(Connectable):
           "streamed" and not pre-buffered, if possible.  This is a limitation
           of many DBAPIs.  The flag is currently understood only by the
           psycopg2 dialect.
+
+        :param schema_translate_map: Available on: Connection, Engine.
+          A dictionary mapping schema names to schema names, that will be
+          applied to the :paramref:`.Table.schema` element of each
+          :class:`.Table` encountered when SQL or DDL expression elements
+          are compiled into strings; the resulting schema name will be
+          converted based on presence in the map of the original name.
+
+          .. versionadded:: 1.1
+
+          .. seealso::
+
+            :ref:`schema_translating`
 
         """
         c = self._clone()
@@ -959,7 +990,10 @@ class Connection(Connectable):
 
         dialect = self.dialect
 
-        compiled = ddl.compile(dialect=dialect)
+        compiled = ddl.compile(
+            dialect=dialect,
+            schema_translate_map=self.schema_for_object
+            if not self.schema_for_object.is_default else None)
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_ddl,
@@ -990,18 +1024,26 @@ class Connection(Connectable):
 
         dialect = self.dialect
         if 'compiled_cache' in self._execution_options:
-            key = dialect, elem, tuple(sorted(keys)), len(distilled_params) > 1
-            if key in self._execution_options['compiled_cache']:
-                compiled_sql = self._execution_options['compiled_cache'][key]
-            else:
+            key = (
+                dialect, elem, tuple(sorted(keys)),
+                self.schema_for_object.hash_key,
+                len(distilled_params) > 1
+            )
+            compiled_sql = self._execution_options['compiled_cache'].get(key)
+            if compiled_sql is None:
                 compiled_sql = elem.compile(
                     dialect=dialect, column_keys=keys,
-                    inline=len(distilled_params) > 1)
+                    inline=len(distilled_params) > 1,
+                    schema_translate_map=self.schema_for_object
+                    if not self.schema_for_object.is_default else None
+                )
                 self._execution_options['compiled_cache'][key] = compiled_sql
         else:
             compiled_sql = elem.compile(
                 dialect=dialect, column_keys=keys,
-                inline=len(distilled_params) > 1)
+                inline=len(distilled_params) > 1,
+                schema_translate_map=self.schema_for_object
+                if not self.schema_for_object.is_default else None)
 
         ret = self._execute_context(
             dialect,
@@ -1156,17 +1198,17 @@ class Connection(Connectable):
         if context.compiled:
             context.post_exec()
 
-        if context.is_crud:
+        if context.is_crud or context.is_text:
             result = context._setup_crud_result_proxy()
         else:
             result = context.get_result_proxy()
             if result._metadata is None:
-                result.close(_autoclose_connection=False)
+                result._soft_close(_autoclose_connection=False)
 
         if context.should_autocommit and self._root.__transaction is None:
             self._root._commit_impl(autocommit=True)
 
-        if result.closed and self.should_close_with_result:
+        if result._soft_closed and self.should_close_with_result:
             self.close()
 
         return result
@@ -1255,12 +1297,15 @@ class Connection(Connectable):
             if context:
                 context.is_disconnect = self._is_disconnect
 
+        invalidate_pool_on_disconnect = True
+
         if self._reentrant_error:
             util.raise_from_cause(
                 exc.DBAPIError.instance(statement,
                                         parameters,
                                         e,
-                                        self.dialect.dbapi.Error),
+                                        self.dialect.dbapi.Error,
+                                        dialect=self.dialect),
                 exc_info
             )
         self._reentrant_error = True
@@ -1276,7 +1321,8 @@ class Connection(Connectable):
                     parameters,
                     e,
                     self.dialect.dbapi.Error,
-                    connection_invalidated=self._is_disconnect)
+                    connection_invalidated=self._is_disconnect,
+                    dialect=self.dialect)
             else:
                 sqlalchemy_exception = None
 
@@ -1317,6 +1363,11 @@ class Connection(Connectable):
                     sqlalchemy_exception.connection_invalidated = \
                         self._is_disconnect = ctx.is_disconnect
 
+                # set up potentially user-defined value for
+                # invalidate pool.
+                invalidate_pool_on_disconnect = \
+                    ctx.invalidate_pool_on_disconnect
+
             if should_wrap and context:
                 context.handle_dbapi_exception(e)
 
@@ -1341,7 +1392,8 @@ class Connection(Connectable):
                 del self._is_disconnect
                 if not self.invalidated:
                     dbapi_conn_wrapper = self.__connection
-                    self.engine.pool._invalidate(dbapi_conn_wrapper, e)
+                    if invalidate_pool_on_disconnect:
+                        self.engine.pool._invalidate(dbapi_conn_wrapper, e)
                     self.invalidate(e)
             if self.should_close_with_result:
                 self.close()
@@ -1522,8 +1574,12 @@ class Transaction(object):
 
     def __init__(self, connection, parent):
         self.connection = connection
-        self._parent = parent or self
+        self._actual_parent = parent
         self.is_active = True
+
+    @property
+    def _parent(self):
+        return self._actual_parent or self
 
     def close(self):
         """Close this :class:`.Transaction`.
@@ -1673,6 +1729,22 @@ class Engine(Connectable, log.Identified):
     _has_events = False
     _connection_cls = Connection
 
+    schema_for_object = schema._schema_getter(None)
+    """Return the ".schema" attribute for an object.
+
+    Used for :class:`.Table`, :class:`.Sequence` and similar objects,
+    and takes into account
+    the :paramref:`.Connection.execution_options.schema_translate_map`
+    parameter.
+
+      .. versionadded:: 1.1
+
+      .. seealso::
+
+          :ref:`schema_translating`
+
+    """
+
     def __init__(self, pool, dialect, url,
                  logging_name=None, echo=None, proxy=None,
                  execution_options=None
@@ -1802,29 +1874,28 @@ class Engine(Connectable, log.Identified):
     def dispose(self):
         """Dispose of the connection pool used by this :class:`.Engine`.
 
+        This has the effect of fully closing all **currently checked in**
+        database connections.  Connections that are still checked out
+        will **not** be closed, however they will no longer be associated
+        with this :class:`.Engine`, so when they are closed individually,
+        eventually the :class:`.Pool` which they are associated with will
+        be garbage collected and they will be closed out fully, if
+        not already closed on checkin.
+
         A new connection pool is created immediately after the old one has
         been disposed.   This new pool, like all SQLAlchemy connection pools,
         does not make any actual connections to the database until one is
-        first requested.
+        first requested, so as long as the :class:`.Engine` isn't used again,
+        no new connections will be made.
 
-        This method has two general use cases:
+        .. seealso::
 
-         * When a dropped connection is detected, it is assumed that all
-           connections held by the pool are potentially dropped, and
-           the entire pool is replaced.
-
-         * An application may want to use :meth:`dispose` within a test
-           suite that is creating multiple engines.
-
-        It is critical to note that :meth:`dispose` does **not** guarantee
-        that the application will release all open database connections - only
-        those connections that are checked into the pool are closed.
-        Connections which remain checked out or have been detached from
-        the engine are not affected.
+            :ref:`engine_disposal`
 
         """
         self.pool.dispose()
         self.pool = self.pool.recreate()
+        self.dispatch.engine_disposed(self)
 
     def _execute_default(self, default):
         with self.contextual_connect() as conn:

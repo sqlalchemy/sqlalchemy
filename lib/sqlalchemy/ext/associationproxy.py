@@ -1,5 +1,5 @@
 # ext/associationproxy.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -94,7 +94,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def __init__(self, target_collection, attr, creator=None,
                  getset_factory=None, proxy_factory=None,
-                 proxy_bulk_set=None):
+                 proxy_bulk_set=None, info=None):
         """Construct a new :class:`.AssociationProxy`.
 
         The :func:`.association_proxy` function is provided as the usual
@@ -138,6 +138,11 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         :param proxy_bulk_set: Optional, use with proxy_factory.  See
           the _set() method for details.
 
+        :param info: optional, will be assigned to
+         :attr:`.AssociationProxy.info` if present.
+
+         .. versionadded:: 1.0.9
+
         """
         self.target_collection = target_collection
         self.value_attr = attr
@@ -150,6 +155,8 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         self.key = '_%s_%s_%s' % (
             type(self).__name__, target_collection, id(self))
         self.collection_class = None
+        if info:
+            self.info = info
 
     @property
     def remote_attr(self):
@@ -365,13 +372,17 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         operators of the underlying proxied attributes.
 
         """
-
-        if self._value_is_scalar:
-            value_expr = getattr(
-                self.target_class, self.value_attr).has(criterion, **kwargs)
+        if self._target_is_object:
+            if self._value_is_scalar:
+                value_expr = getattr(
+                    self.target_class, self.value_attr).has(
+                    criterion, **kwargs)
+            else:
+                value_expr = getattr(
+                    self.target_class, self.value_attr).any(
+                    criterion, **kwargs)
         else:
-            value_expr = getattr(
-                self.target_class, self.value_attr).any(criterion, **kwargs)
+            value_expr = criterion
 
         # check _value_is_scalar here, otherwise
         # we're scalar->scalar - call .any() so that
@@ -527,7 +538,10 @@ class _AssociationList(_AssociationCollection):
         return self.setter(object, value)
 
     def __getitem__(self, index):
-        return self._get(self.col[index])
+        if not isinstance(index, slice):
+            return self._get(self.col[index])
+        else:
+            return [self._get(member) for member in self.col[index]]
 
     def __setitem__(self, index, value):
         if not isinstance(index, slice):
@@ -589,7 +603,7 @@ class _AssociationList(_AssociationCollection):
 
         for member in self.col:
             yield self._get(member)
-        raise StopIteration
+        return
 
     def append(self, value):
         item = self._create(value)
@@ -893,7 +907,7 @@ class _AssociationSet(_AssociationCollection):
         """
         for member in self.col:
             yield self._get(member)
-        raise StopIteration
+        return
 
     def add(self, value):
         if value not in self:

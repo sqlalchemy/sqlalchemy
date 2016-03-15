@@ -14,9 +14,9 @@ Event Registration
 ------------------
 
 Subscribing to an event occurs through a single API point, the :func:`.listen` function,
-or alternatively the :func:`.listens_for` decorator.   These functions
-accept a user-defined listening function, a string identifier which identifies the event to be
-intercepted, and a target.  Additional positional and keyword arguments to these
+or alternatively the :func:`.listens_for` decorator.   These functions accept a
+target, a string identifier which identifies the event to be intercepted, and
+a user-defined listening function.  Additional positional and keyword arguments to these
 two functions may be supported by
 specific types of events, which may specify alternate interfaces for the given event function, or provide
 instructions regarding secondary event targets based on the given target.

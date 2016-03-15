@@ -750,6 +750,17 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 filter_by(id=3).outerjoin('orders','address').filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
 
+    def test_raises_on_dupe_target_rel(self):
+        User = self.classes.User
+
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Pathed join target Order.items has already been joined to; "
+            "skipping",
+            lambda: create_session().query(User).outerjoin('orders', 'items').\
+                outerjoin('orders', 'items')
+        )
+
     def test_from_joinpoint(self):
         Item, User, Order = (self.classes.Item,
                                 self.classes.User,

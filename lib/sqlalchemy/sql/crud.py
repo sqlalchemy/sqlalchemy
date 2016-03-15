@@ -1,5 +1,5 @@
 # sql/crud.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,6 +24,41 @@ or :func:`.expression.update` statement is compiled without parameter
 values present.
 
 """)
+
+ISINSERT = util.symbol('ISINSERT')
+ISUPDATE = util.symbol('ISUPDATE')
+ISDELETE = util.symbol('ISDELETE')
+
+
+def _setup_crud_params(compiler, stmt, local_stmt_type, **kw):
+    restore_isinsert = compiler.isinsert
+    restore_isupdate = compiler.isupdate
+    restore_isdelete = compiler.isdelete
+
+    should_restore = (
+        restore_isinsert or restore_isupdate or restore_isdelete
+    ) or len(compiler.stack) > 1
+
+    if local_stmt_type is ISINSERT:
+        compiler.isupdate = False
+        compiler.isinsert = True
+    elif local_stmt_type is ISUPDATE:
+        compiler.isupdate = True
+        compiler.isinsert = False
+    elif local_stmt_type is ISDELETE:
+        if not should_restore:
+            compiler.isdelete = True
+    else:
+        assert False, "ISINSERT, ISUPDATE, or ISDELETE expected"
+
+    try:
+        if local_stmt_type in (ISINSERT, ISUPDATE):
+            return _get_crud_params(compiler, stmt, **kw)
+    finally:
+        if should_restore:
+            compiler.isinsert = restore_isinsert
+            compiler.isupdate = restore_isupdate
+            compiler.isdelete = restore_isdelete
 
 
 def _get_crud_params(compiler, stmt, **kw):
@@ -59,7 +94,7 @@ def _get_crud_params(compiler, stmt, **kw):
     # but in the case of mysql multi-table update, the rules for
     # .key must conditionally take tablename into account
     _column_as_key, _getattr_col_key, _col_bind_name = \
-        _key_getters_for_crud_column(compiler)
+        _key_getters_for_crud_column(compiler, stmt)
 
     # if we have statement parameters - set defaults in the
     # compiled params
@@ -101,7 +136,7 @@ def _get_crud_params(compiler, stmt, **kw):
 
     if parameters and stmt_parameters:
         check = set(parameters).intersection(
-            _column_as_key(k) for k in stmt.parameters
+            _column_as_key(k) for k in stmt_parameters
         ).difference(check_columns)
         if check:
             raise exc.CompileError(
@@ -117,26 +152,26 @@ def _get_crud_params(compiler, stmt, **kw):
 
 def _create_bind_param(
         compiler, col, value, process=True,
-        required=False, name=None):
+        required=False, name=None, **kw):
     if name is None:
         name = col.key
     bindparam = elements.BindParameter(
         name, value, type_=col.type, required=required)
     bindparam._is_crud = True
     if process:
-        bindparam = bindparam._compiler_dispatch(compiler)
+        bindparam = bindparam._compiler_dispatch(compiler, **kw)
     return bindparam
 
 
-def _key_getters_for_crud_column(compiler):
-    if compiler.isupdate and compiler.statement._extra_froms:
+def _key_getters_for_crud_column(compiler, stmt):
+    if compiler.isupdate and stmt._extra_froms:
         # when extra tables are present, refer to the columns
         # in those extra tables as table-qualified, including in
         # dictionaries and when rendering bind param names.
         # the "main" table of the statement remains unqualified,
         # allowing the most compatibility with a non-multi-table
         # statement.
-        _et = set(compiler.statement._extra_froms)
+        _et = set(stmt._extra_froms)
 
         def _column_as_key(key):
             str_key = elements._column_as_key(key)
@@ -196,8 +231,9 @@ def _scan_insert_from_select_cols(
     if add_select_cols:
         values.extend(add_select_cols)
         compiler._insert_from_select = compiler._insert_from_select._generate()
-        compiler._insert_from_select._raw_columns += tuple(
-            expr for col, expr in add_select_cols)
+        compiler._insert_from_select._raw_columns = \
+            tuple(compiler._insert_from_select._raw_columns) + tuple(
+                expr for col, expr in add_select_cols)
 
 
 def _scan_cols(
@@ -208,10 +244,22 @@ def _scan_cols(
         implicit_return_defaults, postfetch_lastrowid = \
         _get_returning_modifiers(compiler, stmt)
 
-    cols = stmt.table.columns
+    if stmt._parameter_ordering:
+        parameter_ordering = [
+            _column_as_key(key) for key in stmt._parameter_ordering
+        ]
+        ordered_keys = set(parameter_ordering)
+        cols = [
+            stmt.table.c[key] for key in parameter_ordering
+        ] + [
+            c for c in stmt.table.c if c.key not in ordered_keys
+        ]
+    else:
+        cols = stmt.table.columns
 
     for c in cols:
         col_key = _getattr_col_key(c)
+
         if col_key in parameters and col_key not in check_columns:
 
             _append_param_parameter(
@@ -248,6 +296,10 @@ def _scan_cols(
             elif implicit_return_defaults and \
                     c in implicit_return_defaults:
                 compiler.returning.append(c)
+            elif c.primary_key and \
+                    c is not stmt.table._autoincrement_column and \
+                    not c.nullable:
+                _raise_pk_with_no_anticipated_value(c)
 
         elif compiler.isupdate:
             _append_param_update(
@@ -263,7 +315,8 @@ def _append_param_parameter(
             compiler, c, value, required=value is REQUIRED,
             name=_col_bind_name(c)
             if not stmt._has_multi_parameters
-            else "%s_0" % _col_bind_name(c)
+            else "%s_0" % _col_bind_name(c),
+            **kw
         )
     else:
         if isinstance(value, elements.BindParameter) and \
@@ -285,6 +338,22 @@ def _append_param_parameter(
 
 
 def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
+    """Create a primary key expression in the INSERT statement and
+    possibly a RETURNING clause for it.
+
+    If the column has a Python-side default, we will create a bound
+    parameter for it and "pre-execute" the Python function.  If
+    the column has a SQL expression default, or is a sequence,
+    we will add it directly into the INSERT statement and add a
+    RETURNING element to get the new value.  If the column has a
+    server side default or is marked as the "autoincrement" column,
+    we will add a RETRUNING element to get at the value.
+
+    If all the above tests fail, that indicates a primary key column with no
+    noted default generation capabilities that has no parameter passed;
+    raise an exception.
+
+    """
     if c.default is not None:
         if c.default.is_sequence:
             if compiler.dialect.supports_sequences and \
@@ -303,9 +372,12 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
             values.append(
                 (c, _create_prefetch_bind_param(compiler, c))
             )
-
-    else:
+    elif c is stmt.table._autoincrement_column or c.server_default is not None:
         compiler.returning.append(c)
+    elif not c.nullable:
+        # no .default, no .server_default, not autoincrement, we have
+        # no indication this primary key column will have any value
+        _raise_pk_with_no_anticipated_value(c)
 
 
 def _create_prefetch_bind_param(compiler, c, process=True, name=None):
@@ -319,6 +391,7 @@ class _multiparam_column(elements.ColumnElement):
         self.key = "%s_%d" % (original.key, index + 1)
         self.original = original
         self.default = original.default
+        self.type = original.type
 
     def __eq__(self, other):
         return isinstance(other, _multiparam_column) and \
@@ -341,18 +414,46 @@ def _process_multiparam_default_bind(compiler, c, index, kw):
 
 
 def _append_param_insert_pk(compiler, stmt, c, values, kw):
+    """Create a bound parameter in the INSERT statement to receive a
+    'prefetched' default value.
+
+    The 'prefetched' value indicates that we are to invoke a Python-side
+    default function or expliclt SQL expression before the INSERT statement
+    proceeds, so that we have a primary key value available.
+
+    if the column has no noted default generation capabilities, it has
+    no value passed in either; raise an exception.
+
+    """
     if (
-            (c.default is not None and
-             (not c.default.is_sequence or
-                 compiler.dialect.supports_sequences)) or
-            c is stmt.table._autoincrement_column and
-            (compiler.dialect.supports_sequences or
-             compiler.dialect.
-             preexecute_autoincrement_sequences)
+            (
+                # column has a Python-side default
+                c.default is not None and
+                (
+                    # and it won't be a Sequence
+                    not c.default.is_sequence or
+                    compiler.dialect.supports_sequences
+                )
+            )
+            or
+            (
+                # column is the "autoincrement column"
+                c is stmt.table._autoincrement_column and
+                (
+                    # and it's either a "sequence" or a
+                    # pre-executable "autoincrement" sequence
+                    compiler.dialect.supports_sequences or
+                    compiler.dialect.preexecute_autoincrement_sequences
+                )
+            )
     ):
         values.append(
             (c, _create_prefetch_bind_param(compiler, c))
         )
+    elif c.default is None and c.server_default is None and not c.nullable:
+        # no .default, no .server_default, not autoincrement, we have
+        # no indication this primary key column will have any value
+        _raise_pk_with_no_anticipated_value(c)
 
 
 def _append_param_insert_hasdefault(
@@ -428,6 +529,7 @@ def _append_param_update(
         else:
             compiler.postfetch.append(c)
     elif implicit_return_defaults and \
+            stmt._return_defaults is not True and \
             c in implicit_return_defaults:
         compiler.returning.append(c)
 
@@ -542,7 +644,9 @@ def _get_returning_modifiers(compiler, stmt):
                                     stmt.table.implicit_returning and
                                     stmt._return_defaults)
     else:
-        implicit_return_defaults = False
+        # this line is unused, currently we are always
+        # isinsert or isupdate
+        implicit_return_defaults = False  # pragma: no cover
 
     if implicit_return_defaults:
         if stmt._return_defaults is True:
@@ -554,3 +658,24 @@ def _get_returning_modifiers(compiler, stmt):
 
     return need_pks, implicit_returning, \
         implicit_return_defaults, postfetch_lastrowid
+
+
+def _raise_pk_with_no_anticipated_value(c):
+    msg = (
+        "Column '%s.%s' is marked as a member of the "
+        "primary key for table '%s', "
+        "but has no Python-side or server-side default generator indicated, "
+        "nor does it indicate 'autoincrement=True' or 'nullable=True', "
+        "and no explicit value is passed.  "
+        "Primary key columns typically may not store NULL."
+        %
+        (c.table.fullname, c.name, c.table.fullname))
+    if len(c.table.primary_key.columns) > 1:
+        msg += (
+            " Note that as of SQLAlchemy 1.1, 'autoincrement=True' must be "
+            "indicated explicitly for composite (e.g. multicolumn) primary "
+            "keys if AUTO_INCREMENT/SERIAL/IDENTITY "
+            "behavior is expected for one of the columns in the primary key. "
+            "CREATE TABLE statements are impacted by this change as well on "
+            "most backends.")
+    raise exc.CompileError(msg)

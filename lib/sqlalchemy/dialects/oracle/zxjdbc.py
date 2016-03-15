@@ -1,5 +1,5 @@
 # oracle/zxjdbc.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,8 +10,10 @@
     :name: zxJDBC for Jython
     :dbapi: zxjdbc
     :connectstring: oracle+zxjdbc://user:pass@host/dbname
-    :driverurl: http://www.oracle.com/technology/software/tech/java/\
-sqlj_jdbc/index.html.
+    :driverurl: http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html
+
+    .. note:: Jython is not supported by current versions of SQLAlchemy.  The
+       zxjdbc dialect should be considered as experimental.
 
 """
 import decimal
@@ -68,8 +70,7 @@ class OracleCompiler_zxjdbc(OracleCompiler):
             expression._select_iterables(returning_cols))
 
         # within_columns_clause=False so that labels (foo AS bar) don't render
-        columns = [self.process(c, within_columns_clause=False,
-                                result_map=self.result_map)
+        columns = [self.process(c, within_columns_clause=False)
                    for c in self.returning_cols]
 
         if not hasattr(self, 'returning_parameters'):

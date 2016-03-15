@@ -1,5 +1,5 @@
 # engine/reflection.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -529,7 +529,8 @@ class Inspector(object):
         """
         dialect = self.bind.dialect
 
-        schema = table.schema
+        schema = self.bind.schema_for_object(table)
+
         table_name = table.name
 
         # get table-level arguments that are specifically

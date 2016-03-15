@@ -1,8 +1,11 @@
 from . import _fixtures
 from sqlalchemy.orm import loading, Session, aliased
-from sqlalchemy.testing.assertions import eq_, assert_raises
+from sqlalchemy.testing.assertions import eq_, \
+    assert_raises, assert_raises_message
 from sqlalchemy.util import KeyedTuple
 from sqlalchemy.testing import mock
+from sqlalchemy import select
+from sqlalchemy import exc
 # class GetFromIdentityTest(_fixtures.FixtureTest):
 # class LoadOnIdentTest(_fixtures.FixtureTest):
 # class InstanceProcessorTest(_fixture.FixtureTest):
@@ -33,6 +36,19 @@ class InstancesTest(_fixtures.FixtureTest):
             list, loading.instances(q, cursor, ctx)
         )
         assert cursor.close.called, "Cursor wasn't closed"
+
+    def test_row_proc_not_created(self):
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User.id, User.name)
+        stmt = select([User.id])
+
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'users.name'",
+            q.from_statement(stmt).all
+        )
 
 
 class MergeResultTest(_fixtures.FixtureTest):

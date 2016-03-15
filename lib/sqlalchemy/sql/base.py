@@ -1,5 +1,5 @@
 # sql/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -449,11 +449,10 @@ class ColumnCollection(util.OrderedProperties):
 
     """
 
-    __slots__ = '_all_col_set', '_all_columns'
+    __slots__ = '_all_columns'
 
     def __init__(self, *columns):
         super(ColumnCollection, self).__init__()
-        object.__setattr__(self, '_all_col_set', util.column_set())
         object.__setattr__(self, '_all_columns', [])
         for c in columns:
             self.add(c)
@@ -482,14 +481,11 @@ class ColumnCollection(util.OrderedProperties):
             other = self[column.name]
             if other.name == other.key:
                 remove_col = other
-                self._all_col_set.remove(other)
                 del self._data[other.key]
 
         if column.key in self._data:
             remove_col = self._data[column.key]
-            self._all_col_set.remove(remove_col)
 
-        self._all_col_set.add(column)
         self._data[column.key] = column
         if remove_col is not None:
             self._all_columns[:] = [column if c is remove_col
@@ -534,7 +530,6 @@ class ColumnCollection(util.OrderedProperties):
             # in a _make_proxy operation
             util.memoized_property.reset(value, "proxy_set")
 
-        self._all_col_set.add(value)
         self._all_columns.append(value)
         self._data[key] = value
 
@@ -543,22 +538,20 @@ class ColumnCollection(util.OrderedProperties):
 
     def remove(self, column):
         del self._data[column.key]
-        self._all_col_set.remove(column)
         self._all_columns[:] = [
             c for c in self._all_columns if c is not column]
 
     def update(self, iter):
         cols = list(iter)
+        all_col_set = set(self._all_columns)
         self._all_columns.extend(
-            c for label, c in cols if c not in self._all_col_set)
-        self._all_col_set.update(c for label, c in cols)
+            c for label, c in cols if c not in all_col_set)
         self._data.update((label, c) for label, c in cols)
 
     def extend(self, iter):
         cols = list(iter)
-        self._all_columns.extend(c for c in cols if c not in
-                                 self._all_col_set)
-        self._all_col_set.update(cols)
+        all_col_set = set(self._all_columns)
+        self._all_columns.extend(c for c in cols if c not in all_col_set)
         self._data.update((c.key, c) for c in cols)
 
     __hash__ = None
@@ -584,22 +577,17 @@ class ColumnCollection(util.OrderedProperties):
     def __setstate__(self, state):
         object.__setattr__(self, '_data', state['_data'])
         object.__setattr__(self, '_all_columns', state['_all_columns'])
-        object.__setattr__(
-            self, '_all_col_set', util.column_set(state['_all_columns']))
 
     def contains_column(self, col):
-        # this has to be done via set() membership
-        return col in self._all_col_set
+        return col in set(self._all_columns)
 
     def as_immutable(self):
-        return ImmutableColumnCollection(
-            self._data, self._all_col_set, self._all_columns)
+        return ImmutableColumnCollection(self._data, self._all_columns)
 
 
 class ImmutableColumnCollection(util.ImmutableProperties, ColumnCollection):
-    def __init__(self, data, colset, all_columns):
+    def __init__(self, data, all_columns):
         util.ImmutableProperties.__init__(self, data)
-        object.__setattr__(self, '_all_col_set', colset)
         object.__setattr__(self, '_all_columns', all_columns)
 
     extend = remove = util.ImmutableProperties._immutable

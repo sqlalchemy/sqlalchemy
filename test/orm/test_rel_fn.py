@@ -3,9 +3,9 @@ from sqlalchemy.testing import assert_raises_message, eq_, \
 from sqlalchemy.testing import fixtures
 from sqlalchemy.orm import relationships, foreign, remote
 from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, \
-    select, ForeignKeyConstraint, exc, func, and_, String
+    select, ForeignKeyConstraint, exc, func, and_, String, Boolean
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
-
+from sqlalchemy.testing import mock
 
 class _JoinFixtures(object):
     @classmethod
@@ -71,6 +71,7 @@ class _JoinFixtures(object):
         )
         cls.base = Table('base', m,
             Column('id', Integer, primary_key=True),
+            Column('flag', Boolean)
         )
         cls.sub = Table('sub', m,
             Column('id', Integer, ForeignKey('base.id'),
@@ -504,6 +505,31 @@ class _JoinFixtures(object):
                 foreign(remote(self.selfref.c.sid)))
         )
 
+    def _join_fixture_inh_selfref_w_entity(self, **kw):
+        fake_logger = mock.Mock(info=lambda *arg, **kw: None)
+        prop = mock.Mock(
+            parent=mock.Mock(),
+            mapper=mock.Mock(),
+            logger=fake_logger
+        )
+        local_selectable = self.base.join(self.sub)
+        remote_selectable = self.base.join(self.sub_w_sub_rel)
+
+        sub_w_sub_rel__sub_id = self.sub_w_sub_rel.c.sub_id._annotate(
+            {'parentmapper': prop.mapper})
+        sub__id = self.sub.c.id._annotate({'parentmapper': prop.parent})
+        sub_w_sub_rel__flag = self.base.c.flag._annotate(
+            {"parentmapper": prop.mapper})
+        return relationships.JoinCondition(
+            local_selectable, remote_selectable,
+            local_selectable, remote_selectable,
+            primaryjoin=and_(
+                sub_w_sub_rel__sub_id == sub__id,
+                sub_w_sub_rel__flag == True
+            ),
+            prop=prop
+        )
+
     def _assert_non_simple_warning(self, fn):
         assert_raises_message(
             exc.SAWarning,
@@ -902,6 +928,17 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase,
         eq_(
             joincond.local_remote_pairs,
             [(self.purely_single_col.c.path, self.purely_single_col.c.path)]
+        )
+
+    def test_determine_local_remote_pairs_inh_selfref_w_entities(self):
+        joincond = self._join_fixture_inh_selfref_w_entity()
+        eq_(
+            joincond.local_remote_pairs,
+            [(self.sub.c.id, self.sub_w_sub_rel.c.sub_id)]
+        )
+        eq_(
+            joincond.remote_columns,
+            set([self.base.c.flag, self.sub_w_sub_rel.c.sub_id])
         )
 
 class DirectionTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):

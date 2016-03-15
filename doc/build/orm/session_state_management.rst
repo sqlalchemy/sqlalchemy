@@ -23,16 +23,28 @@ It's helpful to know the states which an instance can have within a session:
   existing instances (or moving persistent instances from other sessions into
   your local session).
 
-* **Detached** - an instance which has a record in the database, but is not in
-  any session. There's nothing wrong with this, and you can use objects
-  normally when they're detached, **except** they will not be able to issue
-  any SQL in order to load collections or attributes which are not yet loaded,
-  or were marked as "expired".
+* **Deleted** - An instance which has been deleted within a flush, but
+  the transaction has not yet completed.  Objects in this state are essentially
+  in the opposite of "pending" state; when the session's transaction is committed,
+  the object will move to the detached state.  Alternatively, when
+  the session's transaction is rolled back, a deleted object moves
+  *back* to the persistent state.
 
-Knowing these states is important, since the
-:class:`.Session` tries to be strict about ambiguous
-operations (such as trying to save the same object to two different sessions
-at the same time).
+  .. versionchanged:: 1.1 The 'deleted' state is a newly added session
+     object state distinct from the 'persistent' state.
+
+* **Detached** - an instance which corresponds, or previously corresponded,
+  to a record in the database, but is not currently in any session.
+  The detached object will contain a database identity marker, however
+  because it is not associated with a session, it is unknown whether or not
+  this database identity actually exists in a target database.  Detached
+  objects are safe to use normally, except that they have no ability to
+  load unloaded attributes or attributes that were previously marked
+  as "expired".
+
+For a deeper dive into all possible state transitions, see the
+section :ref:`session_lifecycle_events` which describes each transition
+as well as how to programmatically track each one.
 
 Getting the Current State of an Object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -53,8 +65,11 @@ the :func:`.inspect` system::
 
     :attr:`.InstanceState.persistent`
 
+    :attr:`.InstanceState.deleted`
+
     :attr:`.InstanceState.detached`
 
+.. _session_attributes:
 
 Session Attributes
 ------------------
@@ -92,17 +107,80 @@ all objects which have had changes since they were last loaded or saved (i.e.
 (Documentation: :attr:`.Session.new`, :attr:`.Session.dirty`,
 :attr:`.Session.deleted`, :attr:`.Session.identity_map`).
 
-Note that objects within the session are by default *weakly referenced*. This
+
+.. _session_referencing_behavior:
+
+Session Referencing Behavior
+----------------------------
+
+Objects within the session are *weakly referenced*. This
 means that when they are dereferenced in the outside application, they fall
 out of scope from within the :class:`~sqlalchemy.orm.session.Session` as well
 and are subject to garbage collection by the Python interpreter. The
 exceptions to this include objects which are pending, objects which are marked
 as deleted, or persistent objects which have pending changes on them. After a
 full flush, these collections are all empty, and all objects are again weakly
-referenced. To disable the weak referencing behavior and force all objects
-within the session to remain until explicitly expunged, configure
-:class:`.sessionmaker` with the ``weak_identity_map=False``
-setting.
+referenced.
+
+To cause objects in the :class:`.Session` to remain strongly
+referenced, usually a simple approach is all that's needed.  Examples
+of externally managed strong-referencing behavior include loading
+objects into a local dictionary keyed to their primary key, or into
+lists or sets for the span of time that they need to remain
+referenced. These collections can be associated with a
+:class:`.Session`, if desired, by placing them into the
+:attr:`.Session.info` dictionary.
+
+An event based approach is also feasable.  A simple recipe that provides
+"strong referencing" behavior for all objects as they remain within
+the :term:`persistent` state is as follows::
+
+    from sqlalchemy import event
+
+    def strong_reference_session(session):
+        @event.listens_for(session, "pending_to_persistent")
+        @event.listens_for(session, "deleted_to_persistent")
+        @event.listens_for(session, "detached_to_persistent")
+        @event.listens_for(session, "loaded_as_persistent")
+        def strong_ref_object(sess, instance):
+            if 'refs' not in sess.info:
+                sess.info['refs'] = refs = set()
+            else:
+                refs = sess.info['refs']
+
+            refs.add(instance)
+
+
+        @event.listens_for(session, "persistent_to_detached")
+        @event.listens_for(session, "persistent_to_deleted")
+        @event.listens_for(session, "persistent_to_transient")
+        def deref_object(sess, instance):
+            sess.info['refs'].discard(instance)
+
+Above, we intercept the :meth:`.SessionEvents.pending_to_persistent`,
+:meth:`.SessionEvents.detached_to_persistent`,
+:meth:`.SessionEvents.deleted_to_persistent` and
+:meth:`.SessionEvents.loaded_as_persistent` event hooks in order to intercept
+objects as they enter the :term:`persistent` transition, and the
+:meth:`.SessionEvents.persistent_to_detached` and
+:meth:`.SessionEvents.persistent_to_deleted` hooks to intercept
+objects as they leave the persistent state.
+
+The above function may be called for any :class:`.Session` in order to
+provide strong-referencing behavior on a per-:class:`.Session` basis::
+
+    from sqlalchemy.orm import Session
+
+    my_session = Session()
+    strong_reference_session(my_session)
+
+It may also be called for any :class:`.sessionmaker`::
+
+    from sqlalchemy.orm import sessionmaker
+
+    maker = sessionmaker()
+    strong_reference_session(maker)
+
 
 .. _unitofwork_merging:
 

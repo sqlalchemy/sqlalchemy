@@ -1,12 +1,12 @@
 # util/__init__.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .compat import callable, cmp, reduce,  \
-    threading, py3k, py33, py2k, jython, pypy, cpython, win32, \
+    threading, py3k, py33, py36, py2k, jython, pypy, cpython, win32, \
     pickle, dottedgetter, parse_qsl, namedtuple, next, reraise, \
     raise_from_cause, text_type, safe_kwarg, string_types, int_types, \
     binary_type, nested, \
@@ -19,7 +19,7 @@ from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     OrderedSet, IdentitySet, OrderedIdentitySet, column_set, \
     column_dict, ordered_column_set, populate_column_dict, unique_list, \
     UniqueAppender, PopulateDict, EMPTY_SET, to_list, to_set, \
-    to_column_set, update_copy, flatten_iterator, \
+    to_column_set, update_copy, flatten_iterator, has_intersection, \
     LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence, \
     coerce_generator_arg, lightweight_named_tuple
 
@@ -36,7 +36,7 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
     generic_repr, counter, PluginLoader, hybridproperty, hybridmethod, \
     safe_reraise,\
     get_callable_argspec, only_once, attrsetter, ellipses_string, \
-    warn_limited, map_bits, MemoizedSlots, EnsureKWArgType
+    warn_limited, map_bits, MemoizedSlots, EnsureKWArgType, wrap_callable
 
 from .deprecations import warn_deprecated, warn_pending_deprecation, \
     deprecated, pending_deprecation, inject_docstring_text

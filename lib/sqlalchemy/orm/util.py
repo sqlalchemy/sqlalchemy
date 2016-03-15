@@ -1,5 +1,5 @@
 # orm/util.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,7 +13,7 @@ from . import attributes
 import re
 
 from .base import instance_str, state_str, state_class_str, attribute_str, \
-    state_attribute_str, object_mapper, object_state, _none_set
+    state_attribute_str, object_mapper, object_state, _none_set, _never_set
 from .base import class_mapper, _class_to_mapper
 from .base import InspectionAttr
 from .path_registry import PathRegistry
@@ -35,7 +35,7 @@ class CascadeOptions(frozenset):
         'expunge', 'delete_orphan')
 
     def __new__(cls, value_list):
-        if isinstance(value_list, str) or value_list is None:
+        if isinstance(value_list, util.string_types) or value_list is None:
             return cls.from_string(value_list)
         values = set(value_list)
         if values.difference(cls._allowed_cascades):
@@ -530,14 +530,18 @@ class AliasedInsp(InspectionAttr):
     def _adapt_element(self, elem):
         return self._adapter.traverse(elem).\
             _annotate({
-                'parententity': self.entity,
+                'parententity': self,
                 'parentmapper': self.mapper}
         )
 
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers
         if mapper in self_poly:
-            return getattr(self.entity, mapper.class_.__name__)._aliased_insp
+            if mapper is self.mapper:
+                return self
+            else:
+                return getattr(
+                    self.entity, mapper.class_.__name__)._aliased_insp
         elif mapper.isa(self.mapper):
             return self
         else:
@@ -776,7 +780,10 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None, isouter=False):
+    def __init__(
+            self,
+            left, right, onclause=None, isouter=False,
+            _left_memo=None, _right_memo=None):
 
         left_info = inspection.inspect(left)
         left_orm_info = getattr(left, '_joined_from_info', left_info)
@@ -785,6 +792,9 @@ class _ORMJoin(expression.Join):
         adapt_to = right_info.selectable
 
         self._joined_from_info = right_info
+
+        self._left_memo = _left_memo
+        self._right_memo = _right_memo
 
         if isinstance(onclause, util.string_types):
             onclause = getattr(left_orm_info.entity, onclause)
@@ -833,9 +843,36 @@ class _ORMJoin(expression.Join):
             # or implicit ON clause, augment it the same way we'd augment the
             # WHERE.
             single_crit = right_info.mapper._single_table_criterion
-            if right_info.is_aliased_class:
-                single_crit = right_info._adapter.traverse(single_crit)
-            self.onclause = self.onclause & single_crit
+            if single_crit is not None:
+                if right_info.is_aliased_class:
+                    single_crit = right_info._adapter.traverse(single_crit)
+                self.onclause = self.onclause & single_crit
+
+    def _splice_into_center(self, other):
+        """Splice a join into the center.
+
+        Given join(a, b) and join(b, c), return join(a, b).join(c)
+
+        """
+        leftmost = other
+        while isinstance(leftmost, sql.Join):
+            leftmost = leftmost.left
+
+        assert self.right is leftmost
+
+        left = _ORMJoin(
+            self.left, other.left,
+            self.onclause, isouter=self.isouter,
+            _left_memo=self._left_memo,
+            _right_memo=other._left_memo
+        )
+
+        return _ORMJoin(
+            left,
+            other.right,
+            other.onclause, isouter=other.isouter,
+            _right_memo=other._right_memo
+        )
 
     def join(self, right, onclause=None, isouter=False, join_to_left=None):
         return _ORMJoin(self, right, onclause, isouter)
@@ -952,12 +989,19 @@ def was_deleted(object):
     """Return True if the given object was deleted
     within a session flush.
 
+    This is regardless of whether or not the object is
+    persistent or detached.
+
     .. versionadded:: 0.8.0
+
+    .. seealso::
+
+        :attr:`.InstanceState.was_deleted`
 
     """
 
     state = attributes.instance_state(object)
-    return state.deleted
+    return state.was_deleted
 
 
 def randomize_unitofwork():

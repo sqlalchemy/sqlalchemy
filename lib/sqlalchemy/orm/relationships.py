@@ -1,5 +1,5 @@
 # orm/relationships.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,7 +23,7 @@ from . import attributes
 from ..sql.util import (
     ClauseAdapter,
     join_condition, _shallow_annotate, visit_binary_product,
-    _deep_deannotate, selectables_overlap
+    _deep_deannotate, selectables_overlap, adapt_criterion_to_null
 )
 from ..sql import operators, expression, visitors
 from .interfaces import (MANYTOMANY, MANYTOONE, ONETOMANY,
@@ -113,6 +113,7 @@ class RelationshipProperty(StrategizedProperty):
                  active_history=False,
                  cascade_backrefs=True,
                  load_on_pending=False,
+                 bake_queries=True,
                  strategy_class=None, _local_remote_pairs=None,
                  query_class=None,
                  info=None):
@@ -194,7 +195,7 @@ class RelationshipProperty(StrategizedProperty):
 
           The :paramref:`~.relationship.secondary` keyword argument is
           typically applied in the case where the intermediary :class:`.Table`
-          is not otherwise exprssed in any direct class mapping. If the
+          is not otherwise expressed in any direct class mapping. If the
           "secondary" table is also explicitly mapped elsewhere (e.g. as in
           :ref:`association_pattern`), one should consider applying the
           :paramref:`~.relationship.viewonly` flag so that this
@@ -273,6 +274,31 @@ class RelationshipProperty(StrategizedProperty):
 
             :paramref:`~.relationship.backref` - alternative form
             of backref specification.
+
+        :param bake_queries=True:
+          Use the :class:`.BakedQuery` cache to cache the construction of SQL
+          used in lazy loads, when the :func:`.bake_lazy_loaders` function has
+          first been called.  Defaults to True and is intended to provide an
+          "opt out" flag per-relationship when the baked query cache system is
+          in use.
+
+          .. warning::
+
+              This flag **only** has an effect when the application-wide
+              :func:`.bake_lazy_loaders` function has been called.   It
+              defaults to True so is an "opt out" flag.
+
+          Setting this flag to False when baked queries are otherwise in
+          use might be to reduce
+          ORM memory use for this :func:`.relationship`, or to work around
+          unresolved stability issues observed within the baked query
+          cache system.
+
+          .. versionadded:: 1.0.0
+
+          .. seealso::
+
+            :ref:`baked_toplevel`
 
         :param cascade:
           a comma-separated list of cascade rules which determines how
@@ -594,30 +620,26 @@ class RelationshipProperty(StrategizedProperty):
                 and examples.
 
         :param passive_updates=True:
-          Indicates loading and INSERT/UPDATE/DELETE behavior when the
-          source of a foreign key value changes (i.e. an "on update"
-          cascade), which are typically the primary key columns of the
-          source row.
+          Indicates the persistence behavior to take when a referenced
+          primary key value changes in place, indicating that the referencing
+          foreign key columns will also need their value changed.
 
-          When True, it is assumed that ON UPDATE CASCADE is configured on
+          When True, it is assumed that ``ON UPDATE CASCADE`` is configured on
           the foreign key in the database, and that the database will
           handle propagation of an UPDATE from a source column to
-          dependent rows.  Note that with databases which enforce
-          referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
-          ON UPDATE CASCADE is required for this operation.  The
-          relationship() will update the value of the attribute on related
-          items which are locally present in the session during a flush.
+          dependent rows.  When False, the SQLAlchemy :func:`.relationship`
+          construct will attempt to emit its own UPDATE statements to
+          modify related targets.  However note that SQLAlchemy **cannot**
+          emit an UPDATE for more than one level of cascade.  Also,
+          setting this flag to False is not compatible in the case where
+          the database is in fact enforcing referential integrity, unless
+          those constraints are explicitly "deferred", if the target backend
+          supports it.
 
-          When False, it is assumed that the database does not enforce
-          referential integrity and will not be issuing its own CASCADE
-          operation for an update.  The relationship() will issue the
-          appropriate UPDATE statements to the database in response to the
-          change of a referenced key, and items locally present in the
-          session during a flush will also be refreshed.
-
-          This flag should probably be set to False if primary key changes
-          are expected and the database in use doesn't support CASCADE
-          (i.e. SQLite, MySQL MyISAM tables).
+          It is highly advised that an application which is employing
+          mutable primary keys keeps ``passive_updates`` set to True,
+          and instead uses the referential integrity features of the database
+          itself in order to handle the change efficiently and fully.
 
           .. seealso::
 
@@ -802,6 +824,7 @@ class RelationshipProperty(StrategizedProperty):
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
+        self.bake_queries = bake_queries
         self.load_on_pending = load_on_pending
         self.comparator_factory = comparator_factory or \
             RelationshipProperty.Comparator
@@ -873,13 +896,13 @@ class RelationshipProperty(StrategizedProperty):
 
             """
             self.prop = prop
-            self._parentmapper = parentmapper
+            self._parententity = parentmapper
             self._adapt_to_entity = adapt_to_entity
             if of_type:
                 self._of_type = of_type
 
         def adapt_to_entity(self, adapt_to_entity):
-            return self.__class__(self.property, self._parentmapper,
+            return self.__class__(self.property, self._parententity,
                                   adapt_to_entity=adapt_to_entity,
                                   of_type=self._of_type)
 
@@ -931,7 +954,7 @@ class RelationshipProperty(StrategizedProperty):
             """
             return RelationshipProperty.Comparator(
                 self.property,
-                self._parentmapper,
+                self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
                 of_type=cls)
 
@@ -1222,11 +1245,15 @@ class RelationshipProperty(StrategizedProperty):
                 state = attributes.instance_state(other)
 
                 def state_bindparam(x, state, col):
-                    o = state.obj()  # strong ref
+                    dict_ = state.dict
                     return sql.bindparam(
-                        x, unique=True, callable_=lambda:
-                        self.property.mapper.
-                        _get_committed_attr_by_column(o, col))
+                        x, unique=True,
+                        callable_=self.property._get_attr_w_warn_on_none(
+                            col,
+                            self.property.mapper._get_state_attr_by_column,
+                            state, dict_, col, passive=attributes.PASSIVE_OFF
+                        )
+                    )
 
                 def adapt(col):
                     if self.adapter:
@@ -1241,13 +1268,14 @@ class RelationshipProperty(StrategizedProperty):
                             adapt(x) == None)
                         for (x, y) in self.property.local_remote_pairs])
 
-            criterion = sql.and_(*[x == y for (x, y) in
-                                   zip(
-                self.property.mapper.primary_key,
-                self.property.
-                mapper.
-                primary_key_from_instance(other))
+            criterion = sql.and_(*[
+                x == y for (x, y) in
+                zip(
+                    self.property.mapper.primary_key,
+                    self.property.mapper.primary_key_from_instance(other)
+                )
             ])
+
             return ~self._criterion_exists(criterion)
 
         def __ne__(self, other):
@@ -1315,16 +1343,83 @@ class RelationshipProperty(StrategizedProperty):
         return self._optimized_compare(
             instance, value_is_parent=True, alias_secondary=alias_secondary)
 
-    def _optimized_compare(self, value, value_is_parent=False,
+    def _optimized_compare(self, state, value_is_parent=False,
                            adapt_source=None,
                            alias_secondary=True):
-        if value is not None:
-            value = attributes.instance_state(value)
-        return self._lazy_strategy.lazy_clause(
-            value,
-            reverse_direction=not value_is_parent,
-            alias_secondary=alias_secondary,
-            adapt_source=adapt_source)
+        if state is not None:
+            state = attributes.instance_state(state)
+
+        reverse_direction = not value_is_parent
+
+        if state is None:
+            return self._lazy_none_clause(
+                reverse_direction,
+                adapt_source=adapt_source)
+
+        if not reverse_direction:
+            criterion, bind_to_col = \
+                self._lazy_strategy._lazywhere, \
+                self._lazy_strategy._bind_to_col
+        else:
+            criterion, bind_to_col = \
+                self._lazy_strategy._rev_lazywhere, \
+                self._lazy_strategy._rev_bind_to_col
+
+        if reverse_direction:
+            mapper = self.mapper
+        else:
+            mapper = self.parent
+
+        dict_ = attributes.instance_dict(state.obj())
+
+        def visit_bindparam(bindparam):
+            if bindparam._identifying_key in bind_to_col:
+                bindparam.callable = self._get_attr_w_warn_on_none(
+                    bind_to_col[bindparam._identifying_key],
+                    mapper._get_state_attr_by_column,
+                    state, dict_,
+                    bind_to_col[bindparam._identifying_key],
+                    passive=attributes.PASSIVE_OFF)
+
+        if self.secondary is not None and alias_secondary:
+            criterion = ClauseAdapter(
+                self.secondary.alias()).\
+                traverse(criterion)
+
+        criterion = visitors.cloned_traverse(
+            criterion, {}, {'bindparam': visit_bindparam})
+
+        if adapt_source:
+            criterion = adapt_source(criterion)
+        return criterion
+
+    def _get_attr_w_warn_on_none(self, column, fn, *arg, **kw):
+        def _go():
+            value = fn(*arg, **kw)
+            if value is None:
+                util.warn(
+                    "Got None for value of column %s; this is unsupported "
+                    "for a relationship comparison and will not "
+                    "currently produce an IS comparison "
+                    "(but may in a future release)" % column)
+            return value
+        return _go
+
+    def _lazy_none_clause(self, reverse_direction=False, adapt_source=None):
+        if not reverse_direction:
+            criterion, bind_to_col = \
+                self._lazy_strategy._lazywhere, \
+                self._lazy_strategy._bind_to_col
+        else:
+            criterion, bind_to_col = \
+                self._lazy_strategy._rev_lazywhere, \
+                self._lazy_strategy._rev_bind_to_col
+
+        criterion = adapt_criterion_to_null(criterion, bind_to_col)
+
+        if adapt_source:
+            criterion = adapt_source(criterion)
+        return criterion
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
@@ -1335,7 +1430,7 @@ class RelationshipProperty(StrategizedProperty):
               source_dict,
               dest_state,
               dest_dict,
-              load, _recursive):
+              load, _recursive, _resolve_conflict_map):
 
         if load:
             for r in self._reverse_property:
@@ -1368,8 +1463,10 @@ class RelationshipProperty(StrategizedProperty):
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict,
-                                     load=load, _recursive=_recursive)
+                obj = session._merge(
+                    current_state, current_dict,
+                    load=load, _recursive=_recursive,
+                    _resolve_conflict_map=_resolve_conflict_map)
                 if obj is not None:
                     dest_list.append(obj)
 
@@ -1379,16 +1476,19 @@ class RelationshipProperty(StrategizedProperty):
                 for c in dest_list:
                     coll.append_without_event(c)
             else:
-                dest_state.get_impl(self.key)._set_iterable(
-                    dest_state, dest_dict, dest_list)
+                dest_state.get_impl(self.key).set(
+                    dest_state, dest_dict, dest_list,
+                    _adapt=False)
         else:
             current = source_dict[self.key]
             if current is not None:
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict,
-                                     load=load, _recursive=_recursive)
+                obj = session._merge(
+                    current_state, current_dict,
+                    load=load, _recursive=_recursive,
+                    _resolve_conflict_map=_resolve_conflict_map)
             else:
                 obj = None
 
@@ -1717,15 +1817,16 @@ class RelationshipProperty(StrategizedProperty):
                 backref_key, kwargs = self.backref
             mapper = self.mapper.primary_mapper()
 
-            check = set(mapper.iterate_to_root()).\
-                union(mapper.self_and_descendants)
-            for m in check:
-                if m.has_property(backref_key):
-                    raise sa_exc.ArgumentError(
-                        "Error creating backref "
-                        "'%s' on relationship '%s': property of that "
-                        "name exists on mapper '%s'" %
-                        (backref_key, self, m))
+            if not mapper.concrete:
+                check = set(mapper.iterate_to_root()).\
+                    union(mapper.self_and_descendants)
+                for m in check:
+                    if m.has_property(backref_key) and not m.concrete:
+                        raise sa_exc.ArgumentError(
+                            "Error creating backref "
+                            "'%s' on relationship '%s': property of that "
+                            "name exists on mapper '%s'" %
+                            (backref_key, self, m))
 
             # determine primaryjoin/secondaryjoin for the
             # backref.  Use the one we had, so that
@@ -2265,12 +2366,21 @@ class JoinCondition(object):
             binary.right, binary.left = proc_left_right(binary.right,
                                                         binary.left)
 
+        check_entities = self.prop is not None and \
+            self.prop.mapper is not self.prop.parent
+
         def proc_left_right(left, right):
             if isinstance(left, expression.ColumnClause) and \
                     isinstance(right, expression.ColumnClause):
                 if self.child_selectable.c.contains_column(right) and \
                         self.parent_selectable.c.contains_column(left):
                     right = right._annotate({"remote": True})
+            elif check_entities and \
+                    right._annotations.get('parentmapper') is self.prop.mapper:
+                right = right._annotate({"remote": True})
+            elif check_entities and \
+                    left._annotations.get('parentmapper') is self.prop.mapper:
+                left = left._annotate({"remote": True})
             else:
                 self._warn_non_column_elements()
 

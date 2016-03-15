@@ -7,6 +7,7 @@ from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy import inspect
 
+
 class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 

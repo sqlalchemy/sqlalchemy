@@ -1,5 +1,5 @@
 # engine/default.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,7 +16,7 @@ as the base class for their own corresponding classes.
 import re
 import random
 from . import reflection, interfaces, result
-from ..sql import compiler, expression
+from ..sql import compiler, expression, schema
 from .. import types as sqltypes
 from .. import exc, util, pool, processors
 import codecs
@@ -61,14 +61,13 @@ class DefaultDialect(interfaces.Dialect):
 
     engine_config_types = util.immutabledict([
         ('convert_unicode', util.bool_or_str('force')),
-        ('pool_timeout', int),
+        ('pool_timeout', util.asint),
         ('echo', util.bool_or_str('debug')),
         ('echo_pool', util.bool_or_str('debug')),
-        ('pool_recycle', int),
-        ('pool_size', int),
-        ('max_overflow', int),
-        ('pool_threadlocal', bool),
-        ('use_native_unicode', bool),
+        ('pool_recycle', util.asint),
+        ('pool_size', util.asint),
+        ('max_overflow', util.asint),
+        ('pool_threadlocal', util.asbool),
     ])
 
     # if the NUMERIC type
@@ -156,6 +155,15 @@ class DefaultDialect(interfaces.Dialect):
     requires_name_normalize = False
 
     reflection_options = ()
+
+    dbapi_exception_translation_map = util.immutabledict()
+    """mapping used in the extremely unusual case that a DBAPI's
+    published exceptions don't actually have the __name__ that they
+    are linked towards.
+
+    .. versionadded:: 1.0.5
+
+    """
 
     def __init__(self, convert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
@@ -390,9 +398,21 @@ class DefaultDialect(interfaces.Dialect):
                 if not branch:
                     self._set_connection_isolation(connection, isolation_level)
 
+        if 'schema_translate_map' in opts:
+            getter = schema._schema_getter(opts['schema_translate_map'])
+            engine.schema_for_object = getter
+
+            @event.listens_for(engine, "engine_connect")
+            def set_schema_translate_map(connection, branch):
+                connection.schema_for_object = getter
+
     def set_connection_execution_options(self, connection, opts):
         if 'isolation_level' in opts:
             self._set_connection_isolation(connection, opts['isolation_level'])
+
+        if 'schema_translate_map' in opts:
+            getter = schema._schema_getter(opts['schema_translate_map'])
+            connection.schema_for_object = getter
 
     def _set_connection_isolation(self, connection, level):
         if connection.in_transaction():
@@ -454,16 +474,34 @@ class DefaultDialect(interfaces.Dialect):
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)
 
 
+class StrCompileDialect(DefaultDialect):
+
+    statement_compiler = compiler.StrSQLCompiler
+    ddl_compiler = compiler.DDLCompiler
+    type_compiler = compiler.StrSQLTypeCompiler
+    preparer = compiler.IdentifierPreparer
+
+    supports_sequences = True
+    sequences_optional = True
+    preexecute_autoincrement_sequences = False
+    implicit_returning = False
+
+    supports_native_boolean = True
+
+    supports_simple_order_by_label = True
+
+
 class DefaultExecutionContext(interfaces.ExecutionContext):
     isinsert = False
     isupdate = False
     isdelete = False
     is_crud = False
+    is_text = False
     isddl = False
     executemany = False
-    result_map = None
     compiled = None
     statement = None
+    result_column_struct = None
     _is_implicit_returning = False
     _is_explicit_returning = False
 
@@ -522,10 +560,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.execution_options = compiled.statement._execution_options.union(
             connection._execution_options)
 
-        # compiled clauseelement.  process bind params, process table defaults,
-        # track collections used by ResultProxy to target and process results
-
-        self.result_map = compiled.result_map
+        self.result_column_struct = (
+            compiled._result_columns, compiled._ordered_columns,
+            compiled._textual_ordered_columns)
 
         self.unicode_statement = util.text_type(compiled)
         if not dialect.supports_unicode_statements:
@@ -537,6 +574,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
+        self.is_text = compiled.isplaintext
 
         if not parameters:
             self.compiled_parameters = [compiled.construct_params()]
@@ -616,6 +654,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.root_connection = connection
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
+        self.is_text = True
 
         # plain text statement
         self.execution_options = connection._execution_options
@@ -817,15 +856,15 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 row = result.fetchone()
                 self.returned_defaults = row
                 self._setup_ins_pk_from_implicit_returning(row)
-                result.close(_autoclose_connection=False)
+                result._soft_close(_autoclose_connection=False)
                 result._metadata = None
             elif not self._is_explicit_returning:
-                result.close(_autoclose_connection=False)
+                result._soft_close(_autoclose_connection=False)
                 result._metadata = None
         elif self.isupdate and self._is_implicit_returning:
             row = result.fetchone()
             self.returned_defaults = row
-            result.close(_autoclose_connection=False)
+            result._soft_close(_autoclose_connection=False)
             result._metadata = None
 
         elif result._metadata is None:
@@ -833,7 +872,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             # (which requires open cursor on some drivers
             # such as kintersbasdb, mxodbc)
             result.rowcount
-            result.close(_autoclose_connection=False)
+            result._soft_close(_autoclose_connection=False)
         return result
 
     def _setup_ins_pk_from_lastrowid(self):
@@ -842,18 +881,26 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         compiled_params = self.compiled_parameters[0]
 
         lastrowid = self.get_lastrowid()
-        autoinc_col = table._autoincrement_column
-        if autoinc_col is not None:
-            # apply type post processors to the lastrowid
-            proc = autoinc_col.type._cached_result_processor(
-                self.dialect, None)
-            if proc is not None:
-                lastrowid = proc(lastrowid)
-        self.inserted_primary_key = [
-            lastrowid if c is autoinc_col else
-            compiled_params.get(key_getter(c), None)
-            for c in table.primary_key
-        ]
+        if lastrowid is not None:
+            autoinc_col = table._autoincrement_column
+            if autoinc_col is not None:
+                # apply type post processors to the lastrowid
+                proc = autoinc_col.type._cached_result_processor(
+                    self.dialect, None)
+                if proc is not None:
+                    lastrowid = proc(lastrowid)
+            self.inserted_primary_key = [
+                lastrowid if c is autoinc_col else
+                compiled_params.get(key_getter(c), None)
+                for c in table.primary_key
+            ]
+        else:
+            # don't have a usable lastrowid, so
+            # do the same as _setup_ins_pk_from_empty
+            self.inserted_primary_key = [
+                compiled_params.get(key_getter(c), None)
+                for c in table.primary_key
+            ]
 
     def _setup_ins_pk_from_empty(self):
         key_getter = self.compiled._key_getters_for_crud_column[2]

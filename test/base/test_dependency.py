@@ -14,6 +14,11 @@ class DependencySortTest(fixtures.TestBase):
         result = list(topological.sort(tuples, allitems))
         assert conforms_partial_ordering(tuples, result)
 
+    def assert_sort_deterministic(self, tuples, allitems, expected):
+        result = list(topological.sort(tuples, allitems, deterministic_order=True))
+        assert conforms_partial_ordering(tuples, result)
+        assert result == expected
+
     def _nodes_from_tuples(self, tups):
         s = set()
         for tup in tups:
@@ -62,6 +67,30 @@ class DependencySortTest(fixtures.TestBase):
         tuples = [(node1, node2), (node4, node1), (node1, node3),
                   (node3, node2)]
         self.assert_sort(tuples)
+
+    def test_sort_deterministic_one(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        allitems = [node6, node5, node4, node3, node2, node1]
+        tuples = [(node6, node5), (node2, node1)]
+        expected = [node6, node4, node3, node2, node5, node1]
+        self.assert_sort_deterministic(tuples, allitems, expected)
+
+    def test_sort_deterministic_two(self):
+        node1 = 1
+        node2 = 2
+        node3 = 3
+        node4 = 4
+        node5 = 5
+        node6 = 6
+        allitems = [node6, node5, node4, node3, node2, node1]
+        tuples = [(node6, node5), (node4, node3), (node2, node1)]
+        expected = [node6, node4, node2, node5, node3, node1]
+        self.assert_sort_deterministic(tuples, allitems, expected)
 
     def test_raise_on_cycle_one(self):
         node1 = 'node1'

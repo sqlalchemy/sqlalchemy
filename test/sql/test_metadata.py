@@ -7,8 +7,9 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, PrimaryKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode, types as sqltypes, bindparam, \
-    Table, Column, Boolean, Enum, func, text
+    Table, Column, Boolean, Enum, func, text, TypeDecorator
 from sqlalchemy import schema, exc
+from sqlalchemy.engine import default
 from sqlalchemy.sql import elements, naming
 import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
@@ -17,6 +18,7 @@ from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
 from sqlalchemy.testing import eq_, is_, mock
 from contextlib import contextmanager
 from sqlalchemy import util
+
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
 
@@ -393,7 +395,6 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         assert t.c.x.default is s2
         assert m1._sequences['x_seq'] is s2
 
-
     def test_sequence_attach_to_table(self):
         m1 = MetaData()
         s1 = Sequence("s")
@@ -490,6 +491,21 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(
             meta.sorted_tables,
             [d, b, a, c, e]
+        )
+
+    def test_deterministic_order(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('foo', Integer))
+        b = Table('b', meta, Column('foo', Integer))
+        c = Table('c', meta, Column('foo', Integer))
+        d = Table('d', meta, Column('foo', Integer))
+        e = Table('e', meta, Column('foo', Integer))
+
+        e.add_is_dependent_on(c)
+        a.add_is_dependent_on(b)
+        eq_(
+            meta.sorted_tables,
+            [b, c, d, a, e]
         )
 
     def test_nonexistent(self):
@@ -1242,6 +1258,25 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             assign2
         )
 
+    def test_c_mutate_after_unpickle(self):
+        m = MetaData()
+
+        y = Column('y', Integer)
+        t1 = Table('t', m, Column('x', Integer), y)
+
+        t2 = pickle.loads(pickle.dumps(t1))
+        z = Column('z', Integer)
+        g = Column('g', Integer)
+        t2.append_column(z)
+
+        is_(t1.c.contains_column(y), True)
+        is_(t2.c.contains_column(y), False)
+        y2 = t2.c.y
+        is_(t2.c.contains_column(y2), True)
+
+        is_(t2.c.contains_column(z), True)
+        is_(t2.c.contains_column(g), False)
+
     def test_autoincrement_replace(self):
         m = MetaData()
 
@@ -1346,6 +1381,123 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not t1.c.x.nullable
 
 
+class PKAutoIncrementTest(fixtures.TestBase):
+    def test_multi_integer_no_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', Integer),
+            Column('b', Integer)
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, None)
+
+    def test_multi_integer_multi_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', Integer, autoincrement=True),
+            Column('b', Integer, autoincrement=True)
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Only one Column may be marked",
+            lambda: pk._autoincrement_column
+        )
+
+    def test_single_integer_no_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', Integer),
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, pk.columns['a'])
+
+    def test_single_string_no_autoinc(self):
+        pk = PrimaryKeyConstraint(
+            Column('a', String),
+        )
+        t = Table('t', MetaData())
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, None)
+
+    def test_single_string_illegal_autoinc(self):
+        t = Table('t', MetaData(), Column('a', String, autoincrement=True))
+        pk = PrimaryKeyConstraint(
+            t.c.a
+        )
+        t.append_constraint(pk)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Column type VARCHAR on column 't.a'",
+            lambda: pk._autoincrement_column
+        )
+
+    def test_single_integer_default(self):
+        t = Table(
+            't', MetaData(),
+            Column('a', Integer, autoincrement=True, default=lambda: 1))
+        pk = PrimaryKeyConstraint(
+            t.c.a
+        )
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, t.c.a)
+
+    def test_single_integer_server_default(self):
+        # new as of 1.1; now that we have three states for autoincrement,
+        # if the user puts autoincrement=True with a server_default, trust
+        # them on it
+        t = Table(
+            't', MetaData(),
+            Column('a', Integer,
+                   autoincrement=True, server_default=func.magic()))
+        pk = PrimaryKeyConstraint(
+            t.c.a
+        )
+        t.append_constraint(pk)
+
+        is_(pk._autoincrement_column, t.c.a)
+
+    def test_implicit_autoinc_but_fks(self):
+        m = MetaData()
+        Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table(
+            't2', MetaData(),
+            Column('a', Integer, ForeignKey('t1.id')))
+        pk = PrimaryKeyConstraint(
+            t2.c.a
+        )
+        t2.append_constraint(pk)
+        is_(pk._autoincrement_column, None)
+
+    def test_explicit_autoinc_but_fks(self):
+        m = MetaData()
+        Table('t1', m, Column('id', Integer, primary_key=True))
+        t2 = Table(
+            't2', MetaData(),
+            Column('a', Integer, ForeignKey('t1.id'), autoincrement=True))
+        pk = PrimaryKeyConstraint(
+            t2.c.a
+        )
+        t2.append_constraint(pk)
+        is_(pk._autoincrement_column, t2.c.a)
+
+        t3 = Table(
+            't3', MetaData(),
+            Column('a', Integer,
+                   ForeignKey('t1.id'), autoincrement='ignore_fk'))
+        pk = PrimaryKeyConstraint(
+            t3.c.a
+        )
+        t3.append_constraint(pk)
+        is_(pk._autoincrement_column, t3.c.a)
+
+
 class SchemaTypeTest(fixtures.TestBase):
 
     class MyType(sqltypes.SchemaType, sqltypes.TypeEngine):
@@ -1414,6 +1566,20 @@ class SchemaTypeTest(fixtures.TestBase):
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
+
+    def test_tometadata_copy_decorated(self):
+
+        class MyDecorated(TypeDecorator):
+            impl = self.MyType
+
+        m1 = MetaData()
+
+        type_ = MyDecorated(schema="z")
+        t1 = Table('x', m1, Column("y", type_))
+
+        m2 = MetaData()
+        t2 = t1.tometadata(m2)
+        eq_(t2.c.y.type.schema, "z")
 
     def test_tometadata_independent_schema(self):
         m1 = MetaData()
@@ -1921,6 +2087,13 @@ class IndexTest(fixtures.TestBase):
             "Can't add unnamed column to column collection",
             t.append_constraint, idx
         )
+
+    def test_column_associated_w_lowercase_table(self):
+        from sqlalchemy import table
+        c = Column('x', Integer)
+        table('foo', c)
+        idx = Index('q', c)
+        is_(idx.table, None)  # lower-case-T table doesn't have indexes
 
 
 class ConstraintTest(fixtures.TestBase):
@@ -3529,7 +3702,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.InvalidRequestError,
             "Naming convention including \%\(constraint_name\)s token "
             "requires that constraint is explicitly named.",
-            schema.CreateTable(u1).compile
+            schema.CreateTable(u1).compile, dialect=default.DefaultDialect()
         )
 
     def test_schematype_no_ck_name_boolean_no_name(self):
@@ -3560,3 +3733,16 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         u1.append_constraint(ck1)
 
         eq_(ck1.name, "ck_user_foo")
+
+    def test_pickle_metadata(self):
+        m = MetaData(naming_convention={"pk": "%(table_name)s_pk"})
+
+        m2 = pickle.loads(pickle.dumps(m))
+
+        eq_(m2.naming_convention, {"pk": "%(table_name)s_pk"})
+
+        t2a = Table('t2', m, Column('id', Integer, primary_key=True))
+        t2b = Table('t2', m2, Column('id', Integer, primary_key=True))
+
+        eq_(t2a.primary_key.name, t2b.primary_key.name)
+        eq_(t2b.primary_key.name, "t2_pk")

@@ -1,5 +1,5 @@
 # sql/schema.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -30,20 +30,19 @@ as components in SQL expressions.
 """
 from __future__ import absolute_import
 
-import inspect
 from .. import exc, util, event, inspection
 from .base import SchemaEventTarget, DialectKWArgs
+import operator
 from . import visitors
 from . import type_api
 from .base import _bind_or_error, ColumnCollection
-from .elements import ClauseElement, ColumnClause, _truncated_label, \
+from .elements import ClauseElement, ColumnClause, \
     _as_truncated, TextClause, _literal_as_text,\
-    ColumnElement, _find_columns, quoted_name
+    ColumnElement, quoted_name
 from .selectable import TableClause
 import collections
 import sqlalchemy
 from . import ddl
-import types
 
 RETAIN_SCHEMA = util.symbol('retain_schema')
 
@@ -572,18 +571,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     def _init_collections(self):
         pass
 
-    @util.memoized_property
+    @property
     def _autoincrement_column(self):
-        for col in self.primary_key:
-            if (col.autoincrement and col.type._type_affinity is not None and
-                    issubclass(col.type._type_affinity,
-                               type_api.INTEGERTYPE._type_affinity) and
-                    (not col.foreign_keys or
-                     col.autoincrement == 'ignore_fk') and
-                    isinstance(col.default, (type(None), Sequence)) and
-                    (col.server_default is None or
-                     col.server_default.reflected)):
-                return col
+        return self.primary_key._autoincrement_column
 
     @property
     def key(self):
@@ -913,17 +903,40 @@ class Column(SchemaItem, ColumnClause):
           argument is available such as ``server_default``, ``default``
           and ``unique``.
 
-        :param autoincrement: This flag may be set to ``False`` to
-          indicate an integer primary key column that should not be
-          considered to be the "autoincrement" column, that is
-          the integer primary key column which generates values
-          implicitly upon INSERT and whose value is usually returned
-          via the DBAPI cursor.lastrowid attribute.   It defaults
-          to ``True`` to satisfy the common use case of a table
-          with a single integer primary key column.  If the table
-          has a composite primary key consisting of more than one
-          integer column, set this flag to True only on the
-          column that should be considered "autoincrement".
+        :param autoincrement: Set up "auto increment" semantics for an integer
+          primary key column.  The default value is the string ``"auto"``
+          which indicates that a single-column primary key that is of
+          an INTEGER type with no stated client-side or python-side defaults
+          should receive auto increment semantics automatically;
+          all other varieties of primary key columns will not.  This
+          includes that :term:`DDL` such as Postgresql SERIAL or MySQL
+          AUTO_INCREMENT will be emitted for this column during a table
+          create, as well as that the column is assumed to generate new
+          integer primary key values when an INSERT statement invokes which
+          will be retrieved by the dialect.
+
+          The flag may be set to ``True`` to indicate that a column which
+          is part of a composite (e.g. multi-column) primary key should
+          have autoincrement semantics, though note that only one column
+          within a primary key may have this setting.    It can also
+          be set to ``True`` to indicate autoincrement semantics on a
+          column that has a client-side or server-side default configured,
+          however note that not all dialects can accommodate all styles
+          of default as an "autoincrement".  It can also be
+          set to ``False`` on a single-column primary key that has a
+          datatype of INTEGER in order to disable auto increment semantics
+          for that column.
+
+          .. versionchanged:: 1.1 The autoincrement flag now defaults to
+             ``"auto"`` which indicates autoincrement semantics by default
+             for single-column integer primary keys only; for composite
+             (multi-column) primary keys, autoincrement is never implicitly
+             enabled; as always, ``autoincrement=True`` will allow for
+             at most one of those columns to be an "autoincrement" column.
+             ``autoincrement=True`` may also be set on a :class:`.Column`
+             that has an explicit client-side or server-side default,
+             subject to limitations of the backend database and dialect.
+
 
           The setting *only* has an effect for columns which are:
 
@@ -940,11 +953,8 @@ class Column(SchemaItem, ColumnClause):
                             primary_key=True, autoincrement='ignore_fk')
 
             It is typically not desirable to have "autoincrement" enabled
-            on such a column as its value intends to mirror that of a
-            primary key column elsewhere.
-
-          * have no server side or client side defaults (with the exception
-            of Postgresql SERIAL).
+            on a column that refers to another via foreign key, as such a column
+            is required to refer to a value that originates from elsewhere.
 
           The setting has these two effects on columns that meet the
           above criteria:
@@ -961,20 +971,15 @@ class Column(SchemaItem, ColumnClause):
 
                 :ref:`sqlite_autoincrement`
 
-          * The column will be considered to be available as
-            cursor.lastrowid or equivalent, for those dialects which
-            "post fetch" newly inserted identifiers after a row has
-            been inserted (SQLite, MySQL, MS-SQL).  It does not have
-            any effect in this regard for databases that use sequences
-            to generate primary key identifiers (i.e. Firebird, Postgresql,
-            Oracle).
+          * The column will be considered to be available using an
+            "autoincrement" method specific to the backend database, such
+            as calling upon ``cursor.lastrowid``, using RETURNING in an
+            INSERT statement to get at a sequence-generated value, or using
+            special functions such as "SELECT scope_identity()".
+            These methods are highly specific to the DBAPIs and databases in
+            use and vary greatly, so care should be taken when associating
+            ``autoincrement=True`` with a custom default generation function.
 
-          .. versionchanged:: 0.7.4
-              ``autoincrement`` accepts a special value ``'ignore_fk'``
-              to indicate that autoincrementing status regardless of foreign
-              key references.  This applies to certain composite foreign key
-              setups, such as the one demonstrated in the ORM documentation
-              at :ref:`post_update`.
 
         :param default: A scalar, Python callable, or
             :class:`.ColumnElement` expression representing the
@@ -984,8 +989,12 @@ class Column(SchemaItem, ColumnClause):
             a positional argument; see that class for full detail on the
             structure of the argument.
 
-            Contrast this argument to ``server_default`` which creates a
-            default generator on the database side.
+            Contrast this argument to :paramref:`.Column.server_default`
+            which creates a default generator on the database side.
+
+            .. seealso::
+
+                :ref:`metadata_defaults_toplevel`
 
         :param doc: optional String that can be used by the ORM or similar
             to document attributes.   This attribute does not render SQL
@@ -1050,6 +1059,10 @@ class Column(SchemaItem, ColumnClause):
             will be available to SQLAlchemy for post-fetch after inserts. This
             construct does not specify any DDL and the implementation is left
             to the database, such as via a trigger.
+
+            .. seealso::
+
+                :ref:`server_defaults`
 
         :param server_onupdate:   A :class:`.FetchedValue` instance
              representing a database-side default generation function. This
@@ -1128,7 +1141,7 @@ class Column(SchemaItem, ColumnClause):
         self.system = kwargs.pop('system', False)
         self.doc = kwargs.pop('doc', None)
         self.onupdate = kwargs.pop('onupdate', None)
-        self.autoincrement = kwargs.pop('autoincrement', True)
+        self.autoincrement = kwargs.pop('autoincrement', "auto")
         self.constraints = set()
         self.foreign_keys = set()
 
@@ -1263,12 +1276,12 @@ class Column(SchemaItem, ColumnClause):
 
         if self.primary_key:
             table.primary_key._replace(self)
-            Table._autoincrement_column._reset(table)
         elif self.key in table.primary_key:
             raise exc.ArgumentError(
                 "Trying to redefine primary-key column '%s' as a "
                 "non-primary-key column on table '%s'" % (
                     self.key, table.fullname))
+
         self.table = table
 
         if self.index:
@@ -1981,13 +1994,14 @@ class ColumnDefault(DefaultGenerator):
         try:
             argspec = util.get_callable_argspec(fn, no_self=True)
         except TypeError:
-            return lambda ctx: fn()
+            return util.wrap_callable(lambda ctx: fn(), fn)
 
         defaulted = argspec[3] is not None and len(argspec[3]) or 0
         positionals = len(argspec[0]) - defaulted
 
         if positionals == 0:
-            return lambda ctx: fn()
+            return util.wrap_callable(lambda ctx: fn(), fn)
+
         elif positionals == 1:
             return fn
         else:
@@ -2040,8 +2054,9 @@ class Sequence(DefaultGenerator):
 
     is_sequence = True
 
-    def __init__(self, name, start=None, increment=None, schema=None,
-                 optional=False, quote=None, metadata=None,
+    def __init__(self, name, start=None, increment=None, minvalue=None,
+                 maxvalue=None, nominvalue=None, nomaxvalue=None, cycle=None,
+                 schema=None, optional=False, quote=None, metadata=None,
                  quote_schema=None,
                  for_update=False):
         """Construct a :class:`.Sequence` object.
@@ -2057,6 +2072,53 @@ class Sequence(DefaultGenerator):
          the database as the value of the "INCREMENT BY" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates an
          increment of 1.
+        :param minvalue: the minimum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "MINVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         minvalue of 1 and -2^63-1 for ascending and descending sequences,
+         respectively.
+
+         .. versionadded:: 1.0.7
+
+        :param maxvalue: the maximum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "MAXVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         maxvalue of 2^63-1 and -1 for ascending and descending sequences,
+         respectively.
+
+         .. versionadded:: 1.0.7
+
+        :param nominvalue: no minimum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "NO MINVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         minvalue of 1 and -2^63-1 for ascending and descending sequences,
+         respectively.
+
+         .. versionadded:: 1.0.7
+
+        :param nomaxvalue: no maximum value of the sequence.  This
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "NO MAXVALUE" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates a
+         maxvalue of 2^63-1 and -1 for ascending and descending sequences,
+         respectively.
+
+         .. versionadded:: 1.0.7
+
+        :param cycle: allows the sequence to wrap around when the maxvalue
+         or minvalue has been reached by an ascending or descending sequence
+         respectively.  This value is used when the CREATE SEQUENCE command
+         is emitted to the database as the "CYCLE" clause.  If the limit is
+         reached, the next number generated will be the minvalue or maxvalue,
+         respectively.  If cycle=False (the default) any calls to nextval
+         after the sequence has reached its maximum value will return an
+         error.
+
+         .. versionadded:: 1.0.7
+
         :param schema: Optional schema name for the sequence, if located
          in a schema other than the default.
         :param optional: boolean value, when ``True``, indicates that this
@@ -2101,6 +2163,11 @@ class Sequence(DefaultGenerator):
         self.name = quoted_name(name, quote)
         self.start = start
         self.increment = increment
+        self.minvalue = minvalue
+        self.maxvalue = maxvalue
+        self.nominvalue = nominvalue
+        self.nomaxvalue = nomaxvalue
+        self.cycle = cycle
         self.optional = optional
         if metadata is not None and schema is None and metadata.schema:
             self.schema = schema = metadata.schema
@@ -2373,6 +2440,7 @@ def _to_schema_column_or_string(element):
 
 
 class ColumnCollectionMixin(object):
+
     columns = None
     """A :class:`.ColumnCollection` of :class:`.Column` objects.
 
@@ -2389,24 +2457,72 @@ class ColumnCollectionMixin(object):
         self._pending_colargs = [_to_schema_column_or_string(c)
                                  for c in columns]
         if _autoattach and self._pending_colargs:
-            columns = [
-                c for c in self._pending_colargs
-                if isinstance(c, Column) and
-                isinstance(c.table, Table)
-            ]
+            self._check_attach()
 
-            tables = set([c.table for c in columns])
-            if len(tables) == 1:
-                self._set_parent_with_dispatch(tables.pop())
-            elif len(tables) > 1 and not self._allow_multiple_tables:
-                table = columns[0].table
-                others = [c for c in columns[1:] if c.table is not table]
-                if others:
-                    raise exc.ArgumentError(
-                        "Column(s) %s are not part of table '%s'." %
-                        (", ".join("'%s'" % c for c in others),
-                            table.description)
-                    )
+    @classmethod
+    def _extract_col_expression_collection(cls, expressions):
+        for expr in expressions:
+            strname = None
+            column = None
+            if not isinstance(expr, ClauseElement):
+                # this assumes a string
+                strname = expr
+            else:
+                cols = []
+                visitors.traverse(expr, {}, {'column': cols.append})
+                if cols:
+                    column = cols[0]
+            add_element = column if column is not None else strname
+            yield expr, column, strname, add_element
+
+    def _check_attach(self, evt=False):
+        col_objs = [
+            c for c in self._pending_colargs
+            if isinstance(c, Column)
+        ]
+
+        cols_w_table = [
+            c for c in col_objs if isinstance(c.table, Table)
+        ]
+
+        cols_wo_table = set(col_objs).difference(cols_w_table)
+
+        if cols_wo_table:
+            # feature #3341 - place event listeners for Column objects
+            # such that when all those cols are attached, we autoattach.
+            assert not evt, "Should not reach here on event call"
+
+            # issue #3411 - don't do the per-column auto-attach if some of the
+            # columns are specified as strings.
+            has_string_cols = set(self._pending_colargs).difference(col_objs)
+            if not has_string_cols:
+                def _col_attached(column, table):
+                    # this isinstance() corresponds with the
+                    # isinstance() above; only want to count Table-bound
+                    # columns
+                    if isinstance(table, Table):
+                        cols_wo_table.discard(column)
+                        if not cols_wo_table:
+                            self._check_attach(evt=True)
+                self._cols_wo_table = cols_wo_table
+                for col in cols_wo_table:
+                    col._on_table_attach(_col_attached)
+                return
+
+        columns = cols_w_table
+
+        tables = set([c.table for c in columns])
+        if len(tables) == 1:
+            self._set_parent_with_dispatch(tables.pop())
+        elif len(tables) > 1 and not self._allow_multiple_tables:
+            table = columns[0].table
+            others = [c for c in columns[1:] if c.table is not table]
+            if others:
+                raise exc.ArgumentError(
+                    "Column(s) %s are not part of table '%s'." %
+                    (", ".join("'%s'" % c for c in others),
+                        table.description)
+                )
 
     def _set_parent(self, table):
         for col in self._pending_colargs:
@@ -2455,6 +2571,13 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         return self._schema_item_copy(c)
 
     def contains_column(self, col):
+        """Return True if this constraint contains the given column.
+
+        Note that this object also contains an attribute ``.columns``
+        which is a :class:`.ColumnCollection` of :class:`.Column` objects.
+
+        """
+
         return self.columns.contains_column(col)
 
     def __iter__(self):
@@ -2920,10 +3043,76 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         self.columns.extend(columns)
 
+        PrimaryKeyConstraint._autoincrement_column._reset(self)
         self._set_parent_with_dispatch(self.table)
 
     def _replace(self, col):
+        PrimaryKeyConstraint._autoincrement_column._reset(self)
         self.columns.replace(col)
+
+    @property
+    def columns_autoinc_first(self):
+        autoinc = self._autoincrement_column
+
+        if autoinc is not None:
+            return [autoinc] + [c for c in self.columns if c is not autoinc]
+        else:
+            return list(self.columns)
+
+    @util.memoized_property
+    def _autoincrement_column(self):
+
+        def _validate_autoinc(col, autoinc_true):
+            if col.type._type_affinity is None or not issubclass(
+                col.type._type_affinity,
+                    type_api.INTEGERTYPE._type_affinity):
+                if autoinc_true:
+                    raise exc.ArgumentError(
+                        "Column type %s on column '%s' is not "
+                        "compatible with autoincrement=True" % (
+                            col.type,
+                            col
+                        ))
+                else:
+                    return False
+            elif not isinstance(col.default, (type(None), Sequence)) and \
+                    not autoinc_true:
+                    return False
+            elif col.server_default is not None and not autoinc_true:
+                return False
+            elif (
+                    col.foreign_keys and col.autoincrement
+                    not in (True, 'ignore_fk')):
+                return False
+            return True
+
+        if len(self.columns) == 1:
+            col = list(self.columns)[0]
+
+            if col.autoincrement is True:
+                _validate_autoinc(col, True)
+                return col
+            elif (
+                col.autoincrement in ('auto', 'ignore_fk') and
+                    _validate_autoinc(col, False)
+            ):
+                return col
+
+        else:
+            autoinc = None
+            for col in self.columns:
+                if col.autoincrement is True:
+                    _validate_autoinc(col, True)
+                    if autoinc is not None:
+                        raise exc.ArgumentError(
+                            "Only one Column may be marked "
+                            "autoincrement=True, found both %s and %s." %
+                            (col.name, autoinc.name)
+                        )
+                    else:
+                        autoinc = col
+
+            return autoinc
 
 
 class UniqueConstraint(ColumnCollectionConstraint):
@@ -3050,14 +3239,10 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.table = None
 
         columns = []
-        for expr in expressions:
-            if not isinstance(expr, ClauseElement):
-                columns.append(expr)
-            else:
-                cols = []
-                visitors.traverse(expr, {}, {'column': cols.append})
-                if cols:
-                    columns.append(cols[0])
+        for expr, column, strname, add_element in self.\
+                _extract_col_expression_collection(expressions):
+            if add_element is not None:
+                columns.append(add_element)
 
         self.expressions = expressions
         self.name = quoted_name(name, kw.pop("quote", None))
@@ -3331,11 +3516,14 @@ class MetaData(SchemaItem):
                 'schema': self.schema,
                 'schemas': self._schemas,
                 'sequences': self._sequences,
-                'fk_memos': self._fk_memos}
+                'fk_memos': self._fk_memos,
+                'naming_convention': self.naming_convention
+                }
 
     def __setstate__(self, state):
         self.tables = state['tables']
         self.schema = state['schema']
+        self.naming_convention = state['naming_convention']
         self._bind = None
         self._sequences = state['sequences']
         self._schemas = state['schemas']
@@ -3422,7 +3610,7 @@ class MetaData(SchemaItem):
 
 
         """
-        return ddl.sort_tables(self.tables.values())
+        return ddl.sort_tables(sorted(self.tables.values(), key=lambda t: t.key))
 
     def reflect(self, bind=None, schema=None, views=False, only=None,
                 extend_existing=False,
@@ -3673,3 +3861,52 @@ class ThreadLocalMetaData(MetaData):
         for e in self.__engines.values():
             if hasattr(e, 'dispose'):
                 e.dispose()
+
+
+class _SchemaTranslateMap(object):
+    """Provide translation of schema names based on a mapping.
+
+    Also provides helpers for producing cache keys and optimized
+    access when no mapping is present.
+
+    Used by the :paramref:`.Connection.execution_options.schema_translate_map`
+    feature.
+
+    .. versionadded:: 1.1
+
+
+    """
+    __slots__ = 'map_', '__call__', 'hash_key', 'is_default'
+
+    _default_schema_getter = operator.attrgetter("schema")
+
+    def __init__(self, map_):
+        self.map_ = map_
+        if map_ is not None:
+            def schema_for_object(obj):
+                effective_schema = self._default_schema_getter(obj)
+                effective_schema = map_.get(effective_schema, effective_schema)
+                return effective_schema
+            self.__call__ = schema_for_object
+            self.hash_key = ";".join(
+                "%s=%s" % (k, map_[k])
+                for k in sorted(map_, key=str)
+            )
+            self.is_default = False
+        else:
+            self.hash_key = 0
+            self.__call__ = self._default_schema_getter
+            self.is_default = True
+
+    @classmethod
+    def _schema_getter(cls, map_):
+        if map_ is None:
+            return _default_schema_map
+        elif isinstance(map_, _SchemaTranslateMap):
+            return map_
+        else:
+            return _SchemaTranslateMap(map_)
+
+_default_schema_map = _SchemaTranslateMap(None)
+_schema_getter = _SchemaTranslateMap._schema_getter
+

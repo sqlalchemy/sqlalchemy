@@ -112,6 +112,61 @@ class VersioningTest(fixtures.MappedTest):
         else:
             s1.commit()
 
+    def test_multiple_updates(self):
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1 = Foo(value='f1')
+        f2 = Foo(value='f2')
+        s1.add_all((f1, f2))
+        s1.commit()
+
+        f1.value = 'f1rev2'
+        f2.value = 'f2rev2'
+        s1.commit()
+
+        eq_(
+            s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
+            [(f1.id, 'f1rev2', 2), (f2.id, 'f2rev2', 2)]
+        )
+
+    def test_bulk_insert(self):
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        s1.bulk_insert_mappings(
+            Foo,
+            [{"id": 1, "value": "f1"}, {"id": 2, "value": "f2"}]
+        )
+        eq_(
+            s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
+            [(1, 'f1', 1), (2, 'f2', 1)]
+        )
+
+    def test_bulk_update(self):
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1 = Foo(value='f1')
+        f2 = Foo(value='f2')
+        s1.add_all((f1, f2))
+        s1.commit()
+
+        s1.bulk_update_mappings(
+            Foo,
+            [
+                {"id": f1.id, "value": "f1rev2", "version_id": 1},
+                {"id": f2.id, "value": "f2rev2", "version_id": 1},
+
+            ]
+        )
+        s1.commit()
+
+        eq_(
+            s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
+            [(f1.id, 'f1rev2', 2), (f2.id, 'f2rev2', 2)]
+        )
+
     @testing.emits_warning_on(
         '+zxjdbc', r'.*does not support (update|delete)d rowcount')
     def test_bump_version(self):
@@ -355,6 +410,97 @@ class VersioningTest(fixtures.MappedTest):
         )
 
 
+class NoBumpOnRelationshipTest(fixtures.MappedTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('version_id', Integer)
+        )
+        Table(
+            'b', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('a_id', ForeignKey('a.id'))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(cls.Basic):
+            pass
+
+    def _run_test(self, auto_version_counter=True):
+        A, B = self.classes('A', 'B')
+        s = Session()
+        if auto_version_counter:
+            a1 = A()
+        else:
+            a1 = A(version_id=1)
+        s.add(a1)
+        s.commit()
+        eq_(a1.version_id, 1)
+
+        b1 = B()
+        b1.a = a1
+        s.add(b1)
+        s.commit()
+
+        eq_(a1.version_id, 1)
+
+    def test_plain_counter(self):
+        A, B = self.classes('A', 'B')
+        a, b = self.tables('a', 'b')
+
+        mapper(
+            A, a, properties={
+                'bs': relationship(B, backref='a')
+            },
+            version_id_col=a.c.version_id,
+        )
+        mapper(B, b)
+
+        self._run_test()
+
+    def test_functional_counter(self):
+        A, B = self.classes('A', 'B')
+        a, b = self.tables('a', 'b')
+
+        mapper(
+            A, a, properties={
+                'bs': relationship(B, backref='a')
+            },
+            version_id_col=a.c.version_id,
+            version_id_generator=lambda num: (num or 0) + 1
+        )
+        mapper(B, b)
+
+        self._run_test()
+
+    def test_no_counter(self):
+        A, B = self.classes('A', 'B')
+        a, b = self.tables('a', 'b')
+
+        mapper(
+            A, a, properties={
+                'bs': relationship(B, backref='a')
+            },
+            version_id_col=a.c.version_id,
+            version_id_generator=False
+        )
+        mapper(B, b)
+
+        self._run_test(False)
+
+
 class ColumnTypeTest(fixtures.MappedTest):
     __backend__ = True
 
@@ -587,6 +733,53 @@ class AlternateGeneratorTest(fixtures.MappedTest):
             sess2.commit
 
 
+class PlainInheritanceTest(fixtures.MappedTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'base', metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('version_id', Integer, nullable=True),
+            Column('data', String(50))
+        )
+        Table(
+            'sub', metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('sub_data', String(50))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+
+        class Base(cls.Basic):
+            pass
+
+        class Sub(Base):
+            pass
+
+    def test_update_child_table_only(self):
+        Base, sub, base, Sub = (
+            self.classes.Base, self.tables.sub, self.tables.base,
+            self.classes.Sub)
+
+        mapper(Base, base, version_id_col=base.c.version_id)
+        mapper(Sub, sub, inherits=Base)
+
+        s = Session()
+        s1 = Sub(data='b', sub_data='s')
+        s.add(s1)
+        s.commit()
+
+        s1.sub_data = 's2'
+        s.commit()
+
+        eq_(s1.version_id, 2)
+
+
 class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
     """Test versioning where both parent/child table have a
     versioning column.
@@ -738,19 +931,26 @@ class ServerVersioningTest(fixtures.MappedTest):
         class Bar(cls.Basic):
             pass
 
-    def _fixture(self, expire_on_commit=True):
+    def _fixture(self, expire_on_commit=True, eager_defaults=False):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
         mapper(
             Foo, version_table, version_id_col=version_table.c.version_id,
             version_id_generator=False,
+            eager_defaults=eager_defaults
         )
 
         s1 = Session(expire_on_commit=expire_on_commit)
         return s1
 
     def test_insert_col(self):
-        sess = self._fixture()
+        self._test_insert_col()
+
+    def test_insert_col_eager_defaults(self):
+        self._test_insert_col(eager_defaults=True)
+
+    def _test_insert_col(self, **kw):
+        sess = self._fixture(**kw)
 
         f1 = self.classes.Foo(value='f1')
         sess.add(f1)
@@ -779,7 +979,13 @@ class ServerVersioningTest(fixtures.MappedTest):
         self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     def test_update_col(self):
-        sess = self._fixture()
+        self._test_update_col()
+
+    def test_update_col_eager_defaults(self):
+        self._test_update_col(eager_defaults=True)
+
+    def _test_update_col(self, **kw):
+        sess = self._fixture(**kw)
 
         f1 = self.classes.Foo(value='f1')
         sess.add(f1)
@@ -812,6 +1018,76 @@ class ServerVersioningTest(fixtures.MappedTest):
                     lambda ctx: [{"param_1": 1}]
                 )
             )
+        self.assert_sql_execution(testing.db, sess.flush, *statements)
+
+    def test_multi_update(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(value='f1')
+        f2 = self.classes.Foo(value='f2')
+        f3 = self.classes.Foo(value='f3')
+        sess.add_all([f1, f2, f3])
+        sess.flush()
+
+        f1.value = 'f1a'
+        f2.value = 'f2a'
+        f3.value = 'f3a'
+
+        statements = [
+            # note that the assertsql tests the rule against
+            # "default" - on a "returning" backend, the statement
+            # includes "RETURNING"
+            CompiledSQL(
+                "UPDATE version_table SET version_id=2, value=:value "
+                "WHERE version_table.id = :version_table_id AND "
+                "version_table.version_id = :version_table_version_id",
+                lambda ctx: [
+                    {
+                        "version_table_id": 1,
+                        "version_table_version_id": 1, "value": "f1a"}]
+            ),
+            CompiledSQL(
+                "UPDATE version_table SET version_id=2, value=:value "
+                "WHERE version_table.id = :version_table_id AND "
+                "version_table.version_id = :version_table_version_id",
+                lambda ctx: [
+                    {
+                        "version_table_id": 2,
+                        "version_table_version_id": 1, "value": "f2a"}]
+            ),
+            CompiledSQL(
+                "UPDATE version_table SET version_id=2, value=:value "
+                "WHERE version_table.id = :version_table_id AND "
+                "version_table.version_id = :version_table_version_id",
+                lambda ctx: [
+                    {
+                        "version_table_id": 3,
+                        "version_table_version_id": 1, "value": "f3a"}]
+            )
+        ]
+        if not testing.db.dialect.implicit_returning:
+            # DBs without implicit returning, we must immediately
+            # SELECT for the new version id
+            statements.extend([
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 1}]
+                ),
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 2}]
+                ),
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :param_1",
+                    lambda ctx: [{"param_1": 3}]
+                )
+            ])
         self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     def test_delete_col(self):

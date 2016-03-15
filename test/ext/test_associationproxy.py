@@ -13,6 +13,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing.assertions import expect_warnings
 
 class DictCollection(dict):
     @collection.appender
@@ -912,6 +913,22 @@ class LazyLoadTest(fixtures.TestBase):
         self.assert_('_children' in p.__dict__)
         self.assert_(len(p._children) == 3)
 
+    def test_slicing_list(self):
+        Parent, Child = self.Parent, self.Child
+
+        mapper(Parent, self.table, properties={
+            '_children': relationship(Child, lazy='select',
+                                  collection_class=list)})
+
+        p = Parent('p')
+        p.children = ['a', 'b', 'c']
+
+        p = self.roundtrip(p)
+
+        self.assert_(len(p._children) == 3)
+        eq_('b', p.children[1])
+        eq_(['b', 'c'], p.children[-2:])
+
     def test_lazy_scalar(self):
         Parent, Child = self.Parent, self.Child
 
@@ -1072,7 +1089,8 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def define_tables(cls, metadata):
         Table('userkeywords', metadata,
           Column('keyword_id', Integer, ForeignKey('keywords.id'), primary_key=True),
-          Column('user_id', Integer, ForeignKey('users.id'))
+          Column('user_id', Integer, ForeignKey('users.id')),
+          Column('value', String(50))
         )
         Table('users', metadata,
             Column('id', Integer,
@@ -1110,6 +1128,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             # m2o -> scalar
             # nonuselist
             singular_value = association_proxy('singular', 'value')
+
+            # o2m -> scalar
+            singular_collection = association_proxy('user_keywords', 'value')
 
         class Keyword(cls.Comparable):
             def __init__(self, keyword):
@@ -1178,8 +1199,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             for jj in words[(ii % len(words)):((ii + 3) % len(words))]:
                 k = Keyword(jj)
                 user.keywords.append(k)
-                if ii % 3 == None:
+                if ii % 2 == 0:
                     user.singular.keywords.append(k)
+                    user.user_keywords[-1].value = "singular%d" % ii
 
         orphan = Keyword('orphan')
         orphan.user_keyword = UserKeyword(keyword=orphan, user=None)
@@ -1195,6 +1217,27 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def _equivalent(self, q_proxy, q_direct):
         eq_(q_proxy.all(), q_direct.all())
+
+    def test_filter_any_criterion_ul_scalar(self):
+        UserKeyword, User = self.classes.UserKeyword, self.classes.User
+
+        q1 = self.session.query(User).filter(
+            User.singular_collection.any(UserKeyword.value == 'singular8'))
+        self.assert_compile(
+            q1,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM userkeywords "
+            "WHERE users.id = userkeywords.user_id AND "
+            "userkeywords.value = :value_1)",
+            checkparams={'value_1': 'singular8'}
+        )
+
+        q2 = self.session.query(User).filter(
+            User.user_keywords.any(UserKeyword.value == 'singular8'))
+        self._equivalent(q1, q2)
 
     def test_filter_any_kwarg_ul_nul(self):
         UserKeyword, User = self.classes.UserKeyword, self.classes.User
@@ -1284,16 +1327,18 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_filter_contains_nul_ul(self):
         User, Singular = self.classes.User, self.classes.Singular
 
-        self._equivalent(
-            self.session.query(User).filter(
-                            User.singular_keywords.contains(self.kw)
-            ),
-            self.session.query(User).filter(
-                            User.singular.has(
-                                Singular.keywords.contains(self.kw)
-                            )
-            ),
-        )
+        with expect_warnings(
+                "Got None for value of column keywords.singular_id;"):
+            self._equivalent(
+                self.session.query(User).filter(
+                                User.singular_keywords.contains(self.kw)
+                ),
+                self.session.query(User).filter(
+                                User.singular.has(
+                                    Singular.keywords.contains(self.kw)
+                                )
+                ),
+            )
 
     def test_filter_eq_nul_nul(self):
         Keyword = self.classes.Keyword
@@ -1548,3 +1593,23 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
             a1.elements.update,
             (("B", 3), 'elem2'), (("C", 4), "elem3")
         )
+
+
+class InfoTest(fixtures.TestBase):
+    def test_constructor(self):
+        assoc = association_proxy('a', 'b', info={'some_assoc': 'some_value'})
+        eq_(assoc.info, {"some_assoc": "some_value"})
+
+    def test_empty(self):
+        assoc = association_proxy('a', 'b')
+        eq_(assoc.info, {})
+
+    def test_via_cls(self):
+        class Foob(object):
+            assoc = association_proxy('a', 'b')
+
+        eq_(Foob.assoc.info, {})
+
+        Foob.assoc.info["foo"] = 'bar'
+
+        eq_(Foob.assoc.info, {'foo': 'bar'})

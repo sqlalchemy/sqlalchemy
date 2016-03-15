@@ -1,5 +1,5 @@
 # engine/url.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -17,7 +17,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 import re
 from .. import exc, util
 from . import Dialect
-from ..dialects import registry
+from ..dialects import registry, plugins
 
 
 class URL(object):
@@ -117,11 +117,21 @@ class URL(object):
         else:
             return self.drivername.split('+')[1]
 
-    def get_dialect(self):
-        """Return the SQLAlchemy database dialect class corresponding
-        to this URL's driver name.
-        """
+    def _instantiate_plugins(self, kwargs):
+        plugin_names = util.to_list(self.query.get('plugin', ()))
 
+        return [
+            plugins.load(plugin_name)(self, kwargs)
+            for plugin_name in plugin_names
+        ]
+
+    def _get_entrypoint(self):
+        """Return the "entry point" dialect class.
+
+        This is normally the dialect itself except in the case when the
+        returned class implements the get_dialect_cls() method.
+
+        """
         if '+' not in self.drivername:
             name = self.drivername
         else:
@@ -136,6 +146,14 @@ class URL(object):
             return cls.dialect
         else:
             return cls
+
+    def get_dialect(self):
+        """Return the SQLAlchemy database dialect class corresponding
+        to this URL's driver name.
+        """
+        entrypoint = self._get_entrypoint()
+        dialect_cls = entrypoint.get_dialect_cls(self)
+        return dialect_cls
 
     def translate_connect_args(self, names=[], **kw):
         """Translate url attributes into a dictionary of connection arguments.

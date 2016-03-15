@@ -341,7 +341,7 @@ easily described through demonstration; it means that, given a mapping such as t
     })
 
 If an ``Order`` is already in the session, and is assigned to the ``order``
-attribute of an ``Item``, the backref appends the ``Order`` to the ``items``
+attribute of an ``Item``, the backref appends the ``Item`` to the ``items``
 collection of that ``Order``, resulting in the ``save-update`` cascade taking
 place::
 

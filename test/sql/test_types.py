@@ -1,5 +1,6 @@
 # coding: utf-8
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, is_, assert_raises, \
+    assert_raises_message, expect_warnings
 import decimal
 import datetime
 import os
@@ -9,13 +10,15 @@ from sqlalchemy import (
     and_, func, Date, LargeBinary, literal, cast, text, Enum,
     type_coerce, VARCHAR, Time, DateTime, BigInteger, SmallInteger, BOOLEAN,
     BLOB, NCHAR, NVARCHAR, CLOB, TIME, DATE, DATETIME, TIMESTAMP, SMALLINT,
-    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL)
+    INTEGER, DECIMAL, NUMERIC, FLOAT, REAL, ARRAY, JSON)
 from sqlalchemy.sql import ddl
-
+from sqlalchemy.sql import visitors
+from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
+from sqlalchemy.util import OrderedDict
 for name in dialects.__all__:
     __import__("sqlalchemy.dialects.%s" % name)
-from sqlalchemy.sql import operators, column, table
+from sqlalchemy.sql import operators, column, table, null
 from sqlalchemy.schema import CheckConstraint, AddConstraint
 from sqlalchemy.engine import default
 from sqlalchemy.testing.schema import Table, Column
@@ -25,6 +28,9 @@ from sqlalchemy.testing import AssertsCompiledSQL, AssertsExecutionResults, \
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
+
+
 
 
 class AdaptTest(fixtures.TestBase):
@@ -137,13 +143,15 @@ class AdaptTest(fixtures.TestBase):
         for is_down_adaption, typ, target_adaptions in adaptions():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif typ is dialects.postgresql.ARRAY:
+            elif issubclass(typ, ARRAY):
                 t1 = typ(String)
             else:
                 t1 = typ()
             for cls in target_adaptions:
                 if not issubclass(typ, types.Enum) and \
                         issubclass(cls, types.Enum):
+                    continue
+                if cls.__module__.startswith("test"):
                     continue
 
                 # print("ADAPT %s -> %s" % (t1.__class__, cls))
@@ -154,7 +162,7 @@ class AdaptTest(fixtures.TestBase):
                     t2, t1 = t1, t2
 
                 for k in t1.__dict__:
-                    if k in ('impl', '_is_oracle_number'):
+                    if k in ('impl', '_is_oracle_number', '_create_events'):
                         continue
                     # assert each value was copied, or that
                     # the adapted type has a more specific
@@ -176,6 +184,7 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.String().python_type, str)
         eq_(types.Unicode().python_type, util.text_type)
         eq_(types.String(convert_unicode=True).python_type, util.text_type)
+        eq_(types.Enum('one', 'two', 'three').python_type, str)
 
         assert_raises(
             NotImplementedError,
@@ -187,11 +196,27 @@ class AdaptTest(fixtures.TestBase):
         for typ in self._all_types():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
-            elif typ is dialects.postgresql.ARRAY:
+            elif issubclass(typ, ARRAY):
                 t1 = typ(String)
             else:
                 t1 = typ()
             repr(t1)
+
+    def test_adapt_constructor_copy_override_kw(self):
+        """test that adapt() can accept kw args that override
+        the state of the original object.
+
+        This essentially is testing the behavior of util.constructor_copy().
+
+        """
+        t1 = String(length=50, convert_unicode=False)
+        t2 = t1.adapt(Text, convert_unicode=True)
+        eq_(
+            t2.length, 50
+        )
+        eq_(
+            t2.convert_unicode, True
+        )
 
 
 class TypeAffinityTest(fixtures.TestBase):
@@ -256,7 +281,6 @@ class PickleTypesTest(fixtures.TestBase):
                 Column('Lar', LargeBinary()),
                 Column('Pic', PickleType()),
                 Column('Int', Interval()),
-                Column('Enu', Enum('x', 'y', 'z', name="somename")),
             ]
             for column_type in column_types:
                 meta = MetaData()
@@ -771,6 +795,68 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [('BIND_INd1', 'BIND_INd1BIND_OUT')]
         )
 
+    def test_cast_replace_col_w_bind(self):
+        self._test_replace_col_w_bind(cast)
+
+    def test_type_coerce_replace_col_w_bind(self):
+        self._test_replace_col_w_bind(type_coerce)
+
+    def _test_replace_col_w_bind(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        stmt = select([t.c.data, coerce_fn(t.c.data, MyType)])
+
+        def col_to_bind(col):
+            if col is t.c.data:
+                return bindparam(None, "x", type_=col.type, unique=True)
+            return None
+
+        # ensure we evaulate the expression so that we can see
+        # the clone resets this info
+        stmt.compile()
+
+        new_stmt = visitors.replacement_traverse(stmt, {}, col_to_bind)
+
+        # original statement
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [('BIND_INd1', 'BIND_INd1BIND_OUT')]
+        )
+
+        # replaced with binds; CAST can't affect the bound parameter
+        # on the way in here
+        eq_(
+            testing.db.execute(new_stmt).fetchall(),
+            [('x', 'BIND_INxBIND_OUT')] if coerce_fn is type_coerce
+            else [('x', 'xBIND_OUT')]
+        )
+
+    def test_cast_bind(self):
+        self._test_bind(cast)
+
+    def test_type_bind(self):
+        self._test_bind(type_coerce)
+
+    def _test_bind(self, coerce_fn):
+        MyType = self.MyType
+
+        t = self.tables.t
+        t.insert().values(data=coerce_fn('d1', MyType)).execute()
+
+        stmt = select([
+            bindparam(None, "x", String(50), unique=True),
+            coerce_fn(bindparam(None, "x", String(50), unique=True), MyType)
+        ])
+
+        eq_(
+            testing.db.execute(stmt).fetchall(),
+            [('x', 'BIND_INxBIND_OUT')] if coerce_fn is type_coerce
+            else [('x', 'xBIND_OUT')]
+        )
+
     @testing.fails_on(
         "oracle", "ORA-00906: missing left parenthesis - "
         "seems to be CAST(:param AS type)")
@@ -802,6 +888,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         eq_(
             select([coerce_fn(t.c.data, MyType)]).execute().fetchall(),
             [('BIND_INd1BIND_OUT', )])
+
 
 
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -933,57 +1020,6 @@ class UnicodeTest(fixtures.TestBase):
     """
     __backend__ = True
 
-    def test_native_unicode(self):
-        """assert expected values for 'native unicode' mode"""
-
-        if testing.against('mssql+pyodbc'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                'conditional'
-            )
-
-        elif testing.against('mssql+mxodbc'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                'conditional'
-            )
-
-        elif testing.against('mssql+pymssql'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                ('charset' in testing.db.url.query)
-            )
-
-        elif testing.against('mysql+cymysql', 'mysql+pymssql'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k else False
-            )
-        elif testing.against('oracle+cx_oracle'):
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                True if util.py3k else "conditional"
-            )
-        else:
-            expected = (testing.db.name, testing.db.driver) in \
-                (
-                    ('postgresql', 'psycopg2'),
-                    ('postgresql', 'psycopg2cffi'),
-                    ('postgresql', 'pypostgresql'),
-                    ('postgresql', 'pg8000'),
-                    ('postgresql', 'zxjdbc'),
-                    ('mysql', 'oursql'),
-                    ('mysql', 'zxjdbc'),
-                    ('mysql', 'mysqlconnector'),
-                    ('sqlite', 'pysqlite'),
-                    ('oracle', 'zxjdbc'),
-            )
-
-            eq_(
-                testing.db.dialect.returns_unicode_strings,
-                expected
-            )
-
     data = util.u(
         "Alors vous imaginez ma surprise, au lever du jour, quand "
         "une drôle de petite voix m’a réveillé. "
@@ -1013,6 +1049,15 @@ class UnicodeTest(fixtures.TestBase):
         assert isinstance(uni(unicodedata), util.binary_type)
 
         eq_(uni(unicodedata), unicodedata.encode('utf-8'))
+
+    def test_unicode_warnings_totally_wrong_type(self):
+        u = Unicode()
+        dialect = default.DefaultDialect()
+        dialect.supports_unicode_binds = False
+        uni = u.dialect_impl(dialect).bind_processor(dialect)
+        with expect_warnings(
+                "Unicode type received non-unicode bind param value 5."):
+            eq_(uni(5), 5)
 
     def test_unicode_warnings_dialectlevel(self):
 
@@ -1045,41 +1090,128 @@ class UnicodeTest(fixtures.TestBase):
             unicodedata.encode('ascii', 'ignore').decode()
         )
 
-enum_table = non_native_enum_table = metadata = None
 
+class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
+    __backend__ = True
 
-class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
+    class SomeEnum(object):
+        # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
+        __members__ = OrderedDict()
+
+        def __init__(self, name, value):
+            self.name = name
+            self.value = value
+            self.__members__[name] = self
+            setattr(self.__class__, name, self)
+
+    one = SomeEnum('one', 1)
+    two = SomeEnum('two', 2)
+    three = SomeEnum('three', 3)
 
     @classmethod
-    def setup_class(cls):
-        global enum_table, non_native_enum_table, metadata
-        metadata = MetaData(testing.db)
-        enum_table = Table(
+    def define_tables(cls, metadata):
+        Table(
             'enum_table', metadata, Column("id", Integer, primary_key=True),
             Column('someenum', Enum('one', 'two', 'three', name='myenum'))
         )
 
-        non_native_enum_table = Table(
+        Table(
             'non_native_enum_table', metadata,
             Column("id", Integer, primary_key=True),
             Column('someenum', Enum('one', 'two', 'three', native_enum=False)),
+            Column('someotherenum',
+                Enum('one', 'two', 'three',
+                     create_constraint=False, native_enum=False)),
         )
 
-        metadata.create_all()
+        Table(
+            'stdlib_enum_table', metadata,
+            Column("id", Integer, primary_key=True),
+            Column('someenum', Enum(cls.SomeEnum))
+        )
 
-    def teardown(self):
-        enum_table.delete().execute()
-        non_native_enum_table.delete().execute()
+    def test_python_type(self):
+        eq_(types.Enum(self.SomeEnum).python_type, self.SomeEnum)
 
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
+    def test_pickle_types(self):
+        global SomeEnum
+        SomeEnum = self.SomeEnum
+        for loads, dumps in picklers():
+            column_types = [
+                Column('Enu', Enum('x', 'y', 'z', name="somename")),
+                Column('En2', Enum(self.SomeEnum)),
+            ]
+            for column_type in column_types:
+                meta = MetaData()
+                Table('foo', meta, column_type)
+                loads(dumps(column_type))
+                loads(dumps(meta))
+
+    def test_validators_pep435(self):
+        type_ = Enum(self.SomeEnum)
+
+        bind_processor = type_.bind_processor(testing.db.dialect)
+        eq_(bind_processor('one'), "one")
+        eq_(bind_processor(self.one), "one")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            bind_processor, "foo"
+        )
+
+        result_processor = type_.result_processor(testing.db.dialect, None)
+
+        eq_(result_processor('one'), self.one)
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            result_processor, "foo"
+        )
+
+        literal_processor = type_.literal_processor(testing.db.dialect)
+        eq_(literal_processor("one"), "'one'")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            literal_processor, "foo"
+        )
+
+    def test_validators_plain(self):
+        type_ = Enum("one", "two")
+
+        bind_processor = type_.bind_processor(testing.db.dialect)
+        eq_(bind_processor('one'), "one")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            bind_processor, "foo"
+        )
+
+        result_processor = type_.result_processor(testing.db.dialect, None)
+
+        eq_(result_processor('one'), "one")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            result_processor, "foo"
+        )
+
+        literal_processor = type_.literal_processor(testing.db.dialect)
+        eq_(literal_processor("one"), "'one'")
+        assert_raises_message(
+            LookupError,
+            '"foo" is not among the defined enum values',
+            literal_processor, "foo"
+        )
+
 
     @testing.fails_on(
         'postgresql+zxjdbc',
         'zxjdbc fails on ENUM: column "XXX" is of type XXX '
         'but expression is of type character varying')
     def test_round_trip(self):
+        enum_table = self.tables['enum_table']
+
         enum_table.insert().execute([
             {'id': 1, 'someenum': 'two'},
             {'id': 2, 'someenum': 'two'},
@@ -1095,7 +1227,51 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
             ]
         )
 
+    def test_null_round_trip(self):
+        enum_table = self.tables.enum_table
+        non_native_enum_table = self.tables.non_native_enum_table
+
+        with testing.db.connect() as conn:
+            conn.execute(enum_table.insert(), {"id": 1, "someenum": None})
+            eq_(conn.scalar(select([enum_table.c.someenum])), None)
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                non_native_enum_table.insert(), {"id": 1, "someenum": None})
+            eq_(conn.scalar(select([non_native_enum_table.c.someenum])), None)
+
+
+    @testing.fails_on(
+        'mysql',
+        "The CHECK clause is parsed but ignored by all storage engines.")
+    @testing.fails_on(
+        'mssql', "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")
+    def test_check_constraint(self):
+        assert_raises(
+            (exc.IntegrityError, exc.ProgrammingError),
+            testing.db.execute,
+            "insert into non_native_enum_table "
+            "(id, someenum) values(1, 'four')")
+
+    def test_skip_check_constraint(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                "insert into non_native_enum_table "
+                "(id, someotherenum) values(1, 'four')"
+            )
+            eq_(
+                conn.scalar("select someotherenum from non_native_enum_table"),
+                "four")
+            assert_raises_message(
+                LookupError,
+                '"four" is not among the defined enum values',
+                conn.scalar,
+                select([self.tables.non_native_enum_table.c.someotherenum])
+            )
+
     def test_non_native_round_trip(self):
+        non_native_enum_table = self.tables['non_native_enum_table']
+
         non_native_enum_table.insert().execute([
             {'id': 1, 'someenum': 'two'},
             {'id': 2, 'someenum': 'two'},
@@ -1103,12 +1279,33 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         ])
 
         eq_(
-            non_native_enum_table.select().
+            select([
+                non_native_enum_table.c.id,
+                non_native_enum_table.c.someenum]).
             order_by(non_native_enum_table.c.id).execute().fetchall(),
             [
                 (1, 'two'),
                 (2, 'two'),
                 (3, 'one'),
+            ]
+        )
+
+    def test_pep435_enum_round_trip(self):
+        stdlib_enum_table = self.tables['stdlib_enum_table']
+
+        stdlib_enum_table.insert().execute([
+            {'id': 1, 'someenum': self.SomeEnum.two},
+            {'id': 2, 'someenum': self.SomeEnum.two},
+            {'id': 3, 'someenum': self.SomeEnum.one},
+        ])
+
+        eq_(
+            stdlib_enum_table.select().
+            order_by(stdlib_enum_table.c.id).execute().fetchall(),
+            [
+                (1, self.SomeEnum.two),
+                (2, self.SomeEnum.two),
+                (3, self.SomeEnum.one),
             ]
         )
 
@@ -1121,6 +1318,9 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
         e1 = Enum('one', 'two', 'three', name='foo', schema='bar')
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
+        e1 = Enum(self.SomeEnum)
+        eq_(e1.adapt(ENUM).name, 'someenum')
+        eq_(e1.adapt(ENUM).enums, ['one', 'two', 'three'])
 
     @testing.provide_metadata
     def test_create_metadata_bound_no_crash(self):
@@ -1129,28 +1329,18 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
 
         m1.create_all(testing.db)
 
-    @testing.crashes(
-        'mysql', 'Inconsistent behavior across various OS/drivers')
-    def test_constraint(self):
-        assert_raises(
-            exc.DBAPIError, enum_table.insert().execute,
-            {'id': 4, 'someenum': 'four'})
-
     def test_non_native_constraint_custom_type(self):
         class Foob(object):
 
             def __init__(self, name):
                 self.name = name
 
-        class MyEnum(types.SchemaType, TypeDecorator):
+        class MyEnum(TypeDecorator):
 
             def __init__(self, values):
                 self.impl = Enum(
                     *[v.name for v in values], name="myenum",
                     native_enum=False)
-
-            def _set_table(self, table, column):
-                self.impl._set_table(table, column)
 
             # future method
             def process_literal_param(self, value, dialect):
@@ -1170,12 +1360,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TestBase):
             dialect="default"
         )
 
-    @testing.fails_on(
-        'mysql',
-        "the CHECK constraint doesn't raise an exception for unknown reason")
-    def test_non_native_constraint(self):
+    def test_lookup_failure(self):
         assert_raises(
-            exc.DBAPIError, non_native_enum_table.insert().execute,
+            exc.StatementError,
+            self.tables['non_native_enum_table'].insert().execute,
             {'id': 4, 'someenum': 'four'}
         )
 
@@ -1307,6 +1495,143 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         f = os.path.join(os.path.dirname(__file__), "..", name)
         with open(f, mode='rb') as o:
             return o.read()
+
+
+class JSONTest(fixtures.TestBase):
+
+    def setup(self):
+        metadata = MetaData()
+        self.test_table = Table('test_table', metadata,
+                                Column('id', Integer, primary_key=True),
+                                Column('test_column', JSON),
+                                )
+        self.jsoncol = self.test_table.c.test_column
+
+        self.dialect = default.DefaultDialect()
+        self.dialect._json_serializer = None
+        self.dialect._json_deserializer = None
+
+    def test_bind_serialize_default(self):
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc({"A": [1, 2, 3, True, False]}),
+            '{"A": [1, 2, 3, true, false]}'
+        )
+
+    def test_bind_serialize_None(self):
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc(None),
+            'null'
+        )
+
+    def test_bind_serialize_none_as_null(self):
+        proc = JSON(none_as_null=True)._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc(None),
+            None
+        )
+        eq_(
+            proc(null()),
+            None
+        )
+
+    def test_bind_serialize_null(self):
+        proc = self.test_table.c.test_column.type._cached_bind_processor(
+            self.dialect)
+        eq_(
+            proc(null()),
+            None
+        )
+
+    def test_result_deserialize_default(self):
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            self.dialect, None)
+        eq_(
+            proc('{"A": [1, 2, 3, true, false]}'),
+            {"A": [1, 2, 3, True, False]}
+        )
+
+    def test_result_deserialize_null(self):
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            self.dialect, None)
+        eq_(
+            proc('null'),
+            None
+        )
+
+    def test_result_deserialize_None(self):
+        proc = self.test_table.c.test_column.type._cached_result_processor(
+            self.dialect, None)
+        eq_(
+            proc(None),
+            None
+        )
+
+
+class ArrayTest(fixtures.TestBase):
+
+    def _myarray_fixture(self):
+        class MyArray(ARRAY):
+            pass
+        return MyArray
+
+    def test_array_index_map_dimensions(self):
+        col = column('x', ARRAY(Integer, dimensions=3))
+        is_(
+            col[5].type._type_affinity, ARRAY
+        )
+        eq_(
+            col[5].type.dimensions, 2
+        )
+        is_(
+            col[5][6].type._type_affinity, ARRAY
+        )
+        eq_(
+            col[5][6].type.dimensions, 1
+        )
+        is_(
+            col[5][6][7].type._type_affinity, Integer
+        )
+
+    def test_array_getitem_single_type(self):
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', ARRAY(Integer)),
+            Column('strarr', ARRAY(String)),
+        )
+        is_(arrtable.c.intarr[1].type._type_affinity, Integer)
+        is_(arrtable.c.strarr[1].type._type_affinity, String)
+
+    def test_array_getitem_slice_type(self):
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', ARRAY(Integer)),
+            Column('strarr', ARRAY(String)),
+        )
+        is_(arrtable.c.intarr[1:3].type._type_affinity, ARRAY)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, ARRAY)
+
+    def test_array_getitem_slice_type_dialect_level(self):
+        MyArray = self._myarray_fixture()
+        m = MetaData()
+        arrtable = Table(
+            'arrtable', m,
+            Column('intarr', MyArray(Integer)),
+            Column('strarr', MyArray(String)),
+        )
+        is_(arrtable.c.intarr[1:3].type._type_affinity, ARRAY)
+        is_(arrtable.c.strarr[1:3].type._type_affinity, ARRAY)
+
+        # but the slice returns the actual type
+        assert isinstance(arrtable.c.intarr[1:3].type, MyArray)
+        assert isinstance(arrtable.c.strarr[1:3].type, MyArray)
+
 
 test_table = meta = MyCustomType = MyTypeDec = None
 
@@ -1613,6 +1938,34 @@ class ExpressionTest(
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
 
+    def test_detect_coercion_of_builtins(self):
+        @inspection._self_inspects
+        class SomeSQLAThing(object):
+            def __repr__(self):
+                return "some_sqla_thing()"
+
+        class SomeOtherThing(object):
+            pass
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Object some_sqla_thing\(\) is not legal as a SQL literal value",
+            lambda: column('a', String) == SomeSQLAThing()
+        )
+
+        is_(
+            bindparam('x', SomeOtherThing()).type,
+            types.NULLTYPE
+        )
+
+    def test_detect_coercion_not_fooled_by_mock(self):
+        m1 = mock.Mock()
+        is_(
+            bindparam('x', m1).type,
+            types.NULLTYPE
+        )
+
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -1881,11 +2234,8 @@ class BooleanTest(
             def __init__(self, value):
                 self.value = value
 
-        class MyBool(types.SchemaType, TypeDecorator):
+        class MyBool(TypeDecorator):
             impl = Boolean()
-
-            def _set_table(self, table, column):
-                self.impl._set_table(table, column)
 
             # future method
             def process_literal_param(self, value, dialect):

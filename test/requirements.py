@@ -130,7 +130,7 @@ class DefaultRequirements(SuiteRequirements):
     def temporary_tables(self):
         """target database supports temporary tables"""
         return skip_if(
-                    ["mssql"], "sql server has some other syntax?"
+                    ["mssql", "firebird"], "not supported (?)"
                 )
 
     @property
@@ -286,6 +286,10 @@ class DefaultRequirements(SuiteRequirements):
                     ("mysql", "<", (5, 0, 3)),
                     ], "savepoints not supported")
 
+    @property
+    def savepoints_w_release(self):
+        return self.savepoints + skip_if(
+            "oracle", "oracle doesn't support release of savepoint")
 
     @property
     def schemas(self):
@@ -293,7 +297,6 @@ class DefaultRequirements(SuiteRequirements):
         named 'test_schema'."""
 
         return skip_if([
-                    "sqlite",
                     "firebird"
                 ], "no schema support")
 
@@ -362,6 +365,32 @@ class DefaultRequirements(SuiteRequirements):
             ], 'no support for EXCEPT')
 
     @property
+    def parens_in_union_contained_select_w_limit_offset(self):
+        """Target database must support parenthesized SELECT in UNION
+        when LIMIT/OFFSET is specifically present.
+
+        E.g. (SELECT ...) UNION (SELECT ..)
+
+        This is known to fail on SQLite.
+
+        """
+        return fails_if('sqlite')
+
+    @property
+    def parens_in_union_contained_select_wo_limit_offset(self):
+        """Target database must support parenthesized SELECT in UNION
+        when OFFSET/LIMIT is specifically not present.
+
+        E.g. (SELECT ... LIMIT ..) UNION (SELECT .. OFFSET ..)
+
+        This is known to fail on SQLite.  It also fails on Oracle
+        because without LIMIT/OFFSET, there is currently no step that
+        creates an additional subquery.
+
+        """
+        return fails_if(['sqlite', 'oracle'])
+
+    @property
     def offset(self):
         """Target database must support some method of adding OFFSET or
         equivalent to a result set."""
@@ -372,7 +401,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def window_functions(self):
         return only_if([
-                    "postgresql", "mssql", "oracle"
+                    "postgresql>=8.4", "mssql", "oracle"
                 ], "Backend does not support window functions")
 
     @property
@@ -504,6 +533,18 @@ class DefaultRequirements(SuiteRequirements):
 
         return fails_on_everything_except('postgresql', 'oracle', 'mssql',
                     'sybase')
+
+    @property
+    def json_type(self):
+        return only_on([
+            lambda config: against(config, "mysql >= 5.7") and
+            not config.db.dialect._is_mariadb,
+            "postgresql >= 9.3"
+        ])
+
+    @property
+    def json_array_indexes(self):
+        return self.json_type + fails_if("+pg8000")
 
     @property
     def datetime_literals(self):
@@ -669,6 +710,10 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def duplicate_key_raises_integrity_error(self):
+        return fails_on("postgresql+pg8000")
+
+    @property
     def python2(self):
         return skip_if(
                 lambda: sys.version_info >= (3,),
@@ -723,12 +768,12 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def range_types(self):
         def check_range_types(config):
-            if not against(config, "postgresql+psycopg2"):
+            if not against(
+                    config,
+                    ["postgresql+psycopg2", "postgresql+psycopg2cffi"]):
                 return False
             try:
-                config.db.execute("select '[1,2)'::int4range;")
-                # only supported in psycopg 2.5+
-                from psycopg2.extras import NumericRange
+                config.db.scalar("select '[1,2)'::int4range;")
                 return True
             except:
                 return False
@@ -751,6 +796,35 @@ class DefaultRequirements(SuiteRequirements):
                         'sqla_testing', 'postgres_test_db_link'),
                     "postgres_test_db_link option not specified in config"
                 )
+
+    @property
+    def postgresql_jsonb(self):
+        return only_on("postgresql >= 9.4") + skip_if(
+            lambda config:
+            config.db.dialect.driver == "pg8000" and
+            config.db.dialect._dbapi_version <= (1, 10, 1)
+        )
+
+    @property
+    def psycopg2_native_json(self):
+        return self.psycopg2_compatibility
+
+    @property
+    def psycopg2_native_hstore(self):
+        return self.psycopg2_compatibility
+
+    @property
+    def psycopg2_compatibility(self):
+        return only_on(
+            ["postgresql+psycopg2", "postgresql+psycopg2cffi"]
+        )
+
+    @property
+    def psycopg2_or_pg8000_compatibility(self):
+        return only_on(
+            ["postgresql+psycopg2", "postgresql+psycopg2cffi",
+             "postgresql+pg8000"]
+        )
 
     @property
     def percent_schema_names(self):
@@ -799,10 +873,17 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def no_mssql_freetds(self):
+        return self.mssql_freetds.not_()
+
+    @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(["oracle", "firebird"], "non-standard SELECT scalar syntax")
 
+    @property
+    def mysql_fsp(self):
+        return only_if('mysql >= 5.6.4')
 
     @property
     def mysql_fully_case_sensitive(self):

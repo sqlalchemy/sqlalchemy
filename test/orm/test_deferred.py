@@ -320,6 +320,64 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
              "FROM orders ORDER BY orders.id",
              {})])
 
+    def test_undefer_group_multi(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(Order, orders, properties=util.OrderedDict([
+            ('userident', deferred(orders.c.user_id, group='primary')),
+            ('description', deferred(orders.c.description, group='primary')),
+            ('opened', deferred(orders.c.isopen, group='secondary'))
+            ]
+            ))
+
+        sess = create_session()
+        q = sess.query(Order).order_by(Order.id)
+        def go():
+            l = q.options(
+                undefer_group('primary'), undefer_group('secondary')).all()
+            o2 = l[2]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+
+        self.sql_eq_(go, [
+            ("SELECT orders.user_id AS orders_user_id, "
+             "orders.description AS orders_description, "
+             "orders.isopen AS orders_isopen, "
+             "orders.id AS orders_id, "
+             "orders.address_id AS orders_address_id "
+             "FROM orders ORDER BY orders.id",
+             {})])
+
+    def test_undefer_group_multi_pathed(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(Order, orders, properties=util.OrderedDict([
+            ('userident', deferred(orders.c.user_id, group='primary')),
+            ('description', deferred(orders.c.description, group='primary')),
+            ('opened', deferred(orders.c.isopen, group='secondary'))
+            ]
+            ))
+
+        sess = create_session()
+        q = sess.query(Order).order_by(Order.id)
+        def go():
+            l = q.options(
+                Load(Order).undefer_group('primary').undefer_group('secondary')).all()
+            o2 = l[2]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+
+        self.sql_eq_(go, [
+            ("SELECT orders.user_id AS orders_user_id, "
+             "orders.description AS orders_description, "
+             "orders.isopen AS orders_isopen, "
+             "orders.id AS orders_id, "
+             "orders.address_id AS orders_address_id "
+             "FROM orders ORDER BY orders.id",
+             {})])
+
     def test_undefer_star(self):
         orders, Order = self.tables.orders, self.classes.Order
 
@@ -341,7 +399,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             )
 
     def test_locates_col(self):
-        """Manually adding a column to the result undefers the column."""
+        """changed in 1.0 - we don't search for deferred cols in the result
+        now.  """
 
         orders, Order = self.tables.orders, self.classes.Order
 
@@ -350,18 +409,40 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             'description': deferred(orders.c.description)})
 
         sess = create_session()
-        o1 = sess.query(Order).order_by(Order.id).first()
-        def go():
-            eq_(o1.description, 'order 1')
-        self.sql_count_(1, go)
-
-        sess = create_session()
         o1 = (sess.query(Order).
               order_by(Order.id).
               add_column(orders.c.description).first())[0]
         def go():
             eq_(o1.description, 'order 1')
-        self.sql_count_(0, go)
+        # prior to 1.0 we'd search in the result for this column
+        # self.sql_count_(0, go)
+        self.sql_count_(1, go)
+
+    def test_locates_col_rowproc_only(self):
+        """changed in 1.0 - we don't search for deferred cols in the result
+        now.
+
+        Because the loading for ORM Query and Query from a core select
+        is now split off, we test loading from a plain select()
+        separately.
+
+        """
+
+        orders, Order = self.tables.orders, self.classes.Order
+
+
+        mapper(Order, orders, properties={
+            'description': deferred(orders.c.description)})
+
+        sess = create_session()
+        stmt = sa.select([Order]).order_by(Order.id)
+        o1 = (sess.query(Order).
+              from_statement(stmt).all())[0]
+        def go():
+            eq_(o1.description, 'order 1')
+        # prior to 1.0 we'd search in the result for this column
+        # self.sql_count_(0, go)
+        self.sql_count_(1, go)
 
     def test_deep_options(self):
         users, items, order_items, Order, Item, User, orders = (self.tables.users,

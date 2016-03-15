@@ -4,6 +4,7 @@
 from sqlalchemy import exc as sa_exceptions
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import eq_
+from sqlalchemy.engine import default
 
 
 class Error(Exception):
@@ -28,7 +29,27 @@ class OutOfSpec(DatabaseError):
     pass
 
 
+# exception with a totally different name...
+class WrongNameError(DatabaseError):
+    pass
+
+# but they're going to call it their "IntegrityError"
+IntegrityError = WrongNameError
+
+
+# and they're going to subclass it!
+class SpecificIntegrityError(WrongNameError):
+    pass
+
+
 class WrapTest(fixtures.TestBase):
+
+    def _translating_dialect_fixture(self):
+        d = default.DefaultDialect()
+        d.dbapi_exception_translation_map = {
+            "WrongNameError": "IntegrityError"
+        }
+        return d
 
     def test_db_error_normal(self):
         try:
@@ -159,6 +180,42 @@ class WrapTest(fixtures.TestBase):
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
         except sa_exceptions.ArgumentError:
             self.assert_(False)
+
+        dialect = self._translating_dialect_fixture()
+        try:
+            raise sa_exceptions.DBAPIError.instance(
+                '', [],
+                sa_exceptions.ArgumentError(), DatabaseError,
+                dialect=dialect)
+        except sa_exceptions.DBAPIError as e:
+            self.assert_(e.__class__ is sa_exceptions.DBAPIError)
+        except sa_exceptions.ArgumentError:
+            self.assert_(False)
+
+    def test_db_error_dbapi_uses_wrong_names(self):
+        dialect = self._translating_dialect_fixture()
+
+        try:
+            raise sa_exceptions.DBAPIError.instance(
+                '', [], IntegrityError(),
+                DatabaseError, dialect=dialect)
+        except sa_exceptions.DBAPIError as e:
+            self.assert_(e.__class__ is sa_exceptions.IntegrityError)
+
+        try:
+            raise sa_exceptions.DBAPIError.instance(
+                '', [], SpecificIntegrityError(),
+                DatabaseError, dialect=dialect)
+        except sa_exceptions.DBAPIError as e:
+            self.assert_(e.__class__ is sa_exceptions.IntegrityError)
+
+        try:
+            raise sa_exceptions.DBAPIError.instance(
+                '', [], SpecificIntegrityError(),
+                DatabaseError)
+        except sa_exceptions.DBAPIError as e:
+            # doesn't work without a dialect
+            self.assert_(e.__class__ is not sa_exceptions.IntegrityError)
 
     def test_db_error_keyboard_interrupt(self):
         try:

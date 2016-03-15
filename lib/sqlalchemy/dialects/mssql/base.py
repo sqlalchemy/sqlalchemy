@@ -1,5 +1,5 @@
 # mssql/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -166,7 +166,6 @@ how SQLAlchemy handles this:
 This
 is an auxilliary use case suitable for testing and bulk insert scenarios.
 
-
 Collation Support
 -----------------
 
@@ -187,7 +186,7 @@ CREATE TABLE statement for this column will yield::
 LIMIT/OFFSET Support
 --------------------
 
-MSSQL has no support for the LIMIT or OFFSET keysowrds. LIMIT is
+MSSQL has no support for the LIMIT or OFFSET keywords. LIMIT is
 supported directly through the ``TOP`` Transact SQL keyword::
 
     select.limit
@@ -272,6 +271,41 @@ behavior of this flag is as follows:
   fixed and always output exactly that type.
 
 .. versionadded:: 1.0.0
+
+.. _legacy_schema_rendering:
+
+Legacy Schema Mode
+------------------
+
+Very old versions of the MSSQL dialect introduced the behavior such that a
+schema-qualified table would be auto-aliased when used in a
+SELECT statement; given a table::
+
+    account_table = Table(
+        'account', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('info', String(100)),
+        schema="customer_schema"
+    )
+
+this legacy mode of rendering would assume that "customer_schema.account"
+would not be accepted by all parts of the SQL statement, as illustrated
+below::
+
+    >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=True)
+    >>> print(account_table.select().compile(eng))
+    SELECT account_1.id, account_1.info
+    FROM customer_schema.account AS account_1
+
+This mode of behavior is now off by default, as it appears to have served
+no purpose; however in the case that legacy applications rely upon it,
+it is available using the ``legacy_schema_aliasing`` argument to
+:func:`.create_engine` as illustrated above.
+
+.. versionchanged:: 1.1 the ``legacy_schema_aliasing`` flag introduced
+   in version 1.0.5 to allow disabling of legacy mode for schemas now
+   defaults to False.
+
 
 .. _mssql_indexes:
 
@@ -383,6 +417,40 @@ Declarative form::
 
 This option can also be specified engine-wide using the
 ``implicit_returning=False`` argument on :func:`.create_engine`.
+
+.. _mssql_rowcount_versioning:
+
+Rowcount Support / ORM Versioning
+---------------------------------
+
+The SQL Server drivers have very limited ability to return the number
+of rows updated from an UPDATE or DELETE statement.  In particular, the
+pymssql driver has no support, whereas the pyodbc driver can only return
+this value under certain conditions.
+
+In particular, updated rowcount is not available when OUTPUT INSERTED
+is used.  This impacts the SQLAlchemy ORM's versioning feature when
+server-side versioning schemes are used.  When
+using pyodbc, the "implicit_returning" flag needs to be set to false
+for any ORM mapped class that uses a version_id column in conjunction with
+a server-side version generator::
+
+    class MyTable(Base):
+        __tablename__ = 'mytable'
+        id = Column(Integer, primary_key=True)
+        stuff = Column(String(10))
+        timestamp = Column(TIMESTAMP(), default=text('DEFAULT'))
+        __mapper_args__ = {
+            'version_id_col': timestamp,
+            'version_id_generator': False,
+        }
+        __table_args__ = {
+            'implicit_returning': False
+        }
+
+Without the implicit_returning flag above, the UPDATE statement will
+use ``OUTPUT inserted.timestamp`` and the rowcount will be returned as
+-1, causing the versioning logic to fail.
 
 Enabling Snapshot Isolation
 ---------------------------
@@ -499,9 +567,13 @@ class _MSDate(sqltypes.Date):
             if isinstance(value, datetime.datetime):
                 return value.date()
             elif isinstance(value, util.string_types):
+                m = self._reg.match(value)
+                if not m:
+                    raise ValueError(
+                        "could not parse %r as a date value" % (value, ))
                 return datetime.date(*[
                     int(x or 0)
-                    for x in self._reg.match(value).groups()
+                    for x in m.groups()
                 ])
             else:
                 return value
@@ -533,9 +605,13 @@ class TIME(sqltypes.TIME):
             if isinstance(value, datetime.datetime):
                 return value.time()
             elif isinstance(value, util.string_types):
+                m = self._reg.match(value)
+                if not m:
+                    raise ValueError(
+                        "could not parse %r as a time value" % (value, ))
                 return datetime.time(*[
                     int(x or 0)
-                    for x in self._reg.match(value).groups()])
+                    for x in m.groups()])
             else:
                 return value
         return process
@@ -725,21 +801,21 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return "TINYINT"
 
     def visit_DATETIMEOFFSET(self, type_, **kw):
-        if type_.precision:
+        if type_.precision is not None:
             return "DATETIMEOFFSET(%s)" % type_.precision
         else:
             return "DATETIMEOFFSET"
 
     def visit_TIME(self, type_, **kw):
         precision = getattr(type_, 'precision', None)
-        if precision:
+        if precision is not None:
             return "TIME(%s)" % precision
         else:
             return "TIME"
 
     def visit_DATETIME2(self, type_, **kw):
         precision = getattr(type_, 'precision', None)
-        if precision:
+        if precision is not None:
             return "DATETIME2(%s)" % precision
         else:
             return "DATETIME2"
@@ -951,6 +1027,15 @@ class MSSQLCompiler(compiler.SQLCompiler):
         self.tablealiases = {}
         super(MSSQLCompiler, self).__init__(*args, **kwargs)
 
+    def _with_legacy_schema_aliasing(fn):
+        def decorate(self, *arg, **kw):
+            if self.dialect.legacy_schema_aliasing:
+                return fn(self, *arg, **kw)
+            else:
+                super_ = getattr(super(MSSQLCompiler, self), fn.__name__)
+                return super_(*arg, **kw)
+        return decorate
+
     def visit_now_func(self, fn, **kw):
         return "CURRENT_TIMESTAMP"
 
@@ -979,7 +1064,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self.process(binary.left, **kw),
             self.process(binary.right, **kw))
 
-    def get_select_precolumns(self, select):
+    def get_select_precolumns(self, select, **kw):
         """ MS-SQL puts TOP, it's version of LIMIT here """
 
         s = ""
@@ -995,7 +1080,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if s:
             return s
         else:
-            return compiler.SQLCompiler.get_select_precolumns(self, select)
+            return compiler.SQLCompiler.get_select_precolumns(
+                self, select, **kw)
 
     def get_from_hint_text(self, table, text):
         return text
@@ -1031,6 +1117,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             _order_by_clauses = select._order_by_clause.clauses
             limit_clause = select._limit_clause
             offset_clause = select._offset_clause
+            kwargs['select_wraps_for'] = select
             select = select._generate()
             select._mssql_visit = True
             select = select.column(
@@ -1048,18 +1135,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
             else:
                 limitselect.append_whereclause(
                     mssql_rn <= (limit_clause))
-            return self.process(limitselect, iswrapper=True, **kwargs)
+            return self.process(limitselect, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 
-    def _schema_aliased_table(self, table):
-        if getattr(table, 'schema', None) is not None:
-            if table not in self.tablealiases:
-                self.tablealiases[table] = table.alias()
-            return self.tablealiases[table]
-        else:
-            return None
-
+    @_with_legacy_schema_aliasing
     def visit_table(self, table, mssql_aliased=False, iscrud=False, **kwargs):
         if mssql_aliased is table or iscrud:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
@@ -1071,25 +1151,14 @@ class MSSQLCompiler(compiler.SQLCompiler):
         else:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
 
-    def visit_alias(self, alias, **kwargs):
+    @_with_legacy_schema_aliasing
+    def visit_alias(self, alias, **kw):
         # translate for schema-qualified table aliases
-        kwargs['mssql_aliased'] = alias.original
-        return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
+        kw['mssql_aliased'] = alias.original
+        return super(MSSQLCompiler, self).visit_alias(alias, **kw)
 
-    def visit_extract(self, extract, **kw):
-        field = self.extract_map.get(extract.field, extract.field)
-        return 'DATEPART("%s", %s)' % \
-            (field, self.process(extract.expr, **kw))
-
-    def visit_savepoint(self, savepoint_stmt):
-        return "SAVE TRANSACTION %s" % \
-            self.preparer.format_savepoint(savepoint_stmt)
-
-    def visit_rollback_to_savepoint(self, savepoint_stmt):
-        return ("ROLLBACK TRANSACTION %s"
-                % self.preparer.format_savepoint(savepoint_stmt))
-
-    def visit_column(self, column, add_to_result_map=None, **kwargs):
+    @_with_legacy_schema_aliasing
+    def visit_column(self, column, add_to_result_map=None, **kw):
         if column.table is not None and \
                 (not self.isupdate and not self.isdelete) or \
                 self.is_subquery():
@@ -1107,10 +1176,31 @@ class MSSQLCompiler(compiler.SQLCompiler):
                     )
 
                 return super(MSSQLCompiler, self).\
-                    visit_column(converted, **kwargs)
+                    visit_column(converted, **kw)
 
         return super(MSSQLCompiler, self).visit_column(
-            column, add_to_result_map=add_to_result_map, **kwargs)
+            column, add_to_result_map=add_to_result_map, **kw)
+
+    def _schema_aliased_table(self, table):
+        if getattr(table, 'schema', None) is not None:
+            if table not in self.tablealiases:
+                self.tablealiases[table] = table.alias()
+            return self.tablealiases[table]
+        else:
+            return None
+
+    def visit_extract(self, extract, **kw):
+        field = self.extract_map.get(extract.field, extract.field)
+        return 'DATEPART(%s, %s)' % \
+            (field, self.process(extract.expr, **kw))
+
+    def visit_savepoint(self, savepoint_stmt):
+        return "SAVE TRANSACTION %s" % \
+            self.preparer.format_savepoint(savepoint_stmt)
+
+    def visit_rollback_to_savepoint(self, savepoint_stmt):
+        return ("ROLLBACK TRANSACTION %s"
+                % self.preparer.format_savepoint(savepoint_stmt))
 
     def visit_binary(self, binary, **kwargs):
         """Move bind parameters to the right-hand side of an operator, where
@@ -1422,6 +1512,10 @@ class MSDialect(default.DefaultDialect):
         sqltypes.Time: TIME,
     }
 
+    engine_config_types = default.DefaultDialect.engine_config_types.union([
+        ('legacy_schema_aliasing', util.asbool),
+    ])
+
     ischema_names = ischema_names
 
     supports_native_boolean = False
@@ -1453,7 +1547,8 @@ class MSDialect(default.DefaultDialect):
                  use_scope_identity=True,
                  max_identifier_length=None,
                  schema_name="dbo",
-                 deprecate_large_types=None, **opts):
+                 deprecate_large_types=None,
+                 legacy_schema_aliasing=False, **opts):
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name
 
@@ -1461,6 +1556,8 @@ class MSDialect(default.DefaultDialect):
         self.max_identifier_length = int(max_identifier_length or 0) or \
             self.max_identifier_length
         self.deprecate_large_types = deprecate_large_types
+        self.legacy_schema_aliasing = legacy_schema_aliasing
+
         super(MSDialect, self).__init__(**opts)
 
     def do_savepoint(self, connection, name):
@@ -1481,11 +1578,15 @@ class MSDialect(default.DefaultDialect):
             # FreeTDS with version 4.2 seems to report here
             # a number like "95.10.255".  Don't know what
             # that is.  So emit warning.
+            # Use TDS Version 7.0 through 7.3, per the MS information here:
+            # https://msdn.microsoft.com/en-us/library/dd339982.aspx
+            # and FreeTDS information here (7.3 highest supported version):
+            # http://www.freetds.org/userguide/choosingtdsprotocol.htm
             util.warn(
                 "Unrecognized server version info '%s'.   Version specific "
                 "behaviors may not function properly.   If using ODBC "
-                "with FreeTDS, ensure server version 7.0 or 8.0, not 4.2, "
-                "is configured in the FreeTDS configuration." %
+                "with FreeTDS, ensure TDS_VERSION 7.0 through 7.3, not "
+                "4.2, is configured in the FreeTDS configuration." %
                 ".".join(str(x) for x in self.server_version_info))
         if self.server_version_info >= MS_2005_VERSION and \
                 'implicit_returning' not in self.__dict__:
@@ -1683,7 +1784,7 @@ class MSDialect(default.DefaultDialect):
                            MSNText, MSBinary, MSVarBinary,
                            sqltypes.LargeBinary):
                 if charlen == -1:
-                    charlen = 'max'
+                    charlen = None
                 kwargs['length'] = charlen
                 if collation:
                     kwargs['collation'] = collation

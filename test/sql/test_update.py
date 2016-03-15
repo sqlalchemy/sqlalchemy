@@ -1,9 +1,12 @@
-from sqlalchemy import *
+from sqlalchemy import Integer, String, ForeignKey, and_, or_, func, \
+    literal, update, table, bindparam, column, select, exc
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import default
-from sqlalchemy.testing import AssertsCompiledSQL, eq_, fixtures
+from sqlalchemy.testing import AssertsCompiledSQL, eq_, fixtures, \
+    assert_raises_message
 from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import util
 
 
 class _UpdateFromTestBase(object):
@@ -32,6 +35,11 @@ class _UpdateFromTestBase(object):
                      test_needs_autoincrement=True),
               Column('address_id', None, ForeignKey('addresses.id')),
               Column('data', String(30)))
+        Table('update_w_default', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('x', Integer),
+              Column('ycol', Integer, key='y'),
+              Column('data', String(30), onupdate=lambda: "hi"))
 
     @classmethod
     def fixtures(cls):
@@ -165,6 +173,154 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             table1.c.name: table1.c.name + 'lala',
             table1.c.myid: func.do_stuff(table1.c.myid, literal('hoho'))
         }
+
+        self.assert_compile(
+            update(
+                table1,
+                (table1.c.myid == func.hoho(4)) & (
+                    table1.c.name == literal('foo') +
+                    table1.c.name +
+                    literal('lala')),
+                values=values),
+            'UPDATE mytable '
+            'SET '
+            'myid=do_stuff(mytable.myid, :param_1), '
+            'name=(mytable.name || :name_1) '
+            'WHERE '
+            'mytable.myid = hoho(:hoho_1) AND '
+            'mytable.name = :param_2 || mytable.name || :param_3')
+
+    def test_unconsumed_names_kwargs(self):
+        t = table("t", column("x"), column("y"))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unconsumed column names: z",
+            t.update().values(x=5, z=5).compile,
+        )
+
+    def test_unconsumed_names_values_dict(self):
+        t = table("t", column("x"), column("y"))
+        t2 = table("t2", column("q"), column("z"))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unconsumed column names: j",
+            t.update().values(x=5, j=7).values({t2.c.z: 5}).
+            where(t.c.x == t2.c.q).compile,
+        )
+
+    def test_unconsumed_names_kwargs_w_keys(self):
+        t = table("t", column("x"), column("y"))
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unconsumed column names: j",
+            t.update().values(x=5, j=7).compile,
+            column_keys=['j']
+        )
+
+    def test_update_ordered_parameters_1(self):
+        table1 = self.tables.mytable
+
+        # Confirm that we can pass values as list value pairs
+        # note these are ordered *differently* from table.c
+        values = [
+            (table1.c.name, table1.c.name + 'lala'),
+            (table1.c.myid, func.do_stuff(table1.c.myid, literal('hoho'))),
+        ]
+        self.assert_compile(
+            update(
+                table1,
+                (table1.c.myid == func.hoho(4)) & (
+                    table1.c.name == literal('foo') +
+                    table1.c.name +
+                    literal('lala')),
+                preserve_parameter_order=True,
+                values=values),
+            'UPDATE mytable '
+            'SET '
+            'name=(mytable.name || :name_1), '
+            'myid=do_stuff(mytable.myid, :param_1) '
+            'WHERE '
+            'mytable.myid = hoho(:hoho_1) AND '
+            'mytable.name = :param_2 || mytable.name || :param_3')
+
+    def test_update_ordered_parameters_2(self):
+        table1 = self.tables.mytable
+
+        # Confirm that we can pass values as list value pairs
+        # note these are ordered *differently* from table.c
+        values = [
+            (table1.c.name, table1.c.name + 'lala'),
+            ('description', 'some desc'),
+            (table1.c.myid, func.do_stuff(table1.c.myid, literal('hoho')))
+        ]
+        self.assert_compile(
+            update(
+                table1,
+                (table1.c.myid == func.hoho(4)) & (
+                    table1.c.name == literal('foo') +
+                    table1.c.name +
+                    literal('lala')),
+                preserve_parameter_order=True).values(values),
+            'UPDATE mytable '
+            'SET '
+            'name=(mytable.name || :name_1), '
+            'description=:description, '
+            'myid=do_stuff(mytable.myid, :param_1) '
+            'WHERE '
+            'mytable.myid = hoho(:hoho_1) AND '
+            'mytable.name = :param_2 || mytable.name || :param_3')
+
+    def test_update_ordered_parameters_fire_onupdate(self):
+        table = self.tables.update_w_default
+
+        values = [
+            (table.c.y, table.c.x + 5),
+            ('x', 10)
+        ]
+
+        self.assert_compile(
+            table.update(preserve_parameter_order=True).values(values),
+            "UPDATE update_w_default SET ycol=(update_w_default.x + :x_1), "
+            "x=:x, data=:data"
+        )
+
+    def test_update_ordered_parameters_override_onupdate(self):
+        table = self.tables.update_w_default
+
+        values = [
+            (table.c.y, table.c.x + 5),
+            (table.c.data, table.c.x + 10),
+            ('x', 10)
+        ]
+
+        self.assert_compile(
+            table.update(preserve_parameter_order=True).values(values),
+            "UPDATE update_w_default SET ycol=(update_w_default.x + :x_1), "
+            "data=(update_w_default.x + :x_2), x=:x"
+        )
+
+    def test_update_preserve_order_reqs_listtups(self):
+        table1 = self.tables.mytable
+        testing.assert_raises_message(
+            ValueError,
+            "When preserve_parameter_order is True, values\(\) "
+            "only accepts a list of 2-tuples",
+            table1.update(preserve_parameter_order=True).values,
+            {"description": "foo", "name": "bar"}
+        )
+
+    def test_update_ordereddict(self):
+        table1 = self.tables.mytable
+
+        # Confirm that ordered dicts are treated as normal dicts,
+        # columns sorted in table order
+        values = util.OrderedDict((
+            (table1.c.name, table1.c.name + 'lala'),
+            (table1.c.myid, func.do_stuff(table1.c.myid, literal('hoho')))))
+
         self.assert_compile(
             update(
                 table1,

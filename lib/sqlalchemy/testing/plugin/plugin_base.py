@@ -1,5 +1,5 @@
 # plugin/plugin_base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,12 +14,6 @@ functionality via py.test.
 """
 
 from __future__ import absolute_import
-try:
-    # unitttest has a SkipTest also but pytest doesn't
-    # honor it unless nose is imported too...
-    from nose import SkipTest
-except ImportError:
-    from _pytest.runner import Skipped as SkipTest
 
 import sys
 import re
@@ -46,7 +40,6 @@ file_config = None
 
 
 logging = None
-db_opts = {}
 include_tags = set()
 exclude_tags = set()
 options = None
@@ -121,7 +114,6 @@ def memoize_important_follower_config(dict_):
 
     """
     dict_['memoized_config'] = {
-        'db_opts': db_opts,
         'include_tags': include_tags,
         'exclude_tags': exclude_tags
     }
@@ -133,8 +125,7 @@ def restore_important_follower_config(dict_):
     This invokes in the follower process.
 
     """
-    global db_opts, include_tags, exclude_tags
-    db_opts.update(dict_['memoized_config']['db_opts'])
+    global include_tags, exclude_tags
     include_tags.update(dict_['memoized_config']['include_tags'])
     exclude_tags.update(dict_['memoized_config']['exclude_tags'])
 
@@ -156,6 +147,13 @@ def pre_begin(opt):
 def set_coverage_flag(value):
     options.has_coverage = value
 
+_skip_test_exception = None
+
+
+def set_skip_test(exc):
+    global _skip_test_exception
+    _skip_test_exception = exc
+
 
 def post_begin():
     """things to set up later, once we know coverage is running."""
@@ -174,6 +172,7 @@ def post_begin():
     from sqlalchemy.testing import config  # noqa
     from sqlalchemy import util  # noqa
     warnings.setup_filters()
+
 
 
 def _log(opt_str, value, parser):
@@ -234,6 +233,13 @@ def _monkeypatch_cdecimal(options, file_config):
 
 
 @post
+def _init_skiptest(options, file_config):
+    from sqlalchemy.testing import config
+
+    config._skip_test_exception = _skip_test_exception
+
+
+@post
 def _engine_uri(options, file_config):
     from sqlalchemy.testing import config
     from sqlalchemy import testing
@@ -260,7 +266,7 @@ def _engine_uri(options, file_config):
 
     for db_url in db_urls:
         cfg = provision.setup_config(
-            db_url, db_opts, options, file_config, provision.FOLLOWER_IDENT)
+            db_url, options, file_config, provision.FOLLOWER_IDENT)
 
         if not config._current:
             cfg.set_as_current(cfg, testing)
@@ -431,6 +437,12 @@ def _restore_engine():
     config._current.reset(testing)
 
 
+def final_process_cleanup():
+    engines.testing_reaper._stop_test_ctx_aggressive()
+    assertions.global_cleanup_assertions()
+    _restore_engine()
+
+
 def _setup_engine(cls):
     if getattr(cls, '__engine_options__', None):
         eng = engines.testing_engine(options=cls.__engine_options__)
@@ -506,7 +518,7 @@ def _do_skips(cls):
     if getattr(cls, '__skip_if__', False):
         for c in getattr(cls, '__skip_if__'):
             if c():
-                raise SkipTest("'%s' skipped by %s" % (
+                config.skip_test("'%s' skipped by %s" % (
                     cls.__name__, c.__name__)
                 )
 
@@ -529,7 +541,7 @@ def _do_skips(cls):
                 ),
                 ", ".join(reasons)
             )
-        raise SkipTest(msg)
+        config.skip_test(msg)
     elif hasattr(cls, '__prefer_backends__'):
         non_preferred = set()
         spec = exclusions.db_spec(*util.to_list(cls.__prefer_backends__))

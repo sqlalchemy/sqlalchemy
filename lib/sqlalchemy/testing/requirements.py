@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -108,6 +108,32 @@ class SuiteRequirements(Requirements):
         parameter
         """
 
+        return exclusions.open()
+
+    @property
+    def parens_in_union_contained_select_w_limit_offset(self):
+        """Target database must support parenthesized SELECT in UNION
+        when LIMIT/OFFSET is specifically present.
+
+        E.g. (SELECT ...) UNION (SELECT ..)
+
+        This is known to fail on SQLite.
+
+        """
+        return exclusions.open()
+
+    @property
+    def parens_in_union_contained_select_wo_limit_offset(self):
+        """Target database must support parenthesized SELECT in UNION
+        when OFFSET/LIMIT is specifically not present.
+
+        E.g. (SELECT ... LIMIT ..) UNION (SELECT .. OFFSET ..)
+
+        This is known to fail on SQLite.  It also fails on Oracle
+        because without LIMIT/OFFSET, there is currently no step that
+        creates an additional subquery.
+
+        """
         return exclusions.open()
 
     @property
@@ -342,6 +368,14 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def duplicate_key_raises_integrity_error(self):
+        """target dialect raises IntegrityError when reporting an INSERT
+        with a primary key violation.  (hint: it should)
+
+        """
+        return exclusions.open()
+
+    @property
     def unbounded_varchar(self):
         """Target database must support VARCHAR with no length"""
 
@@ -451,6 +485,19 @@ class SuiteRequirements(Requirements):
         """
 
         return exclusions.open()
+
+    @property
+    def json_type(self):
+        """target platform implements a native JSON type."""
+
+        return exclusions.closed()
+
+    @property
+    def json_array_indexes(self):
+        """"target platform supports numeric array indexes
+        within a JSON structure"""
+
+        return self.json_type
 
     @property
     def precision_numerics_general(self):

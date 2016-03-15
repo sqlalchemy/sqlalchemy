@@ -1,5 +1,5 @@
 # util/_collections.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,7 +10,8 @@
 from __future__ import absolute_import
 import weakref
 import operator
-from .compat import threading, itertools_filterfalse, string_types
+from .compat import threading, itertools_filterfalse, string_types, \
+    binary_types
 from . import py2k
 import types
 import collections
@@ -19,6 +20,8 @@ EMPTY_SET = frozenset()
 
 
 class AbstractKeyedTuple(tuple):
+    __slots__ = ()
+
     def keys(self):
         """Return a list of string key names for this :class:`.KeyedTuple`.
 
@@ -125,20 +128,6 @@ class _LW(AbstractKeyedTuple):
         d = dict(zip(self._real_fields, self))
         d.pop(None, None)
         return d
-
-
-def lightweight_named_tuple(name, fields):
-
-    tp_cls = type(name, (_LW,), {})
-    for idx, field in enumerate(fields):
-        if field is None:
-            continue
-        setattr(tp_cls, field, property(operator.itemgetter(idx)))
-
-    tp_cls._real_fields = fields
-    tp_cls._fields = tuple([f for f in fields if f is not None])
-
-    return tp_cls
 
 
 class ImmutableContainer(object):
@@ -372,7 +361,10 @@ class OrderedSet(set):
         set.__init__(self)
         self._list = []
         if d is not None:
-            self.update(d)
+            self._list = unique_list(d)
+            set.update(self, self._list)
+        else:
+            self._list = []
 
     def add(self, element):
         if element not in self:
@@ -747,16 +739,23 @@ ordered_column_set = OrderedSet
 populate_column_dict = PopulateDict
 
 
+_getters = PopulateDict(operator.itemgetter)
+
+_property_getters = PopulateDict(
+    lambda idx: property(operator.itemgetter(idx)))
+
+
 def unique_list(seq, hashfunc=None):
-    seen = {}
+    seen = set()
+    seen_add = seen.add
     if not hashfunc:
         return [x for x in seq
                 if x not in seen
-                and not seen.__setitem__(x, True)]
+                and not seen_add(x)]
     else:
         return [x for x in seq
                 if hashfunc(x) not in seen
-                and not seen.__setitem__(hashfunc(x), True)]
+                and not seen_add(hashfunc(x))]
 
 
 class UniqueAppender(object):
@@ -796,12 +795,26 @@ def coerce_generator_arg(arg):
 def to_list(x, default=None):
     if x is None:
         return default
-    if not isinstance(x, collections.Iterable) or isinstance(x, string_types):
+    if not isinstance(x, collections.Iterable) or \
+            isinstance(x, string_types + binary_types):
         return [x]
     elif isinstance(x, list):
         return x
     else:
         return list(x)
+
+
+def has_intersection(set_, iterable):
+    """return True if any items of set_ are present in iterable.
+
+    Goes through special effort to ensure __hash__ is not called
+    on items in iterable that don't support it.
+
+    """
+    # TODO: optimize, write in C, etc.
+    return bool(
+        set_.intersection([i for i in iterable if i.__hash__])
+    )
 
 
 def to_set(x):
@@ -849,16 +862,29 @@ class LRUCache(dict):
     """Dictionary with 'squishy' removal of least
     recently used items.
 
+    Note that either get() or [] should be used here, but
+    generally its not safe to do an "in" check first as the dictionary
+    can change subsequent to that call.
+
     """
 
     def __init__(self, capacity=100, threshold=.5):
         self.capacity = capacity
         self.threshold = threshold
         self._counter = 0
+        self._mutex = threading.Lock()
 
     def _inc_counter(self):
         self._counter += 1
         return self._counter
+
+    def get(self, key, default=None):
+        item = dict.get(self, key, default)
+        if item is not default:
+            item[2] = self._inc_counter()
+            return item[1]
+        else:
+            return default
 
     def __getitem__(self, key):
         item = dict.__getitem__(self, key)
@@ -885,18 +911,45 @@ class LRUCache(dict):
         self._manage_size()
 
     def _manage_size(self):
-        while len(self) > self.capacity + self.capacity * self.threshold:
-            by_counter = sorted(dict.values(self),
-                                key=operator.itemgetter(2),
-                                reverse=True)
-            for item in by_counter[self.capacity:]:
-                try:
-                    del self[item[0]]
-                except KeyError:
-                    # if we couldn't find a key, most
-                    # likely some other thread broke in
-                    # on us. loop around and try again
-                    break
+        if not self._mutex.acquire(False):
+            return
+        try:
+            while len(self) > self.capacity + self.capacity * self.threshold:
+                by_counter = sorted(dict.values(self),
+                                    key=operator.itemgetter(2),
+                                    reverse=True)
+                for item in by_counter[self.capacity:]:
+                    try:
+                        del self[item[0]]
+                    except KeyError:
+                        # deleted elsewhere; skip
+                        continue
+        finally:
+            self._mutex.release()
+
+
+_lw_tuples = LRUCache(100)
+
+
+def lightweight_named_tuple(name, fields):
+    hash_ = (name, ) + tuple(fields)
+    tp_cls = _lw_tuples.get(hash_)
+    if tp_cls:
+        return tp_cls
+
+    tp_cls = type(
+        name, (_LW,),
+        dict([
+            (field, _property_getters[idx])
+            for idx, field in enumerate(fields) if field is not None
+        ] + [('__slots__', ())])
+    )
+
+    tp_cls._real_fields = fields
+    tp_cls._fields = tuple([f for f in fields if f is not None])
+
+    _lw_tuples[hash_] = tp_cls
+    return tp_cls
 
 
 class ScopedRegistry(object):

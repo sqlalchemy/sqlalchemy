@@ -461,3 +461,56 @@ class SessionTest(fixtures.MappedTest):
         def go():
             sess.expire_all()
         go()
+
+
+class QueryTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'parent',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('data1', String(20)),
+            Column('data2', String(20)),
+            Column('data3', String(20)),
+            Column('data4', String(20)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Parent = cls.classes.Parent
+        parent = cls.tables.parent
+
+        mapper(Parent, parent)
+
+    def _fixture(self):
+        Parent = self.classes.Parent
+        sess = Session()
+        sess.add_all([
+            Parent(data1='d1', data2='d2', data3='d3', data4='d4')
+            for i in range(10)
+        ])
+        sess.commit()
+        sess.close()
+
+    def test_query_cols(self):
+        Parent = self.classes.Parent
+        self._fixture()
+        sess = Session()
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(10):
+                q = sess.query(
+                    Parent.data1, Parent.data2, Parent.data3, Parent.data4
+                )
+
+                q.all()
+
+        go()

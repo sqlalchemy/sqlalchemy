@@ -1,5 +1,5 @@
 # types.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,7 +16,8 @@ __all__ = ['TypeEngine', 'TypeDecorator', 'UserDefinedType',
            'SMALLINT', 'INTEGER', 'DATE', 'TIME', 'String', 'Integer',
            'SmallInteger', 'BigInteger', 'Numeric', 'Float', 'DateTime',
            'Date', 'Time', 'LargeBinary', 'Binary', 'Boolean', 'Unicode',
-           'Concatenable', 'UnicodeText', 'PickleType', 'Interval', 'Enum']
+           'Concatenable', 'UnicodeText', 'PickleType', 'Interval', 'Enum',
+           'Indexable', 'ARRAY', 'JSON']
 
 from .sql.type_api import (
     adapt_type,
@@ -27,6 +28,7 @@ from .sql.type_api import (
     UserDefinedType
 )
 from .sql.sqltypes import (
+    ARRAY,
     BIGINT,
     BINARY,
     BLOB,
@@ -46,10 +48,12 @@ from .sql.sqltypes import (
     Enum,
     FLOAT,
     Float,
+    Indexable,
     INT,
     INTEGER,
     Integer,
     Interval,
+    JSON,
     LargeBinary,
     MatchType,
     NCHAR,
@@ -74,5 +78,4 @@ from .sql.sqltypes import (
     UnicodeText,
     VARBINARY,
     VARCHAR,
-    _type_map
     )

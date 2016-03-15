@@ -368,6 +368,137 @@ the SQL statement. When the :class:`.ResultProxy` is closed, the underlying
 :class:`.Connection` is closed for us, resulting in the
 DBAPI connection being returned to the pool with transactional resources removed.
 
+.. _schema_translating:
+
+Translation of Schema Names
+===========================
+
+To support multi-tenancy applications that distribute common sets of tables
+into multiple schemas, the
+:paramref:`.Connection.execution_options.schema_translate_map`
+execution option may be used to repurpose a set of :class:`.Table` objects
+to render under different schema names without any changes.
+
+Given a table::
+
+    user_table = Table(
+        'user', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('name', String(50))
+    )
+
+The "schema" of this :class:`.Table` as defined by the
+:paramref:`.Table.schema` attribute is ``None``.  The
+:paramref:`.Connection.execution_options.schema_translate_map` can specify
+that all :class:`.Table` objects with a schema of ``None`` would instead
+render the schema as ``user_schema_one``::
+
+    connection = engine.connect().execution_options(
+        schema_translate_map={None: "user_schema_one"})
+
+    result = connection.execute(user_table.select())
+
+The above code will invoke SQL on the database of the form::
+
+    SELECT user_schema_one.user.id, user_schema_one.user.name FROM
+    user_schema.user
+
+That is, the schema name is substituted with our translated name.  The
+map can specify any number of target->destination schemas::
+
+    connection = engine.connect().execution_options(
+        schema_translate_map={
+            None: "user_schema_one",     # no schema name -> "user_schema_one"
+            "special": "special_schema", # schema="special" becomes "special_schema"
+            "public": None               # Table objects with schema="public" will render with no schema
+        })
+
+The :paramref:`.Connection.execution_options.schema_translate_map` parameter
+affects all DDL and SQL constructs generated from the SQL expression language,
+as derived from the :class:`.Table` or :class:`.Sequence` objects.
+It does **not** impact literal string SQL used via the :func:`.expression.text`
+construct nor via plain strings passed to :meth:`.Connection.execute`.
+
+The feature takes effect **only** in those cases where the name of the
+schema is derived directly from that of a :class:`.Table` or :class:`.Sequence`;
+it does not impact methods where a string schema name is passed directly.
+By this pattern, it takes effect within the "can create" / "can drop" checks
+performed by methods such as :meth:`.MetaData.create_all` or
+:meth:`.MetaData.drop_all` are called, and it takes effect when
+using table reflection given a :class:`.Table` object.  However it does
+**not** affect the operations present on the :class:`.Inspector` object,
+as the schema name is passed to these methods explicitly.
+
+.. versionadded:: 1.1
+
+.. _engine_disposal:
+
+Engine Disposal
+===============
+
+The :class:`.Engine` refers to a connection pool, which means under normal
+circumstances, there are open database connections present while the
+:class:`.Engine` object is still resident in memory.   When an :class:`.Engine`
+is garbage collected, its connection pool is no longer referred to by
+that :class:`.Engine`, and assuming none of its connections are still checked
+out, the pool and its connections will also be garbage collected, which has the
+effect of closing out the actual database connections as well.   But otherwise,
+the :class:`.Engine` will hold onto open database connections assuming
+it uses the normally default pool implementation of :class:`.QueuePool`.
+
+The :class:`.Engine` is intended to normally be a permanent
+fixture established up-front and maintained throughout the lifespan of an
+application.  It is **not** intended to be created and disposed on a
+per-connection basis; it is instead a registry that maintains both a pool
+of connections as well as configurational information about the database
+and DBAPI in use, as well as some degree of internal caching of per-database
+resources.
+
+However, there are many cases where it is desirable that all connection resources
+referred to by the :class:`.Engine` be completely closed out.  It's
+generally not a good idea to rely on Python garbage collection for this
+to occur for these cases; instead, the :class:`.Engine` can be explicitly disposed using
+the :meth:`.Engine.dispose` method.   This disposes of the engine's
+underlying connection pool and replaces it with a new one that's empty.
+Provided that the :class:`.Engine`
+is discarded at this point and no longer used, all **checked-in** connections
+which it refers to will also be fully closed.
+
+Valid use cases for calling :meth:`.Engine.dispose` include:
+
+* When a program wants to release any remaining checked-in connections
+  held by the connection pool and expects to no longer be connected
+  to that database at all for any future operations.
+
+* When a program uses multiprocessing or ``fork()``, and an
+  :class:`.Engine` object is copied to the child process,
+  :meth:`.Engine.dispose` should be called so that the engine creates
+  brand new database connections local to that fork.   Database connections
+  generally do **not** travel across process boundaries.
+
+* Within test suites or multitenancy scenarios where many
+  ad-hoc, short-lived :class:`.Engine` objects may be created and disposed.
+
+
+Connections that are **checked out** are **not** discarded when the
+engine is disposed or garbage collected, as these connections are still
+strongly referenced elsewhere by the application.
+However, after :meth:`.Engine.dispose` is called, those
+connections are no longer associated with that :class:`.Engine`; when they
+are closed, they will be returned to their now-orphaned connection pool
+which will ultimately be garbage collected, once all connections which refer
+to it are also no longer referenced anywhere.
+Since this process is not easy to control, it is strongly recommended that
+:meth:`.Engine.dispose` is called only after all checked out connections
+are checked in or otherwise de-associated from their pool.
+
+An alternative for applications that are negatively impacted by the
+:class:`.Engine` object's use of connection pooling is to disable pooling
+entirely.  This typically incurs only a modest performance impact upon the
+use of new connections, and means that when a connection is checked in,
+it is entirely closed out and is not held in memory.  See :ref:`pool_switching`
+for guidelines on how to disable pooling.
+
 .. _threadlocal_strategy:
 
 Using the Threadlocal Execution Strategy
@@ -588,6 +719,9 @@ Connection / Engine API
 .. autoclass:: Connectable
    :members:
 
+.. autoclass:: CreateEnginePlugin
+   :members:
+
 .. autoclass:: Engine
    :members:
 
@@ -599,6 +733,7 @@ Connection / Engine API
 
 .. autoclass:: ResultProxy
     :members:
+    :private-members: _soft_close
 
 .. autoclass:: RowProxy
     :members:

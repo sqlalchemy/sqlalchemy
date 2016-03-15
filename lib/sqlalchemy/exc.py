@@ -1,5 +1,5 @@
 # sqlalchemy/exc.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,8 +12,6 @@ raised as a result of DBAPI exceptions are all subclasses of
 :exc:`.DBAPIError`.
 
 """
-
-import traceback
 
 
 class SQLAlchemyError(Exception):
@@ -54,8 +52,7 @@ class CircularDependencyError(SQLAlchemyError):
       or pre-deassociate one of the foreign key constrained values.
       The ``post_update`` flag described at :ref:`post_update` can resolve
       this cycle.
-    * In a :meth:`.MetaData.create_all`, :meth:`.MetaData.drop_all`,
-      :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
+    * In a :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
       or :class:`.ForeignKeyConstraint` objects mutually refer to each
       other.  Apply the ``use_alter=True`` flag to one or both,
       see :ref:`use_alter`.
@@ -279,7 +276,8 @@ class DBAPIError(StatementError):
     @classmethod
     def instance(cls, statement, params,
                  orig, dbapi_base_err,
-                 connection_invalidated=False):
+                 connection_invalidated=False,
+                 dialect=None):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if (isinstance(orig, BaseException) and
@@ -301,6 +299,9 @@ class DBAPIError(StatementError):
             glob = globals()
             for super_ in orig.__class__.__mro__:
                 name = super_.__name__
+                if dialect:
+                    name = dialect.dbapi_exception_translation_map.get(
+                        name, name)
                 if name in glob and issubclass(glob[name], DBAPIError):
                     cls = glob[name]
                     break

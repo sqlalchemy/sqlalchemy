@@ -1,5 +1,5 @@
 # orm/loading.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -17,7 +17,10 @@ from __future__ import absolute_import
 from .. import util
 from . import attributes, exc as orm_exc
 from ..sql import util as sql_util
+from . import strategy_options
+
 from .util import _none_set, state_str
+from .base import _SET_DEFERRED_EXPIRED, _DEFER_FOR_STATE
 from .. import exc as sa_exc
 import collections
 
@@ -29,8 +32,7 @@ def instances(query, cursor, context):
 
     context.runid = _new_runid()
 
-    filter_fns = [ent.filter_fn for ent in query._entities]
-    filtered = id in filter_fns
+    filtered = query._has_mapper_entities
 
     single_entity = len(query._entities) == 1 and \
         query._entities[0].supports_single_entity
@@ -40,7 +42,12 @@ def instances(query, cursor, context):
             filter_fn = id
         else:
             def filter_fn(row):
-                return tuple(fn(x) for x, fn in zip(row, filter_fns))
+                return tuple(
+                    id(item)
+                    if ent.use_id_for_hash
+                    else item
+                    for ent, item in zip(query._entities, row)
+                )
 
     try:
         (process, labels) = \
@@ -101,7 +108,7 @@ def merge_result(querylib, query, iterator, load=True):
                 result = [session._merge(
                     attributes.instance_state(instance),
                     attributes.instance_dict(instance),
-                    load=load, _recursive={})
+                    load=load, _recursive={}, _resolve_conflict_map={})
                     for instance in iterator]
             else:
                 result = list(iterator)
@@ -118,7 +125,7 @@ def merge_result(querylib, query, iterator, load=True):
                         newrow[i] = session._merge(
                             attributes.instance_state(newrow[i]),
                             attributes.instance_dict(newrow[i]),
-                            load=load, _recursive={})
+                            load=load, _recursive={}, _resolve_conflict_map={})
                 result.append(keyed_tuple(newrow))
 
         return iter(result)
@@ -218,10 +225,56 @@ def load_on_ident(query, key,
         return None
 
 
-def instance_processor(mapper, context, result, path, adapter,
-                       only_load_props=None, refresh_state=None,
-                       polymorphic_discriminator=None,
-                       _polymorphic_from=None):
+def _setup_entity_query(
+    context, mapper, query_entity,
+        path, adapter, column_collection,
+        with_polymorphic=None, only_load_props=None,
+        polymorphic_discriminator=None, **kw):
+
+    if with_polymorphic:
+        poly_properties = mapper._iterate_polymorphic_properties(
+            with_polymorphic)
+    else:
+        poly_properties = mapper._polymorphic_properties
+
+    quick_populators = {}
+
+    path.set(
+        context.attributes,
+        "memoized_setups",
+        quick_populators)
+
+    for value in poly_properties:
+        if only_load_props and \
+                value.key not in only_load_props:
+            continue
+        value.setup(
+            context,
+            query_entity,
+            path,
+            adapter,
+            only_load_props=only_load_props,
+            column_collection=column_collection,
+            memoized_populators=quick_populators,
+            **kw
+        )
+
+    if polymorphic_discriminator is not None and \
+        polymorphic_discriminator \
+            is not mapper.polymorphic_on:
+
+        if adapter:
+            pd = adapter.columns[polymorphic_discriminator]
+        else:
+            pd = polymorphic_discriminator
+        column_collection.append(pd)
+
+
+def _instance_processor(
+        mapper, context, result, path, adapter,
+        only_load_props=None, refresh_state=None,
+        polymorphic_discriminator=None,
+        _polymorphic_from=None):
     """Produce a mapper level row processor callable
        which processes rows into mapped instances."""
 
@@ -240,13 +293,41 @@ def instance_processor(mapper, context, result, path, adapter,
 
     populators = collections.defaultdict(list)
 
-    props = mapper._props.values()
+    props = mapper._prop_set
     if only_load_props is not None:
-        props = (p for p in props if p.key in only_load_props)
+        props = props.intersection(
+            mapper._props[k] for k in only_load_props)
+
+    quick_populators = path.get(
+        context.attributes, "memoized_setups", _none_set)
 
     for prop in props:
-        prop.create_row_processor(
-            context, path, mapper, result, adapter, populators)
+        if prop in quick_populators:
+            # this is an inlined path just for column-based attributes.
+            col = quick_populators[prop]
+            if col is _DEFER_FOR_STATE:
+                populators["new"].append(
+                    (prop.key, prop._deferred_column_loader))
+            elif col is _SET_DEFERRED_EXPIRED:
+                # note that in this path, we are no longer
+                # searching in the result to see if the column might
+                # be present in some unexpected way.
+                populators["expire"].append((prop.key, False))
+            else:
+                if adapter:
+                    col = adapter.columns[col]
+                getter = result._getter(col, False)
+                if getter:
+                    populators["quick"].append((prop.key, getter))
+                else:
+                    # fall back to the ColumnProperty itself, which
+                    # will iterate through all of its columns
+                    # to see if one fits
+                    prop.create_row_processor(
+                        context, path, mapper, result, adapter, populators)
+        else:
+            prop.create_row_processor(
+                context, path, mapper, result, adapter, populators)
 
     propagate_options = context.propagate_options
     if propagate_options:
@@ -258,6 +339,9 @@ def instance_processor(mapper, context, result, path, adapter,
     populate_existing = context.populate_existing or mapper.always_refresh
     load_evt = bool(mapper.class_manager.dispatch.load)
     refresh_evt = bool(mapper.class_manager.dispatch.refresh)
+    persistent_evt = bool(context.session.dispatch.loaded_as_persistent)
+    if persistent_evt:
+        loaded_as_persistent = context.session.dispatch.loaded_as_persistent
     instance_state = attributes.instance_state
     instance_dict = attributes.instance_dict
     session_id = context.session.hash_key
@@ -351,8 +435,11 @@ def instance_processor(mapper, context, result, path, adapter,
                 loaded_instance, populate_existing, populators)
 
             if isnew:
-                if loaded_instance and load_evt:
-                    state.manager.dispatch.load(state, context)
+                if loaded_instance:
+                    if load_evt:
+                        state.manager.dispatch.load(state, context)
+                    if persistent_evt:
+                        loaded_as_persistent(context.session, state.obj())
                 elif refresh_evt:
                     state.manager.dispatch.refresh(
                         state, context, only_load_props)
@@ -388,7 +475,7 @@ def instance_processor(mapper, context, result, path, adapter,
 
         return instance
 
-    if not _polymorphic_from and not refresh_state:
+    if mapper.polymorphic_map and not _polymorphic_from and not refresh_state:
         # if we are doing polymorphic, dispatch to a different _instance()
         # method specific to the subclass mapper
         _instance = _decorate_polymorphic_switch(
@@ -503,7 +590,7 @@ def _decorate_polymorphic_switch(
             if sub_mapper is mapper:
                 return None
 
-            return instance_processor(
+            return _instance_processor(
                 sub_mapper, context, result,
                 path, adapter, _polymorphic_from=mapper)
 
@@ -537,10 +624,17 @@ def load_scalar_attributes(mapper, state, attribute_names):
     result = False
 
     if mapper.inherits and not mapper.concrete:
+        # because we are using Core to produce a select() that we
+        # pass to the Query, we aren't calling setup() for mapped
+        # attributes; in 1.0 this means deferred attrs won't get loaded
+        # by default
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
             result = load_on_ident(
-                session.query(mapper).from_statement(statement),
+                session.query(mapper).
+                options(
+                    strategy_options.Load(mapper).undefer("*")
+                ).from_statement(statement),
                 None,
                 only_load_props=attribute_names,
                 refresh_state=state

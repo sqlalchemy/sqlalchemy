@@ -1,5 +1,5 @@
 # orm/properties.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -39,7 +39,7 @@ class ColumnProperty(StrategizedProperty):
         'instrument', 'comparator_factory', 'descriptor', 'extension',
         'active_history', 'expire_on_flush', 'info', 'doc',
         'strategy_class', '_creation_order', '_is_polymorphic_discriminator',
-        '_mapped_by_synonym')
+        '_mapped_by_synonym', '_deferred_column_loader')
 
     def __init__(self, *columns, **kwargs):
         """Provide a column-level property for use with a Mapper.
@@ -157,6 +157,12 @@ class ColumnProperty(StrategizedProperty):
             ("instrument", self.instrument)
         )
 
+    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__deferred_column_loader(self, state, strategies):
+        return state.InstanceState._instance_level_callable_processor(
+            self.parent.class_manager,
+            strategies.LoadDeferredColumns(self.key), self.key)
+
     @property
     def expression(self):
         """Return the primary column or expression for this ColumnProperty.
@@ -200,7 +206,7 @@ class ColumnProperty(StrategizedProperty):
             get_committed_value(state, dict_, passive=passive)
 
     def merge(self, session, source_state, source_dict, dest_state,
-              dest_dict, load, _recursive):
+              dest_dict, load, _recursive, _resolve_conflict_map):
         if not self.instrument:
             return
         elif self.key in source_dict:
@@ -239,9 +245,11 @@ class ColumnProperty(StrategizedProperty):
             if self.adapter:
                 return self.adapter(self.prop.columns[0])
             else:
+                # no adapter, so we aren't aliased
+                # assert self._parententity is self._parentmapper
                 return self.prop.columns[0]._annotate({
-                    "parententity": self._parentmapper,
-                    "parentmapper": self._parentmapper})
+                    "parententity": self._parententity,
+                    "parentmapper": self._parententity})
 
         def _memoized_attr_info(self):
             ce = self.__clause_element__()

@@ -125,3 +125,4 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
             str(aliased(Foo).foo == 'ed'),
             "foobar(foo_1.name) = foobar(:foobar_1)"
         )
+

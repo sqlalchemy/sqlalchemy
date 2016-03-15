@@ -62,7 +62,7 @@ Base.metadata.create_all(engine)
 
 sess = Session(engine)
 
-def runit(status, factor=1):
+def runit(status, factor=1, query_runs=5):
     num_bosses = 100 * factor
     num_grunts = num_bosses * 100
 
@@ -104,7 +104,7 @@ def runit(status, factor=1):
     status("Associated grunts w/ bosses and committed")
 
     # do some heavier reading
-    for i in range(int(round(factor / 2.0))):
+    for i in range(query_runs):
         status("Heavy query run #%d" % (i + 1))
 
         report = []

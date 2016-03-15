@@ -1,6 +1,6 @@
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import AssertsCompiledSQL, assert_raises_message
-from sqlalchemy.sql import table, column, select, func, literal
+from sqlalchemy.sql import table, column, select, func, literal, exists, and_
 from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
@@ -8,7 +8,7 @@ from sqlalchemy.exc import CompileError
 
 class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
-    __dialect__ = 'default'
+    __dialect__ = 'default_enhanced'
 
     def test_nonrecursive(self):
         orders = table('orders',
@@ -491,4 +491,152 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'FROM "order") pg suffix  SELECT "order"."order" FROM "order", '
             'regional_sales WHERE "order"."order" > regional_sales."order"',
             dialect='postgresql'
+        )
+
+    def test_upsert_from_select(self):
+        orders = table(
+            'orders',
+            column('region'),
+            column('amount'),
+            column('product'),
+            column('quantity')
+        )
+
+        upsert = (
+            orders.update()
+            .where(orders.c.region == 'Region1')
+            .values(amount=1.0, product='Product1', quantity=1)
+            .returning(*(orders.c._all_columns)).cte('upsert'))
+
+        insert = orders.insert().from_select(
+            orders.c.keys(),
+            select([
+                literal('Region1'), literal(1.0),
+                literal('Product1'), literal(1)
+            ]).where(~exists(upsert.select()))
+        )
+
+        self.assert_compile(
+            insert,
+            "WITH upsert AS (UPDATE orders SET amount=:amount, "
+            "product=:product, quantity=:quantity "
+            "WHERE orders.region = :region_1 "
+            "RETURNING orders.region, orders.amount, "
+            "orders.product, orders.quantity) "
+            "INSERT INTO orders (region, amount, product, quantity) "
+            "SELECT :param_1 AS anon_1, :param_2 AS anon_2, "
+            ":param_3 AS anon_3, :param_4 AS anon_4 WHERE NOT (EXISTS "
+            "(SELECT upsert.region, upsert.amount, upsert.product, "
+            "upsert.quantity FROM upsert))"
+        )
+
+    def test_pg_example_one(self):
+        products = table('products', column('id'), column('date'))
+        products_log = table('products_log', column('id'), column('date'))
+
+        moved_rows = products.delete().where(and_(
+            products.c.date >= 'dateone',
+            products.c.date < 'datetwo')).returning(*products.c).\
+            cte('moved_rows')
+
+        stmt = products_log.insert().from_select(
+            products_log.c, moved_rows.select())
+        self.assert_compile(
+            stmt,
+            "WITH moved_rows AS "
+            "(DELETE FROM products WHERE products.date >= :date_1 "
+            "AND products.date < :date_2 "
+            "RETURNING products.id, products.date) "
+            "INSERT INTO products_log (id, date) "
+            "SELECT moved_rows.id, moved_rows.date FROM moved_rows"
+        )
+
+    def test_pg_example_two(self):
+        products = table('products', column('id'), column('price'))
+
+        t = products.update().values(price='someprice').\
+            returning(*products.c).cte('t')
+        stmt = t.select()
+
+        self.assert_compile(
+            stmt,
+            "WITH t AS "
+            "(UPDATE products SET price=:price "
+            "RETURNING products.id, products.price) "
+            "SELECT t.id, t.price "
+            "FROM t"
+        )
+
+    def test_pg_example_three(self):
+
+        parts = table(
+            'parts',
+            column('part'),
+            column('sub_part'),
+        )
+
+        included_parts = select([
+            parts.c.sub_part,
+            parts.c.part]).\
+            where(parts.c.part == 'our part').\
+            cte("included_parts", recursive=True)
+
+        pr = included_parts.alias('pr')
+        p = parts.alias('p')
+        included_parts = included_parts.union_all(
+            select([
+                p.c.sub_part,
+                p.c.part]).
+            where(p.c.part == pr.c.sub_part)
+        )
+        stmt = parts.delete().where(
+            parts.c.part.in_(select([included_parts.c.part]))).returning(
+            parts.c.part)
+
+        # the outer RETURNING is a bonus over what PG's docs have
+        self.assert_compile(
+            stmt,
+            "WITH RECURSIVE included_parts(sub_part, part) AS "
+            "(SELECT parts.sub_part AS sub_part, parts.part AS part "
+            "FROM parts "
+            "WHERE parts.part = :part_1 "
+            "UNION ALL SELECT p.sub_part AS sub_part, p.part AS part "
+            "FROM parts AS p, included_parts AS pr "
+            "WHERE p.part = pr.sub_part) "
+            "DELETE FROM parts WHERE parts.part IN "
+            "(SELECT included_parts.part FROM included_parts) "
+            "RETURNING parts.part"
+        )
+
+    def test_insert_in_the_cte(self):
+        products = table('products', column('id'), column('price'))
+
+        cte = products.insert().values(id=1, price=27.0).\
+            returning(*products.c).cte('pd')
+
+        stmt = select([cte])
+
+        self.assert_compile(
+            stmt,
+            "WITH pd AS "
+            "(INSERT INTO products (id, price) VALUES (:id, :price) "
+            "RETURNING products.id, products.price) "
+            "SELECT pd.id, pd.price "
+            "FROM pd"
+        )
+
+    def test_update_pulls_from_cte(self):
+        products = table('products', column('id'), column('price'))
+
+        cte = products.select().cte('pd')
+
+        stmt = products.update().where(products.c.price == cte.c.price)
+
+        self.assert_compile(
+            stmt,
+            "WITH pd AS "
+            "(SELECT products.id AS id, products.price AS price "
+            "FROM products) "
+            "UPDATE products SET id=:id, price=:price FROM pd "
+            "WHERE products.price = pd.price"
         )

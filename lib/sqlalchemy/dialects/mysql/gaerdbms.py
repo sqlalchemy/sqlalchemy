@@ -1,5 +1,5 @@
 # mysql/gaerdbms.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -22,7 +22,7 @@ developers-guide
         Cloud SQL now recommends creating connections via the
         mysql dialect using the URL format
 
-        `mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>`
+        ``mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>``
 
 
 Pooling

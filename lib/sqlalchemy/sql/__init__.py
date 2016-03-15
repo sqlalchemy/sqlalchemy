@@ -1,5 +1,5 @@
 # sql/__init__.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -21,6 +21,8 @@ from .expression import (
     Update,
     alias,
     and_,
+    any_,
+    all_,
     asc,
     between,
     bindparam,
@@ -64,6 +66,7 @@ from .expression import (
     union,
     union_all,
     update,
+    within_group
 )
 
 from .visitors import ClauseVisitor

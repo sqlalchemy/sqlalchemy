@@ -9,7 +9,7 @@ from sqlalchemy.orm import (
     relationship, attributes)
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
-
+from sqlalchemy import inspect
 
 class SessionTransactionTest(FixtureTest):
     run_inserts = None
@@ -142,6 +142,34 @@ class SessionTransactionTest(FixtureTest):
         session.commit()
         assert session.connection().execute(
             'select count(1) from users').scalar() == 2
+
+    @testing.requires.savepoints
+    def test_dirty_state_transferred_deep_nesting(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(testing.db)
+        u1 = User(name='u1')
+        s.add(u1)
+        s.commit()
+
+        nt1 = s.begin_nested()
+        nt2 = s.begin_nested()
+        u1.name = 'u2'
+        assert attributes.instance_state(u1) not in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+        s.flush()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+
+        s.commit()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) in nt1._dirty
+
+        s.rollback()
+        assert attributes.instance_state(u1).expired
+        eq_(u1.name, 'u1')
 
     @testing.requires.independent_connections
     def test_transactions_isolated(self):
@@ -629,6 +657,34 @@ class SessionTransactionTest(FixtureTest):
         assert session.transaction is not None, \
             'autocommit=False should start a new transaction'
 
+    @testing.requires.python2
+    @testing.requires.savepoints_w_release
+    def test_report_primary_error_when_rollback_fails(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        session = Session(testing.db)
+
+        with expect_warnings(".*during handling of a previous exception.*"):
+            session.begin_nested()
+            savepoint = session.\
+                connection()._Connection__transaction._savepoint
+
+            # force the savepoint to disappear
+            session.connection().dialect.do_release_savepoint(
+                session.connection(), savepoint
+            )
+
+            # now do a broken flush
+            session.add_all([User(id=1), User(id=1)])
+
+            assert_raises_message(
+                sa_exc.DBAPIError,
+                "ROLLBACK TO SAVEPOINT ",
+                session.flush
+            )
+
 
 class _LocalFixture(FixtureTest):
     run_setup_mappers = 'once'
@@ -867,7 +923,13 @@ class AutoExpireTest(_LocalFixture):
         assert u1_state.obj() is None
 
         s.rollback()
-        assert u1_state in s.identity_map.all_states()
+        # new in 1.1, not in identity map if the object was
+        # gc'ed and we restore snapshot; we've changed update_impl
+        # to just skip this object
+        assert u1_state not in s.identity_map.all_states()
+
+        # in any version, the state is replaced by the query
+        # because the identity map would switch it
         u1 = s.query(User).filter_by(name='ed').one()
         assert u1_state not in s.identity_map.all_states()
         assert s.scalar(users.count()) == 1
@@ -1455,6 +1517,30 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
         assert u2 not in session.deleted
 
         session.rollback()
+
+    def test_reloaded_deleted_checked_for_expiry(self):
+        """test issue #3677"""
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        u1 = User(name='u1')
+
+        s = Session()
+        s.add(u1)
+        s.flush()
+        del u1
+        gc_collect()
+
+        u1 = s.query(User).first()  # noqa
+
+        s.rollback()
+
+        u2 = User(name='u1')
+        s.add(u2)
+        s.commit()
+
+        assert inspect(u2).persistent
 
     def test_key_replaced_by_update(self):
         users, User = self.tables.users, self.classes.User

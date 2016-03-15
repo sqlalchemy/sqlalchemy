@@ -1,5 +1,5 @@
 # oracle/base.py
-# Copyright (C) 2005-2014 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2016 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -287,6 +287,7 @@ from sqlalchemy import util, sql
 from sqlalchemy.engine import default, reflection
 from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy import types as sqltypes, schema as sa_schema
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, \
     BLOB, CLOB, TIMESTAMP, FLOAT
@@ -665,8 +666,8 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return sql.and_(*clauses)
 
-    def visit_outer_join_column(self, vc):
-        return self.process(vc.column) + "(+)"
+    def visit_outer_join_column(self, vc, **kw):
+        return self.process(vc.column, **kw) + "(+)"
 
     def visit_sequence(self, seq):
         return (self.dialect.identifier_preparer.format_sequence(seq) +
@@ -692,8 +693,9 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.bindparam_string(self._truncate_bindparam(outparam)))
             columns.append(
                 self.process(col_expr, within_columns_clause=False))
-            self.result_map[outparam.key] = (
-                outparam.key,
+
+            self._add_to_result_map(
+                outparam.key, outparam.key,
                 (column, getattr(column, 'name', None),
                  getattr(column, 'key', None)),
                 column.type
@@ -736,7 +738,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 # Outer select and "ROWNUM as ora_rn" can be dropped if
                 # limit=0
 
-                # TODO: use annotations instead of clone + attr set ?
+                kwargs['select_wraps_for'] = select
                 select = select._generate()
                 select._oracle_visit = True
 
@@ -793,7 +795,6 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect._for_update_arg = select._for_update_arg
                     select = offsetselect
 
-        kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
         return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 
     def limit_clause(self, select, **kw):
@@ -919,6 +920,8 @@ class OracleDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
 
+    supports_simple_order_by_label = False
+
     supports_sequences = True
     sequences_optional = False
     postfetch_lastrowid = False
@@ -1030,6 +1033,8 @@ class OracleDialect(default.DefaultDialect):
         if name.upper() == name and not \
                 self.identifier_preparer._requires_quotes(name.lower()):
             return name.lower()
+        elif name.lower() == name:
+            return quoted_name(name, quote=True)
         else:
             return name
 
@@ -1278,7 +1283,7 @@ class OracleDialect(default.DefaultDialect):
                 'type': coltype,
                 'nullable': nullable,
                 'default': default,
-                'autoincrement': default is None
+                'autoincrement': 'auto',
             }
             if orig_colname.lower() == orig_colname:
                 cdict['quote'] = True

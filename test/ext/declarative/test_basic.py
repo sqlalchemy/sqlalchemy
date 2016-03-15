@@ -13,7 +13,10 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     column_property, composite, Session, properties
 from sqlalchemy.util import with_metaclass
 from sqlalchemy.ext.declarative import declared_attr, synonym_for
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures, mock
+from sqlalchemy.orm.events import MapperEvents
+from sqlalchemy.orm import mapper
+from sqlalchemy import event
 
 Base = None
 
@@ -98,6 +101,29 @@ class DeclarativeTest(DeclarativeTestBase):
                              key='_user_id')
 
         assert User.addresses.property.mapper.class_ is Address
+
+    def test_unicode_string_resolve_backref(self):
+        class User(Base, fixtures.ComparableEntity):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column('name', String(50))
+
+        class Address(Base, fixtures.ComparableEntity):
+            __tablename__ = 'addresses'
+
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            email = Column(String(50), key='_email')
+            user_id = Column('user_id', Integer, ForeignKey('users.id'),
+                             key='_user_id')
+            user = relationship(
+                    User,
+                    backref=backref("addresses",
+                                    order_by=util.u("Address.email")))
+
+        assert Address.user.property.mapper.class_ is User
 
     def test_no_table(self):
         def go():
@@ -1567,8 +1593,7 @@ class DeclarativeTest(DeclarativeTestBase):
         meta = MetaData(testing.db)
         t1 = Table(
             't1', meta,
-            Column('id', String(50),
-                   primary_key=True, test_needs_autoincrement=True),
+            Column('id', String(50), primary_key=True),
             Column('data', String(50)))
         meta.create_all()
         try:
@@ -1669,6 +1694,32 @@ class DeclarativeTest(DeclarativeTestBase):
                 __tablename__='b',
                 id=Column(Integer, primary_key=True)
             ))
+        )
+
+    @testing.teardown_events(MapperEvents)
+    def test_instrument_class_before_instrumentation(self):
+        # test #3388
+
+        canary = mock.Mock()
+
+        @event.listens_for(mapper, "instrument_class")
+        def instrument_class(mp, cls):
+            canary.instrument_class(mp, cls)
+
+        @event.listens_for(object, "class_instrument")
+        def class_instrument(cls):
+            canary.class_instrument(cls)
+
+        class Test(Base):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+        # MARKMARK
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.instrument_class(Test.__mapper__, Test),
+                mock.call.class_instrument(Test)
+            ]
         )
 
 
