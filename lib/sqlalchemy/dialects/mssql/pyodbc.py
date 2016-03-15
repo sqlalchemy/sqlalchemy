@@ -93,6 +93,13 @@ for unix + PyODBC.
 .. versionadded:: 0.7.7
     ``supports_unicode_binds`` parameter to ``create_engine()``\ .
 
+Rowcount Support
+----------------
+
+Pyodbc only has partial support for rowcount.  See the notes at
+:ref:`mssql_rowcount_versioning` for important notes when using ORM
+versioning.
+
 """
 
 from .base import MSExecutionContext, MSDialect, VARBINARY
