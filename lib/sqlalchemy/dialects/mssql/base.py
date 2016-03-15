@@ -337,6 +337,40 @@ Declarative form::
 This option can also be specified engine-wide using the
 ``implicit_returning=False`` argument on :func:`.create_engine`.
 
+.. _mssql_rowcount_versioning:
+
+Rowcount Support / ORM Versioning
+---------------------------------
+
+The SQL Server drivers have very limited ability to return the number
+of rows updated from an UPDATE or DELETE statement.  In particular, the
+pymssql driver has no support, whereas the pyodbc driver can only return
+this value under certain conditions.
+
+In particular, updated rowcount is not available when OUTPUT INSERTED
+is used.  This impacts the SQLAlchemy ORM's versioning feature when
+server-side versioning schemes are used.  When
+using pyodbc, the "implicit_returning" flag needs to be set to false
+for any ORM mapped class that uses a version_id column in conjunction with
+a server-side version generator::
+
+    class MyTable(Base):
+        __tablename__ = 'mytable'
+        id = Column(Integer, primary_key=True)
+        stuff = Column(String(10))
+        timestamp = Column(TIMESTAMP(), default=text('DEFAULT'))
+        __mapper_args__ = {
+            'version_id_col': timestamp,
+            'version_id_generator': False,
+        }
+        __table_args__ = {
+            'implicit_returning': False
+        }
+
+Without the implicit_returning flag above, the UPDATE statement will
+use ``OUTPUT inserted.timestamp`` and the rowcount will be returned as
+-1, causing the versioning logic to fail.
+
 Enabling Snapshot Isolation
 ---------------------------
 
