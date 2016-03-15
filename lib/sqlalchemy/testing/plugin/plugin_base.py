@@ -427,9 +427,11 @@ def stop_test_class(cls):
     #from sqlalchemy import inspect
     #assert not inspect(testing.db).get_table_names()
     engines.testing_reaper._stop_test_ctx()
-    if not options.low_connections:
-        assertions.global_cleanup_assertions()
-    _restore_engine()
+    try:
+        if not options.low_connections:
+            assertions.global_cleanup_assertions()
+    finally:
+        _restore_engine()
 
 
 def _restore_engine():
