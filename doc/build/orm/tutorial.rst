@@ -2041,7 +2041,7 @@ that a single user might have lots of blog posts. When we access
 ``User.posts``, we'd like to be able to filter results further so as not to
 load the entire collection. For this we use a setting accepted by
 :func:`~sqlalchemy.orm.relationship` called ``lazy='dynamic'``, which
-configures an alternate **loader strategy** on the attribute::
+configures an alternate **loader strategy** on the attribute:
 
 .. sourcecode:: python+sql
 
