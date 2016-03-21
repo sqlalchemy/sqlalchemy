@@ -638,6 +638,21 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable.otherid = :otherid_2)) AS anon_1"
         )
 
+        self.assert_compile(
+            select([exists([1])]),
+            "SELECT EXISTS (SELECT 1) AS anon_1"
+        )
+
+        self.assert_compile(
+            select([~exists([1])]),
+            "SELECT NOT (EXISTS (SELECT 1)) AS anon_1"
+        )
+
+        self.assert_compile(
+            select([~(~exists([1]))]),
+            "SELECT NOT (NOT (EXISTS (SELECT 1))) AS anon_1"
+        )
+
     def test_where_subquery(self):
         s = select([addresses.c.street], addresses.c.user_id
                    == users.c.user_id, correlate=True).alias('s')

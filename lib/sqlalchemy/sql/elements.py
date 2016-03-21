@@ -646,6 +646,9 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
 
     def _negate(self):
         if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
+            # TODO: see the note in AsBoolean that it seems to assume
+            # the element is the True_() / False_() constant, so this
+            # is too broad
             return AsBoolean(self, operators.isfalse, operators.istrue)
         else:
             return super(ColumnElement, self)._negate()
@@ -2766,6 +2769,13 @@ class UnaryExpression(ColumnElement):
                 modifier=self.modifier,
                 type_=self.type,
                 wraps_column_expression=self.wraps_column_expression)
+        elif self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
+            return UnaryExpression(
+                self.self_group(against=operators.inv),
+                operator=operators.inv,
+                type_=type_api.BOOLEANTYPE,
+                wraps_column_expression=self.wraps_column_expression,
+                negate=None)
         else:
             return ClauseElement._negate(self)
 
@@ -2875,6 +2885,9 @@ class AsBoolean(UnaryExpression):
         return self
 
     def _negate(self):
+        # TODO: this assumes the element is the True_() or False_()
+        # object, but this assumption isn't enforced and
+        # ColumnElement._negate() can send any number of expressions here
         return self.element._negate()
 
 
