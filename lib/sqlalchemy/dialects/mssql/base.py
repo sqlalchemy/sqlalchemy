@@ -215,7 +215,7 @@ render::
     name VARCHAR(20)
 
 If ``nullable`` is ``True`` or ``False`` then the column will be
-``NULL` or ``NOT NULL`` respectively.
+``NULL`` or ``NOT NULL`` respectively.
 
 Date / Time Handling
 --------------------
