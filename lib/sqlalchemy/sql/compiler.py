@@ -1572,7 +1572,6 @@ class SQLCompiler(Compiled):
                 select, select._prefixes, **kwargs)
 
         text += self.get_select_precolumns(select, **kwargs)
-
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
             c for c in [

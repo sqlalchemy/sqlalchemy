@@ -2193,6 +2193,33 @@ class ResultMapTest(fixtures.TestBase):
             [Boolean]
         )
 
+    def test_plain_exists(self):
+        expr = exists([1])
+        eq_(type(expr.type), Boolean)
+        eq_(
+            [type(entry[-1]) for
+             entry in select([expr]).compile()._result_columns],
+            [Boolean]
+        )
+
+    def test_plain_exists_negate(self):
+        expr = ~exists([1])
+        eq_(type(expr.type), Boolean)
+        eq_(
+            [type(entry[-1]) for
+             entry in select([expr]).compile()._result_columns],
+            [Boolean]
+        )
+
+    def test_plain_exists_double_negate(self):
+        expr = ~(~exists([1]))
+        eq_(type(expr.type), Boolean)
+        eq_(
+            [type(entry[-1]) for
+             entry in select([expr]).compile()._result_columns],
+            [Boolean]
+        )
+
     def test_column_subquery_plain(self):
         t = self._fixture()
         s1 = select([t.c.x]).where(t.c.x > 5).as_scalar()

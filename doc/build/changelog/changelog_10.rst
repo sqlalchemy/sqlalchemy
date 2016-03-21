@@ -20,6 +20,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3682
+
+        Fixed bug where the negation of an EXISTS expression would not
+        be properly typed as boolean in the result, and also would fail to be
+        anonymously aliased in a SELECT list as is the case with a
+        non-negated EXISTS construct.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3666
 
         Fixed bug where "unconsumed column names" exception would fail to
