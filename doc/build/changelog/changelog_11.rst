@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm, mysql
+        :tickets: 3680
+
+        Further continuing on the common MySQL exception case of
+        a savepoint being cancelled first covered in :ticket:`2696`,
+        the failure mode in which the :class:`.Session` is placed when a
+        SAVEPOINT vanishes before rollback has been improved to allow the
+        :class:`.Session` to still function outside of that savepoint.
+        It is assumed that the savepoint operation failed and was cancelled.
+
+        .. seealso::
+
+            :ref:`change_3680`
+
+    .. change::
         :tags: feature, mssql
         :tickets: 3534
 

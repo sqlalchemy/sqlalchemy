@@ -3,10 +3,10 @@ from sqlalchemy import (
     testing, exc as sa_exc, event, String, Column, Table, select, func)
 from sqlalchemy.testing import (
     fixtures, engines, eq_, assert_raises, assert_raises_message,
-    assert_warnings, mock, expect_warnings)
+    assert_warnings, mock, expect_warnings, is_, is_not_)
 from sqlalchemy.orm import (
     exc as orm_exc, Session, mapper, sessionmaker, create_session,
-    relationship, attributes)
+    relationship, attributes, session as _session)
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
 from sqlalchemy import inspect
@@ -1289,6 +1289,35 @@ class SavepointTest(_LocalFixture):
         s.rollback()
         assert u1 in s
         assert u1 not in s.deleted
+
+    @testing.requires.savepoints
+    def test_savepoint_lost_still_runs(self):
+        User = self.classes.User
+        s = self.session(bind=self.bind)
+        trans = s.begin_nested()
+        s.connection()
+        u1 = User(name='ed')
+        s.add(u1)
+
+        # kill off the transaction
+        nested_trans = trans._connections[self.bind][1]
+        nested_trans._do_commit()
+
+        is_(s.transaction, trans)
+        assert_raises(
+            sa_exc.DBAPIError,
+            s.rollback
+        )
+
+        assert u1 not in s.new
+
+        is_(trans._state, _session.CLOSED)
+        is_not_(s.transaction, trans)
+        is_(s.transaction._state, _session.ACTIVE)
+
+        is_(s.transaction.nested, False)
+
+        is_(s.transaction._parent, None)
 
 
 class AccountingFlagsTest(_LocalFixture):

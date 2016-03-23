@@ -16,7 +16,7 @@ What's New in SQLAlchemy 1.1?
     some issues may be moved to later milestones in order to allow
     for a timely release.
 
-    Document last updated: Feburary 25, 2016
+    Document last updated: March 23, 2016
 
 Introduction
 ============
@@ -289,6 +289,44 @@ objects, however previously the IN clause would also be generated a second
 time on the outside of the subquery.
 
 :ticket:`3582`
+
+.. _change_3680:
+
+Improved Session state when a SAVEPOINT is cancelled by the database
+--------------------------------------------------------------------
+
+A common case with MySQL is that a SAVEPOINT is cancelled when a deadlock
+occurs within the transaction.  The :class:`.Session` has been modfied
+to deal with this failure mode slightly more gracefully, such that the
+outer, non-savepoint transaction still remains usable::
+
+    s = Session()
+    s.begin_nested()
+
+    s.add(SomeObject())
+
+    try:
+        # assume the flush fails, flush goes to rollback to the
+        # savepoint and that also fails
+        s.flush()
+    except Exception as err:
+        print("Something broke, and our SAVEPOINT vanished too")
+
+    # this is the SAVEPOINT transaction, marked as
+    # DEACTIVE so the rollback() call succeeds
+    s.rollback()
+
+    # this is the outermost transaction, remains ACTIVE
+    # so rollback() or commit() can succeed
+    s.rollback()
+
+This issue is a continuation of :ticket:`2696` where we emit a warning
+so that the original error can be seen when running on Python 2, even though
+the SAVEPOINT exception takes precedence.  On Python 3, exceptions are chained
+so both failures are reported individually.
+
+
+:ticket:`3680`
 
 .. _change_3677:
 
