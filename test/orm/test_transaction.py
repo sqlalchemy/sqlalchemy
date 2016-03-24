@@ -1290,7 +1290,7 @@ class SavepointTest(_LocalFixture):
         assert u1 in s
         assert u1 not in s.deleted
 
-    @testing.requires.savepoints
+    @testing.requires.savepoints_w_release
     def test_savepoint_lost_still_runs(self):
         User = self.classes.User
         s = self.session(bind=self.bind)
