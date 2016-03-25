@@ -556,7 +556,7 @@ class _ConnectionRecord(object):
         recycle = False
         if self.connection is None:
             self.info.clear()
-            self.connection = self.__connect()
+            self.__connect()
         elif self.__pool._recycle > -1 and \
                 time.time() - self.starttime > self.__pool._recycle:
             self.__pool.logger.info(
@@ -582,7 +582,7 @@ class _ConnectionRecord(object):
             self.__close()
             self.info.clear()
 
-            self.connection = self.__connect()
+            self.__connect()
         return self.connection
 
     def __close(self):
