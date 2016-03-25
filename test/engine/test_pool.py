@@ -345,6 +345,66 @@ class PoolEventsTest(PoolTestBase):
 
         return p, canary
 
+    def _close_event_fixture(self):
+        p = self._queuepool_fixture()
+        canary = Mock()
+        event.listen(p, 'close', canary)
+
+        return p, canary
+
+    def _detach_event_fixture(self):
+        p = self._queuepool_fixture()
+        canary = Mock()
+        event.listen(p, 'detach', canary)
+
+        return p, canary
+
+    def _close_detached_event_fixture(self):
+        p = self._queuepool_fixture()
+        canary = Mock()
+        event.listen(p, 'close_detached', canary)
+
+        return p, canary
+
+    def test_close(self):
+        p, canary = self._close_event_fixture()
+
+        c1 = p.connect()
+
+        connection = c1.connection
+        rec = c1._connection_record
+
+        c1.close()
+
+        eq_(canary.mock_calls, [])
+
+        p.dispose()
+        eq_(canary.mock_calls, [call(connection, rec)])
+
+    def test_detach(self):
+        p, canary = self._detach_event_fixture()
+
+        c1 = p.connect()
+
+        connection = c1.connection
+        rec = c1._connection_record
+
+        c1.detach()
+
+        eq_(canary.mock_calls, [call(connection, rec)])
+
+    def test_detach_close(self):
+        p, canary = self._close_detached_event_fixture()
+
+        c1 = p.connect()
+
+        connection = c1.connection
+
+        c1.detach()
+
+        c1.close()
+        eq_(canary.mock_calls, [call(connection)])
+
     def test_first_connect_event(self):
         p, canary = self._first_connect_event_fixture()
 

@@ -409,6 +409,46 @@ class PoolEvents(event.Events):
 
         """
 
+    def close(self, dbapi_connection, connection_record):
+        """Called when a DBAPI connection is closed.
+
+        The event is emitted before the close occurs.
+
+        The close of a connection can fail; typically this is because
+        the connection is already closed.  If the close operation fails,
+        the connection is discarded.
+
+        The :meth:`.close` event corresponds to a connection that's still
+        associated with the pool. To intercept close events for detached
+        connections use :meth:`.close_detached`.
+
+        .. versionadded:: 1.1
+
+        """
+
+    def detach(self, dbapi_connection, connection_record):
+        """Called when a DBAPI connection is "detached" from a pool.
+
+        This event is emitted after the detach occurs.  The connection
+        is no longer associated with the given connection record.
+
+        .. versionadded:: 1.1
+
+        """
+
+    def close_detached(self, dbapi_connection):
+        """Called when a detached DBAPI connection is closed.
+
+        The event is emitted before the close occurs.
+
+        The close of a connection can fail; typically this is because
+        the connection is already closed.  If the close operation fails,
+        the connection is discarded.
+
+        .. versionadded:: 1.1
+
+        """
+
 
 class ConnectionEvents(event.Events):
     """Available events for :class:`.Connectable`, which includes

@@ -286,6 +286,7 @@ class Pool(log.Identified):
 
     def _close_connection(self, connection):
         self.logger.debug("Closing connection %r", connection)
+
         try:
             self._dialect.do_close(connection)
         except Exception:
@@ -446,13 +447,8 @@ class _ConnectionRecord(object):
 
     def __init__(self, pool):
         self.__pool = pool
-        self.connection = self.__connect()
+        self.__connect(first_connect_check=True)
         self.finalize_callback = deque()
-
-        pool.dispatch.first_connect.\
-            for_modify(pool.dispatch).\
-            exec_once(self.connection, self)
-        pool.dispatch.connect(self.connection, self)
 
     connection = None
     """A reference to the actual DBAPI connection being tracked.
@@ -561,8 +557,6 @@ class _ConnectionRecord(object):
         if self.connection is None:
             self.info.clear()
             self.connection = self.__connect()
-            if self.__pool.dispatch.connect:
-                self.__pool.dispatch.connect(self.connection, self)
         elif self.__pool._recycle > -1 and \
                 time.time() - self.starttime > self.__pool._recycle:
             self.__pool.logger.info(
@@ -588,28 +582,36 @@ class _ConnectionRecord(object):
             self.__close()
             self.info.clear()
 
-            # ensure that if self.__connect() fails,
-            # we are not referring to the previous stale connection here
-            self.connection = None
             self.connection = self.__connect()
-
-            if self.__pool.dispatch.connect:
-                self.__pool.dispatch.connect(self.connection, self)
         return self.connection
 
     def __close(self):
         self.finalize_callback.clear()
+        if self.__pool.dispatch.close:
+            self.__pool.dispatch.close(self.connection, self)
         self.__pool._close_connection(self.connection)
 
-    def __connect(self):
+    def __connect(self, first_connect_check=False):
+        pool = self.__pool
+
+        # ensure any existing connection is removed, so that if
+        # creator fails, this attribute stays None
+        self.connection = None
         try:
             self.starttime = time.time()
-            connection = self.__pool._invoke_creator(self)
-            self.__pool.logger.debug("Created new connection %r", connection)
-            return connection
+            connection = pool._invoke_creator(self)
+            pool.logger.debug("Created new connection %r", connection)
+            self.connection = connection
         except Exception as e:
-            self.__pool.logger.debug("Error on connect(): %s", e)
+            pool.logger.debug("Error on connect(): %s", e)
             raise
+        else:
+            if first_connect_check:
+                pool.dispatch.first_connect.\
+                    for_modify(pool.dispatch).\
+                    exec_once(self.connection, self)
+            if pool.dispatch.connect:
+                pool.dispatch.connect(self.connection, self)
 
 
 def _finalize_fairy(connection, connection_record,
@@ -637,6 +639,8 @@ def _finalize_fairy(connection, connection_record,
 
             # Immediately close detached instances
             if not connection_record:
+                if pool.dispatch.close_detached:
+                    pool.dispatch.close_detached(connection)
                 pool._close_connection(connection)
         except BaseException as e:
             pool.logger.error(
@@ -868,13 +872,17 @@ class _ConnectionFairy(object):
         """
 
         if self._connection_record is not None:
-            _refs.remove(self._connection_record)
-            self._connection_record.fairy_ref = None
-            self._connection_record.connection = None
+            rec = self._connection_record
+            _refs.remove(rec)
+            rec.fairy_ref = None
+            rec.connection = None
             # TODO: should this be _return_conn?
             self._pool._do_return_conn(self._connection_record)
             self.info = self.info.copy()
             self._connection_record = None
+
+            if self._pool.dispatch.detach:
+                self._pool.dispatch.detach(self.connection, rec)
 
     def close(self):
         self._counter -= 1

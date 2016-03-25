@@ -22,6 +22,13 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, engine
+
+        Added connection pool events :meth:`ConnectionEvents.close`,
+        :meth:`.ConnectionEvents.detach`,
+        :meth:`.ConnectionEvents.close_detached`.
+
+    .. change::
         :tags: bug, orm, mysql
         :tickets: 3680
 
