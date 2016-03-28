@@ -1921,6 +1921,10 @@ class Query(object):
 
          .. versionadded:: 1.0.0
 
+        :param full=False: render FULL OUTER JOIN; implies ``isouter``.
+
+         .. versionadded:: 1.1
+
         :param from_joinpoint=False: When using ``aliased=True``, a setting
          of True here will cause the join to be from the most recent
          joined target, rather than starting back from the original
@@ -1938,14 +1942,16 @@ class Query(object):
             SQLAlchemy versions was the primary ORM-level joining interface.
 
         """
-        aliased, from_joinpoint, isouter = kwargs.pop('aliased', False),\
+        aliased, from_joinpoint, isouter, full = kwargs.pop('aliased', False),\
             kwargs.pop('from_joinpoint', False),\
-            kwargs.pop('isouter', False)
+            kwargs.pop('isouter', False),\
+            kwargs.pop('full', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
                             ', '.join(sorted(kwargs)))
         return self._join(props,
-                          outerjoin=isouter, create_aliases=aliased,
+                          outerjoin=isouter, full=full,
+                          create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
 
     def outerjoin(self, *props, **kwargs):
@@ -1955,13 +1961,14 @@ class Query(object):
         Usage is the same as the ``join()`` method.
 
         """
-        aliased, from_joinpoint = kwargs.pop('aliased', False), \
-            kwargs.pop('from_joinpoint', False)
+        aliased, from_joinpoint, full = kwargs.pop('aliased', False), \
+            kwargs.pop('from_joinpoint', False), \
+            kwargs.pop('full', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
                             ', '.join(sorted(kwargs)))
         return self._join(props,
-                          outerjoin=True, create_aliases=aliased,
+                          outerjoin=True, full=full, create_aliases=aliased,
                           from_joinpoint=from_joinpoint)
 
     def _update_joinpoint(self, jp):
@@ -1977,7 +1984,7 @@ class Query(object):
         self._joinpath = jp
 
     @_generative(_no_statement_condition, _no_limit_offset)
-    def _join(self, keys, outerjoin, create_aliases, from_joinpoint):
+    def _join(self, keys, outerjoin, full, create_aliases, from_joinpoint):
         """consumes arguments from join() or outerjoin(), places them into a
         consistent format with which to form the actual JOIN constructs.
 
@@ -2089,10 +2096,10 @@ class Query(object):
             self._join_left_to_right(
                 left_entity,
                 right_entity, onclause,
-                outerjoin, create_aliases, prop)
+                outerjoin, full, create_aliases, prop)
 
     def _join_left_to_right(self, left, right,
-                            onclause, outerjoin, create_aliases, prop):
+                            onclause, outerjoin, full, create_aliases, prop):
         """append a JOIN to the query's from clause."""
 
         self._polymorphic_adapters = self._polymorphic_adapters.copy()
@@ -2157,7 +2164,7 @@ class Query(object):
         else:
             self._joinpoint = {'_joinpoint_entity': right}
 
-        self._join_to_left(l_info, left, right, onclause, outerjoin)
+        self._join_to_left(l_info, left, right, onclause, outerjoin, full)
 
     def _prepare_right_side(self, r_info, right, onclause, create_aliases,
                             prop, overlap):
@@ -2244,7 +2251,7 @@ class Query(object):
 
         return right, onclause
 
-    def _join_to_left(self, l_info, left, right, onclause, outerjoin):
+    def _join_to_left(self, l_info, left, right, onclause, outerjoin, full):
         info = l_info
         left_mapper = getattr(info, 'mapper', None)
         left_selectable = info.selectable
@@ -2257,7 +2264,7 @@ class Query(object):
                 try:
                     clause = orm_join(clause,
                                       right,
-                                      onclause, isouter=outerjoin)
+                                      onclause, isouter=outerjoin, full=full)
                 except sa_exc.ArgumentError as ae:
                     raise sa_exc.InvalidRequestError(
                         "Could not find a FROM clause to join from.  "
@@ -2281,7 +2288,8 @@ class Query(object):
 
         assert clause is not None
         try:
-            clause = orm_join(clause, right, onclause, isouter=outerjoin)
+            clause = orm_join(
+                clause, right, onclause, isouter=outerjoin, full=full)
         except sa_exc.ArgumentError as ae:
             raise sa_exc.InvalidRequestError(
                 "Could not find a FROM clause to join from.  "

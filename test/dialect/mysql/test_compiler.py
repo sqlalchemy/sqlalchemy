@@ -576,3 +576,30 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'PRIMARY KEY (id, other_id)'
             ')PARTITION BY HASH(other_id) PARTITIONS 2'
         )
+
+    def test_inner_join(self):
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('y'))
+
+        self.assert_compile(
+            t1.join(t2, t1.c.x == t2.c.y),
+            "t1 INNER JOIN t2 ON t1.x = t2.y"
+        )
+
+    def test_outer_join(self):
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('y'))
+
+        self.assert_compile(
+            t1.outerjoin(t2, t1.c.x == t2.c.y),
+            "t1 LEFT OUTER JOIN t2 ON t1.x = t2.y"
+        )
+
+    def test_full_outer_join(self):
+        t1 = table('t1', column('x'))
+        t2 = table('t2', column('y'))
+
+        self.assert_compile(
+            t1.outerjoin(t2, t1.c.x == t2.c.y, full=True),
+            "t1 FULL OUTER JOIN t2 ON t1.x = t2.y"
+        )

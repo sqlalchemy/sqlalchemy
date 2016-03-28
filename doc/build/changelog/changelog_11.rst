@@ -22,6 +22,18 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 1957
+        :pullreq: github:209
+
+        Added support for rendering "FULL OUTER JOIN" to both Core and ORM.
+        Pull request courtesy Stefan Urbanek.
+
+        .. seealso::
+
+            :ref:`change_1957`
+
+    .. change::
         :tags: feature, engine
 
         Added connection pool events :meth:`ConnectionEvents.close`,

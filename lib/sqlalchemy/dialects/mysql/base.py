@@ -861,9 +861,16 @@ class MySQLCompiler(compiler.SQLCompiler):
             return ""
 
     def visit_join(self, join, asfrom=False, **kwargs):
+        if join.full:
+            join_type = " FULL OUTER JOIN "
+        elif join.isouter:
+            join_type = " LEFT OUTER JOIN "
+        else:
+            join_type = " INNER JOIN "
+
         return ''.join(
             (self.process(join.left, asfrom=True, **kwargs),
-             (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN "),
+             join_type,
              self.process(join.right, asfrom=True, **kwargs),
              " ON ",
              self.process(join.onclause, **kwargs)))

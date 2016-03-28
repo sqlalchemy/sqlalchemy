@@ -980,6 +980,23 @@ will not have much impact on the behavior of the column during an INSERT.
 
 :ticket:`3216`
 
+.. _change_1957:
+
+Core and ORM support for FULL OUTER JOIN
+----------------------------------------
+
+The new flag :paramref:`.FromClause.outerjoin.full`, available at the Core
+and ORM level, instructs the compiler to render ``FULL OUTER JOIN``
+where it would normally render ``LEFT OUTER JOIN``::
+
+    stmt = select([t1]).select_from(t1.outerjoin(t2, full=True))
+
+The flag also works at the ORM level::
+
+    q = session.query(MyClass).outerjoin(MyOtherClass, full=True)
+
+:ticket:`1957`
+
 .. _change_3501:
 
 ResultSet column matching enhancements; positional column setup for textual SQL

@@ -783,7 +783,7 @@ class _ORMJoin(expression.Join):
     def __init__(
             self,
             left, right, onclause=None, isouter=False,
-            _left_memo=None, _right_memo=None):
+            full=False, _left_memo=None, _right_memo=None):
 
         left_info = inspection.inspect(left)
         left_orm_info = getattr(left, '_joined_from_info', left_info)
@@ -835,7 +835,7 @@ class _ORMJoin(expression.Join):
                 onclause = pj
             self._target_adapter = target_adapter
 
-        expression.Join.__init__(self, left, right, onclause, isouter)
+        expression.Join.__init__(self, left, right, onclause, isouter, full)
 
         if not prop and getattr(right_info, 'mapper', None) \
                 and right_info.mapper.single:
@@ -874,14 +874,20 @@ class _ORMJoin(expression.Join):
             _right_memo=other._right_memo
         )
 
-    def join(self, right, onclause=None, isouter=False, join_to_left=None):
-        return _ORMJoin(self, right, onclause, isouter)
+    def join(
+            self, right, onclause=None,
+            isouter=False, full=False, join_to_left=None):
+        return _ORMJoin(self, right, onclause, full, isouter)
 
-    def outerjoin(self, right, onclause=None, join_to_left=None):
-        return _ORMJoin(self, right, onclause, True)
+    def outerjoin(
+            self, right, onclause=None,
+            full=False, join_to_left=None):
+        return _ORMJoin(self, right, onclause, True, full=full)
 
 
-def join(left, right, onclause=None, isouter=False, join_to_left=None):
+def join(
+        left, right, onclause=None, isouter=False,
+        full=False, join_to_left=None):
     """Produce an inner join between left and right clauses.
 
     :func:`.orm.join` is an extension to the core join interface
@@ -919,10 +925,10 @@ def join(left, right, onclause=None, isouter=False, join_to_left=None):
        is no longer used, and is deprecated.
 
     """
-    return _ORMJoin(left, right, onclause, isouter)
+    return _ORMJoin(left, right, onclause, isouter, full)
 
 
-def outerjoin(left, right, onclause=None, join_to_left=None):
+def outerjoin(left, right, onclause=None, full=False, join_to_left=None):
     """Produce a left outer join between left and right clauses.
 
     This is the "outer join" version of the :func:`.orm.join` function,
@@ -930,7 +936,7 @@ def outerjoin(left, right, onclause=None, join_to_left=None):
     See that function's documentation for other usage details.
 
     """
-    return _ORMJoin(left, right, onclause, True)
+    return _ORMJoin(left, right, onclause, True, full)
 
 
 def with_parent(instance, prop):

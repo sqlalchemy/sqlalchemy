@@ -1841,9 +1841,15 @@ class SQLCompiler(Compiled):
             return ""
 
     def visit_join(self, join, asfrom=False, **kwargs):
+        if join.full:
+            join_type = " FULL OUTER JOIN "
+        elif join.isouter:
+            join_type = " LEFT OUTER JOIN "
+        else:
+            join_type = " JOIN "
         return (
             join.left._compiler_dispatch(self, asfrom=True, **kwargs) +
-            (join.isouter and " LEFT OUTER JOIN " or " JOIN ") +
+            join_type +
             join.right._compiler_dispatch(self, asfrom=True, **kwargs) +
             " ON " +
             join.onclause._compiler_dispatch(self, **kwargs)

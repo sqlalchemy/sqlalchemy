@@ -1553,6 +1553,26 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.myid = :myid_1 OR myothertable.othername != :othername_1 "
             "OR EXISTS (select yay from foo where boo = lar)", )
 
+    def test_full_outer_join(self):
+        for spec in [
+            join(table1, table2, table1.c.myid == table2.c.otherid, full=True),
+            outerjoin(
+                table1, table2,
+                table1.c.myid == table2.c.otherid, full=True),
+            table1.join(
+                table2,
+                table1.c.myid == table2.c.otherid, full=True),
+            table1.outerjoin(
+                table2,
+                table1.c.myid == table2.c.otherid, full=True),
+        ]:
+            stmt = select([table1]).select_from(spec)
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, mytable.description FROM "
+            "mytable FULL OUTER JOIN myothertable "
+            "ON mytable.myid = myothertable.otherid")
+
     def test_compound_selects(self):
         assert_raises_message(
             exc.ArgumentError,

@@ -313,7 +313,7 @@ class FromClause(Selectable):
 
         return Select([self], whereclause, **params)
 
-    def join(self, right, onclause=None, isouter=False):
+    def join(self, right, onclause=None, isouter=False, full=False):
         """Return a :class:`.Join` from this :class:`.FromClause`
         to another :class:`FromClause`.
 
@@ -341,6 +341,11 @@ class FromClause(Selectable):
 
         :param isouter: if True, render a LEFT OUTER JOIN, instead of JOIN.
 
+        :param full: if True, render a FULL OUTER JOIN, instead of LEFT OUTER
+         JOIN.  Implies :paramref:`.FromClause.join.isouter`.
+
+         .. versionadded:: 1.1
+
         .. seealso::
 
             :func:`.join` - standalone function
@@ -349,9 +354,9 @@ class FromClause(Selectable):
 
         """
 
-        return Join(self, right, onclause, isouter)
+        return Join(self, right, onclause, isouter, full)
 
-    def outerjoin(self, right, onclause=None):
+    def outerjoin(self, right, onclause=None, full=False):
         """Return a :class:`.Join` from this :class:`.FromClause`
         to another :class:`FromClause`, with the "isouter" flag set to
         True.
@@ -379,6 +384,11 @@ class FromClause(Selectable):
          join.  If left at ``None``, :meth:`.FromClause.join` will attempt to
          join the two tables based on a foreign key relationship.
 
+        :param full: if True, render a FULL OUTER JOIN, instead of
+         LEFT OUTER JOIN.
+
+         .. versionadded:: 1.1
+
         .. seealso::
 
             :meth:`.FromClause.join`
@@ -387,7 +397,7 @@ class FromClause(Selectable):
 
         """
 
-        return Join(self, right, onclause, True)
+        return Join(self, right, onclause, True, full)
 
     def alias(self, name=None, flat=False):
         """return an alias of this :class:`.FromClause`.
@@ -648,7 +658,7 @@ class Join(FromClause):
 
     _is_join = True
 
-    def __init__(self, left, right, onclause=None, isouter=False):
+    def __init__(self, left, right, onclause=None, isouter=False, full=False):
         """Construct a new :class:`.Join`.
 
         The usual entrypoint here is the :func:`~.expression.join`
@@ -665,9 +675,10 @@ class Join(FromClause):
             self.onclause = onclause
 
         self.isouter = isouter
+        self.full = full
 
     @classmethod
-    def _create_outerjoin(cls, left, right, onclause=None):
+    def _create_outerjoin(cls, left, right, onclause=None, full=False):
         """Return an ``OUTER JOIN`` clause element.
 
         The returned object is an instance of :class:`.Join`.
@@ -689,10 +700,11 @@ class Join(FromClause):
         :class:`.Join` object.
 
         """
-        return cls(left, right, onclause, isouter=True)
+        return cls(left, right, onclause, isouter=True, full=full)
 
     @classmethod
-    def _create_join(cls, left, right, onclause=None, isouter=False):
+    def _create_join(cls, left, right, onclause=None, isouter=False,
+                     full=False):
         """Produce a :class:`.Join` object, given two :class:`.FromClause`
         expressions.
 
@@ -724,6 +736,10 @@ class Join(FromClause):
 
         :param isouter: if True, render a LEFT OUTER JOIN, instead of JOIN.
 
+        :param full: if True, render a FULL OUTER JOIN, instead of JOIN.
+
+         .. versionadded:: 1.1
+
         .. seealso::
 
             :meth:`.FromClause.join` - method form, based on a given left side
@@ -732,7 +748,7 @@ class Join(FromClause):
 
         """
 
-        return cls(left, right, onclause, isouter)
+        return cls(left, right, onclause, isouter, full)
 
     @property
     def description(self):
@@ -1050,7 +1066,7 @@ class Join(FromClause):
                 chain(sqlutil.ClauseAdapter(right_a))
 
             return left_a.join(right_a, adapter.traverse(self.onclause),
-                               isouter=self.isouter)
+                               isouter=self.isouter, full=self.full)
         else:
             return self.select(use_labels=True, correlate=False).alias(name)
 

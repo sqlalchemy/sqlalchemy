@@ -455,6 +455,15 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "FROM users LEFT OUTER JOIN orders ON users.id = orders.user_id"
         )
 
+    def test_full_flag(self):
+        User = self.classes.User
+
+        self.assert_compile(
+            create_session().query(User).outerjoin('orders', full=True),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users FULL OUTER JOIN orders ON users.id = orders.user_id"
+        )
+
 
     def test_multi_tuple_form(self):
         """test the 'tuple' form of join, now superseded
