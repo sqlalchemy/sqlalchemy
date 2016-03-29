@@ -32,6 +32,7 @@ from .sql import (
     intersect,
     intersect_all,
     join,
+    lateral,
     literal,
     literal_column,
     modifier,

@@ -345,6 +345,7 @@ syntaxes. It uses SQLAlchemy's hints mechanism::
     # DELETE FROM ONLY ...
     table.delete().with_hint('ONLY', dialect_name='postgresql')
 
+
 .. _postgresql_indexes:
 
 Postgresql-Specific Index Options

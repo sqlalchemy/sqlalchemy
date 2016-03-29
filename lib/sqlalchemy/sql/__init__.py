@@ -46,6 +46,7 @@ from .expression import (
     intersect_all,
     join,
     label,
+    lateral,
     literal,
     literal_column,
     modifier,

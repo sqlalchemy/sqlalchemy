@@ -23,6 +23,18 @@
 
     .. change::
         :tags: feature, sql
+        :tickets: 2857
+
+        Added :meth:`.Select.lateral` and related constructs to allow
+        for the SQL standard LATERAL keyword, currently only supported
+        by Postgresql.
+
+        .. seealso::
+
+            :ref:`change_2857`
+
+    .. change::
+        :tags: feature, sql
         :tickets: 1957
         :pullreq: github:209
 

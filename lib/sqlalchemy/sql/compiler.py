@@ -1320,6 +1320,10 @@ class SQLCompiler(Compiled):
         else:
             return alias.original._compiler_dispatch(self, **kwargs)
 
+    def visit_lateral(self, lateral, **kw):
+        kw['lateral'] = True
+        return "LATERAL %s" % self.visit_alias(lateral, **kw)
+
     def get_render_as_alias_suffix(self, alias_name_text):
         return " AS " + alias_name_text
 
@@ -1532,7 +1536,7 @@ class SQLCompiler(Compiled):
         ('asfrom_froms', frozenset())
     ])
 
-    def _display_froms_for_select(self, select, asfrom):
+    def _display_froms_for_select(self, select, asfrom, lateral=False):
         # utility method to help external dialects
         # get the correct from list for a select.
         # specifically the oracle dialect needs this feature
@@ -1543,7 +1547,7 @@ class SQLCompiler(Compiled):
         correlate_froms = entry['correlate_froms']
         asfrom_froms = entry['asfrom_froms']
 
-        if asfrom:
+        if asfrom and not lateral:
             froms = select._get_display_froms(
                 explicit_correlate_froms=correlate_froms.difference(
                     asfrom_froms),
@@ -1559,6 +1563,7 @@ class SQLCompiler(Compiled):
                      compound_index=0,
                      nested_join_translation=False,
                      select_wraps_for=None,
+                     lateral=False,
                      **kwargs):
 
         needs_nested_translation = \
@@ -1598,7 +1603,7 @@ class SQLCompiler(Compiled):
                     select, transformed_select)
             return text
 
-        froms = self._setup_select_stack(select, entry, asfrom)
+        froms = self._setup_select_stack(select, entry, asfrom, lateral)
 
         column_clause_args = kwargs.copy()
         column_clause_args.update({
@@ -1671,7 +1676,7 @@ class SQLCompiler(Compiled):
 
         self.stack.pop(-1)
 
-        if asfrom and parens:
+        if (asfrom or lateral) and parens:
             return "(" + text + ")"
         else:
             return text
@@ -1689,11 +1694,11 @@ class SQLCompiler(Compiled):
         hint_text = self.get_select_hint_text(byfrom)
         return hint_text, byfrom
 
-    def _setup_select_stack(self, select, entry, asfrom):
+    def _setup_select_stack(self, select, entry, asfrom, lateral):
         correlate_froms = entry['correlate_froms']
         asfrom_froms = entry['asfrom_froms']
 
-        if asfrom:
+        if asfrom and not lateral:
             froms = select._get_display_froms(
                 explicit_correlate_froms=correlate_froms.difference(
                     asfrom_froms),
@@ -1712,6 +1717,7 @@ class SQLCompiler(Compiled):
             'selectable': select,
         }
         self.stack.append(new_entry)
+
         return froms
 
     def _compose_select_body(

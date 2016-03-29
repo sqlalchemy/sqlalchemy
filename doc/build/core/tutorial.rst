@@ -1690,6 +1690,74 @@ by telling it to correlate all FROM clauses except for ``users``:
      ('jack',)
      {stop}[(u'jack', u'jack@yahoo.com'), (u'jack', u'jack@msn.com')]
 
+.. _lateral_selects:
+
+LATERAL correlation
+^^^^^^^^^^^^^^^^^^^
+
+LATERAL correlation is a special sub-category of SQL correlation which
+allows a selectable unit to refer to another selectable unit within a
+single FROM clause.  This is an extremely special use case which, while
+part of the SQL standard, is only known to be supported by recent
+versions of Postgresql.
+
+Normally, if a SELECT statement refers to
+``table1 JOIN (some SELECT) AS subquery`` in its FROM clause, the subquery
+on the right side may not refer to the "table1" expression from the left side;
+correlation may only refer to a table that is part of another SELECT that
+entirely encloses this SELECT.  The LATERAL keyword allows us to turn this
+behavior around, allowing an expression such as:
+
+.. sourcecode:: sql
+
+    SELECT people.people_id, people.age, people.name
+    FROM people JOIN LATERAL (SELECT books.book_id AS book_id
+    FROM books WHERE books.owner_id = people.people_id)
+    AS book_subq ON true
+
+Where above, the right side of the JOIN contains a subquery that refers not
+just to the "books" table but also the "people" table, correlating
+to the left side of the JOIN.   SQLAlchemy Core supports a statement
+like the above using the :meth:`.Select.lateral` method as follows::
+
+    >>> from sqlalchemy import table, column, select, true
+    >>> people = table('people', column('people_id'), column('age'), column('name'))
+    >>> books = table('books', column('book_id'), column('owner_id'))
+    >>> subq = select([books.c.book_id]).\
+    ...      where(books.c.owner_id == people.c.people_id).lateral("book_subq")
+    >>> print (select([people]).select_from(people.join(subq, true())))
+    SELECT people.people_id, people.age, people.name
+    FROM people JOIN LATERAL (SELECT books.book_id AS book_id
+    FROM books WHERE books.owner_id = people.people_id)
+    AS book_subq ON true
+
+Above, we can see that the :meth:`.Select.lateral` method acts a lot like
+the :meth:`.Select.alias` method, including that we can specify an optional
+name.  However the construct is the :class:`.Lateral` construct instead of
+an :class:`.Alias` which provides for the LATERAL keyword as well as special
+instructions to allow correlation from inside the FROM clause of the
+enclosing statement.
+
+The :meth:`.Select.lateral` method interacts normally with the
+:meth:`.Select.correlate` and :meth:`.Select.correlate_except` methods, except
+that the correlation rules also apply to any other tables present in the
+enclosing statement's FROM clause.   Correlation is "automatic" to these
+tables by default, is explicit if the table is specified to
+:meth:`.Select.correlate`, and is explicit to all tables except those
+specified to :meth:`.Select.correlate_except`.
+
+
+.. versionadded:: 1.1
+
+    Support for the LATERAL keyword and lateral correlation.
+
+.. seealso::
+
+    :class:`.Lateral`
+
+    :meth:`.Select.lateral`
+
+
 Ordering, Grouping, Limiting, Offset...ing...
 ---------------------------------------------
 

@@ -16,12 +16,14 @@ class.
 
 __all__ = [
     'Alias', 'Any', 'All', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
-    'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 'Select',
+    'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 'Lateral',
+    'Select',
     'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc', 'between',
     'bindparam', 'case', 'cast', 'column', 'delete', 'desc', 'distinct',
     'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
     'collate', 'insert', 'intersect', 'intersect_all', 'join', 'label',
-    'literal', 'literal_column', 'not_', 'null', 'nullsfirst', 'nullslast',
+    'lateral', 'literal', 'literal_column', 'not_', 'null', 'nullsfirst',
+    'nullslast',
     'or_', 'outparam', 'outerjoin', 'over', 'select', 'subquery',
     'table', 'text',
     'tuple_', 'type_coerce', 'union', 'union_all', 'update', 'within_group']
@@ -45,9 +47,9 @@ from .base import ColumnCollection, Generative, Executable, \
     PARSE_AUTOCOMMIT
 
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
-    CompoundSelect, CTE, FromClause, FromGrouping, SelectBase, \
+    CompoundSelect, CTE, FromClause, FromGrouping, Lateral, SelectBase, \
     alias, GenerativeSelect, subquery, HasCTE, HasPrefixes, HasSuffixes, \
-    Exists, ScalarSelect, TextAsFrom
+    lateral, Exists, ScalarSelect, TextAsFrom
 
 
 from .dml import Insert, Update, Delete, UpdateBase, ValuesBase

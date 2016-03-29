@@ -23,6 +23,8 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autofunction:: join
 
+.. autofunction:: lateral
+
 .. autofunction:: outerjoin
 
 .. autofunction:: select
@@ -69,6 +71,8 @@ elements are themselves :class:`.ColumnElement` subclasses).
 .. autoclass:: Join
    :members:
    :inherited-members:
+
+.. autoclass:: Lateral
 
 .. autoclass:: ScalarSelect
    :members:

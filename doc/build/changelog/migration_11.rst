@@ -882,6 +882,40 @@ statement::
 
 :ticket:`2551`
 
+.. _change_2857:
+
+Support for the SQL LATERAL keyword
+------------------------------------
+
+The LATERAL keyword is currently known to only be supported by Postgresql 9.3
+and greater, however as it is part of the SQL standard support for this keyword
+is added to Core.   The implementation of :meth:`.Select.lateral` employs
+special logic beyond just rendering the LATERAL keyword to allow for
+correlation of tables that are derived from the same FROM clause as the
+selectable, e.g. lateral correlation::
+
+    >>> from sqlalchemy import table, column, select, true
+    >>> people = table('people', column('people_id'), column('age'), column('name'))
+    >>> books = table('books', column('book_id'), column('owner_id'))
+    >>> subq = select([books.c.book_id]).\
+    ...      where(books.c.owner_id == people.c.people_id).lateral("book_subq")
+    >>> print (select([people]).select_from(people.join(subq, true())))
+    SELECT people.people_id, people.age, people.name
+    FROM people JOIN LATERAL (SELECT books.book_id AS book_id
+    FROM books WHERE books.owner_id = people.people_id)
+    AS book_subq ON true
+
+.. seealso::
+
+    :ref:`lateral_selects`
+
+    :class:`.Lateral`
+
+    :meth:`.Select.lateral`
+
+
+:ticket:`2857`
+
 .. _change_3216:
 
 The ``.autoincrement`` directive is no longer implicitly enabled for a composite primary key column
