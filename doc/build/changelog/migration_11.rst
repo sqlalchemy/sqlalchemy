@@ -2086,6 +2086,17 @@ the``CREATE INDEX`` DDL didn't work correctly for a schema-bound table
 and the :meth:`.Inspector.get_foreign_keys` method will now indicate the
 given schema in the results.  Cross-schema foreign keys aren't supported.
 
+.. _change_3629:
+
+Reflection of the name of PRIMARY KEY constraints
+--------------------------------------------------
+
+The SQLite backend now takes advantage of the "sqlite_master" view
+of SQLite in order to extract the name of the primary key constraint
+of a table from the original DDL, in the same way that is achieved for
+foreign key constraints in recent SQLAlchemy versions.
+
+:ticket:`3629`
 
 Dialect Improvements and Changes - SQL Server
 =============================================

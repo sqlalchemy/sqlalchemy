@@ -22,6 +22,17 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sqlite
+        :tickets: 3629
+
+        The SQLite dialect now reflects the names of primary key constraints.
+        Pull request courtesy Diana Clarke.
+
+        .. seealso::
+
+            :ref:`change_3629`
+
+    .. change::
         :tags: feature, sql
         :tickets: 2857
 
