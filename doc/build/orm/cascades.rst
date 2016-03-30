@@ -17,7 +17,7 @@ the :ref:`cascade_delete` and :ref:`cascade_delete_orphan` options;
 these settings are appropriate for related objects which only exist as
 long as they are attached to their parent, and are otherwise deleted.
 
-Cascade behavior is configured using the by changing the
+Cascade behavior is configured using the
 :paramref:`~.relationship.cascade` option on
 :func:`~sqlalchemy.orm.relationship`::
 
