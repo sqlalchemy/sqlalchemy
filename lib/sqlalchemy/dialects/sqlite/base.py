@@ -1297,12 +1297,20 @@ class SQLiteDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        constraint_name = None
+        table_data = self._get_table_sql(connection, table_name, schema=schema)
+        if table_data:
+            PK_PATTERN = 'CONSTRAINT (\w+) PRIMARY KEY'
+            result = re.search(PK_PATTERN, table_data, re.I)
+            constraint_name = result.group(1) if result else None
+
         cols = self.get_columns(connection, table_name, schema, **kw)
         pkeys = []
         for col in cols:
             if col['primary_key']:
                 pkeys.append(col['name'])
-        return {'constrained_columns': pkeys, 'name': None}
+
+        return {'constrained_columns': pkeys, 'name': constraint_name}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):

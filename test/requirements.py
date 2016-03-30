@@ -532,7 +532,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target driver reflects the name of primary key constraints."""
 
         return fails_on_everything_except('postgresql', 'oracle', 'mssql',
-                    'sybase')
+                    'sybase', 'sqlite')
 
     @property
     def json_type(self):
