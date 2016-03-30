@@ -1,5 +1,5 @@
-"""This series of tests illustrates different ways to INSERT a large number
-of rows in bulk.
+"""This series of tests illustrates different ways to SELECT a single
+record by primary key
 
 
 """
