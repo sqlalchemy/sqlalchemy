@@ -951,24 +951,32 @@ class ResultProxyTest(fixtures.TestBase):
             {'key': (None, None, 0), 0: (None, None, 0)})
         assert isinstance(row, collections.Sequence)
 
-    def test_rowproxy_getitem(self):
-        metadata = MetaData()
-        metadata.bind = 'sqlite://'
-        values = Table('users', metadata,
+    @testing.provide_metadata
+    def test_rowproxy_getitem_indexes_compiled(self):
+        values = Table('users', self.metadata,
                        Column('key', String(10), primary_key=True),
                        Column('value', String(10)))
         values.create()
 
-        values.insert().execute(key='One', value='Uno')
-        row = values.select().execute().fetchone()
+        testing.db.execute(values.insert(), dict(key='One', value='Uno'))
+        row = testing.db.execute(values.select()).first()
+        eq_(row['key'], 'One')
+        eq_(row['value'], 'Uno')
+        eq_(row[0], 'One')
+        eq_(row[1], 'Uno')
+        eq_(row[-2], 'One')
+        eq_(row[-1], 'Uno')
+        eq_(row[1:0:-1], ('Uno',))
 
-        assert row['key'] == 'One'
-        assert row['value'] == 'Uno'
-        assert row[0] == 'One'
-        assert row[1] == 'Uno'
-        assert row[-2] == 'One'
-        assert row[-1] == 'Uno'
-        assert row[1:0:-1] == ('Uno',)
+    def test_rowproxy_getitem_indexes_raw(self):
+        row = testing.db.execute("select 'One' as key, 'Uno' as value").first()
+        eq_(row['key'], 'One')
+        eq_(row['value'], 'Uno')
+        eq_(row[0], 'One')
+        eq_(row[1], 'Uno')
+        eq_(row[-2], 'One')
+        eq_(row[-1], 'Uno')
+        eq_(row[1:0:-1], ('Uno',))
 
     @testing.requires.cextensions
     def test_row_c_sequence_check(self):

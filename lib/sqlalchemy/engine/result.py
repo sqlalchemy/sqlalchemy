@@ -220,11 +220,14 @@ class ResultMetaData(object):
             # implementation to avoid an expensive
             # isinstance(key, util.int_types) in the most common
             # case path
+
+            len_raw = len(raw)
+
             self._keymap.update([
                 (elem[0], (elem[3], elem[4], elem[0]))
                 for elem in raw
             ] + [
-                (elem[0] - num_ctx_cols, (elem[3], elem[4], elem[0]))
+                (elem[0] - len_raw, (elem[3], elem[4], elem[0]))
                 for elem in raw
             ])
 

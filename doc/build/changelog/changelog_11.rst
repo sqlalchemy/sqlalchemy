@@ -22,6 +22,18 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :pullreq: github:231
+
+        Negative integer indexes are now accommodated by rows
+        returned from a :class:`.ResultProxy`.  Pull request courtesy
+        Emanuele Gaifas.
+
+        .. seealso::
+
+            :ref:`change_gh_231`
+
+    .. change::
         :tags: feature, sqlite
         :tickets: 3629
 

@@ -1179,6 +1179,21 @@ string values::
 
 :ticket:`3292`
 
+.. _change_gh_231:
+
+Negative integer indexes accommodated by Core result rows
+---------------------------------------------------------
+
+The :class:`.RowProxy` object now accomodates single negative integer indexes
+like a regular Python sequence, both in the pure Python and C-extension
+version.  Previously, negative values would only work in slices::
+
+    >>> from sqlalchemy import create_engine
+    >>> e = create_engine("sqlite://")
+    >>> row = e.execute("select 1, 2, 3").first()
+    >>> row[-1], row[-2], row[1], row[-2:2]
+    3 2 2 (2,)
+
 .. _change_3095:
 
 The ``Enum`` type now does in-Python validation of values
