@@ -263,6 +263,8 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
 #if PY_MAJOR_VERSION < 3
     if (PyInt_CheckExact(key)) {
         index = PyInt_AS_LONG(key);
+        if (index < 0)
+            index += BaseRowProxy_length(self);
     } else
 #endif
 
@@ -271,6 +273,8 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
         if ((index == -1) && PyErr_Occurred())
             /* -1 can be either the actual value, or an error flag. */
             return NULL;
+        if (index < 0)
+            index += BaseRowProxy_length(self);
     } else if (PySlice_Check(key)) {
         values = PyObject_GetItem(self->row, key);
         if (values == NULL)

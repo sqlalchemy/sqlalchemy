@@ -215,9 +215,16 @@ class ResultMetaData(object):
 
         self._keymap = {}
         if not _baserowproxy_usecext:
-            # keymap indexes by integer index...
+            # keymap indexes by integer index: this is only used
+            # in the pure Python BaseRowProxy.__getitem__
+            # implementation to avoid an expensive
+            # isinstance(key, util.int_types) in the most common
+            # case path
             self._keymap.update([
                 (elem[0], (elem[3], elem[4], elem[0]))
+                for elem in raw
+            ] + [
+                (elem[0] - num_ctx_cols, (elem[3], elem[4], elem[0]))
                 for elem in raw
             ])
 
