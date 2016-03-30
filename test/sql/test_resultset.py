@@ -1010,6 +1010,7 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(row[-1], 'Uno')
         eq_(row[1:0:-1], ('Uno',))
 
+    @testing.only_on("sqlite")
     def test_rowproxy_getitem_indexes_raw(self):
         row = testing.db.execute("select 'One' as key, 'Uno' as value").first()
         eq_(row['key'], 'One')
