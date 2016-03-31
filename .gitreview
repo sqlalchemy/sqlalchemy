@@ -1,0 +1,3 @@
+[gerrit]
+host=review.gerrithub.io
+project=zzzeek/sqlalchemy
