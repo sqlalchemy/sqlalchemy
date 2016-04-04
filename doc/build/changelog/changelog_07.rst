@@ -3220,7 +3220,7 @@
       This section documents those changes from 0.7b4
       to 0.7.0.  For an overview of what's new in
       SQLAlchemy 0.7, see
-      http://www.sqlalchemy.org/trac/wiki/07Migration
+      http://docs.sqlalchemy.org/en/latest/changelog/migration_07.html
 
     .. change::
         :tags: orm
@@ -4125,7 +4125,7 @@
 
       Detailed descriptions of each change below are
       described at:
-      http://www.sqlalchemy.org/trac/wiki/07Migration
+      http://docs.sqlalchemy.org/en/latest/changelog/migration_07.html
 
     .. change::
         :tags: general
