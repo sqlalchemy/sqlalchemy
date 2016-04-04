@@ -373,7 +373,7 @@ def create_engine(*args, **kwargs):
         * the ``mock`` strategy, which dispatches all statement
           execution to a function passed as the argument ``executor``.
           See `example in the FAQ
-          <http://www.sqlalchemy.org/trac/wiki/FAQ#HowcanIgettheCREATETABLEDROPTABLEoutputasastring>`_.
+          <http://docs.sqlalchemy.org/en/latest/faq/metadata_schema.html#how-can-i-get-the-create-table-drop-table-output-as-a-string>`_.
 
     :param executor=None: a function taking arguments
         ``(sql, *multiparams, **params)``, to which the ``mock`` strategy will
