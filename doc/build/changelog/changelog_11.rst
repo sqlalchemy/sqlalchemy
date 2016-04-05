@@ -22,6 +22,14 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3488
+
+        Fixed bug where deferred columns would inadvertently be set up
+        for database load on the next object-wide unexpire, when the object
+        were merged into the session with ``session.merge(obj, load=False)``.
+
+    .. change::
         :tags: feature, sql
         :pullreq: github:231
 
