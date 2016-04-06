@@ -485,6 +485,10 @@ class InstanceState(interfaces.InspectionAttr):
         if self.callables:
             self.callables.pop(key, None)
 
+    def _copy_callables(self, from_):
+        if 'callables' in from_.__dict__:
+            self.callables = dict(from_.callables)
+
     @classmethod
     def _instance_level_callable_processor(cls, manager, fn, key):
         impl = manager[key].impl
@@ -537,7 +541,7 @@ class InstanceState(interfaces.InspectionAttr):
 
         self.manager.dispatch.expire(self, None)
 
-    def _expire_attributes(self, dict_, attribute_names):
+    def _expire_attributes(self, dict_, attribute_names, no_loader=False):
         pending = self.__dict__.get('_pending_mutations', None)
 
         callables = self.callables
@@ -545,6 +549,12 @@ class InstanceState(interfaces.InspectionAttr):
         for key in attribute_names:
             impl = self.manager[key].impl
             if impl.accepts_scalar_loader:
+                if no_loader and (
+                    impl.callable_ or
+                    key in callables
+                ):
+                    continue
+
                 self.expired_attributes.add(key)
                 if callables and key in callables:
                     del callables[key]
