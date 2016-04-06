@@ -3845,7 +3845,7 @@
         :tickets: 
 
       For the full set of feature descriptions, see
-      http://www.sqlalchemy.org/trac/wiki/06Migration .
+      http://docs.sqlalchemy.org/en/latest/changelog/migration_06.html .
       This document is a work in progress.
 
     .. change::
