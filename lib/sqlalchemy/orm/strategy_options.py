@@ -608,7 +608,7 @@ def load_only(loadopt, *attrs):
     ``Address`` object load only the ``email_address`` attribute::
 
         session.query(User).options(
-                subqueryload("addreses").load_only("email_address")
+                subqueryload("addresses").load_only("email_address")
         )
 
     For a :class:`.Query` that has multiple entities, the lead entity can be
