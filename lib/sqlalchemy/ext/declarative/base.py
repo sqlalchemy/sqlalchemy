@@ -351,7 +351,8 @@ class _MapperConfig(object):
                 util.warn(
                     "On class %r, Column object %r named "
                     "directly multiple times, "
-                    "only one will be used: %s" %
+                    "only one will be used: %s. "
+                    "Consider using orm.synonym instead" %
                     (self.classname, name, (", ".join(sorted(keys))))
                 )
 
