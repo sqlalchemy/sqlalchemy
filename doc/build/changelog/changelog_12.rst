@@ -29,3 +29,16 @@
         .. seealso::
 
             :ref:`change_3276`
+
+    .. change:: 2694
+        :tags: feature, sql
+        :tickets: 2694
+
+        Added a new option ``autoescape`` to the "startswith" and
+        "endswith" classes of comparators; this supplies an escape character
+        also applies it to all occurrences of the wildcard characters "%"
+        and "_" automatically.  Pull request courtesy Diana Clarke.
+
+        .. seealso::
+
+            :ref:`change_2694`

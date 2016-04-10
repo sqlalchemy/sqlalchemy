@@ -37,6 +37,30 @@ New Features and Improvements - ORM
 New Features and Improvements - Core
 ====================================
 
+.. _change_2694:
+
+New "autoescape" option for startswith(), endswith()
+----------------------------------------------------
+
+The "autoescape" parameter is added to :meth:`.Operators.startswith`,
+:meth:`.Operators.endswith`, :meth:`.Operators.contains`.  This parameter
+does what "escape" does, except that it also automatically performs a search-
+and-replace of any wildcard characters to be escaped by that character, as
+these operators already add the wildcard expression on the outside of the
+given value.
+
+An expression such as::
+
+    >>> column('x').startswith('total%score', autoescape='/')
+
+Renders as::
+
+    x LIKE :x_1 || '%%' ESCAPE '/'
+
+Where the value of the parameter "x_1" is ``'total/%score'``.
+
+:ticket:`2694`
+
 Key Behavioral Changes - ORM
 ============================
 

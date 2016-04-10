@@ -196,7 +196,7 @@ class Operators(object):
 class custom_op(object):
     """Represent a 'custom' operator.
 
-    :class:`.custom_op` is normally instantitated when the
+    :class:`.custom_op` is normally instantiated when the
     :meth:`.ColumnOperators.op` method is used to create a
     custom operator callable.  The class can also be used directly
     when programmatically constructing expressions.   E.g.
@@ -541,6 +541,31 @@ class ColumnOperators(Operators):
 
         In a column context, produces the clause ``LIKE '<other>%'``
 
+        E.g.::
+
+            select([sometable]).where(sometable.c.column.startswith("foobar"))
+
+        :param other: expression to be compared, with SQL wildcard
+          matching (``%`` and ``_``) enabled, e.g.::
+
+            somecolumn.startswith("foo%bar")
+
+        :param escape: optional escape character, renders the ``ESCAPE``
+          keyword allowing that escape character to be used to manually
+          disable SQL wildcard matching (``%`` and ``_``) in the expression,
+          e.g.::
+
+            somecolumn.startswith("foo/%bar", escape="/")
+
+        :param autoescape: optional escape character, renders the ``ESCAPE``
+          keyword and uses that escape character to auto escape the
+          expression, disabling all SQL wildcard matching (``%`` and ``_``),
+          e.g.::
+
+            somecolumn.startswith("foo%bar", autoescape="/")
+
+          .. versionadded:: 1.2
+
         """
         return self.operate(startswith_op, other, **kwargs)
 
@@ -549,6 +574,31 @@ class ColumnOperators(Operators):
 
         In a column context, produces the clause ``LIKE '%<other>'``
 
+        E.g.::
+
+            select([sometable]).where(sometable.c.column.endswith("foobar"))
+
+        :param other: expression to be compared, with SQL wildcard
+          matching (``%`` and ``_``) enabled, e.g.::
+
+            somecolumn.endswith("foo%bar")
+
+        :param escape: optional escape character, renders the ``ESCAPE``
+          keyword allowing that escape character to be used to manually
+          disable SQL wildcard matching (``%`` and ``_``) in the expression,
+          e.g.::
+
+            somecolumn.endswith("foo/%bar", escape="/")
+
+        :param autoescape: optional escape character, renders the ``ESCAPE``
+          keyword and uses that escape character to auto escape the
+          expression, disabling all SQL wildcard matching (``%`` and ``_``),
+          e.g.::
+
+            somecolumn.endswith("foo%bar", autoescape="/")
+
+          .. versionadded:: 1.2
+
         """
         return self.operate(endswith_op, other, **kwargs)
 
@@ -556,6 +606,31 @@ class ColumnOperators(Operators):
         """Implement the 'contains' operator.
 
         In a column context, produces the clause ``LIKE '%<other>%'``
+
+        E.g.::
+
+            select([sometable]).where(sometable.c.column.contains("foobar"))
+
+        :param other: expression to compare, with SQL wildcard
+          matching (``%`` and ``_``) enabled, e.g.::
+
+            somecolumn.contains("foo%bar")
+
+        :param escape: optional escape character, renders the ``ESCAPE``
+          keyword allowing that escape character to be used to manually
+          disable SQL wildcard matching (``%`` and ``_``) in the expression,
+          e.g.::
+
+            somecolumn.contains("foo/%bar", escape="/")
+
+        :param autoescape: optional escape character, renders the ``ESCAPE``
+          keyword and uses that escape character to auto escape the
+          expression, disabling all SQL wildcard matching (``%`` and ``_``),
+          e.g.::
+
+            somecolumn.contains("foo%bar", autoescape="/")
+
+          .. versionadded:: 1.2
 
         """
         return self.operate(contains_op, other, **kwargs)
@@ -736,6 +811,10 @@ class ColumnOperators(Operators):
         return self.reverse_operate(truediv, other)
 
 
+def _escaped(value, escape):
+    return value.replace('%', escape + '%').replace('_', escape + '_')
+
+
 def from_():
     raise NotImplementedError()
 
@@ -824,28 +903,46 @@ def all_op(a):
     return a.all_()
 
 
-def startswith_op(a, b, escape=None):
-    return a.startswith(b, escape=escape)
+def startswith_op(a, b, escape=None, autoescape=None):
+    if autoescape:
+        return a.startswith(_escaped(b, autoescape), escape=autoescape)
+    else:
+        return a.startswith(b, escape=escape)
 
 
-def notstartswith_op(a, b, escape=None):
-    return ~a.startswith(b, escape=escape)
+def notstartswith_op(a, b, escape=None, autoescape=None):
+    if autoescape:
+        return ~a.startswith(_escaped(b, autoescape), escape=autoescape)
+    else:
+        return ~a.startswith(b, escape=escape)
 
 
-def endswith_op(a, b, escape=None):
-    return a.endswith(b, escape=escape)
+def endswith_op(a, b, escape=None, autoescape=None):
+    if autoescape:
+        return a.endswith(_escaped(b, autoescape), escape=autoescape)
+    else:
+        return a.endswith(b, escape=escape)
 
 
-def notendswith_op(a, b, escape=None):
-    return ~a.endswith(b, escape=escape)
+def notendswith_op(a, b, escape=None, autoescape=None):
+    if autoescape:
+        return ~a.endswith(_escaped(b, autoescape), escape=autoescape)
+    else:
+        return ~a.endswith(b, escape=escape)
 
 
-def contains_op(a, b, escape=None):
-    return a.contains(b, escape=escape)
+def contains_op(a, b, escape=None, autoescape=None):
+    if autoescape:
+        return a.contains(_escaped(b, autoescape), escape=autoescape)
+    else:
+        return a.contains(b, escape=escape)
 
 
-def notcontains_op(a, b, escape=None):
-    return ~a.contains(b, escape=escape)
+def notcontains_op(a, b, escape=None, autoescape=None):
+    if autoescape:
+        return ~a.contains(_escaped(b, autoescape), escape=autoescape)
+    else:
+        return ~a.contains(b, escape=escape)
 
 
 def match_op(a, b, **kw):
