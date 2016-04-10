@@ -28,6 +28,20 @@
         to Christoph Zwerschke and Kaolin Imago Fire for their efforts.
 
     .. change::
+        :tags: bug, ext
+        :tickets: 3653
+
+        The docstring specified on a hybrid property or method is now honored
+        at the class level, allowing it to work with tools like Sphinx
+        autodoc.  The mechanics here necessarily involve some wrapping of
+        expressions to occur for hybrid properties, which may cause them
+        to appear differently using introspection.
+
+        .. seealso::
+
+            :ref:`change_3653`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3488
 

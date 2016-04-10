@@ -687,7 +687,7 @@ class hybrid_method(interfaces.InspectionAttrInfo):
 
         """
         self.func = func
-        self.expr = expr or func
+        self.expression(expr or func)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -700,6 +700,8 @@ class hybrid_method(interfaces.InspectionAttrInfo):
         SQL-expression producing method."""
 
         self.expr = expr
+        if not self.expr.__doc__:
+            self.expr.__doc__ = self.func.__doc__
         return self
 
 
@@ -732,7 +734,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         self.fget = fget
         self.fset = fset
         self.fdel = fdel
-        self.expr = expr or fget
+        self.expression(expr or fget)
         util.update_wrapper(self, fget)
 
     def __get__(self, instance, owner):
@@ -768,8 +770,12 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         """Provide a modifying decorator that defines a SQL-expression
         producing method."""
 
-        self.expr = expr
-        return self
+        def _expr(cls):
+            return ExprComparator(expr(cls))
+        util.update_wrapper(_expr, expr)
+
+        self.expr = _expr
+        return self.comparator(_expr)
 
     def comparator(self, comparator):
         """Provide a modifying decorator that defines a custom
@@ -784,7 +790,9 @@ class hybrid_property(interfaces.InspectionAttrInfo):
             create_proxied_attribute(self)
 
         def expr(owner):
-            return proxy_attr(owner, self.__name__, self, comparator(owner))
+            return proxy_attr(
+                owner, self.__name__, self, comparator(owner),
+                doc=comparator.__doc__ or self.__doc__)
         self.expr = expr
         return self
 
@@ -808,3 +816,15 @@ class Comparator(interfaces.PropComparator):
     def adapt_to_entity(self, adapt_to_entity):
         # interesting....
         return self
+
+
+class ExprComparator(Comparator):
+
+    def __getattr__(self, key):
+        return getattr(self.expression, key)
+
+    def operate(self, op, *other, **kwargs):
+        return op(self.expression, *other, **kwargs)
+
+    def reverse_operate(self, op, other, **kwargs):
+        return op(other, self.expression, **kwargs)

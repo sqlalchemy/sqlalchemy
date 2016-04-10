@@ -540,6 +540,50 @@ for an attribute being replaced.
 
 :ticket:`3630`
 
+.. _change_3653:
+
+Hybrid properties and methods now propagate the docstring
+---------------------------------------------------------
+
+A hybrid method or property will now reflect the ``__doc__`` value
+present in the original docstring::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+        name = Column(String)
+
+        @hybrid_property
+        def some_name(self):
+            """The name field"""
+            return self.name
+
+The above value of ``A.some_name.__doc__`` is now honored::
+
+    >>> A.some_name.__doc__
+    The name field
+
+However, to accomplish this, the mechanics of hybrid properties necessarily
+becomes more complex.  Previously, the class-level accessor for a hybrid
+would be a simple pass-thru, that is, this test would succeed::
+
+    >>> assert A.name is A.some_name
+
+With the change, the expression returned by ``A.some_name`` is wrapped inside
+of its own ``QueryableAttribute`` wrapper::
+
+    >>> A.some_name
+    <sqlalchemy.orm.attributes.hybrid_propertyProxy object at 0x7fde03888230>
+
+A lot of testing went into making sure this wrapper works correctly, including
+for elaborate schemes like that of the
+`Custom Value Object <http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_
+recipe, however we'll be looking to see that no other regressions occur for
+users.
+
+:ticket:`3653`
+
 .. _change_3601:
 
 Session.merge resolves pending conflicts the same as persistent

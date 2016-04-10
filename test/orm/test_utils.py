@@ -159,8 +159,10 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
         self._fixture(Point)
         alias = aliased(Point)
 
-        eq_(str(Point.double_x), "point.x * :x_1")
-        eq_(str(alias.double_x), "point_1.x * :x_1")
+        eq_(str(Point.double_x), "Point.double_x")
+        eq_(str(alias.double_x), "AliasedClass_Point.double_x")
+        eq_(str(Point.double_x.__clause_element__()), "point.x * :x_1")
+        eq_(str(alias.double_x.__clause_element__()), "point_1.x * :x_1")
 
         sess = Session()
 
@@ -183,10 +185,22 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
         self._fixture(Point)
         alias = aliased(Point)
 
-        eq_(str(Point.x_alone), "Point.x")
-        eq_(str(alias.x_alone), "AliasedClass_Point.x")
+        eq_(str(Point.x_alone), "Point.x_alone")
+        eq_(str(alias.x_alone), "AliasedClass_Point.x_alone")
 
-        assert Point.x_alone is Point.x
+        # from __clause_element__() perspective, Point.x_alone
+        # and Point.x return the same thing, so that's good
+        eq_(str(Point.x.__clause_element__()), "point.x")
+        eq_(str(Point.x_alone.__clause_element__()), "point.x")
+
+        # same for the alias
+        eq_(str(alias.x + 1), "point_1.x + :x_1")
+        eq_(str(alias.x_alone + 1), "point_1.x + :x_1")
+
+        is_(
+            Point.x_alone.__clause_element__(),
+            Point.x.__clause_element__()
+        )
 
         eq_(str(alias.x_alone == alias.x), "point_1.x = point_1.x")
 
