@@ -1147,6 +1147,13 @@ class ConstraintReflectionTest(fixtures.TestBase):
             # will contain an "autoindex"
             conn.execute("create table o (foo varchar(20) primary key)")
 
+            conn.execute(
+                "CREATE TABLE cp ("
+                "q INTEGER check (q > 1 AND q < 6),\n"
+                "CONSTRAINT cq CHECK (q == 1 OR (q > 2 AND q < 5))\n"
+                ")"
+            )
+
     @classmethod
     def teardown_class(cls):
         with testing.db.begin() as conn:
@@ -1371,6 +1378,14 @@ class ConstraintReflectionTest(fixtures.TestBase):
         eq_(
             inspector.get_pk_constraint("d"),
             {'constrained_columns': [], 'name': None}
+        )
+
+    def test_check_constraint(self):
+        inspector = Inspector(testing.db)
+        eq_(
+            inspector.get_check_constraints("cp"),
+            [{'sqltext': 'q > 1 AND q < 6', 'name': None},
+             {'sqltext': 'q == 1 OR (q > 2 AND q < 5)', 'name': 'cq'}]
         )
 
 

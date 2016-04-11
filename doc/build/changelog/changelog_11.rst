@@ -30,6 +30,17 @@
         data type.  Pull request courtesy Sheila Allen.
 
     .. change::
+        :tags: feature, sql
+        :pullreq: bitbucket:80
+
+        Implemented reflection of CHECK constraints for SQLite and Postgresql.
+        This is available via the new inspector method
+        :meth:`.Inspector.get_check_constraints` as well as when reflecting
+        :class:`.Table` objects in the form of :class:`.CheckConstraint`
+        objects present in the constraints collection.  Pull request courtesy
+        Alex Grönholm.
+
+    .. change::
         :tags: change, orm
         :tickets: 3394
 

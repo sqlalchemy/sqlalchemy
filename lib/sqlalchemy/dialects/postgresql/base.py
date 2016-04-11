@@ -2497,6 +2497,31 @@ class PGDialect(default.DefaultDialect):
             for name, uc in uniques.items()
         ]
 
+    @reflection.cache
+    def get_check_constraints(
+            self, connection, table_name, schema=None, **kw):
+        table_oid = self.get_table_oid(connection, table_name, schema,
+                                       info_cache=kw.get('info_cache'))
+
+        CHECK_SQL = """
+            SELECT
+                cons.conname as name,
+                cons.consrc as src
+            FROM
+                pg_catalog.pg_constraint cons
+            WHERE
+                cons.conrelid = :table_oid AND
+                cons.contype = 'c'
+        """
+
+        c = connection.execute(sql.text(CHECK_SQL), table_oid=table_oid)
+
+        return [
+            {'name': name,
+             'sqltext': src[1:-1]}
+            for name, src in c.fetchall()
+            ]
+
     def _load_enums(self, connection, schema=None):
         schema = schema or self.default_schema_name
         if not self.supports_native_enum:

@@ -1474,6 +1474,32 @@ class SQLiteDialect(default.DefaultDialect):
         return unique_constraints
 
     @reflection.cache
+    def get_check_constraints(self, connection, table_name,
+                              schema=None, **kw):
+        table_data = self._get_table_sql(
+            connection, table_name, schema=schema, **kw)
+        if not table_data:
+            return []
+
+        CHECK_PATTERN = (
+            '(?:CONSTRAINT (\w+) +)?'
+            'CHECK *\( *(.+) *\),? *'
+        )
+        check_constraints = []
+        # NOTE: we aren't using re.S here because we actually are
+        # taking advantage of each CHECK constraint being all on one
+        # line in the table definition in order to delineate.  This
+        # necessarily makes assumptions as to how the CREATE TABLE
+        # was emitted.
+        for match in re.finditer(CHECK_PATTERN, table_data, re.I):
+            check_constraints.append({
+                'sqltext': match.group(2),
+                'name': match.group(1)
+            })
+
+        return check_constraints
+
+    @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
         pragma_indexes = self._get_table_pragma(
             connection, "index_list", table_name, schema=schema)

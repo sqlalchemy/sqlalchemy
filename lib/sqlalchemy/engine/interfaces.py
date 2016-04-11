@@ -399,6 +399,29 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def get_check_constraints(
+            self, connection, table_name, schema=None, **kw):
+        """Return information about check constraints in `table_name`.
+
+        Given a string `table_name` and an optional string `schema`, return
+        check constraint information as a list of dicts with these keys:
+
+        name
+          the check constraint's name
+
+        sqltext
+          the check constraint's SQL expression
+
+        \**kw
+          other options passed to the dialect's get_check_constraints()
+          method.
+
+        .. versionadded:: 1.1.0
+
+        """
+
+        raise NotImplementedError()
+
     def normalize_name(self, name):
         """convert the given name to lowercase if it is detected as
         case insensitive.

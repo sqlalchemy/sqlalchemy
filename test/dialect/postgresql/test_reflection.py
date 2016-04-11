@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from sqlalchemy.engine import reflection
+from sqlalchemy.sql.schema import CheckConstraint
 from sqlalchemy.testing.assertions import eq_, assert_raises, \
     AssertsExecutionResults
 from sqlalchemy.testing import fixtures
@@ -964,6 +965,29 @@ class ReflectionTest(fixtures.TestBase):
         self.assert_('ix_a' in indexes)
         assert indexes['ix_a'].unique
         self.assert_('ix_a' not in constraints)
+
+    @testing.provide_metadata
+    def test_reflect_check_constraint(self):
+        meta = self.metadata
+
+        cc_table = Table(
+            'pgsql_cc', meta,
+            Column('a', Integer()),
+            CheckConstraint('a > 1 AND a < 5', name='cc1'),
+            CheckConstraint('a = 1 OR (a > 2 AND a < 5)', name='cc2'))
+
+        cc_table.create()
+
+        reflected = Table('pgsql_cc', MetaData(testing.db), autoload=True)
+
+        check_constraints = dict((uc.name, uc.sqltext.text)
+                                 for uc in reflected.constraints
+                                 if isinstance(uc, CheckConstraint))
+
+        eq_(check_constraints, {
+            u'cc1': u'(a > 1) AND (a < 5)',
+            u'cc2': u'(a = 1) OR ((a > 2) AND (a < 5))'
+        })
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):

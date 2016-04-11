@@ -317,6 +317,13 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def check_constraint_reflection(self):
+        return fails_on_everything_except(
+                    "postgresql",
+                    "sqlite"
+                )
+
+    @property
     def temp_table_names(self):
         """target dialect supports listing of temporary table names"""
 

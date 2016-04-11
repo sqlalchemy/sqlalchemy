@@ -506,6 +506,32 @@ class Inspector(object):
         return self.dialect.get_unique_constraints(
             self.bind, table_name, schema, info_cache=self.info_cache, **kw)
 
+    def get_check_constraints(self, table_name, schema=None, **kw):
+        """Return information about check constraints in `table_name`.
+
+        Given a string `table_name` and an optional string `schema`, return
+        check constraint information as a list of dicts with these keys:
+
+        name
+          the check constraint's name
+
+        sqltext
+          the check constraint's SQL expression
+
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
+
+        .. versionadded:: 1.1.0
+
+        """
+
+        return self.dialect.get_check_constraints(
+            self.bind, table_name, schema, info_cache=self.info_cache, **kw)
+
     def reflecttable(self, table, include_columns, exclude_columns=()):
         """Given a Table object, load its internal constructs based on
         introspection.
@@ -583,6 +609,10 @@ class Inspector(object):
             include_columns, exclude_columns, reflection_options)
 
         self._reflect_unique_constraints(
+            table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options)
+
+        self._reflect_check_constraints(
             table_name, schema, table, cols_by_orig_name,
             include_columns, exclude_columns, reflection_options)
 
@@ -788,3 +818,16 @@ class Inspector(object):
                     constrained_cols.append(constrained_col)
             table.append_constraint(
                 sa_schema.UniqueConstraint(*constrained_cols, name=conname))
+
+    def _reflect_check_constraints(
+            self, table_name, schema, table, cols_by_orig_name,
+            include_columns, exclude_columns, reflection_options):
+        try:
+            constraints = self.get_check_constraints(table_name, schema)
+        except NotImplementedError:
+            # optional dialect feature
+            return
+
+        for const_d in constraints:
+            table.append_constraint(
+                sa_schema.CheckConstraint(**const_d))

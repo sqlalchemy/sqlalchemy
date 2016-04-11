@@ -981,6 +981,26 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert set([t2.c.name, t2.c.id]) == set(r2.columns)
         assert set([t2.c.name]) == set(r3.columns)
 
+    @testing.requires.check_constraint_reflection
+    @testing.provide_metadata
+    def test_check_constraint_reflection(self):
+        m1 = self.metadata
+        Table(
+            'x', m1,
+            Column('q', Integer),
+            sa.CheckConstraint('q > 10', name="ck1")
+        )
+        m1.create_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('x', m2, autoload=True)
+
+        ck = [
+            const for const in
+            t2.constraints if isinstance(const, sa.CheckConstraint)][0]
+
+        eq_(ck.sqltext.text, "q > 10")
+        eq_(ck.name, "ck1")
+
     @testing.provide_metadata
     def test_index_reflection_cols_busted(self):
         t = Table('x', self.metadata,
