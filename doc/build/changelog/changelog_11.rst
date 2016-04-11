@@ -22,6 +22,14 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, mssql
+        :pullreq: bitbucket:58
+
+        Adjustments to the mxODBC dialect to make use of the ``BinaryNull``
+        symbol when appropriate in conjunction with the ``VARBINARY``
+        data type.  Pull request courtesy Sheila Allen.
+
+    .. change::
         :tags: change, orm
         :tickets: 3394
 

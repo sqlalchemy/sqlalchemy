@@ -48,6 +48,7 @@ from ...connectors.mxodbc import MxODBCConnector
 from .pyodbc import MSExecutionContext_pyodbc, _MSNumeric_pyodbc
 from .base import (MSDialect,
                    MSSQLStrictCompiler,
+                   VARBINARY,
                    _MSDateTime, _MSDate, _MSTime)
 
 
@@ -73,6 +74,30 @@ class _MSTime_mxodbc(_MSTime):
                 return "%s:%s:%s" % (value.hour, value.minute, value.second)
             else:
                 return None
+        return process
+
+
+class _VARBINARY_mxodbc(VARBINARY):
+
+    """
+    mxODBC Support for VARBINARY column types.
+
+    This handles the special case for null VARBINARY values,
+    which maps None values to the mx.ODBC.Manager.BinaryNull symbol.
+    """
+
+    def bind_processor(self, dialect):
+        if dialect.dbapi is None:
+            return None
+
+        DBAPIBinary = dialect.dbapi.Binary
+
+        def process(value):
+            if value is not None:
+                return DBAPIBinary(value)
+            else:
+                # should pull from mx.ODBC.Manager.BinaryNull
+                return dialect.dbapi.BinaryNull
         return process
 
 
@@ -103,6 +128,8 @@ class MSDialect_mxodbc(MxODBCConnector, MSDialect):
         sqltypes.DateTime: _MSDateTime,
         sqltypes.Date: _MSDate_mxodbc,
         sqltypes.Time: _MSTime_mxodbc,
+        VARBINARY: _VARBINARY_mxodbc,
+        sqltypes.LargeBinary: _VARBINARY_mxodbc,
     }
 
     def __init__(self, description_encoding=None, **params):
