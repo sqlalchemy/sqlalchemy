@@ -1061,6 +1061,68 @@ within flush occurs in this case.
 
 :ticket:`3472`
 
+.. _change_3496:
+
+post_update integrates with ORM versioning
+------------------------------------------
+
+The post_update feature, documented at :ref:`post_update`, involves that an
+UPDATE statement is emitted in response to changes to a particular
+relationship-bound foreign key, in addition to the INSERT/UPDATE/DELETE that
+would normally be emitted for the target row.  This UPDATE statement
+now participates in the versioning feature, documented at
+:ref:`mapper_version_counter`.
+
+Given a mapping::
+
+    class Node(Base):
+        __tablename__ = 'node'
+        id = Column(Integer, primary_key=True)
+        version_id = Column(Integer, default=0)
+        parent_id = Column(ForeignKey('node.id'))
+        favorite_node_id = Column(ForeignKey('node.id'))
+
+        nodes = relationship("Node", primaryjoin=remote(parent_id) == id)
+        favorite_node = relationship(
+            "Node", primaryjoin=favorite_node_id == remote(id),
+            post_update=True
+        )
+
+        __mapper_args__ = {
+            'version_id_col': version_id
+        }
+
+An UPDATE of a node that associates another node as "favorite" will
+now increment the version counter as well as match the current version::
+
+    node = Node()
+    session.add(node)
+    session.commit()  # node is now version #1
+
+    node = session.query(Node).get(node.id)
+    node.favorite_node = Node()
+    session.commit()  # node is now version #2
+
+Note that this means an object that receives an UPDATE in response to
+other attributes changing, and a second UPDATE due to a post_update
+relationship change, will now receive
+**two version counter updates for one flush**.   However, if the object
+is subject to an INSERT within the current flush, the version counter
+**will not** be incremented an additional time, unless a server-side
+versioning scheme is in place.
+
+The reason post_update emits an UPDATE even for an UPDATE is now discussed at
+:ref:`faq_post_update_update`.
+
+.. seealso::
+
+    :ref:`post_update`
+
+    :ref:`faq_post_update_update`
+
+
+:ticket:`3496`
+
 Key Behavioral Changes - Core
 =============================
 
