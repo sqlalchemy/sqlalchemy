@@ -545,6 +545,13 @@ class DefaultRequirements(SuiteRequirements):
                     'sybase', 'sqlite')
 
     @property
+    def array_type(self):
+        return only_on([
+            lambda config: against(config, "postgresql") and
+            not against(config, "+pg8000") and not against(config, "+zxjdbc")
+        ])
+
+    @property
     def json_type(self):
         return only_on([
             lambda config: against(config, "mysql >= 5.7") and

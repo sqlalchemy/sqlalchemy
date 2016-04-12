@@ -38,7 +38,8 @@ of Python objects, proceed first to the tutorial.
   :doc:`Association Proxy <orm/extensions/associationproxy>` |
   :doc:`Hybrid Attributes <orm/extensions/hybrid>` |
   :doc:`Automap <orm/extensions/automap>` |
-  :doc:`Mutable Scalars <orm/extensions/mutable>`
+  :doc:`Mutable Scalars <orm/extensions/mutable>` |
+  :doc:`Indexable <orm/extensions/indexable>`
 
 * **ORM Usage:**
   :doc:`Session Usage and Guidelines <orm/session>` |

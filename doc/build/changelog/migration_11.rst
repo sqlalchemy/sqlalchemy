@@ -258,6 +258,40 @@ relationship attribute to an object, which is handled distinctly::
 
 :ticket:`3321`
 
+.. _feature_indexable:
+
+New Indexable ORM extension
+---------------------------
+
+The :ref:`indexable_toplevel` extension is an extension to the hybrid
+attribute feature which allows the construction of attributes which
+refer to specific elements of an "indexable" data type, such as an array
+or JSON field::
+
+    class Person(Base):
+        __tablename__ = 'person'
+
+        id = Column(Integer, primary_key=True)
+        data = Column(JSON)
+
+        name = index_property('data', 'name')
+
+Above, the ``name`` attribute will read/write the field ``"name"``
+from the JSON column ``data``, after initializing it to an
+empty dictionary::
+
+    >>> person = Person(name='foobar')
+    >>> person.name
+    foobar
+
+The extension also triggers a change event when the attribute is modified,
+so that there's no need to use :class:`~.mutable.MutableDict` in order
+to track this change.
+
+.. seealso::
+
+    :ref:`indexable_toplevel`
+
 .. _change_3250:
 
 New options allowing explicit persistence of NULL over a default

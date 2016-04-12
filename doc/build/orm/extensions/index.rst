@@ -23,5 +23,6 @@ behavior.   In particular the "Horizontal Sharding", "Hybrid Attributes", and
     orderinglist
     horizontal_shard
     hybrid
+    indexable
     instrumentation
 

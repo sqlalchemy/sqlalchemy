@@ -22,6 +22,18 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm, ext
+
+        A new ORM extension :ref:`indexable_toplevel` is added, which allows
+        construction of Python attributes which refer to specific elements
+        of "indexed" structures such as arrays and JSON fields.  Pull request
+        courtesy Jeong YunWon.
+
+        .. seealso::
+
+            :ref:`feature_indexable`
+
+    .. change::
         :tags: bug, sql
         :tickets: 3724
 

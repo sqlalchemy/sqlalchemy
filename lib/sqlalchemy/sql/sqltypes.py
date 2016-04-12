@@ -1809,6 +1809,10 @@ class JSON(Indexable, TypeEngine):
     comparator_factory = Comparator
 
     @property
+    def python_type(self):
+        return dict
+
+    @property
     def should_evaluate_none(self):
         return not self.none_as_null
 
