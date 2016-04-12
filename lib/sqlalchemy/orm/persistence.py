@@ -601,7 +601,7 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
                     params[col.key] = value
                     hasdata = True
         if hasdata:
-            yield params, connection
+            yield state, state_dict, mapper, connection, params
 
 
 def _collect_delete_commands(base_mapper, uowtransaction, table,
@@ -887,14 +887,21 @@ def _emit_post_update_statements(base_mapper, uowtransaction,
     # to support executemany().
     for key, grouper in groupby(
         update, lambda rec: (
-            rec[1],  # connection
-            set(rec[0])  # parameter keys
+            rec[3],  # connection
+            set(rec[4]),  # parameter keys
         )
     ):
+        grouper = list(grouper)
         connection = key[0]
-        multiparams = [params for params, conn in grouper]
-        cached_connections[connection].\
+        multiparams = [
+            params for state, state_dict, mapper_rec, conn, params in grouper]
+        c = cached_connections[connection].\
             execute(statement, multiparams)
+
+        for state, state_dict, mapper_rec, connection, params in grouper:
+            _postfetch_post_update(
+                mapper, uowtransaction, state, state_dict,
+                c, c.context.compiled_parameters[0])
 
 
 def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
@@ -1036,6 +1043,33 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
             if state_dict[mapper._version_id_prop.key] is None:
                 raise orm_exc.FlushError(
                     "Instance does not contain a non-NULL version value")
+
+
+def _postfetch_post_update(mapper, uowtransaction,
+                           state, dict_, result, params):
+    prefetch_cols = result.context.compiled.prefetch
+    postfetch_cols = result.context.compiled.postfetch
+
+    refresh_flush = bool(mapper.class_manager.dispatch.refresh_flush)
+    if refresh_flush:
+        load_evt_attrs = []
+
+    for c in prefetch_cols:
+        if c.key in params and c in mapper._columntoproperty:
+            dict_[mapper._columntoproperty[c].key] = params[c.key]
+            if refresh_flush:
+                load_evt_attrs.append(mapper._columntoproperty[c].key)
+
+    if refresh_flush and load_evt_attrs:
+        mapper.class_manager.dispatch.refresh_flush(
+            state, uowtransaction, load_evt_attrs)
+
+    if postfetch_cols:
+        state._expire_attributes(state.dict,
+                                 [mapper._columntoproperty[c].key
+                                  for c in postfetch_cols if c in
+                                  mapper._columntoproperty]
+                                 )
 
 
 def _postfetch(mapper, uowtransaction, table,
