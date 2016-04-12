@@ -3,7 +3,7 @@ from ..orm._fixtures import FixtureTest
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import relationship, interfaces, configure_mappers
 from sqlalchemy.ext.automap import generate_relationship
-from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import Mock, patch
 from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
@@ -70,6 +70,41 @@ class AutomapTest(fixtures.MappedTest):
         n2 = Node()
         n1.nodes_collection.append(n2)
         assert n2.nodes is n1
+
+    def test_prepare_accepts_optional_schema_arg(self):
+        """
+        The underlying reflect call accepts an optional schema argument.
+        This is for determining which database schema to load.
+        This test verifies that prepare can accept an optiona schema argument
+        and pass it to reflect.
+        """
+        Base = automap_base(metadata=self.metadata)
+        engine_mock = Mock()
+        with patch.object(Base.metadata, "reflect") as reflect_mock:
+            Base.prepare(engine_mock, reflect=True, schema="some_schema")
+            reflect_mock.assert_called_once_with(
+                engine_mock,
+                schema="some_schema",
+                extend_existing=True,
+                autoload_replace=False,
+            )
+
+    def test_prepare_defaults_to_no_schema(self):
+        """
+        The underlying reflect call accepts an optional schema argument.
+        This is for determining which database schema to load.
+        This test verifies that prepare passes a default None if no schema is provided.
+        """
+        Base = automap_base(metadata=self.metadata)
+        engine_mock = Mock()
+        with patch.object(Base.metadata, "reflect") as reflect_mock:
+            Base.prepare(engine_mock, reflect=True)
+            reflect_mock.assert_called_once_with(
+                engine_mock,
+                schema=None,
+                extend_existing=True,
+                autoload_replace=False,
+            )
 
     def test_naming_schemes(self):
         Base = automap_base(metadata=self.metadata)

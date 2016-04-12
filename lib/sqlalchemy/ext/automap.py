@@ -695,6 +695,7 @@ class AutomapBase(object):
             cls,
             engine=None,
             reflect=False,
+            schema=None,
             classname_for_table=classname_for_table,
             collection_class=list,
             name_for_scalar_relationship=name_for_scalar_relationship,
@@ -735,10 +736,19 @@ class AutomapBase(object):
          when a new :func:`.relationship` object is created that represents a
          collection.  Defaults to ``list``.
 
+        :param schema: When present in conjunction with the
+         :paramref:`.AutomapBase.prepare.reflect` flag, is passed to
+         :meth:`.MetaData.reflect` to indicate the primary schema where tables
+         should be reflected from.  When omitted, the default schema in use
+         by the database connection is used.
+
+         .. versionadded:: 1.1
+
         """
         if reflect:
             cls.metadata.reflect(
                 engine,
+                schema=schema,
                 extend_existing=True,
                 autoload_replace=False
             )
