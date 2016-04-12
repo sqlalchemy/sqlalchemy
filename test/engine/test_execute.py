@@ -177,8 +177,8 @@ class ExecuteTest(fixtures.TestBase):
         lambda: testing.against('mysql+mysqldb'), 'db-api flaky')
     @testing.fails_on_everything_except(
         'postgresql+psycopg2', 'postgresql+psycopg2cffi',
-        'postgresql+pypostgresql', 'mysql+mysqlconnector',
-        'mysql+pymysql', 'mysql+cymysql')
+        'postgresql+pypostgresql', 'postgresql+pygresql',
+        'mysql+mysqlconnector', 'mysql+pymysql', 'mysql+cymysql')
     def test_raw_python(self):
         def go(conn):
             conn.execute(

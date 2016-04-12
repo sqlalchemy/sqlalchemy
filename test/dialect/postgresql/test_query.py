@@ -761,6 +761,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.fails_on('postgresql+psycopg2', 'uses pyformat')
     @testing.fails_on('postgresql+pypostgresql', 'uses pyformat')
+    @testing.fails_on('postgresql+pygresql', 'uses pyformat')
     @testing.fails_on('postgresql+zxjdbc', 'uses qmark')
     @testing.fails_on('postgresql+psycopg2cffi', 'uses pyformat')
     def test_expression_positional(self):

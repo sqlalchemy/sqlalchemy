@@ -1935,6 +1935,15 @@ emits::
 
 :ticket:`2729`
 
+Support for PyGreSQL
+--------------------
+
+The `PyGreSQL <https://pypi.python.org/pypi/PyGreSQL>`_ DBAPI is now supported.
+
+.. seealso::
+
+    :ref:`dialect-postgresql-pygresql`
+
 The "postgres" module is removed
 ---------------------------------
 

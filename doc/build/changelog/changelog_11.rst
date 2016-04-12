@@ -22,6 +22,12 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, postgresql
+
+        Added a new dialect for the PyGreSQL Postgresql dialect.  Thanks
+        to Christoph Zwerschke and Kaolin Imago Fire for their efforts.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3488
 

@@ -544,11 +544,11 @@ class NumericInterpretationTest(fixtures.TestBase):
     __backend__ = True
 
     def test_numeric_codes(self):
-        from sqlalchemy.dialects.postgresql import psycopg2cffi, pg8000, \
-            psycopg2, base
+        from sqlalchemy.dialects.postgresql import pg8000, pygresql, \
+            psycopg2, psycopg2cffi, base
 
-        dialects = (pg8000.dialect(), psycopg2.dialect(),
-                    psycopg2cffi.dialect())
+        dialects = (pg8000.dialect(), pygresql.dialect(),
+                psycopg2.dialect(), psycopg2cffi.dialect())
         for dialect in dialects:
             typ = Numeric().dialect_impl(dialect)
             for code in base._INT_TYPES + base._FLOAT_TYPES + \
@@ -2757,7 +2757,10 @@ class JSONRoundTripTest(fixtures.TablesTest):
         result = engine.execute(
             select([data_table.c.data['k1'].astext])
         ).first()
-        assert isinstance(result[0], util.text_type)
+        if engine.dialect.returns_unicode_strings:
+            assert isinstance(result[0], util.text_type)
+        else:
+            assert isinstance(result[0], util.string_types)
 
     def test_query_returned_as_int(self):
         engine = testing.db
