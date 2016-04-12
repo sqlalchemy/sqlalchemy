@@ -354,6 +354,33 @@ class NoLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
+@properties.RelationshipProperty.strategy_for(lazy="raise")
+class RaiseLoader(NoLoader):
+    """Provide loading behavior for a :class:`.RelationshipProperty`
+    with "lazy='raise'".
+
+    """
+
+    __slots__ = ()
+
+    def create_row_processor(
+            self, context, path, loadopt, mapper,
+            result, adapter, populators):
+
+        def invoke_raise_load(state, passive):
+            raise sa_exc.InvalidRequestError(
+                "'%s' is not available due to lazy='raise'" % self
+            )
+
+        set_lazy_callable = InstanceState._instance_level_callable_processor(
+            mapper.class_manager,
+            invoke_raise_load,
+            self.key
+        )
+        populators["new"].append((self.key, set_lazy_callable))
+
+
+@log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy=True)
 @properties.RelationshipProperty.strategy_for(lazy="select")
 class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):

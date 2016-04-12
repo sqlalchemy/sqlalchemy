@@ -242,6 +242,7 @@ subqueryload = strategy_options.subqueryload._unbound_fn
 subqueryload_all = strategy_options.subqueryload_all._unbound_all_fn
 immediateload = strategy_options.immediateload._unbound_fn
 noload = strategy_options.noload._unbound_fn
+raiseload = strategy_options.raiseload._unbound_fn
 defaultload = strategy_options.defaultload._unbound_fn
 
 from .strategy_options import Load
