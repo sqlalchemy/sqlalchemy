@@ -2274,6 +2274,14 @@ both within the method :meth:`.Inspector.get_check_constraints` as well
 as within :class:`.Table` reflection within the :attr:`.Table.constraints`
 collection.
 
+ON DELETE and ON UPDATE foreign key phrases now reflect
+-------------------------------------------------------
+
+The :class:`.Inspector` will now include ON DELETE and ON UPDATE
+phrases from foreign key constraints on the SQLite dialect, and the
+:class:`.ForeignKeyConstraint` object as reflected as part of a
+:class:`.Table` will also indicate these phrases.
+
 Dialect Improvements and Changes - SQL Server
 =============================================
 

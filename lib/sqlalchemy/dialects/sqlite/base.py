@@ -1374,14 +1374,17 @@ class SQLiteDialect(default.DefaultDialect):
             FK_PATTERN = (
                 '(?:CONSTRAINT (\w+) +)?'
                 'FOREIGN KEY *\( *(.+?) *\) +'
-                'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\((.+?)\)'
+                'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\((.+?)\) *'
+                '((?:ON (?:DELETE|UPDATE) '
+                '(?:SET NULL|SET DEFAULT|CASCADE|RESTRICT|NO ACTION) *)*)'
             )
 
             for match in re.finditer(FK_PATTERN, table_data, re.I):
                 (
                     constraint_name, constrained_columns,
                     referred_quoted_name, referred_name,
-                    referred_columns) = match.group(1, 2, 3, 4, 5)
+                    referred_columns, onupdatedelete) = \
+                    match.group(1, 2, 3, 4, 5, 6)
                 constrained_columns = list(
                     self._find_cols_in_sig(constrained_columns))
                 if not referred_columns:
@@ -1390,14 +1393,20 @@ class SQLiteDialect(default.DefaultDialect):
                     referred_columns = list(
                         self._find_cols_in_sig(referred_columns))
                 referred_name = referred_quoted_name or referred_name
+                options = {}
+                for token in re.split(r" *ON *", onupdatedelete):
+                    if token.startswith("DELETE"):
+                        options['ondelete'] = token[6:].strip()
+                    elif token.startswith("UPDATE"):
+                        options["onupdate"] = token[6:].strip()
                 yield (
                     constraint_name, constrained_columns,
-                    referred_name, referred_columns)
+                    referred_name, referred_columns, options)
         fkeys = []
 
         for (
             constraint_name, constrained_columns,
-                referred_name, referred_columns) in parse_fks():
+                referred_name, referred_columns, options) in parse_fks():
             sig = fk_sig(
                 constrained_columns, referred_name, referred_columns)
             if sig not in keys_by_signature:
@@ -1411,6 +1420,8 @@ class SQLiteDialect(default.DefaultDialect):
                 continue
             key = keys_by_signature.pop(sig)
             key['name'] = constraint_name
+            if options:
+                key['options'] = options
             fkeys.append(key)
         # assume the remainders are the unnamed, inline constraints, just
         # use them as is as it's extremely difficult to parse inline

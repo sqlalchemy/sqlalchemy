@@ -53,6 +53,14 @@
         Pull request courtesy Josh Marlow.
 
     .. change::
+        :tags: feature, sqlite
+        :pullreq: github:244
+
+        The SQLite dialect now reflects ON UPDATE and ON DELETE phrases
+        within foreign key constraints.  Pull request courtesy
+        Michal Petrucha.
+
+    .. change::
         :tags: bug, mssql
         :pullreq: bitbucket:58
 
