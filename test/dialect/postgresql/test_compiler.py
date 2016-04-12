@@ -412,6 +412,49 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'USING gist (data) '
                             'WITH (buffering = off)')
 
+    def test_create_index_with_tablespace(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String))
+
+        idx1 = Index('test_idx1', tbl.c.data)
+        idx2 = Index('test_idx2', tbl.c.data, postgresql_tablespace='sometablespace')
+        idx3 = Index('test_idx3', tbl.c.data, postgresql_tablespace='another table space')
+
+        self.assert_compile(schema.CreateIndex(idx1),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(data)',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+                            'CREATE INDEX test_idx2 ON testtbl '
+                            '(data) '
+                            'TABLESPACE sometablespace',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx3),
+                            'CREATE INDEX test_idx3 ON testtbl '
+                            '(data) '
+                            'TABLESPACE "another table space"',
+                            dialect=postgresql.dialect())
+
+    def test_create_index_with_multiple_options(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String))
+
+        idx1 = Index(
+                'test_idx1',
+                tbl.c.data,
+                postgresql_using='btree',
+                postgresql_tablespace='atablespace',
+                postgresql_with={"fillfactor": 60},
+                postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+
+        self.assert_compile(schema.CreateIndex(idx1),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            'USING btree (data) '
+                            'WITH (fillfactor = 60) '
+                            'TABLESPACE atablespace '
+                            'WHERE data > 5 AND data < 10',
+                            dialect=postgresql.dialect())
+
     def test_create_index_expr_gets_parens(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('x', Integer), Column('y', Integer))
