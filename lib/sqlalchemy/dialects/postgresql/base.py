@@ -1552,6 +1552,24 @@ class PGInspector(reflection.Inspector):
         schema = schema or self.default_schema_name
         return self.dialect._get_foreign_table_names(self.bind, schema)
 
+    def get_view_names(self, schema=None, include=('plain', 'materialized')):
+        """Return all view names in `schema`.
+
+        :param schema: Optional, retrieve names from a non-default schema.
+         For special quoting, use :class:`.quoted_name`.
+
+        :param include: specify which types of views to return.  Passed
+         as a string value (for a single type) or a tuple (for any number
+         of types).  Defaults to ``('plain', 'materialized')``.
+
+         .. versionadded:: 1.1
+
+        """
+
+        return self.dialect.get_view_names(self.bind, schema,
+                                           info_cache=self.info_cache,
+                                           include=include)
+
 
 class CreateEnumType(schema._CreateDropBase):
     __visit_name__ = "create_enum_type"
@@ -1953,11 +1971,27 @@ class PGDialect(default.DefaultDialect):
         return [name for name, in result]
 
     @reflection.cache
-    def get_view_names(self, connection, schema=None, **kw):
+    def get_view_names(
+            self, connection, schema=None,
+            include=('plain', 'materialized'), **kw):
+
+        include_kind = {'plain': 'v', 'materialized': 'm'}
+        try:
+            kinds = [include_kind[i] for i in util.to_list(include)]
+        except KeyError:
+            raise ValueError(
+                "include %r unknown, needs to be a sequence containing "
+                "one or both of 'plain' and 'materialized'" % (include,))
+        if not kinds:
+            raise ValueError(
+                "empty include, needs to be a sequence containing "
+                "one or both of 'plain' and 'materialized'")
+
         result = connection.execute(
             sql.text("SELECT c.relname FROM pg_class c "
                      "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                     "WHERE n.nspname = :schema AND c.relkind IN ('v', 'm')"
+                     "WHERE n.nspname = :schema AND c.relkind IN (%s)" %
+                     (", ".join("'%s'" % elem for elem in kinds))
                      ).columns(relname=sqltypes.Unicode),
             schema=schema if schema is not None else self.default_schema_name)
         return [name for name, in result]

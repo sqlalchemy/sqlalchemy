@@ -2090,6 +2090,21 @@ both within the method :meth:`.Inspector.get_check_constraints` as well
 as within :class:`.Table` reflection within the :attr:`.Table.constraints`
 collection.
 
+"Plain" and "Materialized" views can be inspected separately
+------------------------------------------------------------
+
+The new argument :paramref:`.PGInspector.get_view_names.include`
+allows specification of which sub-types of views should be returned::
+
+    from sqlalchemy import inspect
+    insp = inspect(engine)
+
+    plain_views = insp.get_view_names(include='plain')
+    all_views = insp.get_view_names(include=('plain', 'materialized'))
+
+:ticket:`3588`
+
+
 Added tablespace option to Index
 --------------------------------
 
