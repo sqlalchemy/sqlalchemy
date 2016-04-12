@@ -2351,6 +2351,18 @@ the same thing.
 
 :ticket:`3504`
 
+Support for "non clustered" on primary key to allow clustered elsewhere
+-----------------------------------------------------------------------
+
+The ``mssql_clustered`` flag available on :class:`.UniqueConstraint`,
+:class:`.PrimaryKeyConstraint`, :class:`.Index` now defaults to ``None``, and
+can be set to False which will render the NONCLUSTERED keyword in particular
+for a primary key, allowing a different index to be used as "clustered".
+
+.. seealso::
+
+    :ref:`mssql_indexes`
+
 .. _change_3434:
 
 The legacy_schema_aliasing flag is now set to False

@@ -363,8 +363,6 @@ To generate a clustered index::
 
 which renders the index as ``CREATE CLUSTERED INDEX my_index ON table (x)``.
 
-.. versionadded:: 0.8
-
 To generate a clustered primary key use::
 
     Table('my_table', metadata,
@@ -386,7 +384,24 @@ Similarly, we can generate a clustered unique constraint using::
           UniqueConstraint("y", mssql_clustered=True),
           )
 
-  .. versionadded:: 0.9.2
+To explicitly request a non-clustered primary key (for example, when
+a separate clustered index is desired), use::
+
+    Table('my_table', metadata,
+          Column('x', ...),
+          Column('y', ...),
+          PrimaryKeyConstraint("x", "y", mssql_clustered=False))
+
+which will render the table, for example, as::
+
+  CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL,
+                         PRIMARY KEY NONCLUSTERED (x, y))
+
+.. versionchanged:: 1.1 the ``mssql_clustered`` option now defaults
+   to None, rather than False.  ``mssql_clustered=False`` now explicitly
+   renders the NONCLUSTERED clause, whereas None omits the CLUSTERED
+   clause entirely, allowing SQL Server defaults to take effect.
+
 
 MSSQL-Specific Index Options
 -----------------------------
@@ -1420,8 +1435,12 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
 
         # handle clustering option
-        if index.dialect_options['mssql']['clustered']:
-            text += "CLUSTERED "
+        clustered = index.dialect_options['mssql']['clustered']
+        if clustered is not None:
+            if clustered:
+                text += "CLUSTERED "
+            else:
+                text += "NONCLUSTERED "
 
         text += "INDEX %s ON %s (%s)" \
             % (
@@ -1464,8 +1483,12 @@ class MSDDLCompiler(compiler.DDLCompiler):
                     self.preparer.format_constraint(constraint)
         text += "PRIMARY KEY "
 
-        if constraint.dialect_options['mssql']['clustered']:
-            text += "CLUSTERED "
+        clustered = constraint.dialect_options['mssql']['clustered']
+        if clustered is not None:
+            if clustered:
+                text += "CLUSTERED "
+            else:
+                text += "NONCLUSTERED "
 
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)
                                    for c in constraint)
@@ -1481,8 +1504,12 @@ class MSDDLCompiler(compiler.DDLCompiler):
                     self.preparer.format_constraint(constraint)
         text += "UNIQUE "
 
-        if constraint.dialect_options['mssql']['clustered']:
-            text += "CLUSTERED "
+        clustered = constraint.dialect_options['mssql']['clustered']
+        if clustered is not None:
+            if clustered:
+                text += "CLUSTERED "
+            else:
+                text += "NONCLUSTERED "
 
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)
                                    for c in constraint)
@@ -1576,13 +1603,13 @@ class MSDialect(default.DefaultDialect):
 
     construct_arguments = [
         (sa_schema.PrimaryKeyConstraint, {
-            "clustered": False
+            "clustered": None
         }),
         (sa_schema.UniqueConstraint, {
-            "clustered": False
+            "clustered": None
         }),
         (sa_schema.Index, {
-            "clustered": False,
+            "clustered": None,
             "include": None
         })
     ]

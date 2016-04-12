@@ -22,6 +22,15 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, mssql
+
+        The ``mssql_clustered`` flag available on :class:`.UniqueConstraint`,
+        :class:`.PrimaryKeyConstraint`, :class:`.Index` now defaults to
+        ``None``, and can be set to False which will render the NONCLUSTERED
+        keyword in particular for a primary key, allowing a different index to
+        be used as "clustered". Pull request courtesy Saulius Žemaitaitis.
+
+    .. change::
         :tags: feature, orm
         :tickets: 1311
 
