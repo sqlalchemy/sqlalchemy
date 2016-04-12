@@ -670,6 +670,17 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "1"
         )
 
+    def test_is_distinct_from(self):
+        self.assert_compile(
+            sql.column('x').is_distinct_from(None),
+            "x IS NOT NULL"
+        )
+
+        self.assert_compile(
+            sql.column('x').isnot_distinct_from(False),
+            "x IS 0"
+        )
+
     def test_localtime(self):
         self.assert_compile(
             func.localtimestamp(),

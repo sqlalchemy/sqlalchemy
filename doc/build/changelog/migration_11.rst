@@ -1137,6 +1137,30 @@ will not have much impact on the behavior of the column during an INSERT.
 
 :ticket:`3216`
 
+.. _change_is_distinct_from:
+
+Support for IS DISTINCT FROM and IS NOT DISTINCT FROM
+------------------------------------------------------
+
+New operators :meth:`.ColumnOperators.is_distinct_from` and
+:meth:`.ColumnOperators.isnot_distinct_from` allow the IS DISTINCT
+FROM and IS NOT DISTINCT FROM sql operation::
+
+    >>> print column('x').is_distinct_from(None)
+    x IS DISTINCT FROM NULL
+
+Handling is provided for NULL, True and False::
+
+    >>> print column('x').isnot_distinct_from(False)
+    x IS NOT DISTINCT FROM false
+
+For SQLite, which doesn't have this operator, "IS" / "IS NOT" is rendered,
+which on SQLite works for NULL unlike other backends::
+
+    >>> from sqlalchemy.dialects import sqlite
+    >>> print column('x').is_distinct_from(None).compile(dialect=sqlite.dialect())
+    x IS NOT NULL
+
 .. _change_1957:
 
 Core and ORM support for FULL OUTER JOIN

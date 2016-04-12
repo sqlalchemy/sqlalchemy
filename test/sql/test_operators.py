@@ -99,6 +99,18 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def test_notequals_true(self):
         self._do_operate_test(operators.ne, True)
 
+    def test_is_distinct_from_true(self):
+        self._do_operate_test(operators.is_distinct_from, True)
+
+    def test_is_distinct_from_false(self):
+        self._do_operate_test(operators.is_distinct_from, False)
+
+    def test_is_distinct_from_null(self):
+        self._do_operate_test(operators.is_distinct_from, None)
+
+    def test_isnot_distinct_from_true(self):
+        self._do_operate_test(operators.isnot_distinct_from, True)
+
     def test_is_true(self):
         self._do_operate_test(operators.is_, True)
 
@@ -1525,6 +1537,60 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_associativity_21(self):
         f = column('f')
         self.assert_compile(f / (f / (f - f)), "f / (f / (f - f))")
+
+
+class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    table1 = table('mytable',
+                   column('myid', Integer),
+                   )
+
+    def test_is_distinct_from(self):
+        self.assert_compile(self.table1.c.myid.is_distinct_from(1),
+                            "mytable.myid IS DISTINCT FROM :myid_1")
+
+    def test_is_distinct_from_sqlite(self):
+        self.assert_compile(self.table1.c.myid.is_distinct_from(1),
+                            "mytable.myid IS NOT ?",
+                            dialect=sqlite.dialect())
+
+    def test_is_distinct_from_postgresql(self):
+        self.assert_compile(self.table1.c.myid.is_distinct_from(1),
+                            "mytable.myid IS DISTINCT FROM %(myid_1)s",
+                            dialect=postgresql.dialect())
+
+    def test_not_is_distinct_from(self):
+        self.assert_compile(~self.table1.c.myid.is_distinct_from(1),
+                            "mytable.myid IS NOT DISTINCT FROM :myid_1")
+
+    def test_not_is_distinct_from_postgresql(self):
+        self.assert_compile(~self.table1.c.myid.is_distinct_from(1),
+                            "mytable.myid IS NOT DISTINCT FROM %(myid_1)s",
+                            dialect=postgresql.dialect())
+
+    def test_isnot_distinct_from(self):
+        self.assert_compile(self.table1.c.myid.isnot_distinct_from(1),
+                            "mytable.myid IS NOT DISTINCT FROM :myid_1")
+
+    def test_isnot_distinct_from_sqlite(self):
+        self.assert_compile(self.table1.c.myid.isnot_distinct_from(1),
+                            "mytable.myid IS ?",
+                            dialect=sqlite.dialect())
+
+    def test_isnot_distinct_from_postgresql(self):
+        self.assert_compile(self.table1.c.myid.isnot_distinct_from(1),
+                            "mytable.myid IS NOT DISTINCT FROM %(myid_1)s",
+                            dialect=postgresql.dialect())
+
+    def test_not_isnot_distinct_from(self):
+        self.assert_compile(~self.table1.c.myid.isnot_distinct_from(1),
+                            "mytable.myid IS DISTINCT FROM :myid_1")
+
+    def test_not_isnot_distinct_from_postgresql(self):
+        self.assert_compile(~self.table1.c.myid.isnot_distinct_from(1),
+                            "mytable.myid IS DISTINCT FROM %(myid_1)s",
+                            dialect=postgresql.dialect())
 
 
 class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):

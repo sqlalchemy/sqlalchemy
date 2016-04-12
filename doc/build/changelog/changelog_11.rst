@@ -134,6 +134,17 @@
             :ref:`change_3653`
 
     .. change::
+        :tags: feature, sql
+
+        New :meth:`.ColumnOperators.is_distinct_from` and
+        :meth:`.ColumnOperators.isnot_distinct_from` operators; pull request
+        courtesy Sebastian Bank.
+
+        .. seealso::
+
+            :ref:`change_is_distinct_from`
+
+    .. change::
         :tags: bug, orm
         :tickets: 3488
 
