@@ -2026,6 +2026,42 @@ necessary to worry about the names themselves in the textual SQL.
 Dialect Improvements and Changes - Postgresql
 =============================================
 
+.. _change_3529:
+
+Support for INSERT..ON CONFLICT (DO UPDATE | DO NOTHING)
+--------------------------------------------------------
+
+The ``ON CONFLICT`` clause of ``INSERT`` added to Postgresql as of
+version 9.5 is now supported using a Postgresql-specific version of the
+:class:`.Insert` object, via :func:`sqlalchemy.dialects.postgresql.dml.insert`.
+This :class:`.Insert` subclass adds two new methods :meth:`.Insert.on_conflict_do_update`
+and :meth:`.Insert.on_conflict_do_nothing` which implement the full syntax
+supported by Posgresql 9.5 in this area::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    insert_stmt = insert(my_table). \\
+        values(id='some_id', data='some data to insert')
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=[my_table.c.id],
+        set_=dict(data='some data to update')
+    )
+
+    conn.execute(do_update_stmt)
+
+The above will render::
+
+    INSERT INTO my_table (id, data)
+    VALUES (:id, :data)
+    ON CONFLICT id DO UPDATE SET data=:data_2
+
+.. seealso::
+
+    :ref:`postgresql_insert_on_conflict`
+
+:ticket:`3529`
+
 .. _change_3499_postgresql:
 
 ARRAY and JSON types now correctly specify "unhashable"

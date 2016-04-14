@@ -1984,6 +1984,12 @@ class SQLCompiler(Compiled):
             text += " VALUES (%s)" % \
                 ', '.join([c[1] for c in crud_params])
 
+        if insert_stmt._post_values_clause is not None:
+            post_values_clause = self.process(
+                insert_stmt._post_values_clause, **kw)
+            if post_values_clause:
+                text += " " + post_values_clause
+
         if returning_clause and not self.returning_precedes_values:
             text += " " + returning_clause
 

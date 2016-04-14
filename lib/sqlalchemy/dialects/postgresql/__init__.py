@@ -19,6 +19,7 @@ from .hstore import HSTORE, hstore
 from .json import JSON, JSONB
 from .array import array, ARRAY, Any, All
 from .ext import aggregate_order_by, ExcludeConstraint, array_agg
+from .dml import insert, Insert
 
 from .ranges import INT4RANGE, INT8RANGE, NUMRANGE, DATERANGE, TSRANGE, \
     TSTZRANGE
@@ -31,5 +32,5 @@ __all__ = (
     'hstore', 'INT4RANGE', 'INT8RANGE', 'NUMRANGE', 'DATERANGE',
     'TSRANGE', 'TSTZRANGE', 'json', 'JSON', 'JSONB', 'Any', 'All',
     'DropEnumType', 'CreateEnumType', 'ExcludeConstraint',
-    'aggregate_order_by', 'array_agg'
+    'aggregate_order_by', 'array_agg', 'insert', 'Insert'
 )

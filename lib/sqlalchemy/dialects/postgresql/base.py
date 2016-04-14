@@ -48,14 +48,14 @@ Transaction Isolation Level
 ---------------------------
 
 All Postgresql dialects support setting of transaction isolation level
-both via a dialect-specific parameter :paramref:`.create_engine.isolation_level`
-accepted by :func:`.create_engine`,
-as well as the :paramref:`.Connection.execution_options.isolation_level` argument as passed to
-:meth:`.Connection.execution_options`.  When using a non-psycopg2 dialect,
-this feature works by issuing the command
+both via a dialect-specific parameter
+:paramref:`.create_engine.isolation_level` accepted by :func:`.create_engine`,
+as well as the :paramref:`.Connection.execution_options.isolation_level`
+argument as passed to :meth:`.Connection.execution_options`.
+When using a non-psycopg2 dialect, this feature works by issuing the command
 ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL <level>`` for
-each new connection.  For the special AUTOCOMMIT isolation level, DBAPI-specific
-techniques are used.
+each new connection.  For the special AUTOCOMMIT isolation level,
+DBAPI-specific techniques are used.
 
 To set isolation level using :func:`.create_engine`::
 
@@ -247,6 +247,197 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
         where(table.c.name=='foo')
     print result.fetchall()
 
+.. _postgresql_insert_on_conflict:
+
+INSERT...ON CONFLICT (Upsert)
+------------------------------
+
+Starting with version 9.5, PostgreSQL allows "upserts" (update or insert)
+of rows into a table via the ``ON CONFLICT`` clause of the ``INSERT`` statement.
+A candidate row will only be inserted if that row does not violate
+any unique constraints.  In the case of a unique constraint violation,
+a secondary action can occur which can be either "DO UPDATE", indicating
+that the data in the target row should be updated, or "DO NOTHING",
+which indicates to silently skip this row.
+
+Conflicts are determined using existing unique constraints and indexes.  These
+constraints may be identified either using their name as stated in DDL,
+or they may be *inferred* by stating the columns and conditions that comprise
+the indexes.
+
+SQLAlchemy provides ``ON CONFLICT`` support via the Postgresql-specific
+:func:`.postgresql.dml.insert()` function, which provides
+the generative methods :meth:`~.postgresql.dml.Insert.on_conflict_do_update`
+and :meth:`~.postgresql.dml.Insert.on_conflict_do_nothing`::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    insert_stmt = insert(my_table).values(
+        id='some_existing_id',
+        data='inserted value')
+
+    do_nothing_stmt = insert_stmt.on_conflict_do_nothing(
+        index_elements=['id']
+    )
+
+    conn.execute(do_nothing_stmt)
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        constraint='pk_my_table',
+        set_=dict(data='updated value')
+    )
+
+    conn.execute(do_update_stmt)
+
+Both methods supply the "target" of the conflict using either the
+named constraint or by column inference:
+
+* The :paramref:`.Insert.on_conflict_do_update.index_elements` argument
+  specifies a sequence containing string column names, :class:`.Column` objects,
+  and/or SQL expression elements, which would identify a unique index::
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value')
+    )
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=[my_table.c.id],
+        set_=dict(data='updated value')
+    )
+
+* When using :paramref:`.Insert.on_conflict_do_update.index_elements` to
+  infer an index, a partial index can be inferred by also specifying the
+  use the :paramref:`.Insert.on_conflict_do_update.index_where` parameter::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(my_table).values(user_email='a@b.com', data='inserted data')
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[my_table.c.user_email],
+        index_where=my_table.c.user_email.like('%@gmail.com'),
+        set_=dict(data=stmt.excluded.data)
+        )
+    conn.execute(stmt)
+
+
+* The :paramref:`.Insert.on_conflict_do_update.constraint` argument is
+  used to specify an index directly rather than inferring it.  This can be
+  the name of a UNIQUE constraint, a PRIMARY KEY constraint, or an INDEX::
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        constraint='my_table_idx_1',
+        set_=dict(data='updated value')
+    )
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        constraint='my_table_pk',
+        set_=dict(data='updated value')
+    )
+
+* The :paramref:`.Insert.on_conflict_do_update.constraint` argument may
+  also refer to a SQLAlchemy construct representing a constraint,
+  e.g. :class:`.UniqueConstraint`, :class:`.PrimaryKeyConstraint`,
+  :class:`.Index`, or :class:`.ExcludeConstraint`.   In this use,
+  if the constraint has a name, it is used directly.  Otherwise, if the
+  constraint is unnamed, then inference will be used, where the expressions
+  and optional WHERE clause of the constraint will be spelled out in the
+  construct.  This use is especially convenient
+  to refer to the named or unnamed primary key of a :class:`.Table` using the
+  :attr:`.Table.primary_key` attribute::
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        constraint=my_table.primary_key,
+        set_=dict(data='updated value')
+    )
+
+``ON CONFLICT...DO UPDATE`` is used to perform an update of the already
+existing row, using any combination of new values as well as values
+from the proposed insertion.   These values are specified using the
+:paramref:`.Insert.on_conflict_do_update.set_` parameter.  This
+parameter accepts a dictionary which consists of direct values
+for UPDATE::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(my_table).values(id='some_id', data='inserted value')
+    do_update_stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value')
+        )
+    conn.execute(do_update_stmt)
+
+.. warning::
+
+    The :meth:`.Insert.on_conflict_do_update` method does **not** take into
+    account Python-side default UPDATE values or generation functions, e.g.
+    e.g. those specified using :paramref:`.Column.onupdate`.
+    These values will not be exercised for an ON CONFLICT style of UPDATE,
+    unless they are manually specified in the
+    :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
+
+In order to refer to the proposed insertion row, the special alias
+:attr:`~.postgresql.dml.Insert.excluded` is available as an attribute on
+the :class:`.postgresql.dml.Insert` object; this object is a
+:class:`.ColumnCollection` which alias contains all columns of the target
+table::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(my_table).values(
+        id='some_id',
+        data='inserted value',
+        author='jlh')
+    do_update_stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value', author=stmt.excluded.author)
+        )
+    conn.execute(do_update_stmt)
+
+The :meth:`.Insert.on_conflict_do_update` method also accepts
+a WHERE clause using the :paramref:`.Insert.on_conflict_do_update.where`
+parameter, which will limit those rows which receive an UPDATE::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(my_table).values(
+        id='some_id',
+        data='inserted value',
+        author='jlh')
+    on_update_stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value', author=stmt.excluded.author)
+        where=(my_table.c.status == 2)
+        )
+    conn.execute(on_update_stmt)
+
+``ON CONFLICT`` may also be used to skip inserting a row entirely
+if any conflict with a unique or exclusion constraint occurs; below
+this is illustrated using the
+:meth:`~.postgresql.dml.Insert.on_conflict_do_nothing` method::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(my_table).values(id='some_id', data='inserted value')
+    stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+    conn.execute(stmt)
+
+If ``DO NOTHING`` is used without specifying any columns or constraint,
+it has the effect of skipping the INSERT for any unique or exclusion
+constraint violation which occurs::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(my_table).values(id='some_id', data='inserted value')
+    stmt = stmt.on_conflict_do_nothing()
+    conn.execute(stmt)
+
+.. versionadded:: 1.1 Added support for Postgresql ON CONFLICT clauses
+
+.. seealso::
+
+    `INSERT .. ON CONFLICT <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_ - in the Postgresql documentation.
+
 .. _postgresql_match:
 
 Full Text Search
@@ -353,6 +544,8 @@ Postgresql-Specific Index Options
 
 Several extensions to the :class:`.Index` construct are available, specific
 to the PostgreSQL dialect.
+
+.. _postgresql_partial_indexes:
 
 Partial Indexes
 ^^^^^^^^^^^^^^^^
@@ -662,7 +855,6 @@ RESERVED_WORDS = set(
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
-
 
 class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = 'BYTEA'
@@ -1223,6 +1415,68 @@ class PGCompiler(compiler.SQLCompiler):
         else:
             return "SUBSTRING(%s FROM %s)" % (s, start)
 
+    def _on_conflict_target(self, clause, **kw):
+
+        if clause.constraint_target is not None:
+            target_text = 'ON CONSTRAINT %s' % clause.constraint_target
+        elif clause.inferred_target_elements is not None:
+            target_text = '(%s)' % ', '.join(
+                (self.preparer.quote(c)
+                 if isinstance(c, util.string_types)
+                 else
+                 self.process(c, include_table=False, use_schema=False))
+                for c in clause.inferred_target_elements
+            )
+            if clause.inferred_target_whereclause is not None:
+                target_text += ' WHERE %s' % \
+                    self.process(
+                        clause.inferred_target_whereclause,
+                        include_table=False,
+                        use_schema=False
+                    )
+        else:
+            target_text = ''
+
+        return target_text
+
+    def visit_on_conflict_do_nothing(self, on_conflict, **kw):
+
+        target_text = self._on_conflict_target(on_conflict, **kw)
+
+        if target_text:
+            return "ON CONFLICT %s DO NOTHING" % target_text
+        else:
+            return "ON CONFLICT DO NOTHING"
+
+    def visit_on_conflict_do_update(self, on_conflict, **kw):
+
+        clause = on_conflict
+
+        target_text = self._on_conflict_target(on_conflict, **kw)
+
+        action_set_ops = []
+        for k, v in clause.update_values_to_set:
+            key_text = (
+                self.preparer.quote(k)
+                if isinstance(k, util.string_types)
+                else self.process(k, use_schema=False)
+            )
+            value_text = self.process(
+                v,
+                use_schema=False
+            )
+            action_set_ops.append('%s = %s' % (key_text, value_text))
+        action_text = ', '.join(action_set_ops)
+        if clause.update_whereclause is not None:
+            action_text += ' WHERE %s' % \
+                self.process(
+                    clause.update_whereclause,
+                    include_table=False,
+                    use_schema=False
+                )
+
+        return 'ON CONFLICT %s DO UPDATE SET %s' % (target_text, action_text)
+
 
 class PGDDLCompiler(compiler.DDLCompiler):
 
@@ -1706,7 +1960,7 @@ class PGDialect(default.DefaultDialect):
             "with_oids": None,
             "on_commit": None,
             "inherits": None
-        })
+        }),
     ]
 
     reflection_options = ('postgresql_ignore_search_path', )

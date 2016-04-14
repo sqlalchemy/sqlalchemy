@@ -5,7 +5,7 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL, is_, \
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
-    insert, func, MetaData, Enum, Index, and_, delete, select, cast, text, \
+    func, MetaData, Enum, Index, and_, delete, select, cast, text, \
     Text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
@@ -14,9 +14,8 @@ from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.orm import mapper, aliased, Session
 from sqlalchemy.sql import table, column, operators, literal_column
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.util import u
-from sqlalchemy.dialects.postgresql import aggregate_order_by
-
+from sqlalchemy.util import u, OrderedDict
+from sqlalchemy.dialects.postgresql import aggregate_order_by, insert
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
     __prefer__ = 'postgresql'
@@ -185,7 +184,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TYPE bar.somename AS ENUM ('x', 'y', 'z')",
             schema_translate_map=schema_translate_map
         )
-
 
     def test_create_table_with_tablespace(self):
         m = MetaData()
@@ -1032,6 +1030,254 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt2,
             "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 FROM table1 AS foo"
+        )
+
+
+class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = postgresql.dialect()
+
+    def setup(self):
+        self.table1 = table1 = table(
+            'mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+        md = MetaData()
+        self.table_with_metadata = Table(
+            'mytable', md,
+            Column('myid', Integer, primary_key=True),
+            Column('name', String(128)),
+            Column('description', String(128))
+        )
+        self.unique_constr = schema.UniqueConstraint(
+            table1.c.name, name='uq_name')
+        self.excl_constr = ExcludeConstraint(
+            (table1.c.name, '='),
+            (table1.c.description, '&&'),
+            name='excl_thing'
+        )
+        self.excl_constr_anon = ExcludeConstraint(
+            (self.table_with_metadata.c.name, '='),
+            (self.table_with_metadata.c.description, '&&'),
+            where=self.table_with_metadata.c.description != 'foo'
+        )
+        self.goofy_index = Index(
+            'goofy_index', table1.c.name,
+            postgresql_where=table1.c.name > 'm'
+        )
+
+    def test_do_nothing_no_target(self):
+
+        i = insert(
+            self.table1, values=dict(name='foo'),
+        ).on_conflict_do_nothing()
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            '(%(name)s) ON CONFLICT DO NOTHING')
+
+    def test_do_nothing_index_elements_target(self):
+
+        i = insert(
+            self.table1, values=dict(name='foo'),
+        ).on_conflict_do_nothing(
+            index_elements=['myid'],
+        )
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) VALUES "
+            "(%(name)s) ON CONFLICT (myid) DO NOTHING"
+        )
+
+    def test_do_update_set_clause_literal(self):
+        i = insert(self.table_with_metadata).values(myid=1, name='foo')
+        i = i.on_conflict_do_update(
+            index_elements=['myid'],
+            set_=OrderedDict([
+                ('name', "I'm a name"),
+                ('description', None)])
+        )
+        self.assert_compile(
+            i,
+            'INSERT INTO mytable (myid, name) VALUES '
+            '(%(myid)s, %(name)s) ON CONFLICT (myid) '
+            'DO UPDATE SET name = %(param_1)s, '
+            'description = NULL',
+            {"myid": 1, "name": "foo", "param_1": "I'm a name"}
+
+        )
+
+    def test_do_update_str_index_elements_target_one(self):
+        i = insert(self.table_with_metadata).values(myid=1, name='foo')
+        i = i.on_conflict_do_update(
+            index_elements=['myid'],
+            set_=OrderedDict([
+                ('name', i.excluded.name),
+                ('description', i.excluded.description)])
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (myid, name) VALUES '
+                            '(%(myid)s, %(name)s) ON CONFLICT (myid) '
+                            'DO UPDATE SET name = excluded.name, '
+                            'description = excluded.description')
+
+    def test_do_update_str_index_elements_target_two(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            index_elements=['myid'],
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            '(%(name)s) ON CONFLICT (myid) '
+                            'DO UPDATE SET name = excluded.name')
+
+    def test_do_update_col_index_elements_target(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            index_elements=[self.table1.c.myid],
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            '(%(name)s) ON CONFLICT (myid) '
+                            'DO UPDATE SET name = excluded.name')
+
+    def test_do_update_unnamed_pk_constraint_target(self):
+        i = insert(
+            self.table_with_metadata, values=dict(myid=1, name='foo'))
+        i = i.on_conflict_do_update(
+            constraint=self.table_with_metadata.primary_key,
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (myid, name) VALUES '
+                            '(%(myid)s, %(name)s) ON CONFLICT (myid) '
+                            'DO UPDATE SET name = excluded.name')
+
+    def test_do_update_pk_constraint_index_elements_target(self):
+        i = insert(
+            self.table_with_metadata, values=dict(myid=1, name='foo'))
+        i = i.on_conflict_do_update(
+            index_elements=self.table_with_metadata.primary_key,
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (myid, name) VALUES '
+                            '(%(myid)s, %(name)s) ON CONFLICT (myid) '
+                            'DO UPDATE SET name = excluded.name')
+
+    def test_do_update_named_unique_constraint_target(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            constraint=self.unique_constr,
+            set_=dict(myid=i.excluded.myid)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            '(%(name)s) ON CONFLICT ON CONSTRAINT uq_name '
+                            'DO UPDATE SET myid = excluded.myid')
+
+    def test_do_update_string_constraint_target(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            constraint=self.unique_constr.name,
+            set_=dict(myid=i.excluded.myid)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            '(%(name)s) ON CONFLICT ON CONSTRAINT uq_name '
+                            'DO UPDATE SET myid = excluded.myid')
+
+    def test_do_update_index_elements_where_target(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            index_elements=self.goofy_index.expressions,
+            index_where=self.goofy_index.dialect_options[
+                'postgresql']['where'],
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            "(%(name)s) ON CONFLICT (name) "
+                            "WHERE name > %(name_1)s "
+                            'DO UPDATE SET name = excluded.name')
+
+    def test_do_update_unnamed_index_target(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+
+        unnamed_goofy = Index(
+            None, self.table1.c.name,
+            postgresql_where=self.table1.c.name > 'm'
+        )
+
+        i = i.on_conflict_do_update(
+            constraint=unnamed_goofy,
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            "(%(name)s) ON CONFLICT (name) "
+                            "WHERE name > %(name_1)s "
+                            'DO UPDATE SET name = excluded.name')
+
+    def test_do_update_unnamed_exclude_constraint_target(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            constraint=self.excl_constr_anon,
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            "(%(name)s) ON CONFLICT (name, description) "
+                            "WHERE description != %(description_1)s "
+                            'DO UPDATE SET name = excluded.name')
+
+    def test_do_update_add_whereclause(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            constraint=self.excl_constr_anon,
+            set_=dict(name=i.excluded.name),
+            where=(
+                (self.table1.c.name != 'brah') &
+                (self.table1.c.description != 'brah'))
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            "(%(name)s) ON CONFLICT (name, description) "
+                            "WHERE description != %(description_1)s "
+                            'DO UPDATE SET name = excluded.name '
+                            "WHERE name != %(name_1)s "
+                            "AND description != %(description_2)s")
+
+    def test_quote_raw_string_col(self):
+        t = table('t', column("FancyName"), column("other name"))
+
+        stmt = insert(t).values(FancyName='something new').\
+            on_conflict_do_update(
+                index_elements=['FancyName', 'other name'],
+                set_=OrderedDict([
+                    ("FancyName", 'something updated'),
+                    ("other name", "something else")
+                ])
+        )
+
+        self.assert_compile(
+            stmt,
+            'INSERT INTO t ("FancyName") VALUES (%(FancyName)s) '
+            'ON CONFLICT ("FancyName", "other name") '
+            'DO UPDATE SET "FancyName" = %(param_1)s, '
+            '"other name" = %(param_2)s',
+            {'param_1': 'something updated',
+             'param_2': 'something else', 'FancyName': 'something new'}
         )
 
 
