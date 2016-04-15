@@ -2395,7 +2395,9 @@ class PGDialect(default.DefaultDialect):
                   i.relname
             """
 
-        t = sql.text(IDX_SQL, typemap={'attname': sqltypes.Unicode})
+        t = sql.text(IDX_SQL, typemap={
+            'relname': sqltypes.Unicode,
+            'attname': sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
 
         indexes = defaultdict(lambda: defaultdict(dict))
