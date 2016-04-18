@@ -542,8 +542,8 @@ for an attribute being replaced.
 
 .. _change_3653:
 
-Hybrid properties and methods now propagate the docstring
----------------------------------------------------------
+Hybrid properties and methods now propagate the docstring as well as .info
+--------------------------------------------------------------------------
 
 A hybrid method or property will now reflect the ``__doc__`` value
 present in the original docstring::
@@ -581,6 +581,22 @@ for elaborate schemes like that of the
 `Custom Value Object <http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_
 recipe, however we'll be looking to see that no other regressions occur for
 users.
+
+As part of this change, the :attr:`.hybrid_property.info` collection is now
+also propagated from the hybrid descriptor itself, rather than from the underlying
+expression.  That is, accessing ``A.some_name.info`` now returns the same
+dictionary that you'd get from ``inspect(A).all_orm_descriptors['some_name'].info``::
+
+    >>> A.some_name.info['foo'] = 'bar'
+    >>> from sqlalchemy import inspect
+    >>> inspect(A).all_orm_descriptors['some_name'].info
+    {'foo': 'bar'}
+
+Note that this ``.info`` dictionary is **separate** from that of a mapped attribute
+which the hybrid descriptor may be proxying directly; this is a behavioral
+change from 1.0.   The wrapper will still proxy other useful attributes
+of a mirrored attribute such as :attr:`.QueryableAttribute.property` and
+:attr:`.QueryableAttribute.class_`.
 
 :ticket:`3653`
 

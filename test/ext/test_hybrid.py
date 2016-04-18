@@ -266,6 +266,59 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(a1._value, 10)
 
 
+class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
+
+            @hybrid.hybrid_property
+            def value(self):
+                "This is an instance-level docstring"
+                return self._value
+        return A
+
+    def test_property(self):
+        A = self._fixture()
+
+        is_(A.value.property, A._value.property)
+
+    def test_key(self):
+        A = self._fixture()
+        eq_(A.value.key, "value")
+        eq_(A._value.key, "_value")
+
+    def test_class(self):
+        A = self._fixture()
+        is_(A.value.class_, A._value.class_)
+
+    def test_get_history(self):
+        A = self._fixture()
+        inst = A(_value=5)
+        eq_(A.value.get_history(inst), A._value.get_history(inst))
+
+    def test_info_not_mirrored(self):
+        A = self._fixture()
+        A._value.info['foo'] = 'bar'
+        A.value.info['bar'] = 'hoho'
+
+        eq_(A._value.info, {'foo': 'bar'})
+        eq_(A.value.info, {'bar': 'hoho'})
+
+    def test_info_from_hybrid(self):
+        A = self._fixture()
+        A._value.info['foo'] = 'bar'
+        A.value.info['bar'] = 'hoho'
+
+        insp = inspect(A)
+        is_(insp.all_orm_descriptors['value'].info, A.value.info)
+
+
 class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 

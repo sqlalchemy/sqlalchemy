@@ -771,7 +771,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         producing method."""
 
         def _expr(cls):
-            return ExprComparator(expr(cls))
+            return ExprComparator(expr(cls), self)
         util.update_wrapper(_expr, expr)
 
         self.expr = _expr
@@ -819,9 +819,20 @@ class Comparator(interfaces.PropComparator):
 
 
 class ExprComparator(Comparator):
+    def __init__(self, expression, hybrid):
+        self.expression = expression
+        self.hybrid = hybrid
 
     def __getattr__(self, key):
         return getattr(self.expression, key)
+
+    @property
+    def info(self):
+        return self.hybrid.info
+
+    @property
+    def property(self):
+        return self.expression.property
 
     def operate(self, op, *other, **kwargs):
         return op(self.expression, *other, **kwargs)
