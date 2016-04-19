@@ -285,15 +285,22 @@ class Query(object):
             replace
         )
 
-    def _entity_zero(self):
+    def _query_entity_zero(self):
+        """Return the first QueryEntity."""
         return self._entities[0]
 
     def _mapper_zero(self):
-        # TODO: self._select_from_entity is not a mapper
-        # so this method is misnamed
+        """return the Mapper associated with the first QueryEntity."""
+        return self._entities[0].mapper
+
+    def _entity_zero(self):
+        """Return the 'entity' (mapper or AliasedClass) associated
+        with the first QueryEntity, or alternatively the 'select from'
+        entity if specified."""
+
         return self._select_from_entity \
             if self._select_from_entity is not None \
-            else self._entity_zero().entity_zero
+            else self._query_entity_zero().entity_zero
 
     @property
     def _mapper_entities(self):
@@ -304,26 +311,17 @@ class Query(object):
     def _joinpoint_zero(self):
         return self._joinpoint.get(
             '_joinpoint_entity',
-            self._mapper_zero()
+            self._entity_zero()
         )
 
     def _bind_mapper(self):
-        ezero = self._mapper_zero()
+        ezero = self._entity_zero()
         if ezero is not None:
             insp = inspect(ezero)
             if not insp.is_clause_element:
                 return insp.mapper
 
         return None
-
-    def _only_mapper_zero(self, rationale=None):
-        if len(self._entities) > 1:
-            raise sa_exc.InvalidRequestError(
-                rationale or
-                "This operation requires a Query "
-                "against a single mapper."
-            )
-        return self._mapper_zero()
 
     def _only_full_mapper_zero(self, methname):
         if self._entities != [self._primary_entity]:
@@ -945,7 +943,7 @@ class Query(object):
         """
 
         if property is None:
-            mapper_zero = inspect(self._mapper_zero()).mapper
+            mapper_zero = self._mapper_zero()
 
             mapper = object_mapper(instance)
 
@@ -1158,7 +1156,7 @@ class Query(object):
             statement.correlate(None)
         q = self._from_selectable(fromclause)
         q._enable_single_crit = False
-        q._select_from_entity = self._mapper_zero()
+        q._select_from_entity = self._entity_zero()
         if entities:
             q._set_entities(entities)
         return q

@@ -1,6 +1,7 @@
 from sqlalchemy import testing
 from sqlalchemy.testing import (
-    fixtures, eq_, assert_raises, assert_raises_message, AssertsCompiledSQL)
+    fixtures, eq_, is_, assert_raises,
+    assert_raises_message, AssertsCompiledSQL)
 from sqlalchemy import (
     exc as sa_exc, util, Integer, Table, String, ForeignKey, select, func,
     and_, asc, desc, inspect, literal_column, cast, exists, text)
@@ -1737,8 +1738,8 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 "ON users.id = addresses_1.user_id"),
         ]:
             q = s.query(crit)
-            mzero = q._mapper_zero()
-            assert mzero.mapped_table is q._entity_zero().selectable
+            mzero = q._entity_zero()
+            is_(mzero.mapped_table, q._query_entity_zero().selectable)
             q = q.join(j)
             self.assert_compile(q, exp)
 
@@ -1761,8 +1762,8 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 "ON users_1.id = addresses_1.user_id")
         ]:
             q = s.query(crit)
-            mzero = q._mapper_zero()
-            assert inspect(mzero).selectable is q._entity_zero().selectable
+            mzero = q._entity_zero()
+            is_(inspect(mzero).selectable, q._query_entity_zero().selectable)
             q = q.join(j)
             self.assert_compile(q, exp)
 

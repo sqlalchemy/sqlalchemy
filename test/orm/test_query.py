@@ -805,7 +805,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             text("select * from table"))
         assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
 
-    def test_mapper_zero(self):
+    def test_only_full_mapper_zero(self):
         User, Address = self.classes.User, self.classes.Address
 
         s = create_session()
