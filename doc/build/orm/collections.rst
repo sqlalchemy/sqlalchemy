@@ -91,8 +91,10 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
    relationships.   Newer versions of SQLAlchemy emit warnings or exceptions
    in these cases.
 
-Setting Noload
----------------
+.. _collections_noload_raiseload:
+
+Setting Noload, RaiseLoad
+-------------------------
 
 A "noload" relationship never loads from the database, even when
 accessed.   It is configured using ``lazy='noload'``::
@@ -105,7 +107,31 @@ accessed.   It is configured using ``lazy='noload'``::
 Above, the ``children`` collection is fully writeable, and changes to it will
 be persisted to the database as well as locally available for reading at the
 time they are added. However when instances of ``MyClass`` are freshly loaded
-from the database, the ``children`` collection stays empty.
+from the database, the ``children`` collection stays empty.   The noload
+strategy is also available on a query option basis using the
+:func:`.orm.noload` loader option.
+
+Alternatively, a "raise"-loaded relationship will raise an
+:exc:`~sqlalchemy.exc.InvalidRequestError` where the attribute would normally
+emit a lazy load::
+
+    class MyClass(Base):
+        __tablename__ = 'some_table'
+
+        children = relationship(MyOtherClass, lazy='raise')
+
+Above, attribute access on the ``children`` collection will raise an exception
+if it was not previously eagerloaded.  This includes read access but for
+collections will also affect write access, as collections can't be mutated
+without first loading them.  The rationale for this is to ensure that an
+application is not emitting any unexpected lazy loads within a certain context.
+Rather than having to read through SQL logs to determine that all necessary
+attributes were eager loaded, the "raise" strategy will cause unloaded
+attributes to raise immediately if accessed.  The raise strategy is
+also available on a query option basis using the :func:`.orm.raiseload`
+loader option.
+
+.. versionadded:: 1.1 added the "raise" loader strategy.
 
 .. _passive_deletes:
 

@@ -540,6 +540,12 @@ class RelationshipProperty(StrategizedProperty):
             support "write-only" attributes, or attributes which are
             populated in some manner specific to the application.
 
+          * ``raise`` - lazy loading is disallowed; accessing
+            the attribute, if its value were not already loaded via eager
+            loading, will raise an :exc:`~sqlalchemy.exc.InvalidRequestError`.
+
+            .. versionadded:: 1.1
+
           * ``dynamic`` - the attribute will return a pre-configured
             :class:`.Query` object for all read
             operations, onto which further filtering operations can be
@@ -558,6 +564,8 @@ class RelationshipProperty(StrategizedProperty):
             configuration.
 
             :ref:`dynamic_relationship` - detail on the ``dynamic`` option.
+
+            :ref:`collections_noload_raiseload` - notes on "noload" and "raise"
 
         :param load_on_pending=False:
           Indicates loading behavior for transient or pending parent objects.

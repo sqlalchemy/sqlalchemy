@@ -185,8 +185,8 @@ Default Loading Strategies
     Default loader strategies as a new feature.
 
 Each of :func:`.joinedload`, :func:`.subqueryload`, :func:`.lazyload`,
-and :func:`.noload` can be used to set the default style of
-:func:`.relationship` loading
+:func:`.noload`, and :func:`.raiseload` can be used to set the default
+style of :func:`.relationship` loading
 for a particular query, affecting all :func:`.relationship` -mapped
 attributes not otherwise
 specified in the :class:`.Query`.   This feature is available by passing
@@ -660,6 +660,8 @@ Relationship Loader API
 .. autofunction:: lazyload
 
 .. autofunction:: noload
+
+.. autofunction:: raiseload
 
 .. autofunction:: subqueryload
 

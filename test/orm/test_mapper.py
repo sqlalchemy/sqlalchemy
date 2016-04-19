@@ -2717,6 +2717,115 @@ class NoLoadTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
 
 
+class RaiseLoadTest(_fixtures.FixtureTest):
+    run_inserts = 'once'
+    run_deletes = None
+
+    def test_o2m_raiseload_mapper(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties=dict(
+            addresses=relationship(Address, lazy='raise')
+        ))
+        q = create_session().query(User)
+        l = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'User.addresses' is not available due to lazy='raise'",
+                lambda: x[0].addresses)
+            l[0] = x
+        self.assert_sql_count(testing.db, go, 1)
+
+        self.assert_result(
+            l[0], User,
+            {'id': 7},
+        )
+
+    def test_o2m_raiseload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties=dict(
+            addresses=relationship(Address)
+        ))
+        q = create_session().query(User)
+        l = [None]
+
+        def go():
+            x = q.options(
+                sa.orm.raiseload(User.addresses)).filter(User.id == 7).all()
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'User.addresses' is not available due to lazy='raise'",
+                lambda: x[0].addresses)
+            l[0] = x
+        self.assert_sql_count(testing.db, go, 1)
+
+        self.assert_result(
+            l[0], User,
+            {'id': 7},
+        )
+
+    def test_o2m_raiseload_lazyload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties=dict(
+            addresses=relationship(Address, lazy='raise')
+        ))
+        q = create_session().query(User).options(sa.orm.lazyload('addresses'))
+        l = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            x[0].addresses
+            l[0] = x
+        self.sql_count_(2, go)
+
+        self.assert_result(
+            l[0], User,
+            {'id': 7, 'addresses': (Address, [{'id': 1}])},
+        )
+
+    def test_m2o_raiseload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+        mapper(Address, addresses, properties={
+            'user': relationship(User)
+        })
+        mapper(User, users)
+        s = Session()
+        a1 = s.query(Address).filter_by(id=1).options(
+            sa.orm.raiseload('user')).first()
+
+        def go():
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'Address.user' is not available due to lazy='raise'",
+                lambda: a1.user)
+
+        self.sql_count_(0, go)
+
+
 class RequirementsTest(fixtures.MappedTest):
 
     """Tests the contract for user classes."""

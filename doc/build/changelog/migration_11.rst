@@ -880,6 +880,26 @@ added to the :ref:`mutable_toplevel` extension, to complement the existing
 
 :ticket:`3297`
 
+.. _change_3512:
+
+New "raise" loader strategy
+---------------------------
+
+To assist with the use case of preventing unwanted lazy loads from occurring
+after a series of objects are loaded, the new "lazy='raise'" strategy and
+corresponding loader option :func:`.orm.raiseload` may be applied to a
+relationship attribute which will cause it to raise ``InvalidRequestError``
+when a non-eagerly-loaded attribute is accessed for read::
+
+    >>> from sqlalchemy.orm import raiseload
+    >>> a1 = s.query(A).options(raiseload(A.bs)).first()
+    >>> a1.bs
+    Traceback (most recent call last):
+    ...
+    sqlalchemy.exc.InvalidRequestError: 'A.bs' is not available due to lazy='raise'
+
+:ticket:`3512`
+
 New Features and Improvements - Core
 ====================================
 
