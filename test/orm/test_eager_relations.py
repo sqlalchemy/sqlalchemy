@@ -3095,7 +3095,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
 
         mapper(Node, nodes, properties={
             'children': relationship(Node, lazy='select', order_by=nodes.c.id)
-        }, order_by=nodes.c.id)
+        })
         sess = create_session()
         n1 = Node(data='n1')
         n1.append(Node(data='n11'))
@@ -3110,6 +3110,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
 
         def go():
             d = sess.query(Node).filter_by(data='n1').\
+                order_by(Node.id).\
                 options(joinedload('children.children')).first()
             eq_(Node(data='n1', children=[
                 Node(data='n11'),
@@ -3123,7 +3124,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 2)
 
         def go():
-            sess.query(Node).filter_by(data='n1').\
+            sess.query(Node).order_by(Node.id).filter_by(data='n1').\
                 options(joinedload('children.children')).first()
 
         # test that the query isn't wrapping the initial query for eager

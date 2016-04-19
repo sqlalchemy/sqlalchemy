@@ -320,6 +320,10 @@ class Mapper(InspectionAttr):
            ordering for entities.  By default mappers have no pre-defined
            ordering.
 
+           .. deprecated:: 1.1 The :paramref:`.Mapper.order_by` parameter
+              is deprecated.   Use :meth:`.Query.order_by` to determine the
+              ordering of a result set.
+
         :param passive_deletes: Indicates DELETE behavior of foreign key
            columns when a joined-table inheritance entity is being deleted.
            Defaults to ``False`` for a base mapper; for an inheriting mapper,
@@ -564,6 +568,11 @@ class Mapper(InspectionAttr):
 
         if order_by is not False:
             self.order_by = util.to_list(order_by)
+            util.warn_deprecated(
+                "Mapper.order_by is deprecated."
+                "Use Query.order_by() in order to affect the ordering of ORM "
+                "result sets.")
+
         else:
             self.order_by = order_by
 

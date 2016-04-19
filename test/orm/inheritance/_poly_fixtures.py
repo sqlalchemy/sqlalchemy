@@ -250,7 +250,6 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             with_polymorphic=person_with_polymorphic,
             polymorphic_on=people.c.type,
             polymorphic_identity='person',
-            order_by=people.c.person_id,
             properties={
                 'paperwork':relationship(
                     Paperwork,

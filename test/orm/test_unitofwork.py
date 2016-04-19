@@ -2178,11 +2178,15 @@ class SaveTest3(fixtures.MappedTest):
         session.flush()
         assert assoc.count().scalar() == 0
 
+
 class BooleanColTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('t1_t', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+        Table(
+            't1_t', metadata,
+            Column(
+                'id', Integer,
+                primary_key=True, test_needs_autoincrement=True),
             Column('name', String(30)),
             Column('value', sa.Boolean))
 
@@ -2192,7 +2196,7 @@ class BooleanColTest(fixtures.MappedTest):
         # use the regular mapper
         class T(fixtures.ComparableEntity):
             pass
-        orm_mapper(T, t1_t, order_by=t1_t.c.id)
+        orm_mapper(T, t1_t)
 
         sess = create_session()
         t1 = T(value=True, name="t1")
@@ -2205,21 +2209,35 @@ class BooleanColTest(fixtures.MappedTest):
         for clear in (False, True):
             if clear:
                 sess.expunge_all()
-            eq_(sess.query(T).all(), [T(value=True, name="t1"), T(value=False, name="t2"), T(value=True, name="t3")])
+            eq_(
+                sess.query(T).order_by(T.id).all(),
+                [
+                    T(value=True, name="t1"),
+                    T(value=False, name="t2"), T(value=True, name="t3")])
             if clear:
                 sess.expunge_all()
-            eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
+            eq_(
+                sess.query(T).filter(T.value == True).order_by(T.id).all(),
+                [T(value=True, name="t1"), T(value=True, name="t3")])
             if clear:
                 sess.expunge_all()
-            eq_(sess.query(T).filter(T.value==False).all(), [T(value=False, name="t2")])
+            eq_(
+                sess.query(T).filter(T.value == False).order_by(T.id).all(),
+                [T(value=False, name="t2")])
 
         t2 = sess.query(T).get(t2.id)
         t2.value = True
         sess.flush()
-        eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"), T(value=True, name="t2"), T(value=True, name="t3")])
+        eq_(
+            sess.query(T).filter(T.value == True).order_by(T.id).all(),
+            [
+                T(value=True, name="t1"),
+                T(value=True, name="t2"), T(value=True, name="t3")])
         t2.value = False
         sess.flush()
-        eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
+        eq_(
+            sess.query(T).filter(T.value == True).order_by(T.id).all(),
+            [T(value=True, name="t1"), T(value=True, name="t3")])
 
 
 class RowSwitchTest(fixtures.MappedTest):

@@ -1309,7 +1309,6 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
         mapper(
             Container,
             container_select,
-            order_by=sa.asc(container_select.c.type),
             properties=dict(
                 lineItems=relationship(
                     LineItem,
@@ -1343,7 +1342,8 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
             session.add(li)
         session.flush()
         session.expunge_all()
-        newcon = session.query(Container).first()
+        newcon = session.query(Container).\
+            order_by(container_select.c.type).first()
         assert con.policyNum == newcon.policyNum
         assert len(newcon.lineItems) == 10
         for old, new in zip(con.lineItems, newcon.lineItems):

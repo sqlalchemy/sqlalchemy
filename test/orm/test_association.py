@@ -59,11 +59,12 @@ class AssociationTest(fixtures.MappedTest):
         mapper(Keyword, keywords)
         mapper(KeywordAssociation, item_keywords, properties={
             'keyword':relationship(Keyword, lazy='joined')},
-               primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
-               order_by=[item_keywords.c.data])
+               primary_key=
+                    [item_keywords.c.item_id, item_keywords.c.keyword_id])
 
         mapper(Item, items, properties={
             'keywords' : relationship(KeywordAssociation,
+                                  order_by=item_keywords.c.data,
                                   cascade="all, delete-orphan")
         })
 

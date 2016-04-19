@@ -150,8 +150,7 @@ class MemUsageTest(EnsureZeroed):
 
         m1 = mapper(A, table1, properties={
             "bs": relationship(B, cascade="all, delete",
-                               order_by=table2.c.col1)},
-                    order_by=table1.c.col1)
+                               order_by=table2.c.col1)})
         m2 = mapper(B, table2)
 
         m3 = mapper(A, table1, non_primary=True)
@@ -170,7 +169,7 @@ class MemUsageTest(EnsureZeroed):
             sess.flush()
             sess.expunge_all()
 
-            alist = sess.query(A).all()
+            alist = sess.query(A).order_by(A.col1).all()
             eq_(
                 [
                     A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
@@ -220,7 +219,6 @@ class MemUsageTest(EnsureZeroed):
         m1 = mapper(A, table1, properties={
             "bs": relationship(B, cascade="all, delete",
                                order_by=table2.c.col1)},
-                    order_by=table1.c.col1,
                     _compiled_cache_size=10
                     )
         m2 = mapper(B, table2,
@@ -249,7 +247,7 @@ class MemUsageTest(EnsureZeroed):
             sess.flush()
             sess.expunge_all()
 
-            alist = sess.query(A).all()
+            alist = sess.query(A).order_by(A.col1).all()
             eq_(
                 [
                     A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
