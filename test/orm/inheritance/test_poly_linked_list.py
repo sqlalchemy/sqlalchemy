@@ -77,8 +77,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
                                         backref=backref('prev', foreignkey=join.c.id, uselist=False),
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
                                     'data':relationship(mapper(Data, data))
-                                    },
-                            order_by=table1.c.id)
+                                    })
             configure_mappers()
             assert False
         except:
@@ -100,8 +99,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
                                    backref=backref('prev', remote_side=table1.c.id, uselist=False),
                                    uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
                                'data':relationship(mapper(Data, data), lazy='joined', order_by=data.c.id)
-                                },
-                                order_by=table1.c.id
+                                }
                         )
 
         table1b_mapper = mapper(Table1B, inherits=table1_mapper, polymorphic_identity='table1b')
@@ -168,7 +166,8 @@ class PolymorphicCircularTest(fixtures.MappedTest):
 
         # clear and query forwards
         sess.expunge_all()
-        node = sess.query(Table1).filter(Table1.id==t.id).first()
+        node = sess.query(Table1).order_by(Table1.id).\
+            filter(Table1.id==t.id).first()
         assertlist = []
         while (node):
             assertlist.append(node)
@@ -180,7 +179,8 @@ class PolymorphicCircularTest(fixtures.MappedTest):
 
         # clear and query backwards
         sess.expunge_all()
-        node = sess.query(Table1).filter(Table1.id==obj.id).first()
+        node = sess.query(Table1).order_by(Table1.id).\
+            filter(Table1.id==obj.id).first()
         assertlist = []
         while (node):
             assertlist.insert(0, node)

@@ -22,6 +22,21 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: change, orm
+        :tickets: 3394
+
+        The :paramref:`.Mapper.order_by` parameter is deprecated.
+        This is an old parameter no longer relevant to how SQLAlchemy
+        works, once the Query object was introduced.  By deprecating it
+        we establish that we aren't supporting non-working use cases
+        and that we encourage applications to move off of the use of this
+        parameter.
+
+        .. seealso::
+
+            :ref:`change_3394`
+
+    .. change::
         :tags: feature, postgresql
 
         Added a new dialect for the PyGreSQL Postgresql dialect.  Thanks

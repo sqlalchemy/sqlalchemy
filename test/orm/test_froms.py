@@ -1845,6 +1845,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             options(joinedload('addresses')).first(),
             User(name='jack', addresses=[Address(id=1)]))
 
+    @testing.uses_deprecated("Mapper.order_by")
     def test_join_mapper_order_by(self):
         """test that mapper-level order_by is adapted to a selectable."""
 

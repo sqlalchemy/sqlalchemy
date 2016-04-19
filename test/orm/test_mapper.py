@@ -1124,6 +1124,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         eq_(l, [self.static.user_result[0]])
 
+    @testing.uses_deprecated("Mapper.order_by")
     def test_cancel_order_by(self):
         users, User = self.tables.users, self.classes.User
 
@@ -1164,9 +1165,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                       users.c.id == addresses.c.user_id,
                       group_by=[c for c in users.c]).alias('myselect')
 
-        mapper(User, s, order_by=s.c.id)
+        mapper(User, s)
         sess = create_session()
-        l = sess.query(User).all()
+        l = sess.query(User).order_by(s.c.id).all()
 
         for idx, total in enumerate((14, 16)):
             eq_(l[idx].concat, l[idx].id * 2)
@@ -2118,7 +2119,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
             items=relationship(Item, order_items,
                                order_by=items.c.id)))
 
-        mapper(User, users, order_by=users.c.id, properties=dict(
+        mapper(User, users, properties=dict(
             orders=relationship(Order, order_by=orders.c.id)))
 
     def test_deep_options_1(self):
@@ -2127,7 +2128,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         sess = create_session()
 
         # joinedload nothing.
-        u = sess.query(User).all()
+        u = sess.query(User).order_by(User.id).all()
 
         def go():
             u[0].orders[1].items[0].keywords[1]
@@ -2141,6 +2142,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         sess = create_session()
 
         l = (sess.query(User).
+             order_by(User.id).
              options(sa.orm.joinedload_all('orders.items.keywords'))).all()
 
         def go():
@@ -2163,6 +2165,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         # same thing, with separate options calls
         q2 = (sess.query(User).
+              order_by(User.id).
               options(sa.orm.joinedload('orders')).
               options(sa.orm.joinedload('orders.items')).
               options(sa.orm.joinedload('orders.items.keywords')))
@@ -2188,7 +2191,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         # joinedload "keywords" on items.  it will lazy load "orders", then
         # lazy load the "items" on the order, but on "items" it will eager
         # load the "keywords"
-        q3 = sess.query(User).options(
+        q3 = sess.query(User).order_by(User.id).options(
             sa.orm.joinedload('orders.items.keywords'))
         u = q3.all()
 
@@ -2197,7 +2200,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         self.sql_count_(2, go)
 
         sess = create_session()
-        q3 = sess.query(User).options(
+        q3 = sess.query(User).order_by(User.id).options(
             sa.orm.joinedload(User.orders, Order.items, Item.keywords))
         u = q3.all()
 

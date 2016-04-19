@@ -144,7 +144,6 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         mapper(Person, people,
             polymorphic_on=people.c.type,
             polymorphic_identity='person',
-            order_by=people.c.person_id,
             properties={
                 'paperwork':relationship(Paperwork, order_by=paperwork.c.paperwork_id)
             })
@@ -220,6 +219,7 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(Person).with_polymorphic(Manager).
+                    order_by(Person.person_id).
                     join('paperwork').filter(Paperwork.description.like('%review%')),
                 "SELECT people.person_id AS people_person_id, people.company_id AS"
                 " people_company_id, "
@@ -243,6 +243,7 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(Person).with_polymorphic(Manager).
+                    order_by(Person.person_id).
                     join('paperwork', aliased=True).
                     filter(Paperwork.description.like('%review%')),
             "SELECT people.person_id AS people_person_id, people.company_id AS people_company_id, "

@@ -37,7 +37,6 @@ class O2OTest(fixtures.MappedTest):
 
         mapper(Port, port)
         mapper(Jack, jack,
-               order_by=[jack.c.number],
                properties=dict(
                    port=relationship(Port, backref='jack',
                                  uselist=False,

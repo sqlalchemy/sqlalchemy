@@ -19,13 +19,13 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         Order, orders = self.classes.Order, self.tables.orders
 
 
-        mapper(Order, orders, order_by=orders.c.id, properties={
+        mapper(Order, orders, properties={
             'description': deferred(orders.c.description)})
 
         o = Order()
         self.assert_(o.description is None)
 
-        q = create_session().query(Order)
+        q = create_session().query(Order).order_by(Order.id)
         def go():
             l = q.all()
             o2 = l[2]
@@ -47,7 +47,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         Order, orders = self.classes.Order, self.tables.orders
 
 
-        mapper(Order, orders, order_by=orders.c.id, properties={
+        mapper(Order, orders, properties={
             'id': deferred(orders.c.id)})
 
         # right now, it's not that graceful :)
@@ -107,7 +107,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         orders, Order = self.tables.orders, self.classes.Order
 
 
-        mapper(Order, orders, order_by=orders.c.id, properties=dict(
+        mapper(Order, orders, properties=dict(
             description=deferred(orders.c.description, group='primary'),
             opened=deferred(orders.c.isopen, group='primary')))
 
@@ -122,7 +122,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_unsaved_group_2(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(Order, orders, order_by=orders.c.id, properties=dict(
+        mapper(Order, orders, properties=dict(
             description=deferred(orders.c.description, group='primary'),
             opened=deferred(orders.c.isopen, group='primary')))
 
@@ -685,7 +685,8 @@ class InheritanceTest(_Polymorphic):
 
     def test_load_only_subclass(self):
         s = Session()
-        q = s.query(Manager).options(load_only("status", "manager_name"))
+        q = s.query(Manager).order_by(Manager.person_id).\
+            options(load_only("status", "manager_name"))
         self.assert_compile(
             q,
             "SELECT managers.person_id AS managers_person_id, "
@@ -695,12 +696,13 @@ class InheritanceTest(_Polymorphic):
             "managers.manager_name AS managers_manager_name "
             "FROM people JOIN managers "
             "ON people.person_id = managers.person_id "
-            "ORDER BY people.person_id"
+            "ORDER BY managers.person_id"
         )
 
     def test_load_only_subclass_and_superclass(self):
         s = Session()
-        q = s.query(Boss).options(load_only("status", "manager_name"))
+        q = s.query(Boss).order_by(Person.person_id).\
+            options(load_only("status", "manager_name"))
         self.assert_compile(
             q,
             "SELECT managers.person_id AS managers_person_id, "
@@ -716,7 +718,8 @@ class InheritanceTest(_Polymorphic):
     def test_load_only_alias_subclass(self):
         s = Session()
         m1 = aliased(Manager, flat=True)
-        q = s.query(m1).options(load_only("status", "manager_name"))
+        q = s.query(m1).order_by(m1.person_id).\
+            options(load_only("status", "manager_name"))
         self.assert_compile(
             q,
             "SELECT managers_1.person_id AS managers_1_person_id, "
@@ -726,7 +729,7 @@ class InheritanceTest(_Polymorphic):
             "managers_1.manager_name AS managers_1_manager_name "
             "FROM people AS people_1 JOIN managers AS "
             "managers_1 ON people_1.person_id = managers_1.person_id "
-            "ORDER BY people_1.person_id"
+            "ORDER BY managers_1.person_id"
         )
 
     def test_load_only_subclass_from_relationship_polymorphic(self):
@@ -778,7 +781,7 @@ class InheritanceTest(_Polymorphic):
         # exclude the primary key
 
         s = Session()
-        q = s.query(Manager).options(
+        q = s.query(Manager).order_by(Person.person_id).options(
             defer(".*"), undefer("status"))
         self.assert_compile(
             q,
@@ -789,7 +792,7 @@ class InheritanceTest(_Polymorphic):
 
     def test_defer_super_name_on_subclass(self):
         s = Session()
-        q = s.query(Manager).options(defer("name"))
+        q = s.query(Manager).order_by(Person.person_id).options(defer("name"))
         self.assert_compile(
             q,
             "SELECT managers.person_id AS managers_person_id, "

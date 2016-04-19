@@ -900,6 +900,24 @@ when a non-eagerly-loaded attribute is accessed for read::
 
 :ticket:`3512`
 
+.. _change_3394:
+
+Mapper.order_by is deprecated
+-----------------------------
+
+This old parameter from the very first versions of SQLAlchemy was part of
+the original design of the ORM which featured the :class:`.Mapper` object
+as a public-facing query structure.   This role has long since been replaced
+by the :class:`.Query` object, where we use :meth:`.Query.order_by` to
+indicate the ordering of results in a way that works consistently for any
+combination of SELECT statements, entities and SQL expressions.   There are
+many areas in which :paramref:`.Mapper.order_by` doesn't work as expected
+(or what would be expected is not clear), such as when queries are combined
+into unions; these cases are not supported.
+
+
+:ticket:`3394`
+
 New Features and Improvements - Core
 ====================================
 

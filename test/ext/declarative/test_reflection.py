@@ -281,7 +281,7 @@ class DeferredReflectionTest(DeferredReflectBase):
             @decl.declared_attr
             def __mapper_args__(cls):
                 return {
-                    "order_by": cls.__table__.c.name
+                    "primary_key": cls.__table__.c.id
                 }
 
         decl.DeferredReflection.prepare(testing.db)
@@ -294,7 +294,7 @@ class DeferredReflectionTest(DeferredReflectBase):
         ])
         sess.commit()
         eq_(
-            sess.query(User).all(),
+            sess.query(User).order_by(User.name).all(),
             [
                 User(name='A'),
                 User(name='C'),

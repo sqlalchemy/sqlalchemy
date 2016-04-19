@@ -671,6 +671,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         l = q.order_by(sa.desc(User.id)).limit(2).offset(2).all()
         eq_(list(reversed(self.static.user_all_result[0:2])), l)
 
+    @testing.uses_deprecated("Mapper.order_by")
     def test_mapper_order_by(self):
         users, User, Address, addresses = (self.tables.users,
                                 self.classes.User,
@@ -1544,7 +1545,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         mapper(Node, nodes, properties={
             'children':relationship(Node, order_by=nodes.c.id)
-        }, order_by=nodes.c.id)
+        })
         sess = create_session()
         n1 = Node(data='n1')
         n1.append(Node(data='n11'))
@@ -1557,7 +1558,7 @@ class SelfReferentialTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
         def go():
-            d = sess.query(Node).filter_by(data='n1').\
+            d = sess.query(Node).filter_by(data='n1').order_by(Node.id).\
                         options(subqueryload_all('children.children')).first()
             eq_(Node(data='n1', children=[
                 Node(data='n11'),
