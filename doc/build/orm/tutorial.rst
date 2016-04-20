@@ -950,7 +950,7 @@ method:
     (224, 'fred')
     {stop}<User(name='fred', fullname='Fred Flinstone', password='blah')>
 
-To use an entirely string-based statement, using
+To use an entirely string-based statement, use
 :meth:`~sqlalchemy.orm.query.Query.from_statement()`; just ensure that the
 columns clause of the statement contains the column names normally used by the
 mapper (below illustrated using an asterisk):
