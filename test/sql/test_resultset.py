@@ -708,6 +708,21 @@ class ResultProxyTest(fixtures.TablesTest):
         )
 
     @testing.requires.duplicate_names_in_cursor_description
+    def test_ambiguous_column_case_sensitive(self):
+        eng = engines.testing_engine(options=dict(case_sensitive=False))
+
+        row = eng.execute(select([
+            literal_column('1').label('SOMECOL'),
+            literal_column('1').label('SOMECOL'),
+        ])).first()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row['somecol']
+        )
+
+    @testing.requires.duplicate_names_in_cursor_description
     def test_ambiguous_column_contains(self):
         users = self.tables.users
         addresses = self.tables.addresses

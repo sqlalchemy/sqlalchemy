@@ -304,6 +304,7 @@ class ResultMetaData(object):
                 for rec in raw:
                     key = rec[1]
                     if key in seen:
+                        key = key.lower() if not self.case_sensitive else key
                         by_key[key] = (None, by_key[key][1], None)
                     seen.add(key)
 
