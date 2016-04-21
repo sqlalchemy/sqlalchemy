@@ -20,6 +20,16 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3690
+
+        Fixed bug where when using ``case_sensitive=False`` with an
+        :class:`.Engine`, the result set would fail to correctly accomodate
+        for duplicate column names in the result set, causing an error
+        when the statement is executed in 1.0, and preventing the
+        "ambiguous column" exception from functioning in 1.1.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3682
 
         Fixed bug where the negation of an EXISTS expression would not

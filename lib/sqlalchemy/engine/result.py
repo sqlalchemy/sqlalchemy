@@ -257,6 +257,7 @@ class ResultMetaData(object):
                     if key in seen:
                         # this is an "ambiguous" element, replacing
                         # the full record in the map
+                        key = key.lower() if not self.case_sensitive else key
                         by_key[key] = (None, key, None)
                     seen.add(key)
 
