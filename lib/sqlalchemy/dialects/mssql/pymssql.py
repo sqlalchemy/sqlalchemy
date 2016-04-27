@@ -9,7 +9,7 @@
 .. dialect:: mssql+pymssql
     :name: pymssql
     :dbapi: pymssql
-    :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>?\
+    :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>/?\
 charset=utf8
     :url: http://pymssql.org/
 
