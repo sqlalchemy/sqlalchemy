@@ -19,6 +19,14 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, examples
+        :tickets: 3698
+
+        Changed the "directed graph" example to no longer consider
+        integer identifiers of nodes as significant; the "higher" / "lower"
+        references now allow mutual edges in both directions.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3690
 
