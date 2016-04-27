@@ -19,6 +19,17 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, oracle
+        :tickets: 3699
+
+        Fixed a bug in the result proxy used mainly by Oracle when binary and
+        other LOB types are in play, such that when query / statement caching
+        were used, the type-level result processors, notably that required by
+        the binary type itself but also any other processor, would become lost
+        after the first run of the statement due to it being removed from the
+        cached result metadata.
+
+    .. change::
         :tags: bug, examples
         :tickets: 3698
 
