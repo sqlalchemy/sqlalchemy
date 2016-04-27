@@ -436,11 +436,21 @@ flag ``postgresql_concurrently`` to the :class:`.Index` construct::
 
     idx1 = Index('test_idx1', tbl.c.data, postgresql_concurrently=True)
 
-The above index construct will render SQL as::
+The above index construct will render DDL for CREATE INDEX, assuming
+Postgresql 8.2 or higher is detected or for a connection-less dialect, as::
 
     CREATE INDEX CONCURRENTLY test_idx1 ON testtbl (data)
 
-.. versionadded:: 0.9.9
+For DROP INDEX, assuming Postgresql 9.2 or higher is detected or for
+a connection-less dialect, it will emit::
+
+    DROP INDEX CONCURRENTLY test_idx1
+
+.. versionadded:: 1.1 support for CONCURRENTLY on DROP INDEX.  The
+   CONCURRENTLY keyword is now only emitted if a high enough version
+   of Postgresql is detected on the connection (or for a connection-less
+   dialect).
+
 
 .. _postgresql_index_reflection:
 
@@ -1274,9 +1284,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         text += "INDEX "
 
-        concurrently = index.dialect_options['postgresql']['concurrently']
-        if concurrently:
-            text += "CONCURRENTLY "
+        if self.dialect._supports_create_index_concurrently:
+            concurrently = index.dialect_options['postgresql']['concurrently']
+            if concurrently:
+                text += "CONCURRENTLY "
 
         text += "%s ON %s " % (
             self._prepared_index_name(index,
@@ -1325,6 +1336,19 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 whereclause, include_table=False,
                 literal_binds=True)
             text += " WHERE " + where_compiled
+        return text
+
+    def visit_drop_index(self, drop):
+        index = drop.element
+
+        text = "\nDROP INDEX "
+
+        if self.dialect._supports_drop_index_concurrently:
+            concurrently = index.dialect_options['postgresql']['concurrently']
+            if concurrently:
+                text += "CONCURRENTLY "
+
+        text += self._prepared_index_name(index, include_schema=True)
         return text
 
     def visit_exclude_constraint(self, constraint, **kw):
@@ -1688,6 +1712,8 @@ class PGDialect(default.DefaultDialect):
     reflection_options = ('postgresql_ignore_search_path', )
 
     _backslash_escapes = True
+    _supports_create_index_concurrently = True
+    _supports_drop_index_concurrently = True
 
     def __init__(self, isolation_level=None, json_serializer=None,
                  json_deserializer=None, **kwargs):
@@ -1715,6 +1741,11 @@ class PGDialect(default.DefaultDialect):
             connection.scalar(
             "show standard_conforming_strings"
         ) == 'off'
+
+        self._supports_create_index_concurrently = \
+            self.server_version_info >= (8, 2)
+        self._supports_drop_index_concurrently = \
+            self.server_version_info >= (9, 2)
 
     def on_connect(self):
         if self.isolation_level is not None:

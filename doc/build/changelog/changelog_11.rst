@@ -22,6 +22,17 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: bitbucket:84
+
+        The DDL for DROP INDEX will emit "CONCURRENTLY" if the
+        ``postgresql_concurrently`` flag is set upon the
+        :class:`.Index` and if the database in use is detected as
+        Postgresql version 9.2 or greater.   For CREATE INDEX, database
+        version detection is also added which will omit the clause if
+        PG version is less than 8.2.  Pull request courtesy Iuri de Silvio.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3708
 

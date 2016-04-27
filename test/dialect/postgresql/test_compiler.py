@@ -485,6 +485,32 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX CONCURRENTLY test_idx1 ON testtbl (data)"
         )
 
+        dialect_8_1 = postgresql.dialect()
+        dialect_8_1._supports_create_index_concurrently = False
+        self.assert_compile(
+            schema.CreateIndex(idx1),
+            "CREATE INDEX test_idx1 ON testtbl (data)",
+            dialect=dialect_8_1
+        )
+
+    def test_drop_index_concurrently(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', Integer))
+
+        idx1 = Index('test_idx1', tbl.c.data, postgresql_concurrently=True)
+        self.assert_compile(
+            schema.DropIndex(idx1),
+            "DROP INDEX CONCURRENTLY test_idx1"
+        )
+
+        dialect_9_1 = postgresql.dialect()
+        dialect_9_1._supports_drop_index_concurrently = False
+        self.assert_compile(
+            schema.DropIndex(idx1),
+            "DROP INDEX test_idx1",
+            dialect=dialect_9_1
+        )
+
     def test_exclude_constraint_min(self):
         m = MetaData()
         tbl = Table('testtbl', m,
