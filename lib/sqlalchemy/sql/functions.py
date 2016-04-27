@@ -285,13 +285,13 @@ func = _FunctionGenerator()
    :data:`.func` is a special object instance which generates SQL
    functions based on name-based attributes, e.g.::
 
-        >>> print func.count(1)
+        >>> print(func.count(1))
         count(:param_1)
 
    The element is a column-oriented SQL element like any other, and is
    used in that way::
 
-        >>> print select([func.count(table.c.id)])
+        >>> print(select([func.count(table.c.id)]))
         SELECT count(sometable.id) FROM sometable
 
    Any name can be given to :data:`.func`. If the function name is unknown to
@@ -299,13 +299,13 @@ func = _FunctionGenerator()
    which SQLAlchemy is aware of, the name may be interpreted as a *generic
    function* which will be compiled appropriately to the target database::
 
-        >>> print func.current_timestamp()
+        >>> print(func.current_timestamp())
         CURRENT_TIMESTAMP
 
    To call functions which are present in dot-separated packages,
    specify them in the same manner::
 
-        >>> print func.stats.yield_curve(5, 10)
+        >>> print(func.stats.yield_curve(5, 10))
         stats.yield_curve(:yield_curve_1, :yield_curve_2)
 
    SQLAlchemy can be made aware of the return type of functions to enable
@@ -314,8 +314,8 @@ func = _FunctionGenerator()
    treated as a string in expressions, specify
    :class:`~sqlalchemy.types.Unicode` as the type:
 
-        >>> print func.my_string(u'hi', type_=Unicode) + ' ' + \
-        ... func.my_string(u'there', type_=Unicode)
+        >>> print(func.my_string(u'hi', type_=Unicode) + ' ' +
+        ...       func.my_string(u'there', type_=Unicode))
         my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
 
    The object returned by a :data:`.func` call is usually an instance of
@@ -325,7 +325,7 @@ func = _FunctionGenerator()
    method of a :class:`.Connection` or :class:`.Engine`, where it will be
    wrapped inside of a SELECT statement first::
 
-        print connection.execute(func.current_timestamp()).scalar()
+        print(connection.execute(func.current_timestamp()).scalar())
 
    In a few exception cases, the :data:`.func` accessor
    will redirect a name to a built-in expression such as :func:`.cast`
