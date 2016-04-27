@@ -6,7 +6,7 @@ from sqlalchemy import util
 from sqlalchemy import (
     exc, sql, func, select, String, Integer, MetaData, ForeignKey,
     VARCHAR, INT, CHAR, text, type_coerce, literal_column,
-    TypeDecorator, table, column)
+    TypeDecorator, table, column, literal)
 from sqlalchemy.engine import result as _result
 from sqlalchemy.testing.schema import Table, Column
 import operator
@@ -1433,17 +1433,59 @@ class AlternateResultProxyTest(fixtures.TablesTest):
             r.fetchall
         )
 
-    def test_plain(self):
+    def test_basic_plain(self):
         self._test_proxy(_result.ResultProxy)
 
-    def test_buffered_row_result_proxy(self):
+    def test_basic_buffered_row_result_proxy(self):
         self._test_proxy(_result.BufferedRowResultProxy)
 
-    def test_fully_buffered_result_proxy(self):
+    def test_basic_fully_buffered_result_proxy(self):
         self._test_proxy(_result.FullyBufferedResultProxy)
 
-    def test_buffered_column_result_proxy(self):
+    def test_basic_buffered_column_result_proxy(self):
         self._test_proxy(_result.BufferedColumnResultProxy)
+
+    def test_resultprocessor_plain(self):
+        self._test_result_processor(_result.ResultProxy, False)
+
+    def test_resultprocessor_plain_cached(self):
+        self._test_result_processor(_result.ResultProxy, True)
+
+    def test_resultprocessor_buffered_column(self):
+        self._test_result_processor(_result.BufferedColumnResultProxy, False)
+
+    def test_resultprocessor_buffered_column_cached(self):
+        self._test_result_processor(_result.BufferedColumnResultProxy, True)
+
+    def test_resultprocessor_buffered_row(self):
+        self._test_result_processor(_result.BufferedRowResultProxy, False)
+
+    def test_resultprocessor_buffered_row_cached(self):
+        self._test_result_processor(_result.BufferedRowResultProxy, True)
+
+    def test_resultprocessor_fully_buffered(self):
+        self._test_result_processor(_result.FullyBufferedResultProxy, False)
+
+    def test_resultprocessor_fully_buffered_cached(self):
+        self._test_result_processor(_result.FullyBufferedResultProxy, True)
+
+    def _test_result_processor(self, cls, use_cache):
+        class MyType(TypeDecorator):
+            impl = String()
+
+            def process_result_value(self, value, dialect):
+                return "HI " + value
+
+        with self._proxy_fixture(cls):
+            with self.engine.connect() as conn:
+                if use_cache:
+                    cache = {}
+                    conn = conn.execution_options(compiled_cache=cache)
+
+                stmt = select([literal("THERE", type_=MyType())])
+                for i in range(2):
+                    r = conn.execute(stmt)
+                    eq_(r.scalar(), "HI THERE")
 
     def test_buffered_row_growth(self):
         with self._proxy_fixture(_result.BufferedRowResultProxy):

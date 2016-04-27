@@ -192,6 +192,7 @@ class ResultMetaData(object):
         typemap = dialect.dbapi_type_map
         translate_colname = context._translate_colname
         self.case_sensitive = case_sensitive = dialect.case_sensitive
+        self._orig_processors = None
 
         if context.result_column_struct:
             result_columns, cols_are_ordered = context.result_column_struct
@@ -1238,16 +1239,21 @@ class BufferedColumnResultProxy(ResultProxy):
 
     def _init_metadata(self):
         super(BufferedColumnResultProxy, self)._init_metadata()
+
         metadata = self._metadata
-        # orig_processors will be used to preprocess each row when they are
-        # constructed.
-        metadata._orig_processors = metadata._processors
-        # replace the all type processors by None processors.
-        metadata._processors = [None for _ in range(len(metadata.keys))]
-        keymap = {}
-        for k, (func, obj, index) in metadata._keymap.items():
-            keymap[k] = (None, obj, index)
-        self._metadata._keymap = keymap
+
+        # don't double-replace the processors, in the case
+        # of a cached ResultMetaData
+        if metadata._orig_processors is None:
+            # orig_processors will be used to preprocess each row when
+            # they are constructed.
+            metadata._orig_processors = metadata._processors
+            # replace the all type processors by None processors.
+            metadata._processors = [None for _ in range(len(metadata.keys))]
+            keymap = {}
+            for k, (func, obj, index) in metadata._keymap.items():
+                keymap[k] = (None, obj, index)
+            metadata._keymap = keymap
 
     def fetchall(self):
         # can't call cursor.fetchall(), since rows must be
