@@ -2329,6 +2329,73 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "(ORDER BY mytable.myid + :myid_1) AS anon_1 FROM mytable"
         )
 
+    def test_over_framespec(self):
+
+        expr = table1.c.myid
+        self.assert_compile(
+            select([func.row_number().over(order_by=expr, rows=(0, None))]),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid ROWS BETWEEN CURRENT "
+            "ROW AND UNBOUNDED FOLLOWING)"
+            " AS anon_1 FROM mytable"
+        )
+
+        self.assert_compile(
+            select([func.row_number().over(order_by=expr, rows=(None, None))]),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
+            "PRECEDING AND UNBOUNDED FOLLOWING)"
+            " AS anon_1 FROM mytable"
+        )
+
+        self.assert_compile(
+            select([func.row_number().over(order_by=expr, range_=(None, 0))]),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid RANGE BETWEEN "
+            "UNBOUNDED PRECEDING AND CURRENT ROW)"
+            " AS anon_1 FROM mytable"
+        )
+
+        self.assert_compile(
+            select([func.row_number().over(order_by=expr, range_=(-5, 10))]),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid RANGE BETWEEN "
+            ":param_1 PRECEDING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            {'param_1': 5, 'param_2': 10}
+        )
+
+    def test_over_invalid_framespecs(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            "Preceding value must be a negative integer, zero, or None",
+            func.row_number().over, range_=(5, 10)
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Following value must be a positive integer, zero, or None",
+            func.row_number().over, range_=(-5, -8)
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Integer or None expected for preceding value",
+            func.row_number().over, range_=("foo", 8)
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Integer or None expected for following value",
+            func.row_number().over, range_=(-5, "foo")
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "'range_' and 'rows' are mutually exclusive",
+            func.row_number().over, range_=(-5, 8), rows=(-2, 5)
+        )
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,

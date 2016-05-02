@@ -3058,6 +3058,10 @@ class Grouping(ColumnElement):
             self.element.compare(other.element)
 
 
+RANGE_UNBOUNDED = util.symbol("RANGE_UNBOUNDED")
+RANGE_CURRENT = util.symbol("RANGE_CURRENT")
+
+
 class Over(ColumnElement):
     """Represent an OVER clause.
 
@@ -3073,7 +3077,9 @@ class Over(ColumnElement):
     order_by = None
     partition_by = None
 
-    def __init__(self, element, partition_by=None, order_by=None):
+    def __init__(
+            self, element, partition_by=None,
+            order_by=None, range_=None, rows=None):
         """Produce an :class:`.Over` object against a function.
 
         Used against aggregate or so-called "window" functions,
@@ -3082,9 +3088,41 @@ class Over(ColumnElement):
         :func:`~.expression.over` is usually called using
         the :meth:`.FunctionElement.over` method, e.g.::
 
-            func.row_number().over(order_by='x')
+            func.row_number().over(order_by=mytable.c.some_column)
 
-        Would produce ``ROW_NUMBER() OVER(ORDER BY x)``.
+        Would produce::
+
+            ROW_NUMBER() OVER(ORDER BY some_column)
+
+        Ranges are also possible using the :paramref:`.expression.over.range_`
+        and :paramref:`.expression.over.rows` parameters.  These
+        mutually-exclusive parameters each accept a 2-tuple, which contains
+        a combination of integers and None::
+
+            func.row_number().over(order_by=my_table.c.some_column, range_=(None, 0))
+
+        The above would produce::
+
+            ROW_NUMBER() OVER(ORDER BY some_column RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+
+        A value of None indicates "unbounded", a
+        value of zero indicates "current row", and negative / positive
+        integers indicate "preceding" and "following":
+
+        * RANGE BETWEEN 5 PRECEDING AND 10 FOLLOWING::
+
+            func.row_number().over(order_by='x', range_=(-5, 10))
+
+        * ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW::
+
+            func.row_number().over(order_by='x', rows=(None, 0))
+
+        * RANGE BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING::
+
+            func.row_number().over(order_by='x', range_=(-2, None))
+
+        .. versionadded:: 1.1 support for RANGE / ROWS within a window
+
 
         :param element: a :class:`.FunctionElement`, :class:`.WithinGroup`,
          or other compatible construct.
@@ -3094,11 +3132,20 @@ class Over(ColumnElement):
         :param order_by: a column element or string, or a list
          of such, that will be used as the ORDER BY clause
          of the OVER construct.
+        :param range_: optional range clause for the window.  This is a
+         tuple value which can contain integer values or None, and will
+         render a RANGE BETWEEN PRECEDING / FOLLOWING clause
+
+         .. versionadded:: 1.1
+
+        :param rows: optional rows clause for the window.  This is a tuple
+         value which can contain integer values or None, and will render
+         a ROWS BETWEEN PRECEDING / FOLLOWING clause.
+
+         .. versionadded:: 1.1
 
         This function is also available from the :data:`~.expression.func`
         construct itself via the :meth:`.FunctionElement.over` method.
-
-        .. versionadded:: 0.7
 
         .. seealso::
 
@@ -3116,6 +3163,61 @@ class Over(ColumnElement):
             self.partition_by = ClauseList(
                 *util.to_list(partition_by),
                 _literal_as_text=_literal_as_label_reference)
+
+        if range_:
+            self.range_ = self._interpret_range(range_)
+            if rows:
+                raise exc.ArgumentError(
+                    "'range_' and 'rows' are mutually exclusive")
+            else:
+                self.rows = None
+        elif rows:
+            self.rows = self._interpret_range(rows)
+            self.range_ = None
+        else:
+            self.rows = self.range_ = None
+
+    def _interpret_range(self, range_):
+        if not isinstance(range_, tuple) or len(range_) != 2:
+            raise exc.ArgumentError("2-tuple expected for range/rows")
+
+        if range_[0] is None:
+            preceding = RANGE_UNBOUNDED
+        else:
+            try:
+                preceding = int(range_[0])
+            except ValueError:
+                raise exc.ArgumentError(
+                    "Integer or None expected for preceding value")
+            else:
+                if preceding > 0:
+                    raise exc.ArgumentError(
+                        "Preceding value must be a "
+                        "negative integer, zero, or None")
+                elif preceding < 0:
+                    preceding = literal(abs(preceding))
+                else:
+                    preceding = RANGE_CURRENT
+
+        if range_[1] is None:
+            following = RANGE_UNBOUNDED
+        else:
+            try:
+                following = int(range_[1])
+            except ValueError:
+                raise exc.ArgumentError(
+                    "Integer or None expected for following value")
+            else:
+                if following < 0:
+                    raise exc.ArgumentError(
+                        "Following value must be a positive "
+                        "integer, zero, or None")
+                elif following > 0:
+                    following = literal(following)
+                else:
+                    following = RANGE_CURRENT
+
+        return preceding, following
 
     @property
     def func(self):

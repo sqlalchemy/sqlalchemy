@@ -1005,6 +1005,35 @@ statement::
 
 :ticket:`2551`
 
+.. _change_3049:
+
+Support for RANGE and ROWS specification within window functions
+----------------------------------------------------------------
+
+New :paramref:`.expression.over.range_` and :paramref:`.expression.over.rows` parameters allow
+RANGE and ROWS expressions for window functions::
+
+    >>> from sqlalchemy import func
+
+    >>> print func.row_number().over(order_by='x', range_=(-5, 10))
+    row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND :param_2 FOLLOWING)
+
+    >>> print func.row_number().over(order_by='x', rows=(None, 0))
+    row_number() OVER (ORDER BY x ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+
+    >>> print func.row_number().over(order_by='x', range_=(-2, None))
+    row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND UNBOUNDED FOLLOWING)
+
+:paramref:`.expression.over.range_` and :paramref:`.expression.over.rows` are specified as
+2-tuples and indicate negative and positive values for specific ranges,
+0 for "CURRENT ROW", and None for UNBOUNDED.
+
+.. seealso::
+
+    :ref:`window_functions`
+
+:ticket:`3049`
+
 .. _change_2857:
 
 Support for the SQL LATERAL keyword

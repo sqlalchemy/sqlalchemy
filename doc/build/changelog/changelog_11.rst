@@ -22,6 +22,18 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3049
+
+        Added support for ranges in window functions, using the
+        :paramref:`.expression.over.range_` and
+        :paramref:`.expression.over.rows` parameters.
+
+        .. seealso::
+
+            :ref:`change_3049`
+
+    .. change::
         :tags: feature, orm
 
         Added new flag :paramref:`.Session.bulk_insert_mappings.render_nulls`

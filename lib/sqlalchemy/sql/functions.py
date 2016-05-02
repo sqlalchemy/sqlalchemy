@@ -94,7 +94,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         """
         return self.clause_expr.element
 
-    def over(self, partition_by=None, order_by=None):
+    def over(self, partition_by=None, order_by=None, rows=None, range_=None):
         """Produce an OVER clause against this function.
 
         Used against aggregate or so-called "window" functions,
@@ -114,7 +114,13 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         .. versionadded:: 0.7
 
         """
-        return Over(self, partition_by=partition_by, order_by=order_by)
+        return Over(
+            self,
+            partition_by=partition_by,
+            order_by=order_by,
+            rows=rows,
+            range_=range_
+        )
 
     def within_group(self, *order_by):
         """Produce a WITHIN GROUP (ORDER BY expr) clause against this function.

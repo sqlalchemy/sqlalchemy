@@ -810,16 +810,41 @@ class SQLCompiler(Compiled):
             (cast.clause._compiler_dispatch(self, **kwargs),
              cast.typeclause._compiler_dispatch(self, **kwargs))
 
+    def _format_frame_clause(self, range_, **kw):
+        return '%s AND %s' % (
+            "UNBOUNDED PRECEDING"
+            if range_[0] is elements.RANGE_UNBOUNDED
+            else "CURRENT ROW" if range_[0] is elements.RANGE_CURRENT
+            else "%s PRECEDING" % (self.process(range_[0], **kw), ),
+
+            "UNBOUNDED FOLLOWING"
+            if range_[1] is elements.RANGE_UNBOUNDED
+            else "CURRENT ROW" if range_[1] is elements.RANGE_CURRENT
+            else "%s FOLLOWING" % (self.process(range_[1], **kw), )
+        )
+
     def visit_over(self, over, **kwargs):
+        if over.range_:
+            range_ = "RANGE BETWEEN %s" % self._format_frame_clause(
+                over.range_, **kwargs)
+        elif over.rows:
+            range_ = "ROWS BETWEEN %s" % self._format_frame_clause(
+                over.rows, **kwargs)
+        else:
+            range_ = None
+
         return "%s OVER (%s)" % (
             over.element._compiler_dispatch(self, **kwargs),
-            ' '.join(
-                '%s BY %s' % (word, clause._compiler_dispatch(self, **kwargs))
+            ' '.join([
+                '%s BY %s' % (
+                    word, clause._compiler_dispatch(self, **kwargs)
+                )
                 for word, clause in (
                     ('PARTITION', over.partition_by),
                     ('ORDER', over.order_by)
                 )
                 if clause is not None and len(clause)
+            ] + ([range_] if range_ else [])
             )
         )
 
