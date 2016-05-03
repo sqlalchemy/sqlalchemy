@@ -424,7 +424,7 @@ class ConnectionEvents(event.Events):
 
         def before_cursor_execute(conn, cursor, statement, parameters, context,
                                                         executemany):
-            log.info("Received statement: %s" % statement)
+            log.info("Received statement: %s", statement)
 
         engine = create_engine('postgresql://scott:tiger@localhost/test')
         event.listen(engine, "before_cursor_execute", before_cursor_execute)
@@ -435,7 +435,7 @@ class ConnectionEvents(event.Events):
             @event.listens_for(conn, 'before_cursor_execute')
             def before_cursor_execute(conn, cursor, statement, parameters,
                                             context, executemany):
-                log.info("Received statement: %s" % statement)
+                log.info("Received statement: %s", statement)
 
     When the methods are called with a `statement` parameter, such as in
     :meth:`.after_cursor_execute`, :meth:`.before_cursor_execute` and
