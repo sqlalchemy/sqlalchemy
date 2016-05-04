@@ -89,7 +89,8 @@ To get at the :class:`.Mapper` for a particular mapped class, call the
 
     mapper = inspect(MyClass)
 
-From there, all information about the class can be acquired using such methods as:
+From there, all information about the class can be accessed through properties
+such as:
 
 * :attr:`.Mapper.attrs` - a namespace of all mapped attributes.  The attributes
   themselves are instances of :class:`.MapperProperty`, which contain additional
