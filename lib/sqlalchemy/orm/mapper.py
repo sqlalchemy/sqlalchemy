@@ -2052,7 +2052,7 @@ class Mapper(InspectionAttr):
 
         .. warning::
 
-            the :attr:`.Mapper.relationships` accessor namespace is an
+            The :attr:`.Mapper.attrs` accessor namespace is an
             instance of :class:`.OrderedProperties`.  This is
             a dictionary-like object which includes a small number of
             named methods such as :meth:`.OrderedProperties.items`
@@ -2098,14 +2098,15 @@ class Mapper(InspectionAttr):
 
         .. warning::
 
-            the :attr:`.Mapper.relationships` accessor namespace is an
+            The :attr:`.Mapper.all_orm_descriptors` accessor namespace is an
             instance of :class:`.OrderedProperties`.  This is
             a dictionary-like object which includes a small number of
             named methods such as :meth:`.OrderedProperties.items`
             and :meth:`.OrderedProperties.values`.  When
             accessing attributes dynamically, favor using the dict-access
-            scheme, e.g. ``mapper.attrs[somename]`` over
-            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
+            scheme, e.g. ``mapper.all_orm_descriptors[somename]`` over
+            ``getattr(mapper.all_orm_descriptors, somename)`` to avoid name
+            collisions.
 
         .. versionadded:: 0.8.0
 
@@ -2145,8 +2146,8 @@ class Mapper(InspectionAttr):
 
     @_memoized_configured_property
     def relationships(self):
-        """Return a namespace of all :class:`.RelationshipProperty`
-        properties maintained by this :class:`.Mapper`.
+        """A namespace of all :class:`.RelationshipProperty` properties
+        maintained by this :class:`.Mapper`.
 
         .. warning::
 
@@ -2156,8 +2157,9 @@ class Mapper(InspectionAttr):
             named methods such as :meth:`.OrderedProperties.items`
             and :meth:`.OrderedProperties.values`.  When
             accessing attributes dynamically, favor using the dict-access
-            scheme, e.g. ``mapper.attrs[somename]`` over
-            ``getattr(mapper.attrs, somename)`` to avoid name collisions.
+            scheme, e.g. ``mapper.relationships[somename]`` over
+            ``getattr(mapper.relationships, somename)`` to avoid name
+            collisions.
 
         .. seealso::
 
