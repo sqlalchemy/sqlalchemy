@@ -251,10 +251,10 @@ def _oracle_configure_follower(config, ident):
 def _ora_drop_ignore(conn, dbname):
     try:
         conn.execute("drop user %s cascade" % dbname)
-        log.info("Reaped db: %s" % dbname)
+        log.info("Reaped db: %s", dbname)
         return True
     except exc.DatabaseError as err:
-        log.warn("couldn't drop db: %s" % err)
+        log.warning("couldn't drop db: %s", err)
         return False
 
 
