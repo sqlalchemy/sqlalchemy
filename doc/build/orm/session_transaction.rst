@@ -124,7 +124,7 @@ things like unique constraint exceptions::
             with session.begin_nested():
                 session.merge(record)
         except:
-            print "Skipped record %s" % record
+            print("Skipped record %s" % record)
     session.commit()
 
 .. _session_autocommit:

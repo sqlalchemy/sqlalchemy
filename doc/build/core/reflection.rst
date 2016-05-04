@@ -125,7 +125,7 @@ database is also available. This is known as the "Inspector"::
     from sqlalchemy.engine import reflection
     engine = create_engine('...')
     insp = reflection.Inspector.from_engine(engine)
-    print insp.get_table_names()
+    print(insp.get_table_names())
 
 .. autoclass:: sqlalchemy.engine.reflection.Inspector
     :members:

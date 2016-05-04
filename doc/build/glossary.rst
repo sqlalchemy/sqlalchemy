@@ -60,7 +60,7 @@ Glossary
         ``__delete__()`` methods.   The :class:`.InstrumentedAttribute`
         will generate a SQL expression when used at the class level::
 
-            >>> print MyClass.data == 5
+            >>> print(MyClass.data == 5)
             data = :data_1
 
         and at the instance level, keeps track of changes to values,

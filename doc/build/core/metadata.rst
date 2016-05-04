@@ -58,7 +58,7 @@ dependency (that is, each table is preceded by all tables which it
 references)::
 
     >>> for t in metadata.sorted_tables:
-    ...    print t.name
+    ...    print(t.name)
     user
     user_preference
     invoice
@@ -93,15 +93,15 @@ table include::
 
     # iterate through all columns
     for c in employees.c:
-        print c
+        print(c)
 
     # get the table's primary key columns
     for primary_key in employees.primary_key:
-        print primary_key
+        print(primary_key)
 
     # get the table's foreign key objects:
     for fkey in employees.foreign_keys:
-        print fkey
+        print(fkey)
 
     # access the table's MetaData:
     employees.metadata

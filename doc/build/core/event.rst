@@ -30,7 +30,7 @@ and that a user-defined listener function should receive two positional argument
     from sqlalchemy.pool import Pool
 
     def my_on_connect(dbapi_con, connection_record):
-        print "New DBAPI connection:", dbapi_con
+        print("New DBAPI connection:", dbapi_con)
 
     listen(Pool, 'connect', my_on_connect)
 
@@ -41,7 +41,7 @@ To listen with the :func:`.listens_for` decorator looks like::
 
     @listens_for(Pool, "connect")
     def my_on_connect(dbapi_con, connection_record):
-        print "New DBAPI connection:", dbapi_con
+        print("New DBAPI connection:", dbapi_con)
 
 Named Argument Styles
 ---------------------
