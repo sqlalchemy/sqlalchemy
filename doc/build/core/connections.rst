@@ -48,7 +48,7 @@ way is first procure a connection resource, which you get via the
     connection = engine.connect()
     result = connection.execute("select username from users")
     for row in result:
-        print "username:", row['username']
+        print("username:", row['username'])
     connection.close()
 
 The connection is an instance of :class:`.Connection`,
@@ -76,7 +76,7 @@ The above procedure can be performed in a shorthand way by using the
 
     result = engine.execute("select username from users")
     for row in result:
-        print "username:", row['username']
+        print("username:", row['username'])
 
 Where above, the :meth:`~.Engine.execute` method acquires a new
 :class:`.Connection` on its own, executes the statement with that object,
@@ -251,7 +251,7 @@ of :class:`.Engine`::
 
     result = engine.execute("select username from users")
     for row in result:
-        print "username:", row['username']
+        print("username:", row['username'])
 
 In addition to "connectionless" execution, it is also possible
 to use the :meth:`~.Executable.execute` method of

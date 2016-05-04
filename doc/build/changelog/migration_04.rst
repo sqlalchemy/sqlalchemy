@@ -412,7 +412,7 @@ flush before each query.
     foo.bars.append(Bar(name='lala'))
 
     for bar in foo.bars.filter(Bar.name=='lala'):
-        print bar
+        print(bar)
 
     session.commit()
 

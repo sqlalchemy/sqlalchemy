@@ -195,7 +195,7 @@ that they are replaced with new ones upon next checkout::
     except exc.DBAPIError, e:
         # an exception is raised, Connection is invalidated.
         if e.connection_invalidated:
-            print "Connection was invalidated!"
+            print("Connection was invalidated!")
 
     # after the invalidate event, a new connection
     # starts with a new Pool

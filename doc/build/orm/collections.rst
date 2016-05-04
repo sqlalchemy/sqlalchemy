@@ -168,7 +168,7 @@ this collection is a ``list``::
 
     parent = Parent()
     parent.children.append(Child())
-    print parent.children[0]
+    print(parent.children[0])
 
 Collections are not limited to lists. Sets, mutable sequences and almost any
 other Python object that can act as a container can be used in place of the

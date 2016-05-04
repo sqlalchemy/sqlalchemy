@@ -64,7 +64,7 @@ This is available via the :attr:`.MetaData.sorted_tables` function::
     # ... add Table objects to metadata
     ti = metadata.sorted_tables:
     for t in ti:
-        print t
+        print(t)
 
 How can I get the CREATE TABLE/ DROP TABLE output as a string?
 ===========================================================================
@@ -74,17 +74,17 @@ can be rendered to strings like any other SQL expression::
 
     from sqlalchemy.schema import CreateTable
 
-    print CreateTable(mytable)
+    print(CreateTable(mytable))
 
 To get the string specific to a certain engine::
 
-    print CreateTable(mytable).compile(engine)
+    print(CreateTable(mytable).compile(engine))
 
 There's also a special form of :class:`.Engine` that can let you dump an entire
 metadata creation sequence, using this recipe::
 
     def dump(sql, *multiparams, **params):
-        print sql.compile(dialect=engine.dialect)
+        print(sql.compile(dialect=engine.dialect))
     engine = create_engine('postgresql://', strategy='mock', executor=dump)
     metadata.create_all(engine, checkfirst=False)
 

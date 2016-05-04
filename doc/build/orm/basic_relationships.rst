@@ -359,8 +359,8 @@ association object::
     # iterate through child objects via association, including association
     # attributes
     for assoc in p.children:
-        print assoc.extra_data
-        print assoc.child
+        print(assoc.extra_data)
+        print(assoc.child)
 
 To enhance the association object pattern such that direct
 access to the ``Association`` object is optional, SQLAlchemy

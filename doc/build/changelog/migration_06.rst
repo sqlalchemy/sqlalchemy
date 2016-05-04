@@ -180,7 +180,7 @@ But what happens if we say this?
 ::
 
     >>> if column('foo') == 5:
-    ...     print "yes"
+    ...     print("yes")
     ...
 
 In previous versions of SQLAlchemy, the returned
@@ -205,7 +205,7 @@ That means code such as the following:
 ::
 
     if expression:
-        print "the expression is:", expression
+        print("the expression is:", expression)
 
 Would not evaluate if ``expression`` was a binary clause.
 Since the above pattern should never be used, the base
@@ -227,7 +227,7 @@ Code that wants to check for the presence of a
 ::
 
     if expression is not None:
-        print "the expression is:", expression
+        print("the expression is:", expression)
 
 Keep in mind, **this applies to Table and Column objects
 too**.
@@ -415,7 +415,7 @@ expression object:
     create = CreateTable(mytable)
 
     # dumps the CREATE TABLE as a string
-    print create
+    print(create)
 
     # executes the CREATE TABLE statement
     engine.execute(create)
@@ -568,7 +568,7 @@ To use an inspector:
     from sqlalchemy.engine.reflection import Inspector
     insp = Inspector.from_engine(my_engine)
 
-    print insp.get_schema_names()
+    print(insp.get_schema_names())
 
 the ``from_engine()`` method will in some cases provide a
 backend-specific inspector with additional capabilities,
@@ -581,7 +581,7 @@ such as that of Postgresql which provides a
     my_engine = create_engine('postgresql://...')
     pg_insp = Inspector.from_engine(my_engine)
 
-    print pg_insp.get_table_oid('my_table')
+    print(pg_insp.get_table_oid('my_table'))
 
 RETURNING Support
 =================
@@ -603,7 +603,7 @@ columns will be returned as a regular result set:
                 table.insert().values(data='some data').returning(table.c.id, table.c.timestamp)
             )
     row = result.first()
-    print "ID:", row['id'], "Timestamp:", row['timestamp']
+    print("ID:", row['id'], "Timestamp:", row['timestamp'])
 
 The implementation of RETURNING across the four supported
 backends varies wildly, in the case of Oracle requiring an
