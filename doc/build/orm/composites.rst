@@ -48,7 +48,7 @@ the object as a list or tuple, in order of its column-based attributes. It
 also should supply adequate ``__eq__()`` and ``__ne__()`` methods which test
 the equality of two instances.
 
-We will create a mapping to a table ``vertice``, which represents two points
+We will create a mapping to a table ``vertices``, which represents two points
 as ``x1/y1`` and ``x2/y2``. These are created normally as :class:`.Column`
 objects. Then, the :func:`.composite` function is used to assign new
 attributes that will represent sets of columns via the ``Point`` class::
@@ -60,7 +60,7 @@ attributes that will represent sets of columns via the ``Point`` class::
     Base = declarative_base()
 
     class Vertex(Base):
-        __tablename__ = 'vertice'
+        __tablename__ = 'vertices'
 
         id = Column(Integer, primary_key=True)
         x1 = Column(Integer)
@@ -74,9 +74,9 @@ attributes that will represent sets of columns via the ``Point`` class::
 A classical mapping above would define each :func:`.composite`
 against the existing table::
 
-    mapper(Vertex, vertice_table, properties={
-        'start':composite(Point, vertice_table.c.x1, vertice_table.c.y1),
-        'end':composite(Point, vertice_table.c.x2, vertice_table.c.y2),
+    mapper(Vertex, vertices_table, properties={
+        'start':composite(Point, vertices_table.c.x1, vertices_table.c.y1),
+        'end':composite(Point, vertices_table.c.x2, vertices_table.c.y2),
     })
 
 We can now persist and use ``Vertex`` instances, as well as query for them,
@@ -89,15 +89,15 @@ using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
     >>> q = session.query(Vertex).filter(Vertex.start == Point(3, 4))
     {sql}>>> print q.first().start
     BEGIN (implicit)
-    INSERT INTO vertice (x1, y1, x2, y2) VALUES (?, ?, ?, ?)
+    INSERT INTO vertices (x1, y1, x2, y2) VALUES (?, ?, ?, ?)
     (3, 4, 5, 6)
-    SELECT vertice.id AS vertice_id,
-            vertice.x1 AS vertice_x1,
-            vertice.y1 AS vertice_y1,
-            vertice.x2 AS vertice_x2,
-            vertice.y2 AS vertice_y2
-    FROM vertice
-    WHERE vertice.x1 = ? AND vertice.y1 = ?
+    SELECT vertices.id AS vertices_id,
+            vertices.x1 AS vertices_x1,
+            vertices.y1 AS vertices_y1,
+            vertices.x2 AS vertices_x2,
+            vertices.y2 AS vertices_y2
+    FROM vertices
+    WHERE vertices.x1 = ? AND vertices.y1 = ?
      LIMIT ? OFFSET ?
     (3, 4, 1, 0)
     {stop}Point(x=3, y=4)
@@ -145,7 +145,7 @@ the same expression that the base "greater than" does::
                                   other.__composite_values__())])
 
     class Vertex(Base):
-        ___tablename__ = 'vertice'
+        ___tablename__ = 'vertices'
 
         id = Column(Integer, primary_key=True)
         x1 = Column(Integer)
