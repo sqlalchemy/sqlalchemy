@@ -997,7 +997,7 @@ selectable, e.g. lateral correlation::
     >>> books = table('books', column('book_id'), column('owner_id'))
     >>> subq = select([books.c.book_id]).\
     ...      where(books.c.owner_id == people.c.people_id).lateral("book_subq")
-    >>> print (select([people]).select_from(people.join(subq, true())))
+    >>> print(select([people]).select_from(people.join(subq, true())))
     SELECT people.people_id, people.age, people.name
     FROM people JOIN LATERAL (SELECT books.book_id AS book_id
     FROM books WHERE books.owner_id = people.people_id)
@@ -1361,7 +1361,7 @@ within logging, exception reporting, as well as ``repr()`` of the row itself::
     >4=4:PGJ7HQ ... (4703 characters truncated) ... J6IK546AJMB4N6S9L;;9AKI;=
     RJPHDSSOTNBUEEC9@Q:RCL:I@5?FO<9K>KJAGAO@E6@A7JI8O:J7B69T6<8;F:S;4BEIJS9HM
     K:;5OLPM@JR;R:J6<SOTTT=>Q>7T@I::OTDC:CC<=NGP6C>BC8N',)
-    >>> print row
+    >>> print(row)
     (u'E6@?>9HPOJB<<BHR:@=TS:5ILU=;JLM<4?B9<S48PTNG9>:=TSTLA;9K;9FPM4M8M@;NM6
     GULUAEBT9QGHNHTHR5EP75@OER4?SKC;D:TFUMD:M>;C6U:JLM6R67GEK<A6@S@C@J7>4
     =4:PGJ7HQ ... (4703 characters truncated) ... J6IK546AJMB4N6S9L;;9AKI;
@@ -2259,7 +2259,7 @@ copy the "length" parameter as the value ``"max"``::
     >>> engine.execute("create table s (x varchar(max), y varbinary(max))")
     >>> insp = inspect(engine)
     >>> for col in insp.get_columns("s"):
-    ...     print col['type'].__class__, col['type'].length
+    ...     print(col['type'].__class__, col['type'].length)
     ...
     <class 'sqlalchemy.sql.sqltypes.VARCHAR'> max
     <class 'sqlalchemy.dialects.mssql.base.VARBINARY'> max
@@ -2270,7 +2270,7 @@ interprets as "max".   The fix then is so that these lengths come
 out as None, so that the type objects work in non-SQL Server contexts::
 
     >>> for col in insp.get_columns("s"):
-    ...     print col['type'].__class__, col['type'].length
+    ...     print(col['type'].__class__, col['type'].length)
     ...
     <class 'sqlalchemy.sql.sqltypes.VARCHAR'> None
     <class 'sqlalchemy.dialects.mssql.base.VARBINARY'> None

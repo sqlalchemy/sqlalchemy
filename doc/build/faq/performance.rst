@@ -104,7 +104,7 @@ Below is a simple recipe which works profiling into a context manager::
         ps.print_stats()
         # uncomment this to see who's calling what
         # ps.print_callers()
-        print s.getvalue()
+        print(s.getvalue())
 
 To profile a section of code::
 

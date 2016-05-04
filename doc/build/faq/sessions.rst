@@ -282,11 +282,11 @@ one::
 
     class Iterates(object):
         def __len__(self):
-            print "LEN!"
+            print("LEN!")
             return 5
 
         def __iter__(self):
-            print "ITER!"
+            print("ITER!")
             return iter([1, 2, 3, 4, 5])
 
     list(Iterates())
@@ -477,7 +477,7 @@ The function can be demonstrated as follows::
 
 
     for obj in walk(a1):
-        print obj
+        print(obj)
 
 Output::
 

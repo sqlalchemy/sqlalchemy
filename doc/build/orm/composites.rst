@@ -87,7 +87,7 @@ using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
     >>> v = Vertex(start=Point(3, 4), end=Point(5, 6))
     >>> session.add(v)
     >>> q = session.query(Vertex).filter(Vertex.start == Point(3, 4))
-    {sql}>>> print q.first().start
+    {sql}>>> print(q.first().start)
     BEGIN (implicit)
     INSERT INTO vertice (x1, y1, x2, y2) VALUES (?, ?, ?, ?)
     (3, 4, 5, 6)

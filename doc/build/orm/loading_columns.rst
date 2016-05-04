@@ -156,7 +156,7 @@ The bundle allows columns to be grouped together::
 
     bn = Bundle('mybundle', MyClass.data1, MyClass.data2)
     for row in session.query(bn).filter(bn.c.data1 == 'd1'):
-        print row.mybundle.data1, row.mybundle.data2
+        print(row.mybundle.data1, row.mybundle.data2)
 
 The bundle can be subclassed to provide custom behaviors when results
 are fetched.  The method :meth:`.Bundle.create_row_processor` is given
@@ -187,7 +187,7 @@ A result from the above bundle will return dictionary values::
 
     bn = DictBundle('mybundle', MyClass.data1, MyClass.data2)
     for row in session.query(bn).filter(bn.c.data1 == 'd1'):
-        print row.mybundle['data1'], row.mybundle['data2']
+        print(row.mybundle['data1'], row.mybundle['data2'])
 
 The :class:`.Bundle` construct is also integrated into the behavior
 of :func:`.composite`, where it is used to return composite attributes as objects

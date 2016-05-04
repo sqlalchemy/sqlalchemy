@@ -79,12 +79,12 @@ set-like collection. All items present may be accessed using the iterator
 interface::
 
     for obj in session:
-        print obj
+        print(obj)
 
 And presence may be tested for using regular "contains" semantics::
 
     if obj in session:
-        print "Object is present"
+        print("Object is present")
 
 The session is also keeping track of all newly created (i.e. pending) objects,
 all objects which have had changes since they were last loaded or saved (i.e.

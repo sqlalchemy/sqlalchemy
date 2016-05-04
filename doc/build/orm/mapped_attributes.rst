@@ -254,10 +254,10 @@ The above class ``MyClass`` has two attributes, ``.job_status`` and
 ``.status`` that will behave as one attribute, both at the expression
 level::
 
-    >>> print MyClass.job_status == 'some_status'
+    >>> print(MyClass.job_status == 'some_status')
     my_table.job_status = :job_status_1
 
-    >>> print MyClass.status == 'some_status'
+    >>> print(MyClass.status == 'some_status')
     my_table.job_status = :job_status_1
 
 and at the instance level::

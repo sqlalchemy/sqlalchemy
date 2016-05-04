@@ -357,7 +357,7 @@ This list will generate a collection
 of ``StringAttribute`` objects, which are persisted into a table that's
 local to either the ``type_a_strings`` or ``type_b_strings`` table::
 
-    >>> print ta._strings
+    >>> print(ta._strings)
     [<__main__.StringAttribute object at 0x10151cd90>,
         <__main__.StringAttribute object at 0x10151ce10>]
 

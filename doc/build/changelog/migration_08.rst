@@ -282,7 +282,7 @@ A walkthrough of some key capabilities follows::
     <Mapper at 0x101521950; User>
 
     >>> # an expression
-    >>> print b.expression
+    >>> print(b.expression)
     "user".id = address.user_id
 
     >>> # inspect works on instances
@@ -432,7 +432,7 @@ with a declarative base class::
 
     @event.listens_for("load", Base, propagate=True)
     def on_load(target, context):
-        print "New instance loaded:", target
+        print("New instance loaded:", target)
 
     # on_load() will be applied to SomeClass
     class SomeClass(Base):
@@ -665,7 +665,7 @@ The new type is usable like any other type:
          )
 
     stmt = select([data.c.x.log(data.c.y)]).where(data.c.x.log(2) < value)
-    print conn.execute(stmt).fetchall()
+    print(conn.execute(stmt).fetchall())
 
 
 New features which have come from this immediately include
@@ -738,7 +738,7 @@ Above, the ``LowerString`` type defines a SQL expression that will be emitted
 whenever the ``test_table.c.data`` column is rendered in the columns
 clause of a SELECT statement::
 
-    >>> print select([test_table]).where(test_table.c.data == 'HI')
+    >>> print(select([test_table]).where(test_table.c.data == 'HI'))
     SELECT lower(test_table.data) AS data
     FROM test_table
     WHERE test_table.data = lower(:data_1)
@@ -764,7 +764,7 @@ an :class:`.Inspector` object::
 
     engine = create_engine("postgresql://scott:tiger@localhost/test")
     insp = inspect(engine)
-    print insp.get_table_names()
+    print(insp.get_table_names())
 
 It can also be applied to any :class:`.ClauseElement`, which returns
 the :class:`.ClauseElement` itself, such as :class:`.Table`, :class:`.Column`,
@@ -947,7 +947,7 @@ on all :class:`.String` types and will render on any backend, including
 when features such as :meth:`.MetaData.create_all` and :func:`.cast` is used::
 
     >>> stmt = select([cast(sometable.c.somechar, String(20, collation='utf8'))])
-    >>> print stmt
+    >>> print(stmt)
     SELECT CAST(sometable.somechar AS VARCHAR(20) COLLATE "utf8") AS anon_1
     FROM sometable
 
@@ -1208,7 +1208,7 @@ Within a SELECT, the correlation takes effect as expected::
 
     s2 = select([t1, t2]).where(t1.c.x == t2.c.y).where(t1.c.x == s)
 
-    print (s2)
+    print(s2)
 
     SELECT t1.x, t2.y FROM t1, t2
     WHERE t1.x = t2.y AND t1.x =

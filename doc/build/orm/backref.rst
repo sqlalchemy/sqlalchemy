@@ -71,7 +71,7 @@ is ``None``::
     >>> a1 = Address()
     >>> u1.addresses
     []
-    >>> print a1.user
+    >>> print(a1.user)
     None
 
 However, once the ``Address`` is appended to the ``u1.addresses`` collection,
@@ -144,10 +144,10 @@ as if we limited the list of ``Address`` objects to those which start with "tony
 We can observe, by inspecting the resulting property, that both sides
 of the relationship have this join condition applied::
 
-    >>> print User.addresses.property.primaryjoin
+    >>> print(User.addresses.property.primaryjoin)
     "user".id = address.user_id AND address.email LIKE :email_1 || '%%'
     >>>
-    >>> print Address.user.property.primaryjoin
+    >>> print(Address.user.property.primaryjoin)
     "user".id = address.user_id AND address.email LIKE :email_1 || '%%'
     >>>
 

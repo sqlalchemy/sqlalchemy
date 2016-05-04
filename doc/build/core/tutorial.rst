@@ -1725,7 +1725,7 @@ like the above using the :meth:`.Select.lateral` method as follows::
     >>> books = table('books', column('book_id'), column('owner_id'))
     >>> subq = select([books.c.book_id]).\
     ...      where(books.c.owner_id == people.c.people_id).lateral("book_subq")
-    >>> print (select([people]).select_from(people.join(subq, true())))
+    >>> print(select([people]).select_from(people.join(subq, true())))
     SELECT people.people_id, people.age, people.name
     FROM people JOIN LATERAL (SELECT books.book_id AS book_id
     FROM books WHERE books.owner_id = people.people_id)

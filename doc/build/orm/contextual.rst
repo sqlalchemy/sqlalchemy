@@ -96,9 +96,9 @@ underlying :class:`.Session` being maintained by the registry::
     # equivalent to:
     #
     # session = Session()
-    # print session.query(MyClass).all()
+    # print(session.query(MyClass).all())
     #
-    print Session.query(MyClass).all()
+    print(Session.query(MyClass).all())
 
 The above code accomplishes the same task as that of acquiring the current
 :class:`.Session` by calling upon the registry, then using that :class:`.Session`.

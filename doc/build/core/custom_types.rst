@@ -297,8 +297,8 @@ and use it in a :func:`.select` construct::
                   Column('geom_data', Geometry)
                 )
 
-    print select([geometry]).where(
-      geometry.c.geom_data == 'LINESTRING(189412 252431,189631 259122)')
+    print(select([geometry]).where(
+      geometry.c.geom_data == 'LINESTRING(189412 252431,189631 259122)'))
 
 The resulting SQL embeds both functions as appropriate.   ``ST_AsText``
 is applied to the columns clause so that the return value is run through
@@ -315,7 +315,7 @@ with the labeling of the wrapped expression.   Such as, if we rendered
 a :func:`.select` against a :func:`.label` of our expression, the string
 label is moved to the outside of the wrapped expression::
 
-    print select([geometry.c.geom_data.label('my_data')])
+    print(select([geometry.c.geom_data.label('my_data')]))
 
 Output::
 
@@ -361,10 +361,10 @@ transparently::
         conn.execute(message.insert(), username="some user",
                                     message="this is my message")
 
-        print conn.scalar(
+        print(conn.scalar(
                 select([message.c.message]).\
                     where(message.c.username == "some user")
-            )
+            ))
 
 The ``pgp_sym_encrypt`` and ``pgp_sym_decrypt`` functions are applied
 to the INSERT and SELECT statements::
@@ -425,7 +425,7 @@ associated with the :class:`.Integer` type.
 Usage::
 
     >>> sometable = Table("sometable", metadata, Column("data", MyInt))
-    >>> print sometable.c.data + 5
+    >>> print(sometable.c.data + 5)
     sometable.data goofy :data_1
 
 The implementation for :meth:`.ColumnOperators.__add__` is consulted
@@ -452,7 +452,7 @@ to integers::
 
 Using the above type::
 
-    >>> print sometable.c.data.log(5)
+    >>> print(sometable.c.data.log(5))
     log(:log_1, :log_2)
 
 
@@ -475,7 +475,7 @@ along with a :class:`.custom_op` to produce the factorial expression::
 Using the above type::
 
     >>> from sqlalchemy.sql import column
-    >>> print column('x', MyInteger).factorial()
+    >>> print(column('x', MyInteger).factorial())
     x !
 
 See also:

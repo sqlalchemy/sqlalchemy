@@ -530,7 +530,7 @@ Given a mapping like the following::
 A simple scenario that included "A.b" twice would fail to render
 correctly::
 
-    print sess.query(A, a1).order_by(a1.b)
+    print(sess.query(A, a1).order_by(a1.b))
 
 This would order by the wrong column::
 
@@ -845,7 +845,7 @@ expressions are rendered as constants into the SELECT statement::
         Column('y', Integer, default=func.somefunction()))
 
     stmt = select([t.c.x])
-    print t.insert().from_select(['x'], stmt)
+    print(t.insert().from_select(['x'], stmt))
 
 Will render::
 
@@ -1384,7 +1384,7 @@ Starting with a mapping as::
 
 A query that joins to ``A.bs`` twice::
 
-    print s.query(A).join(A.bs).join(A.bs)
+    print(s.query(A).join(A.bs).join(A.bs))
 
 Will render::
 
@@ -1407,7 +1407,7 @@ larger path will now emit a warning::
 The bigger change involves when joining to an entity without using a
 relationship-bound path.  If we join to ``B`` twice::
 
-    print s.query(A).join(B, B.a_id == A.id).join(B, B.a_id == A.id)
+    print(s.query(A).join(B, B.a_id == A.id).join(B, B.a_id == A.id))
 
 In 0.9, this would render as follows::
 
@@ -1467,9 +1467,9 @@ a mapping as follows::
 
     s = Session()
 
-    print s.query(ASub1).join(B, ASub1.b).join(ASub2, B.a)
+    print(s.query(ASub1).join(B, ASub1.b).join(ASub2, B.a))
 
-    print s.query(ASub1).join(B, ASub1.b).join(ASub2, ASub2.id == B.a_id)
+    print(s.query(ASub1).join(B, ASub1.b).join(ASub2, ASub2.id == B.a_id))
 
 The two queries at the bottom are equivalent, and should both render
 the identical SQL::
@@ -1499,7 +1499,7 @@ as all the subclasses normally refer to the same table::
 
     asub2_alias = aliased(ASub2)
 
-    print s.query(ASub1).join(B, ASub1.b).join(asub2_alias, B.a.of_type(asub2_alias))
+    print(s.query(ASub1).join(B, ASub1.b).join(asub2_alias, B.a.of_type(asub2_alias)))
 
 :ticket:`3233`
 :ticket:`3367`

@@ -72,7 +72,7 @@ Object Relational Mapping
   ::
 
       for row in session.query(User.name, func.count(Address.id).label('numaddresses')).join(Address).group_by(User.name):
-         print "name", row.name, "number", row.numaddresses
+         print("name", row.name, "number", row.numaddresses)
 
   ``Query`` has a ``statement`` accessor, as well as a
   ``subquery()`` method which allow ``Query`` to be used to
@@ -144,7 +144,7 @@ Object Relational Mapping
   ::
 
       for col in table.c:
-          print col
+          print(col)
 
   Work with a specific column:
 
@@ -606,7 +606,7 @@ Removed
 
       from sqlalchemy.orm import aliased
       address_alias = aliased(Address)
-      print session.query(User, address_alias).join((address_alias, User.addresses)).all()
+      print(session.query(User, address_alias).join((address_alias, User.addresses)).all())
 
 * ``sqlalchemy.orm.Mapper``
 

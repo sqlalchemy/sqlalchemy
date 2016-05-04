@@ -398,7 +398,7 @@ tutorial:
                   label('avg')
         ])
 
-    print s
+    print(s)
 
 SQL:
 
@@ -997,7 +997,7 @@ same manner as that of 0.5 and 0.6:
 
 ::
 
-    print s.query(Parent).with_polymorphic([Child]).filter(Child.id > 7)
+    print(s.query(Parent).with_polymorphic([Child]).filter(Child.id > 7))
 
 Which on both 0.6 and 0.7 renders:
 
