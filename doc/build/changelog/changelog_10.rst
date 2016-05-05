@@ -19,6 +19,14 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3706
+
+        Fixed bug whereby passing a :func:`.text` construct to the
+        :meth:`.Query.group_by` method would raise an error, instead
+        of intepreting the object as a SQL fragment.
+
+    .. change::
         :tags: bug, oracle
         :tickets: 3699
 
