@@ -844,7 +844,7 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def execute(self, object, *multiparams, **params):
-        """Executes the a SQL statement construct and returns a
+        """Executes a SQL statement construct and returns a
         :class:`.ResultProxy`.
 
         :param object: The statement to be executed.  May be
