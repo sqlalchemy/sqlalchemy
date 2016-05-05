@@ -1266,6 +1266,8 @@ class TextClause(Executable, ClauseElement):
 
     @property
     def selectable(self):
+        # allows text() to be considered by
+        # _interpret_as_from
         return self
 
     _hide_froms = []

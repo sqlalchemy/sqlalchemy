@@ -2978,6 +2978,25 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             [User(id=7), User(id=8), User(id=9), User(id=10)]
         )
 
+    def test_group_by_accepts_text(self):
+        User = self.classes.User
+        s = create_session()
+
+        q = s.query(User).group_by(text("name"))
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users GROUP BY name"
+        )
+
+    def test_orm_columns_accepts_text(self):
+        from sqlalchemy.orm.base import _orm_columns
+        t = text("x")
+        eq_(
+            _orm_columns(t),
+            [t]
+        )
+
     def test_order_by_w_eager_one(self):
         User = self.classes.User
         s = create_session()
