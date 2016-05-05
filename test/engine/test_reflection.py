@@ -801,7 +801,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     @testing.provide_metadata
     def test_reserved(self):
 
-        # check a table that uses an SQL reserved name doesn't cause an
+        # check a table that uses a SQL reserved name doesn't cause an
         # error
 
         meta = self.metadata

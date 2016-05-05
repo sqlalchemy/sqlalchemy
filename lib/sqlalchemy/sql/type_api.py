@@ -1011,7 +1011,7 @@ class TypeDecorator(TypeEngine):
         the processing provided by ``self.impl`` is maintained.
 
         :param dialect: Dialect instance in use.
-        :param coltype: An SQLAlchemy data type
+        :param coltype: A SQLAlchemy data type
 
         This method is the reverse counterpart to the
         :meth:`bind_processor` method of this class.

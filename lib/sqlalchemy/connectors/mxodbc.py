@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Provide an SQLALchemy connector for the eGenix mxODBC commercial
+Provide a SQLALchemy connector for the eGenix mxODBC commercial
 Python adapter for ODBC. This is not a free product, but eGenix
 provides SQLAlchemy with a license for use in continuous integration
 testing.
