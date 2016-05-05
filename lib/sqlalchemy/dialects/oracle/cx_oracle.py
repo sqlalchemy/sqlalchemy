@@ -898,12 +898,16 @@ class OracleDialect_cx_oracle(OracleDialect):
             dsn = url.host
 
         opts = dict(
-            user=url.username,
-            password=url.password,
-            dsn=dsn,
             threaded=self.threaded,
             twophase=self.allow_twophase,
         )
+
+        if dsn is not None:
+            opts['dsn'] = dsn
+        if url.password is not None:
+            opts['password'] = url.password
+        if url.username is not None:
+            opts['user'] = url.username
 
         if util.py2k:
             if self._cx_oracle_with_unicode:
