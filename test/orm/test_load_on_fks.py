@@ -97,7 +97,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         sess.rollback()
         Base.metadata.drop_all(engine)
 
-    def test_load_on_pending_disallows_backref_event(self):
+    def test_load_on_pending_allows_backref_event(self):
         Child.parent.property.load_on_pending = True
         sess.autoflush = False
         c3 = Child()
@@ -105,23 +105,30 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         c3.parent_id = p1.id
         c3.parent = p1
 
-        # a side effect of load-on-pending with no autoflush.
-        # a change to the backref event handler to check
-        # collection membership before assuming "old == new so return"
-        # would fix this - but this is wasteful and autoflush
-        # should be turned on.
-        assert c3 not in p1.children
+        # backref fired off when c3.parent was set,
+        # because the "old" value was None.
+        # change as of [ticket:3708]
+        assert c3 in p1.children
 
-    def test_enable_rel_loading_disallows_backref_event(self):
+    def test_enable_rel_loading_allows_backref_event(self):
         sess.autoflush = False
         c3 = Child()
         sess.enable_relationship_loading(c3)
         c3.parent_id = p1.id
         c3.parent = p1
 
-        # c3.parent is already acting like a "load" here,
-        # so backref events don't work
-        assert c3 not in p1.children
+        # backref fired off when c3.parent was set,
+        # because the "old" value was None
+        # change as of [ticket:3708]
+        assert c3 in p1.children
+
+    def test_m2o_history_on_persistent_allows_backref_event(self):
+        c3 = Child()
+        sess.add(c3)
+        c3.parent_id = p1.id
+        c3.parent = p1
+
+        assert c3 in p1.children
 
     def test_load_on_persistent_allows_backref_event(self):
         Child.parent.property.load_on_pending = True
@@ -132,15 +139,16 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
 
         assert c3 in p1.children
 
-    def test_enable_rel_loading_on_persistent_disallows_backref_event(self):
+    def test_enable_rel_loading_on_persistent_allows_backref_event(self):
         c3 = Child()
         sess.enable_relationship_loading(c3)
         c3.parent_id = p1.id
         c3.parent = p1
 
-        # c3.parent is already acting like a "load" here,
-        # so backref events don't work
-        assert c3 not in p1.children
+        # backref fired off when c3.parent was set,
+        # because the "old" value was None
+        # change as of [ticket:3708]
+        assert c3 in p1.children
 
     def test_no_load_on_pending_allows_backref_event(self):
         # users who stick with the program and don't use

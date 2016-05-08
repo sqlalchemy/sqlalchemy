@@ -678,6 +678,54 @@ would have to be compared during the merge.
 
 :ticket:`3601`
 
+.. _change_3708:
+
+Fix involving many-to-one object moves with user-initiated foriegn key manipulations
+------------------------------------------------------------------------------------
+
+A bug has been fixed involving the mechanics of replacing a many-to-one
+reference to an object with another object.   During the attribute operation,
+the location of the object tha was previouly referred to now makes use of the
+database-committed foreign key value, rather than the current foreign key
+value.  The main effect of the fix is that a backref event towards a collection
+will fire off more accurately when a many-to-one change is made, even if the
+foreign key attribute was manually moved to the new value beforehand.  Assume a
+mapping of the classes ``Parent`` and ``SomeClass``, where ``SomeClass.parent``
+refers to ``Parent`` and ``Parent.items`` refers to the collection of
+``SomeClass`` objects::
+
+    some_object = SomeClass()
+    session.add(some_object)
+    some_object.parent_id = some_parent.id
+    some_object.parent = some_parent
+
+Above, we've made a pending object ``some_object``, manipulated its foreign key
+towards ``Parent`` to refer to it, *then* we actually set up the relationship.
+Before the bug fix, the backref would not have fired off::
+
+    # before the fix
+    assert some_object not in some_parent.items
+
+The fix now is that when we seek to locate the previous value of
+``some_object.parent``, we disregard the parent id that's been manually set,
+and we look for the database-committed value.  In this case, it's None because
+the object is pending, so the event system logs ``some_object.parent``
+as a net change::
+
+    # after the fix, backref fired off for some_object.parent = some_parent
+    assert some_object in some_parent.items
+
+While it is discouraged to manipulate foreign key attributes that are managed
+by relationships, there is limited support for this use case.  Applications
+that manipulate foreign keys in order to allow loads to proceed will often make
+use of the :meth:`.Session.enable_relationship_loading` and
+:attr:`.RelationshipProperty.load_on_pending` features, which cause
+relationships to emit lazy loads based on in-memory foreign key values that
+aren't persisted.   Whether or not these features are in use, this behavioral
+improvement will now be apparent.
+
+:ticket:`3708`
+
 .. _change_3662:
 
 Improvements to the Query.correlate method with polymoprhic entities

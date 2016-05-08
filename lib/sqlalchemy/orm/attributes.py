@@ -788,9 +788,13 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         """
         if self.dispatch._active_history:
             old = self.get(
-                state, dict_, passive=PASSIVE_ONLY_PERSISTENT | NO_AUTOFLUSH)
+                state, dict_,
+                passive=PASSIVE_ONLY_PERSISTENT |
+                NO_AUTOFLUSH | LOAD_AGAINST_COMMITTED)
         else:
-            old = self.get(state, dict_, passive=PASSIVE_NO_FETCH ^ INIT_OK)
+            old = self.get(
+                state, dict_, passive=PASSIVE_NO_FETCH ^ INIT_OK |
+                LOAD_AGAINST_COMMITTED)
 
         if check_old is not None and \
                 old is not PASSIVE_NO_RESULT and \

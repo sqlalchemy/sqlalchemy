@@ -22,6 +22,24 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3708
+
+        Fixed an issue where a many-to-one change of an object from one
+        parent to another could work inconsistently when combined with
+        an un-flushed modication of the foreign key attribute.  The attribute
+        move now considers the database-committed value of the foreign key
+        in order to locate the "previous" parent of the object being
+        moved.   This allows events to fire off correctly including
+        backref events.  Previously, these events would not always fire.
+        Applications which may have relied on the previously broken
+        behavior may be affected.
+
+        .. seealso::
+
+            :ref:`change_3708`
+
+    .. change::
         :tags: feature, sql
         :tickets: 3049
 
