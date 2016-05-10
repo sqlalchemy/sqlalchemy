@@ -19,6 +19,15 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3711
+
+        Fixed bug where by ROW_NUMBER OVER clause applied for OFFSET
+        selects in SQL Server would inappropriately substitute a plain column
+        from the local statement that overlaps with a label name used by
+        the ORDER BY criteria of the statement.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3710
 

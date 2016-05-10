@@ -173,6 +173,16 @@ def unwrap_order_by(clause):
     return cols
 
 
+def unwrap_label_reference(element):
+    def replace(elem):
+        if isinstance(elem, (_label_reference, _textual_label_reference)):
+            return elem.element
+
+    return visitors.replacement_traverse(
+        element, {}, replace
+    )
+
+
 def clause_is_present(clause, search):
     """Given a target clause and a second to search within, return True
     if the target is plainly present in the search without any
