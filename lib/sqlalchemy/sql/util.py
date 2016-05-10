@@ -176,6 +176,16 @@ def unwrap_order_by(clause):
     return result
 
 
+def unwrap_label_reference(element):
+    def replace(elem):
+        if isinstance(elem, (_label_reference, _textual_label_reference)):
+            return elem.element
+
+    return visitors.replacement_traverse(
+        element, {}, replace
+    )
+
+
 def expand_column_list_from_order_by(collist, order_by):
     """Given the columns clause and ORDER BY of a selectable,
     return a list of column expressions that can be added to the collist

@@ -1155,7 +1155,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                        'using an OFFSET or a non-simple '
                                        'LIMIT clause')
 
-            _order_by_clauses = select._order_by_clause.clauses
+            _order_by_clauses = [
+                sql_util.unwrap_label_reference(elem)
+                for elem in select._order_by_clause.clauses
+            ]
+
             limit_clause = select._limit_clause
             offset_clause = select._offset_clause
             kwargs['select_wraps_for'] = select
