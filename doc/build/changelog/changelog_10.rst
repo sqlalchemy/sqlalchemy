@@ -20,6 +20,15 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3710
+
+        Fixed bug whereby the event listeners used for backrefs could
+        be inadvertently applied multiple times, when using a deep class
+        inheritance hierarchy in conjunction with mutiple mapper configuration
+        steps.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3706
 
         Fixed bug whereby passing a :func:`.text` construct to the

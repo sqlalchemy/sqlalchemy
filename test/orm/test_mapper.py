@@ -373,6 +373,47 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         })
         assert getattr(Foo().__class__, 'name').impl is not None
 
+    def test_class_hier_only_instrument_once_multiple_configure(self):
+        users, addresses = (self.tables.users, self.tables.addresses)
+
+        class A(object):
+            pass
+
+        class ASub(A):
+            pass
+
+        class ASubSub(ASub):
+            pass
+
+        class B(object):
+            pass
+
+        from sqlalchemy.testing import mock
+        from sqlalchemy.orm.attributes import register_attribute_impl
+
+        with mock.patch(
+            "sqlalchemy.orm.attributes.register_attribute_impl",
+            side_effect=register_attribute_impl
+        ) as some_mock:
+
+            mapper(A, users, properties={
+                'bs': relationship(B)
+            })
+            mapper(B, addresses)
+
+            configure_mappers()
+
+            mapper(ASub, inherits=A)
+            mapper(ASubSub, inherits=ASub)
+
+            configure_mappers()
+
+        b_calls = [
+            c for c in some_mock.mock_calls if c[1][1] == 'bs'
+        ]
+        eq_(len(b_calls), 3)
+
+
     def test_check_descriptor_as_method(self):
         User, users = self.classes.User, self.tables.users
 
