@@ -71,8 +71,20 @@ def _register_attribute(
             )
         )
 
+    # a single MapperProperty is shared down a class inheritance
+    # hierarchy, so we set up attribute instrumentation and backref event
+    # for each mapper down the hierarchy.
+
+    # typically, "mapper" is the same as prop.parent, due to the way
+    # the configure_mappers() process runs, however this is not strongly
+    # enforced, and in the case of a second configure_mappers() run the
+    # mapper here might not be prop.parent; also, a subclass mapper may
+    # be called here before a superclass mapper.  That is, can't depend
+    # on mappers not already being set up so we have to check each one.
+
     for m in mapper.self_and_descendants:
-        if prop is m._props.get(prop.key):
+        if prop is m._props.get(prop.key) and \
+                not m.class_manager._attr_has_impl(prop.key):
 
             desc = attributes.register_attribute_impl(
                 m.class_,
@@ -83,8 +95,8 @@ def _register_attribute(
                 useobject=useobject,
                 extension=attribute_ext,
                 trackparent=useobject and (
-                    prop.single_parent
-                    or prop.direction is interfaces.ONETOMANY),
+                    prop.single_parent or
+                    prop.direction is interfaces.ONETOMANY),
                 typecallable=typecallable,
                 callable_=callable_,
                 active_history=active_history,
