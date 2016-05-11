@@ -103,7 +103,7 @@ Glossary
         Instrumentation refers to the process of augmenting the functionality
         and attribute set of a particular class.   Ideally, the
         behavior of the class should remain close to a regular
-        class, except that additional behviors and features are
+        class, except that additional behaviors and features are
         made available.  The SQLAlchemy :term:`mapping` process,
         among other things, adds database-enabled :term:`descriptors`
         to a mapped
