@@ -246,7 +246,7 @@ Glossary
         transactional resources", to indicate more explicitly that
         what we are actually "releasing" is any transactional
         state which as accumulated upon the connection.  In most
-        situations, the proces of selecting from tables, emitting
+        situations, the process of selecting from tables, emitting
         updates, etc. acquires :term:`isolated` state upon
         that connection as well as potential row or table locks.
         This state is all local to a particular transaction
