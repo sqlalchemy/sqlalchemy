@@ -253,6 +253,11 @@ best way to do this is to make use of the
             # we don't want to bother pinging on these.
             return
 
+        # turn off "close with result".  This flag is only used with
+        # "connectionless" execution, otherwise will be False in any case
+        save_should_close_with_result = connection.should_close_with_result
+        connection.should_close_with_result = False
+
         try:
             # run a SELECT 1.   use a core select() so that
             # the SELECT of a scalar value without a table is
@@ -272,6 +277,9 @@ best way to do this is to make use of the
                 connection.scalar(select([1]))
             else:
                 raise
+        finally:
+            # restore "close with result"
+            connection.should_close_with_result = save_should_close_with_result
 
 The above recipe has the advantage that we are making use of SQLAlchemy's
 facilities for detecting those DBAPI exceptions that are known to indicate
