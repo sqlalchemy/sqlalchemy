@@ -360,7 +360,7 @@ Glossary
         comprises the WHERE clause of the ``SELECT``.
 
     FROM clause
-        The portion of the ``SELECT`` statement which incicates the initial
+        The portion of the ``SELECT`` statement which indicates the initial
         source of rows.
 
         A simple ``SELECT`` will feature one or more table names in its
