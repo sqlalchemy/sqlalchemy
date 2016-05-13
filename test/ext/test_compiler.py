@@ -127,7 +127,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         class MyThingy(ColumnClause):
             pass
 
-        @compiles(MyThingy, "psotgresql")
+        @compiles(MyThingy, 'postgresql')
         def visit_thingy(thingy, compiler, **kw):
             return "mythingy"
 
