@@ -19,6 +19,14 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3715
+
+        Added disconnect detection support for the error string
+        "SSL error: decryption failed or bad record mac".  Pull
+        request courtesy Iuri de Silvio.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3711
 
