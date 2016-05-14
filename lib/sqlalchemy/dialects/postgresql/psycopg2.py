@@ -717,6 +717,7 @@ class PGDialect_psycopg2(PGDialect):
                 'connection has been closed unexpectedly',
                 'SSL SYSCALL error: Bad file descriptor',
                 'SSL SYSCALL error: EOF detected',
+                'SSL error: decryption failed or bad record mac',
             ]:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
