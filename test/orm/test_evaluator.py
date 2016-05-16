@@ -1,6 +1,6 @@
 """Evaluating SQL expressions on ORM objects"""
 
-from sqlalchemy import String, Integer
+from sqlalchemy import String, Integer, bindparam
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing import fixtures
@@ -57,6 +57,18 @@ class EvaluateTest(fixtures.MappedTest):
             (User(id=5), False),
             (User(id=None), None),
         ])
+
+    def test_compare_to_callable_bind(self):
+        User = self.classes.User
+
+        eval_eq(
+            User.name == bindparam('x', callable_=lambda: 'foo'),
+            testcases=[
+                (User(name='foo'), True),
+                (User(name='bar'), False),
+                (User(name=None), None),
+            ]
+        )
 
     def test_compare_to_none(self):
         User = self.classes.User
