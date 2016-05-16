@@ -1,25 +1,29 @@
-"""Evluating SQL expressions on ORM objects"""
-import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy import String, Integer, select
+"""Evaluating SQL expressions on ORM objects"""
+
+from sqlalchemy import String, Integer
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import mapper, create_session
-from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 from sqlalchemy import and_, or_, not_
 from sqlalchemy.orm import evaluator
+from sqlalchemy.orm import mapper
 
 compiler = evaluator.EvaluatorCompiler()
+
+
 def eval_eq(clause, testcases=None):
     evaluator = compiler.process(clause)
+
     def testeval(obj=None, expected_result=None):
-        assert evaluator(obj) == expected_result, "%s != %r for %s with %r" % (evaluator(obj), expected_result, clause, obj)
+        assert evaluator(obj) == expected_result, \
+            "%s != %r for %s with %r" % (
+                evaluator(obj), expected_result, clause, obj)
     if testcases:
-        for an_obj,result in testcases:
+        for an_obj, result in testcases:
             testeval(an_obj, result)
     return testeval
+
 
 class EvaluateTest(fixtures.MappedTest):
     @classmethod
@@ -65,14 +69,16 @@ class EvaluateTest(fixtures.MappedTest):
     def test_true_false(self):
         User = self.classes.User
 
-        eval_eq(User.name == False, testcases=[
+        eval_eq(
+            User.name == False, testcases=[
                 (User(name='foo'), False),
                 (User(name=True), False),
                 (User(name=False), True),
             ]
         )
 
-        eval_eq(User.name == True, testcases=[
+        eval_eq(
+            User.name == True, testcases=[
                 (User(name='foo'), False),
                 (User(name=True), True),
                 (User(name=False), False),
