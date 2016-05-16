@@ -673,7 +673,7 @@ class ResultProxy(object):
         """Close this ResultProxy.
 
         This closes out the underlying DBAPI cursor corresonding
-        to the statement execution, if one is stil present.  Note that the
+        to the statement execution, if one is still present.  Note that the
         DBAPI cursor is automatically released when the :class:`.ResultProxy`
         exhausts all available rows.  :meth:`.ResultProxy.close` is generally
         an optional method except in the case when discarding a
