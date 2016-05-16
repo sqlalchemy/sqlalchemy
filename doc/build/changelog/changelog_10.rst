@@ -19,6 +19,15 @@
     :version: 1.0.13
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3700
+
+        Fixed bug in "evaluate" strategy of :meth:`.Query.update` and
+        :meth:`.Query.delete` which would fail to accommodate a bound
+        parameter with a "callable" value, as which occurs when filtering
+        by a many-to-one equality expression along a relationship.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3715
 
