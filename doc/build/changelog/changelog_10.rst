@@ -54,6 +54,17 @@
 
     .. change::
         :tags: bug, oracle
+        :tickets: 3705
+
+        Fixed a bug in the cx_Oracle connect process that caused a TypeError
+        when the either the user, password or dsn was empty. This prevented
+        external authentication to Oracle databases, and prevented connecting
+        to the default dsn.  The connect string oracle:// now logs into the
+        default dsn using the Operating System username, equivalent to
+        connecting using '/' with sqlplus.
+
+    .. change::
+        :tags: bug, oracle
         :tickets: 3699
 
         Fixed a bug in the result proxy used mainly by Oracle when binary and
