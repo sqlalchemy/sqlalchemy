@@ -692,6 +692,7 @@ class Inspector(object):
             else:
                 sa_schema.Table(referred_table, table.metadata, autoload=True,
                                 autoload_with=self.bind,
+                                schema=sa_schema.BLANK_SCHEMA,
                                 **reflection_options
                                 )
                 for column in referred_columns:
