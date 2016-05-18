@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.13
+    :released: May 16, 2016
 
     .. change::
         :tags: bug, orm
