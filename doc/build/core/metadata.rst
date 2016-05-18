@@ -303,6 +303,23 @@ described in the individual documentation sections for each dialect.
 Column, Table, MetaData API
 ---------------------------
 
+.. attribute:: sqlalchemy.schema.BLANK_SCHEMA
+
+    Symbol indicating that a :class:`.Table` or :class:`.Sequence`
+    should have 'None' for its schema, even if the parent
+    :class:`.MetaData` has specified a schema.
+
+    .. seealso::
+
+        :paramref:`.MetaData.schema`
+
+        :paramref:`.Table.schema`
+
+        :paramref:`.Sequence.schema`
+
+    .. versionadded:: 1.0.14
+
+
 .. autoclass:: Column
     :members:
     :inherited-members:

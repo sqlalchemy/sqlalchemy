@@ -16,6 +16,23 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.14
+
+    .. change::
+        :tags: bug, engine, postgresql
+        :tickets: 3716
+
+        Fixed bug in cross-schema foreign key reflection in conjunction
+        with the :paramref:`.MetaData.schema` argument, where a referenced
+        table that is present in the "default" schema would fail since there
+        would be no way to indicate a :class:`.Table` that has "blank" for
+        a schema.  The special symbol :attr:`.schema.BLANK_SCHEMA` has been
+        added as an available value for :paramref:`.Table.schema` and
+        :paramref:`.Sequence.schema`, indicating that the schema name
+        should be forced to be ``None`` even if :paramref:`.MetaData.schema`
+        is specified.
+
+.. changelog::
     :version: 1.0.13
     :released: May 16, 2016
 

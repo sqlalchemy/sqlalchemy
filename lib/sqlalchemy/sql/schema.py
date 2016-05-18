@@ -46,6 +46,17 @@ from . import ddl
 
 RETAIN_SCHEMA = util.symbol('retain_schema')
 
+BLANK_SCHEMA = util.symbol(
+    'blank_schema',
+    """Symbol indicating that a :class:`.Table` or :class:`.Sequence`
+    should have 'None' for its schema, even if the parent
+    :class:`.MetaData` has specified a schema.
+
+    .. versionadded:: 1.0.14
+
+    """
+)
+
 
 def _get_table_key(name, schema):
     if schema is None:
@@ -340,6 +351,17 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         the table resides in a schema other than the default selected schema
         for the engine's database connection.  Defaults to ``None``.
 
+        If the owning :class:`.MetaData` of this :class:`.Table` specifies
+        its own :paramref:`.MetaData.schema` parameter, then that schema
+        name will be applied to this :class:`.Table` if the schema parameter
+        here is set to ``None``.  To set a blank schema name on a :class:`.Table`
+        that would otherwise use the schema set on the owning :class:`.MetaData`,
+        specify the special symbol :attr:`.BLANK_SCHEMA`.
+
+        .. versionadded:: 1.0.14  Added the :attr:`.BLANK_SCHEMA` symbol to
+           allow a :class:`.Table` to have a blank schema name even when the
+           parent :class:`.MetaData` specifies :paramref:`.MetaData.schema`.
+
         The quoting rules for the schema name are the same as those for the
         ``name`` parameter, in that quoting is applied for reserved words or
         case-sensitive names; to enable unconditional quoting for the
@@ -371,6 +393,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         schema = kw.get('schema', None)
         if schema is None:
             schema = metadata.schema
+        elif schema is BLANK_SCHEMA:
+            schema = None
         keep_existing = kw.pop('keep_existing', False)
         extend_existing = kw.pop('extend_existing', False)
         if 'useexisting' in kw:
@@ -442,6 +466,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         self.schema = kwargs.pop('schema', None)
         if self.schema is None:
             self.schema = metadata.schema
+        elif self.schema is BLANK_SCHEMA:
+            self.schema = None
         else:
             quote_schema = kwargs.pop('quote_schema', None)
             self.schema = quoted_name(self.schema, quote_schema)
@@ -2120,7 +2146,10 @@ class Sequence(DefaultGenerator):
          .. versionadded:: 1.0.7
 
         :param schema: Optional schema name for the sequence, if located
-         in a schema other than the default.
+         in a schema other than the default.  The rules for selecting the
+         schema name when a :class:`.MetaData` is also present are the same
+         as that of :paramref:`.Table.schema`.
+
         :param optional: boolean value, when ``True``, indicates that this
          :class:`.Sequence` object only needs to be explicitly generated
          on backends that don't provide another way to generate primary
@@ -2169,7 +2198,9 @@ class Sequence(DefaultGenerator):
         self.nomaxvalue = nomaxvalue
         self.cycle = cycle
         self.optional = optional
-        if metadata is not None and schema is None and metadata.schema:
+        if schema is BLANK_SCHEMA:
+            self.schema = schema = None
+        elif metadata is not None and schema is None and metadata.schema:
             self.schema = schema = metadata.schema
         else:
             self.schema = quoted_name(schema, quote_schema)
@@ -3372,8 +3403,21 @@ class MetaData(SchemaItem):
 
         :param schema:
            The default schema to use for the :class:`.Table`,
-           :class:`.Sequence`, and other objects associated with this
-           :class:`.MetaData`. Defaults to ``None``.
+           :class:`.Sequence`, and potentially other objects associated with
+           this :class:`.MetaData`. Defaults to ``None``.
+
+           When this value is set, any :class:`.Table` or :class:`.Sequence`
+           which specifies ``None`` for the schema parameter will instead
+           have this schema name defined.  To build a :class:`.Table`
+           or :class:`.Sequence` that still has ``None`` for the schema
+           even when this parameter is present, use the :attr:`.BLANK_SCHEMA`
+           symbol.
+
+           .. seealso::
+
+                :paramref:`.Table.schema`
+
+                :paramref:`.Sequence.schema`
 
         :param quote_schema:
             Sets the ``quote_schema`` flag for those :class:`.Table`,

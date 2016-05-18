@@ -7,7 +7,8 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, PrimaryKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode, types as sqltypes, bindparam, \
-    Table, Column, Boolean, Enum, func, text, TypeDecorator
+    Table, Column, Boolean, Enum, func, text, TypeDecorator, \
+    BLANK_SCHEMA
 from sqlalchemy import schema, exc
 from sqlalchemy.engine import default
 from sqlalchemy.sql import elements, naming
@@ -446,6 +447,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                     ('t2', m1, 'sch2', None, 'sch2', None),
                     ('t3', m1, 'sch2', True, 'sch2', True),
                     ('t4', m1, 'sch1', None, 'sch1', None),
+                    ('t5', m1, BLANK_SCHEMA, None, None, None),
                     ('t1', m2, None, None, 'sch1', True),
                     ('t2', m2, 'sch2', None, 'sch2', None),
                     ('t3', m2, 'sch2', True, 'sch2', True),
@@ -458,6 +460,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                     ('t2', m4, 'sch2', None, 'sch2', None),
                     ('t3', m4, 'sch2', True, 'sch2', True),
                     ('t4', m4, 'sch1', None, 'sch1', None),
+                    ('t5', m4, BLANK_SCHEMA, None, None, None),
                 ]):
             kw = {}
             if schema is not None:

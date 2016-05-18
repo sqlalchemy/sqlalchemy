@@ -15,6 +15,7 @@ from .sql.base import (
 
 
 from .sql.schema import (
+    BLANK_SCHEMA,
     CheckConstraint,
     Column,
     ColumnDefault,

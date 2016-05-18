@@ -120,6 +120,7 @@ from .schema import (
     ThreadLocalMetaData,
     UniqueConstraint,
     DDL,
+    BLANK_SCHEMA
 )
 
 

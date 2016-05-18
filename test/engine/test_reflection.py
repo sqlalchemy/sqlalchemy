@@ -1304,6 +1304,31 @@ class SchemaTest(fixtures.TestBase):
             'sa_fake_schema_123'), False)
 
     @testing.requires.schemas
+    @testing.requires.cross_schema_fk_reflection
+    @testing.provide_metadata
+    def test_blank_schema_arg(self):
+        metadata = self.metadata
+
+        Table('some_table', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('sid', Integer, sa.ForeignKey('some_other_table.id')),
+              schema=testing.config.test_schema
+              )
+        Table('some_other_table', metadata,
+              Column('id', Integer, primary_key=True),
+              schema=None
+              )
+        metadata.create_all()
+        with testing.db.connect() as conn:
+            meta2 = MetaData(conn, schema=testing.config.test_schema)
+            meta2.reflect()
+
+            eq_(set(meta2.tables), set(
+                [
+                    'some_other_table',
+                    '%s.some_table' % testing.config.test_schema]))
+
+    @testing.requires.schemas
     @testing.fails_on('sqlite', 'FIXME: unknown')
     @testing.fails_on('sybase', 'FIXME: unknown')
     def test_explicit_default_schema(self):
