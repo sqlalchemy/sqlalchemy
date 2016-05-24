@@ -3081,6 +3081,22 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             "PRIMARY KEY (b, a))"
         )
 
+    def test_create_table_suffix(self):
+        class MyDialect(default.DefaultDialect):
+            class MyCompiler(compiler.DDLCompiler):
+                def create_table_suffix(self, table):
+                    return 'SOME SUFFIX'
+
+            ddl_compiler = MyCompiler
+
+        m = MetaData()
+        t1 = Table('t1', m, Column('q', Integer))
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 SOME SUFFIX (q INTEGER)",
+            dialect=MyDialect()
+        )
+
     def test_table_no_cols(self):
         m = MetaData()
         t1 = Table('t1', m)

@@ -266,6 +266,15 @@
 
     .. change::
         :tags: feature, sql
+        :pullreq: github:275
+
+        Added a hook in :meth:`.DDLCompiler.visit_create_table` called
+        :meth:`.DDLCompiler.create_table_suffix`, allowing custom dialects
+        to add keywords after the "CREATE TABLE" clause.  Pull request
+        courtesy Mark Sandan.
+
+    .. change::
+        :tags: feature, sql
         :pullreq: github:231
 
         Negative integer indexes are now accommodated by rows
