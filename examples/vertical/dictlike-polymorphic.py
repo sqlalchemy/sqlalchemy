@@ -134,7 +134,7 @@ if __name__ == '__main__':
         char_value = Column(UnicodeText, info={'type': (str, 'string')})
         boolean_value = Column(Boolean, info={'type': (bool, 'boolean')})
 
-    class Animal(ProxiedDictMixin._base_class(Base)):
+    class Animal(ProxiedDictMixin, Base):
         """an Animal"""
 
         __tablename__ = 'animal'
