@@ -46,7 +46,7 @@ with any type whose target Python type may be mutable, including
 :class:`.PickleType`, :class:`.postgresql.ARRAY`, etc.
 
 When using the :mod:`sqlalchemy.ext.mutable` extension, the value itself
-tracks all parents which reference it.  Below, we illustrate the a simple
+tracks all parents which reference it.  Below, we illustrate a simple
 version of the :class:`.MutableDict` dictionary object, which applies
 the :class:`.Mutable` mixin to a plain Python dictionary::
 

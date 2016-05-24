@@ -112,7 +112,7 @@ def _register_attribute(
 
 @properties.ColumnProperty.strategy_for(instrument=False, deferred=False)
 class UninstrumentedColumnLoader(LoaderStrategy):
-    """Represent the a non-instrumented MapperProperty.
+    """Represent a non-instrumented MapperProperty.
 
     The polymorphic_on argument of mapper() often results in this,
     if the argument is against the with_polymorphic selectable.

@@ -3461,7 +3461,7 @@
         :tickets: 
 
       Fixed query.join() when used in conjunction with a
-      columns-only clause and an SQL-expression ON clause in the
+      columns-only clause and a SQL-expression ON clause in the
       join.
 
     .. change::

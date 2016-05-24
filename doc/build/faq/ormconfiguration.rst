@@ -294,7 +294,7 @@ the two queries may not see the same results:
     ORDER BY anon_1.users_id
 
 Depending on database specifics, there is
-a chance we may get the a result like the following for the two queries::
+a chance we may get a result like the following for the two queries::
 
     -- query #1
     +--------+
