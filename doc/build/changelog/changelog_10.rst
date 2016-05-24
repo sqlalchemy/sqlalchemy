@@ -32,6 +32,14 @@
         should be forced to be ``None`` even if :paramref:`.MetaData.schema`
         is specified.
 
+    .. change::
+        :tags: bug, examples
+        :tickets: 3704
+
+        Fixed a regression that occurred in the
+        examples/vertical/dictlike-polymorphic.py example which prevented it
+        from running.
+
 .. changelog::
     :version: 1.0.13
     :released: May 16, 2016
