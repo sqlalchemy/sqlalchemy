@@ -1,5 +1,5 @@
 """
-Illustrates how to embed `dogpile.cache <http://dogpilecache.readthedocs.org/>`_
+Illustrates how to embed `dogpile.cache <https://dogpilecache.readthedocs.io/>`_
 functionality within
 the :class:`.Query` object, allowing full cache control as well as the
 ability to pull "lazy loaded" attributes from long term cache

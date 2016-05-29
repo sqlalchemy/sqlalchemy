@@ -13,7 +13,7 @@ schema, typically though not necessarily one which is reflected.
 
 It is hoped that the :class:`.AutomapBase` system provides a quick
 and modernized solution to the problem that the very famous
-`SQLSoup <https://sqlsoup.readthedocs.org/en/latest/>`_
+`SQLSoup <https://sqlsoup.readthedocs.io/en/latest/>`_
 also tries to solve, that of generating a quick and rudimentary object
 model from an existing database on the fly.  By addressing the issue strictly
 at the mapper configuration level, and integrating fully with existing
