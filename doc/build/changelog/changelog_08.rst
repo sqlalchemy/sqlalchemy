@@ -2440,7 +2440,7 @@
         :tickets: 2589
 
       The Beaker caching example has been converted
-      to use `dogpile.cache <http://dogpilecache.readthedocs.org/>`_.
+      to use `dogpile.cache <https://dogpilecache.readthedocs.io/>`_.
       This is a new caching library written by the same
       creator of Beaker's caching internals, and represents a
       vastly improved, simplified, and modernized system of caching.

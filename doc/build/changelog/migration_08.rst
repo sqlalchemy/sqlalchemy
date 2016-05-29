@@ -578,7 +578,7 @@ that were not flushed in the current transaction.
 Caching Example now uses dogpile.cache
 ---------------------------------------
 
-The caching example now uses `dogpile.cache <http://dogpilecache.readthedocs.org/>`_.
+The caching example now uses `dogpile.cache <https://dogpilecache.readthedocs.io/>`_.
 Dogpile.cache is a rewrite of the caching portion
 of Beaker, featuring vastly simpler and faster operation,
 as well as support for distributed locking.

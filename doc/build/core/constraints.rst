@@ -426,7 +426,7 @@ parameters which create :class:`.UniqueConstraint` and :class:`.Index` objects
 without an explicit name being specified.
 
 The use case of alteration of existing tables and constraints can be handled
-by schema migration tools such as `Alembic <http://http://alembic.readthedocs.org/>`_.
+by schema migration tools such as `Alembic <https://alembic.readthedocs.io/>`_.
 However, neither Alembic nor SQLAlchemy currently create names for constraint
 objects where the name is otherwise unspecified, leading to the case where
 being able to alter existing constraints means that one must reverse-engineer

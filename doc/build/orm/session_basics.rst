@@ -410,7 +410,7 @@ by default. This also defeats the purpose of using the Session as a cache.
 The :class:`.Session` is not designed to be a
 global object from which everyone consults as a "registry" of objects.
 That's more the job of a **second level cache**.   SQLAlchemy provides
-a pattern for implementing second level caching using `dogpile.cache <http://dogpilecache.readthedocs.org/>`_,
+a pattern for implementing second level caching using `dogpile.cache <https://dogpilecache.readthedocs.io/>`_,
 via the :ref:`examples_caching` example.
 
 How can I get the :class:`~sqlalchemy.orm.session.Session` for a certain object?
