@@ -606,6 +606,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR UPDATE NOWAIT")
 
         self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(skip_locked=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR UPDATE SKIP LOCKED")
+
+        self.assert_compile(
             table1.select(table1.c.myid == 7).with_for_update(read=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE")
@@ -615,6 +622,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             with_for_update(read=True, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(read=True, skip_locked=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR SHARE SKIP LOCKED")
 
         self.assert_compile(
             table1.select(table1.c.myid == 7).
@@ -644,6 +658,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR SHARE OF mytable NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(read=True, skip_locked=True,
+                            of=[table1.c.myid, table1.c.name]),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR SHARE OF mytable SKIP LOCKED")
 
         ta = table1.alias()
         self.assert_compile(

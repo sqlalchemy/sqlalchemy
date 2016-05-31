@@ -50,6 +50,16 @@
         Alex Grönholm.
 
     .. change::
+        :tags: feature, postgresql, oracle
+        :pullreq: bitbucket:86
+
+        Added new parameter
+        :paramref:`.GenerativeSelect.with_for_update.skip_locked`, which
+        will render the ``SKIP LOCKED`` phrase for a ``FOR UPDATE`` or
+        ``FOR SHARE`` lock on the Postgresql and Oracle backends.  Pull
+        request courtesy Jack Zhou.
+
+    .. change::
         :tags: change, orm
         :tickets: 3394
 

@@ -814,6 +814,8 @@ class OracleCompiler(compiler.SQLCompiler):
 
         if select._for_update_arg.nowait:
             tmp += " NOWAIT"
+        if select._for_update_arg.skip_locked:
+            tmp += " SKIP LOCKED"
 
         return tmp
 

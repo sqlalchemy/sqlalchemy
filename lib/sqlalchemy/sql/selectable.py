@@ -1723,14 +1723,16 @@ class ForUpdateArg(ClauseElement):
         if self.of is not None:
             self.of = [clone(col, **kw) for col in self.of]
 
-    def __init__(self, nowait=False, read=False, of=None):
+    def __init__(self, nowait=False, read=False, of=None, skip_locked=False):
         """Represents arguments specified to :meth:`.Select.for_update`.
 
         .. versionadded:: 0.9.0
+
         """
 
         self.nowait = nowait
         self.read = read
+        self.skip_locked = skip_locked
         if of is not None:
             self.of = [_interpret_as_column_or_from(elem)
                        for elem in util.to_list(of)]
@@ -1873,7 +1875,8 @@ class GenerativeSelect(SelectBase):
         self._for_update_arg = ForUpdateArg.parse_legacy_select(value)
 
     @_generative
-    def with_for_update(self, nowait=False, read=False, of=None):
+    def with_for_update(self, nowait=False, read=False, of=None,
+                        skip_locked=False):
         """Specify a ``FOR UPDATE`` clause for this :class:`.GenerativeSelect`.
 
         E.g.::
@@ -1908,10 +1911,18 @@ class GenerativeSelect(SelectBase):
          and Oracle.  May render as a table or as a column depending on
          backend.
 
+        :param skip_locked: boolean, will render ``FOR UPDATE SKIP LOCKED``
+         on Oracle and Postgresql dialects or ``FOR SHARE SKIP LOCKED`` if
+         ``read=True`` is also specified.
+
+         .. versionadded:: 1.1.0
+
         .. versionadded:: 0.9.0
 
+
         """
-        self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of)
+        self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of,
+                                            skip_locked=skip_locked)
 
     @_generative
     def apply_labels(self):

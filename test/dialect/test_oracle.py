@@ -334,6 +334,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF "
             "mytable.myid, mytable.name NOWAIT")
 
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+                with_for_update(skip_locked=True, of=[table1.c.myid, table1.c.name]),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF "
+            "mytable.myid, mytable.name SKIP LOCKED")
+
         ta = table1.alias()
         self.assert_compile(
             ta.select(ta.c.myid == 7).

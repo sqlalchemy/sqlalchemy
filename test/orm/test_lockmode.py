@@ -181,12 +181,30 @@ class CompileTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             dialect="postgresql"
         )
 
+    def test_postgres_update_skip_locked(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).
+                with_for_update(skip_locked=True),
+            "SELECT users.id AS users_id FROM users FOR UPDATE SKIP LOCKED",
+            dialect="postgresql"
+        )
+
 
     def test_oracle_update(self):
         User = self.classes.User
         sess = Session()
         self.assert_compile(sess.query(User.id).with_for_update(),
             "SELECT users.id AS users_id FROM users FOR UPDATE",
+            dialect="oracle"
+        )
+
+    def test_oracle_update_skip_locked(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id)
+                .with_for_update(skip_locked=True),
+            "SELECT users.id AS users_id FROM users FOR UPDATE SKIP LOCKED",
             dialect="oracle"
         )
 
