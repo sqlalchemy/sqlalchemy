@@ -1673,7 +1673,7 @@ class ForUpdateArg(ClauseElement):
 
     @classmethod
     def parse_legacy_select(self, arg):
-        """Parse the for_update arugment of :func:`.select`.
+        """Parse the for_update argument of :func:`.select`.
 
         :param mode: Defines the lockmode to use.
 
@@ -1723,7 +1723,9 @@ class ForUpdateArg(ClauseElement):
         if self.of is not None:
             self.of = [clone(col, **kw) for col in self.of]
 
-    def __init__(self, nowait=False, read=False, of=None, skip_locked=False):
+    def __init__(
+            self, nowait=False, read=False, of=None,
+            skip_locked=False, key_share=False):
         """Represents arguments specified to :meth:`.Select.for_update`.
 
         .. versionadded:: 0.9.0
@@ -1733,6 +1735,7 @@ class ForUpdateArg(ClauseElement):
         self.nowait = nowait
         self.read = read
         self.skip_locked = skip_locked
+        self.key_share = key_share
         if of is not None:
             self.of = [_interpret_as_column_or_from(elem)
                        for elem in util.to_list(of)]
@@ -1876,7 +1879,7 @@ class GenerativeSelect(SelectBase):
 
     @_generative
     def with_for_update(self, nowait=False, read=False, of=None,
-                        skip_locked=False):
+                        skip_locked=False, key_share=False):
         """Specify a ``FOR UPDATE`` clause for this :class:`.GenerativeSelect`.
 
         E.g.::
@@ -1917,12 +1920,16 @@ class GenerativeSelect(SelectBase):
 
          .. versionadded:: 1.1.0
 
-        .. versionadded:: 0.9.0
+        :param key_share: boolean, will render ``FOR NO KEY UPDATE``,
+         or if combined with ``read=True`` will render ``FOR KEY SHARE``,
+         on the Postgresql dialect.
 
+         .. versionadded:: 1.1.0
 
         """
         self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of,
-                                            skip_locked=skip_locked)
+                                            skip_locked=skip_locked,
+                                            key_share=key_share)
 
     @_generative
     def apply_labels(self):

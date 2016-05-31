@@ -98,6 +98,16 @@
         Alex Grönholm.
 
     .. change::
+        :tags: feature, postgresql
+        :pullreq: github:297
+
+        Added new parameter
+        :paramref:`.GenerativeSelect.with_for_update.key_share`, which
+        will render the ``FOR NO KEY UPDATE`` version of ``FOR UPDATE``
+        and ``FOR KEY SHARE`` instead of ``FOR SHARE``
+        on the Postgresql backend.  Pull request courtesy Sergey Skopin.
+
+    .. change::
         :tags: feature, postgresql, oracle
         :pullreq: bitbucket:86
 

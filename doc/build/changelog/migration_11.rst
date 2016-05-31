@@ -2121,13 +2121,25 @@ should be calling upon ``sqlalchemy.dialects.postgresql``.
 Engine URLs of the form ``postgres://`` will still continue to function,
 however.
 
-Support for SKIP LOCKED
------------------------
+Support for FOR UPDATE SKIP LOCKED  / FOR NO KEY UPDATE / FOR KEY SHARE
+-----------------------------------------------------------------------
 
-The new parameter :paramref:`.GenerativeSelect.with_for_update.skip_locked`
-in both Core and ORM will generate the "SKIP LOCKED" suffix for a
-"SELECT...FOR UPDATE" or "SELECT.. FOR SHARE" query.
+The new parameters :paramref:`.GenerativeSelect.with_for_update.skip_locked`
+and :paramref:`.GenerativeSelect.with_for_update.key_share`
+in both Core and ORM apply a modification to a "SELECT...FOR UPDATE"
+or "SELECT...FOR SHARE" query on the Postgresql backend:
 
+* SELECT FOR NO KEY UPDATE::
+
+    stmt = select([table]).with_for_update(key_share=True)
+
+* SELECT FOR UPDATE SKIP LOCKED::
+
+    stmt = select([table]).with_for_update(skip_locked=True)
+
+* SELECT FOR KEY SHARE::
+
+    stmt = select([table]).with_for_update(read=True, key_share=True)
 
 Dialect Improvements and Changes - MySQL
 =============================================
