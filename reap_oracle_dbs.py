@@ -1,4 +1,4 @@
-"""Drop Oracle databases that are left over from a 
+"""Drop Oracle databases that are left over from a
 multiprocessing test run.
 
 Currently the cx_Oracle driver seems to sometimes not release a
@@ -10,6 +10,7 @@ from sqlalchemy.testing.plugin import plugin_base
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import provision
 import logging
+import sys
 
 logging.basicConfig()
 logging.getLogger(provision.__name__).setLevel(logging.INFO)
@@ -19,6 +20,6 @@ oracle = plugin_base.file_config.get('db', 'oracle')
 from sqlalchemy.testing import provision
 
 engine = engines.testing_engine(oracle, {})
-provision.reap_oracle_dbs(engine)
+provision.reap_oracle_dbs(engine, sys.argv[1])
 
 
