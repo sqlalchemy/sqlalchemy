@@ -44,6 +44,15 @@
         request courtesy Benjamin Bertrand.
 
     .. change::
+        :tags: orm, feature
+        :pullreq: github:237
+
+        Added :paramref:`.AutomapBase.prepare.schema` to the
+        :meth:`.AutomapBase.prepare` method, to indicate which schema
+        tables should be reflected from if not the default schema.
+        Pull request courtesy Josh Marlow.
+
+    .. change::
         :tags: bug, mssql
         :pullreq: bitbucket:58
 
