@@ -852,8 +852,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                         schema if referred_schema == self.schema else None)
                 table.append_constraint(
                     c.copy(schema=fk_constraint_schema, target_table=table))
-
             elif not c._type_bound:
+                # skip unique constraints that would be generated
+                # by the 'unique' flag on Column
+                if isinstance(c, UniqueConstraint) and \
+                    len(c.columns) == 1 and \
+                        list(c.columns)[0].unique:
+                    continue
+
                 table.append_constraint(
                     c.copy(schema=schema, target_table=table))
         for index in self.indexes:
