@@ -22,6 +22,15 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 3720
+
+        Added ``postgresql_tablespace`` as an argument to :class:`.Index`
+        to allow specification of TABLESPACE for an index in Postgresql.
+        Complements the same-named parameter on :class:`.Table`.  Pull
+        request courtesy Benjamin Bertrand.
+
+    .. change::
         :tags: bug, mssql
         :pullreq: bitbucket:58
 

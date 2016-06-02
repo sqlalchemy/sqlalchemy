@@ -2041,6 +2041,19 @@ both within the method :meth:`.Inspector.get_check_constraints` as well
 as within :class:`.Table` reflection within the :attr:`.Table.constraints`
 collection.
 
+Added tablespace option to Index
+--------------------------------
+
+The :class:`.Index` object now accepts the argument ``postgresql_tablespace``
+in order to specify TABLESPACE, the same way as accepted by the
+:class:`.Table` object.
+
+.. seealso::
+
+    :ref:`postgresql_index_storage`
+
+:ticket:`3720`
+
 Support for PyGreSQL
 --------------------
 
