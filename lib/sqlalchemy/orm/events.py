@@ -1934,6 +1934,114 @@ class AttributeEvents(event.Events):
 
         """
 
+    def init_scalar(self, target, value, dict_):
+        """Receive a scalar "init" event.
+
+        This event is invoked when an uninitialized, unpersisted scalar
+        attribute is accessed.  A value of ``None`` is typically returned
+        in this case; no changes are made to the object's state.
+
+        The event handler can alter this behavior in two ways.
+        One is that a value other than ``None`` may be returned.  The other
+        is that the value may be established as part of the object's state,
+        which will also have the effect that it is persisted.
+
+        Typical use is to establish a specific default value of an attribute
+        upon access::
+
+            SOME_CONSTANT = 3.1415926
+
+            @event.listens_for(
+                MyClass.some_attribute, "init_scalar",
+                retval=True, propagate=True)
+            def _init_some_attribute(target, dict_, value):
+                dict_['some_attribute'] = SOME_CONSTANT
+                return SOME_CONSTANT
+
+        Above, we initialize the attribute ``MyClass.some_attribute`` to the
+        value of ``SOME_CONSTANT``.   The above code includes the following
+        features:
+
+        * By setting the value ``SOME_CONSTANT`` in the given ``dict_``,
+          we indicate that the value is to be persisted to the database.
+          **The given value is only persisted to the database if we
+          explicitly associate it with the object**.  The ``dict_`` given
+          is the ``__dict__`` element of the mapped object, assuming the
+          default attribute instrumentation system is in place.
+
+        * By establishing the ``retval=True`` flag, the value we return
+          from the function will be returned by the attribute getter.
+          Without this flag, the event is assumed to be a passive observer
+          and the return value of our function is ignored.
+
+        * The ``propagate=True`` flag is significant if the mapped class
+          includes inheriting subclasses, which would also make use of this
+          event listener.  Without this flag, an inheriting subclass will
+          not use our event handler.
+
+        When we establish the value in the given dictionary, the value will
+        be used in the INSERT statement established by the unit of work.
+        Normally, the default returned value of ``None`` is not established as
+        part of the object, to avoid the issue of mutations occurring to the
+        object in response to a normally passive "get" operation, and also
+        sidesteps the issue of whether or not the :meth:`.AttributeEvents.set`
+        event should be awkwardly fired off during an attribute access
+        operation.  This does not impact the INSERT operation since the
+        ``None`` value matches the value of ``NULL`` that goes into the
+        database in any case; note that ``None`` is skipped during the INSERT
+        to ensure that column and SQL-level default functions can fire off.
+
+        The attribute set event :meth:`.AttributeEvents.set` as well as the
+        related validation feature provided by :obj:`.orm.validates` is
+        **not** invoked when we apply our value to the given ``dict_``.  To
+        have these events to invoke in response to our newly generated
+        value, apply the value to the given object as a normal attribute
+        set operation::
+
+            SOME_CONSTANT = 3.1415926
+
+            @event.listens_for(
+                MyClass.some_attribute, "init_scalar",
+                retval=True, propagate=True)
+            def _init_some_attribute(target, dict_, value):
+                # will also fire off attribute set events
+                target.some_attribute = SOME_CONSTANT
+                return SOME_CONSTANT
+
+        When multiple listeners are set up, the generation of the value
+        is "chained" from one listener to the next by passing the value
+        returned by the previous listener that specifies ``retval=True``
+        as the ``value`` argument of the next listener.
+
+        The :meth:`.AttributeEvents.init_scalar` event may be used to
+        extract values from the default values and/or callables established on
+        mapped :class:`.Column` objects.  See the "active column defaults"
+        example in :ref:`examples_instrumentation` for an example of this.
+
+        .. versionadded:: 1.1
+
+        :param target: the object instance receiving the event.
+         If the listener is registered with ``raw=True``, this will
+         be the :class:`.InstanceState` object.
+        :param value: the value that is to be returned before this event
+         listener were invoked.  This value begins as the value ``None``,
+         however will be the return value of the previous event handler
+         function if multiple listeners are present.
+        :param dict_: the attribute dictionary of this mapped object.
+         This is normally the ``__dict__`` of the object, but in all cases
+         represents the destination that the attribute system uses to get
+         at the actual value of this attribute.  Placing the value in this
+         dictionary has the effect that the value will be used in the
+         INSERT statement generated by the unit of work.
+
+
+        .. seealso::
+
+            :ref:`examples_instrumentation` - see the
+            ``active_column_defaults.py`` example.
+
+        """
+
     def init_collection(self, target, collection, collection_adapter):
         """Receive a 'collection init' event.
 
