@@ -9,7 +9,7 @@ import pytest
 import argparse
 import inspect
 import collections
-import itertools
+import os
 
 try:
     import xdist  # noqa
@@ -42,6 +42,14 @@ def pytest_configure(config):
         plugin_base.configure_follower(
             config.slaveinput["follower_ident"]
         )
+
+        if config.option.write_idents:
+            with open(config.option.write_idents, "a") as file_:
+                file_.write(config.slaveinput["follower_ident"] + "\n")
+    else:
+        if config.option.write_idents and \
+                os.path.exists(config.option.write_idents):
+            os.remove(config.option.write_idents)
 
     plugin_base.pre_begin(config.option)
 
