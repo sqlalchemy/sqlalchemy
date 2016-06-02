@@ -197,8 +197,9 @@ def _assert_no_stray_pool_connections():
         # so the error doesn't at least keep happening.
         pool._refs.clear()
         _STRAY_CONNECTION_FAILURES = 0
-        assert False, "Stray connection refused to leave "\
-            "after gc.collect(): %s" % err
+        warnings.warn(
+            "Stray connection refused to leave "
+            "after gc.collect(): %s" % err)
     elif _STRAY_CONNECTION_FAILURES > 10:
         assert False, "Encountered more than 10 stray connections"
         _STRAY_CONNECTION_FAILURES = 0
