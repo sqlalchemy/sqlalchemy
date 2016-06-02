@@ -19,6 +19,14 @@
     :version: 1.0.14
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3721
+
+        Fixed bug whereby :meth:`.Table.tometadata` would make a duplicate
+        :class:`.UniqueConstraint` for each :class:`.Column` object that
+        featured the ``unique=True`` parameter.
+
+    .. change::
         :tags: bug, engine, postgresql
         :tickets: 3716
 
