@@ -1373,18 +1373,24 @@ class QueuePoolTest(PoolTestBase):
         self.assert_(p.checkedout() == 0)
 
     def test_recycle(self):
-        p = self._queuepool_fixture(pool_size=1,
-                           max_overflow=0,
-                           recycle=3)
-        c1 = p.connect()
-        c_id = id(c1.connection)
-        c1.close()
-        c2 = p.connect()
-        assert id(c2.connection) == c_id
-        c2.close()
-        time.sleep(4)
-        c3 = p.connect()
-        assert id(c3.connection) != c_id
+        with patch("sqlalchemy.pool.time.time") as mock:
+            mock.return_value = 10000
+
+            p = self._queuepool_fixture(
+                pool_size=1,
+                max_overflow=0,
+                recycle=30)
+            c1 = p.connect()
+            c_id = id(c1.connection)
+            c1.close()
+            mock.return_value = 10001
+            c2 = p.connect()
+            assert id(c2.connection) == c_id
+            c2.close()
+
+            mock.return_value = 10035
+            c3 = p.connect()
+            assert id(c3.connection) != c_id
 
     @testing.requires.timing_intensive
     def test_recycle_on_invalidate(self):
