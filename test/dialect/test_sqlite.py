@@ -1146,6 +1146,16 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             # will contain an "autoindex"
             conn.execute("create table o (foo varchar(20) primary key)")
+            conn.execute(
+                "CREATE TABLE onud_test (id INTEGER PRIMARY KEY, "
+                "c1 INTEGER, c2 INTEGER, c3 INTEGER, "
+                "CONSTRAINT fk1 FOREIGN KEY (c1) REFERENCES a1(id) "
+                "ON DELETE SET NULL, "
+                "CONSTRAINT fk2 FOREIGN KEY (c2) REFERENCES a1(id) "
+                "ON UPDATE CASCADE, "
+                "CONSTRAINT fk3 FOREIGN KEY (c3) REFERENCES a2(id) "
+                "ON DELETE CASCADE ON UPDATE SET NULL)"
+            )
 
             conn.execute(
                 "CREATE TABLE cp ("
@@ -1281,6 +1291,33 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{'referred_table': 'i', 'referred_columns': ['x', 'y'],
              'referred_schema': None, 'name': 'my_fk',
              'constrained_columns': ['q', 'p']}]
+        )
+
+    def test_foreign_key_ondelete_onupdate(self):
+        inspector = Inspector(testing.db)
+        fks = inspector.get_foreign_keys('onud_test')
+        eq_(
+            fks,
+            [
+                {
+                    'referred_table': 'a1', 'referred_columns': ['id'],
+                    'referred_schema': None, 'name': 'fk1',
+                    'constrained_columns': ['c1'],
+                    'options': {'ondelete': 'SET NULL'}
+                },
+                {
+                    'referred_table': 'a1', 'referred_columns': ['id'],
+                    'referred_schema': None, 'name': 'fk2',
+                    'constrained_columns': ['c2'],
+                    'options': {'onupdate': 'CASCADE'}
+                },
+                {
+                    'referred_table': 'a2', 'referred_columns': ['id'],
+                    'referred_schema': None, 'name': 'fk3',
+                    'constrained_columns': ['c3'],
+                    'options': {'ondelete': 'CASCADE', 'onupdate': 'SET NULL'}
+                },
+            ]
         )
 
     def test_dont_reflect_autoindex(self):
