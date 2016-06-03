@@ -1111,6 +1111,34 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(str(table_c.join(table2_c).onclause),
             'mytable.myid = othertable.myid')
 
+    def test_unique_true_flag(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta, Column('x', Integer, unique=True))
+
+        m2 = MetaData()
+
+        t2 = table.tometadata(m2)
+
+        eq_(
+            len([
+                const for const
+                in t2.constraints
+                if isinstance(const, UniqueConstraint)]),
+            1
+        )
+
+    def test_index_true_flag(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta, Column('x', Integer, index=True))
+
+        m2 = MetaData()
+
+        t2 = table.tometadata(m2)
+
+        eq_(len(t2.indexes), 1)
+
 
 class InfoTest(fixtures.TestBase):
     def test_metadata_info(self):
