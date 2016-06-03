@@ -480,6 +480,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         Table(
             'x', meta,
             Column('id', Integer, primary_key=True),
+            test_needs_fk=True
         )
 
         Table('table', meta,
