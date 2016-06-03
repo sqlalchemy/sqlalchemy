@@ -84,6 +84,9 @@ class DefaultRequirements(SuiteRequirements):
 
         return only_on(['oracle'])
 
+    @property
+    def foreign_key_constraint_option_reflection(self):
+        return only_on(['postgresql', 'mysql', 'sqlite'])
 
     @property
     def unbounded_varchar(self):

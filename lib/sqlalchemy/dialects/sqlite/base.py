@@ -1420,8 +1420,7 @@ class SQLiteDialect(default.DefaultDialect):
                 continue
             key = keys_by_signature.pop(sig)
             key['name'] = constraint_name
-            if options:
-                key['options'] = options
+            key['options'] = options
             fkeys.append(key)
         # assume the remainders are the unnamed, inline constraints, just
         # use them as is as it's extremely difficult to parse inline

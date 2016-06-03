@@ -340,6 +340,10 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def foreign_key_constraint_option_reflection(self):
+        return exclusions.closed()
+
+    @property
     def temp_table_reflection(self):
         return exclusions.open()
 

@@ -472,6 +472,57 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_foreign_keys_with_schema(self):
         self._test_get_foreign_keys(schema=testing.config.test_schema)
 
+    @testing.requires.foreign_key_constraint_option_reflection
+    @testing.provide_metadata
+    def test_get_foreign_key_options(self):
+        meta = self.metadata
+
+        Table(
+            'x', meta,
+            Column('id', Integer, primary_key=True),
+        )
+
+        Table('table', meta,
+              Column('id', Integer, primary_key=True),
+              Column('x_id', Integer, sa.ForeignKey('x.id', name='xid')),
+              Column('test', String(10)),
+              test_needs_fk=True)
+
+        Table('user', meta,
+              Column('id', Integer, primary_key=True),
+              Column('name', String(50), nullable=False),
+              Column('tid', Integer),
+              sa.ForeignKeyConstraint(
+                  ['tid'], ['table.id'],
+                  name='myfk',
+                  onupdate="SET NULL", ondelete="CASCADE"),
+              test_needs_fk=True)
+
+        meta.create_all()
+
+        insp = inspect(meta.bind)
+
+        # test 'options' is always present for a backend
+        # that can reflect these, since alembic looks for this
+        opts = insp.get_foreign_keys('table')[0]['options']
+
+        eq_(
+            dict(
+                (k, opts[k])
+                for k in opts if opts[k]
+            ),
+            {}
+        )
+
+        opts = insp.get_foreign_keys('user')[0]['options']
+        eq_(
+            dict(
+                (k, opts[k])
+                for k in opts if opts[k]
+            ),
+            {'onupdate': 'SET NULL', 'ondelete': 'CASCADE'}
+        )
+
     @testing.provide_metadata
     def _test_get_indexes(self, schema=None):
         meta = self.metadata
