@@ -1342,6 +1342,7 @@ class SQLiteDialect(default.DefaultDialect):
                     'referred_schema': schema,
                     'referred_table': rtbl,
                     'referred_columns': [],
+                    'options': {}
                 }
                 fks[numerical_id] = fk
 
@@ -1378,7 +1379,6 @@ class SQLiteDialect(default.DefaultDialect):
                 '((?:ON (?:DELETE|UPDATE) '
                 '(?:SET NULL|SET DEFAULT|CASCADE|RESTRICT|NO ACTION) *)*)'
             )
-
             for match in re.finditer(FK_PATTERN, table_data, re.I):
                 (
                     constraint_name, constrained_columns,
@@ -1394,7 +1394,7 @@ class SQLiteDialect(default.DefaultDialect):
                         self._find_cols_in_sig(referred_columns))
                 referred_name = referred_quoted_name or referred_name
                 options = {}
-                for token in re.split(r" *ON *", onupdatedelete):
+                for token in re.split(r" *ON *", onupdatedelete.upper()):
                     if token.startswith("DELETE"):
                         options['ondelete'] = token[6:].strip()
                     elif token.startswith("UPDATE"):

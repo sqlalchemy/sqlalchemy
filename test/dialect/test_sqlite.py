@@ -1170,7 +1170,10 @@ class ConstraintReflectionTest(fixtures.TestBase):
             for name in [
                 "m", "main.l", "k", "j", "i", "h", "g", "f", "e", "e1",
                     "d", "d1", "d2", "c", "b", "a1", "a2"]:
-                conn.execute("drop table %s" % name)
+                try:
+                    conn.execute("drop table %s" % name)
+                except:
+                    pass
 
     def test_legacy_quoted_identifiers_unit(self):
         dialect = sqlite.dialect()
@@ -1203,7 +1206,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
                             'referred_columns': ['id'],
                             'referred_schema': None,
                             'name': None,
-                            'constrained_columns': ['tid']
+                            'constrained_columns': ['tid'],
+                            'options': {}
                         }])
 
     def test_foreign_key_name_is_none(self):
@@ -1215,10 +1219,12 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [
                 {'referred_table': 'a1', 'referred_columns': ['id'],
                  'referred_schema': None, 'name': None,
-                 'constrained_columns': ['id']},
+                 'constrained_columns': ['id'],
+                 'options': {}},
                 {'referred_table': 'a2', 'referred_columns': ['id'],
                  'referred_schema': None, 'name': None,
-                 'constrained_columns': ['id']},
+                 'constrained_columns': ['id'],
+                 'options': {}},
             ]
         )
 
@@ -1231,11 +1237,13 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 {
                     'referred_table': 'a1', 'referred_columns': ['id'],
                     'referred_schema': None, 'name': 'foo1',
-                    'constrained_columns': ['id']},
+                    'constrained_columns': ['id'],
+                    'options': {}},
                 {
                     'referred_table': 'a2', 'referred_columns': ['id'],
                     'referred_schema': None, 'name': 'foo2',
-                    'constrained_columns': ['id']},
+                    'constrained_columns': ['id'],
+                    'options': {}},
             ]
         )
 
@@ -1247,7 +1255,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{
                 'referred_table': 'a2', 'referred_columns': ['id'],
                 'referred_schema': None,
-                'name': None, 'constrained_columns': ['x']
+                'name': None, 'constrained_columns': ['x'],
+                'options': {}
             }]
         )
 
@@ -1260,6 +1269,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 'referred_table': 'a2',
                 'referred_columns': ['some ( STUPID n,ame'],
                 'referred_schema': None,
+                'options': {},
                 'name': None, 'constrained_columns': ['some ( STUPID n,ame']
             }]
         )
@@ -1270,6 +1280,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 'referred_table': 'a2',
                 'referred_columns': ['some ( STUPID n,ame'],
                 'referred_schema': None,
+                'options': {},
                 'name': None, 'constrained_columns': ['some ( STUPID n,ame']
             }]
         )
@@ -1283,14 +1294,17 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 'referred_table': 'i',
                 'referred_columns': ['x', 'y'],
                 'referred_schema': None, 'name': None,
-                'constrained_columns': ['q', 'p']}]
+                'constrained_columns': ['q', 'p'],
+                'options': {}}]
         )
         fks = inspector.get_foreign_keys('k')
         eq_(
             fks,
-            [{'referred_table': 'i', 'referred_columns': ['x', 'y'],
-             'referred_schema': None, 'name': 'my_fk',
-             'constrained_columns': ['q', 'p']}]
+            [
+                {'referred_table': 'i', 'referred_columns': ['x', 'y'],
+                 'referred_schema': None, 'name': 'my_fk',
+                 'constrained_columns': ['q', 'p'],
+                 'options': {}}]
         )
 
     def test_foreign_key_ondelete_onupdate(self):
@@ -1319,6 +1333,24 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 },
             ]
         )
+
+    def test_foreign_key_options_unnamed_inline(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                "create table foo (id integer, "
+                "foreign key (id) references bar (id) on update cascade)")
+
+            insp = inspect(conn)
+            eq_(
+                insp.get_foreign_keys('foo'),
+                [{
+                    'name': None,
+                    'referred_columns': ['id'],
+                    'referred_table': 'bar',
+                    'constrained_columns': ['id'],
+                    'referred_schema': None,
+                    'options': {'onupdate': 'CASCADE'}}]
+            )
 
     def test_dont_reflect_autoindex(self):
         inspector = Inspector(testing.db)
