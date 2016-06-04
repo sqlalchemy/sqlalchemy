@@ -1148,13 +1148,15 @@ class ConstraintReflectionTest(fixtures.TestBase):
             conn.execute("create table o (foo varchar(20) primary key)")
             conn.execute(
                 "CREATE TABLE onud_test (id INTEGER PRIMARY KEY, "
-                "c1 INTEGER, c2 INTEGER, c3 INTEGER, "
+                "c1 INTEGER, c2 INTEGER, c3 INTEGER, c4 INTEGER, "
                 "CONSTRAINT fk1 FOREIGN KEY (c1) REFERENCES a1(id) "
                 "ON DELETE SET NULL, "
                 "CONSTRAINT fk2 FOREIGN KEY (c2) REFERENCES a1(id) "
                 "ON UPDATE CASCADE, "
                 "CONSTRAINT fk3 FOREIGN KEY (c3) REFERENCES a2(id) "
-                "ON DELETE CASCADE ON UPDATE SET NULL)"
+                "ON DELETE CASCADE ON UPDATE SET NULL,"
+                "CONSTRAINT fk4 FOREIGN KEY (c4) REFERENCES a2(id) "
+                "ON UPDATE NO ACTION)"
             )
 
             conn.execute(
@@ -1330,6 +1332,12 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     'referred_schema': None, 'name': 'fk3',
                     'constrained_columns': ['c3'],
                     'options': {'ondelete': 'CASCADE', 'onupdate': 'SET NULL'}
+                },
+                {
+                    'referred_table': 'a2', 'referred_columns': ['id'],
+                    'referred_schema': None, 'name': 'fk4',
+                    'constrained_columns': ['c4'],
+                    'options': {'onupdate': 'NO ACTION'}
                 },
             ]
         )

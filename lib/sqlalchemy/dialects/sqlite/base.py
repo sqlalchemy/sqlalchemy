@@ -1394,7 +1394,8 @@ class SQLiteDialect(default.DefaultDialect):
                         self._find_cols_in_sig(referred_columns))
                 referred_name = referred_quoted_name or referred_name
                 options = {}
-                for token in re.split(r" *ON *", onupdatedelete.upper()):
+
+                for token in re.split(r" *\bON\b *", onupdatedelete.upper()):
                     if token.startswith("DELETE"):
                         options['ondelete'] = token[6:].strip()
                     elif token.startswith("UPDATE"):
