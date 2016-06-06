@@ -1925,114 +1925,54 @@ class PGDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):
-        s = """
-        SELECT nspname
-        FROM pg_namespace
-        ORDER BY nspname
-        """
-        rp = connection.execute(s)
-        # what about system tables?
-
-        if util.py2k:
-            schema_names = [row[0].decode(self.encoding) for row in rp
-                            if not row[0].startswith('pg_')]
-        else:
-            schema_names = [row[0] for row in rp
-                            if not row[0].startswith('pg_')]
-        return schema_names
+        result = connection.execute(
+            sql.text("SELECT nspname FROM pg_namespace "
+                     "WHERE nspname NOT LIKE 'pg_%' "
+                     "ORDER BY nspname"
+            ).columns(nspname=sqltypes.Unicode))
+        return [name for name, in result]
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
-        if schema is not None:
-            current_schema = schema
-        else:
-            current_schema = self.default_schema_name
-
         result = connection.execute(
-            sql.text("SELECT relname FROM pg_class c "
-                     "WHERE relkind = 'r' "
-                     "AND '%s' = (select nspname from pg_namespace n "
-                     "where n.oid = c.relnamespace) " %
-                     current_schema,
-                     typemap={'relname': sqltypes.Unicode}
-                     )
-        )
-        return [row[0] for row in result]
+            sql.text("SELECT c.relname FROM pg_class c "
+                     "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                     "WHERE n.nspname = :schema AND c.relkind = 'r'"
+                     ).columns(relname=sqltypes.Unicode),
+            schema=schema if schema is not None else self.default_schema_name)
+        return [name for name, in result]
 
     @reflection.cache
     def _get_foreign_table_names(self, connection, schema=None, **kw):
-        if schema is not None:
-            current_schema = schema
-        else:
-            current_schema = self.default_schema_name
-
         result = connection.execute(
-            sql.text("SELECT relname FROM pg_class c "
-                     "WHERE relkind = 'f' "
-                     "AND '%s' = (select nspname from pg_namespace n "
-                     "where n.oid = c.relnamespace) " %
-                     current_schema,
-                     typemap={'relname': sqltypes.Unicode}
-                     )
-        )
-        return [row[0] for row in result]
+            sql.text("SELECT c.relname FROM pg_class c "
+                     "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                     "WHERE n.nspname = :schema AND c.relkind = 'f'"
+                     ).columns(relname=sqltypes.Unicode),
+            schema=schema if schema is not None else self.default_schema_name)
+        return [name for name, in result]
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        if schema is not None:
-            current_schema = schema
-        else:
-            current_schema = self.default_schema_name
-        s = """
-        SELECT relname
-        FROM pg_class c
-        WHERE relkind IN ('m', 'v')
-          AND '%(schema)s' = (select nspname from pg_namespace n
-          where n.oid = c.relnamespace)
-        """ % dict(schema=current_schema)
-
-        if util.py2k:
-            view_names = [row[0].decode(self.encoding)
-                          for row in connection.execute(s)]
-        else:
-            view_names = [row[0] for row in connection.execute(s)]
-        return view_names
+        result = connection.execute(
+            sql.text("SELECT c.relname FROM pg_class c "
+                     "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                     "WHERE n.nspname = :schema AND c.relkind IN ('v', 'm')"
+                     ).columns(relname=sqltypes.Unicode),
+            schema=schema if schema is not None else self.default_schema_name)
+        return [name for name, in result]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
-        if schema is not None:
-            current_schema = schema
-        else:
-            current_schema = self.default_schema_name
-
-        if self.server_version_info >= (9, 3):
-            s = """
-            SELECT definition FROM pg_views
-            WHERE schemaname = :schema
-            AND viewname = :view_name
-
-            UNION
-
-            SELECT definition FROM pg_matviews
-            WHERE schemaname = :schema
-            AND matviewname = :view_name
-
-            """
-        else:
-            s = """
-            SELECT definition FROM pg_views
-            WHERE schemaname = :schema
-            AND viewname = :view_name
-            """
-
-        rp = connection.execute(sql.text(s),
-                                view_name=view_name, schema=current_schema)
-        if rp:
-            if util.py2k:
-                view_def = rp.scalar().decode(self.encoding)
-            else:
-                view_def = rp.scalar()
-            return view_def
+        view_def = connection.scalar(
+            sql.text("SELECT pg_get_viewdef(c.oid) view_def FROM pg_class c "
+                     "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                     "WHERE n.nspname = :schema AND c.relname = :view_name "
+                     "AND c.relkind IN ('v', 'm')"
+                     ).columns(view_def=sqltypes.Unicode),
+            schema=schema if schema is not None else self.default_schema_name,
+            view_name=view_name)
+        return view_def
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
