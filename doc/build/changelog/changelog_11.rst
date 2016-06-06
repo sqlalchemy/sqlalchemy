@@ -22,6 +22,15 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, orm
+
+        Added new flag :paramref:`.Session.bulk_insert_mappings.render_nulls`
+        which allows an ORM bulk INSERT to occur with NULL values rendered;
+        this bypasses server side defaults, however allows all statements
+        to be formed with the same set of columns, allowing them to be
+        batched.  Pull request courtesy Tobias Sauerwein.
+
+    .. change::
         :tags: feature, mssql
 
         The ``mssql_clustered`` flag available on :class:`.UniqueConstraint`,

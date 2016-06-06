@@ -17,11 +17,12 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        User, Address = cls.classes("User", "Address")
-        u, a = cls.tables("users", "addresses")
+        User, Address, Order = cls.classes("User", "Address", "Order")
+        u, a, o = cls.tables("users", "addresses", "orders")
 
         mapper(User, u)
         mapper(Address, a)
+        mapper(Order, o)
 
     def test_bulk_save_return_defaults(self):
         User, = self.classes("User",)
@@ -152,6 +153,28 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
                 [{'id': 1, 'name': 'u1new'},
                  {'id': 2, 'name': 'u2'},
                  {'id': 3, 'name': 'u3new'}]
+            )
+        )
+
+    def test_bulk_insert_render_nulls(self):
+        Order, = self.classes("Order",)
+
+        s = Session()
+        with self.sql_execution_asserter() as asserter:
+            s.bulk_insert_mappings(
+                Order,
+                [{'id': 1, 'description': 'u1new'},
+                 {'id': 2, 'description': None},
+                 {'id': 3, 'description': 'u3new'}],
+                render_nulls=True
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO orders (id, description) VALUES (:id, :description)",
+                [{'id': 1, 'description': 'u1new'},
+                 {'id': 2, 'description': None},
+                 {'id': 3, 'description': 'u3new'}]
             )
         )
 

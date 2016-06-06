@@ -2261,9 +2261,10 @@ class Session(_SessionClassMethods):
         ):
             self._bulk_save_mappings(
                 mapper, states, isupdate, True,
-                return_defaults, update_changed_only)
+                return_defaults, update_changed_only, False)
 
-    def bulk_insert_mappings(self, mapper, mappings, return_defaults=False):
+    def bulk_insert_mappings(
+            self, mapper, mappings, return_defaults=False, render_nulls=False):
         """Perform a bulk insert of the given list of mapping dictionaries.
 
         The bulk insert feature allows plain Python dictionaries to be used as
@@ -2316,6 +2317,29 @@ class Session(_SessionClassMethods):
          reason this flag should be set as the returned default information
          is not used.
 
+        :param render_nulls: When True, a value of ``None`` will result
+         in a NULL value being included in the INSERT statement, rather
+         than the column being omitted from the INSERT.   This allows all
+         the rows being INSERTed to have the identical set of columns which
+         allows the full set of rows to be batched to the DBAPI.  Normally,
+         each column-set that contains a different combination of NULL values
+         than the previous row must omit a different series of columns from
+         the rendered INSERT statement, which means it must be emitted as a
+         separate statement.   By passing this flag, the full set of rows
+         are guaranteed to be batchable into one batch; the cost however is
+         that server-side defaults which are invoked by an omitted column will
+         be skipped, so care must be taken to ensure that these are not
+         necessary.
+
+         .. warning::
+
+            When this flag is set, **server side default SQL values will
+            not be invoked** for those columns that are inserted as NULL;
+            the NULL value will be sent explicitly.   Care must be taken
+            to ensure that no server-side default functions need to be
+            invoked for the operation as a whole.
+
+         .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2327,7 +2351,8 @@ class Session(_SessionClassMethods):
 
         """
         self._bulk_save_mappings(
-            mapper, mappings, False, False, return_defaults, False)
+            mapper, mappings, False, False,
+            return_defaults, False, render_nulls)
 
     def bulk_update_mappings(self, mapper, mappings):
         """Perform a bulk update of the given list of mapping dictionaries.
@@ -2376,11 +2401,12 @@ class Session(_SessionClassMethods):
             :meth:`.Session.bulk_save_objects`
 
         """
-        self._bulk_save_mappings(mapper, mappings, True, False, False, False)
+        self._bulk_save_mappings(
+            mapper, mappings, True, False, False, False, False)
 
     def _bulk_save_mappings(
             self, mapper, mappings, isupdate, isstates,
-            return_defaults, update_changed_only):
+            return_defaults, update_changed_only, render_nulls):
         mapper = _class_to_mapper(mapper)
         self._flushing = True
 
@@ -2393,7 +2419,8 @@ class Session(_SessionClassMethods):
                     isstates, update_changed_only)
             else:
                 persistence._bulk_insert(
-                    mapper, mappings, transaction, isstates, return_defaults)
+                    mapper, mappings, transaction,
+                    isstates, return_defaults, render_nulls)
             transaction.commit()
 
         except:
