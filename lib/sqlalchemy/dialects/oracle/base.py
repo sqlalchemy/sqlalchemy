@@ -900,7 +900,7 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
                 )
 
     def format_savepoint(self, savepoint):
-        name = re.sub(r'^_+', '', savepoint.ident)
+        name = savepoint.ident.lstrip('_')
         return super(
             OracleIdentifierPreparer, self).format_savepoint(savepoint, name)
 

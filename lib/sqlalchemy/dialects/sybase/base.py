@@ -552,7 +552,7 @@ class SybaseDialect(default.DefaultDialect):
             coltype = sqltypes.NULLTYPE
 
         if default:
-            default = re.sub("DEFAULT", "", default).strip()
+            default = default.replace("DEFAULT", "").strip()
             default = re.sub("^'(.*)'$", lambda m: m.group(1), default)
         else:
             default = None

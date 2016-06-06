@@ -2085,7 +2085,7 @@ class PGDialect(default.DefaultDialect):
         attype = re.sub(r'\(.*\)', '', format_type)
 
         # strip '[]' from integer[], etc.
-        attype = re.sub(r'\[\]', '', attype)
+        attype = attype.replace('[]', '')
 
         nullable = not notnull
         is_array = format_type.endswith('[]')
