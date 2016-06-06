@@ -849,6 +849,14 @@ class SQLiteCompiler(compiler.SQLCompiler):
         # sqlite has no "FOR UPDATE" AFAICT
         return ''
 
+    def visit_is_distinct_from_binary(self, binary, operator, **kw):
+        return "%s IS NOT %s" % (self.process(binary.left),
+                                 self.process(binary.right))
+
+    def visit_isnot_distinct_from_binary(self, binary, operator, **kw):
+        return "%s IS %s" % (self.process(binary.left),
+                             self.process(binary.right))
+
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
 

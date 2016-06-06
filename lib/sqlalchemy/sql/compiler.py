@@ -81,6 +81,8 @@ OPERATORS = {
     operators.gt: ' > ',
     operators.ge: ' >= ',
     operators.eq: ' = ',
+    operators.is_distinct_from: ' IS DISTINCT FROM ',
+    operators.isnot_distinct_from: ' IS NOT DISTINCT FROM ',
     operators.concat_op: ' || ',
     operators.match_op: ' MATCH ',
     operators.notmatch_op: ' NOT MATCH ',

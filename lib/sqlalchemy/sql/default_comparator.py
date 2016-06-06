@@ -39,6 +39,12 @@ def _boolean_compare(expr, op, obj, negate=None, reverse=False,
                                     op,
                                     type_=result_type,
                                     negate=negate, modifiers=kwargs)
+        elif op in (operators.is_distinct_from, operators.isnot_distinct_from):
+            return BinaryExpression(expr,
+                                    _literal_as_text(obj),
+                                    op,
+                                    type_=result_type,
+                                    negate=negate, modifiers=kwargs)
         else:
             # all other None/True/False uses IS, IS NOT
             if op in (operators.eq, operators.is_):
@@ -51,8 +57,9 @@ def _boolean_compare(expr, op, obj, negate=None, reverse=False,
                                         negate=operators.is_)
             else:
                 raise exc.ArgumentError(
-                    "Only '=', '!=', 'is_()', 'isnot()' operators can "
-                    "be used with None/True/False")
+                    "Only '=', '!=', 'is_()', 'isnot()', "
+                    "'is_distinct_from()', 'isnot_distinct_from()' "
+                    "operators can be used with None/True/False")
     else:
         obj = _check_literal(expr, op, obj)
 
@@ -249,6 +256,8 @@ operator_lookup = {
     "gt": (_boolean_compare, operators.le),
     "ge": (_boolean_compare, operators.lt),
     "eq": (_boolean_compare, operators.ne),
+    "is_distinct_from": (_boolean_compare, operators.isnot_distinct_from),
+    "isnot_distinct_from": (_boolean_compare, operators.is_distinct_from),
     "like_op": (_boolean_compare, operators.notlike_op),
     "ilike_op": (_boolean_compare, operators.notilike_op),
     "notlike_op": (_boolean_compare, operators.like_op),
