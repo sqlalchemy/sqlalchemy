@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from sqlalchemy.testing.assertions import AssertsCompiledSQL, is_, \
-    assert_raises
+    assert_raises, assert_raises_message
 from sqlalchemy.testing import engines, fixtures
 from sqlalchemy import testing
 from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
@@ -666,6 +666,58 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR SHARE OF mytable SKIP LOCKED")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(key_share=True, nowait=True,
+                            of=[table1.c.myid, table1.c.name]),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR NO KEY UPDATE OF mytable NOWAIT")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(key_share=True, skip_locked=True,
+                            of=[table1.c.myid, table1.c.name]),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR NO KEY UPDATE OF mytable SKIP LOCKED")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(key_share=True,
+                            of=[table1.c.myid, table1.c.name]),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR NO KEY UPDATE OF mytable")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(key_share=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR NO KEY UPDATE")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(read=True, key_share=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR KEY SHARE")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(read=True, key_share=True, of=table1),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR KEY SHARE OF mytable")
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).
+            with_for_update(read=True, key_share=True, skip_locked=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR KEY SHARE SKIP LOCKED")
 
         ta = table1.alias()
         self.assert_compile(

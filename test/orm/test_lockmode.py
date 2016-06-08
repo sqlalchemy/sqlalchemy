@@ -53,17 +53,18 @@ class LegacyLockModeTest(_fixtures.FixtureTest):
             sess.query(User.id).with_lockmode, 'unknown_mode'
         )
 
+
 class ForUpdateTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
         User, users = cls.classes.User, cls.tables.users
         mapper(User, users)
 
-    def _assert(self, read=False, nowait=False, of=None,
+    def _assert(self, read=False, nowait=False, of=None, key_share=None,
                     assert_q_of=None, assert_sel_of=None):
         User = self.classes.User
         s = Session()
-        q = s.query(User).with_for_update(read=read, nowait=nowait, of=of)
+        q = s.query(User).with_for_update(read=read, nowait=nowait, of=of, key_share=key_share)
         sel = q._compile_context().statement
 
         assert q._for_update_arg.read is read
@@ -72,8 +73,14 @@ class ForUpdateTest(_fixtures.FixtureTest):
         assert q._for_update_arg.nowait is nowait
         assert sel._for_update_arg.nowait is nowait
 
+        assert q._for_update_arg.key_share is key_share
+        assert sel._for_update_arg.key_share is key_share
+
         eq_(q._for_update_arg.of, assert_q_of)
         eq_(sel._for_update_arg.of, assert_sel_of)
+
+    def test_key_share(self):
+        self._assert(key_share=True)
 
     def test_read(self):
         self._assert(read=True)
@@ -169,6 +176,22 @@ class CompileTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 with_for_update(of=[User, Address]),
             "SELECT users.id AS users_id, addresses.id AS addresses_id "
             "FROM users, addresses FOR UPDATE OF users, addresses",
+            dialect="postgresql"
+        )
+
+    def test_postgres_for_no_key_update(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_for_update(key_share=True),
+            "SELECT users.id AS users_id FROM users FOR NO KEY UPDATE",
+            dialect="postgresql"
+        )
+
+    def test_postgres_for_no_key_nowait_update(self):
+        User = self.classes.User
+        sess = Session()
+        self.assert_compile(sess.query(User.id).with_for_update(key_share=True, nowait=True),
+            "SELECT users.id AS users_id FROM users FOR NO KEY UPDATE NOWAIT",
             dialect="postgresql"
         )
 

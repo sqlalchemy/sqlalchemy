@@ -1170,7 +1170,12 @@ class PGCompiler(compiler.SQLCompiler):
     def for_update_clause(self, select, **kw):
 
         if select._for_update_arg.read:
-            tmp = " FOR SHARE"
+            if select._for_update_arg.key_share:
+                tmp = " FOR KEY SHARE"
+            else:
+                tmp = " FOR SHARE"
+        elif select._for_update_arg.key_share:
+            tmp = " FOR NO KEY UPDATE"
         else:
             tmp = " FOR UPDATE"
 

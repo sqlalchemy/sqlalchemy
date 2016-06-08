@@ -1398,7 +1398,7 @@ class Query(object):
 
     @_generative()
     def with_for_update(self, read=False, nowait=False, of=None,
-                        skip_locked=False):
+                        skip_locked=False, key_share=False):
         """return a new :class:`.Query` with the specified options for the
         ``FOR UPDATE`` clause.
 
@@ -1427,7 +1427,8 @@ class Query(object):
 
         """
         self._for_update_arg = LockmodeArg(read=read, nowait=nowait, of=of,
-                                           skip_locked=skip_locked)
+                                           skip_locked=skip_locked,
+                                           key_share=key_share)
 
     @_generative()
     def params(self, *args, **kwargs):
