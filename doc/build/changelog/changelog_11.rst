@@ -61,6 +61,15 @@
         batched.  Pull request courtesy Tobias Sauerwein.
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 3588
+
+        Added new parameter :paramref:`.PGInspector.get_view_names.include`,
+        allowing specification for what kinds of views should be returned.
+        Currently "plain" and "materialized" views are included.  Pull
+        request courtesy Sebastian Bank.
+
+    .. change::
         :tags: feature, mssql
 
         The ``mssql_clustered`` flag available on :class:`.UniqueConstraint`,
