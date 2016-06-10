@@ -1187,6 +1187,14 @@ class CTE(Generative, HasSuffixes, Alias):
             self._suffixes = _suffixes
         super(CTE, self).__init__(selectable, name=name)
 
+    def _copy_internals(self, clone=_clone, **kw):
+        super(CTE, self)._copy_internals(clone, **kw)
+        if self._cte_alias is not None:
+            self._cte_alias = self
+        self._restates = frozenset([
+            clone(elem, **kw) for elem in self._restates
+        ])
+
     def alias(self, name=None, flat=False):
         return CTE(
             self.original,
