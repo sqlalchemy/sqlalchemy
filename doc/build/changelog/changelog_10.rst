@@ -20,6 +20,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3722
+
+        Fixed bug in :class:`.CTE` structure which would cause it to not
+        clone properly when a union was used, as is common in a recursive
+        CTE.  The improper cloning would cause errors when the CTE is used
+        in various ORM contexts such as that of a :func:`.column_property`.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3721
 
         Fixed bug whereby :meth:`.Table.tometadata` would make a duplicate

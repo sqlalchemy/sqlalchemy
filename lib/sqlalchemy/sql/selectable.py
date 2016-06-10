@@ -1269,6 +1269,14 @@ class CTE(Generative, HasSuffixes, Alias):
             self._suffixes = _suffixes
         super(CTE, self).__init__(selectable, name=name)
 
+    def _copy_internals(self, clone=_clone, **kw):
+        super(CTE, self)._copy_internals(clone, **kw)
+        if self._cte_alias is not None:
+            self._cte_alias = self
+        self._restates = frozenset([
+            clone(elem, **kw) for elem in self._restates
+        ])
+
     @util.dependencies("sqlalchemy.sql.dml")
     def _populate_column_collection(self, dml):
         if isinstance(self.element, dml.UpdateBase):
