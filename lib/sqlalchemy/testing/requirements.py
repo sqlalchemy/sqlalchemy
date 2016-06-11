@@ -322,6 +322,10 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def comment_reflection(self):
+        return exclusions.closed()
+
+    @property
     def view_column_reflection(self):
         """target database must support retrieval of the columns in a view,
         similarly to how a table is inspected.

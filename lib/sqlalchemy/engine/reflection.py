@@ -506,6 +506,26 @@ class Inspector(object):
         return self.dialect.get_unique_constraints(
             self.bind, table_name, schema, info_cache=self.info_cache, **kw)
 
+    def get_table_comment(self, table_name, schema=None, **kw):
+        """Return information about the table comment for ``table_name``.
+
+        Given a string ``table_name`` and an optional string ``schema``,
+        return table comment information as a dictionary with these keys:
+
+        text
+            text of the comment.
+
+        Raises ``NotImplementedError`` for a dialect that does not support
+        comments.
+
+        .. versionadded:: 1.2
+
+        """
+
+        return self.dialect.get_table_comment(
+            self.bind, table_name, schema, info_cache=self.info_cache,
+            **kw)
+
     def get_check_constraints(self, table_name, schema=None, **kw):
         """Return information about check constraints in `table_name`.
 
@@ -624,6 +644,10 @@ class Inspector(object):
             table_name, schema, table, cols_by_orig_name,
             include_columns, exclude_columns, reflection_options)
 
+        self._reflect_table_comment(
+            table_name, schema, table, reflection_options
+        )
+
     def _reflect_column(
         self, table, col_d, include_columns,
             exclude_columns, cols_by_orig_name):
@@ -643,7 +667,7 @@ class Inspector(object):
 
         col_kw = dict(
             (k, col_d[k])
-            for k in ['nullable', 'autoincrement', 'quote', 'info', 'key']
+            for k in ['nullable', 'autoincrement', 'quote', 'info', 'key', 'comment']
             if k in col_d
         )
 
@@ -841,3 +865,12 @@ class Inspector(object):
         for const_d in constraints:
             table.append_constraint(
                 sa_schema.CheckConstraint(**const_d))
+
+    def _reflect_table_comment(
+            self, table_name, schema, table, reflection_options):
+        try:
+            comment_dict = self.get_table_comment(table_name, schema)
+        except NotImplementedError:
+            return
+        else:
+            table.comment = comment_dict.get('text', None)

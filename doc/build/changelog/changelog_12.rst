@@ -13,6 +13,23 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 1546
+        :tags: feature, sql, postgresql, mysql, oracle
+        :tickets: 1546
+
+        Added support for SQL comments on :class:`.Table` and :class:`.Column`
+        objects, via the new :paramref:`.Table.comment` and
+        :paramref:`.Column.comment` arguments.   The comments are included
+        as part of DDL on table creation, either inline or via an appropriate
+        ALTER statement, and are also reflected back within table reflection,
+        as well as via the :class:`.Inspector`.   Supported backends currently
+        include MySQL, Postgresql, and Oracle.  Many thanks to Frazer McLean
+        for a large amount of effort on this.
+
+        .. seealso::
+
+            :ref:`change_1546`
+
     .. change:: 3366
         :tags: bug, orm
         :tickets: 3366

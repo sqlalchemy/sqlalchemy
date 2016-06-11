@@ -661,6 +661,30 @@ class DropConstraint(_CreateDropBase):
             self._create_rule_disable)
 
 
+class SetTableComment(_CreateDropBase):
+    """Represent a COMMENT ON TABLE IS statement."""
+
+    __visit_name__ = "set_table_comment"
+
+
+class DropTableComment(_CreateDropBase):
+    """Represent a COMMENT ON TABLE IS NULL statement."""
+
+    __visit_name__ = "drop_table_comment"
+
+
+class SetColumnComment(_CreateDropBase):
+    """Represent a COMMENT ON COLUMN IS statement."""
+
+    __visit_name__ = "set_column_comment"
+
+
+class DropColumnComment(_CreateDropBase):
+    """Represent a COMMENT ON COLUMN IS NULL statement."""
+
+    __visit_name__ = "drop_column_comment"
+
+
 class DDLBase(SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection
@@ -770,6 +794,14 @@ class SchemaGenerator(DDLBase):
         if hasattr(table, 'indexes'):
             for index in table.indexes:
                 self.traverse_single(index)
+
+        if self.dialect.supports_comments and not self.dialect.inline_comments:
+            if table.comment is not None:
+                self.connection.execute(SetTableComment(table))
+
+            for column in table.columns:
+                if column.comment is not None:
+                    self.connection.execute(SetColumnComment(column))
 
         table.dispatch.after_create(
             table, self.connection,

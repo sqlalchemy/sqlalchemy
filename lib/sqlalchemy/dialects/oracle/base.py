@@ -969,6 +969,7 @@ class OracleDialect(default.DefaultDialect):
     ischema_names = ischema_names
     requires_name_normalize = True
 
+    supports_comments = True
     supports_default_values = False
     supports_empty_insert = False
 
@@ -1300,22 +1301,35 @@ class OracleDialect(default.DefaultDialect):
             char_length_col = 'data_length'
 
         params = {"table_name": table_name}
-        text = "SELECT column_name, data_type, %(char_length_col)s, "\
-            "data_precision, data_scale, "\
-            "nullable, data_default FROM ALL_TAB_COLUMNS%(dblink)s "\
-            "WHERE table_name = :table_name"
+        text = """
+            SELECT col.column_name, col.data_type, col.%(char_length_col)s,
+              col.data_precision, col.data_scale, col.nullable,
+              col.data_default, com.comments\
+            FROM all_tab_columns%(dblink)s col
+            LEFT JOIN all_col_comments%(dblink)s com
+            ON col.table_name = com.table_name
+            AND col.column_name = com.column_name
+            AND col.owner = com.owner
+            WHERE col.table_name = :table_name
+        """
         if schema is not None:
             params['owner'] = schema
-            text += " AND owner = :owner "
-        text += " ORDER BY column_id"
+            text += " AND col.owner = :owner "
+        text += " ORDER BY col.column_id"
         text = text % {'dblink': dblink, 'char_length_col': char_length_col}
 
         c = connection.execute(sql.text(text), **params)
 
         for row in c:
-            (colname, orig_colname, coltype, length, precision, scale, nullable, default) = \
-                (self.normalize_name(row[0]), row[0], row[1], row[
-                 2], row[3], row[4], row[5] == 'Y', row[6])
+            colname = self.normalize_name(row[0])
+            orig_colname = row[0]
+            coltype = row[1]
+            length = row[2]
+            precision = row[3]
+            scale = row[4]
+            nullable = row[5] == 'Y'
+            default = row[6]
+            comment = row[7]
 
             if coltype == 'NUMBER':
                 coltype = NUMBER(precision, scale)
@@ -1338,12 +1352,32 @@ class OracleDialect(default.DefaultDialect):
                 'nullable': nullable,
                 'default': default,
                 'autoincrement': 'auto',
+                'comment': comment,
             }
             if orig_colname.lower() == orig_colname:
                 cdict['quote'] = True
 
             columns.append(cdict)
         return columns
+
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None,
+                          resolve_synonyms=False, dblink='', **kw):
+
+        info_cache = kw.get('info_cache')
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
+
+        COMMENT_SQL = """
+            SELECT comments
+            FROM user_tab_comments
+            WHERE table_name = :table_name
+        """
+
+        c = connection.execute(sql.text(COMMENT_SQL), table_name=table_name)
+        return {"text": c.scalar()}
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None,

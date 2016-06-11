@@ -1002,6 +1002,12 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if default is not None:
             colspec.append('DEFAULT ' + default)
 
+        comment = column.comment
+        if comment is not None:
+            literal = self.sql_compiler.render_literal_value(
+                comment, sqltypes.String())
+            colspec.append('COMMENT ' + literal)
+
         if column.table is not None \
             and column is column.table._autoincrement_column and \
                 column.server_default is None:
@@ -1022,6 +1028,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             for k, v in table.kwargs.items()
             if k.startswith('%s_' % self.dialect.name)
         )
+
+        if table.comment is not None:
+            opts['COMMENT'] = table.comment
 
         for opt in topological.sort([
             ('DEFAULT_CHARSET', 'COLLATE'),
@@ -1141,6 +1150,20 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 "MySQL ignores the 'MATCH' keyword while at the same time "
                 "causes ON UPDATE/ON DELETE clauses to be ignored.")
         return ""
+
+    def visit_set_table_comment(self, create):
+        return "ALTER TABLE %s COMMENT %s" % (
+            self.preparer.format_table(create.element),
+            self.sql_compiler.render_literal_value(
+                create.element.comment, sqltypes.String())
+        )
+
+    def visit_set_column_comment(self, create):
+        return "ALTER TABLE %s CHANGE %s %s" % (
+            self.preparer.format_table(create.element.table),
+            self.preparer.format_column(create.element),
+            self.get_column_specification(create.element)
+        )
 
 
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):
@@ -1467,6 +1490,8 @@ class MySQLDialect(default.DefaultDialect):
     supports_sane_multi_rowcount = False
     supports_multivalues_insert = True
 
+    supports_comments = True
+    inline_comments = True
     default_paramstyle = 'format'
     colspecs = colspecs
 
@@ -1799,6 +1824,12 @@ class MySQLDialect(default.DefaultDialect):
             }
             fkeys.append(fkey_d)
         return fkeys
+
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        parsed_state = self._parsed_state_or_create(
+            connection, table_name, schema, **kw)
+        return {"text": parsed_state.table_options.get('mysql_comment', None)}
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):

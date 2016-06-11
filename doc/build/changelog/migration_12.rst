@@ -38,6 +38,31 @@ New Features and Improvements - ORM
 New Features and Improvements - Core
 ====================================
 
+.. _change_1546:
+
+Support for table, column comments, including DDL and reflection
+----------------------------------------------------------------
+
+The Core receives support for string comments associated with tables
+and columns.   These are specified via the :paramref:`.Table.comment` and
+:paramref:`.Column.comment` arguments::
+
+    Table(
+        'my_table', metadata,
+        Column('q', Integer, comment="the Q value"),
+        comment="my Q table"
+    )
+
+Above, DDL will be rendered appropriately upon table create to associate
+the above comments with the table/ column within the schema.  When
+the above table is autoloaded or inspected with :meth:`.Inspector.get_columns`,
+the comments are included.   The table comment is also available independently
+using the :meth:`.Inspector.get_table_comment` method.
+
+Current backend support includes MySQL, Postgresql, and Oracle.
+
+:ticket:`1546`
+
 .. _change_2694:
 
 New "autoescape" option for startswith(), endswith()

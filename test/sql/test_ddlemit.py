@@ -14,7 +14,9 @@ class EmitDDLTest(fixtures.TestBase):
         return Mock(dialect=Mock(
                     supports_sequences=True,
                     has_table=Mock(side_effect=has_item),
-                    has_sequence=Mock(side_effect=has_item)
+                    has_sequence=Mock(side_effect=has_item),
+                    supports_comments=True,
+                    inline_comments=False,
                     )
                     )
 
@@ -76,6 +78,26 @@ class EmitDDLTest(fixtures.TestBase):
         t2 = Table('t2', m, Column("x", Integer, s2, primary_key=True))
 
         return m, t1, t2, s1, s2
+
+    def _table_comment_fixture(self):
+        m = MetaData()
+
+        c1 = Column('id', Integer, comment='c1')
+
+        t1 = Table(
+            't1', m, c1,
+            comment='t1'
+        )
+
+        return m, t1, c1
+
+    def test_comment(self):
+        m, t1, c1 = self._table_comment_fixture()
+
+        generator = self._mock_create_fixture(
+            False, [t1], item_exists=lambda t: t not in ("t1",))
+
+        self._assert_create_comment([t1, t1, c1], generator, m)
 
     def test_create_seq_checkfirst(self):
         m, t1, t2, s1, s2 = self._table_seq_fixture()
@@ -247,6 +269,11 @@ class EmitDDLTest(fixtures.TestBase):
     def _assert_drop_w_alter(self, elements, generator, argument):
         self._assert_ddl(
             (schema.DropTable, schema.DropSequence, schema.DropConstraint),
+            elements, generator, argument)
+
+    def _assert_create_comment(self, elements, generator, argument):
+        self._assert_ddl(
+            (schema.CreateTable, schema.SetTableComment, schema.SetColumnComment),
             elements, generator, argument)
 
     def _assert_ddl(self, ddl_cls, elements, generator, argument):

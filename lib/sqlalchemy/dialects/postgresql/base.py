@@ -2022,6 +2022,7 @@ class PGDialect(default.DefaultDialect):
     preexecute_autoincrement_sequences = True
     postfetch_lastrowid = False
 
+    supports_comments = True
     supports_default_values = True
     supports_empty_insert = False
     supports_multivalues_insert = True
@@ -2403,8 +2404,11 @@ class PGDialect(default.DefaultDialect):
                WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum
                AND a.atthasdef)
               AS DEFAULT,
-              a.attnotnull, a.attnum, a.attrelid as table_oid
+              a.attnotnull, a.attnum, a.attrelid as table_oid,
+              pgd.description as comment
             FROM pg_catalog.pg_attribute a
+            LEFT JOIN pg_catalog.pg_description pgd ON (
+                pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
             WHERE a.attrelid = :table_oid
             AND a.attnum > 0 AND NOT a.attisdropped
             ORDER BY a.attnum
@@ -2428,14 +2432,16 @@ class PGDialect(default.DefaultDialect):
 
         # format columns
         columns = []
-        for name, format_type, default, notnull, attnum, table_oid in rows:
+        for name, format_type, default, notnull, attnum, table_oid, \
+                comment in rows:
             column_info = self._get_column_info(
-                name, format_type, default, notnull, domains, enums, schema)
+                name, format_type, default, notnull, domains, enums,
+                schema, comment)
             columns.append(column_info)
         return columns
 
     def _get_column_info(self, name, format_type, default,
-                         notnull, domains, enums, schema):
+                         notnull, domains, enums, schema, comment):
         # strip (*) from character varying(5), timestamp(5)
         # with time zone, geometry(POLYGON), etc.
         attype = re.sub(r'\(.*\)', '', format_type)
@@ -2543,7 +2549,8 @@ class PGDialect(default.DefaultDialect):
                         match.group(2) + match.group(3)
 
         column_info = dict(name=name, type=coltype, nullable=nullable,
-                           default=default, autoincrement=autoincrement)
+                           default=default, autoincrement=autoincrement,
+                           comment=comment)
         return column_info
 
     @reflection.cache
@@ -2873,6 +2880,24 @@ class PGDialect(default.DefaultDialect):
              'column_names': [uc["cols"][i] for i in uc["key"]]}
             for name, uc in uniques.items()
         ]
+
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        table_oid = self.get_table_oid(connection, table_name, schema,
+                                       info_cache=kw.get('info_cache'))
+
+        COMMENT_SQL = """
+            SELECT
+                pgd.description as table_comment
+            FROM
+                pg_catalog.pg_description pgd
+            WHERE
+                pgd.objsubid = 0 AND
+                pgd.objoid = :table_oid
+        """
+
+        c = connection.execute(sql.text(COMMENT_SQL), table_oid=table_oid)
+        return {"text": c.scalar()}
 
     @reflection.cache
     def get_check_constraints(

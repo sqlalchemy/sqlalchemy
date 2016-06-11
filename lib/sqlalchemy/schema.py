@@ -62,5 +62,9 @@ from .sql.ddl import (
     _CreateDropBase,
     _DDLCompiles,
     sort_tables,
-    sort_tables_and_constraints
+    sort_tables_and_constraints,
+    SetTableComment,
+    DropTableComment,
+    SetColumnComment,
+    DropColumnComment,
 )
