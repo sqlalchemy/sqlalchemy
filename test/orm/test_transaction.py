@@ -209,8 +209,8 @@ class SessionTransactionTest(FixtureTest):
         sess.commit()
         sess.close()
         engine2.dispose()
-        assert users.count().scalar() == 1
-        assert addresses.count().scalar() == 1
+        eq_(select([func.count('*')]).select_from(users).scalar(), 1)
+        eq_(select([func.count('*')]).select_from(addresses).scalar(), 1)
 
     @testing.requires.independent_connections
     def test_invalidate(self):
@@ -932,10 +932,11 @@ class AutoExpireTest(_LocalFixture):
         # because the identity map would switch it
         u1 = s.query(User).filter_by(name='ed').one()
         assert u1_state not in s.identity_map.all_states()
-        assert s.scalar(users.count()) == 1
+
+        eq_(s.scalar(select([func.count('*')]).select_from(users)), 1)
         s.delete(u1)
         s.flush()
-        assert s.scalar(users.count()) == 0
+        eq_(s.scalar(select([func.count('*')]).select_from(users)), 0)
         s.commit()
 
     def test_trans_deleted_cleared_on_rollback(self):

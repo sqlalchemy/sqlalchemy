@@ -2,7 +2,7 @@ from sqlalchemy.orm import create_session, relationship, mapper, \
     contains_eager, joinedload, subqueryload, subqueryload_all,\
     Session, aliased, with_polymorphic, joinedload_all
 
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, select, func
 from sqlalchemy.engine import default
 
 from sqlalchemy.testing import AssertsCompiledSQL, fixtures
@@ -587,7 +587,12 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
         # another way to check
-        assert q.limit(1).with_labels().subquery().count().scalar() == 1
+        eq_(
+            select([func.count('*')]).select_from(
+                q.limit(1).with_labels().subquery()
+            ).scalar(),
+            1
+        )
         assert q.first() is c1
 
     def test_subquery_load(self):

@@ -8,8 +8,7 @@ from sqlalchemy.orm import mapper as orm_mapper
 import sqlalchemy as sa
 from sqlalchemy.util import u, ue, b
 from sqlalchemy import Integer, String, ForeignKey, \
-    literal_column, event, Boolean
-from sqlalchemy.testing import engines
+    literal_column, event, Boolean, select, func
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
@@ -370,9 +369,10 @@ class ForeignPKTest(fixtures.MappedTest):
         session.add(p)
         session.flush()
 
-        p_count = people.count(people.c.person=='im the key').scalar()
+        p_count = select([func.count('*')]).where(
+            people.c.person=='im the key').scalar()
         eq_(p_count, 1)
-        eq_(peoplesites.count(peoplesites.c.person=='im the key').scalar(), 1)
+        eq_(select([func.count('*')]).where(peoplesites.c.person=='im the key').scalar(), 1)
 
 
 class ClauseAttributesTest(fixtures.MappedTest):
@@ -531,13 +531,13 @@ class PassiveDeletesTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        assert myothertable.count().scalar() == 4
+        eq_(select([func.count('*')]).select_from(myothertable).scalar(), 4)
         mc = session.query(MyClass).get(mc.id)
         session.delete(mc)
         session.flush()
 
-        assert mytable.count().scalar() == 0
-        assert myothertable.count().scalar() == 0
+        eq_(select([func.count('*')]).select_from(mytable).scalar(), 0)
+        eq_(select([func.count('*')]).select_from(myothertable).scalar(), 0)
 
     @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
     def test_backwards_pd(self):
@@ -565,16 +565,16 @@ class PassiveDeletesTest(fixtures.MappedTest):
         session.add(mco)
         session.flush()
 
-        assert mytable.count().scalar() == 1
-        assert myothertable.count().scalar() == 1
+        eq_(select([func.count('*')]).select_from(mytable).scalar(), 1)
+        eq_(select([func.count('*')]).select_from(myothertable).scalar(), 1)
 
         session.expire(mco, ['myclass'])
         session.delete(mco)
         session.flush()
 
         # mytable wasn't deleted, is the point.
-        assert mytable.count().scalar() == 1
-        assert myothertable.count().scalar() == 0
+        eq_(select([func.count('*')]).select_from(mytable).scalar(), 1)
+        eq_(select([func.count('*')]).select_from(myothertable).scalar(), 0)
 
     def test_aaa_m2o_emits_warning(self):
         myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
@@ -681,7 +681,7 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        assert myothertable.count().scalar() == 4
+        eq_(select([func.count('*')]).select_from(myothertable).scalar(), 4)
         mc = session.query(MyClass).get(mc.id)
         session.delete(mc)
         assert_raises(sa.exc.DBAPIError, session.flush)
@@ -705,7 +705,7 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        assert myothertable.count().scalar() == 1
+        eq_(select([func.count('*')]).select_from(myothertable).scalar(), 1)
 
         mc = session.query(MyClass).get(mc.id)
         session.delete(mc)
@@ -1589,8 +1589,8 @@ class SaveTest(_fixtures.FixtureTest):
         u = session.query(User).get(u.id)
         session.delete(u)
         session.flush()
-        assert users.count().scalar() == 0
-        assert addresses.count().scalar() == 0
+        eq_(select([func.count('*')]).select_from(users).scalar(), 0)
+        eq_(select([func.count('*')]).select_from(addresses).scalar(), 0)
 
     def test_batch_mode(self):
         """The 'batch=False' flag on mapper()"""
@@ -1966,10 +1966,10 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.add(i)
         session.flush()
 
-        assert item_keywords.count().scalar() == 2
+        eq_(select([func.count('*')]).select_from(item_keywords).scalar(), 2)
         i.keywords = []
         session.flush()
-        assert item_keywords.count().scalar() == 0
+        eq_(select([func.count('*')]).select_from(item_keywords).scalar(), 0)
 
     def test_scalar(self):
         """sa.dependency won't delete an m2m relationship referencing None."""
@@ -2173,10 +2173,10 @@ class SaveTest3(fixtures.MappedTest):
         session.add(i)
         session.flush()
 
-        assert assoc.count().scalar() == 2
+        eq_(select([func.count('*')]).select_from(assoc).scalar(), 2)
         i.keywords = []
         session.flush()
-        assert assoc.count().scalar() == 0
+        eq_(select([func.count('*')]).select_from(assoc).scalar(), 0)
 
 
 class BooleanColTest(fixtures.MappedTest):

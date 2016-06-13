@@ -6,7 +6,7 @@ from test.orm import _fixtures
 from sqlalchemy import exc, util
 from sqlalchemy.testing import fixtures, config
 from sqlalchemy import Integer, String, ForeignKey, func, \
-    literal, FetchedValue, text
+    literal, FetchedValue, text, select
 from sqlalchemy.orm import mapper, relationship, backref, \
     create_session, unitofwork, attributes,\
     Session, exc as orm_exc
@@ -1306,7 +1306,9 @@ class RowswitchAccountingTest(fixtures.MappedTest):
         eq_(p1.id, 5)
         sess.flush()
 
-        eq_(sess.scalar(self.tables.parent.count()), 0)
+        eq_(
+            select([func.count('*')]).select_from(self.tables.parent).scalar(),
+            0)
 
 
 class RowswitchM2OTest(fixtures.MappedTest):

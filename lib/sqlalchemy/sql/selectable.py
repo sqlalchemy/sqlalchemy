@@ -308,10 +308,34 @@ class FromClause(Selectable):
 
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
+    @util.deprecated(
+        '1.1',
+        message="``FromClause.count()`` is deprecated. Counting "
+        "rows requires that the correct column expression and "
+        "accommodations for joins, DISTINCT, etc. must be made, "
+        "otherwise results may not be what's expected. "
+        "Please use an appropriate ``func.count()`` expression "
+        "directly.")
     @util.dependencies("sqlalchemy.sql.functions")
     def count(self, functions, whereclause=None, **params):
         """return a SELECT COUNT generated against this
-        :class:`.FromClause`."""
+        :class:`.FromClause`.
+
+        The function generates COUNT against the
+        first column in the primary key of the table, or against
+        the first column in the table overall.   Explicit use of
+        ``func.count()`` should be preferred::
+
+            row_count = conn.scalar(
+                select([func.count('*')]).select_from(table)
+            )
+
+
+        .. seealso::
+
+            :data:`.func`
+
+        """
 
         if self.primary_key:
             col = list(self.primary_key)[0]
@@ -1609,21 +1633,6 @@ class TableClause(Immutable, FromClause):
             return [c for c in self.c]
         else:
             return []
-
-    @util.dependencies("sqlalchemy.sql.functions")
-    def count(self, functions, whereclause=None, **params):
-        """return a SELECT COUNT generated against this
-        :class:`.TableClause`."""
-
-        if self.primary_key:
-            col = list(self.primary_key)[0]
-        else:
-            col = list(self.columns)[0]
-        return Select(
-            [functions.func.count(col).label('tbl_row_count')],
-            whereclause,
-            from_obj=[self],
-            **params)
 
     @util.dependencies("sqlalchemy.sql.dml")
     def insert(self, dml, values=None, inline=False, **kwargs):

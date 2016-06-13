@@ -599,7 +599,8 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
 
     def _assert_no_data(self):
         eq_(
-            testing.db.scalar(self.table.count()), 0
+            testing.db.scalar(
+                select([func.count('*')]).select_from(self.table)), 0
         )
 
     def _assert_fn(self, x, value=None):

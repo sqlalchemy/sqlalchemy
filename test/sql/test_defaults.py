@@ -775,7 +775,8 @@ class AutoIncrementTest(fixtures.TablesTest):
 
         testing.db.execute(dataset_no_autoinc.insert())
         eq_(
-            testing.db.scalar(dataset_no_autoinc.count()), 1
+            testing.db.scalar(
+                select([func.count('*')]).select_from(dataset_no_autoinc)), 1
         )
 
 

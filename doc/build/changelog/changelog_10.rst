@@ -20,6 +20,14 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3724
+
+        :meth:`.FromClause.count` is pending deprecation for 1.1.  This function
+        makes use of an arbitrary column in the table and is not reliable;
+        for Core use, ``func.count()`` should be preferred.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3722
 
         Fixed bug in :class:`.CTE` structure which would cause it to not

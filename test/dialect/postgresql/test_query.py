@@ -689,28 +689,28 @@ class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
         result = engine.execute(s)
         assert result.cursor.name
 
+    @testing.provide_metadata
     def test_roundtrip(self):
+        md = self.metadata
+
         engine = self._fixture(True)
-        test_table = Table('test_table', MetaData(engine),
+        test_table = Table('test_table', md,
                            Column('id', Integer, primary_key=True),
                            Column('data', String(50)))
         test_table.create(checkfirst=True)
-        try:
-            test_table.insert().execute(data='data1')
-            nextid = engine.execute(Sequence('test_table_id_seq'))
-            test_table.insert().execute(id=nextid, data='data2')
-            eq_(test_table.select().execute().fetchall(), [(1, 'data1'
-                                                            ), (2, 'data2')])
-            test_table.update().where(
-                test_table.c.id == 2).values(
-                data=test_table.c.data +
-                ' updated').execute()
-            eq_(test_table.select().execute().fetchall(),
-                [(1, 'data1'), (2, 'data2 updated')])
-            test_table.delete().execute()
-            eq_(test_table.count().scalar(), 0)
-        finally:
-            test_table.drop(checkfirst=True)
+        test_table.insert().execute(data='data1')
+        nextid = engine.execute(Sequence('test_table_id_seq'))
+        test_table.insert().execute(id=nextid, data='data2')
+        eq_(test_table.select().execute().fetchall(), [(1, 'data1'
+                                                        ), (2, 'data2')])
+        test_table.update().where(
+            test_table.c.id == 2).values(
+            data=test_table.c.data +
+            ' updated').execute()
+        eq_(test_table.select().execute().fetchall(),
+            [(1, 'data1'), (2, 'data2 updated')])
+        test_table.delete().execute()
+        eq_(select([func.count('*')]).select_from(test_table).scalar(), 0)
 
 
 class MatchTest(fixtures.TestBase, AssertsCompiledSQL):

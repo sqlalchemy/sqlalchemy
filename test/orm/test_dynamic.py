@@ -564,8 +564,14 @@ class UOWTest(
         )
         sess.add(u)
         sess.commit()
-        eq_(testing.db.scalar(addresses.count(addresses.c.user_id == None)), 0)
-        eq_(testing.db.scalar(addresses.count(addresses.c.user_id != None)), 6)
+        eq_(
+            testing.db.scalar(
+                select([func.count('*')]).where(addresses.c.user_id == None)),
+            0)
+        eq_(
+            testing.db.scalar(
+                select([func.count('*')]).where(addresses.c.user_id != None)),
+            6)
 
         sess.delete(u)
 
@@ -574,12 +580,26 @@ class UOWTest(
         if expected:
             eq_(
                 testing.db.scalar(
-                    addresses.count(addresses.c.user_id == None)), 6)
+                    select([func.count('*')]).where(
+                        addresses.c.user_id == None
+                    )
+                ),
+                6
+            )
             eq_(
                 testing.db.scalar(
-                    addresses.count(addresses.c.user_id != None)), 0)
+                    select([func.count('*')]).where(
+                        addresses.c.user_id != None
+                    )
+                ),
+                0
+            )
         else:
-            eq_(testing.db.scalar(addresses.count()), 0)
+            eq_(
+                testing.db.scalar(
+                    select([func.count('*')]).select_from(addresses)
+                ),
+                0)
 
     def test_delete_nocascade(self):
         self._test_delete_cascade(True)

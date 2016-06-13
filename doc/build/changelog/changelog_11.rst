@@ -22,6 +22,14 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3724
+
+        :meth:`.FromClause.count` is deprecated.  This function makes use of
+        an arbitrary column in the table and is not reliable; for Core use,
+        ``func.count()`` should be preferred.
+
+    .. change::
         :tags: feature, postgresql
         :pullreq: bitbucket:84
 

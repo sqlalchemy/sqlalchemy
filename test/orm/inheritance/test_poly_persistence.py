@@ -335,7 +335,7 @@ def _generate_round_trip_test(include_base, lazy_relationship,
         session.delete(c)
         session.flush()
 
-        eq_(people.count().scalar(), 0)
+        eq_(select([func.count('*')]).select_from(people).scalar(), 0)
 
     test_roundtrip = function_named(
         test_roundtrip, "test_%s%s%s_%s" % (

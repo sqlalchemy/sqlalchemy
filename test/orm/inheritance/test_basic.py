@@ -1104,7 +1104,7 @@ class FlushTest(fixtures.MappedTest):
         sess.add(a)
         sess.flush()
 
-        assert user_roles.count().scalar() == 1
+        eq_(select([func.count('*')]).select_from(user_roles).scalar(), 1)
 
     def test_two(self):
         admins, users, roles, user_roles = (self.tables.admins,
@@ -1146,7 +1146,7 @@ class FlushTest(fixtures.MappedTest):
 
         a.password = 'sadmin'
         sess.flush()
-        assert user_roles.count().scalar() == 1
+        eq_(select([func.count('*')]).select_from(user_roles).scalar(), 1)
 
 
 class PassiveDeletesTest(fixtures.MappedTest):

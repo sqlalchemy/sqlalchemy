@@ -9,7 +9,7 @@ from sqlalchemy import sql
 from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
     update, delete, insert, extract, union, func, PrimaryKeyConstraint, \
     UniqueConstraint, Index, Sequence, literal
-
+from sqlalchemy import testing
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
@@ -244,6 +244,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             '(SELECT sometable.somecolumn FROM '
                             'sometable)')
 
+    @testing.uses_deprecated
     def test_count(self):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(t.count(),

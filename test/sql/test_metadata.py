@@ -23,18 +23,6 @@ from sqlalchemy import util
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
 
-    def test_metadata_connect(self):
-        metadata = MetaData()
-        t1 = Table('table1', metadata,
-                   Column('col1', Integer, primary_key=True),
-                   Column('col2', String(20)))
-        metadata.bind = testing.db
-        metadata.create_all()
-        try:
-            assert t1.count().scalar() == 0
-        finally:
-            metadata.drop_all()
-
     def test_metadata_contains(self):
         metadata = MetaData()
         t1 = Table('t1', metadata, Column('x', Integer))

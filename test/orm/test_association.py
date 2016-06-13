@@ -1,6 +1,6 @@
 
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, func, select
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
 from sqlalchemy.testing import fixtures
@@ -153,11 +153,11 @@ class AssociationTest(fixtures.MappedTest):
         item2.keywords.append(KeywordAssociation(Keyword('green'), 'green_assoc'))
         sess.add_all((item1, item2))
         sess.flush()
-        eq_(item_keywords.count().scalar(), 3)
+        eq_(select([func.count('*')]).select_from(item_keywords).scalar(), 3)
 
         sess.delete(item1)
         sess.delete(item2)
         sess.flush()
-        eq_(item_keywords.count().scalar(), 0)
+        eq_(select([func.count('*')]).select_from(item_keywords).scalar(), 0)
 
 

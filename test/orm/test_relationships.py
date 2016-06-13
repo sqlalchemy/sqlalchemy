@@ -2,7 +2,8 @@ from sqlalchemy.testing import assert_raises, assert_raises_message
 import datetime
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, MetaData, and_
+from sqlalchemy import Integer, String, ForeignKey, MetaData, and_, \
+    select, func
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, relation, \
     backref, create_session, configure_mappers, \
@@ -1980,12 +1981,12 @@ class TypedAssociationTable(fixtures.MappedTest):
         sess.add(a)
         sess.flush()
 
-        assert t3.count().scalar() == 2
+        eq_(select([func.count('*')]).select_from(t3).scalar(), 2)
 
         a.t2s.remove(c)
         sess.flush()
 
-        assert t3.count().scalar() == 1
+        eq_(select([func.count('*')]).select_from(t3).scalar(), 1)
 
 
 class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):

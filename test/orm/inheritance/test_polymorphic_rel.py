@@ -1,4 +1,4 @@
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, select
 from sqlalchemy.orm import interfaces, create_session, joinedload, joinedload_all, \
     subqueryload, subqueryload_all, aliased,\
     class_mapper, with_polymorphic
@@ -86,11 +86,13 @@ class _PolymorphicTestBase(object):
                 all_employees[1:3])
         self.assert_sql_count(testing.db, go, 3)
 
-        eq_(sess.query(Person).with_polymorphic('*')
+        eq_(
+            select([func.count('*')]).select_from(
+                sess.query(Person).with_polymorphic('*')
                 .options(joinedload(Engineer.machines))
-                .limit(2).offset(1).with_labels()
-                .subquery().count().scalar(),
-            2)
+                .limit(2).offset(1).with_labels().subquery()
+            ).scalar(),
+        2)
 
     def test_get_one(self):
         """

@@ -3,7 +3,8 @@
 from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy import testing
-from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
+from sqlalchemy import MetaData, Integer, String, \
+    ForeignKey, func, util, select
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.engine import default
 from sqlalchemy.orm import mapper, relationship, backref, \
@@ -1070,8 +1071,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         sess.add(a)
         sess.flush()
 
-        eq_(addresses.count().scalar(), 6)
-        eq_(email_bounces.count().scalar(), 5)
+        eq_(
+            select([func.count('*')]).select_from(addresses).scalar(), 6)
+        eq_(
+            select([func.count('*')]).select_from(email_bounces).scalar(), 5)
 
     def test_mapping_to_outerjoin(self):
         """Mapping to an outer join with a nullable composite primary key."""
@@ -2996,7 +2999,9 @@ class RequirementsTest(fixtures.MappedTest):
         h1.h1s.append(H1())
 
         s.flush()
-        eq_(ht1.count().scalar(), 4)
+        eq_(
+            select([func.count('*')]).select_from(ht1)
+                .scalar(), 4)
 
         h6 = H6()
         h6.h1a = h1
