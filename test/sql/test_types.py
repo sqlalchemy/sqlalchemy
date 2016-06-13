@@ -1247,8 +1247,8 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         data = os.urandom(32)
         binary_table.insert().execute(data=data)
         eq_(
-            binary_table.select().where(binary_table.c.data == data).alias().
-            count().scalar(), 1)
+            select([func.count('*')]).select_from(binary_table).
+            where(binary_table.c.data == data).scalar(), 1)
 
     @testing.requires.binary_literals
     def test_literal_roundtrip(self):
