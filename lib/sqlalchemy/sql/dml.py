@@ -194,6 +194,7 @@ class ValuesBase(UpdateBase):
     _has_multi_parameters = False
     _preserve_parameter_order = False
     select = None
+    _post_values_clause = None
 
     def __init__(self, table, values, prefixes):
         self.table = _interpret_as_from(table)

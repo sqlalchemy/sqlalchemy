@@ -31,6 +31,18 @@
 
     .. change::
         :tags: feature, postgresql
+        :tickets: 3529
+
+        Added support for Postgresql's INSERT..ON CONFLICT using a new
+        Postgresql-specific :class:`.postgresql.dml.Insert` object.
+        Pull request and extensive efforts here by Robin Thomas.
+
+        .. seealso::
+
+            :ref:`change_3529`
+
+    .. change::
+        :tags: feature, postgresql
         :pullreq: bitbucket:84
 
         The DDL for DROP INDEX will emit "CONCURRENTLY" if the

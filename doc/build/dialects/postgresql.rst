@@ -181,6 +181,14 @@ For example::
           ExcludeConstraint(('room', '='), ('during', '&&')),
       )
 
+PostgreSQL DML Constructs
+---------------------------
+
+.. autofunction:: sqlalchemy.dialects.postgresql.dml.insert
+
+.. autoclass:: sqlalchemy.dialects.postgresql.dml.Insert
+  :members:
+
 psycopg2
 --------
 
