@@ -158,7 +158,7 @@ def alias(selectable, name=None, flat=False):
      .. versionadded:: 0.9.0
 
     """
-    return selectable.alias(name=name, flat=flat)
+    return _interpret_as_from(selectable).alias(name=name, flat=flat)
 
 
 def lateral(selectable, name=None):
@@ -180,7 +180,7 @@ def lateral(selectable, name=None):
         :ref:`lateral_selects` -  overview of usage.
 
     """
-    return selectable.lateral(name=name)
+    return _interpret_as_from(selectable).lateral(name=name)
 
 
 class Selectable(ClauseElement):
