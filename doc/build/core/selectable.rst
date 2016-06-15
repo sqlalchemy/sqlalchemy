@@ -73,6 +73,8 @@ elements are themselves :class:`.ColumnElement` subclasses).
    :inherited-members:
 
 .. autoclass:: Lateral
+   :members:
+   :inherited-members:
 
 .. autoclass:: ScalarSelect
    :members:
