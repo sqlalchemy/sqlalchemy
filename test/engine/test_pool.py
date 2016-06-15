@@ -1395,16 +1395,17 @@ class QueuePoolTest(PoolTestBase):
                 max_overflow=0,
                 recycle=30)
             c1 = p.connect()
-            c_id = id(c1.connection)
+            c_ref = weakref.ref(c1.connection)
             c1.close()
             mock.return_value = 10001
             c2 = p.connect()
-            assert id(c2.connection) == c_id
+
+            is_(c2.connection, c_ref())
             c2.close()
 
             mock.return_value = 10035
             c3 = p.connect()
-            assert id(c3.connection) != c_id
+            is_not_(c3.connection, c_ref())
 
     @testing.requires.timing_intensive
     def test_recycle_on_invalidate(self):
@@ -1412,10 +1413,10 @@ class QueuePoolTest(PoolTestBase):
             pool_size=1,
             max_overflow=0)
         c1 = p.connect()
-        c_id = id(c1.connection)
+        c_ref = weakref.ref(c1.connection)
         c1.close()
         c2 = p.connect()
-        assert id(c2.connection) == c_id
+        is_(c2.connection, c_ref())
 
         c2_rec = c2._connection_record
         p._invalidate(c2)
@@ -1423,7 +1424,8 @@ class QueuePoolTest(PoolTestBase):
         c2.close()
         time.sleep(.5)
         c3 = p.connect()
-        assert id(c3.connection) != c_id
+
+        is_not_(c3.connection, c_ref())
 
     @testing.requires.timing_intensive
     def test_recycle_on_soft_invalidate(self):
@@ -1431,21 +1433,21 @@ class QueuePoolTest(PoolTestBase):
             pool_size=1,
             max_overflow=0)
         c1 = p.connect()
-        c_id = id(c1.connection)
+        c_ref = weakref.ref(c1.connection)
         c1.close()
         c2 = p.connect()
-        assert id(c2.connection) == c_id
+        is_(c2.connection, c_ref())
 
         c2_rec = c2._connection_record
         c2.invalidate(soft=True)
-        assert c2_rec.connection is c2.connection
+        is_(c2_rec.connection, c2.connection)
 
         c2.close()
         time.sleep(.5)
         c3 = p.connect()
-        assert id(c3.connection) != c_id
-        assert c3._connection_record is c2_rec
-        assert c2_rec.connection is c3.connection
+        is_not_(c3.connection, c_ref())
+        is_(c3._connection_record, c2_rec)
+        is_(c2_rec.connection, c3.connection)
 
     def _no_wr_finalize(self):
         finalize_fairy = pool._finalize_fairy
