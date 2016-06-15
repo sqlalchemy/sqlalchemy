@@ -22,6 +22,17 @@
     :version: 1.1.0b1
 
     .. change::
+        :tags: feature, sql
+        :tickets: 3718
+
+        Added TABLESAMPLE support via the new :meth:`.FromClause.tablesample`
+        method and standalone function.  Pull request courtesy Ilja Everilä.
+
+        .. seealso::
+
+            :ref:`change_3718`
+
+    .. change::
         :tags: feature, orm, ext
 
         A new ORM extension :ref:`indexable_toplevel` is added, which allows

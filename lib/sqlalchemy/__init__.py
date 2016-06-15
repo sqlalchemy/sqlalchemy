@@ -45,6 +45,7 @@ from .sql import (
     select,
     subquery,
     table,
+    tablesample,
     text,
     true,
     tuple_,

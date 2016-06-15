@@ -33,6 +33,8 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autofunction:: sqlalchemy.sql.expression.table
 
+.. autofunction:: tablesample
+
 .. autofunction:: union
 
 .. autofunction:: union_all
@@ -90,6 +92,10 @@ elements are themselves :class:`.ColumnElement` subclasses).
    :members:
 
 .. autoclass:: TableClause
+   :members:
+   :inherited-members:
+
+.. autoclass:: TableSample
    :members:
    :inherited-members:
 

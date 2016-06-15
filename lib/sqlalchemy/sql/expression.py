@@ -26,7 +26,8 @@ __all__ = [
     'nullslast',
     'or_', 'outparam', 'outerjoin', 'over', 'select', 'subquery',
     'table', 'text',
-    'tuple_', 'type_coerce', 'union', 'union_all', 'update', 'within_group']
+    'tuple_', 'type_coerce', 'union', 'union_all', 'update', 'within_group',
+    'TableSample', 'tablesample']
 
 
 from .visitors import Visitable
@@ -49,7 +50,7 @@ from .base import ColumnCollection, Generative, Executable, \
 from .selectable import Alias, Join, Select, Selectable, TableClause, \
     CompoundSelect, CTE, FromClause, FromGrouping, Lateral, SelectBase, \
     alias, GenerativeSelect, subquery, HasCTE, HasPrefixes, HasSuffixes, \
-    lateral, Exists, ScalarSelect, TextAsFrom
+    lateral, Exists, ScalarSelect, TextAsFrom, TableSample, tablesample
 
 
 from .dml import Insert, Update, Delete, UpdateBase, ValuesBase

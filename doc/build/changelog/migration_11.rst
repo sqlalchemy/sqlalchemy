@@ -1150,6 +1150,32 @@ selectable, e.g. lateral correlation::
 
 :ticket:`2857`
 
+.. _change_3718:
+
+Support for TABLESAMPLE
+-----------------------
+
+The SQL standard TABLESAMPLE can be rendered using the
+:meth:`.FromClause.tablesample` method, which returns a :class:`.TableSample`
+construct similar to an alias::
+
+    from sqlalchemy import func
+
+    selectable = people.tablesample(
+                func.bernoulli(1),
+                name='alias',
+                seed=func.random())
+    stmt = select([selectable.c.people_id])
+
+Assuming ``people`` with a column ``people_id``, the above
+statement would render as::
+
+    SELECT alias.people_id FROM
+    people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
+    REPEATABLE (random())
+
+:ticket:`3718`
+
 .. _change_3216:
 
 The ``.autoincrement`` directive is no longer implicitly enabled for a composite primary key column

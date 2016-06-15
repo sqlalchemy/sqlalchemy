@@ -1351,6 +1351,17 @@ class SQLCompiler(Compiled):
         kw['lateral'] = True
         return "LATERAL %s" % self.visit_alias(lateral, **kw)
 
+    def visit_tablesample(self, tablesample, asfrom=False, **kw):
+        text = "%s TABLESAMPLE %s" % (
+            self.visit_alias(tablesample, asfrom=True, **kw),
+            tablesample._get_method()._compiler_dispatch(self, **kw))
+
+        if tablesample.seed is not None:
+            text += " REPEATABLE (%s)" % (
+                tablesample.seed._compiler_dispatch(self, **kw))
+
+        return text
+
     def get_render_as_alias_suffix(self, alias_name_text):
         return " AS " + alias_name_text
 
