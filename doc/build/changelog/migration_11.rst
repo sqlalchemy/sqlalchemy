@@ -4,19 +4,8 @@ What's New in SQLAlchemy 1.1?
 
 .. admonition:: About this Document
 
-    This document describes changes between SQLAlchemy version 1.0,
-    at the moment the current release series of SQLAlchemy,
-    and SQLAlchemy version 1.1, which is the current development
-    series of SQLAlchemy.
-
-    As the 1.1 series is under development, issues that are targeted
-    at this series can be seen under the
-    `1.1 milestone <https://bitbucket.org/zzzeek/sqlalchemy/issues?milestone=1.1>`_.
-    Please note that the set of issues within the milestone is not fixed;
-    some issues may be moved to later milestones in order to allow
-    for a timely release.
-
-    Document last updated: March 23, 2016
+    This document describes changes between SQLAlchemy version 1.0
+    and SQLAlchemy version 1.1.
 
 Introduction
 ============
