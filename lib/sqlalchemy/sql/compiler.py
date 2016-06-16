@@ -2260,7 +2260,13 @@ class DDLCompiler(Compiled):
         text = "\nCREATE "
         if table._prefixes:
             text += " ".join(table._prefixes) + " "
-        text += "TABLE " + preparer.format_table(table) + " ("
+        text += "TABLE " + preparer.format_table(table) + " "
+
+        create_table_suffix = self.create_table_suffix(table)
+        if create_table_suffix:
+            text += create_table_suffix + " "
+
+        text += "("
 
         separator = "\n"
 
@@ -2464,6 +2470,9 @@ class DDLCompiler(Compiled):
         if not column.nullable:
             colspec += " NOT NULL"
         return colspec
+
+    def create_table_suffix(self, table):
+        return ''
 
     def post_create_table(self, table):
         return ''
