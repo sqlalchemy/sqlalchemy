@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.0b1
+    :released: June 16, 2016
 
     .. change::
         :tags: feature, sql
