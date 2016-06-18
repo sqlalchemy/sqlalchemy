@@ -243,7 +243,7 @@ database schemas in relation to application code using schema migration tools.
 
 There are two major migration tools available for SQLAlchemy:
 
-* `Alembic <https://alembic.readthedocs.io>`_ - Written by the author of SQLAlchemy,
+* `Alembic <http://alembic.zzzcomputing.com>`_ - Written by the author of SQLAlchemy,
   Alembic features a highly customizable environment and a minimalistic usage pattern,
   supporting such features as transactional DDL, automatic generation of "candidate"
   migrations, an "offline" mode which generates SQL scripts, and support for branch
