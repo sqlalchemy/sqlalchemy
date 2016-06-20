@@ -21,6 +21,19 @@
 .. changelog::
     :version: 1.1.0b2
 
+    .. change::
+        :tags: bug, sql
+        :tickets: 3725
+
+        Rolled back the validation rules a bit in :class:`.Enum` to allow
+        unknown string values to pass through, unless the flag
+        ``validate_string=True`` is passed to the Enum; any other kind of object is
+        still of course rejected.  While the immediate use
+        is to allow comparisons to enums with LIKE, the fact that this
+        use exists indicates there may be more unknown-string-comparsion use
+        cases than we expected, which hints that perhaps there are some
+        unknown string-INSERT cases too.
+
 .. changelog::
     :version: 1.1.0b1
     :released: June 16, 2016

@@ -1121,7 +1121,8 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             Column('someenum', Enum('one', 'two', 'three', native_enum=False)),
             Column('someotherenum',
                 Enum('one', 'two', 'three',
-                     create_constraint=False, native_enum=False)),
+                     create_constraint=False, native_enum=False,
+                     validate_strings=True)),
         )
 
         Table(
@@ -1149,14 +1150,24 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     def test_validators_pep435(self):
         type_ = Enum(self.SomeEnum)
+        validate_type = Enum(self.SomeEnum, validate_strings=True)
 
         bind_processor = type_.bind_processor(testing.db.dialect)
+        bind_processor_validates = validate_type.bind_processor(
+            testing.db.dialect)
         eq_(bind_processor('one'), "one")
         eq_(bind_processor(self.one), "one")
+        eq_(bind_processor("foo"), "foo")
+        assert_raises_message(
+            LookupError,
+            '"5" is not among the defined enum values',
+            bind_processor, 5
+        )
+
         assert_raises_message(
             LookupError,
             '"foo" is not among the defined enum values',
-            bind_processor, "foo"
+            bind_processor_validates, "foo"
         )
 
         result_processor = type_.result_processor(testing.db.dialect, None)
@@ -1169,22 +1180,43 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
         literal_processor = type_.literal_processor(testing.db.dialect)
+        validate_literal_processor = validate_type.literal_processor(
+            testing.db.dialect)
         eq_(literal_processor("one"), "'one'")
+
+        eq_(literal_processor("foo"), "'foo'")
+
+        assert_raises_message(
+            LookupError,
+            '"5" is not among the defined enum values',
+            literal_processor, 5
+        )
+
         assert_raises_message(
             LookupError,
             '"foo" is not among the defined enum values',
-            literal_processor, "foo"
+            validate_literal_processor, "foo"
         )
 
     def test_validators_plain(self):
         type_ = Enum("one", "two")
+        validate_type = Enum("one", "two", validate_strings=True)
 
         bind_processor = type_.bind_processor(testing.db.dialect)
+        bind_processor_validates = validate_type.bind_processor(
+            testing.db.dialect)
         eq_(bind_processor('one'), "one")
+        eq_(bind_processor('foo'), "foo")
+        assert_raises_message(
+            LookupError,
+            '"5" is not among the defined enum values',
+            bind_processor, 5
+        )
+
         assert_raises_message(
             LookupError,
             '"foo" is not among the defined enum values',
-            bind_processor, "foo"
+            bind_processor_validates, "foo"
         )
 
         result_processor = type_.result_processor(testing.db.dialect, None)
@@ -1197,13 +1229,40 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
         literal_processor = type_.literal_processor(testing.db.dialect)
+        validate_literal_processor = validate_type.literal_processor(
+            testing.db.dialect)
         eq_(literal_processor("one"), "'one'")
+        eq_(literal_processor("foo"), "'foo'")
+        assert_raises_message(
+            LookupError,
+            '"5" is not among the defined enum values',
+            literal_processor, 5
+        )
+
         assert_raises_message(
             LookupError,
             '"foo" is not among the defined enum values',
-            literal_processor, "foo"
+            validate_literal_processor, "foo"
         )
 
+    def test_validators_not_in_like_roundtrip(self):
+        enum_table = self.tables['non_native_enum_table']
+
+        enum_table.insert().execute([
+            {'id': 1, 'someenum': 'two'},
+            {'id': 2, 'someenum': 'two'},
+            {'id': 3, 'someenum': 'one'},
+        ])
+
+        eq_(
+            enum_table.select().
+            where(enum_table.c.someenum.like('%wo%')).
+            order_by(enum_table.c.id).execute().fetchall(),
+            [
+                (1, 'two', None),
+                (2, 'two', None),
+            ]
+        )
 
     @testing.fails_on(
         'postgresql+zxjdbc',
@@ -1364,7 +1423,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         assert_raises(
             exc.StatementError,
             self.tables['non_native_enum_table'].insert().execute,
-            {'id': 4, 'someenum': 'four'}
+            {'id': 4, 'someotherenum': 'four'}
         )
 
     def test_mock_engine_no_prob(self):

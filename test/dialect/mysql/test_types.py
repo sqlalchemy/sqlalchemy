@@ -666,7 +666,9 @@ class EnumSetTest(
             'mysql_enum', self.metadata,
             Column('e1', e1),
             Column('e2', e2, nullable=False),
-            Column('e2generic', Enum("a", "b"), nullable=False),
+            Column(
+                'e2generic',
+                Enum("a", "b", validate_strings=True), nullable=False),
             Column('e3', e3),
             Column('e4', e4,
                    nullable=False),

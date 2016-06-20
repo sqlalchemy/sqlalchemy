@@ -114,7 +114,9 @@ class ENUM(sqltypes.Enum, _EnumeratedValues):
         """
 
         kw.pop('strict', None)
-        sqltypes.Enum.__init__(self, *enums)
+        validate_strings = kw.pop("validate_strings", False)
+        sqltypes.Enum.__init__(
+            self, validate_strings=validate_strings, *enums)
         kw.pop('metadata', None)
         kw.pop('schema', None)
         kw.pop('name', None)

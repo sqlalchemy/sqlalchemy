@@ -24,6 +24,7 @@ from . import operators
 from .. import inspection
 from .. import event
 from ..util import pickle
+from ..util import compat
 import decimal
 
 if util.jython:
@@ -1205,6 +1206,11 @@ class Enum(String, SchemaType):
            ``schema`` attribute.   This also takes effect when using the
            :meth:`.Table.tometadata` operation.
 
+        :param validate_strings: when True, invalid string values will
+           be validated and not be allowed to pass through.
+
+           .. versionadded:: 1.1.0b2
+
         """
 
         values, objects = self._parse_into_values(enums, kw)
@@ -1213,6 +1219,8 @@ class Enum(String, SchemaType):
         self.native_enum = kw.pop('native_enum', True)
         convert_unicode = kw.pop('convert_unicode', None)
         self.create_constraint = kw.pop('create_constraint', True)
+        self.validate_strings = kw.pop('validate_strings', False)
+
         if convert_unicode is None:
             for e in self.enums:
                 if isinstance(e, util.text_type):
@@ -1262,8 +1270,20 @@ class Enum(String, SchemaType):
         try:
             return self._valid_lookup[elem]
         except KeyError:
-            raise LookupError(
-                '"%s" is not among the defined enum values' % elem)
+            # for unknown string values, we return as is.  While we can
+            # validate these if we wanted, that does not allow for lesser-used
+            # end-user use cases, such as using a LIKE comparison with an enum,
+            # or for an application that wishes to apply string tests to an
+            # ENUM (see [ticket:3725]).  While we can decide to differentiate
+            # here between an INSERT statement and a criteria used in a SELECT,
+            # for now we're staying conservative w/ behavioral changes (perhaps
+            # someone has a trigger that handles strings on INSERT)
+            if not self.validate_strings and \
+                    isinstance(elem, compat.string_types):
+                return elem
+            else:
+                raise LookupError(
+                    '"%s" is not among the defined enum values' % elem)
 
     def _object_value_for_elem(self, elem):
         try:
@@ -1314,6 +1334,7 @@ class Enum(String, SchemaType):
                             convert_unicode=self.convert_unicode,
                             native_enum=self.native_enum,
                             inherit_schema=self.inherit_schema,
+                            validate_strings=self.validate_strings,
                             _create_events=_create_events,
                             *args,
                             **kw)
