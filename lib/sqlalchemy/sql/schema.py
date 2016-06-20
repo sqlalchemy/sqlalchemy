@@ -475,7 +475,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         self.indexes = set()
         self.constraints = set()
         self._columns = ColumnCollection()
-        PrimaryKeyConstraint()._set_parent_with_dispatch(self)
+        PrimaryKeyConstraint(_implicit_generated=True).\
+            _set_parent_with_dispatch(self)
         self.foreign_keys = set()
         self._extra_dependencies = set()
         if self.schema is not None:
@@ -3022,6 +3023,10 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     """
 
     __visit_name__ = 'primary_key_constraint'
+
+    def __init__(self, *columns, **kw):
+        self._implicit_generated = kw.pop('_implicit_generated', False)
+        super(PrimaryKeyConstraint, self).__init__(*columns, **kw)
 
     def _set_parent(self, table):
         super(PrimaryKeyConstraint, self)._set_parent(table)

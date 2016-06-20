@@ -34,6 +34,16 @@
         cases than we expected, which hints that perhaps there are some
         unknown string-INSERT cases too.
 
+    .. change::
+        :tags: bug, mysql
+        :tickets: 3726
+
+        Dialed back the "order the primary key columns per auto-increment"
+        described in :ref:`change_mysql_3216` a bit, so that if the
+        :class:`.PrimaryKeyConstraint` is explicitly defined, the order
+        of columns is maintained exactly, allowing control of this behavior
+        when necessary.
+
 .. changelog::
     :version: 1.1.0b1
     :released: June 16, 2016

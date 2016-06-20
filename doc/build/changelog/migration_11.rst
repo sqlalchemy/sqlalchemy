@@ -2397,6 +2397,19 @@ of just stating the AUTO_INCREMENT column *first* within the primary key::
         PRIMARY KEY (y, x)
     )ENGINE=InnoDB
 
+To maintain explicit control of the ordering of primary key columns,
+use the :class:`.PrimaryKeyConstraint` construct explicitly (1.1.0b2)
+(along with a KEY for the autoincrement column as required by MySQL), e.g.::
+
+    t = Table(
+        'some_table', metadata,
+        Column('x', Integer, primary_key=True),
+        Column('y', Integer, primary_key=True, autoincrement=True),
+        PrimaryKeyConstraint('x', 'y'),
+        UniqueConstraint('y'),
+        mysql_engine='InnoDB'
+    )
+
 Along with the change :ref:`change_3216`, composite primary keys with
 or without auto increment are now easier to specify;
 :paramref:`.Column.autoincrement`

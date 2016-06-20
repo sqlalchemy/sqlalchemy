@@ -2519,7 +2519,9 @@ class DDLCompiler(Compiled):
                 text += "CONSTRAINT %s " % formatted_name
         text += "PRIMARY KEY "
         text += "(%s)" % ', '.join(self.preparer.quote(c.name)
-                                   for c in constraint.columns_autoinc_first)
+                                   for c in (constraint.columns_autoinc_first
+                                   if constraint._implicit_generated
+                                   else constraint.columns))
         text += self.define_constraint_deferrability(constraint)
         return text
 

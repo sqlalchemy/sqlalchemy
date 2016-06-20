@@ -3066,7 +3066,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE t (x INTEGER, z INTEGER)"
         )
 
-    def test_composite_pk_constraint_autoinc_first(self):
+    def test_composite_pk_constraint_autoinc_first_implicit(self):
         m = MetaData()
         t = Table(
             't', m,
@@ -3079,6 +3079,22 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             "a INTEGER NOT NULL, "
             "b INTEGER NOT NULL, "
             "PRIMARY KEY (b, a))"
+        )
+
+    def test_composite_pk_constraint_maintains_order_explicit(self):
+        m = MetaData()
+        t = Table(
+            't', m,
+            Column('a', Integer),
+            Column('b', Integer, autoincrement=True),
+            schema.PrimaryKeyConstraint('a', 'b')
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            "a INTEGER NOT NULL, "
+            "b INTEGER NOT NULL, "
+            "PRIMARY KEY (a, b))"
         )
 
     def test_create_table_suffix(self):
