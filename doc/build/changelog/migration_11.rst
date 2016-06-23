@@ -1507,6 +1507,28 @@ this CHECK constraint can now be disabled using the new
 
 :ticket:`3095`
 
+.. _change_3730:
+
+Non-native boolean integer values coerced to zero/one/None in all cases
+-----------------------------------------------------------------------
+
+The :class:`.Boolean` datatype coerces Python booleans to integer values
+for backends that don't have a native boolean type, such as SQLite and
+MySQL.  On these backends, a CHECK constraint is normally set up which
+ensures the values in the database are in fact one of these two values.
+However, MySQL ignores CHECK constraints, the constraint is optional, and
+an existing database might not have this constraint.  The :class:`.Boolean`
+datatype has been repaired such that an incoming Python-side value that is
+already an integer value is coerced to zero or one, not just passed as-is;
+additionally, the C-extension version of the int-to-boolean processor for
+results now uses the same Python boolean interpretation of the value,
+rather than asserting an exact one or zero value.  This is now consistent
+with the pure-Python int-to-boolean processor and is more forgiving of
+existing data already within the database.   Values of None/NULL are as before
+retained as None/NULL.
+
+:ticket:`3730`
+
 .. _change_2837:
 
 Large parameter and row values are now truncated in logging and exception displays

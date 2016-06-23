@@ -23,6 +23,22 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3730
+
+        The processing performed by the :class:`.Boolean` datatype for backends
+        that only feature integer types has been made consistent between the
+        pure Python and C-extension versions, in that the C-extension version
+        will accept any integer value from the database as a boolean, not just
+        zero and one; additionally, non-boolean integer values being sent to
+        the database are coerced to exactly zero or one, instead of being
+        passed as the original integer value.
+
+        .. seealso::
+
+            :ref:`change_3730`
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3725
 
         Rolled back the validation rules a bit in :class:`.Enum` to allow

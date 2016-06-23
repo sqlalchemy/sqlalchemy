@@ -53,7 +53,7 @@ def boolean_to_int(value):
     if value is None:
         return None
     else:
-        return int(value)
+        return int(bool(value))
 
 
 def py_fallback():
@@ -111,7 +111,7 @@ def py_fallback():
         if value is None:
             return None
         else:
-            return value and True or False
+            return bool(value)
 
     DATETIME_RE = re.compile(
         "(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")

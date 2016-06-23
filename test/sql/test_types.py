@@ -2314,6 +2314,37 @@ class BooleanTest(
             dialect="sqlite"
         )
 
+    @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
+    def test_nonnative_processor_coerces_to_onezero(self):
+        boolean_table = self.tables.boolean_table
+        with testing.db.connect() as conn:
+            conn.execute(
+                boolean_table.insert(),
+                {"id": 1, "unconstrained_value": 5}
+            )
+
+            eq_(
+                conn.scalar("select unconstrained_value from boolean_table"),
+                1
+            )
+
+    @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
+    def test_nonnative_processor_coerces_integer_to_boolean(self):
+        boolean_table = self.tables.boolean_table
+        with testing.db.connect() as conn:
+            conn.execute(
+                "insert into boolean_table (id, unconstrained_value) values (1, 5)"
+            )
+
+            eq_(
+                conn.scalar("select unconstrained_value from boolean_table"),
+                5
+            )
+
+            eq_(
+                conn.scalar(select([boolean_table.c.unconstrained_value])),
+                True
+            )
 
 class PickleTest(fixtures.TestBase):
 

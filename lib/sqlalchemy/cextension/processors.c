@@ -22,28 +22,18 @@ typedef int Py_ssize_t;
 static PyObject *
 int_to_boolean(PyObject *self, PyObject *arg)
 {
-    long l = 0;
+    int l = 0;
     PyObject *res;
 
     if (arg == Py_None)
         Py_RETURN_NONE;
 
-
-#if PY_MAJOR_VERSION >= 3
-    l = PyLong_AsLong(arg);
-#else
-    l = PyInt_AsLong(arg);
-#endif
+    l = PyObject_IsTrue(arg);
     if (l == 0) {
         res = Py_False;
     } else if (l == 1) {
         res = Py_True;
-    } else if ((l == -1) && PyErr_Occurred()) {
-        /* -1 can be either the actual value, or an error flag. */
-        return NULL;
     } else {
-        PyErr_SetString(PyExc_ValueError,
-                        "int_to_boolean only accepts None, 0 or 1");
         return NULL;
     }
 

@@ -2,6 +2,85 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import assert_raises_message, eq_
 
 
+class _BooleanProcessorTest(fixtures.TestBase):
+    def test_int_to_bool_none(self):
+        eq_(
+            self.module.int_to_boolean(None),
+            None
+        )
+
+    def test_int_to_bool_zero(self):
+        eq_(
+            self.module.int_to_boolean(0),
+            False
+        )
+
+    def test_int_to_bool_one(self):
+        eq_(
+            self.module.int_to_boolean(1),
+            True
+        )
+
+    def test_int_to_bool_positive_int(self):
+        eq_(
+            self.module.int_to_boolean(12),
+            True
+        )
+
+    def test_int_to_bool_negative_int(self):
+        eq_(
+            self.module.int_to_boolean(-4),
+            True
+        )
+
+
+
+class PyBooleanProcessorTest(_BooleanProcessorTest):
+    @classmethod
+    def setup_class(cls):
+        from sqlalchemy import processors
+        cls.module = type(
+            "util", (object,),
+            dict(
+                (k, staticmethod(v))
+                for k, v in list(processors.py_fallback().items())
+            )
+        )
+
+    def test_bool_to_int_false(self):
+        from sqlalchemy import processors
+        eq_(processors.boolean_to_int(False), 0)
+
+    def test_bool_to_int_true(self):
+        from sqlalchemy import processors
+        eq_(processors.boolean_to_int(True), 1)
+
+    def test_bool_to_int_positive_int(self):
+        from sqlalchemy import processors
+        eq_(processors.boolean_to_int(5), 1)
+
+    def test_bool_to_int_negative_int(self):
+        from sqlalchemy import processors
+        eq_(processors.boolean_to_int(-10), 1)
+
+    def test_bool_to_int_zero(self):
+        from sqlalchemy import processors
+        eq_(processors.boolean_to_int(0), 0)
+
+    def test_bool_to_int_one(self):
+        from sqlalchemy import processors
+        eq_(processors.boolean_to_int(1), 1)
+
+
+class CBooleanProcessorTest(_BooleanProcessorTest):
+    __requires__ = ('cextensions',)
+
+    @classmethod
+    def setup_class(cls):
+        from sqlalchemy import cprocessors
+        cls.module = cprocessors
+
+
 class _DateProcessorTest(fixtures.TestBase):
     def test_date_no_string(self):
         assert_raises_message(
