@@ -22,6 +22,20 @@
     :version: 1.1.0b2
 
     .. change::
+        :tags: bug, ext, postgresql
+        :tickets: 3732
+
+        Made a slight behavioral change in the ``sqlalchemy.ext.compiler``
+        extension, whereby the existing compilation schemes for an established
+        construct would be removed if that construct was itself didn't already
+        have its own dedicated ``__visit_name__``.  This was a
+        rare occurrence in 1.0, however in 1.1 :class:`.postgresql.ARRAY`
+        subclasses :class:`.sqltypes.ARRAY` and has this behavior.
+        As a result, setting up a compilation handler for another dialect
+        such as SQLite would render the main :class:`.postgresql.ARRAY`
+        object no longer compilable.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3730
 

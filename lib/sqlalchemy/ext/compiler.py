@@ -410,13 +410,25 @@ def compiles(class_, *specs):
     given :class:`.ClauseElement` type."""
 
     def decorate(fn):
+        # get an existing @compiles handler
         existing = class_.__dict__.get('_compiler_dispatcher', None)
-        existing_dispatch = class_.__dict__.get('_compiler_dispatch')
+
+        # get the original handler.  All ClauseElement classes have one
+        # of these, but some TypeEngine classes will not.
+        existing_dispatch = getattr(class_, '_compiler_dispatch', None)
+
         if not existing:
             existing = _dispatcher()
 
             if existing_dispatch:
-                existing.specs['default'] = existing_dispatch
+                def _wrap_existing_dispatch(element, compiler, **kw):
+                    try:
+                        return existing_dispatch(element, compiler, **kw)
+                    except exc.UnsupportedCompilationError:
+                        raise exc.CompileError(
+                            "%s construct has no default "
+                            "compilation handler." % type(element))
+                existing.specs['default'] = _wrap_existing_dispatch
 
             # TODO: why is the lambda needed ?
             setattr(class_, '_compiler_dispatch',
@@ -458,4 +470,5 @@ class _dispatcher(object):
                 raise exc.CompileError(
                     "%s construct has no default "
                     "compilation handler." % type(element))
+
         return fn(element, compiler, **kw)

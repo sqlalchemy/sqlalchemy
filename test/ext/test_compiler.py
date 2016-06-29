@@ -2,14 +2,16 @@ from sqlalchemy import *
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
                                     FunctionElement, Select, \
-                                    BindParameter
+                                    BindParameter, ColumnElement
 
 from sqlalchemy.schema import DDLElement, CreateColumn, CreateTable
 from sqlalchemy.ext.compiler import compiles, deregister
 from sqlalchemy import exc
-from sqlalchemy.sql import table, column, visitors
+from sqlalchemy.testing import eq_
+from sqlalchemy.sql import table, column
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+
 
 class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -123,8 +125,18 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.x > :x_1)"
         )
 
-    def test_no_default_message(self):
+    def test_no_default_but_has_a_visit(self):
         class MyThingy(ColumnClause):
+            pass
+
+        @compiles(MyThingy, 'postgresql')
+        def visit_thingy(thingy, compiler, **kw):
+            return "mythingy"
+
+        eq_(str(MyThingy('x')), "x")
+
+    def test_no_default_has_no_visit(self):
+        class MyThingy(TypeEngine):
             pass
 
         @compiles(MyThingy, 'postgresql')
@@ -135,7 +147,38 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.CompileError,
             "<class 'test.ext.test_compiler..*MyThingy'> "
             "construct has no default compilation handler.",
-            str, MyThingy('x')
+            str, MyThingy()
+        )
+
+    def test_no_default_message(self):
+        class MyThingy(ClauseElement):
+            pass
+
+        @compiles(MyThingy, 'postgresql')
+        def visit_thingy(thingy, compiler, **kw):
+            return "mythingy"
+
+        assert_raises_message(
+            exc.CompileError,
+            "<class 'test.ext.test_compiler..*MyThingy'> "
+            "construct has no default compilation handler.",
+            str, MyThingy()
+        )
+
+    def test_default_subclass(self):
+        from sqlalchemy.types import ARRAY
+
+        class MyArray(ARRAY):
+            pass
+
+        @compiles(MyArray, "sqlite")
+        def sl_array(elem, compiler, **kw):
+            return "array"
+
+        self.assert_compile(
+            MyArray(Integer),
+            "INTEGER[]",
+            dialect="postgresql"
         )
 
     def test_annotations(self):
