@@ -2187,3 +2187,38 @@ class TestClassProperty(fixtures.TestBase):
         eq_(B.something, {'foo': 1, 'bazz': 2})
 
 
+class TestProperties(fixtures.TestBase):
+
+    def test_pickle(self):
+        data = {'hello': 'bla'}
+        props = util.Properties(data)
+
+        for loader, dumper in picklers():
+            s = dumper(props)
+            p = loader(s)
+
+            eq_(props._data, p._data)
+            eq_(props.keys(), p.keys())
+
+    def test_pickle_immuatbleprops(self):
+        data = {'hello': 'bla'}
+        props = util.Properties(data).as_immutable()
+
+        for loader, dumper in picklers():
+            s = dumper(props)
+            p = loader(s)
+
+            eq_(props._data, p._data)
+            eq_(props.keys(), p.keys())
+
+    def test_pickle_orderedprops(self):
+        data = {'hello': 'bla'}
+        props = util.OrderedProperties()
+        props.update(data)
+
+        for loader, dumper in picklers():
+            s = dumper(props)
+            p = loader(s)
+
+            eq_(props._data, p._data)
+            eq_(props.keys(), p.keys())
