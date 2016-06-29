@@ -20,6 +20,16 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3728
+
+        Fixed bug whereby the ``__getstate__`` / ``__setstate__``
+        methods for sqlalchemy.util.Properties were
+        non-working due to the transition in the 1.0 series to ``__slots__``.
+        The issue potentially impacted some third-party applications.
+        Pull request courtesy Pieter Mulder.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3724
 
         :meth:`.FromClause.count` is pending deprecation for 1.1.  This function
