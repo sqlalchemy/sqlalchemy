@@ -200,10 +200,10 @@ class Properties(object):
         self._data[key] = obj
 
     def __getstate__(self):
-        return {'_data': self.__dict__['_data']}
+        return {'_data': self._data}
 
     def __setstate__(self, state):
-        self.__dict__['_data'] = state['_data']
+        object.__setattr__(self, '_data', state['_data'])
 
     def __getattr__(self, key):
         try:
