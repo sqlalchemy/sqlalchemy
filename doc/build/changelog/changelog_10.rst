@@ -21,6 +21,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3735
+        :versions: 1.1.0b2
 
         Fixed issue in SQL math negation operator where the type of the
         expression would no longer be the numeric type of the original.
@@ -30,6 +31,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3728
+        :versions: 1.1.0b2
 
         Fixed bug whereby the ``__getstate__`` / ``__setstate__``
         methods for sqlalchemy.util.Properties were
