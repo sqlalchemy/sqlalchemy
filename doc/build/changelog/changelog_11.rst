@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.0b2
+    :released: July 1, 2016
 
     .. change::
         :tags: bug, ext, postgresql
