@@ -176,7 +176,7 @@ def _inv_impl(expr, op, **kw):
 
 def _neg_impl(expr, op, **kw):
     """See :meth:`.ColumnOperators.__neg__`."""
-    return UnaryExpression(expr, operator=operators.neg)
+    return UnaryExpression(expr, operator=operators.neg, type_=expr.type)
 
 
 def _match_impl(expr, op, other, **kw):

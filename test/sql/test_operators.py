@@ -1573,6 +1573,12 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name FROM "
             "mytable WHERE mytable.myid != :myid_1 AND NOT mytable.name")
 
+    def test_negate_operator_type(self):
+        is_(
+            (-self.table1.c.myid).type,
+            self.table1.c.myid.type,
+        )
+
 
 class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
