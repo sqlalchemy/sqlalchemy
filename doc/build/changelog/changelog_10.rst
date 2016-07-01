@@ -20,6 +20,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3735
+
+        Fixed issue in SQL math negation operator where the type of the
+        expression would no longer be the numeric type of the original.
+        This would cause issues where the type determined result set
+        behaviors.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3728
 
         Fixed bug whereby the ``__getstate__`` / ``__setstate__``
