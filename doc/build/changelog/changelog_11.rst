@@ -61,7 +61,7 @@
         ``validate_string=True`` is passed to the Enum; any other kind of object is
         still of course rejected.  While the immediate use
         is to allow comparisons to enums with LIKE, the fact that this
-        use exists indicates there may be more unknown-string-comparsion use
+        use exists indicates there may be more unknown-string-comparison use
         cases than we expected, which hints that perhaps there are some
         unknown string-INSERT cases too.
 
@@ -139,7 +139,7 @@
 
         Fixed an issue where a many-to-one change of an object from one
         parent to another could work inconsistently when combined with
-        an un-flushed modication of the foreign key attribute.  The attribute
+        an un-flushed modification of the foreign key attribute.  The attribute
         move now considers the database-committed value of the foreign key
         in order to locate the "previous" parent of the object being
         moved.   This allows events to fire off correctly including
@@ -433,7 +433,7 @@
         would still potentially cause persistence conflicts on the next
         transaction, because the instance would not be checked that it
         was expired.   This fix will resolve a large class of cases that
-        erronously cause the "New instance with identity X conflicts with
+        erroneously cause the "New instance with identity X conflicts with
         persistent instance Y" error.
 
         .. seealso::
@@ -1103,7 +1103,7 @@
         Additional fixes have been made regarding the value of ``None``
         in conjunction with the PostgreSQL :class:`.postgresql.JSON` type.  When
         the :paramref:`.JSON.none_as_null` flag is left at its default
-        value of ``False``, the ORM will now correctly insert the Json
+        value of ``False``, the ORM will now correctly insert the JSON
         "'null'" string into the column whenever the value on the ORM
         object is set to the value ``None`` or when the value ``None``
         is used with :meth:`.Session.bulk_insert_mappings`,
