@@ -183,7 +183,7 @@ joined eager loading, as well as when joins are used for the purposes
 of filtering on additional columns.
 
 This deduplication relies upon the hashability of the elements within
-the row.  With the introduction of Postgresql's special types like
+the row.  With the introduction of PostgreSQL's special types like
 :class:`.postgresql.ARRAY`, :class:`.postgresql.HSTORE` and
 :class:`.postgresql.JSON`, the experience of types within rows being
 unhashable and encountering problems here is more prevalent than
@@ -192,7 +192,7 @@ it was previously.
 In fact, SQLAlchemy has since version 0.8 included a flag on datatypes that
 are noted as "unhashable", however this flag was not used consistently
 on built in types.  As described in :ref:`change_3499_postgresql`, this
-flag is now set consistently for all of Postgresql's "structural" types.
+flag is now set consistently for all of PostgreSQL's "structural" types.
 
 The "unhashable" flag is also set on the :class:`.NullType` type,
 as :class:`.NullType` is used to refer to any expression of unknown
@@ -286,7 +286,7 @@ to track this change.
 New options allowing explicit persistence of NULL over a default
 ----------------------------------------------------------------
 
-Related to the new JSON-NULL support added to Postgresql as part of
+Related to the new JSON-NULL support added to PostgreSQL as part of
 :ref:`change_3514`, the base :class:`.TypeEngine` class now supports
 a method :meth:`.TypeEngine.evaluates_none` which allows a positive set
 of the ``None`` value on an attribute to be persisted as NULL, rather than
@@ -956,7 +956,7 @@ Where above, the ``user.name`` column is added unnecessarily.  The results
 would not be affected, as the additional columns are not included in the
 result in any case, but the columns are unnecessary.
 
-Additionally, when the Postgresql DISTINCT ON format is used by passing
+Additionally, when the PostgreSQL DISTINCT ON format is used by passing
 expressions to :meth:`.Query.distinct`, the above "column adding" logic
 is disabled entirely.
 
@@ -1110,7 +1110,7 @@ RANGE and ROWS expressions for window functions::
 Support for the SQL LATERAL keyword
 ------------------------------------
 
-The LATERAL keyword is currently known to only be supported by Postgresql 9.3
+The LATERAL keyword is currently known to only be supported by PostgreSQL 9.3
 and greater, however as it is part of the SQL standard support for this keyword
 is added to Core.   The implementation of :meth:`.Select.lateral` employs
 special logic beyond just rendering the LATERAL keyword to allow for
@@ -1174,7 +1174,7 @@ SQLAlchemy has always had the convenience feature of enabling the backend databa
 "autoincrement" feature for a single-column integer primary key; by "autoincrement"
 we mean that the database column will include whatever DDL directives the
 database provides in order to indicate an auto-incrementing integer identifier,
-such as the SERIAL keyword on Postgresql or AUTO_INCREMENT on MySQL, and additionally
+such as the SERIAL keyword on PostgreSQL or AUTO_INCREMENT on MySQL, and additionally
 that the dialect will recieve these generated values from the execution
 of a :meth:`.Table.insert` construct using techniques appropriate to that
 backend.
@@ -1630,10 +1630,10 @@ UNIONs with parenthesized SELECT statements is much less common than the
 JSON support added to Core
 --------------------------
 
-As MySQL now has a JSON datatype in addition to the Postgresql JSON datatype,
+As MySQL now has a JSON datatype in addition to the PostgreSQL JSON datatype,
 the core now gains a :class:`sqlalchemy.types.JSON` datatype that is the basis
 for both of these.  Using this type allows access to the "getitem" operator
-as well as the "getpath" operator in a way that is agnostic across Postgresql
+as well as the "getpath" operator in a way that is agnostic across PostgreSQL
 and MySQL.
 
 The new datatype also has a series of improvements to the handling of
@@ -1735,7 +1735,7 @@ and its descendant types.
 Array support added to Core; new ANY and ALL operators
 ------------------------------------------------------
 
-Along with the enhancements made to the Postgresql :class:`.postgresql.ARRAY`
+Along with the enhancements made to the PostgreSQL :class:`.postgresql.ARRAY`
 type described in :ref:`change_3503`, the base class of :class:`.postgresql.ARRAY`
 itself has been moved to Core in a new class :class:`.types.ARRAY`.
 
@@ -1744,7 +1744,7 @@ such as ``array_agg()`` and ``unnest()``.  In support of these constructs
 for not just PostgreSQL but also potentially for other array-capable backends
 in the future such as DB2, the majority of array logic for SQL expressions
 is now in Core.   The :class:`.types.ARRAY` type still **only works on
-Postgresql**, however it can be used directly, supporting special array
+PostgreSQL**, however it can be used directly, supporting special array
 use cases such as indexed access, as well as support for the ANY and ALL::
 
     mytable = Table("mytable", metadata,
@@ -1774,7 +1774,7 @@ type as well.
 
 The :func:`.sql.expression.any_` and :func:`.sql.expression.all_` operators
 are open-ended at the Core level, however their interpretation by backend
-databases is limited.  On the Postgresql backend, the two operators
+databases is limited.  On the PostgreSQL backend, the two operators
 **only accept array values**.  Whereas on the MySQL backend, they
 **only accept subquery values**.  On MySQL, one can use an expression
 such as::
@@ -1799,7 +1799,7 @@ which is now available using :class:`.array_agg`::
     from sqlalchemy import func
     stmt = select([func.array_agg(table.c.value)])
 
-A Postgresql element for an aggregate ORDER BY is also added via
+A PostgreSQL element for an aggregate ORDER BY is also added via
 :class:`.postgresql.aggregate_order_by`::
 
     from sqlalchemy.dialects.postgresql import aggregate_order_by
@@ -1849,7 +1849,7 @@ TypeDecorator now works with Enum, Boolean, "schema" types automatically
 
 The :class:`.SchemaType` types include types such as :class:`.Enum`
 and :class:`.Boolean` which, in addition to corresponding to a database
-type, also generate either a CHECK constraint or in the case of Postgresql
+type, also generate either a CHECK constraint or in the case of PostgreSQL
 ENUM a new CREATE TYPE statement, will now work automatically with
 :class:`.TypeDecorator` recipes.  Previously, a :class:`.TypeDecorator` for
 an :class:`.postgresql.ENUM` had to look like this::
@@ -2004,7 +2004,7 @@ That is, a joinedload of ``.pets`` looks like::
     ON pets_1.person_id = CAST(person.id AS INTEGER)
 
 Without the CAST in the ON clause of the join, strongly-typed databases
-such as Postgresql will refuse to implicitly compare the integer and fail.
+such as PostgreSQL will refuse to implicitly compare the integer and fail.
 
 The lazyload case of ``.pets`` relies upon replacing
 the ``Person.id`` column at load time with a bound parameter, which receives
@@ -2094,7 +2094,7 @@ necessary to worry about the names themselves in the textual SQL.
 
     :ref:`change_3501`
 
-Dialect Improvements and Changes - Postgresql
+Dialect Improvements and Changes - PostgreSQL
 =============================================
 
 .. _change_3529:
@@ -2102,12 +2102,12 @@ Dialect Improvements and Changes - Postgresql
 Support for INSERT..ON CONFLICT (DO UPDATE | DO NOTHING)
 --------------------------------------------------------
 
-The ``ON CONFLICT`` clause of ``INSERT`` added to Postgresql as of
-version 9.5 is now supported using a Postgresql-specific version of the
+The ``ON CONFLICT`` clause of ``INSERT`` added to PostgreSQL as of
+version 9.5 is now supported using a PostgreSQL-specific version of the
 :class:`.Insert` object, via :func:`sqlalchemy.dialects.postgresql.dml.insert`.
 This :class:`.Insert` subclass adds two new methods :meth:`.Insert.on_conflict_do_update`
 and :meth:`.Insert.on_conflict_do_nothing` which implement the full syntax
-supported by Posgresql 9.5 in this area::
+supported by PostgreSQL 9.5 in this area::
 
     from sqlalchemy.dialects.postgresql import insert
 
@@ -2180,13 +2180,13 @@ This includes:
   type :class:`.Integer` where we could no longer perform indexed access
   for the remaining dimensions, unless we used :func:`.cast` or :func:`.type_coerce`.
 
-* The :class:`~.postgresql.JSON` and :class:`~.postgresql.JSONB` types now mirror what Postgresql
+* The :class:`~.postgresql.JSON` and :class:`~.postgresql.JSONB` types now mirror what PostgreSQL
   itself does for indexed access.  This means that all indexed access for
   a :class:`~.postgresql.JSON` or :class:`~.postgresql.JSONB` type returns an expression that itself
   is *always* :class:`~.postgresql.JSON` or :class:`~.postgresql.JSONB` itself, unless the
   :attr:`~.postgresql.JSON.Comparator.astext` modifier is used.   This means that whether
   the indexed access of the JSON structure ultimately refers to a string,
-  list, number, or other JSON structure, Postgresql always considers it
+  list, number, or other JSON structure, PostgreSQL always considers it
   to be JSON itself unless it is explicitly cast differently.   Like
   the :class:`~.postgresql.ARRAY` type, this means that it is now straightforward
   to produce JSON expressions with multiple levels of indexed access::
@@ -2269,7 +2269,7 @@ emits::
 Check constraints now reflect
 -----------------------------
 
-The Postgresql dialect now supports reflection of CHECK constraints
+The PostgreSQL dialect now supports reflection of CHECK constraints
 both within the method :meth:`.Inspector.get_check_constraints` as well
 as within :class:`.Table` reflection within the :attr:`.Table.constraints`
 collection.
@@ -2326,7 +2326,7 @@ Support for FOR UPDATE SKIP LOCKED  / FOR NO KEY UPDATE / FOR KEY SHARE
 The new parameters :paramref:`.GenerativeSelect.with_for_update.skip_locked`
 and :paramref:`.GenerativeSelect.with_for_update.key_share`
 in both Core and ORM apply a modification to a "SELECT...FOR UPDATE"
-or "SELECT...FOR SHARE" query on the Postgresql backend:
+or "SELECT...FOR SHARE" query on the PostgreSQL backend:
 
 * SELECT FOR NO KEY UPDATE::
 
@@ -2352,8 +2352,8 @@ A new type :class:`.mysql.JSON` is added to the MySQL dialect supporting
 the JSON type newly added to MySQL 5.7.   This type provides both persistence
 of JSON as well as rudimentary indexed-access using the ``JSON_EXTRACT``
 function internally.  An indexable JSON column that works across MySQL
-and Postgresql can be achieved by using the :class:`.types.JSON` datatype
-common to both MySQL and Postgresql.
+and PostgreSQL can be achieved by using the :class:`.types.JSON` datatype
+common to both MySQL and PostgreSQL.
 
 .. seealso::
 

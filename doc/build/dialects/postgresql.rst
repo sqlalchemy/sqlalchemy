@@ -9,7 +9,7 @@ PostgreSQL Data Types
 ------------------------
 
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
-valid with Postgresql are importable from the top level dialect, whether
+valid with PostgreSQL are importable from the top level dialect, whether
 they originate from :mod:`sqlalchemy.types` or from the local dialect::
 
     from sqlalchemy.dialects.postgresql import \
@@ -160,7 +160,7 @@ For example:
 PostgreSQL Constraint Types
 ---------------------------
 
-SQLAlchemy supports Postgresql EXCLUDE constraints via the
+SQLAlchemy supports PostgreSQL EXCLUDE constraints via the
 :class:`ExcludeConstraint` class:
 
 .. autoclass:: ExcludeConstraint

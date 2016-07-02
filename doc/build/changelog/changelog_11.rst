@@ -114,8 +114,8 @@
         :tags: feature, postgresql
         :tickets: 3529
 
-        Added support for Postgresql's INSERT..ON CONFLICT using a new
-        Postgresql-specific :class:`.postgresql.dml.Insert` object.
+        Added support for PostgreSQL's INSERT..ON CONFLICT using a new
+        PostgreSQL-specific :class:`.postgresql.dml.Insert` object.
         Pull request and extensive efforts here by Robin Thomas.
 
         .. seealso::
@@ -129,7 +129,7 @@
         The DDL for DROP INDEX will emit "CONCURRENTLY" if the
         ``postgresql_concurrently`` flag is set upon the
         :class:`.Index` and if the database in use is detected as
-        Postgresql version 9.2 or greater.   For CREATE INDEX, database
+        PostgreSQL version 9.2 or greater.   For CREATE INDEX, database
         version detection is also added which will omit the clause if
         PG version is less than 8.2.  Pull request courtesy Iuri de Silvio.
 
@@ -208,7 +208,7 @@
         :tickets: 3720
 
         Added ``postgresql_tablespace`` as an argument to :class:`.Index`
-        to allow specification of TABLESPACE for an index in Postgresql.
+        to allow specification of TABLESPACE for an index in PostgreSQL.
         Complements the same-named parameter on :class:`.Table`.  Pull
         request courtesy Benjamin Bertrand.
 
@@ -241,7 +241,7 @@
         :tags: feature, sql
         :pullreq: bitbucket:80
 
-        Implemented reflection of CHECK constraints for SQLite and Postgresql.
+        Implemented reflection of CHECK constraints for SQLite and PostgreSQL.
         This is available via the new inspector method
         :meth:`.Inspector.get_check_constraints` as well as when reflecting
         :class:`.Table` objects in the form of :class:`.CheckConstraint`
@@ -256,7 +256,7 @@
         :paramref:`.GenerativeSelect.with_for_update.key_share`, which
         will render the ``FOR NO KEY UPDATE`` version of ``FOR UPDATE``
         and ``FOR KEY SHARE`` instead of ``FOR SHARE``
-        on the Postgresql backend.  Pull request courtesy Sergey Skopin.
+        on the PostgreSQL backend.  Pull request courtesy Sergey Skopin.
 
     .. change::
         :tags: feature, postgresql, oracle
@@ -265,7 +265,7 @@
         Added new parameter
         :paramref:`.GenerativeSelect.with_for_update.skip_locked`, which
         will render the ``SKIP LOCKED`` phrase for a ``FOR UPDATE`` or
-        ``FOR SHARE`` lock on the Postgresql and Oracle backends.  Pull
+        ``FOR SHARE`` lock on the PostgreSQL and Oracle backends.  Pull
         request courtesy Jack Zhou.
 
     .. change::
@@ -286,7 +286,7 @@
     .. change::
         :tags: feature, postgresql
 
-        Added a new dialect for the PyGreSQL Postgresql dialect.  Thanks
+        Added a new dialect for the PyGreSQL PostgreSQL dialect.  Thanks
         to Christoph Zwerschke and Kaolin Imago Fire for their efforts.
 
     .. change::
@@ -360,7 +360,7 @@
 
         Added :meth:`.Select.lateral` and related constructs to allow
         for the SQL standard LATERAL keyword, currently only supported
-        by Postgresql.
+        by PostgreSQL.
 
         .. seealso::
 
@@ -606,7 +606,7 @@
         when the construct contains non-standard SQL elements such as
         RETURNING, array index operations, or dialect-specific or custom
         datatypes.  A string is now returned in these cases rendering an
-        approximation of the construct (typically the Postgresql-style
+        approximation of the construct (typically the PostgreSQL-style
         version of it) rather than raising an error.
 
         .. seealso::
@@ -752,7 +752,7 @@
         :tickets: 3587
 
         Added support for reflecting the source of materialized views
-        to the Postgresql version of the :meth:`.Inspector.get_view_definition`
+        to the PostgreSQL version of the :meth:`.Inspector.get_view_definition`
         method.
 
     .. change::
@@ -949,7 +949,7 @@
         or :class:`.Boolean` with regards to ensuring that the per-table
         events are propagated from the implementation type to the outer type.
         These events are used
-        to ensure that the constraints or Postgresql types (e.g. ENUM)
+        to ensure that the constraints or PostgreSQL types (e.g. ENUM)
         are correctly created (and possibly dropped) along with the parent
         table.
 
@@ -981,8 +981,8 @@
         and supports index / slice operations, as well as
         :func:`.postgresql.array_agg`, which returns a :class:`.postgresql.ARRAY`
         with additional comparison features.   As arrays are only
-        supported on Postgresql at the moment, only actually works on
-        Postgresql.  Also added a new construct
+        supported on PostgreSQL at the moment, only actually works on
+        PostgreSQL.  Also added a new construct
         :class:`.postgresql.aggregate_order_by` in support of PG's
         "ORDER BY" extension.
 
@@ -1001,8 +1001,8 @@
         on other databases that have an "array" concept, such as DB2 or Oracle.
         Additionally, new operators :func:`.expression.any_` and
         :func:`.expression.all_` have been added.  These support not just
-        array constructs on Postgresql, but also subqueries that are usable
-        on MySQL (but sadly not on Postgresql).
+        array constructs on PostgreSQL, but also subqueries that are usable
+        on MySQL (but sadly not on PostgreSQL).
 
         .. seealso::
 
@@ -1039,7 +1039,7 @@
         :tags: bug, postgresql
         :tickets: 3487
 
-        The Postgresql :class:`.postgresql.ARRAY` type now supports multidimensional
+        The PostgreSQL :class:`.postgresql.ARRAY` type now supports multidimensional
         indexed access, e.g. expressions such as ``somecol[5][6]`` without
         any need for explicit casts or type coercions, provided
         that the :paramref:`.postgresql.ARRAY.dimensions` parameter is set to the
@@ -1054,7 +1054,7 @@
         :tickets: 3503
 
         The return type for the :class:`.postgresql.JSON` and :class:`.postgresql.JSONB`
-        when using indexed access has been fixed to work like Postgresql itself,
+        when using indexed access has been fixed to work like PostgreSQL itself,
         and returns an expression that itself is of type :class:`.postgresql.JSON`
         or :class:`.postgresql.JSONB`.  Previously, the accessor would return
         :class:`.NullType` which disallowed subsequent JSON-like operators to be
@@ -1101,7 +1101,7 @@
         :tickets: 3514
 
         Additional fixes have been made regarding the value of ``None``
-        in conjunction with the Postgresql :class:`.postgresql.JSON` type.  When
+        in conjunction with the PostgreSQL :class:`.postgresql.JSON` type.  When
         the :paramref:`.JSON.none_as_null` flag is left at its default
         value of ``False``, the ORM will now correctly insert the Json
         "'null'" string into the column whenever the value on the ORM
