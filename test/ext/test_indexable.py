@@ -23,9 +23,11 @@ class IndexPropertyTest(fixtures.TestBase):
             array = Column('_array', ARRAY(Integer),
                            default=[])
             first = index_property('array', 0)
+            tenth = index_property('array', 9)
 
         a = A(array=[1, 2, 3])
         eq_(a.first, 1)
+        assert_raises(AttributeError, lambda: a.tenth)
         a.first = 100
         eq_(a.first, 100)
         eq_(a.array, [100, 2, 3])
@@ -89,7 +91,7 @@ class IndexPropertyTest(fixtures.TestBase):
 
         assert_raises(AttributeError, delattr, a, "first")
 
-    def test_get_index_error(self):
+    def test_get_attribute_error(self):
         Base = declarative_base()
 
         class A(Base):
@@ -99,7 +101,7 @@ class IndexPropertyTest(fixtures.TestBase):
             first = index_property('array', 1)
 
         a = A(array=[])
-        assert_raises(IndexError, lambda: a.first)
+        assert_raises(AttributeError, lambda: a.first)
 
     def test_set_immutable(self):
         Base = declarative_base()

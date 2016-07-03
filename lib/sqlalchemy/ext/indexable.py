@@ -284,7 +284,7 @@ class index_property(hybrid_property):  # noqa
             raise AttributeError(self.attr_name)
         try:
             value = column_value[self.index]
-        except KeyError:
+        except (KeyError, IndexError):
             raise AttributeError(self.attr_name)
         else:
             return value

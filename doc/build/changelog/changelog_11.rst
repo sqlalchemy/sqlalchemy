@@ -21,6 +21,12 @@
 .. changelog::
     :version: 1.1.0b3
 
+    .. change::
+        :tags: bug, ext
+
+        sqlalchemy.ext.indexable will intercept IndexError as well
+        as KeyError when raising as AttributeError.
+
 .. changelog::
     :version: 1.1.0b2
     :released: July 1, 2016
