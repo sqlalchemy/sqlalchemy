@@ -1426,7 +1426,7 @@ OVER clause, using the :meth:`.FunctionElement.over` method::
     SELECT users.id, row_number() OVER (ORDER BY users.name) AS anon_1
     FROM users
 
-:meth:`.FunctionElement.over` also supports range specifciation using
+:meth:`.FunctionElement.over` also supports range specification using
 either the :paramref:`.expression.over.rows` or
 :paramref:`.expression.over.range` parameters::
 
