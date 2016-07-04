@@ -19,6 +19,16 @@
     :version: 1.0.14
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3739
+        :versions: 1.1.0b3
+
+        Fixed bug whereby :class:`.TypeDecorator` and :class:`.Variant`
+        types were not deeply inspected enough by the Postgresql dialect
+        to determine if SMALLSERIAL or BIGSERIAL needed to be rendered
+        rather than SERIAL.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3735
         :versions: 1.1.0b2
