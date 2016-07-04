@@ -317,6 +317,19 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={'y': 6, 'x': 5, 'z': 7}
         )
 
+    def test_escaping_percent_signs(self):
+        stmt = text("select '%' where foo like '%bar%'")
+        self.assert_compile(
+            stmt,
+            "select '%' where foo like '%bar%'",
+            dialect="sqlite"
+        )
+
+        self.assert_compile(
+            stmt,
+            "select '%%' where foo like '%%bar%%'",
+            dialect="mysql"
+        )
 
 class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

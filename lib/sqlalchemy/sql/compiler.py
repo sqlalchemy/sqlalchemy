@@ -695,7 +695,6 @@ class SQLCompiler(Compiled):
             name = self.escape_literal_column(name)
         else:
             name = self.preparer.quote(name)
-
         table = column.table
         if table is None or not include_table or not table.named_with_column:
             return name
@@ -715,12 +714,6 @@ class SQLCompiler(Compiled):
                 self.preparer.quote(tablename) + \
                 "." + name
 
-    def escape_literal_column(self, text):
-        """provide escaping for the literal_column() construct."""
-
-        # TODO: some dialects might need different behavior here
-        return text.replace('%', '%%')
-
     def visit_fromclause(self, fromclause, **kwargs):
         return fromclause.name
 
@@ -732,6 +725,13 @@ class SQLCompiler(Compiled):
         return self.dialect.type_compiler.process(typeclause.type, **kw)
 
     def post_process_text(self, text):
+        if self.preparer._double_percents:
+            text = text.replace('%', '%%')
+        return text
+
+    def escape_literal_column(self, text):
+        if self.preparer._double_percents:
+            text = text.replace('%', '%%')
         return text
 
     def visit_textclause(self, textclause, **kw):
@@ -1047,6 +1047,14 @@ class SQLCompiler(Compiled):
                 raise exc.UnsupportedCompilationError(self, operator_)
             else:
                 return self._generate_generic_binary(binary, opstring, **kw)
+
+    def visit_mod_binary(self, binary, operator, **kw):
+        if self.preparer._double_percents:
+            return self.process(binary.left, **kw) + " %% " + \
+                self.process(binary.right, **kw)
+        else:
+            return self.process(binary.left, **kw) + " % " + \
+                self.process(binary.right, **kw)
 
     def visit_custom_op_binary(self, element, operator, **kw):
         kw['eager_grouping'] = operator.eager_grouping
@@ -2888,6 +2896,7 @@ class IdentifierPreparer(object):
         self.escape_to_quote = self.escape_quote * 2
         self.omit_schema = omit_schema
         self._strings = {}
+        self._double_percents = self.dialect.paramstyle in ('format', 'pyformat')
 
     def _with_schema_translate(self, schema_translate_map):
         prep = self.__class__.__new__(self.__class__)
@@ -2902,7 +2911,10 @@ class IdentifierPreparer(object):
         escaping behavior.
         """
 
-        return value.replace(self.escape_quote, self.escape_to_quote)
+        value = value.replace(self.escape_quote, self.escape_to_quote)
+        if self._double_percents:
+            value = value.replace('%', '%%')
+        return value
 
     def _unescape_identifier(self, value):
         """Canonicalize an escaped identifier.
