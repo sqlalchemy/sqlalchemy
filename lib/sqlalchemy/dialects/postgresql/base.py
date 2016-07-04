@@ -1578,6 +1578,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         colspec = self.preparer.format_column(column)
         impl_type = column.type.dialect_impl(self.dialect)
+        if isinstance(impl_type, sqltypes.TypeDecorator):
+            impl_type = impl_type.impl
+
         if column.primary_key and \
             column is column.table._autoincrement_column and \
             (

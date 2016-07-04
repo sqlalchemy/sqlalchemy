@@ -8,7 +8,7 @@ from sqlalchemy import testing
 import datetime
 from sqlalchemy import (
     Table, Column, select, MetaData, text, Integer, String, Sequence, Numeric,
-    DateTime, BigInteger, func, extract, SmallInteger)
+    DateTime, BigInteger, func, extract, SmallInteger, TypeDecorator)
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
@@ -242,6 +242,15 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         "postgresql >= 8.2", "requires standard_conforming_strings")
     def test_serial_integer(self):
 
+        class BITD(TypeDecorator):
+            impl = Integer
+
+            def load_dialect_impl(self, dialect):
+                if dialect.name == 'postgresql':
+                    return BigInteger()
+                else:
+                    return Integer()
+
         for version, type_, expected in [
             (None, Integer, 'SERIAL'),
             (None, BigInteger, 'BIGSERIAL'),
@@ -249,6 +258,16 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             ((9, 2), SmallInteger, 'SMALLSERIAL'),
             (None, postgresql.INTEGER, 'SERIAL'),
             (None, postgresql.BIGINT, 'BIGSERIAL'),
+            (
+                None, Integer().with_variant(BigInteger(), 'postgresql'),
+                'BIGSERIAL'),
+            (
+                None, Integer().with_variant(postgresql.BIGINT, 'postgresql'),
+                'BIGSERIAL'),
+            (
+                (9, 2), Integer().with_variant(SmallInteger, 'postgresql'),
+                'SMALLSERIAL'),
+            (None, BITD(), 'BIGSERIAL')
         ]:
             m = MetaData()
 
