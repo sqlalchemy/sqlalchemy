@@ -29,6 +29,17 @@
         rather than SERIAL.
 
     .. change::
+        :tags: bug, oracle
+        :tickets: 3741
+        :versions: 1.1.0b3
+
+        Fixed bug in :paramref:`.Select.with_for_update.of`, where the Oracle
+        "rownum" approach to LIMIT/OFFSET would fail to accomodate for the
+        expressions inside the "OF" clause, which must be stated at the topmost
+        level referring to expression within the subquery.  The expressions are
+        now added to the subquery if needed.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3735
         :versions: 1.1.0b2

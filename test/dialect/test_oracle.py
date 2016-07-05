@@ -344,6 +344,79 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable_1.myid, mytable_1.name"
         )
 
+    def test_for_update_of_w_limit_adaption_col_present(self):
+        table1 = table('mytable', column('myid'), column('name'))
+
+        self.assert_compile(
+            select([table1.c.myid, table1.c.name]).
+            where(table1.c.myid == 7).
+            with_for_update(nowait=True, of=table1.c.name).
+            limit(10),
+            "SELECT myid, name FROM "
+            "(SELECT mytable.myid AS myid, mytable.name AS name "
+            "FROM mytable WHERE mytable.myid = :myid_1) "
+            "WHERE ROWNUM <= :param_1 FOR UPDATE OF name NOWAIT",
+        )
+
+    def test_for_update_of_w_limit_adaption_col_unpresent(self):
+        table1 = table('mytable', column('myid'), column('name'))
+
+        self.assert_compile(
+            select([table1.c.myid]).
+            where(table1.c.myid == 7).
+            with_for_update(nowait=True, of=table1.c.name).
+            limit(10),
+            "SELECT myid FROM "
+            "(SELECT mytable.myid AS myid, mytable.name AS name "
+            "FROM mytable WHERE mytable.myid = :myid_1) "
+            "WHERE ROWNUM <= :param_1 FOR UPDATE OF name NOWAIT",
+        )
+
+    def test_for_update_of_w_limit_offset_adaption_col_present(self):
+        table1 = table('mytable', column('myid'), column('name'))
+
+        self.assert_compile(
+            select([table1.c.myid, table1.c.name]).
+            where(table1.c.myid == 7).
+            with_for_update(nowait=True, of=table1.c.name).
+            limit(10).offset(50),
+            "SELECT myid, name FROM (SELECT myid, name, ROWNUM AS ora_rn "
+            "FROM (SELECT mytable.myid AS myid, mytable.name AS name "
+            "FROM mytable WHERE mytable.myid = :myid_1) "
+            "WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > :param_2 "
+            "FOR UPDATE OF name NOWAIT",
+        )
+
+    def test_for_update_of_w_limit_offset_adaption_col_unpresent(self):
+        table1 = table('mytable', column('myid'), column('name'))
+
+        self.assert_compile(
+            select([table1.c.myid]).
+            where(table1.c.myid == 7).
+            with_for_update(nowait=True, of=table1.c.name).
+            limit(10).offset(50),
+            "SELECT myid FROM (SELECT myid, ROWNUM AS ora_rn, name "
+            "FROM (SELECT mytable.myid AS myid, mytable.name AS name "
+            "FROM mytable WHERE mytable.myid = :myid_1) "
+            "WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > :param_2 "
+            "FOR UPDATE OF name NOWAIT",
+        )
+
+    def test_for_update_of_w_limit_offset_adaption_partial_col_unpresent(self):
+        table1 = table('mytable', column('myid'), column('foo'), column('bar'))
+
+        self.assert_compile(
+            select([table1.c.myid, table1.c.bar]).
+            where(table1.c.myid == 7).
+            with_for_update(nowait=True, of=[table1.c.foo, table1.c.bar]).
+            limit(10).offset(50),
+            "SELECT myid, bar FROM (SELECT myid, bar, ROWNUM AS ora_rn, "
+            "foo FROM (SELECT mytable.myid AS myid, mytable.bar AS bar, "
+            "mytable.foo AS foo FROM mytable WHERE mytable.myid = :myid_1) "
+            "WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > :param_2 "
+            "FOR UPDATE OF foo, bar NOWAIT"
+        )
+
     def test_limit_preserves_typing_information(self):
         class MyType(TypeDecorator):
             impl = Integer
