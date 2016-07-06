@@ -285,7 +285,7 @@ import re
 
 from sqlalchemy import util, sql
 from sqlalchemy.engine import default, reflection
-from sqlalchemy.sql import compiler, visitors, expression
+from sqlalchemy.sql import compiler, visitors, expression, util as sql_util
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy import types as sqltypes, schema as sa_schema
@@ -754,6 +754,20 @@ class OracleCompiler(compiler.SQLCompiler):
                 limitselect._oracle_visit = True
                 limitselect._is_wrapper = True
 
+                # add expressions to accomodate FOR UPDATE OF
+                for_update = select._for_update_arg
+                if for_update is not None and for_update.of:
+                    for_update = for_update._clone()
+                    for_update._copy_internals()
+
+                    for elem in for_update.of:
+                        select.append_column(elem)
+
+                    adapter = sql_util.ClauseAdapter(select)
+                    for_update.of = [
+                        adapter.traverse(elem)
+                        for elem in for_update.of]
+
                 # If needed, add the limiting clause
                 if limit_clause is not None:
                     if not self.dialect.use_binds_for_limits:
@@ -773,7 +787,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # If needed, add the ora_rn, and wrap again with offset.
                 if offset_clause is None:
-                    limitselect._for_update_arg = select._for_update_arg
+                    limitselect._for_update_arg = for_update
                     select = limitselect
                 else:
                     limitselect = limitselect.column(
@@ -786,13 +800,18 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect._oracle_visit = True
                     offsetselect._is_wrapper = True
 
+                    if for_update is not None and for_update.of:
+                        for elem in for_update.of:
+                            if limitselect.corresponding_column(elem) is None:
+                                limitselect.append_column(elem)
+
                     if not self.dialect.use_binds_for_limits:
                         offset_clause = sql.literal_column(
                             "%d" % select._offset)
                     offsetselect.append_whereclause(
                         sql.literal_column("ora_rn") > offset_clause)
 
-                    offsetselect._for_update_arg = select._for_update_arg
+                    offsetselect._for_update_arg = for_update
                     select = offsetselect
 
         return compiler.SQLCompiler.visit_select(self, select, **kwargs)
