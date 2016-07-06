@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.14
+    :released: July 6, 2016
 
     .. change::
         :tags: bug, postgresql
