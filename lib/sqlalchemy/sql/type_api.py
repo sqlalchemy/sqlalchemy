@@ -793,7 +793,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     return an empty tuple, in which case no values will be coerced to
     constants.
 
-    ..versionadded:: 0.8.2
+    .. versionadded:: 0.8.2
         Added :attr:`.TypeDecorator.coerce_to_is_types` to allow for easier
         control of ``__eq__()`` ``__ne__()`` operations.
 
