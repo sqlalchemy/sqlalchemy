@@ -3,13 +3,13 @@
 .. _types_custom:
 
 Custom Types
-------------
+============
 
 A variety of methods exist to redefine the behavior of existing types
 as well as to provide new ones.
 
 Overriding Type Compilation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 A frequent need is to force the "string" version of a type, that is
 the one rendered in a CREATE TABLE statement or other SQL function
@@ -38,7 +38,7 @@ See the section :ref:`type_compilation_extension`, a subsection of
 .. _types_typedecorator:
 
 Augmenting Existing Types
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
 The :class:`.TypeDecorator` allows the creation of custom types which
 add bind-parameter and result-processing behavior to an existing
@@ -59,7 +59,8 @@ to and from the database is required.
 
 
 TypeDecorator Recipes
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
+
 A few key :class:`.TypeDecorator` recipes follow.
 
 .. _coerce_to_unicode:
@@ -195,19 +196,95 @@ to/from JSON.   Can be modified to use Python's builtin json encoder::
                 value = json.loads(value)
             return value
 
-Note that the ORM by default will not detect "mutability" on such a type -
+Adding Mutability
+~~~~~~~~~~~~~~~~~
+
+The ORM by default will not detect "mutability" on such a type as above -
 meaning, in-place changes to values will not be detected and will not be
-flushed. Without further steps, you instead would need to replace the existing
-value with a new one on each parent object to detect changes. Note that
-there's nothing wrong with this, as many applications may not require that the
-values are ever mutated once created.  For those which do have this requirement,
-support for mutability is best applied using the ``sqlalchemy.ext.mutable``
-extension - see the example in :ref:`mutable_toplevel`.
+flushed.   Without further steps, you instead would need to replace the existing
+value with a new one on each parent object to detect changes::
+
+    obj.json_value["key"] = "value"  # will *not* be detected by the ORM
+
+    obj.json_value = {"key": "value"}  # *will* be detected by the ORM
+
+The above limitation may be
+fine, as many applications may not require that the values are ever mutated
+once created.  For those which do have this requirement, support for mutability
+is best applied using the ``sqlalchemy.ext.mutable`` extension.  For a
+dictionary-oriented JSON structure, we can apply this as::
+
+    json_type = MutableDict.as_mutable(JSONEncodedDict)
+
+    class MyClass(Base):
+        #  ...
+
+        json_data = Column(json_type)
+
+
+.. seealso::
+
+    :ref:`mutable_toplevel`
+
+Dealing with Comparison Operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The default behavior of :class:`.TypeDecorator` is to coerce the "right hand side"
+of any expression into the same type.  For a type like JSON, this means that
+any operator used must make sense in terms of JSON.    For some cases,
+users may wish for the type to behave like JSON in some circumstances, and
+as plain text in others.  One example is if one wanted to handle the
+LIKE operator for the JSON type.  LIKE makes no sense against a JSON structure,
+but it does make sense against the underlying textual representation.  To
+get at this with a type like ``JSONEncodedDict``, we need to
+**coerce** the column to a textual form using :func:`.cast` or
+:func:`.type_coerce` before attempting to use this operator::
+
+    from sqlalchemy import type_coerce, String
+
+    stmt = select([my_table]).where(
+        type_coerce(my_table.c.json_data, String).like('%foo%'))
+
+:class:`.TypeDecorator` provides a built-in system for working up type
+translations like these based on operators.  If we wanted to frequently use the
+LIKE operator with our JSON object interpreted as a string, we can build it
+into the type by overriding the :meth:`.TypeDecorator.coerce_compared_value`
+method::
+
+    from sqlalchemy.sql import operators
+    from sqlalchemy import String
+
+    class JSONEncodedDict(TypeDecorator):
+
+        impl = VARCHAR
+
+        def coerce_compared_value(self, op, value):
+            if op in (operators.like_op, operators.notlike_op):
+                return String()
+            else:
+                return self
+
+        def process_bind_param(self, value, dialect):
+            if value is not None:
+                value = json.dumps(value)
+
+            return value
+
+        def process_result_value(self, value, dialect):
+            if value is not None:
+                value = json.loads(value)
+            return value
+
+Above is just one approach to handling an operator like "LIKE".  Other
+applications may wish to raise ``NotImplementedError`` for operators that
+have no meaning with a JSON object such as "LIKE", rather than automatically
+coercing to text.
+
 
 .. _replacing_processors:
 
 Replacing the Bind/Result Processing of Existing Types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------------
 
 Most augmentation of type behavior at the bind/result level
 is achieved using :class:`.TypeDecorator`.   For the rare scenario
@@ -251,7 +328,7 @@ cursor directly::
 .. _types_sql_value_processing:
 
 Applying SQL-level Bind/Result Processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------------
 
 As seen in the sections :ref:`types_typedecorator` and :ref:`replacing_processors`,
 SQLAlchemy allows Python functions to be invoked both when parameters are sent
@@ -390,7 +467,7 @@ See also:
 .. _types_operators:
 
 Redefining and Creating New Operators
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 SQLAlchemy Core defines a fixed set of expression operators available to all column expressions.
 Some of these operations have the effect of overloading Python's built in operators;
@@ -487,7 +564,7 @@ See also:
 
 
 Creating New Types
-~~~~~~~~~~~~~~~~~~
+------------------
 
 The :class:`.UserDefinedType` class is provided as a simple base class
 for defining entirely new database types.   Use this to represent native
