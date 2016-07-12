@@ -539,6 +539,93 @@ class DefaultTest(fixtures.TestBase):
         eq_(55, l['col3'])
 
 
+class CTEDefaultTest(fixtures.TablesTest):
+    __requires__ = ('ctes',)
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'q', metadata,
+            Column('x', Integer, default=2),
+            Column('y', Integer, onupdate=5),
+            Column('z', Integer)
+        )
+
+        Table(
+            'p', metadata,
+            Column('s', Integer),
+            Column('t', Integer),
+            Column('u', Integer, onupdate=1)
+        )
+
+    def _test_a_in_b(self, a, b):
+        q = self.tables.q
+        p = self.tables.p
+
+        with testing.db.connect() as conn:
+            if a == 'delete':
+                conn.execute(q.insert().values(y=10, z=1))
+                cte = q.delete().\
+                    where(q.c.z == 1).returning(q.c.z).cte('c')
+                expected = None
+            elif a == "insert":
+                cte = q.insert().values(z=1, y=10).returning(q.c.z).cte('c')
+                expected = (2, 10)
+            elif a == "update":
+                conn.execute(q.insert().values(x=5, y=10, z=1))
+                cte = q.update().\
+                    where(q.c.z == 1).values(x=7).returning(q.c.z).cte('c')
+                expected = (7, 5)
+            elif a == "select":
+                conn.execute(q.insert().values(x=5, y=10, z=1))
+                cte = sa.select([q.c.z]).cte('c')
+                expected = (5, 10)
+
+            if b == "select":
+                conn.execute(p.insert().values(s=1))
+                stmt = select([p.c.s, cte.c.z])
+            elif b == "insert":
+                sel = select([1, cte.c.z, ])
+                stmt = p.insert().from_select(['s', 't'], sel).returning(
+                    p.c.s, p.c.t)
+            elif b == "delete":
+                stmt = p.insert().values(s=1, t=cte.c.z).returning(
+                    p.c.s, cte.c.z)
+            elif b == "update":
+                conn.execute(p.insert().values(s=1))
+                stmt = p.update().values(t=5).\
+                    where(p.c.s == cte.c.z).\
+                    returning(p.c.u, cte.c.z)
+            eq_(
+                conn.execute(stmt).fetchall(),
+                [(1, 1)]
+            )
+
+            eq_(
+                conn.execute(select([q.c.x, q.c.y])).fetchone(),
+                expected
+            )
+
+    def test_update_in_select(self):
+        self._test_a_in_b("update", "select")
+
+    def test_delete_in_select(self):
+        self._test_a_in_b("update", "select")
+
+    def test_insert_in_select(self):
+        self._test_a_in_b("update", "select")
+
+    def test_select_in_update(self):
+        self._test_a_in_b("select", "update")
+
+    def test_select_in_insert(self):
+        self._test_a_in_b("select", "insert")
+
+    # TODO: updates / inserts can be run in one statement w/ CTE ?
+    # deletes?
+
+
 class PKDefaultTest(fixtures.TablesTest):
     __requires__ = ('subqueries',)
     __backend__ = True

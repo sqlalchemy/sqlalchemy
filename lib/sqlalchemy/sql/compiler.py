@@ -359,6 +359,8 @@ class SQLCompiler(Compiled):
     True unless using an unordered TextAsFrom.
     """
 
+    insert_prefetch = update_prefetch = ()
+
     def __init__(self, dialect, statement, column_keys=None,
                  inline=False, **kwargs):
         """Construct a new :class:`.SQLCompiler` object.
@@ -427,6 +429,10 @@ class SQLCompiler(Compiled):
 
         if self.positional and dialect.paramstyle == 'numeric':
             self._apply_numbered_params()
+
+    @property
+    def prefetch(self):
+        return list(self.insert_prefetch + self.update_prefetch)
 
     @util.memoized_instancemethod
     def _init_cte_state(self):

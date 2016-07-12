@@ -22,6 +22,15 @@
     :version: 1.1.0b3
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3745
+
+        Fixed bug in new CTE feature for update/insert/delete stated
+        as a CTE inside of an enclosing statement (typically SELECT) whereby
+        oninsert and onupdate values weren't called upon for the embedded
+        statement.
+
+    .. change::
         :tags: bug, ext
 
         sqlalchemy.ext.indexable will intercept IndexError as well
