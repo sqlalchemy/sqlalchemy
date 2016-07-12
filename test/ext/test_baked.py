@@ -304,12 +304,16 @@ class ResultTest(BakedTest):
     def setup_mappers(cls):
         User = cls.classes.User
         Address = cls.classes.Address
+        Order = cls.classes.Order
 
         mapper(User, cls.tables.users, properties={
             "addresses": relationship(
-                Address, order_by=cls.tables.addresses.c.id)
+                Address, order_by=cls.tables.addresses.c.id),
+            "orders": relationship(
+                Order, order_by=cls.tables.orders.c.id)
         })
         mapper(Address, cls.tables.addresses)
+        mapper(Order, cls.tables.orders)
 
     def test_cachekeys_on_constructor(self):
         User = self.classes.User
@@ -550,24 +554,29 @@ class ResultTest(BakedTest):
     def test_subquery_eagerloading(self):
         User = self.classes.User
         Address = self.classes.Address
+        Order = self.classes.Order
 
-        base_bq = self.bakery(
-            lambda s: s.query(User))
+        # Override the default bakery for one with a smaller size. This used to
+        # trigger a bug when unbaking subqueries.
+        self.bakery = baked.bakery(size=3)
+        base_bq = self.bakery(lambda s: s.query(User))
 
-        base_bq += lambda q: q.options(subqueryload(User.addresses))
+        base_bq += lambda q: q.options(subqueryload(User.addresses),
+                                       subqueryload(User.orders))
         base_bq += lambda q: q.order_by(User.id)
 
         assert_result = [
-            User(id=7, addresses=[
-                Address(id=1, email_address='jack@bean.com')]),
+            User(id=7,
+                addresses=[Address(id=1, email_address='jack@bean.com')],
+                orders=[Order(id=1), Order(id=3), Order(id=5)]),
             User(id=8, addresses=[
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
                 Address(id=4, email_address='ed@lala.com'),
             ]),
-            User(id=9, addresses=[
-                Address(id=5)
-            ]),
+            User(id=9,
+                addresses=[Address(id=5)], 
+                orders=[Order(id=2), Order(id=4)]),
             User(id=10, addresses=[])
         ]
 
@@ -602,18 +611,18 @@ class ResultTest(BakedTest):
                         def go():
                             result = bq(sess).all()
                             eq_(assert_result[1:2], result)
-                        self.assert_sql_count(testing.db, go, 2)
+                        self.assert_sql_count(testing.db, go, 3)
                 else:
                     if cond1:
                         def go():
                             result = bq(sess).all()
                             eq_(assert_result[0:1], result)
-                        self.assert_sql_count(testing.db, go, 2)
+                        self.assert_sql_count(testing.db, go, 3)
                     else:
                         def go():
                             result = bq(sess).all()
                             eq_(assert_result[1:3], result)
-                        self.assert_sql_count(testing.db, go, 2)
+                        self.assert_sql_count(testing.db, go, 3)
 
                 sess.close()
 
