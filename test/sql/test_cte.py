@@ -530,6 +530,38 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "upsert.quantity FROM upsert))"
         )
 
+    def test_anon_update_cte(self):
+        orders = table(
+            'orders',
+            column('region')
+        )
+        stmt = orders.update().where(orders.c.region == 'x').\
+            values(region='y').\
+            returning(orders.c.region).cte()
+
+        self.assert_compile(
+            stmt.select(),
+            "WITH anon_1 AS (UPDATE orders SET region=:region "
+            "WHERE orders.region = :region_1 RETURNING orders.region) "
+            "SELECT anon_1.region FROM anon_1"
+        )
+
+    def test_anon_insert_cte(self):
+        orders = table(
+            'orders',
+            column('region')
+        )
+        stmt = orders.insert().\
+            values(region='y').\
+            returning(orders.c.region).cte()
+
+        self.assert_compile(
+            stmt.select(),
+            "WITH anon_1 AS (INSERT INTO orders (region) "
+            "VALUES (:region) RETURNING orders.region) "
+            "SELECT anon_1.region FROM anon_1"
+        )
+
     def test_pg_example_one(self):
         products = table('products', column('id'), column('date'))
         products_log = table('products_log', column('id'), column('date'))

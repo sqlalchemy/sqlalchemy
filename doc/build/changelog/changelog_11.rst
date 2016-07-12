@@ -31,6 +31,14 @@
         statement.
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3744
+
+         Fixed bug in new CTE feature for update/insert/delete whereby
+         an anoymous (e.g. no name passed) :class:`.CTE` construct around
+         the statement would fail.
+
+    .. change::
         :tags: bug, ext
 
         sqlalchemy.ext.indexable will intercept IndexError as well

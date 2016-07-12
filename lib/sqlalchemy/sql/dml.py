@@ -32,6 +32,7 @@ class UpdateBase(
     _hints = util.immutabledict()
     _parameter_ordering = None
     _prefixes = ()
+    named_with_column = False
 
     def _process_colparams(self, parameters):
         def process_single(p):
