@@ -18,6 +18,15 @@
 .. changelog::
     :version: 1.0.15
 
+    .. change::
+        :tags: bug, ext
+        :tickets: 3743
+
+        Fixed bug in ``sqlalchemy.ext.baked`` where the unbaking of a
+        subquery eager loader query would fail due to a variable scoping
+        issue, when multiple subquery loaders were involved.  Pull request
+        courtesy Mark Hahnenberg.
+
 .. changelog::
     :version: 1.0.14
     :released: July 6, 2016

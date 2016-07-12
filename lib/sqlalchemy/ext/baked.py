@@ -194,7 +194,8 @@ class BakedQuery(object):
 
         """
         for k, cache_key, query in context.attributes["baked_queries"]:
-            bk = BakedQuery(self._bakery, lambda sess: query.with_session(sess))
+            bk = BakedQuery(self._bakery,
+                            lambda sess, q=query: q.with_session(sess))
             bk._cache_key = cache_key
             context.attributes[k] = bk.for_session(session).params(**params)
 
