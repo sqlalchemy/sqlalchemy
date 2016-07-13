@@ -351,6 +351,14 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(exclude('mysql', '<', (4, 1, 1)), 'no subquery support')
 
     @property
+    def ctes(self):
+        """Target database supports CTEs"""
+
+        return only_if(
+            ['postgresql', 'mssql']
+        )
+
+    @property
     def mod_operator_as_percent_sign(self):
         """target database must use a plain percent '%' as the 'modulus'
         operator."""
