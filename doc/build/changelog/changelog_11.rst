@@ -44,6 +44,12 @@
         sqlalchemy.ext.indexable will intercept IndexError as well
         as KeyError when raising as AttributeError.
 
+    .. change::
+        :tags: feature, ext
+
+        Added a "default" parameter to the new sqlalchemy.ext.indexable
+        extension.
+
 .. changelog::
     :version: 1.1.0b2
     :released: July 1, 2016

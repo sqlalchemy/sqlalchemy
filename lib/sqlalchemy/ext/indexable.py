@@ -92,6 +92,21 @@ A missing key will produce ``AttributeError``::
     ...
     AttributeError: 'name'
 
+Unless you set a default value::
+
+    >>> class Person(Base):
+    >>>     __tablename__ = 'person'
+    >>>
+    >>>     id = Column(Integer, primary_key=True)
+    >>>     data = Column(JSON)
+    >>>
+    >>>     name = index_property('data', 'name', default=None)  # See default
+
+    >>> person = Person()
+    >>> print(person.name)
+    None
+
+
 The attributes are also accessible at the class level.
 Below, we illustrate ``Person.name`` used to generate
 an indexed SQL criteria::
@@ -232,9 +247,11 @@ class index_property(hybrid_property):  # noqa
 
     """
 
+    _NO_DEFAULT_ARGUMENT = object()
+
     def __init__(
-            self, attr_name, index, datatype=None,
-            mutable=True, onebased=True):
+            self, attr_name, index, default=_NO_DEFAULT_ARGUMENT,
+            datatype=None, mutable=True, onebased=True):
         """Create a new :class:`.index_property`.
 
         :param attr_name:
@@ -243,6 +260,9 @@ class index_property(hybrid_property):  # noqa
         :param index:
             The index to be used for getting and setting this value.  This
             should be the Python-side index value for integers.
+        :param default:
+            A value which will be returned instead of `AttributeError`
+            when there is not a value at given index.
         :param datatype: default datatype to use when the field is empty.
             By default, this is derived from the type of index used; a
             Python list for an integer index, or a Python dictionary for
@@ -265,6 +285,7 @@ class index_property(hybrid_property):  # noqa
             )
         self.attr_name = attr_name
         self.index = index
+        self.default = default
         is_numeric = isinstance(index, int)
         onebased = is_numeric and onebased
 
@@ -277,15 +298,21 @@ class index_property(hybrid_property):  # noqa
                 self.datatype = dict
         self.onebased = onebased
 
+    def _fget_default(self):
+        if self.default == self._NO_DEFAULT_ARGUMENT:
+            raise AttributeError(self.attr_name)
+        else:
+            return self.default
+
     def fget(self, instance):
         attr_name = self.attr_name
         column_value = getattr(instance, attr_name)
         if column_value is None:
-            raise AttributeError(self.attr_name)
+            return self._fget_default()
         try:
             value = column_value[self.index]
         except (KeyError, IndexError):
-            raise AttributeError(self.attr_name)
+            return self._fget_default()
         else:
             return value
 

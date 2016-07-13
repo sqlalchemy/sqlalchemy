@@ -138,6 +138,31 @@ class IndexPropertyTest(fixtures.TestBase):
         j.field = 10
         eq_(j.field, 10)
 
+    def test_get_default_value(self):
+        Base = declarative_base()
+
+        class J(Base):
+            __tablename__ = 'j'
+            id = Column(Integer, primary_key=True)
+            json = Column(JSON, default={})
+            default = index_property('json', 'field', default='default')
+            none = index_property('json', 'field', default=None)
+
+        j = J()
+        assert j.json is None
+
+        assert j.default == 'default'
+        assert j.none is None
+        j.json = {}
+        assert j.default == 'default'
+        assert j.none is None
+        j.default = None
+        assert j.default is None
+        assert j.none is None
+        j.none = 10
+        assert j.default is 10
+        assert j.none == 10
+
 
 class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
 
