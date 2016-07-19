@@ -588,6 +588,47 @@ for an attribute being replaced.
 
 :ticket:`3630`
 
+.. _change_3749:
+
+Same-named relationships on inheriting mappers no longer warn
+--------------------------------------------------------------
+
+When creating two mappers in an inheritance scenario, placing a relationship
+on both with the same name would emit the warning
+"relationship '<name>' on mapper <name> supersedes the same relationship
+on inherited mapper '<name>'; this can cause dependency issues during flush".
+An example is as follows::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B")
+
+
+    class ASub(A):
+        __tablename__ = 'a_sub'
+        id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+        bs = relationship("B")
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+
+
+This warning dates back to the 0.4 series in 2007 and is based on a version of
+the unit of work code that has since been entirely rewritten. Currently, there
+is no known issue with the same-named relationships being placed on a base
+class and a descendant class, so the warning is lifted.   However, note that
+this use case is likely not prevalent in real world use due to the warning.
+While rudimentary test support is added for this use case, it is possible that
+some new issue with this pattern may be identified.
+
+.. versionadded:: 1.1.0b3
+
+:ticket:`3749`
+
 .. _change_3653:
 
 Hybrid properties and methods now propagate the docstring as well as .info

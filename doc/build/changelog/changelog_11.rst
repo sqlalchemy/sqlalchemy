@@ -22,6 +22,20 @@
     :version: 1.1.0b3
 
     .. change::
+        :tags: change, orm
+        :tickets: 3749
+
+        Removed a warning that dates back to 0.4 which emits when a same-named
+        relationship is placed on two mappers that inherits via joined or
+        single table inheritance.   The warning does not apply to the
+        current unit of work implementation.
+
+        .. seealso::
+
+            :ref:`change_3749`
+
+
+    .. change::
         :tags: bug, sql
         :tickets: 3745
 

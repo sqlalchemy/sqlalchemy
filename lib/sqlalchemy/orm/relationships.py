@@ -1742,17 +1742,6 @@ class RelationshipProperty(StrategizedProperty):
                 (self.key, self.parent.class_.__name__,
                  self.parent.class_.__name__))
 
-        # check for conflicting relationship() on superclass
-        if not self.parent.concrete:
-            for inheriting in self.parent.iterate_to_root():
-                if inheriting is not self.parent \
-                        and inheriting.has_property(self.key):
-                    util.warn("Warning: relationship '%s' on mapper "
-                              "'%s' supersedes the same relationship "
-                              "on inherited mapper '%s'; this can "
-                              "cause dependency issues during flush"
-                              % (self.key, self.parent, inheriting))
-
     def _get_cascade(self):
         """Return the current cascade setting for this
         :class:`.RelationshipProperty`.
