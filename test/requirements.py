@@ -577,7 +577,7 @@ class DefaultRequirements(SuiteRequirements):
             not config.db.dialect._is_mariadb and
             # workaround for:
             # https://github.com/PyMySQL/PyMySQL/issues/488
-            not (config.db.dialect.driver == 'pymysql' and util.py3k),
+            not (config.db.dialect.driver == 'pymysql'),
             "postgresql >= 9.3"
         ])
 
