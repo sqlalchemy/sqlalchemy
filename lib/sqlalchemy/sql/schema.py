@@ -598,6 +598,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     def _init_collections(self):
         pass
 
+    def _reset_exported(self):
+        pass
+
     @util.memoized_property
     def _autoincrement_column(self):
         for col in self.primary_key:

@@ -1229,6 +1229,21 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             t.info['bar'] = 'zip'
             assert t.info['bar'] == 'zip'
 
+    def test_reset_exported_passes(self):
+
+        m = MetaData()
+
+        t = Table('t', m, Column('foo', Integer))
+        eq_(
+            list(t.c), [t.c.foo]
+        )
+
+        t._reset_exported()
+
+        eq_(
+            list(t.c), [t.c.foo]
+        )
+
     def test_foreign_key_constraints_collection(self):
         metadata = MetaData()
         t1 = Table('foo', metadata, Column('a', Integer))

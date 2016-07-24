@@ -1180,7 +1180,6 @@ class Mapper(InspectionAttr):
             instrumentation.unregister_class(self.class_)
 
     def _configure_pks(self):
-
         self.tables = sql_util.find_tables(self.mapped_table)
 
         self._pks_by_table = {}
@@ -1266,7 +1265,6 @@ class Mapper(InspectionAttr):
                 col.table not in self._cols_by_table))
 
     def _configure_properties(self):
-
         # Column and other ClauseElement objects which are mapped
         self.columns = self.c = util.OrderedProperties()
 

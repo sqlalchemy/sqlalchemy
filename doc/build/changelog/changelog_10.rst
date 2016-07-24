@@ -19,6 +19,16 @@
     :version: 1.0.15
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3755
+
+        Fixed bug in :class:`.Table` where the internal method
+        ``_reset_exported()`` would corrupt the state of the object.  This
+        method is intended for selectable objects and is called by the ORM
+        in some cases; an erroneous mapper configuration would could lead the
+        ORM to call this on on a :class:`.Table` object.
+
+    .. change::
         :tags: bug, ext
         :tickets: 3743
 
