@@ -398,6 +398,18 @@ class DefaultRequirements(SuiteRequirements):
             ])
 
     @property
+    def two_phase_recovery(self):
+        return self.two_phase_transactions + (
+            exclusions.fails_if(
+               lambda config:  config.db.name == 'mysql' and (
+                        'MariaDB' in config.db.dialect.server_version_info or
+                        config.db.dialect.server_version_info < (5, 7)
+               )
+            )
+        )
+
+
+    @property
     def views(self):
         """Target database must support VIEWs."""
 
@@ -851,6 +863,22 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def mysql_fully_case_sensitive(self):
         return only_if(self._has_mysql_fully_case_sensitive)
+
+    @property
+    def mysql_zero_date(self):
+        def check(config):
+             row = config.db.execute("show variables like 'sql_mode'").first()
+             return not row or "NO_ZERO_DATE" not in row[1]
+
+        return only_if(check)
+
+    @property
+    def mysql_non_strict(self):
+        def check(config):
+             row = config.db.execute("show variables like 'sql_mode'").first()
+             return not row or "STRICT" not in row[1]
+
+        return only_if(check)
 
     def _has_mysql_on_windows(self, config):
         return against(config, 'mysql') and \

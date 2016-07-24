@@ -484,6 +484,7 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
             )
 
+    @testing.requires.mysql_zero_date
     @testing.provide_metadata
     def test_timestamp_nullable(self):
         ts_table = Table(
@@ -733,7 +734,7 @@ class EnumSetTest(
             exc.StatementError, set_table.insert().execute,
             e1='c', e2='c', e3='c', e4='c')
 
-    @testing.fails_on("+oursql", "oursql raises on the truncate warning")
+    @testing.requires.mysql_non_strict
     @testing.provide_metadata
     def test_empty_set_no_empty_string(self):
         t = Table(
