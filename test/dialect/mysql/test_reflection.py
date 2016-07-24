@@ -98,7 +98,6 @@ class TypeReflectionTest(fixtures.TestBase):
     def test_year_types(self):
         specs = [
             (mysql.YEAR(), mysql.YEAR(display_width=4)),
-            (mysql.YEAR(display_width=2), mysql.YEAR(display_width=2)),
             (mysql.YEAR(display_width=4), mysql.YEAR(display_width=4)),
         ]
 

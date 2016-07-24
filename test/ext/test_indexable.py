@@ -243,7 +243,10 @@ class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
 
 class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
 
+    # TODO: remove reliance on "astext" for these tests
     __requires__ = ('json_type',)
+    __only_on__ = 'postgresql'
+
     __backend__ = True
 
     @classmethod

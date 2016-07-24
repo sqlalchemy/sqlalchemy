@@ -114,6 +114,7 @@ def produce_test(parent, child, direction):
                                 relationship(child_mapper,
                                             primaryjoin=relationshipjoin,
                                             foreign_keys=foreign_keys,
+                                            order_by=child_mapper.c.id,
                                             remote_side=remote_side, uselist=True))
 
             sess = create_session()

@@ -433,12 +433,7 @@ class TransactionTest(fixtures.TestBase):
         connection.close()
 
     @testing.requires.two_phase_transactions
-    @testing.crashes('mysql+oursql',
-                     'Times out in full test runs only, causing '
-                     'subsequent tests to fail')
-    @testing.crashes('mysql+zxjdbc',
-                     'Deadlocks, causing subsequent tests to fail')
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.requires.two_phase_recovery
     def test_two_phase_recover(self):
 
         # MySQL recovery doesn't currently seem to work correctly

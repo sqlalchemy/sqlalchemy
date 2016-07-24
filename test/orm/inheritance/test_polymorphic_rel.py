@@ -569,7 +569,8 @@ class _PolymorphicTestBase(object):
         sess = create_session()
         def go():
             eq_(sess.query(Person)
-                    .with_polymorphic(Engineer).all(),
+                    .with_polymorphic(Engineer).
+                    order_by(Person.person_id).all(),
                 self._emps_wo_relationships_fixture())
         self.assert_sql_count(testing.db, go, 3)
 
@@ -580,6 +581,7 @@ class _PolymorphicTestBase(object):
                     .with_polymorphic(
                         Engineer,
                         people.outerjoin(engineers))
+                    .order_by(Person.person_id)
                     .all(),
                 self._emps_wo_relationships_fixture())
         self.assert_sql_count(testing.db, go, 3)

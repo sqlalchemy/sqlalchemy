@@ -643,7 +643,7 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
         users, addresses = self.tables.users, self.tables.addresses
 
         values = {
-            addresses.c.email_address: users.c.name,
+            addresses.c.email_address: 'updated',
             users.c.name: 'ed2'
         }
 
@@ -655,9 +655,9 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 
         expected = [
             (1, 7, 'x', 'jack@bean.com'),
-            (2, 8, 'x', 'ed'),
-            (3, 8, 'x', 'ed'),
-            (4, 8, 'x', 'ed'),
+            (2, 8, 'x', 'updated'),
+            (3, 8, 'x', 'updated'),
+            (4, 8, 'x', 'updated'),
             (5, 9, 'x', 'fred@fred.com')]
         self._assert_addresses(addresses, expected)
 
@@ -761,7 +761,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
         users, addresses = self.tables.users, self.tables.addresses
 
         values = {
-            addresses.c.email_address: users.c.name,
+            addresses.c.email_address: 'updated',
             users.c.name: 'ed2'
         }
 
@@ -774,8 +774,8 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase,
         eq_(set(ret.prefetch_cols()), set([users.c.some_update]))
 
         expected = [
-            (2, 8, 'ed'),
-            (3, 8, 'ed'),
+            (2, 8, 'updated'),
+            (3, 8, 'updated'),
             (4, 9, 'fred@fred.com')]
         self._assert_addresses(addresses, expected)
 
