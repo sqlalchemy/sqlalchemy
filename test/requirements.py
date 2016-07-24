@@ -444,13 +444,12 @@ class DefaultRequirements(SuiteRequirements):
     def two_phase_recovery(self):
         return self.two_phase_transactions + (
             exclusions.fails_if(
-               lambda config:  config.db.name == 'mysql' and (
-                        'MariaDB' in config.db.dialect.server_version_info or
+               lambda config: config.db.name == 'mysql' and (
+                        config.db.dialect._is_mariadb or
                         config.db.dialect.server_version_info < (5, 7)
                )
             )
         )
-
 
     @property
     def views(self):
@@ -575,7 +574,10 @@ class DefaultRequirements(SuiteRequirements):
     def json_type(self):
         return only_on([
             lambda config: against(config, "mysql >= 5.7") and
-            not config.db.dialect._is_mariadb,
+            not config.db.dialect._is_mariadb and
+            # workaround for:
+            # https://github.com/PyMySQL/PyMySQL/issues/488
+            not (config.db.dialect.driver == 'pymysql' and util.py3k),
             "postgresql >= 9.3"
         ])
 
