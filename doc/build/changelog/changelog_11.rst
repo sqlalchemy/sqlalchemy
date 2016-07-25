@@ -63,6 +63,14 @@
         exists in 1.0.x as well, however in 1.1 is more noticeable as
         hybrid_property @expression now returns a wrapped element.
 
+    .. change::
+        :tags: change, orm, declarative
+
+        Constructing a declarative base class that inherits from another class
+        will also inherit its docstring. This means
+        :func:`~.ext.declarative.as_declarative` acts more like a normal class
+        decorator.
+
 .. changelog::
     :version: 1.1.0b3
     :released: July 26, 2016

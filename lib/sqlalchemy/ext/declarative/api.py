@@ -301,6 +301,9 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
       compatible callable to use as the meta type of the generated
       declarative base class.
 
+    .. versionchanged:: 1.1 if :paramref:`.declarative_base.cls` is a single class (rather
+         than a tuple), the constructed base class will inherit its docstring.
+
     .. seealso::
 
         :func:`.as_declarative`
@@ -316,6 +319,9 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
     bases = not isinstance(cls, tuple) and (cls,) or cls
     class_dict = dict(_decl_class_registry=class_registry,
                       metadata=lcl_metadata)
+
+    if isinstance(cls, type):
+        class_dict['__doc__'] = cls.__doc__
 
     if constructor:
         class_dict['__init__'] = constructor
