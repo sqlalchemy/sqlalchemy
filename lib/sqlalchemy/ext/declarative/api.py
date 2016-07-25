@@ -283,7 +283,7 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
 
     :param constructor:
       Defaults to
-      :func:`~sqlalchemy.ext.declarative._declarative_constructor`, an
+      :func:`~sqlalchemy.ext.declarative.base._declarative_constructor`, an
       __init__ implementation that assigns \**kwargs for declared
       fields and relationships to an instance.  If ``None`` is supplied,
       no __init__ will be provided and construction will fall back to
