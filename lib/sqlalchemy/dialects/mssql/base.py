@@ -216,6 +216,25 @@ to either True or False.
    the SQL Server dialect's legacy behavior with schema-qualified table
    names.  This flag will default to False in version 1.1.
 
+MAX on VARCHAR / NVARCHAR
+-------------------------
+
+SQL Server supports the special string "MAX" within the
+:class:`.sqltypes.VARCHAR` and :class:`.sqltypes.NVARCHAR` datatypes,
+to indicate "maximum length possible".   The dialect currently handles this as
+a length of "None" in the base type, rather than supplying a
+dialect-specific version of these types, so that a base type
+specified such as ``VARCHAR(None)`` can assume "unlengthed" behavior on
+more than one backend without using dialect-specific types.
+
+To build a SQL Server VARCHAR or NVARCHAR with MAX length, use None::
+
+    my_table = Table(
+        'my_table', metadata,
+        Column('my_data', VARCHAR(None)),
+        Column('my_n_data', NVARCHAR(None))
+    )
+
 Collation Support
 -----------------
 
