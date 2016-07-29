@@ -574,10 +574,7 @@ class DefaultRequirements(SuiteRequirements):
     def json_type(self):
         return only_on([
             lambda config: against(config, "mysql >= 5.7") and
-            not config.db.dialect._is_mariadb and
-            # workaround for:
-            # https://github.com/PyMySQL/PyMySQL/issues/488
-            not (config.db.dialect.driver == 'pymysql'),
+            not config.db.dialect._is_mariadb,
             "postgresql >= 9.3"
         ])
 
