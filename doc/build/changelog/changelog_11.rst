@@ -22,6 +22,13 @@
     :version: 1.1.0
 
     .. change::
+        :tags: change, orm
+
+        Passing False to :meth:`.Query.order_by` in order to cancel
+        all order by's is deprecated; there is no longer any difference
+        between calling this method with False or with None.
+
+    .. change::
         :tags: feature, orm
 
         The :meth:`.Query.group_by` method now resets the group by collection

@@ -1523,17 +1523,16 @@ class Query(object):
         passing ``None`` - this will suppress any ORDER BY configured
         on mappers as well.
 
-        Alternatively, an existing ORDER BY setting on the Query
-        object can be entirely cancelled by passing ``False``
-        as the value - use this before calling methods where
-        an ORDER BY is invalid.
+        Alternatively, passing False will reset ORDER BY and additionally
+        re-allow default mapper.order_by to take place.   Note mapper.order_by
+        is deprecated.
 
         """
 
         if len(criterion) == 1:
             if criterion[0] is False:
                 if '_order_by' in self.__dict__:
-                    del self._order_by
+                    self._order_by = False
                 return
             if criterion[0] is None:
                 self._order_by = None
