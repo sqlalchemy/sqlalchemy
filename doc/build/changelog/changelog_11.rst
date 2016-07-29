@@ -29,6 +29,16 @@
         :meth:`.Query.order_by` has worked for a long time.  Pull request
         courtesy Iuri Diniz.
 
+    .. change::
+        :tags: bug, sql
+        :tickets: 3763
+
+        Fixed bug where :class:`.Index` would fail to extract columns from
+        compound SQL expressions if those SQL expressions were wrapped inside
+        of an ORM-style ``__clause_element__()`` construct.  This bug
+        exists in 1.0.x as well, however in 1.1 is more noticeable as
+        hybrid_property @expression now returns a wrapped element.
+
 .. changelog::
     :version: 1.1.0b3
     :released: July 26, 2016
