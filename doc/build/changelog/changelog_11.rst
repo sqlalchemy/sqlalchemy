@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.0
 
+    .. change::
+        :tags: feature, orm
+
+        The :meth:`.Query.group_by` method now resets the group by collection
+        if an argument of ``None`` is passed, in the same way that
+        :meth:`.Query.order_by` has worked for a long time.  Pull request
+        courtesy Iuri Diniz.
+
 .. changelog::
     :version: 1.1.0b3
     :released: July 26, 2016

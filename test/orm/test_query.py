@@ -1574,6 +1574,57 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
                     User(id=7, name='jack'),
                     Address(email_address='jack@bean.com', user_id=7, id=1))])
 
+    def test_group_by_plain(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).group_by(User.name)
+        self.assert_compile(
+            select([q1]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users GROUP BY users.name)"
+        )
+
+    def test_group_by_append(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).group_by(User.name)
+
+        # test append something to group_by
+        self.assert_compile(
+            select([q1.group_by(User.id)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users GROUP BY users.name, users.id)"
+        )
+
+    def test_group_by_cancellation(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).group_by(User.name)
+        # test cancellation by using None, replacement with something else
+        self.assert_compile(
+            select([q1.group_by(None).group_by(User.id)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users GROUP BY users.id)"
+        )
+
+        # test cancellation by using None, replacement with nothing
+        self.assert_compile(
+            select([q1.group_by(None)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users)"
+        )
+
+    def test_group_by_cancelled_still_present(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).group_by(User.name).group_by(None)
+
+        q1._no_criterion_assertion("foo")
+
 
 class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = 'default'
