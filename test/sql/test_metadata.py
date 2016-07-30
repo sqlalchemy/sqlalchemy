@@ -2147,6 +2147,27 @@ class ConstraintTest(fixtures.TestBase):
         idx = Index('q', c)
         is_(idx.table, None)  # lower-case-T table doesn't have indexes
 
+    def test_clauseelement_extraction_one(self):
+        t = Table('t', MetaData(), Column('x', Integer), Column('y', Integer))
+
+        class MyThing(object):
+            def __clause_element__(self):
+                return t.c.x + 5
+
+        idx = Index('foo', MyThing())
+        self._assert_index_col_x(t, idx)
+
+    def test_clauseelement_extraction_two(self):
+        t = Table('t', MetaData(), Column('x', Integer), Column('y', Integer))
+
+        class MyThing(object):
+            def __clause_element__(self):
+                return t.c.x + 5
+
+        idx = Index('bar', MyThing(), t.c.y)
+
+        eq_(set(t.indexes), set([idx]))
+
     def test_table_references(self):
         t1, t2, t3 = self._single_fixture()
         assert list(t2.c.a.foreign_keys)[0].references(t1)
@@ -2911,8 +2932,9 @@ class ConstraintTest(fixtures.TestBase):
 
             def __clause_element__(self):
                 return t2
-        assert_raises(
+        assert_raises_message(
             exc.ArgumentError,
+            "Element Table\('t2', .* is not a string name or column element",
             Index, "foo", SomeClass()
         )
 

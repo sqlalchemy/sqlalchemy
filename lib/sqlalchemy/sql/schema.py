@@ -2505,7 +2505,10 @@ class ColumnCollectionMixin(object):
         for expr in expressions:
             strname = None
             column = None
-            if not isinstance(expr, ClauseElement):
+            if hasattr(expr, '__clause_element__'):
+                expr = expr.__clause_element__()
+
+            if not isinstance(expr, (ColumnElement, TextClause)):
                 # this assumes a string
                 strname = expr
             else:
