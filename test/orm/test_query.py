@@ -1625,6 +1625,84 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         q1._no_criterion_assertion("foo")
 
+    def test_order_by_plain(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).order_by(User.name)
+        self.assert_compile(
+            select([q1]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users ORDER BY users.name)"
+        )
+
+    def test_order_by_append(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).order_by(User.name)
+
+        # test append something to order_by
+        self.assert_compile(
+            select([q1.order_by(User.id)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users "
+            "ORDER BY users.name, users.id)"
+        )
+
+    def test_order_by_cancellation(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).order_by(User.name)
+        # test cancellation by using None, replacement with something else
+        self.assert_compile(
+            select([q1.order_by(None).order_by(User.id)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users ORDER BY users.id)"
+        )
+
+        # test cancellation by using None, replacement with nothing
+        self.assert_compile(
+            select([q1.order_by(None)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users)"
+        )
+
+    def test_order_by_cancellation_false(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).order_by(User.name)
+        # test cancellation by using None, replacement with something else
+        self.assert_compile(
+            select([q1.order_by(False).order_by(User.id)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users ORDER BY users.id)"
+        )
+
+        # test cancellation by using None, replacement with nothing
+        self.assert_compile(
+            select([q1.order_by(False)]),
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users)"
+        )
+
+    def test_order_by_cancelled_allows_assertions(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).order_by(User.name).order_by(None)
+
+        q1._no_criterion_assertion("foo")
+
+    def test_legacy_order_by_cancelled_allows_assertions(self):
+        User = self.classes.User
+        s = create_session()
+
+        q1 = s.query(User.id, User.name).order_by(User.name).order_by(False)
+
+        q1._no_criterion_assertion("foo")
 
 class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = 'default'
