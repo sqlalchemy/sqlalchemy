@@ -2168,6 +2168,20 @@ class ConstraintTest(fixtures.TestBase):
 
         eq_(set(t.indexes), set([idx]))
 
+    def test_clauseelement_extraction_three(self):
+        t = Table('t', MetaData(), Column('x', Integer), Column('y', Integer))
+
+        expr1 = t.c.x + 5
+
+        class MyThing(object):
+            def __clause_element__(self):
+                return expr1
+
+        idx = Index('bar', MyThing(), t.c.y)
+
+        is_(idx.expressions[0], expr1)
+        is_(idx.expressions[1], t.c.y)
+
     def test_table_references(self):
         t1, t2, t3 = self._single_fixture()
         assert list(t2.c.a.foreign_keys)[0].references(t1)

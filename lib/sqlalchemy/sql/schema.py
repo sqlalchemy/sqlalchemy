@@ -3287,12 +3287,14 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.table = None
 
         columns = []
+        processed_expressions = []
         for expr, column, strname, add_element in self.\
                 _extract_col_expression_collection(expressions):
             if add_element is not None:
                 columns.append(add_element)
+            processed_expressions.append(expr)
 
-        self.expressions = expressions
+        self.expressions = processed_expressions
         self.name = quoted_name(name, kw.pop("quote", None))
         self.unique = kw.pop('unique', False)
         if 'info' in kw:
