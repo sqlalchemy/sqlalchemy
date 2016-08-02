@@ -201,6 +201,14 @@ to this approach is strictly one of reduced Python overhead:
   objects and assigning state to them, which normally is also subject to
   expensive tracking of history on a per-attribute basis.
 
+* The set of objects passed to all bulk methods are processed
+  in the order they are received.   In the case of
+  :meth:`.Session.bulk_save_objects`, when objects of different types are passed,
+  the INSERT and UPDATE statements are necessarily broken up into per-type
+  groups.  In order to reduce the number of batch INSERT or UPDATE statements
+  passed to the DBAPI, ensure that the incoming list of objects
+  are grouped by type.
+
 * The process of fetching primary keys after an INSERT also is disabled by
   default.   When performed correctly, INSERT statements can now more readily
   be batched by the unit of work process into ``executemany()`` blocks, which
