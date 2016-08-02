@@ -321,7 +321,7 @@ how do I use ON DELETE CASCADE with SA's ORM?
 SQLAlchemy will always issue UPDATE or DELETE statements for dependent
 rows which are currently loaded in the :class:`.Session`.  For rows which
 are not loaded, it will by default issue SELECT statements to load
-those rows and udpate/delete those as well; in other words it assumes
+those rows and update/delete those as well; in other words it assumes
 there is no ON DELETE CASCADE configured.
 To configure SQLAlchemy to cooperate with ON DELETE CASCADE, see
 :ref:`passive_deletes`.
