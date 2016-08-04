@@ -49,10 +49,28 @@ CONTAINED_BY = operators.custom_op(
 
 class JSONPathType(sqltypes.JSON.JSONPathType):
     def bind_processor(self, dialect):
+        super_proc = self.string_bind_processor(dialect)
+
         def process(value):
             assert isinstance(value, collections.Sequence)
-            tokens = [util.text_type(elem) for elem in value]
-            return "{%s}" % (", ".join(tokens))
+            tokens = [util.text_type(elem)for elem in value]
+            value = "{%s}" % (", ".join(tokens))
+            if super_proc:
+                value = super_proc(value)
+            return value
+
+        return process
+
+    def literal_processor(self, dialect):
+        super_proc = self.string_literal_processor(dialect)
+
+        def process(value):
+            assert isinstance(value, collections.Sequence)
+            tokens = [util.text_type(elem)for elem in value]
+            value = "{%s}" % (", ".join(tokens))
+            if super_proc:
+                value = super_proc(value)
+            return value
 
         return process
 

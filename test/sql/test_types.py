@@ -1630,6 +1630,77 @@ class JSONTest(fixtures.TestBase):
             None
         )
 
+    def _dialect_index_fixture(self, int_processor, str_processor):
+        class MyInt(Integer):
+            def bind_processor(self, dialect):
+                return lambda value: value + 10
+
+            def literal_processor(self, diaect):
+                return lambda value: str(value + 15)
+
+        class MyString(String):
+            def bind_processor(self, dialect):
+                return lambda value: value + "10"
+
+            def literal_processor(self, diaect):
+                return lambda value: value + "15"
+
+        class MyDialect(default.DefaultDialect):
+            colspecs = {}
+            if int_processor:
+                colspecs[Integer] = MyInt
+            if str_processor:
+                colspecs[String] = MyString
+
+        return MyDialect()
+
+    def test_index_bind_proc_int(self):
+        expr = self.test_table.c.test_column[5]
+
+        int_dialect = self._dialect_index_fixture(True, True)
+        non_int_dialect = self._dialect_index_fixture(False, True)
+
+        bindproc = expr.right.type._cached_bind_processor(int_dialect)
+        eq_(bindproc(expr.right.value), 15)
+
+        bindproc = expr.right.type._cached_bind_processor(non_int_dialect)
+        eq_(bindproc(expr.right.value), 5)
+
+    def test_index_literal_proc_int(self):
+        expr = self.test_table.c.test_column[5]
+
+        int_dialect = self._dialect_index_fixture(True, True)
+        non_int_dialect = self._dialect_index_fixture(False, True)
+
+        bindproc = expr.right.type._cached_literal_processor(int_dialect)
+        eq_(bindproc(expr.right.value), "20")
+
+        bindproc = expr.right.type._cached_literal_processor(non_int_dialect)
+        eq_(bindproc(expr.right.value), "5")
+
+    def test_index_bind_proc_str(self):
+        expr = self.test_table.c.test_column['five']
+
+        str_dialect = self._dialect_index_fixture(True, True)
+        non_str_dialect = self._dialect_index_fixture(False, False)
+
+        bindproc = expr.right.type._cached_bind_processor(str_dialect)
+        eq_(bindproc(expr.right.value), 'five10')
+
+        bindproc = expr.right.type._cached_bind_processor(non_str_dialect)
+        eq_(bindproc(expr.right.value), 'five')
+
+    def test_index_literal_proc_str(self):
+        expr = self.test_table.c.test_column['five']
+
+        str_dialect = self._dialect_index_fixture(True, True)
+        non_str_dialect = self._dialect_index_fixture(False, False)
+
+        bindproc = expr.right.type._cached_literal_processor(str_dialect)
+        eq_(bindproc(expr.right.value), "five15")
+
+        bindproc = expr.right.type._cached_literal_processor(non_str_dialect)
+        eq_(bindproc(expr.right.value), "'five'")
 
 class ArrayTest(fixtures.TestBase):
 

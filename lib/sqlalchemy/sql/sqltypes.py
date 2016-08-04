@@ -1789,7 +1789,45 @@ class JSON(Indexable, TypeEngine):
          """
         self.none_as_null = none_as_null
 
-    class JSONIndexType(TypeEngine):
+    class JSONElementType(TypeEngine):
+        """common function for index / path elements in a JSON expression."""
+
+        _integer = Integer()
+        _string = String()
+
+        def string_bind_processor(self, dialect):
+            return self._string._cached_bind_processor(dialect)
+
+        def string_literal_processor(self, dialect):
+            return self._string._cached_literal_processor(dialect)
+
+        def bind_processor(self, dialect):
+            int_processor = self._integer._cached_bind_processor(dialect)
+            string_processor = self.string_bind_processor(dialect)
+
+            def process(value):
+                if int_processor and isinstance(value, int):
+                    value = int_processor(value)
+                elif string_processor and isinstance(value, util.string_types):
+                    value = string_processor(value)
+                return value
+
+            return process
+
+        def literal_processor(self, dialect):
+            int_processor = self._integer._cached_literal_processor(dialect)
+            string_processor = self.string_literal_processor(dialect)
+
+            def process(value):
+                if int_processor and isinstance(value, int):
+                    value = int_processor(value)
+                elif string_processor and isinstance(value, util.string_types):
+                    value = string_processor(value)
+                return value
+
+            return process
+
+    class JSONIndexType(JSONElementType):
         """Placeholder for the datatype of a JSON index value.
 
         This allows execution-time processing of JSON index values
@@ -1797,7 +1835,7 @@ class JSON(Indexable, TypeEngine):
 
         """
 
-    class JSONPathType(TypeEngine):
+    class JSONPathType(JSONElementType):
         """Placeholder type for JSON path operations.
 
         This allows execution-time processing of a path-based

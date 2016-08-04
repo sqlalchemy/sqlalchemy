@@ -736,13 +736,17 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def _test_index_criteria(self, crit, expected):
         self._criteria_fixture()
         with config.db.connect() as conn:
+            stmt = select([self.tables.data_table.c.name]).where(crit)
+
             eq_(
-                conn.scalar(
-                    select([self.tables.data_table.c.name]).
-                    where(crit)
-                ),
+                conn.scalar(stmt),
                 expected
             )
+
+            literal_sql = str(stmt.compile(
+                config.db, compile_kwargs={"literal_binds": True}))
+
+            eq_(conn.scalar(literal_sql), expected)
 
     def test_crit_spaces_in_key(self):
         name = self.tables.data_table.c.name

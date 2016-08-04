@@ -29,6 +29,16 @@
         to a CAST expression under MySQL.
 
     .. change::
+        :tags: bug, sql, postgresql, mysql
+        :tickets: 3765
+
+        Fixed regression in JSON datatypes where the "literal processor" for
+        a JSON index value would not be invoked.  The native String and Integer
+        datatypes are now called upon from within the JSONIndexType
+        and JSONPathType.  This is applied to the generic, Postgresql, and
+        MySQL JSON types and also has a dependency on :ticket:`3766`.
+
+    .. change::
         :tags: change, orm
 
         Passing False to :meth:`.Query.order_by` in order to cancel

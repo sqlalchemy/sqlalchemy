@@ -763,13 +763,13 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def visit_json_getitem_op_binary(self, binary, operator, **kw):
         return "JSON_EXTRACT(%s, %s)" % (
-            self.process(binary.left),
-            self.process(binary.right))
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw))
 
     def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
         return "JSON_EXTRACT(%s, %s)" % (
-            self.process(binary.left),
-            self.process(binary.right))
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw))
 
     def visit_concat_op_binary(self, binary, operator, **kw):
         return "concat(%s, %s)" % (self.process(binary.left),
