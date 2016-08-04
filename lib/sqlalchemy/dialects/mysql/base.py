@@ -811,13 +811,13 @@ class MySQLCompiler(compiler.SQLCompiler):
         else:
             return None
 
-    def visit_cast(self, cast, **kwargs):
+    def visit_cast(self, cast, **kw):
         # No cast until 4, no decimals until 5.
         if not self.dialect._supports_cast:
             util.warn(
                 "Current MySQL version does not support "
                 "CAST; the CAST will be skipped.")
-            return self.process(cast.clause.self_group())
+            return self.process(cast.clause.self_group(), **kw)
 
         type_ = self.process(cast.typeclause)
         if type_ is None:
@@ -825,9 +825,9 @@ class MySQLCompiler(compiler.SQLCompiler):
                 "Datatype %s does not support CAST on MySQL; "
                 "the CAST will be skipped." %
                 self.dialect.type_compiler.process(cast.typeclause.type))
-            return self.process(cast.clause.self_group())
+            return self.process(cast.clause.self_group(), **kw)
 
-        return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
+        return 'CAST(%s AS %s)' % (self.process(cast.clause, **kw), type_)
 
     def render_literal_value(self, value, type_):
         value = super(MySQLCompiler, self).render_literal_value(value, type_)

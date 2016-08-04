@@ -12,6 +12,8 @@ from sqlalchemy import Table, MetaData, Column, select, String, \
 
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy.testing import mock
+from sqlalchemy import testing
 from sqlalchemy.sql import table, column
 import re
 
@@ -413,6 +415,39 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         t = sql.table('t', sql.column('col'))
         self.assert_compile(
             cast(t.c.col, type_), "CAST(t.col AS SIGNED INTEGER)")
+
+    def test_cast_literal_bind(self):
+        expr = cast(column('foo', Integer) + 5, Integer())
+
+        self.assert_compile(
+            expr,
+            "CAST(foo + 5 AS SIGNED INTEGER)",
+            literal_binds=True
+        )
+
+    def test_unsupported_cast_literal_bind(self):
+        expr = cast(column('foo', Integer) + 5, Float)
+
+        with expect_warnings(
+            "Datatype FLOAT does not support CAST on MySQL;"
+        ):
+            self.assert_compile(
+                expr,
+                "(foo + 5)",
+                literal_binds=True
+            )
+
+        dialect = mysql.MySQLDialect()
+        dialect.server_version_info = (3, 9, 8)
+        with expect_warnings(
+            "Current MySQL version does not support CAST"
+        ):
+            eq_(
+                str(expr.compile(
+                    dialect=dialect,
+                    compile_kwargs={"literal_binds": True})),
+                "(foo + 5)"
+            )
 
     def test_unsupported_casts(self):
 

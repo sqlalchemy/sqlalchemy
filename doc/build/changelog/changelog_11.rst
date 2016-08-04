@@ -22,6 +22,13 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 3766
+
+        Fixed bug where the "literal_binds" flag would not be propagated
+        to a CAST expression under MySQL.
+
+    .. change::
         :tags: change, orm
 
         Passing False to :meth:`.Query.order_by` in order to cancel
