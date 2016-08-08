@@ -1459,7 +1459,7 @@ The typing system now handles the task of rendering "literal bind" values
 
 A new method is added to :class:`.TypeEngine` :meth:`.TypeEngine.literal_processor`
 as well as :meth:`.TypeDecorator.process_literal_param` for :class:`.TypeDecorator`
-which take on the task of rendering so-called "inline literal paramters" - parameters
+which take on the task of rendering so-called "inline literal parameters" - parameters
 that normally render as "bound" values, but are instead being rendered inline
 into the SQL statement due to the compiler configuration.  This feature is used
 when generating DDL for constructs such as :class:`.CheckConstraint`, as well

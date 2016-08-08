@@ -28,7 +28,7 @@ Typically, this can be changed to ``utf-8``, as a more useful default::
                                  # encoding
     client_encoding = utf8
 
-The ``client_encoding`` can be overriden for a session by executing the SQL:
+The ``client_encoding`` can be overridden for a session by executing the SQL:
 
 SET CLIENT_ENCODING TO 'utf8';
 

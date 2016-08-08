@@ -2147,7 +2147,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 'CAST(%s AS %s)' % (literal, expected_results[4]))
 
             # fixme: shoving all of this dialect-specific stuff in one test
-            # is now officialy completely ridiculous AND non-obviously omits
+            # is now officially completely ridiculous AND non-obviously omits
             # coverage on other dialects.
             sel = select([tbl, cast(tbl.c.v1, Numeric)]).compile(
                 dialect=dialect)

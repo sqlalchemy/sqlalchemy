@@ -16,7 +16,7 @@ occur **once**, rather than for each time that query is built up and executed.
 The rationale for this system is to greatly reduce Python interpreter
 overhead for everything that occurs **before the SQL is emitted**.
 The caching of the "baked" system does **not** in any way reduce SQL calls or
-cache the **return results** from the database.  A technique that demonstates
+cache the **return results** from the database.  A technique that demonstrates
 the caching of the SQL calls and result sets themselves is available in
 :ref:`examples_caching`.
 

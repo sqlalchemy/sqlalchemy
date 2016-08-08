@@ -1395,7 +1395,7 @@ class RowswitchM2OTest(fixtures.MappedTest):
 
     def test_set_none_replaces_scalar(self):
         # this case worked before #3060, because a straight scalar
-        # set of None shows up.  Howver, as test_set_none_w_get
+        # set of None shows up.  However, as test_set_none_w_get
         # shows, we can't rely on this - the get of None will blow
         # away the history.
         A, B, C = self._fixture()

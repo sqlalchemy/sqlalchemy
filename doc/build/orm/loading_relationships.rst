@@ -447,7 +447,7 @@ option. This option is used in the same manner as the
 :func:`~sqlalchemy.orm.joinedload()` option except it is assumed that the
 :class:`~sqlalchemy.orm.query.Query` will specify the appropriate joins
 explicitly. Below, we specify a join between ``User`` and ``Address``
-and addtionally establish this as the basis for eager loading of ``User.addresses``::
+and additionally establish this as the basis for eager loading of ``User.addresses``::
 
     class User(Base):
         __tablename__ = 'user'
@@ -614,7 +614,7 @@ an extra SELECT::
     FROM a
     WHERE ? = a.b_id
 
-This SELECT is redundant becasue ``b.a`` is the same value as ``a1``.  We
+This SELECT is redundant because ``b.a`` is the same value as ``a1``.  We
 can create an on-load rule to populate this for us::
 
     from sqlalchemy import event

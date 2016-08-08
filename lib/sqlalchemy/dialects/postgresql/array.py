@@ -19,7 +19,7 @@ except ImportError:
 def Any(other, arrexpr, operator=operators.eq):
     """A synonym for the :meth:`.ARRAY.Comparator.any` method.
 
-    This method is legacy and is here for backwards-compatiblity.
+    This method is legacy and is here for backwards-compatibility.
 
     .. seealso::
 
@@ -33,7 +33,7 @@ def Any(other, arrexpr, operator=operators.eq):
 def All(other, arrexpr, operator=operators.eq):
     """A synonym for the :meth:`.ARRAY.Comparator.all` method.
 
-    This method is legacy and is here for backwards-compatiblity.
+    This method is legacy and is here for backwards-compatibility.
 
     .. seealso::
 

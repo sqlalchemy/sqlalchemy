@@ -1629,7 +1629,7 @@ class SessionEvents(event.Events):
         """
 
     def loaded_as_persistent(self, session, instance):
-        """Intercept the "loaded as peristent" transition for a specific object.
+        """Intercept the "loaded as persistent" transition for a specific object.
 
         This event is invoked within the ORM loading process, and is invoked
         very similarly to the :meth:`.InstanceEvents.load` event.  However,
