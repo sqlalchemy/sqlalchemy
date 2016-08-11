@@ -508,6 +508,20 @@ can be loaded::
             )
         )
 
+Note that once :meth:`~PropComparator.of_type` is the target of the eager load,
+that's the entity we would use for subsequent chaining, not the original class
+or derived class.  If we wanted to further eager load a collection on the
+eager-loaded ``Engineer`` class, we access this class from the namespace of the
+:func:`.orm.with_polymorphic` object::
+
+    session.query(Company).\
+        options(
+            joinedload(Company.employees.of_type(manager_and_engineer)).\
+            subqueryload(manager_and_engineer.Engineer.computers)
+            )
+        )
+
+
 Another option for the above query is to state the two subtypes separately;
 the :func:`.joinedload` directive should detect this and create the
 above ``with_polymorphic`` construct automatically::
