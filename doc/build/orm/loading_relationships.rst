@@ -178,6 +178,14 @@ of a particular attribute, the :func:`.defaultload` method/function may be used:
     as well as the ``_all()`` functions will remain available for backwards-
     compatibility indefinitely.
 
+Polymorphic Eager Loading
+-------------------------
+
+Specification of polymorpic options on a per-eager-load basis is supported.
+See the section :ref:`eagerloading_polymorphic_subtypes` for examples
+of the :meth:`.PropComparator.of_type` method in conjunction with the 
+:func:`.orm.with_polymorphic` function.
+
 Default Loading Strategies
 --------------------------
 
