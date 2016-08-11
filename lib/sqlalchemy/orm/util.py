@@ -692,11 +692,11 @@ def with_polymorphic(base, classes, selectable=False,
         versions of MySQL.
 
     :param flat: Boolean, will be passed through to the
-        :meth:`.FromClause.alias` call so that aliases of :class:`.Join`
-        objects don't include an enclosing SELECT.  This can lead to more
-        efficient queries in many circumstances.  A JOIN against a nested JOIN
-        will be rewritten as a JOIN against an aliased SELECT subquery on
-        backends that don't support this syntax.
+     :meth:`.FromClause.alias` call so that aliases of :class:`.Join`
+     objects don't include an enclosing SELECT.  This can lead to more
+     efficient queries in many circumstances.  A JOIN against a nested JOIN
+     will be rewritten as a JOIN against an aliased SELECT subquery on
+     backends that don't support this syntax.
 
      Setting ``flat`` to ``True`` implies the ``aliased`` flag is
      also ``True``.

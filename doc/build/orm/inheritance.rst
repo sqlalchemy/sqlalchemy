@@ -500,20 +500,13 @@ can be loaded::
 
     manager_and_engineer = with_polymorphic(
                                 Employee, [Manager, Engineer],
-                                aliased=True)
+                                flat=True)
 
     session.query(Company).\
         options(
             joinedload(Company.employees.of_type(manager_and_engineer))
             )
         )
-
-.. versionadded:: 0.8
-    :func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager`
-    and related loader options support
-    paths that are qualified with
-    :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`, supporting
-    single target types as well as :func:`.orm.with_polymorphic` targets.
 
 Another option for the above query is to state the two subtypes separately;
 the :func:`.joinedload` directive should detect this and create the
