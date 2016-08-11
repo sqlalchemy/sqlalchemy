@@ -13,6 +13,7 @@ usage and declarative remain highly similar.
 
 As a simple example::
 
+    from sqlalchemy import Column, Integer, String
     from sqlalchemy.ext.declarative import declarative_base
 
     Base = declarative_base()
