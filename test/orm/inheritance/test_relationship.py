@@ -1871,7 +1871,8 @@ class SameNameOnJoined(fixtures.MappedTest):
             'a', metadata,
             Column(
                 'id', Integer, primary_key=True,
-                test_needs_autoincrement=True)
+                test_needs_autoincrement=True),
+            Column('t', String(5))
         )
         Table(
             'a_sub', metadata,
@@ -1896,13 +1897,20 @@ class SameNameOnJoined(fixtures.MappedTest):
         class B(cls.Comparable):
             pass
 
-        mapper(A, cls.tables.a, properties={
-            'bs': relationship(B, cascade="all, delete-orphan")
-        })
+        mapper(
+            A, cls.tables.a, polymorphic_on=cls.tables.a.c.t,
+            polymorphic_identity='a',
+            properties={
+                'bs': relationship(B, cascade="all, delete-orphan")
+            }
+        )
 
-        mapper(ASub, cls.tables.a_sub, inherits=A, properties={
-            'bs': relationship(B, cascade="all, delete-orphan")
-        })
+        mapper(
+            ASub, cls.tables.a_sub, inherits=A,
+            polymorphic_identity='asub', properties={
+                'bs': relationship(B, cascade="all, delete-orphan")
+            }
+        )
 
         mapper(B, cls.tables.b)
 
