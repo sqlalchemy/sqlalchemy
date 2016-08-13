@@ -21,6 +21,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 3755
+        :versions: 1.1.0
 
         Fixed bug in :class:`.Table` where the internal method
         ``_reset_exported()`` would corrupt the state of the object.  This
@@ -31,6 +32,7 @@
     .. change::
         :tags: bug, ext
         :tickets: 3743
+        :versions: 1.1.0b3
 
         Fixed bug in ``sqlalchemy.ext.baked`` where the unbaking of a
         subquery eager loader query would fail due to a variable scoping
