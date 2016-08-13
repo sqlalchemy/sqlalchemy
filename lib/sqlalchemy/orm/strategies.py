@@ -941,7 +941,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 if last and effective_entity is not self.mapper:
                     attr = attr.of_type(effective_entity)
             else:
-                if last and effective_entity is not self.mapper:
+                if last:
                     attr = getattr(parent_alias, key).\
                         of_type(effective_entity)
                 else:
