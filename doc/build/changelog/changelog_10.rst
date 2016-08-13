@@ -19,6 +19,15 @@
     :version: 1.0.15
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3773
+        :versions: 1.1.0
+
+        Fixed bug in subquery eager loading where a subqueryload
+        of an "of_type()" object linked to a second subqueryload of a plain
+        mapped class would fail to link the joins correctly.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3755
 
