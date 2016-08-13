@@ -313,6 +313,8 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             id = Column(Integer, primary_key=True,
                                         test_needs_autoincrement=True)
             type = Column(String(10))
+            widget_id = Column(ForeignKey('widget.id'))
+            widget = relationship("Widget")
             container_id = Column(Integer, ForeignKey('data_container.id'))
             __mapper_args__ = {"polymorphic_on": type}
 
@@ -337,6 +339,13 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             name = Column(String(10))
             jobs = relationship(Job, order_by=Job.id)
 
+        class Widget(ComparableEntity, Base):
+            __tablename__ = "widget"
+
+            id = Column(Integer, primary_key=True,
+                                        test_needs_autoincrement=True)
+            name = Column(String(10))
+
     @classmethod
     def insert_data(cls):
         s = Session(testing.db)
@@ -346,23 +355,24 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
 
     @classmethod
     def _fixture(cls):
-        ParentThing, DataContainer, SubJob = \
+        ParentThing, DataContainer, SubJob, Widget = \
             cls.classes.ParentThing,\
             cls.classes.DataContainer,\
-            cls.classes.SubJob
+            cls.classes.SubJob,\
+            cls.classes.Widget
         return [
             ParentThing(
                 container=DataContainer(name="d1",
                     jobs=[
-                        SubJob(attr="s1"),
-                        SubJob(attr="s2")
+                        SubJob(attr="s1", widget=Widget(name='w1')),
+                        SubJob(attr="s2", widget=Widget(name='w2'))
                     ])
             ),
             ParentThing(
                 container=DataContainer(name="d2",
                     jobs=[
-                        SubJob(attr="s3"),
-                        SubJob(attr="s4")
+                        SubJob(attr="s3", widget=Widget(name='w3')),
+                        SubJob(attr="s4", widget=Widget(name='w4'))
                     ])
             ),
         ]
@@ -389,7 +399,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                 q.all(),
                 self._dc_fixture()
             )
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 5)
 
     def test_joinedload_wpoly(self):
         ParentThing, DataContainer, Job, SubJob = \
@@ -408,7 +418,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                 q.all(),
                 self._dc_fixture()
             )
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 5)
 
     def test_joinedload_wsubclass(self):
         ParentThing, DataContainer, Job, SubJob = \
@@ -424,7 +434,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                 q.all(),
                 self._dc_fixture()
             )
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 5)
 
     def test_lazyload(self):
         DataContainer = self.classes.DataContainer
@@ -438,7 +448,8 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         # SELECT data container
         # SELECT job * 2 container rows
         # SELECT subjob * 4 rows
-        self.assert_sql_count(testing.db, go, 7)
+        # SELECT widget * 4 rows
+        self.assert_sql_count(testing.db, go, 11)
 
     def test_subquery_wsubclass(self):
         ParentThing, DataContainer, Job, SubJob = \
@@ -454,7 +465,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                 q.all(),
                 self._dc_fixture()
             )
-        self.assert_sql_count(testing.db, go, 2)
+        self.assert_sql_count(testing.db, go, 6)
 
     def test_twolevel_subqueryload_wsubclass(self):
         ParentThing, DataContainer, Job, SubJob = \
@@ -473,6 +484,25 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             eq_(
                 q.all(),
                 self._fixture()
+            )
+        self.assert_sql_count(testing.db, go, 7)
+
+    def test_twolevel_subqueryload_wsubclass_mapper_term(self):
+        DataContainer, SubJob = \
+            self.classes.DataContainer,\
+            self.classes.SubJob
+        s = Session(testing.db)
+        sj_alias = aliased(SubJob)
+        q = s.query(DataContainer).\
+                        options(
+                            subqueryload_all(
+                                DataContainer.jobs.of_type(sj_alias),
+                                sj_alias.widget
+                        ))
+        def go():
+            eq_(
+                q.all(),
+                self._dc_fixture()
             )
         self.assert_sql_count(testing.db, go, 3)
 
@@ -494,7 +524,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                 q.all(),
                 self._fixture()
             )
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 5)
 
     def test_any_wpoly(self):
         ParentThing, DataContainer, Job, SubJob = \
@@ -514,6 +544,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
 
         self.assert_compile(q,
             "SELECT job.id AS job_id, job.type AS job_type, "
+            "job.widget_id AS job_widget_id, "
             "job.container_id "
             "AS job_container_id "
             "FROM data_container "
@@ -542,6 +573,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                         )
         self.assert_compile(q,
             "SELECT job.id AS job_id, job.type AS job_type, "
+            "job.widget_id AS job_widget_id, "
             "job.container_id AS job_container_id "
             "FROM data_container JOIN job ON data_container.id = job.container_id "
             "WHERE EXISTS (SELECT 1 "
@@ -680,6 +712,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             "data_container.name AS data_container_name "
             "FROM data_container JOIN "
             "(SELECT job.id AS job_id, job.type AS job_type, "
+                "job.widget_id AS job_widget_id, "
                 "job.container_id AS job_container_id, "
                 "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
                 "FROM job LEFT OUTER JOIN subjob ON job.id = subjob.id) "
