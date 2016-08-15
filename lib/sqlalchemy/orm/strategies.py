@@ -888,28 +888,21 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         # determine the immediate parent class we are joining from,
         # which needs to be aliased.
-        if len(to_join) > 1:
-            info = inspect(to_join[-1][0])
 
         if len(to_join) < 2:
             # in the case of a one level eager load, this is the
             # leftmost "left_alias".
             parent_alias = left_alias
-        elif info.mapper.isa(self.parent):
-            # In the case of multiple levels, retrieve
-            # it from subq_path[-2]. This is the same as self.parent
-            # in the vast majority of cases, and [ticket:2014]
-            # illustrates a case where sub_path[-2] is a subclass
-            # of self.parent
-            parent_alias = orm_util.AliasedClass(
-                to_join[-1][0],
-                use_mapper_path=True)
         else:
-            # if of_type() were used leading to this relationship,
-            # self.parent is more specific than subq_path[-2]
-            parent_alias = orm_util.AliasedClass(
-                self.parent,
-                use_mapper_path=True)
+            info = inspect(to_join[-1][0])
+            if info.is_aliased_class:
+                parent_alias = info.entity
+            else:
+                # alias a plain mapper as we may be
+                # joining multiple times
+                parent_alias = orm_util.AliasedClass(
+                    info.entity,
+                    use_mapper_path=True)
 
         local_cols = self.parent_property.local_columns
 
@@ -922,35 +915,46 @@ class SubqueryLoader(AbstractRelationshipLoader):
     def _apply_joins(
             self, q, to_join, left_alias, parent_alias,
             effective_entity):
-        for i, (mapper, key) in enumerate(to_join):
 
-            # we need to use query.join() as opposed to
-            # orm.join() here because of the
-            # rich behavior it brings when dealing with
-            # "with_polymorphic" mappers.  "aliased"
-            # and "from_joinpoint" take care of most of
-            # the chaining and aliasing for us.
+        ltj = len(to_join)
+        if ltj == 1:
+            to_join = [
+                getattr(left_alias, to_join[0][1]).of_type(effective_entity)
+            ]
+        elif ltj == 2:
+            to_join = [
+                getattr(left_alias, to_join[0][1]).of_type(parent_alias),
+                getattr(parent_alias, to_join[-1][1]).of_type(effective_entity)
+            ]
+        elif ltj > 2:
+            middle = [
+                (
+                    orm_util.AliasedClass(item[0])
+                    if not inspect(item[0]).is_aliased_class
+                    else item[0].entity,
+                    item[1]
+                ) for item in to_join[1:-1]
+            ]
+            inner = []
 
-            first = i == 0
-            middle = i < len(to_join) - 1
-            second_to_last = i == len(to_join) - 2
-            last = i == len(to_join) - 1
-
-            if first:
-                attr = getattr(left_alias, key)
-                if last and effective_entity is not self.mapper:
-                    attr = attr.of_type(effective_entity)
-            else:
-                if last:
-                    attr = getattr(parent_alias, key).\
-                        of_type(effective_entity)
+            while middle:
+                item = middle.pop(0)
+                attr = getattr(item[0], item[1])
+                if middle:
+                    attr = attr.of_type(middle[0][0])
                 else:
-                    attr = getattr(mapper.entity, key)
+                    attr = attr.of_type(parent_alias)
 
-            if second_to_last:
-                q = q.join(parent_alias, attr, from_joinpoint=True)
-            else:
-                q = q.join(attr, aliased=middle, from_joinpoint=True)
+                inner.append(attr)
+
+            to_join = [
+                getattr(left_alias, to_join[0][1]).of_type(inner[0].parent)
+            ] + inner + [
+                getattr(parent_alias, to_join[-1][1]).of_type(effective_entity)
+            ]
+
+        for attr in to_join:
+            q = q.join(attr, from_joinpoint=True)
         return q
 
     def _setup_options(self, q, subq_path, orig_query, effective_entity):
