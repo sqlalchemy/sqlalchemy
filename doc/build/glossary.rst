@@ -592,7 +592,7 @@ Glossary
         for INSERT and UPDATE statements and "OUTPUT DELETED" for DELETE statements;
         the key caveat is that triggers are not supported in conjunction with this
         keyword.  On Oracle, it is known as "RETURNING...INTO", and requires that the
-        value be placed into an OUT paramter, meaning not only is the syntax awkward,
+        value be placed into an OUT parameter, meaning not only is the syntax awkward,
         but it can also only be used for one row at a time.
 
         SQLAlchemy's :meth:`.UpdateBase.returning` system provides a layer of abstraction

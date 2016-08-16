@@ -131,7 +131,7 @@ referenced. These collections can be associated with a
 :class:`.Session`, if desired, by placing them into the
 :attr:`.Session.info` dictionary.
 
-An event based approach is also feasable.  A simple recipe that provides
+An event based approach is also feasible.  A simple recipe that provides
 "strong referencing" behavior for all objects as they remain within
 the :term:`persistent` state is as follows::
 

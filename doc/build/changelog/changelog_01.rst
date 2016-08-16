@@ -223,7 +223,7 @@
       added 'version_id' keyword argument to mapper. this keyword should reference a
       Column object with type Integer, preferably non-nullable, which will be used on
       the mapped table to track version numbers. this number is incremented on each
-      save operation and is specifed in the UPDATE/DELETE conditions so that it
+      save operation and is specified in the UPDATE/DELETE conditions so that it
       factors into the returned row count, which results in a ConcurrencyError if the
       value received is not the expected count.
 

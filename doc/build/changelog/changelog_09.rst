@@ -1881,7 +1881,7 @@
         Fixed an 0.9 regression where ORM instance or mapper events applied
         to a base class such as a declarative base with the propagate=True
         flag would fail to apply to existing mapped classes which also
-        used inheritance due to an assertion.  Addtionally, repaired an
+        used inheritance due to an assertion.  Additionally, repaired an
         attribute error which could occur during removal of such an event,
         depending on how it was first assigned.
 
@@ -2706,7 +2706,7 @@
         adaptation which goes on has been made more robust, such that if a descriptor
         returns another instrumented attribute, rather than a compound SQL
         expression element, the operation will still proceed.
-        Addtionally, the "adapted" operator will retain its class; previously,
+        Additionally, the "adapted" operator will retain its class; previously,
         a change in class from ``InstrumentedAttribute`` to ``QueryableAttribute``
         (a superclass) would interact with Python's operator system such that
         an expression like ``aliased(MyClass.x) > MyClass.x`` would reverse itself

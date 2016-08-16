@@ -260,7 +260,7 @@ Loaded as Persistent
 
 Objects can appear in the :class:`.Session` directly in the :term:`persistent`
 state when they are loaded from the database.   Tracking this state transition
-is synonymous with tracking objects as they are loaded, and is synonomous
+is synonymous with tracking objects as they are loaded, and is synonymous
 with using the :meth:`.InstanceEvents.load` instance-level event.  However, the
 :meth:`.SessionEvents.loaded_as_persistent` event is provided as a
 session-centric hook for intercepting objects as they enter the persistent

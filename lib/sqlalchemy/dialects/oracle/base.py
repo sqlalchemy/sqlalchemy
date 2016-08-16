@@ -754,7 +754,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 limitselect._oracle_visit = True
                 limitselect._is_wrapper = True
 
-                # add expressions to accomodate FOR UPDATE OF
+                # add expressions to accommodate FOR UPDATE OF
                 for_update = select._for_update_arg
                 if for_update is not None and for_update.of:
                     for_update = for_update._clone()

@@ -64,7 +64,7 @@ straightforward construction an invocation of :class:`.Query` objects
 using caching, which upon successive calls features vastly reduced
 Python function call overhead (over 75%).    By  specifying a
 :class:`.Query` object as a series of lambdas which are only invoked
-once, a query as a pre-compiled unit begins to be feasable::
+once, a query as a pre-compiled unit begins to be feasible::
 
     from sqlalchemy.ext import baked
     from sqlalchemy import bindparam
@@ -634,7 +634,7 @@ does not support ALTER, in the case that during a DROP, the given tables have
 an unresolvable cycle; in this case a warning is emitted, and the tables
 are dropped with **no** ordering, which is usually fine on SQLite unless
 constraints are enabled. To resolve the warning and proceed with at least
-a partial ordering on a SQLite database, particuarly one where constraints
+a partial ordering on a SQLite database, particularly one where constraints
 are enabled, re-apply "use_alter" flags to those
 :class:`.ForeignKey` and :class:`.ForeignKeyConstraint` objects which should
 be explicitly omitted from the sort.
@@ -1073,7 +1073,7 @@ it emits SQL resembling::
     (None,)
 
 Note above, there is a comparison ``WHERE ? = address.user_id`` where the
-bound value ``?`` is receving ``None``, or ``NULL`` in SQL.  **This will
+bound value ``?`` is receiving ``None``, or ``NULL`` in SQL.  **This will
 always return False in SQL**.  The comparison here would in theory
 generate SQL as follows::
 
@@ -1663,7 +1663,7 @@ joined eager loading is now dropped in this case::
     LIMIT :param_1
 
 In the case that the LEFT OUTER JOIN returns more than one row, the ORM
-has always emitted a warning here and ignored addtional results for
+has always emitted a warning here and ignored additional results for
 ``uselist=False``, so the results in that error situation should not change.
 
 :ticket:`3249`
@@ -2234,7 +2234,7 @@ corresponding to :meth:`.Table.create` and :meth:`.Table.drop`::
     table.drop(engine)  # will emit DROP TABLE and DROP TYPE - new for 1.0
 
 This means that if a second table also has an enum named 'myenum', the
-above DROP operation will now fail.    In order to accomodate the use case
+above DROP operation will now fail.    In order to accommodate the use case
 of a common shared enumerated type, the behavior of a metadata-associated
 enumeration has been enhanced.
 

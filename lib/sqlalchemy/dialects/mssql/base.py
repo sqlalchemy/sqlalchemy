@@ -164,7 +164,7 @@ how SQLAlchemy handles this:
 
 
 This
-is an auxilliary use case suitable for testing and bulk insert scenarios.
+is an auxiliary use case suitable for testing and bulk insert scenarios.
 
 MAX on VARCHAR / NVARCHAR
 -------------------------

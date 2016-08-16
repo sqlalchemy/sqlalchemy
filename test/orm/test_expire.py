@@ -558,7 +558,7 @@ class ExpireTest(_fixtures.FixtureTest):
         # fires off to load "addresses", but needs foreign key or primary key
         # attributes in order to lazy load; hits those attributes, such as
         # below it hits "u.id".  "u.id" triggers full unexpire operation,
-        # joinedloads addresses since lazy='joined'.  this is all wihtin lazy load
+        # joinedloads addresses since lazy='joined'.  this is all within lazy load
         # which fires unconditionally; so an unnecessary joinedload (or
         # lazyload) was issued.  would prefer not to complicate lazyloading to
         # "figure out" that the operation should be aborted right now.
@@ -1228,7 +1228,7 @@ class LifecycleTest(fixtures.MappedTest):
 
         # we didn't insert a value for 'data',
         # so its not in dict, but also when we hit it, it isn't
-        # expired because there's no column default on it or anyhting like that
+        # expired because there's no column default on it or anything like that
         assert 'data' not in d1.__dict__
         def go():
             eq_(d1.data, None)

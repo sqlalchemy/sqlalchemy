@@ -980,7 +980,7 @@ class Column(SchemaItem, ColumnClause):
 
           * Part of the primary key
 
-          * Not refering to another column via :class:`.ForeignKey`, unless
+          * Not referring to another column via :class:`.ForeignKey`, unless
             the value is specified as ``'ignore_fk'``::
 
                 # turn on autoincrement for this column despite

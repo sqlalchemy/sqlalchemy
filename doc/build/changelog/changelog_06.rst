@@ -1465,7 +1465,7 @@
       changed to StaleDataError, and descriptive
       error messages have been revised to reflect
       exactly what the issue is.   Both names will
-      remain available for the forseeable future
+      remain available for the foreseeable future
       for schemes that may be specifying
       ConcurrentModificationError in an "except:"
       clause.
