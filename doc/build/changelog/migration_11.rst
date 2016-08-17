@@ -1385,7 +1385,7 @@ and the column arguments passed to :meth:`.TextClause.columns`::
             Address.email_address
          )
 
-    query = session.query(User).from_statement(text).\
+    query = session.query(User).from_statement(stmt).\
         options(contains_eager(User.addresses))
     result = query.all()
 
