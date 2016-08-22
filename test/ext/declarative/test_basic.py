@@ -1722,6 +1722,15 @@ class DeclarativeTest(DeclarativeTestBase):
             ]
         )
 
+    def test_cls_docstring(self):
+
+        class MyBase(object):
+            """MyBase Docstring"""
+
+        Base = decl.declarative_base(cls=MyBase)
+
+        eq_(Base.__doc__, MyBase.__doc__)
+
 
 def _produce_test(inline, stringbased):
 
