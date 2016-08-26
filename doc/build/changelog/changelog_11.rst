@@ -22,6 +22,17 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3776
+
+        An exception is raised when two ``@validates`` decorators on a mapping
+        make use of the same name.  Only one validator of a certain name
+        at a time is supported, there's no mechanism to chain these together,
+        as the order of the validators at the level of function decorator
+        can't be made deterministic.
+
+
+    .. change::
         :tags: bug, mysql
         :tickets: 3766
 

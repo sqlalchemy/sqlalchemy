@@ -1204,6 +1204,11 @@ class Mapper(InspectionAttr):
                 elif hasattr(method, '__sa_validators__'):
                     validation_opts = method.__sa_validation_opts__
                     for name in method.__sa_validators__:
+                        if name in self.validators:
+                            raise sa_exc.InvalidRequestError(
+                                "A validation function for mapped "
+                                "attribute %r on mapper %s already exists." %
+                                (name, self))
                         self.validators = self.validators.union(
                             {name: (method, validation_opts)}
                         )

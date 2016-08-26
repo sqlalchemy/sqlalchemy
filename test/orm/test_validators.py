@@ -1,7 +1,9 @@
 from test.orm import _fixtures
-from sqlalchemy.testing import fixtures, assert_raises, eq_, ne_
+from sqlalchemy.testing import fixtures, assert_raises, eq_, ne_, \
+    assert_raises_message
 from sqlalchemy.orm import mapper, Session, validates, relationship
 from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy import exc
 
 
 class ValidatorTest(_fixtures.FixtureTest):
@@ -143,6 +145,41 @@ class ValidatorTest(_fixtures.FixtureTest):
                 call('addresses', a3, False),
                 call('addresses', a1, True),
             ]
+        )
+
+    def test_validator_multi_warning(self):
+        users = self.tables.users
+
+        class Foo(object):
+            @validates("name")
+            def validate_one(self, key, value):
+                pass
+
+            @validates("name")
+            def validate_two(self, key, value):
+                pass
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "A validation function for mapped attribute "
+            "'name' on mapper Mapper|Foo|users already exists",
+            mapper, Foo, users
+        )
+
+        class Bar(object):
+            @validates("id")
+            def validate_three(self, key, value):
+                return value + 10
+
+            @validates("id", "name")
+            def validate_four(self, key, value):
+                return value + "foo"
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "A validation function for mapped attribute "
+            "'name' on mapper Mapper|Bar|users already exists",
+            mapper, Bar, users
         )
 
     def test_validator_wo_backrefs_wo_removes(self):
