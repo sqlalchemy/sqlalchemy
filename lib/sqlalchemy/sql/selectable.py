@@ -1555,29 +1555,39 @@ class HasCTE(object):
 
         Example 3, an upsert using UPDATE and INSERT with CTEs::
 
-            orders = table(
-                'orders',
-                column('region'),
-                column('amount'),
-                column('product'),
-                column('quantity')
+            from datetime import date
+            from sqlalchemy import (MetaData, Table, Column, Integer,
+                                    Date, select, literal, and_, exists)
+
+            metadata = MetaData()
+
+            visitors = Table('visitors', metadata,
+                Column('product_id', Integer, primary_key=True),
+                Column('date', Date, primary_key=True),
+                Column('count', Integer),
             )
 
-            upsert = (
-                orders.update()
-                .where(orders.c.region == 'Region1')
-                .values(amount=1.0, product='Product1', quantity=1)
-                .returning(*(orders.c._all_columns)).cte('upsert'))
+            # add 5 visitors for the product_id == 1
+            product_id = 1
+            day = date.today()
+            count = 5
 
-            insert = orders.insert().from_select(
-                orders.c.keys(),
-                select([
-                    literal('Region1'), literal(1.0),
-                    literal('Product1'), literal(1)
-                ).where(exists(upsert.select()))
+            update_cte = (
+                visitors.update()
+                .where(and_(visitors.c.product_id == product_id,
+                            visitors.c.date == day))
+                .values(count=visitors.c.count + count)
+                .returning(literal(1))
+                .cte('update_cte')
             )
 
-            connection.execute(insert)
+            upsert = visitors.insert().from_select(
+                [visitors.c.product_id, visitors.c.date, visitors.c.count],
+                select([literal(product_id), literal(day), literal(count)])
+                    .where(~exists(update_cte.select()))
+            )
+
+            connection.execute(upsert)
 
         .. seealso::
 
