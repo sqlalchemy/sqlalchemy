@@ -447,6 +447,19 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(literal_column('x'), User).join, Address
         )
 
+    def test_left_is_none_and_query_has_no_entities(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sess = create_session()
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "No entities to join from; please use select_from\(\) to "
+            "establish the left entity/selectable of this join",
+            sess.query().join, Address
+        )
+
     def test_isouter_flag(self):
         User = self.classes.User
 
