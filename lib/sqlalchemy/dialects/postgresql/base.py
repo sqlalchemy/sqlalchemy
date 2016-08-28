@@ -360,7 +360,7 @@ Partial indexes add criterion to the index definition so that the index is
 applied to a subset of rows.   These can be specified on :class:`.Index`
 using the ``postgresql_where`` keyword argument::
 
-  Index('my_index', my_table.c.id, postgresql_where=tbl.c.value > 10)
+  Index('my_index', my_table.c.id, postgresql_where=my_table.c.value > 10)
 
 Operator Classes
 ^^^^^^^^^^^^^^^^^
