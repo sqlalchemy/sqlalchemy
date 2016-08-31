@@ -388,8 +388,8 @@ associated object, and a second to a target attribute.
             right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
             extra_data = Column(String(50))
 
-            child = relationship("Child", back_populates="parent_associations")
-            parent = relationship("Parent", back_populates="child_associations")
+            child = relationship("Child", backref="parent_associations")
+            parent = relationship("Parent", backref="child_associations")
 
         class Parent(Base):
             __tablename__ = 'left'
