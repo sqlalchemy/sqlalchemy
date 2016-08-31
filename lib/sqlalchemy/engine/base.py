@@ -940,9 +940,7 @@ class Connection(Connectable):
         try:
             meth = object._execute_on_connection
         except AttributeError:
-            raise exc.InvalidRequestError(
-                "Unexecutable object type: %s" %
-                type(object))
+            raise exc.ObjectNotExecutableError(object)
         else:
             return meth(self, multiparams, params)
 

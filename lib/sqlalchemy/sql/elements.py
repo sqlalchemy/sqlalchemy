@@ -259,7 +259,10 @@ class ClauseElement(Visitable):
             return self
 
     def _execute_on_connection(self, connection, multiparams, params):
-        return connection._execute_clauseelement(self, multiparams, params)
+        if self.supports_execution:
+            return connection._execute_clauseelement(self, multiparams, params)
+        else:
+            raise exc.ObjectNotExecutableError(self)
 
     def unique_params(self, *optionaldict, **kwargs):
         """Return a copy with :func:`bindparam()` elements replaced.

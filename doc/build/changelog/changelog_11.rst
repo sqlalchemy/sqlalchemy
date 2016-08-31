@@ -22,6 +22,15 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3786
+
+        Raise a more descriptive exception / message when ClauseElement
+        or non-SQLAlchemy objects that are not "executable" are erroneously
+        passed to ``.execute()``; a new exception ObjectNotExecutableError
+        is raised consistently in all cases.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3776
 

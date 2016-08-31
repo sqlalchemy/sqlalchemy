@@ -554,8 +554,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.compiled = compiled
 
-        if not compiled.can_execute:
-            raise exc.ArgumentError("Not an executable clause")
+        # this should be caught in the engine before
+        # we get here
+        assert compiled.can_execute
 
         self.execution_options = compiled.statement._execution_options.union(
             connection._execution_options)

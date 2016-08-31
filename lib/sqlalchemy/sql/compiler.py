@@ -215,7 +215,10 @@ class Compiled(object):
         pass
 
     def _execute_on_connection(self, connection, multiparams, params):
-        return connection._execute_compiled(self, multiparams, params)
+        if self.can_execute:
+            return connection._execute_compiled(self, multiparams, params)
+        else:
+            raise exc.ObjectNotExecutableError(self.statement)
 
     @property
     def sql_compiler(self):

@@ -26,6 +26,20 @@ class ArgumentError(SQLAlchemyError):
     """
 
 
+class ObjectNotExecutableError(ArgumentError):
+    """Raised when an object is passed to .execute() that can't be
+    executed as SQL.
+
+    .. versionadded:: 1.1
+
+    """
+
+    def __init__(self, target):
+        super(ObjectNotExecutableError, self).__init__(
+            "Not an executable object: %r" % target
+        )
+
+
 class NoSuchModuleError(ArgumentError):
     """Raised when a dynamically-loaded module (usually a database dialect)
     of a particular name cannot be located."""

@@ -71,9 +71,6 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
     __visit_name__ = 'schema_item'
 
-    def _execute_on_connection(self, connection, multiparams, params):
-        return connection._execute_default(self, multiparams, params)
-
     def _init_items(self, *args):
         """Initialize the list of child items for this SchemaItem."""
 
@@ -1940,6 +1937,9 @@ class DefaultGenerator(_NotAColumnExpr, SchemaItem):
         if bind is None:
             bind = _bind_or_error(self)
         return bind._execute_default(self, **kwargs)
+
+    def _execute_on_connection(self, connection, multiparams, params):
+        return connection._execute_default(self, multiparams, params)
 
     @property
     def bind(self):

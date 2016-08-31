@@ -306,6 +306,26 @@ class ExecuteTest(fixtures.TestBase):
         finally:
             conn.close()
 
+    def test_not_an_executable(self):
+        for obj in (
+            Table("foo", MetaData(), Column("x", Integer)),
+            Column('x', Integer),
+            tsa.and_(),
+            column('foo'),
+            tsa.and_().compile(),
+            column('foo').compile(),
+            MetaData(),
+            Integer(),
+            tsa.Index(name='foo'),
+            tsa.UniqueConstraint('x')
+        ):
+            with testing.db.connect() as conn:
+                assert_raises_message(
+                    tsa.exc.ObjectNotExecutableError,
+                    "Not an executable object",
+                    conn.execute, obj
+                )
+
     def test_stmt_exception_non_ascii(self):
         name = util.u('méil')
         with testing.db.connect() as conn:
