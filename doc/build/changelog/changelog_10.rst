@@ -19,6 +19,17 @@
     :version: 1.0.15
 
     .. change::
+        :tags: bug, mysql
+        :tickets: 3787
+        :versions: 1.1.0
+
+        Added support for parsing MySQL/Connector boolean and integer
+        arguments within the URL query string: connection_timeout,
+        connect_timeout, pool_size, get_warnings,
+        raise_on_warnings, raw, consume_results, ssl_verify_cert, force_ipv6,
+        pool_reset_session, compress, allow_local_infile, use_pure.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3773, 3774
         :versions: 1.1.0
