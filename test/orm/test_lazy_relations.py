@@ -6,12 +6,13 @@ from sqlalchemy.orm import attributes, exc as orm_exc, configure_mappers
 import sqlalchemy as sa
 from sqlalchemy import testing, and_
 from sqlalchemy import Integer, String, ForeignKey, SmallInteger, Boolean
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy import orm
 from sqlalchemy.orm import mapper, relationship, create_session, Session
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_true, is_false
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -1148,3 +1149,69 @@ class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults,):
                 [{'param_1': 5}]
             )
         )
+
+
+class CompositeSimpleM2OTest(fixtures.MappedTest):
+    """ORM-level test for [ticket:3788]"""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a', metadata,
+            Column("id1", Integer, primary_key=True),
+            Column("id2", Integer, primary_key=True),
+        )
+
+        Table(
+            "b_sameorder", metadata,
+            Column("id", Integer, primary_key=True),
+            Column('a_id1', Integer),
+            Column('a_id2', Integer),
+            ForeignKeyConstraint(['a_id1', 'a_id2'], ['a.id1', 'a.id2'])
+        )
+
+        Table(
+            "b_differentorder", metadata,
+            Column("id", Integer, primary_key=True),
+            Column('a_id1', Integer),
+            Column('a_id2', Integer),
+            ForeignKeyConstraint(['a_id1', 'a_id2'], ['a.id1', 'a.id2'])
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(cls.Basic):
+            pass
+
+    def test_use_get_sameorder(self):
+        mapper(self.classes.A, self.tables.a)
+        m_b = mapper(self.classes.B, self.tables.b_sameorder, properties={
+            'a': relationship(self.classes.A)
+        })
+
+        configure_mappers()
+        is_true(m_b.relationships.a.strategy.use_get)
+
+    def test_use_get_reverseorder(self):
+        mapper(self.classes.A, self.tables.a)
+        m_b = mapper(self.classes.B, self.tables.b_differentorder, properties={
+            'a': relationship(self.classes.A)
+        })
+
+        configure_mappers()
+        is_true(m_b.relationships.a.strategy.use_get)
+
+    def test_dont_use_get_pj_is_different(self):
+        mapper(self.classes.A, self.tables.a)
+        m_b = mapper(self.classes.B, self.tables.b_sameorder, properties={
+            'a': relationship(self.classes.A, primaryjoin=and_(
+                self.tables.a.c.id1 == self.tables.b_sameorder.c.a_id1,
+                self.tables.a.c.id2 == 12
+            ))
+        })
+
+        configure_mappers()
+        is_false(m_b.relationships.a.strategy.use_get)

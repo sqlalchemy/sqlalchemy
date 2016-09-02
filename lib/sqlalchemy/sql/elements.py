@@ -1828,12 +1828,23 @@ class ClauseList(ClauseElement):
         if not isinstance(other, ClauseList) and len(self.clauses) == 1:
             return self.clauses[0].compare(other, **kw)
         elif isinstance(other, ClauseList) and \
-                len(self.clauses) == len(other.clauses):
-            for i in range(0, len(self.clauses)):
-                if not self.clauses[i].compare(other.clauses[i], **kw):
-                    return False
+                len(self.clauses) == len(other.clauses) and \
+                self.operator is other.operator:
+
+            if self.operator in (operators.and_, operators.or_):
+                completed = set()
+                for clause in self.clauses:
+                    for other_clause in set(other.clauses).difference(completed):
+                        if clause.compare(other_clause, **kw):
+                            completed.add(other_clause)
+                            break
+                return len(completed) == len(other.clauses)
             else:
-                return self.operator == other.operator
+                for i in range(0, len(self.clauses)):
+                    if not self.clauses[i].compare(other.clauses[i], **kw):
+                        return False
+                else:
+                    return True
         else:
             return False
 

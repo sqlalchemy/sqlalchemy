@@ -22,6 +22,21 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3788
+
+        Fixed bug where the "simple many-to-one" condition that allows  lazy
+        loading to use get() from identity map would fail to be  invoked if the
+        primaryjoin of the relationship had multiple clauses separated by AND
+        which were not in the same order as that of the primary key columns
+        being compared in each clause. This ordering
+        difference occurs for a composite foreign key where the table-bound
+        columns on the referencing side were not in the same order in the .c
+        collection as the primary key columns on the referenced side....which
+        in turn occurs a lot if one is using declarative mixins and/or
+        declared_attr to set up columns.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3786
 
