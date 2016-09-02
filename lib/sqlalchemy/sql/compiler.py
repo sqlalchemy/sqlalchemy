@@ -660,12 +660,15 @@ class SQLCompiler(Compiled):
             return label.element._compiler_dispatch(
                 self, within_columns_clause=False, **kw)
 
+    def _fallback_column_name(self, column):
+        raise exc.CompileError("Cannot compile Column object until "
+                               "its 'name' is assigned.")
+
     def visit_column(self, column, add_to_result_map=None,
                      include_table=True, **kwargs):
         name = orig_name = column.name
         if name is None:
-            raise exc.CompileError("Cannot compile Column object until "
-                                   "its 'name' is assigned.")
+            name = self._fallback_column_name(column)
 
         is_literal = column.is_literal
         if not is_literal and isinstance(name, elements._truncated_label):
@@ -2203,6 +2206,9 @@ class StrSQLCompiler(SQLCompiler):
 
     """
 
+    def _fallback_column_name(self, column):
+        return "<name unknown>"
+
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (
             self.process(binary.left, **kw),
@@ -2210,7 +2216,6 @@ class StrSQLCompiler(SQLCompiler):
         )
 
     def returning_clause(self, stmt, returning_cols):
-
         columns = [
             self._label_select_column(None, c, True, False, {})
             for c in elements._select_iterables(returning_cols)

@@ -23,6 +23,15 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3789
+
+        Stringify of expression with unnamed :class:`.Column` objects, as
+        occurs in lots of situations including ORM error reporting,
+        will now render the name in string context as "<name unknown>"
+        rather than raising a compile error.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3786
 
         Raise a more descriptive exception / message when ClauseElement
