@@ -748,45 +748,6 @@ class DefaultRequirements(SuiteRequirements):
         return fails_on("postgresql+pg8000")
 
     @property
-    def python2(self):
-        return skip_if(
-                lambda: sys.version_info >= (3,),
-                "Python version 2.xx is required."
-                )
-
-    @property
-    def python3(self):
-        return skip_if(
-                lambda: sys.version_info < (3,),
-                "Python version 3.xx is required."
-                )
-
-    @property
-    def cpython(self):
-        return only_if(lambda: util.cpython,
-               "cPython interpreter needed"
-             )
-
-
-    @property
-    def non_broken_pickle(self):
-        from sqlalchemy.util import pickle
-        return only_if(
-            lambda: not util.pypy and pickle.__name__ == 'cPickle'
-                or sys.version_info >= (3, 2),
-            "Needs cPickle+cPython or newer Python 3 pickle"
-        )
-
-
-    @property
-    def predictable_gc(self):
-        """target platform must remove all cycles unconditionally when
-        gc.collect() is called, as well as clean out unreferenced subclasses.
-
-        """
-        return self.cpython
-
-    @property
     def hstore(self):
         def check_hstore(config):
             if not against(config, "postgresql"):

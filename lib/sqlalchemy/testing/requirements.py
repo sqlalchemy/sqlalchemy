@@ -15,6 +15,8 @@ to provide specific inclusion/exclusions.
 
 """
 
+import sys
+
 from . import exclusions
 from .. import util
 
@@ -706,6 +708,44 @@ class SuiteRequirements(Requirements):
             lambda config: util.py3k and config.options.has_coverage,
             "Stability issues with coverage + py3k"
         )
+
+    @property
+    def python2(self):
+        return exclusions.skip_if(
+            lambda: sys.version_info >= (3,),
+            "Python version 2.xx is required."
+        )
+
+    @property
+    def python3(self):
+        return exclusions.skip_if(
+            lambda: sys.version_info < (3,),
+            "Python version 3.xx is required."
+        )
+
+    @property
+    def cpython(self):
+        return exclusions.only_if(
+            lambda: util.cpython,
+            "cPython interpreter needed"
+        )
+
+    @property
+    def non_broken_pickle(self):
+        from sqlalchemy.util import pickle
+        return exclusions.only_if(
+            lambda: not util.pypy and pickle.__name__ == 'cPickle'
+                or sys.version_info >= (3, 2),
+            "Needs cPickle+cPython or newer Python 3 pickle"
+        )
+
+    @property
+    def predictable_gc(self):
+        """target platform must remove all cycles unconditionally when
+        gc.collect() is called, as well as clean out unreferenced subclasses.
+
+        """
+        return self.cpython
 
     @property
     def no_coverage(self):

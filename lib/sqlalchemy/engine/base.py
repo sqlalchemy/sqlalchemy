@@ -1752,7 +1752,6 @@ class Engine(Connectable, log.Identified):
         self.pool = pool
         self.url = url
         self.dialect = dialect
-        self.pool._dialect = dialect
         if logging_name:
             self.logging_name = logging_name
         self.echo = echo

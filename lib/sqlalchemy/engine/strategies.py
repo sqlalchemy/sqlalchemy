@@ -81,6 +81,9 @@ class DefaultEngineStrategy(EngineStrategy):
 
         dialect_args['dbapi'] = dbapi
 
+        for plugin in plugins:
+            plugin.handle_dialect_kwargs(dialect_cls, dialect_args)
+
         # create dialect
         dialect = dialect_cls(**dialect_args)
 
@@ -106,7 +109,9 @@ class DefaultEngineStrategy(EngineStrategy):
             poolclass = pop_kwarg('poolclass', None)
             if poolclass is None:
                 poolclass = dialect_cls.get_pool_class(u)
-            pool_args = {}
+            pool_args = {
+                'dialect': dialect
+            }
 
             # consume pool arguments from kwargs, translating a few of
             # the arguments
@@ -121,12 +126,18 @@ class DefaultEngineStrategy(EngineStrategy):
                 tk = translate.get(k, k)
                 if tk in kwargs:
                     pool_args[k] = pop_kwarg(tk)
+
+            for plugin in plugins:
+                plugin.handle_pool_kwargs(poolclass, pool_args)
+
             pool = poolclass(creator, **pool_args)
         else:
             if isinstance(pool, poollib._DBProxy):
                 pool = pool.get_pool(*cargs, **cparams)
             else:
                 pool = pool
+
+            pool._dialect = dialect
 
         # create engine.
         engineclass = self.engine_cls
