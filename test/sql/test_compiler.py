@@ -2432,14 +2432,16 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(
             exc.CompileError,
             "Cannot compile Column object until its 'name' is assigned.",
-            str, sel2
+            sel2.compile,
+            dialect=default.DefaultDialect()
         )
 
         sel3 = select([my_str]).as_scalar()
         assert_raises_message(
             exc.CompileError,
             "Cannot compile Column object until its 'name' is assigned.",
-            str, sel3
+            sel3.compile,
+            dialect=default.DefaultDialect()
         )
 
         my_str.name = 'foo'
@@ -2707,6 +2709,13 @@ class StringifySpecialTest(fixtures.TestBase):
             str(stmt),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1"
+        )
+
+    def test_unnamed_column(self):
+        stmt = Column(Integer) == 5
+        eq_ignore_whitespace(
+            str(stmt),
+            '"<name unknown>" = :param_1'
         )
 
     def test_cte(self):
