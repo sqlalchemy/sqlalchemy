@@ -3073,6 +3073,32 @@ class Query(object):
 
         .. warning:: **Additional Caveats for bulk query deletes**
 
+            * This method does **not work for joined
+              inheritance mappings**, since the **multiple table
+              deletes are not supported by SQL** as well as that the
+              **join condition of an inheritance mapper is not
+              automatically rendered**.  Care must be taken in any
+              multiple-table delete to first accomodate via some other means
+              how the related table will be deleted, as well as to
+              explicitly include the joining
+              condition between those tables, even in mappings where
+              this is normally automatic. E.g. if a class ``Engineer``
+              subclasses ``Employee``, a DELETE against the ``Employee``
+              table would look like::
+
+                    session.query(Engineer).\\
+                        filter(Engineer.id == Employee.id).\\
+                        filter(Employee.name == 'dilbert').\\
+                        delete()
+
+              However the above SQL will not delete from the Engineer table,
+              unless an ON DELETE CASCADE rule is established in the database
+              to handle it.
+
+              Short story, **do not use this method for joined inheritance
+              mappings unless you have taken the additional steps to make
+              this feasible**.
+
             * The method does **not** offer in-Python cascading of
               relationships - it is assumed that ON DELETE CASCADE/SET
               NULL/etc. is configured for any foreign key references
