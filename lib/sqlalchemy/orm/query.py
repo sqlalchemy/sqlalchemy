@@ -3099,6 +3099,11 @@ class Query(object):
               mappings unless you have taken the additional steps to make
               this feasible**.
 
+            * The polymorphic identity WHERE criteria is **not** included
+              for single- or
+              joined- table updates - this must be added **manually** even
+              for single table inheritance.
+
             * The method does **not** offer in-Python cascading of
               relationships - it is assumed that ON DELETE CASCADE/SET
               NULL/etc. is configured for any foreign key references
@@ -3255,6 +3260,11 @@ class Query(object):
                         filter(Engineer.id == Employee.id).\\
                         filter(Employee.name == 'dilbert').\\
                         update({"engineer_type": "programmer"})
+
+            * The polymorphic identity WHERE criteria is **not** included
+              for single- or
+              joined- table updates - this must be added **manually**, even
+              for single table inheritance.
 
             * The :meth:`.MapperEvents.before_update` and
               :meth:`.MapperEvents.after_update`
