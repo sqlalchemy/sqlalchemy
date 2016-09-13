@@ -249,13 +249,13 @@ class ARRAY(SchemaEventTarget, sqltypes.ARRAY):
         return x == y
 
     def _set_parent(self, column):
-        """Support SchemaEentTarget"""
+        """Support SchemaEventTarget"""
 
         if isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent(column)
 
     def _set_parent_with_dispatch(self, parent):
-        """Support SchemaEentTarget"""
+        """Support SchemaEventTarget"""
 
         if isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent_with_dispatch(parent)
