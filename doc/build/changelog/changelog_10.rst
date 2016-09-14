@@ -19,6 +19,15 @@
     :version: 1.0.16
 
     .. change::
+        :tags: bug, mssql
+        :tickes: 3791
+        :versions: 1.1.0
+
+        Added error code 20017 "unexpected EOF from the server" to the list of
+        disconnect exceptions that result in a connection pool reset.  Pull
+        request courtesy Ken Robbins.
+
+    .. change::
         :tags: bug, orm.declarative
         :tickets: 3797
         :versions: 1.1.0
