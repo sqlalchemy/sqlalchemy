@@ -1113,9 +1113,8 @@ class Session(_SessionClassMethods):
             insp = inspect(key)
         except sa_exc.NoInspectionAvailable:
             if not isinstance(key, type):
-                raise exc.ArgumentError(
-                            "Not acceptable bind target: %s" %
-                            key)
+                raise sa_exc.ArgumentError(
+                    "Not an acceptable bind target: %s" % key)
             else:
                 self.__binds[key] = bind
         else:
@@ -1126,9 +1125,8 @@ class Session(_SessionClassMethods):
                 for selectable in insp._all_tables:
                     self.__binds[selectable] = bind
             else:
-                raise exc.ArgumentError(
-                            "Not acceptable bind target: %s" %
-                            key)
+                raise sa_exc.ArgumentError(
+                    "Not an acceptable bind target: %s" % key)
 
     def bind_mapper(self, mapper, bind):
         """Associate a :class:`.Mapper` with a "bind", e.g. a :class:`.Engine`

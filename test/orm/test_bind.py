@@ -138,6 +138,24 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         sess.close()
 
+    def test_bind_arg(self):
+        sess = Session()
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Not an acceptable bind target: foobar",
+            sess.bind_mapper, "foobar", testing.db
+        )
+
+        mapper(self.classes.User, self.tables.users)
+        u_object = self.classes.User()
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Not an acceptable bind target: User()",
+            sess.bind_mapper, u_object, testing.db
+        )
+
     @engines.close_open_connections
     def test_bound_connection(self):
         users, User = self.tables.users, self.classes.User
