@@ -1827,6 +1827,41 @@ class EuroNumericTest(fixtures.TestBase):
             assert type(test_exp) is type(exp)
 
 
+class SystemTableTablenamesTest(fixtures.TestBase):
+    __only_on__ = 'oracle'
+    __backend__ = True
+
+    def setup(self):
+        testing.db.execute("create table my_table (id integer)")
+        testing.db.execute("create global temporary table my_temp_table (id integer)")
+        testing.db.execute("create table foo_table (id integer) tablespace SYSTEM")
+
+    def teardown(self):
+        testing.db.execute("drop table my_temp_table")
+        testing.db.execute("drop table my_table")
+        testing.db.execute("drop table foo_table")
+
+    def test_table_names_no_system(self):
+        insp = inspect(testing.db)
+        eq_(
+            insp.get_table_names(), ["my_table"]
+        )
+
+    def test_temp_table_names_no_system(self):
+        insp = inspect(testing.db)
+        eq_(
+            insp.get_temp_table_names(), ["my_temp_table"]
+        )
+
+    def test_table_names_w_system(self):
+        engine = testing_engine(options={"exclude_tablespaces": ["FOO"]})
+        insp = inspect(engine)
+        eq_(
+            set(insp.get_table_names()).intersection(["my_table", "foo_table"]),
+            set(["my_table", "foo_table"])
+        )
+
+
 class DontReflectIOTTest(fixtures.TestBase):
     """test that index overflow tables aren't included in
     table_names."""
