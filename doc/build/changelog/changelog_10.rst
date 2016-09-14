@@ -19,6 +19,16 @@
     :version: 1.0.16
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3798
+        :versions: 1.1.0
+
+        Fixed bug where the ArgumentError raised for an invalid bind
+        sent to a Session via :meth:`.Session.bind_mapper`,
+        :meth:`.Session.bind_table`,
+        or the constructor would fail to be correctly raised.
+
+    .. change::
         :tags: bug, mssql
         :tickes: 3791
         :versions: 1.1.0
