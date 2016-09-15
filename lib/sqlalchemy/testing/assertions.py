@@ -218,6 +218,8 @@ def le_(a, b, msg=None):
     """Assert a <= b, with repr messaging on failure."""
     assert a <= b, msg or "%r != %r" % (a, b)
 
+def is_true(a, msg=None):
+    is_(a, True, msg=msg)
 
 def is_(a, b, msg=None):
     """Assert a is b, with repr messaging on failure."""

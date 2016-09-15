@@ -18,6 +18,16 @@
 .. changelog::
     :version: 1.0.16
 
+    .. change::
+        :tags: bug, orm.declarative
+        :tickets: 3797
+        :versions: 1.1.0
+
+        Fixed bug where setting up a single-table inh subclass of a joined-table
+        subclass which included an extra column would corrupt the foreign keys
+        collection of the mapped table, thereby interfering with the
+        initialization of relationships.
+
 .. changelog::
     :version: 1.0.15
     :released: September 1, 2016

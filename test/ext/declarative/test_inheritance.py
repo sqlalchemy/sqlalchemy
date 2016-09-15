@@ -1,6 +1,6 @@
 
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, is_
+    assert_raises_message, is_, is_true
 from sqlalchemy.ext import declarative as decl
 import sqlalchemy as sa
 from sqlalchemy import testing
@@ -484,6 +484,56 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(sess.query(Engineer).filter_by(primary_language='cobol'
                                            ).one(),
             Engineer(name='vlad', primary_language='cobol'))
+
+    def test_single_cols_on_sub_to_joined(self):
+        """test [ticket:3797]"""
+
+        class BaseUser(Base):
+            __tablename__ = 'root'
+
+            id = Column(Integer, primary_key=True)
+            row_type = Column(String)
+
+            __mapper_args__ = {
+                'polymorphic_on': row_type,
+                'polymorphic_identity': 'baseuser'
+            }
+
+        class User(BaseUser):
+            __tablename__ = 'user'
+
+            __mapper_args__ = {
+                'polymorphic_identity': 'user'
+            }
+
+            baseuser_id = Column(
+                Integer, ForeignKey('root.id'), primary_key=True)
+
+        class Bat(Base):
+            __tablename__ = 'bat'
+            id = Column(Integer, primary_key=True)
+
+        class Thing(Base):
+            __tablename__ = 'thing'
+
+            id = Column(Integer, primary_key=True)
+
+            owner_id = Column(Integer, ForeignKey('user.baseuser_id'))
+            owner = relationship('User')
+
+        class SubUser(User):
+            __mapper_args__ = {
+                'polymorphic_identity': 'subuser'
+            }
+
+            sub_user_custom_thing = Column(Integer, ForeignKey('bat.id'))
+
+        eq_(
+            User.__table__.foreign_keys,
+            User.baseuser_id.foreign_keys.union(
+                SubUser.sub_user_custom_thing.foreign_keys))
+        is_true(Thing.owner.property.primaryjoin.compare(
+            Thing.owner_id == User.baseuser_id))
 
     def test_single_constraint_on_sub(self):
         """test the somewhat unusual case of [ticket:3341]"""

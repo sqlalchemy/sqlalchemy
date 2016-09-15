@@ -793,7 +793,7 @@ class Join(FromClause):
         if col is not None:
             if self._cols_populated:
                 self._columns[col._label] = col
-                self.foreign_keys.add(col)
+                self.foreign_keys.update(col.foreign_keys)
                 if col.primary_key:
                     self.primary_key.add(col)
                 return col
