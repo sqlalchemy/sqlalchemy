@@ -916,6 +916,44 @@ class RefreshForNewColTest(fixtures.TestBase):
         j._refresh_for_new_column(q)
         assert j.c.b_q is q
 
+    def test_fk_table(self):
+        m = MetaData()
+        fk = ForeignKey('x.id')
+        Table('x', m, Column('id', Integer))
+        a = Table('a', m, Column('x', Integer, fk))
+        a.c
+
+        q = Column('q', Integer)
+        a.append_column(q)
+        a._refresh_for_new_column(q)
+        eq_(a.foreign_keys, set([fk]))
+
+        fk2 = ForeignKey('g.id')
+        p = Column('p', Integer, fk2)
+        a.append_column(p)
+        a._refresh_for_new_column(p)
+        eq_(a.foreign_keys, set([fk, fk2]))
+
+    def test_fk_join(self):
+        m = MetaData()
+        fk = ForeignKey('x.id')
+        Table('x', m, Column('id', Integer))
+        a = Table('a', m, Column('x', Integer, fk))
+        b = Table('b', m, Column('y', Integer))
+        j = a.join(b, a.c.x == b.c.y)
+        j.c
+
+        q = Column('q', Integer)
+        b.append_column(q)
+        j._refresh_for_new_column(q)
+        eq_(j.foreign_keys, set([fk]))
+
+        fk2 = ForeignKey('g.id')
+        p = Column('p', Integer, fk2)
+        b.append_column(p)
+        j._refresh_for_new_column(p)
+        eq_(j.foreign_keys, set([fk, fk2]))
+
 
 class AnonLabelTest(fixtures.TestBase):
 
