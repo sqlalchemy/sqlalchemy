@@ -400,11 +400,9 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def two_phase_recovery(self):
         return self.two_phase_transactions + (
-            exclusions.fails_if(
-               lambda config:  config.db.name == 'mysql' and (
-                        'MariaDB' in config.db.dialect.server_version_info or
-                        config.db.dialect.server_version_info < (5, 7)
-               )
+            skip_if(
+               "mysql",
+               "crashes on most mariadb and mysql versions"
             )
         )
 
