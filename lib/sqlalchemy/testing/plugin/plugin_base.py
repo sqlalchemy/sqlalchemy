@@ -267,6 +267,7 @@ def _engine_uri(options, file_config):
     if not db_urls:
         db_urls.append(file_config.get('db', 'default'))
 
+    config._current = None
     for db_url in db_urls:
         cfg = provision.setup_config(
             db_url, options, file_config, provision.FOLLOWER_IDENT)

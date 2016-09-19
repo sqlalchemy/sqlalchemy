@@ -6,6 +6,7 @@ import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing.mock import Mock, MagicMock, call
+from sqlalchemy.testing import mock
 from sqlalchemy.dialects import registry
 from sqlalchemy.dialects import plugins
 
@@ -403,6 +404,8 @@ class TestRegNewDBAPI(fixtures.TestBase):
             MyEnginePlugin.mock_calls,
             [
                 call(e.url, {}),
+                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e)
             ]
         )
