@@ -1145,7 +1145,8 @@ class BindParameter(ColumnElement):
 
         return isinstance(other, BindParameter) \
             and self.type._compare_type_affinity(other.type) \
-            and self.value == other.value
+            and self.value == other.value \
+            and self.callable == other.callable
 
     def __getstate__(self):
         """execute a deferred value for serialization purposes."""

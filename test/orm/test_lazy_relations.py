@@ -4,7 +4,7 @@ from sqlalchemy.testing import assert_raises
 import datetime
 from sqlalchemy.orm import attributes, exc as orm_exc, configure_mappers
 import sqlalchemy as sa
-from sqlalchemy import testing, and_
+from sqlalchemy import testing, and_, bindparam
 from sqlalchemy import Integer, String, ForeignKey, SmallInteger, Boolean
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy.types import TypeDecorator
@@ -258,6 +258,35 @@ class LazyTest(_fixtures.FixtureTest):
         s = create_session()
         u1 = s.query(User).filter(User.id == 7).one()
         assert_raises(sa.exc.SAWarning, getattr, u1, 'order')
+
+    def test_callable_bind(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+
+        mapper(User, users, properties=dict(
+            addresses=relationship(
+                mapper(Address, addresses),
+                lazy='select',
+                primaryjoin=and_(
+                    users.c.id == addresses.c.user_id,
+                    users.c.name == bindparam("name", callable_=lambda: "ed")
+                )
+            )
+        ))
+
+        s = Session()
+        ed = s.query(User).filter_by(name='ed').one()
+        eq_(ed.addresses, [
+            Address(id=2, user_id=8),
+            Address(id=3, user_id=8),
+            Address(id=4, user_id=8)
+        ])
+
+        fred = s.query(User).filter_by(name='fred').one()
+        eq_(fred.addresses, [])  # fred is missing
 
     def test_one_to_many_scalar(self):
         Address, addresses, users, User = (

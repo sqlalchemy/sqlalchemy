@@ -478,7 +478,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 params.append((
                     bindparam.key, bind_to_col[bindparam._identifying_key],
                     None))
-            else:
+            elif bindparam.callable is None:
                 params.append((bindparam.key, None, bindparam.value))
 
         criterion = visitors.cloned_traverse(
