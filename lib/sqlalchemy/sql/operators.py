@@ -917,7 +917,7 @@ def mirror(op):
     return _mirror.get(op, op)
 
 
-_associative = _commutative.union([concat_op, and_, or_])
+_associative = _commutative.union([concat_op, and_, or_]).difference([eq, ne])
 
 _natural_self_precedent = _associative.union([
     getitem, json_getitem_op, json_path_getitem_op])

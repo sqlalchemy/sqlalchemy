@@ -22,6 +22,16 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3799
+
+        The "eq" and "ne" operators are no longer part of the list of
+        "associative" operators, while they remain considered to be
+        "commutative".  This allows an expression like ``(x == y) == z``
+        to be maintained at the SQL level with parenthesis.  Pull request
+        courtesy John Passaro.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3788
 
