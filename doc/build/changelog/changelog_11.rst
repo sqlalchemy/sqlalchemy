@@ -23,6 +23,17 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3767
+
+        The primaryjoin of a :func:`.relationship` construct can now include
+        a :func:`.bindparam` object that includes a callable function to
+        generate values.  Previously, the lazy loader strategy would
+        be incompatible with this use, and additionally would fail to correctly
+        detect if the "use_get" criteria should be used if the primary key
+        were involved with the bound parameter.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3788
 
         Fixed bug where the "simple many-to-one" condition that allows  lazy

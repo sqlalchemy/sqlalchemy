@@ -1,6 +1,6 @@
 from sqlalchemy.testing import fixtures, is_true, is_false
-from sqlalchemy import MetaData, Table, Column, Integer
-from sqlalchemy import and_, or_
+from sqlalchemy import MetaData, Table, Column, Integer, String
+from sqlalchemy import and_, or_, bindparam
 from sqlalchemy.sql.elements import ClauseList
 from sqlalchemy.sql import operators
 
@@ -76,3 +76,32 @@ class CompareClausesTest(fixtures.TestBase):
 
         is_false(l1.compare(l2))
 
+    def test_compare_binds(self):
+        b1 = bindparam("foo", type_=Integer())
+        b2 = bindparam("foo", type_=Integer())
+        b3 = bindparam("bar", type_=Integer())
+        b4 = bindparam("foo", type_=String())
+
+        c1 = lambda: 5  # noqa
+        c2 = lambda: 6  # noqa
+
+        b5 = bindparam("foo", type_=Integer(), callable_=c1)
+        b6 = bindparam("foo", type_=Integer(), callable_=c2)
+        b7 = bindparam("foo", type_=Integer(), callable_=c1)
+
+        b8 = bindparam("foo", type_=Integer, value=5)
+        b9 = bindparam("foo", type_=Integer, value=6)
+
+        is_false(b1.compare(b5))
+        is_true(b5.compare(b7))
+        is_false(b5.compare(b6))
+        is_true(b1.compare(b2))
+
+        # currently not comparing "key", as we often have to compare
+        # anonymous names.  however we should really check for that
+        is_true(b1.compare(b3))
+
+        is_false(b1.compare(b4))
+        is_false(b1.compare(b8))
+        is_false(b8.compare(b9))
+        is_true(b8.compare(b8))
