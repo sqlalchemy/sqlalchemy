@@ -1538,6 +1538,14 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         f = column('f')
         self.assert_compile(f / (f / (f - f)), "f / (f / (f - f))")
 
+    def test_associativity_22(self):
+        f = column('f')
+        self.assert_compile((f==f) == f, '(f = f) = f')
+
+    def test_associativity_23(self):
+        f = column('f')
+        self.assert_compile((f!=f) != f, '(f != f) != f')
+
 
 class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
