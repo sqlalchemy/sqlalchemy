@@ -44,6 +44,16 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3801
+
+        An UPDATE emitted from the ORM flush process can now accommodate a
+        SQL expression element for a column within the primary key of an
+        object, if the target database supports RETURNING in order to provide
+        the new value, or if the PK value is set "to itself" for the purposes
+        of bumping some other trigger / onupdate on the column.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3788
 
         Fixed bug where the "simple many-to-one" condition that allows  lazy
