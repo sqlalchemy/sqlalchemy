@@ -772,9 +772,10 @@ class DeclarativeTest(DeclarativeTestBase):
         for i in range(3):
             assert_raises_message(
                 sa.exc.InvalidRequestError,
-                "^One or more mappers failed to initialize - "
-                "can't proceed with initialization of other "
-                "mappers.  Original exception was: When initializing.*",
+                "^One or more mappers failed to initialize"
+                " - can't proceed with initialization of other mappers. "
+                r"Triggering mapper: 'Mapper\|User\|users'. "
+                "Original exception was: When initializing.*",
                 configure_mappers)
 
     def test_custom_base(self):

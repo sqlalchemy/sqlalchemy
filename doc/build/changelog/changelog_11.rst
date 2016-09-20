@@ -95,6 +95,14 @@
         as the order of the validators at the level of function decorator
         can't be made deterministic.
 
+    .. change::
+        :tags: bug, orm
+
+        Mapper errors raised during :func:`.configure_mappers` now explicitly
+        include the name of the originating mapper in the exception message
+        to help in those situations where the wrapped exception does not
+        itself include the source mapper.  Pull request courtesy
+        John Perkins.
 
     .. change::
         :tags: bug, mysql
