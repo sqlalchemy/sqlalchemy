@@ -122,6 +122,43 @@ class NaturalPKTest(fixtures.MappedTest):
         assert sess.query(User).get('jack') is None
         assert sess.query(User).get('ed').fullname == 'jack'
 
+    @testing.requires.returning
+    def test_update_to_sql_expr(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = create_session()
+        u1 = User(username='jack', fullname='jack')
+
+        sess.add(u1)
+        sess.flush()
+
+        u1.username = User.username + ' jones'
+
+        sess.flush()
+
+        eq_(u1.username, 'jack jones')
+
+    def test_update_to_self_sql_expr(self):
+        # SQL expression where the PK won't actually change,
+        # such as to bump a server side trigger
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = create_session()
+        u1 = User(username='jack', fullname='jack')
+
+        sess.add(u1)
+        sess.flush()
+
+        u1.username = User.username + ''
+
+        sess.flush()
+
+        eq_(u1.username, 'jack')
+
     def test_flush_new_pk_after_expire(self):
         User, users = self.classes.User, self.tables.users
 

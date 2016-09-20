@@ -1020,6 +1020,38 @@ class ServerVersioningTest(fixtures.MappedTest):
             )
         self.assert_sql_execution(testing.db, sess.flush, *statements)
 
+    def test_sql_expr_bump(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(value='f1')
+        sess.add(f1)
+        sess.flush()
+
+        eq_(f1.version_id, 1)
+
+        f1.id = self.classes.Foo.id + 0
+
+        sess.flush()
+
+        eq_(f1.version_id, 2)
+
+    @testing.requires.returning
+    def test_sql_expr_w_mods_bump(self):
+        sess = self._fixture()
+
+        f1 = self.classes.Foo(id=2, value='f1')
+        sess.add(f1)
+        sess.flush()
+
+        eq_(f1.version_id, 1)
+
+        f1.id = self.classes.Foo.id + 3
+
+        sess.flush()
+
+        eq_(f1.id, 5)
+        eq_(f1.version_id, 2)
+
     def test_multi_update(self):
         sess = self._fixture()
 
