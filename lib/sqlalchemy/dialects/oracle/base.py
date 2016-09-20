@@ -195,6 +195,25 @@ accepted, including methods such as :meth:`.MetaData.reflect` and
 
 If synonyms are not in use, this flag should be left disabled.
 
+Table names with SYSTEM/SYSAUX tablespaces
+-------------------------------------------
+
+The :meth:`.Inspector.get_table_names` and
+:meth:`.Inspector.get_temp_table_names`
+methods each return a list of table names for the current engine. These methods
+are also part of the reflection which occurs within an operation such as
+:meth:`.MetaData.reflect`.  By default, these operations exclude the ``SYSTEM``
+and ``SYSAUX`` tablespaces from the operation.   In order to change this, the
+default list of tablespaces excluded can be changed at the engine level using
+the ``exclude_tablespaces`` parameter::
+
+    # exclude SYSAUX and SOME_TABLESPACE, but not SYSTEM
+    e = create_engine(
+      "oracle://scott:tiger@xe",
+      exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"])
+
+.. versionadded:: 1.1
+
 DateTime Compatibility
 ----------------------
 
@@ -979,11 +998,13 @@ class OracleDialect(default.DefaultDialect):
                  use_ansi=True,
                  optimize_limits=False,
                  use_binds_for_limits=True,
+                 exclude_tablespaces=('SYSTEM', 'SYSAUX', ),
                  **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
         self.use_binds_for_limits = use_binds_for_limits
+        self.exclude_tablespaces = exclude_tablespaces
 
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
@@ -1166,27 +1187,41 @@ class OracleDialect(default.DefaultDialect):
         # note that table_names() isn't loading DBLINKed or synonym'ed tables
         if schema is None:
             schema = self.default_schema_name
-        s = sql.text(
-            "SELECT table_name FROM all_tables "
-            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN "
-            "('SYSTEM', 'SYSAUX') "
-            "AND OWNER = :owner "
+
+        sql_str = "SELECT table_name FROM all_tables WHERE "
+        if self.exclude_tablespaces:
+            sql_str += (
+                "nvl(tablespace_name, 'no tablespace') "
+                "NOT IN (%s) AND " % (
+                    ', '.join(["'%s'" % ts for ts in self.exclude_tablespaces])
+                )
+            )
+        sql_str += (
+            "OWNER = :owner "
             "AND IOT_NAME IS NULL "
             "AND DURATION IS NULL")
-        cursor = connection.execute(s, owner=schema)
+
+        cursor = connection.execute(sql.text(sql_str), owner=schema)
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
     def get_temp_table_names(self, connection, **kw):
         schema = self.denormalize_name(self.default_schema_name)
-        s = sql.text(
-            "SELECT table_name FROM all_tables "
-            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN "
-            "('SYSTEM', 'SYSAUX') "
-            "AND OWNER = :owner "
+
+        sql_str = "SELECT table_name FROM all_tables WHERE "
+        if self.exclude_tablespaces:
+            sql_str += (
+                "nvl(tablespace_name, 'no tablespace') "
+                "NOT IN (%s) AND " % (
+                    ', '.join(["'%s'" % ts for ts in self.exclude_tablespaces])
+                )
+            )
+        sql_str += (
+            "OWNER = :owner "
             "AND IOT_NAME IS NULL "
             "AND DURATION IS NOT NULL")
-        cursor = connection.execute(s, owner=schema)
+
+        cursor = connection.execute(sql.text(sql_str), owner=schema)
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
