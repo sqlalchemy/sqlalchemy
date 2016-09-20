@@ -393,8 +393,9 @@ class DefaultRequirements(SuiteRequirements):
             no_support('postgresql+zxjdbc',
                     'FIXME: JDBC driver confuses the transaction state, may '
                        'need separate XA implementation'),
-            exclude('mysql', '<', (5, 0, 3),
-                        'two-phase xact not supported by database'),
+            no_support('mysql',
+                'recent MySQL communiity editions have too many issues '
+                '(late 2016), disabling for now'),
             ])
 
     @property
