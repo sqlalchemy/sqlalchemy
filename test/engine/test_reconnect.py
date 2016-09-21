@@ -1,4 +1,4 @@
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, ne_, assert_raises, assert_raises_message
 import time
 from sqlalchemy import (
     select, MetaData, Integer, String, create_engine, pool, exc, util)
@@ -10,6 +10,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import Mock, call, patch
+from sqlalchemy import event
 
 
 class MockError(Exception):
@@ -20,16 +21,28 @@ class MockDisconnect(MockError):
     pass
 
 
+class MockExitIsh(BaseException):
+    pass
+
+
 def mock_connection():
     def mock_cursor():
         def execute(*args, **kwargs):
             if conn.explode == 'execute':
                 raise MockDisconnect("Lost the DB connection on execute")
-            elif conn.explode in ('execute_no_disconnect', ):
+            elif conn.explode == 'interrupt':
+                conn.explode = "explode_no_disconnect"
+                raise MockExitIsh("Keyboard / greenlet / etc interruption")
+            elif conn.explode == 'interrupt_dont_break':
+                conn.explode = None
+                raise MockExitIsh("Keyboard / greenlet / etc interruption")
+            elif conn.explode in ('execute_no_disconnect',
+                                  'explode_no_disconnect'):
                 raise MockError(
                     "something broke on execute but we didn't lose the "
                     "connection")
-            elif conn.explode in ('rollback', 'rollback_no_disconnect'):
+            elif conn.explode in ('rollback', 'rollback_no_disconnect',
+                                  'explode_no_disconnect'):
                 raise MockError(
                     "something broke on execute but we didn't lose the "
                     "connection")
@@ -384,6 +397,81 @@ class MockReconnectTest(fixtures.TestBase):
         engine.dispose()
         c2 = engine.connect()
         eq_(Dialect.initialize.call_count, 1)
+
+    def test_invalidate_conn_w_contextmanager_interrupt(self):
+        # test [ticket:3803]
+        pool = self.db.pool
+
+        conn = self.db.connect()
+        self.dbapi.shutdown("interrupt")
+
+        def go():
+            with conn.begin():
+                conn.execute(select([1]))
+
+        assert_raises(
+            MockExitIsh,
+            go
+        )
+
+        assert conn.invalidated
+
+        eq_(pool._invalidate_time, 0)  # pool not invalidated
+
+        conn.execute(select([1]))
+        assert not conn.invalidated
+
+    def test_invalidate_conn_interrupt_nodisconnect_workaround(self):
+        # test [ticket:3803] workaround for no disconnect on keyboard interrupt
+
+        @event.listens_for(self.db, "handle_error")
+        def cancel_disconnect(ctx):
+            ctx.is_disconnect = False
+
+        pool = self.db.pool
+
+        conn = self.db.connect()
+        self.dbapi.shutdown("interrupt_dont_break")
+
+        def go():
+            with conn.begin():
+                conn.execute(select([1]))
+
+        assert_raises(
+            MockExitIsh,
+            go
+        )
+
+        assert not conn.invalidated
+
+        eq_(pool._invalidate_time, 0)  # pool not invalidated
+
+        conn.execute(select([1]))
+        assert not conn.invalidated
+
+    def test_invalidate_conn_w_contextmanager_disconnect(self):
+        # test [ticket:3803] change maintains old behavior
+
+        pool = self.db.pool
+
+        conn = self.db.connect()
+        self.dbapi.shutdown("execute")
+
+        def go():
+            with conn.begin():
+                conn.execute(select([1]))
+
+        assert_raises(
+            exc.DBAPIError,  # wraps a MockDisconnect
+            go
+        )
+
+        assert conn.invalidated
+
+        ne_(pool._invalidate_time, 0)  # pool is invalidated
+
+        conn.execute(select([1]))
+        assert not conn.invalidated
 
 
 class CursorErrTest(fixtures.TestBase):

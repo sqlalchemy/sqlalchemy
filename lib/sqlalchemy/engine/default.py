@@ -961,7 +961,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     inputsizes.append(dbtype)
             try:
                 self.cursor.setinputsizes(*inputsizes)
-            except Exception as e:
+            except BaseException as e:
                 self.root_connection._handle_dbapi_exception(
                     e, None, None, None, self)
         else:
@@ -979,7 +979,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     inputsizes[key] = dbtype
             try:
                 self.cursor.setinputsizes(**inputsizes)
-            except Exception as e:
+            except BaseException as e:
                 self.root_connection._handle_dbapi_exception(
                     e, None, None, None, self)
 

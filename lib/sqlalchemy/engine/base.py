@@ -347,7 +347,7 @@ class Connection(Connectable):
         except AttributeError:
             try:
                 return self._revalidate_connection()
-            except Exception as e:
+            except BaseException as e:
                 self._handle_dbapi_exception(e, None, None, None, None)
 
     def get_isolation_level(self):
@@ -383,7 +383,7 @@ class Connection(Connectable):
         """
         try:
             return self.dialect.get_isolation_level(self.connection)
-        except Exception as e:
+        except BaseException as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
     @property
@@ -685,7 +685,7 @@ class Connection(Connectable):
             self.engine.dialect.do_begin(self.connection)
             if self.connection._reset_agent is None:
                 self.connection._reset_agent = transaction
-        except Exception as e:
+        except BaseException as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
     def _rollback_impl(self):
@@ -699,7 +699,7 @@ class Connection(Connectable):
                 self.engine.logger.info("ROLLBACK")
             try:
                 self.engine.dialect.do_rollback(self.connection)
-            except Exception as e:
+            except BaseException as e:
                 self._handle_dbapi_exception(e, None, None, None, None)
             finally:
                 if not self.__invalid and \
@@ -719,7 +719,7 @@ class Connection(Connectable):
             self.engine.logger.info("COMMIT")
         try:
             self.engine.dialect.do_commit(self.connection)
-        except Exception as e:
+        except BaseException as e:
             self._handle_dbapi_exception(e, None, None, None, None)
         finally:
             if not self.__invalid and \
@@ -967,7 +967,7 @@ class Connection(Connectable):
             dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
                 dialect, self, conn)
-        except Exception as e:
+        except BaseException as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
         ret = ctx._exec_default(default, None)
@@ -1114,7 +1114,7 @@ class Connection(Connectable):
                 conn = self._revalidate_connection()
 
             context = constructor(dialect, self, conn, *args)
-        except Exception as e:
+        except BaseException as e:
             self._handle_dbapi_exception(
                 e,
                 util.text_type(statement), parameters,
@@ -1180,7 +1180,7 @@ class Connection(Connectable):
                         statement,
                         parameters,
                         context)
-        except Exception as e:
+        except BaseException as e:
             self._handle_dbapi_exception(
                 e,
                 statement,
@@ -1245,7 +1245,7 @@ class Connection(Connectable):
                     statement,
                     parameters,
                     context)
-        except Exception as e:
+        except BaseException as e:
             self._handle_dbapi_exception(
                 e,
                 statement,
@@ -1286,18 +1286,24 @@ class Connection(Connectable):
         if context and context.exception is None:
             context.exception = e
 
+        is_exit_exception = not isinstance(e, Exception)
+
         if not self._is_disconnect:
-            self._is_disconnect =  \
-                isinstance(e, self.dialect.dbapi.Error) and \
-                not self.closed and \
+            self._is_disconnect = (
+                isinstance(e, self.dialect.dbapi.Error) and
+                not self.closed and
                 self.dialect.is_disconnect(
                     e,
                     self.__connection if not self.invalidated else None,
                     cursor)
+            ) or (
+                is_exit_exception and not self.closed
+            )
+
             if context:
                 context.is_disconnect = self._is_disconnect
 
-        invalidate_pool_on_disconnect = True
+        invalidate_pool_on_disconnect = not is_exit_exception
 
         if self._reentrant_error:
             util.raise_from_cause(
@@ -1313,7 +1319,8 @@ class Connection(Connectable):
             # non-DBAPI error - if we already got a context,
             # or there's no string statement, don't wrap it
             should_wrap = isinstance(e, self.dialect.dbapi.Error) or \
-                (statement is not None and context is None)
+                (statement is not None
+                 and context is None and not is_exit_exception)
 
             if should_wrap:
                 sqlalchemy_exception = exc.DBAPIError.instance(
@@ -1344,7 +1351,8 @@ class Connection(Connectable):
                 ctx = ExceptionContextImpl(
                     e, sqlalchemy_exception, self.engine,
                     self, cursor, statement,
-                    parameters, context, self._is_disconnect)
+                    parameters, context, self._is_disconnect,
+                    invalidate_pool_on_disconnect)
 
                 for fn in self.dispatch.handle_error:
                     try:
@@ -1358,10 +1366,11 @@ class Connection(Connectable):
                         newraise = _raised
                         break
 
-                if sqlalchemy_exception and \
-                        self._is_disconnect != ctx.is_disconnect:
-                    sqlalchemy_exception.connection_invalidated = \
-                        self._is_disconnect = ctx.is_disconnect
+                if self._is_disconnect != ctx.is_disconnect:
+                    self._is_disconnect = ctx.is_disconnect
+                    if sqlalchemy_exception:
+                        sqlalchemy_exception.connection_invalidated = \
+                            ctx.is_disconnect
 
                 # set up potentially user-defined value for
                 # invalidate pool.
@@ -1400,7 +1409,6 @@ class Connection(Connectable):
 
     @classmethod
     def _handle_dbapi_exception_noconnection(cls, e, dialect, engine):
-
         exc_info = sys.exc_info()
 
         is_disconnect = dialect.is_disconnect(e, None, None)
@@ -1422,7 +1430,7 @@ class Connection(Connectable):
         if engine._has_events:
             ctx = ExceptionContextImpl(
                 e, sqlalchemy_exception, engine, None, None, None,
-                None, None, is_disconnect)
+                None, None, is_disconnect, True)
             for fn in engine.dispatch.handle_error:
                 try:
                     # handler returns an exception;
@@ -1529,7 +1537,7 @@ class ExceptionContextImpl(ExceptionContext):
 
     def __init__(self, exception, sqlalchemy_exception,
                  engine, connection, cursor, statement, parameters,
-                 context, is_disconnect):
+                 context, is_disconnect, invalidate_pool_on_disconnect):
         self.engine = engine
         self.connection = connection
         self.sqlalchemy_exception = sqlalchemy_exception
@@ -1538,6 +1546,7 @@ class ExceptionContextImpl(ExceptionContext):
         self.statement = statement
         self.parameters = parameters
         self.is_disconnect = is_disconnect
+        self.invalidate_pool_on_disconnect = invalidate_pool_on_disconnect
 
 
 class Transaction(object):
