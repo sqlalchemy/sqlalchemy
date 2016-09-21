@@ -1401,9 +1401,6 @@ class Mapper(InspectionAttr):
                 # polymorphic_on is a column that is already mapped
                 # to a ColumnProperty
                 prop = self._columntoproperty[self.polymorphic_on]
-                polymorphic_key = prop.key
-                self.polymorphic_on = prop.columns[0]
-                polymorphic_key = prop.key
             elif isinstance(self.polymorphic_on, MapperProperty):
                 # polymorphic_on is directly a MapperProperty,
                 # ensure it's a ColumnProperty
@@ -1414,8 +1411,6 @@ class Mapper(InspectionAttr):
                         "property or SQL expression "
                         "can be passed for polymorphic_on")
                 prop = self.polymorphic_on
-                self.polymorphic_on = prop.columns[0]
-                polymorphic_key = prop.key
             elif not expression._is_column(self.polymorphic_on):
                 # polymorphic_on is not a Column and not a ColumnProperty;
                 # not supported right now.
@@ -1477,12 +1472,14 @@ class Mapper(InspectionAttr):
                         col.label("_sa_polymorphic_on")
                     key = col.key
 
-                self._configure_property(
-                    key,
-                    properties.ColumnProperty(col,
-                                              _instrument=instrument),
-                    init=init, setparent=True)
-                polymorphic_key = key
+                prop = properties.ColumnProperty(col, _instrument=instrument)
+                self._configure_property(key, prop, init=init, setparent=True)
+
+            # the actual polymorphic_on should be the first public-facing
+            # column in the property
+            self.polymorphic_on = prop.columns[0]
+            polymorphic_key = prop.key
+
         else:
             # no polymorphic_on was set.
             # check inheriting mappers for one.
