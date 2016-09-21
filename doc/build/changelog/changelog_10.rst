@@ -20,6 +20,15 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3800
+        :versions: 1.1.0
+
+        Fixed bug where joined eager loading would fail for a polymorphically-
+        loaded mapper, where the polymorphic_on was set to an un-mapped
+        expression such as a CASE expression.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3798
         :versions: 1.1.0
 
