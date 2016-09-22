@@ -173,6 +173,7 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 
 
 .. autoclass:: TIMESTAMP
+    :members:
 
 
 .. autoclass:: VARBINARY

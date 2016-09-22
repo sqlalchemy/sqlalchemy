@@ -735,6 +735,13 @@ class DateTime(_DateAffinity, TypeEngine):
     SQLite, date and time types are stored as strings which are then
     converted back to datetime objects when rows are returned.
 
+    For the time representation within the datetime type, some
+    backends include additional options, such as timezone support and
+    fractional seconds support.  For fractional seconds, use the
+    dialect-specific datatype, such as :class:`.mysql.TIME`.  For
+    timezone support, use at least the :class:`~.types.TIMESTAMP` datatype,
+    if not the dialect-specific datatype object.
+
     """
 
     __visit_name__ = 'datetime'
@@ -742,10 +749,14 @@ class DateTime(_DateAffinity, TypeEngine):
     def __init__(self, timezone=False):
         """Construct a new :class:`.DateTime`.
 
-        :param timezone: boolean.  If True, and supported by the
-         backend, will produce 'TIMESTAMP WITH TIMEZONE'. For backends
-         that don't support timezone aware timestamps, has no
-         effect.
+        :param timezone: boolean.  Indicates that the datetime type should
+         enable timezone support, if available on the
+         **base date/time-holding type only**.   It is recommended
+         to make use of the :class:`~.types.TIMESTAMP` datatype directly when
+         using this flag, as some databases include separate generic
+         date/time-holding types distinct from the timezone-capable
+         TIMESTAMP datatype, such as Oracle.
+
 
         """
         self.timezone = timezone
@@ -2229,9 +2240,29 @@ class BIGINT(BigInteger):
 
 class TIMESTAMP(DateTime):
 
-    """The SQL TIMESTAMP type."""
+    """The SQL TIMESTAMP type.
+
+    :class:`~.types.TIMESTAMP` datatypes have support for timezone
+    storage on some backends, such as Postgresql and Oracle.  Use the
+    :paramref:`~types.TIMESTAMP.timezone` argument in order to enable
+    "TIMESTAMP WITH TIMEZONE" for these backends.
+
+    """
 
     __visit_name__ = 'TIMESTAMP'
+
+    def __init__(self, timezone=False):
+        """Construct a new :class:`.TIMESTAMP`.
+
+        :param timezone: boolean.  Indicates that the TIMESTAMP type should
+         enable timezone support, if available on the target database.
+         On a per-dialect basis is similar to "TIMESTAMP WITH TIMEZONE".
+         If the target database does not support timezones, this flag is
+         ignored.
+
+
+        """
+        super(TIMESTAMP, self).__init__(timezone=timezone)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.TIMESTAMP
