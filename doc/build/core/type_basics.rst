@@ -163,6 +163,7 @@ on all databases.
 
 
 .. autoclass:: TIMESTAMP
+    :members:
 
 
 .. autoclass:: VARBINARY
