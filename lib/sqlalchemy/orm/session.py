@@ -96,7 +96,18 @@ class SessionTransaction(object):
 
     The :attr:`.Session.transaction` attribute of :class:`.Session`
     refers to the current :class:`.SessionTransaction` object in use, if any.
+    The :attr:`.SessionTransaction.parent` attribute refers to the parent
+    :class:`.SessionTransaction` in the stack of :class:`.SessionTransaction`
+    objects.  If this attribute is ``None``, then this is the top of the stack.
+    If non-``None``, then this :class:`.SessionTransaction` refers either
+    to a so-called "subtransaction" or a "nested" transaction.  A
+    "subtransaction" is a scoping concept that demarcates an inner portion
+    of the outermost "real" transaction.  A nested transaction, which
+    is indicated when the :attr:`.SessionTransaction.nested`
+    attribute is also True, indicates that this :class:`.SessionTransaction`
+    corresponds to a SAVEPOINT.
 
+    **Life Cycle**
 
     A :class:`.SessionTransaction` is associated with a :class:`.Session`
     in its default mode of ``autocommit=False`` immediately, associated
@@ -106,7 +117,9 @@ class SessionTransaction(object):
     :class:`.Transaction` is added to a collection within the
     :class:`.SessionTransaction` object, becoming one of the
     connection/transaction pairs maintained by the
-    :class:`.SessionTransaction`.
+    :class:`.SessionTransaction`.  The start of a :class:`.SessionTransaction`
+    can be tracked using the :meth:`.SessionEvents.after_transaction_create`
+    event.
 
     The lifespan of the :class:`.SessionTransaction` ends when the
     :meth:`.Session.commit`, :meth:`.Session.rollback` or
@@ -116,7 +129,11 @@ class SessionTransaction(object):
     mode will create a new :class:`.SessionTransaction` to replace it
     immediately, whereas a :class:`.Session` that's in ``autocommit=True``
     mode will remain without a :class:`.SessionTransaction` until the
-    :meth:`.Session.begin` method is called.
+    :meth:`.Session.begin` method is called.  The end of a
+    :class:`.SessionTransaction` can be tracked using the
+    :meth:`.SessionEvents.after_transaction_end` event.
+
+    **Nesting and Subtransactions**
 
     Another detail of :class:`.SessionTransaction` behavior is that it is
     capable of "nesting".  This means that the :meth:`.Session.begin` method
@@ -124,12 +141,18 @@ class SessionTransaction(object):
     present, producing a new :class:`.SessionTransaction` that temporarily
     replaces the parent :class:`.SessionTransaction`.   When a
     :class:`.SessionTransaction` is produced as nested, it assigns itself to
-    the :attr:`.Session.transaction` attribute.  When it is ended via
+    the :attr:`.Session.transaction` attribute, and it additionally will assign
+    the previous :class:`.SessionTransaction` to its :attr:`.Session.parent`
+    attribute.  The behavior is effectively a
+    stack, where :attr:`.Session.transaction` refers to the current head of
+    the stack, and the :attr:`.SessionTransaction.parent` attribute allows
+    traversal up the stack until :attr:`.SessionTransaction.parent` is
+    ``None``, indicating the top of the stack.
+
+    When the scope of :class:`.SessionTransaction` is ended via
     :meth:`.Session.commit` or :meth:`.Session.rollback`, it restores its
     parent :class:`.SessionTransaction` back onto the
-    :attr:`.Session.transaction` attribute.  The behavior is effectively a
-    stack, where :attr:`.Session.transaction` refers to the current head of
-    the stack.
+    :attr:`.Session.transaction` attribute.
 
     The purpose of this stack is to allow nesting of
     :meth:`.Session.rollback` or :meth:`.Session.commit` calls in context
@@ -144,7 +167,17 @@ class SessionTransaction(object):
     within in a transaction block regardless of whether or not the
     :class:`.Session` is in transactional mode when the method is called.
 
-    See also:
+    Note that the flush process that occurs within the "autoflush" feature
+    as well as when the :meth:`.Session.flush` method is used **always**
+    creates a :class:`.SessionTransaction` object.   This object is normally
+    a subtransaction, unless the :class:`.Session` is in autocommit mode
+    and no transaction exists at all, in which case it's the outermost
+    transaction.   Any event-handling logic or other inspection logic
+    needs to take into account whether a :class:`.SessionTransaction`
+    is the outermost transaction, a subtransaction, or a "nested" / SAVEPOINT
+    transaction.
+
+    .. seealso::
 
     :meth:`.Session.rollback`
 
@@ -155,6 +188,10 @@ class SessionTransaction(object):
     :meth:`.Session.begin_nested`
 
     :attr:`.Session.is_active`
+
+    :meth:`.SessionEvents.after_transaction_create`
+
+    :meth:`.SessionEvents.after_transaction_end`
 
     :meth:`.SessionEvents.after_commit`
 
@@ -182,6 +219,32 @@ class SessionTransaction(object):
 
         if self.session.dispatch.after_transaction_create:
             self.session.dispatch.after_transaction_create(self.session, self)
+
+    @property
+    def parent(self):
+        """The parent :class:`.SessionTransaction` of this
+        :class:`.SessionTransaction`.
+
+        If this attribute is ``None``, indicates this
+        :class:`.SessionTransaction` is at the top of the stack, and
+        corresponds to a real "COMMIT"/"ROLLBACK"
+        block.  If non-``None``, then this is either a "subtransaction"
+        or a "nested" / SAVEPOINT transaction.  If the
+        :attr:`.SessionTransaction.nested` attribute is ``True``, then
+        this is a SAVEPOINT, and if ``False``, indicates this a subtransaction.
+
+        .. versionadded:: 1.0.16 - use ._parent for previous versions
+
+        """
+        return self._parent
+
+    nested = False
+    """Indicates if this is a nested, or SAVEPOINT, transaction.
+
+    When :attr:`.SessionTransaction.nested` is True, it is expected
+    that :attr:`.SessionTransaction.parent` will be True as well.
+
+    """
 
     @property
     def is_active(self):

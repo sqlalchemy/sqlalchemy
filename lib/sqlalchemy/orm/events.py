@@ -1192,9 +1192,28 @@ class SessionEvents(event.Events):
         :param session: the target :class:`.Session`.
         :param transaction: the target :class:`.SessionTransaction`.
 
-        .. versionadded:: 0.8
+         To detect if this is the outermost
+         :class:`.SessionTransaction`, as opposed to a "subtransaction" or a
+         SAVEPOINT, test that the :attr:`.SessionTransaction.parent` attribute
+         is ``None``::
+
+                @event.listens_for(session, "after_transaction_create")
+                def after_transaction_create(session, transaction):
+                    if transaction.parent is None:
+                        # work with top-level transaction
+
+         To detect if the :class:`.SessionTransaction` is a SAVEPOINT, use the
+         :attr:`.SessionTransaction.nested` attribute::
+
+                @event.listens_for(session, "after_transaction_create")
+                def after_transaction_create(session, transaction):
+                    if transaction.nested:
+                        # work with SAVEPOINT transaction
+
 
         .. seealso::
+
+            :class:`.SessionTransaction`
 
             :meth:`~.SessionEvents.after_transaction_end`
 
@@ -1212,9 +1231,28 @@ class SessionEvents(event.Events):
         :param session: the target :class:`.Session`.
         :param transaction: the target :class:`.SessionTransaction`.
 
-        .. versionadded:: 0.8
+         To detect if this is the outermost
+         :class:`.SessionTransaction`, as opposed to a "subtransaction" or a
+         SAVEPOINT, test that the :attr:`.SessionTransaction.parent` attribute
+         is ``None``::
+
+                @event.listens_for(session, "after_transaction_create")
+                def after_transaction_end(session, transaction):
+                    if transaction.parent is None:
+                        # work with top-level transaction
+
+         To detect if the :class:`.SessionTransaction` is a SAVEPOINT, use the
+         :attr:`.SessionTransaction.nested` attribute::
+
+                @event.listens_for(session, "after_transaction_create")
+                def after_transaction_end(session, transaction):
+                    if transaction.nested:
+                        # work with SAVEPOINT transaction
+
 
         .. seealso::
+
+            :class:`.SessionTransaction`
 
             :meth:`~.SessionEvents.after_transaction_create`
 
