@@ -22,6 +22,25 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, sql, mysql
+        :tickets: 3803
+
+        The ``BaseException`` exception class is now intercepted by the
+        exception-handling routines of :class:`.Connection`, and includes
+        handling by the :meth:`~.ConnectionEvents.handle_error`
+        event.  The :class:`.Connection` is now **invalidated** by default in
+        the case of a system level exception that is not a subclass of
+        ``Exception``, including ``KeyboardInterrupt`` and the greenlet
+        ``GreenletExit`` class, to prevent further operations from occurring
+        upon a database connection that is in an unknown and possibly
+        corrupted state.  The MySQL drivers are most targeted by this change
+        however the change is across all DBAPIs.
+
+        .. seealso::
+
+            :ref:`change_3803`
+
+    .. change::
         :tags: bug, sql
         :tickets: 3799
 

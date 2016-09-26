@@ -741,6 +741,9 @@ class ConnectionEvents(event.Events):
         * read-only, low-level exception handling for logging and
           debugging purposes
         * exception re-writing
+        * Establishing or disabling whether a connection or the owning
+          connection pool is invalidated or expired in response to a
+          specific exception.
 
         The hook is called while the cursor from the failed operation
         (if any) is still open and accessible.   Special cleanup operations
@@ -805,6 +808,13 @@ class ConnectionEvents(event.Events):
 
         .. versionadded:: 0.9.7 Added the
             :meth:`.ConnectionEvents.handle_error` hook.
+
+        .. versionchanged:: 1.1 The :meth:`.handle_error` event will now
+           receive all exceptions that inherit from ``BaseException``, including
+           ``SystemExit`` and ``KeyboardInterrupt``.  The setting for
+           :attr:`.ExceptionContext.is_disconnect` is ``True`` in this case
+           and the default for :attr:`.ExceptionContext.invalidate_pool_on_disconnect`
+           is ``False``.
 
         .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
            invoked when an :class:`.Engine` fails during the initial

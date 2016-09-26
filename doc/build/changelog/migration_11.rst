@@ -1058,6 +1058,69 @@ into unions; these cases are not supported.
 New Features and Improvements - Core
 ====================================
 
+.. _change_3803:
+
+Engines now invalidate connections, run error handlers for BaseException
+------------------------------------------------------------------------
+
+.. versionadded:: 1.1 this change is a late add to the 1.1 series just
+   prior to 1.1 final, and is not present in the 1.1 beta releases.
+
+The Python ``BaseException`` class is below that of ``Exception`` but is the
+identifiable base for system-level exceptions such as ``KeyboardInterrupt``,
+``SystemExit``, and notably the ``GreenletExit`` exception that's used by
+eventlet and gevent. This exception class is now intercepted by the exception-
+handling routines of :class:`.Connection`, and includes handling by the
+:meth:`~.ConnectionEvents.handle_error` event.  The :class:`.Connection` is now
+**invalidated** by default in the case of a system level exception that is not
+a subclass of ``Exception``, as it is assumed an operation was interrupted and
+the connection may be in an unusable state.  The MySQL drivers are most
+targeted by this change however the change is across all DBAPIs.
+
+Note that upon invalidation, the immediate DBAPI connection used by
+:class:`.Connection` is disposed, and the :class:`.Connection`, if still
+being used subsequent to the exception raise, will use a new
+DBAPI connection for subsequent operations upon next use; however, the state of
+any transaction in progress is lost and the appropriate ``.rollback()`` method
+must be called if applicable before this re-use can proceed.
+
+In order to identify this change, it was straightforward to demonstrate a pymysql or
+mysqlclient / MySQL-Python connection moving into a corrupted state when
+these exceptions occur in the middle of the connection doing its work;
+the connection would then be returned to the connection pool where subsequent
+uses would fail, or even before returning to the pool would cause secondary
+failures in context managers that call ``.rollback()`` upon the exception
+catch.   The behavior here is expected to reduce
+the incidence of the MySQL error "commands out of sync", as well as the
+``ResourceClosedError`` which can occur when the MySQL driver fails to
+report ``cursor.description`` correctly, when running under greenlet
+conditions where greenlets are killed, or where ``KeyboardInterrupt`` exceptions
+are handled without exiting the program entirely.
+
+The behavior is distinct from the usual auto-invalidation feature, in that it
+does not assume that the backend database itself has been shut down or
+restarted; it does not recycle the entire connection pool as is the case
+for usual DBAPI disconnect exceptions.
+
+This change should be a net improvement for all users with the exception
+of **any application that currently intercepts ``KeyboardInterrupt`` or
+``GreenletExit`` and wishes to continue working within the same transaction**.
+Such an operation is theoretically possible with other DBAPIs that do not appear to be
+impacted by ``KeyboardInterrupt`` such as psycopg2.  For these DBAPIs,
+the following workaround will disable the connection from being recycled
+for specific exceptions::
+
+
+        engine = create_engine("postgresql+psycopg2://")
+
+        @event.listens_for(engine, "handle_error")
+        def cancel_disconnect(ctx):
+            if isinstance(ctx.original_exception, KeyboardInterrupt):
+                ctx.is_disconnect = False
+
+:ticket:`3803`
+
+
 .. _change_2551:
 
 CTE Support for INSERT, UPDATE, DELETE

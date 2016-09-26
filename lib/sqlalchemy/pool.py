@@ -343,6 +343,7 @@ class Pool(log.Identified):
         Connections with a start time prior to this pool's invalidation
         time will be recycled upon next checkout.
         """
+
         rec = getattr(connection, "_connection_record", None)
         if not rec or self._invalidate_time < rec.starttime:
             self._invalidate_time = time.time()
