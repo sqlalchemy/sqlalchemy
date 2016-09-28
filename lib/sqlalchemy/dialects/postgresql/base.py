@@ -1431,7 +1431,6 @@ class PGCompiler(compiler.SQLCompiler):
                 target_text += ' WHERE %s' % \
                     self.process(
                         clause.inferred_target_whereclause,
-                        include_table=False,
                         use_schema=False
                     )
         else:
@@ -1471,7 +1470,7 @@ class PGCompiler(compiler.SQLCompiler):
             action_text += ' WHERE %s' % \
                 self.process(
                     clause.update_whereclause,
-                    include_table=False,
+                    include_table=True,
                     use_schema=False
                 )
 

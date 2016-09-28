@@ -1205,7 +1205,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name) "
-                            "WHERE name > %(name_1)s "
+                            "WHERE mytable.name > %(name_1)s "
                             'DO UPDATE SET name = excluded.name')
 
     def test_do_update_unnamed_index_target(self):
@@ -1224,7 +1224,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name) "
-                            "WHERE name > %(name_1)s "
+                            "WHERE mytable.name > %(name_1)s "
                             'DO UPDATE SET name = excluded.name')
 
     def test_do_update_unnamed_exclude_constraint_target(self):
@@ -1237,7 +1237,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name, description) "
-                            "WHERE description != %(description_1)s "
+                            "WHERE mytable.description != %(description_1)s "
                             'DO UPDATE SET name = excluded.name')
 
     def test_do_update_add_whereclause(self):
@@ -1253,10 +1253,26 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name, description) "
-                            "WHERE description != %(description_1)s "
+                            "WHERE mytable.description != %(description_1)s "
                             'DO UPDATE SET name = excluded.name '
-                            "WHERE name != %(name_1)s "
-                            "AND description != %(description_2)s")
+                            "WHERE mytable.name != %(name_1)s "
+                            "AND mytable.description != %(description_2)s")
+
+    def test_do_update_add_whereclause_references_excluded(self):
+        i = insert(
+            self.table1, values=dict(name='foo'))
+        i = i.on_conflict_do_update(
+            constraint=self.excl_constr_anon,
+            set_=dict(name=i.excluded.name),
+            where=(
+                (self.table1.c.name != i.excluded.name))
+        )
+        self.assert_compile(i,
+                            'INSERT INTO mytable (name) VALUES '
+                            "(%(name)s) ON CONFLICT (name, description) "
+                            "WHERE mytable.description != %(description_1)s "
+                            'DO UPDATE SET name = excluded.name '
+                            "WHERE mytable.name != excluded.name")
 
     def test_quote_raw_string_col(self):
         t = table('t', column("FancyName"), column("other name"))

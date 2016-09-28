@@ -22,6 +22,14 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3807
+
+        Fixed issue in new PG "on conflict" construct where columns including
+        those of the "excluded" namespace would not be table-qualified
+        in the WHERE clauses in the statement.
+
+    .. change::
         :tags: bug, sql, mysql
         :tickets: 3803
 
