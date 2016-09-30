@@ -215,11 +215,12 @@ class custom_op(object):
 
     def __init__(
             self, opstring, precedence=0, is_comparison=False,
-            natural_self_precedent=False):
+            natural_self_precedent=False, eager_grouping=False):
         self.opstring = opstring
         self.precedence = precedence
         self.is_comparison = is_comparison
         self.natural_self_precedent = natural_self_precedent
+        self.eager_grouping = eager_grouping
 
     def __eq__(self, other):
         return isinstance(other, custom_op) and \
@@ -935,9 +936,10 @@ _PRECEDENCE = {
     from_: 15,
     any_op: 15,
     all_op: 15,
+    getitem: 15,
     json_getitem_op: 15,
     json_path_getitem_op: 15,
-    getitem: 15,
+
     mul: 8,
     truediv: 8,
     div: 8,
@@ -985,6 +987,7 @@ _PRECEDENCE = {
 
     as_: -1,
     exists: 0,
+
     _asbool: -10,
     _smallest: _smallest,
     _largest: _largest

@@ -1270,11 +1270,13 @@ class PGCompiler(compiler.SQLCompiler):
         )
 
     def visit_json_getitem_op_binary(self, binary, operator, **kw):
+        kw['eager_grouping'] = True
         return self._generate_generic_binary(
             binary, " -> ", **kw
         )
 
     def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+        kw['eager_grouping'] = True
         return self._generate_generic_binary(
             binary, " #> ", **kw
         )

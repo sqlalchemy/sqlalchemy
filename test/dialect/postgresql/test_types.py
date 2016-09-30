@@ -1816,7 +1816,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_getitem(self):
         self._test_where(
             self.hashcol['bar'] == None,
-            "test_table.hash -> %(hash_1)s IS NULL"
+            "(test_table.hash -> %(hash_1)s) IS NULL"
         )
 
     def test_cols_get(self):
@@ -1900,6 +1900,12 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         self._test_cols(
             (self.hashcol + self.hashcol)['foo'],
             "(test_table.hash || test_table.hash) -> %(param_1)s AS anon_1"
+        )
+
+    def test_cols_against_is(self):
+        self._test_cols(
+            self.hashcol['foo'] != None,
+            "(test_table.hash -> %(hash_1)s) IS NOT NULL AS anon_1"
         )
 
     def test_cols_keys(self):
@@ -2436,13 +2442,13 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_getitem(self):
         self._test_where(
             self.jsoncol['bar'] == None,
-            "test_table.test_column -> %(test_column_1)s IS NULL"
+            "(test_table.test_column -> %(test_column_1)s) IS NULL"
         )
 
     def test_where_path(self):
         self._test_where(
             self.jsoncol[("foo", 1)] == None,
-            "test_table.test_column #> %(test_column_1)s IS NULL"
+            "(test_table.test_column #> %(test_column_1)s) IS NULL"
         )
 
     def test_path_typing(self):
@@ -2481,27 +2487,27 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_getitem_as_text(self):
         self._test_where(
             self.jsoncol['bar'].astext == None,
-            "test_table.test_column ->> %(test_column_1)s IS NULL"
+            "(test_table.test_column ->> %(test_column_1)s) IS NULL"
         )
 
     def test_where_getitem_astext_cast(self):
         self._test_where(
             self.jsoncol['bar'].astext.cast(Integer) == 5,
-            "CAST(test_table.test_column ->> %(test_column_1)s AS INTEGER) "
+            "CAST((test_table.test_column ->> %(test_column_1)s) AS INTEGER) "
             "= %(param_1)s"
         )
 
     def test_where_getitem_json_cast(self):
         self._test_where(
             self.jsoncol['bar'].cast(Integer) == 5,
-            "CAST(test_table.test_column -> %(test_column_1)s AS INTEGER) "
+            "CAST((test_table.test_column -> %(test_column_1)s) AS INTEGER) "
             "= %(param_1)s"
         )
 
     def test_where_path_as_text(self):
         self._test_where(
             self.jsoncol[("foo", 1)].astext == None,
-            "test_table.test_column #>> %(test_column_1)s IS NULL"
+            "(test_table.test_column #>> %(test_column_1)s) IS NULL"
         )
 
     def test_cols_get(self):
@@ -2777,6 +2783,13 @@ class JSONRoundTripTest(fixtures.TablesTest):
         result = engine.execute(
             select([data_table.c.data]).where(
                 data_table.c.data['k1'].astext == 'r3v1'
+            )
+        ).first()
+        eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))
+
+        result = engine.execute(
+            select([data_table.c.data]).where(
+                data_table.c.data['k1'].astext.cast(String) == 'r3v1'
             )
         ).first()
         eq_(result, ({'k1': 'r3v1', 'k2': 'r3v2'},))

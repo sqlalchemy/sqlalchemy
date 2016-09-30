@@ -994,7 +994,9 @@ class SQLCompiler(Compiled):
         return "NOT %s" % self.visit_binary(
             binary, override_operator=operators.match_op)
 
-    def visit_binary(self, binary, override_operator=None, **kw):
+    def visit_binary(self, binary, override_operator=None,
+                     eager_grouping=False, **kw):
+
         # don't allow "? = ?" to render
         if self.ansi_bind_rules and \
                 isinstance(binary.left, elements.BindParameter) and \
@@ -1014,6 +1016,7 @@ class SQLCompiler(Compiled):
                 return self._generate_generic_binary(binary, opstring, **kw)
 
     def visit_custom_op_binary(self, element, operator, **kw):
+        kw['eager_grouping'] = operator.eager_grouping
         return self._generate_generic_binary(
             element, " " + operator.opstring + " ", **kw)
 
@@ -1025,10 +1028,21 @@ class SQLCompiler(Compiled):
         return self._generate_generic_unary_modifier(
             element, " " + operator.opstring, **kw)
 
-    def _generate_generic_binary(self, binary, opstring, **kw):
-        return binary.left._compiler_dispatch(self, **kw) + \
+    def _generate_generic_binary(
+            self, binary, opstring, eager_grouping=False, **kw):
+
+        _in_binary = kw.get('_in_binary', False)
+
+        kw['_in_binary'] = True
+        text = binary.left._compiler_dispatch(
+            self, eager_grouping=eager_grouping, **kw) + \
             opstring + \
-            binary.right._compiler_dispatch(self, **kw)
+            binary.right._compiler_dispatch(
+                self, eager_grouping=eager_grouping, **kw)
+
+        if _in_binary and eager_grouping:
+            text = "(%s)" % text
+        return text
 
     def _generate_generic_unary_operator(self, unary, opstring, **kw):
         return opstring + unary.element._compiler_dispatch(self, **kw)
@@ -2214,6 +2228,12 @@ class StrSQLCompiler(SQLCompiler):
             self.process(binary.left, **kw),
             self.process(binary.right, **kw)
         )
+
+    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+        return self.visit_getitem_binary(binary, operator, **kw)
+
+    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+        return self.visit_getitem_binary(binary, operator, **kw)
 
     def returning_clause(self, stmt, returning_cols):
         columns = [

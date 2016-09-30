@@ -17,33 +17,42 @@ from ... import util
 
 __all__ = ('JSON', 'JSONB')
 
+idx_precedence = operators._PRECEDENCE[operators.json_getitem_op]
+
 ASTEXT = operators.custom_op(
-    "->>", precedence=15, natural_self_precedent=True,
+    "->>", precedence=idx_precedence, natural_self_precedent=True,
+    eager_grouping=True
 )
 
 JSONPATH_ASTEXT = operators.custom_op(
-    "#>>", precedence=15, natural_self_precedent=True,
+    "#>>", precedence=idx_precedence, natural_self_precedent=True,
+    eager_grouping=True
 )
 
 
 HAS_KEY = operators.custom_op(
-    "?", precedence=15, natural_self_precedent=True
+    "?", precedence=idx_precedence, natural_self_precedent=True,
+    eager_grouping=True
 )
 
 HAS_ALL = operators.custom_op(
-    "?&", precedence=15, natural_self_precedent=True
+    "?&", precedence=idx_precedence, natural_self_precedent=True,
+    eager_grouping=True
 )
 
 HAS_ANY = operators.custom_op(
-    "?|", precedence=15, natural_self_precedent=True
+    "?|", precedence=idx_precedence, natural_self_precedent=True,
+    eager_grouping=True
 )
 
 CONTAINS = operators.custom_op(
-    "@>", precedence=15, natural_self_precedent=True
+    "@>", precedence=idx_precedence, natural_self_precedent=True,
+    eager_grouping=True
 )
 
 CONTAINED_BY = operators.custom_op(
-    "<@", precedence=15, natural_self_precedent=True
+    "<@", precedence=idx_precedence, natural_self_precedent=True,
+    eager_grouping=True
 )
 
 

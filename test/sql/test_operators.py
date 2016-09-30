@@ -670,13 +670,13 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             def visit_json_getitem_op_binary(self, binary, operator, **kw):
                 return self._generate_generic_binary(
-                    binary, " -> ", **kw
+                    binary, " -> ", eager_grouping=True, **kw
                 )
 
             def visit_json_path_getitem_op_binary(
                     self, binary, operator, **kw):
                 return self._generate_generic_binary(
-                    binary, " #> ", **kw
+                    binary, " #> ", eager_grouping=True, **kw
                 )
 
             def visit_getitem_binary(self, binary, operator, **kw):
@@ -748,9 +748,34 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={}
         )
 
+    def test_getindex_sqlexpr_right_grouping(self):
+
+        col = Column('x', self.MyType())
+        col2 = Column('y', Integer())
+
         self.assert_compile(
             col[col2 + 8],
             "x -> (y + :y_1)",
+            checkparams={'y_1': 8}
+        )
+
+    def test_getindex_sqlexpr_left_grouping(self):
+
+        col = Column('x', self.MyType())
+
+        self.assert_compile(
+            col[8] != None,
+            "(x -> :x_1) IS NOT NULL"
+        )
+
+    def test_getindex_sqlexpr_both_grouping(self):
+
+        col = Column('x', self.MyType())
+        col2 = Column('y', Integer())
+
+        self.assert_compile(
+            col[col2 + 8] != None,
+            "(x -> (y + :y_1)) IS NOT NULL",
             checkparams={'y_1': 8}
         )
 
