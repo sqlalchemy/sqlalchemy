@@ -24,11 +24,22 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_string(self):
+        # note: that the datatype is an Integer here doesn't matter,
+        # the server_default is interpreted independently of the
+        # column's datatype.
         m = MetaData()
         t = Table('t', m, Column('x', Integer, server_default='5'))
         self.assert_compile(
             CreateTable(t),
             "CREATE TABLE t (x INTEGER DEFAULT '5')"
+        )
+
+    def test_string_w_quotes(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, server_default="5'6"))
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER DEFAULT '5''6')"
         )
 
     def test_text(self):
@@ -37,6 +48,23 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             CreateTable(t),
             "CREATE TABLE t (x INTEGER DEFAULT 5 + 8)"
+        )
+
+    def test_text_w_quotes(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer, server_default=text("5 ' 8")))
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x INTEGER DEFAULT 5 ' 8)"
+        )
+
+    def test_literal_binds_w_quotes(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer,
+                  server_default=literal("5 ' 8")))
+        self.assert_compile(
+            CreateTable(t),
+            """CREATE TABLE t (x INTEGER DEFAULT '5 '' 8')"""
         )
 
     def test_text_literal_binds(self):

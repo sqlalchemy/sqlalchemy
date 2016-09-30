@@ -1180,6 +1180,31 @@ statement::
 
 :ticket:`2551`
 
+.. _change_3809:
+
+String server_default now literal quoted
+----------------------------------------
+
+A server default passed to :paramref:`.Column.server_default` as a plain
+Python string that has quotes embedded is now
+passed through the literal quoting system::
+
+    >>> from sqlalchemy.schema import MetaData, Table, Column, CreateTable
+    >>> from sqlalchemy.types import String
+    >>> t = Table('t', MetaData(), Column('x', String(), server_default="hi ' there"))
+    >>> print CreateTable(t)
+
+    CREATE TABLE t (
+        x VARCHAR DEFAULT 'hi '' there'
+    )
+
+Previously the quote would render directly.     This change may be backwards
+incompatible for applications with such a use case who were working around
+the issue.
+
+
+:ticket:`3809`
+
 .. _change_3049:
 
 Support for RANGE and ROWS specification within window functions

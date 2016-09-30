@@ -22,6 +22,17 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3809
+
+        A string sent as a column default via the
+        :paramref:`.Column.server_default` parameter is now escaped for quotes.
+
+        .. seealso::
+
+            :ref:`change_3809`
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3807
 

@@ -2494,7 +2494,8 @@ class DDLCompiler(Compiled):
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
             if isinstance(column.server_default.arg, util.string_types):
-                return "'%s'" % column.server_default.arg
+                return self.sql_compiler.render_literal_value(
+                    column.server_default.arg, sqltypes.STRINGTYPE)
             else:
                 return self.sql_compiler.process(
                     column.server_default.arg, literal_binds=True)
