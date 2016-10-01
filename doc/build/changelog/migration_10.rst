@@ -163,18 +163,16 @@ is affixed to the base class only, and just inherited from subclasses.
 With :attr:`.declared_attr.cascading`, individual behaviors can be
 applied::
 
-    class HasSomeAttribute(object):
+    class HasIdMixin(object):
         @declared_attr.cascading
-        def some_id(cls):
+        def id(cls):
             if has_inherited_table(cls):
                 return Column(ForeignKey('myclass.id'), primary_key=True)
             else:
                 return Column(Integer, primary_key=True)
 
-            return Column('id', Integer, primary_key=True)
-
-    class MyClass(HasSomeAttribute, Base):
-        ""
+    class MyClass(HasIdMixin, Base):
+        __tablename__ = 'myclass'
         # ...
 
     class MySubClass(MyClass):
