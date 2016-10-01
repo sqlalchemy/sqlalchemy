@@ -34,7 +34,9 @@ per-object or per-function call.
 
 For a multiple-process application that uses the ``os.fork`` system call, or
 for example the Python ``multiprocessing`` module, it's usually required that a
-separate :class:`.Engine` be used for each child process. This is because the
+separate :class:`.Engine` be used for each child process, or
+that the :meth:`.Engine.dispose` method is called at the start of
+the process to flush existing connections. This is because the
 :class:`.Engine` maintains a reference to a connection pool that ultimately
 references DBAPI connections - these tend to not be portable across process
 boundaries. An :class:`.Engine` that is configured not to use pooling (which
