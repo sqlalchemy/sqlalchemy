@@ -1058,6 +1058,10 @@ class Column(SchemaItem, ColumnClause):
             using :class:`.ColumnDefault` as a positional argument with
             ``for_update=True``.
 
+            .. seealso::
+
+                :ref:`metadata_defaults` - complete discussion of onupdate
+
         :param primary_key: If ``True``, marks this column as a primary key
             column. Multiple columns can have this flag set to specify
             composite primary keys. As an alternative, the primary key of a
@@ -1092,14 +1096,20 @@ class Column(SchemaItem, ColumnClause):
 
             .. seealso::
 
-                :ref:`server_defaults`
+                :ref:`server_defaults` - complete discussion of server side
+                defaults
 
         :param server_onupdate:   A :class:`.FetchedValue` instance
-             representing a database-side default generation function. This
+             representing a database-side default generation function,
+             such as a trigger. This
              indicates to SQLAlchemy that a newly generated value will be
-             available after updates. This construct does not specify any DDL
-             and the implementation is left to the database, such as via a
-             trigger.
+             available after updates. This construct does not actually
+             implement any kind of generation function within the database,
+             which instead must be specified separately.
+
+            .. seealso::
+
+                :ref:`triggered_columns`
 
         :param quote: Force quoting of this column's name on or off,
              corresponding to ``True`` or ``False``. When left at its default

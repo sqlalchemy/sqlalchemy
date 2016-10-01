@@ -370,6 +370,7 @@ and ``TypeB`` classes.
    attributes, including user-defined attributes as well as
    :func:`.association_proxy`.
 
+.. _decl_mixin_inheritance:
 
 Controlling table inheritance with mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

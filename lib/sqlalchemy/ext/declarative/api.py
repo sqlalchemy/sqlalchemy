@@ -42,6 +42,15 @@ def instrument_declarative(cls, registry, metadata):
 def has_inherited_table(cls):
     """Given a class, return True if any of the classes it inherits from has a
     mapped table, otherwise return False.
+
+    This is used in declarative mixins to build attributes that behave
+    differently for the base class vs. a subclass in an inheritance
+    hierarchy.
+
+    .. seealso::
+
+        :ref:`decl_mixin_inheritance`
+
     """
     for class_ in cls.__mro__[1:]:
         if getattr(class_, '__table__', None) is not None:
