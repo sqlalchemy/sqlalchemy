@@ -237,11 +237,6 @@ called out using :class:`.FetchedValue` as a marker::
         Column('def', String(20), server_onupdate=FetchedValue())
     )
 
-.. versionchanged:: 0.8.0b2,0.7.10
-    The ``for_update`` argument on :class:`.FetchedValue` is set automatically
-    when specified as the ``server_onupdate`` argument.  If using an older version,
-    specify the onupdate above as ``server_onupdate=FetchedValue(for_update=True)``.
-
 These markers do not emit a "default" clause when the table is created,
 however they do set the same internal flags as a static ``server_default``
 clause, providing hints to higher-level tools that a "post-fetch" of these
