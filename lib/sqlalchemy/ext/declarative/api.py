@@ -196,19 +196,16 @@ class declared_attr(interfaces._MappedAttribute, property):
         Below, both MyClass as well as MySubClass will have a distinct
         ``id`` Column object established::
 
-            class HasSomeAttribute(object):
+            class HasIdMixin(object):
                 @declared_attr.cascading
-                def some_id(cls):
+                def id(cls):
                     if has_inherited_table(cls):
-                        return Column(
-                            ForeignKey('myclass.id'), primary_key=True)
+                        return Column(ForeignKey('myclass.id'), primary_key=True)
                     else:
                         return Column(Integer, primary_key=True)
 
-                    return Column('id', Integer, primary_key=True)
-
-            class MyClass(HasSomeAttribute, Base):
-                ""
+            class MyClass(HasIdMixin, Base):
+                __tablename__ = 'myclass'
                 # ...
 
             class MySubClass(MyClass):

@@ -466,17 +466,15 @@ foreign key.  We can achieve this as a mixin by using the
 function should be invoked **for each class in the hierarchy**, just like
 it does for ``__tablename__``::
 
-    class HasId(object):
+    class HasIdMixin(object):
         @declared_attr.cascading
         def id(cls):
             if has_inherited_table(cls):
-                return Column('id',
-                              Integer,
-                              ForeignKey('person.id'), primary_key=True)
+                return Column(ForeignKey('person.id'), primary_key=True)
             else:
-                return Column('id', Integer, primary_key=True)
+                return Column(Integer, primary_key=True)
 
-    class Person(HasId, Base):
+    class Person(HasIdMixin, Base):
         __tablename__ = 'person'
         discriminator = Column('type', String(50))
         __mapper_args__ = {'polymorphic_on': discriminator}
