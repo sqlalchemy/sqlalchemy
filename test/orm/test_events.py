@@ -9,7 +9,7 @@ from sqlalchemy.orm import mapper, relationship, \
     Session, sessionmaker, attributes, configure_mappers
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm import instrumentation, events
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_not_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing.util import gc_collect
@@ -1763,6 +1763,69 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
                 call.flag_checked(u1)
             ]
         )
+
+    def test_pending_to_persistent_del(self):
+        sess, User, start_events = self._fixture()
+
+        @event.listens_for(sess, "pending_to_persistent")
+        def pending_to_persistent(session, instance):
+            listener.flag_checked(instance)
+            # this is actually u1, because
+            # we have a strong ref internally
+            is_not_(None, instance)
+
+        u1 = User(name='u1')
+        sess.add(u1)
+
+        u1_inst_state = u1._sa_instance_state
+        del u1
+
+        gc_collect()
+
+        listener = start_events()
+
+        sess.flush()
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.flag_checked(u1_inst_state.obj()),
+                call.pending_to_persistent(
+                    sess, u1_inst_state.obj()),
+            ]
+        )
+
+    def test_persistent_to_deleted_del(self):
+        sess, User, start_events = self._fixture()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+
+        listener = start_events()
+
+        @event.listens_for(sess, "persistent_to_deleted")
+        def persistent_to_deleted(session, instance):
+            is_not_(None, instance)
+            listener.flag_checked(instance)
+
+        sess.delete(u1)
+        u1_inst_state = u1._sa_instance_state
+
+        del u1
+        gc_collect()
+
+        sess.flush()
+
+        eq_(
+            listener.mock_calls,
+            [
+                call.persistent_to_deleted(sess, u1_inst_state.obj()),
+                call.flag_checked(u1_inst_state.obj())
+             ]
+         )
+
+
 
     def test_detached_to_persistent(self):
         sess, User, start_events = self._fixture()

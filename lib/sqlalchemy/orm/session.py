@@ -1642,6 +1642,11 @@ class Session(_SessionClassMethods):
             if self._enable_transaction_accounting and self.transaction:
                 self.transaction._deleted[state] = True
 
+            if persistent_to_deleted is not None:
+                # get a strong reference before we pop out of
+                # self._deleted
+                obj = state.obj()
+
             self.identity_map.safe_discard(state)
             self._deleted.pop(state, None)
             state._deleted = True
@@ -1649,7 +1654,7 @@ class Session(_SessionClassMethods):
             # is still in the transaction snapshot and needs to be
             # tracked as part of that
             if persistent_to_deleted is not None:
-                persistent_to_deleted(self, state.obj())
+                persistent_to_deleted(self, obj)
 
     def add(self, instance, _warn=True):
         """Place an object in the ``Session``.
@@ -1964,6 +1969,11 @@ class Session(_SessionClassMethods):
                 )
 
         obj = state.obj()
+
+        # check for late gc
+        if obj is None:
+            return
+
         to_attach = self._before_attach(state, obj)
 
         self._deleted.pop(state, None)

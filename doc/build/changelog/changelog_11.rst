@@ -22,6 +22,14 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3808
+
+        Fixed bug in new :meth:`.SessionEvents.persistent_to_deleted` event
+        where the target object could be garbage collected before the event
+        is fired off.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3809
 
