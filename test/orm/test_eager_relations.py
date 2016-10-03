@@ -4252,7 +4252,6 @@ class EntityViaMultiplePathTestOne(fixtures.DeclarativeMappedTest):
         # PYTHONHASHSEED
         in_('d', a1.c.__dict__)
 
-
 class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
     """test for [ticket:3431]"""
 
@@ -4324,3 +4323,53 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
         in_(
             'user', lz_test.a.ld.__dict__
         )
+
+
+class EntityViaMultiplePathTestThree(fixtures.DeclarativeMappedTest):
+    """test for [ticket:3811] continuing on [ticket:3431]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(Integer, ForeignKey('a.id'))
+            parent = relationship("A", remote_side=id, lazy="raise")
+
+    def test_multi_path_load_lazy_none(self):
+        A = self.classes.A
+        s = Session()
+        s.add_all([
+            A(id=1, parent_id=None),
+            A(id=2, parent_id=2),
+            A(id=4, parent_id=None),
+            A(id=3, parent_id=4),
+        ])
+        s.commit()
+
+        q1 = s.query(A).order_by(A.id).\
+            filter(A.id.in_([1, 2])).options(joinedload(A.parent))
+
+        def go():
+            for a in q1:
+                if a.id == 1:
+                    assert a.parent is None
+                else:
+                    assert a.parent is not None
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        q1 = s.query(A).order_by(A.id).\
+            filter(A.id.in_([3, 4])).options(joinedload(A.parent))
+
+        def go():
+            for a in q1:
+                if a.id == 4:
+                    assert a.parent is None
+                else:
+                    assert a.parent is not None
+
+        self.assert_sql_count(testing.db, go, 1)
