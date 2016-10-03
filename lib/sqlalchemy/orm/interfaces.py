@@ -489,11 +489,8 @@ class StrategizedProperty(MapperProperty):
         except KeyError:
             cls = self._strategy_lookup(*key)
             self._strategies[key] = self._strategies[
-                cls] = strategy = cls(self)
+                cls] = strategy = cls(self, key)
             return strategy
-
-    def _get_strategy_by_cls(self, cls):
-        return self._get_strategy(cls._strategy_keys[0])
 
     def setup(
             self, context, entity, path, adapter, **kwargs):
@@ -518,7 +515,7 @@ class StrategizedProperty(MapperProperty):
 
     def do_init(self):
         self._strategies = {}
-        self.strategy = self._get_strategy_by_cls(self.strategy_class)
+        self.strategy = self._get_strategy(self.strategy_key)
 
     def post_instrument_class(self, mapper):
         if not self.parent.non_primary and \
@@ -603,13 +600,16 @@ class LoaderStrategy(object):
 
     """
 
-    __slots__ = 'parent_property', 'is_class_level', 'parent', 'key'
+    __slots__ = 'parent_property', 'is_class_level', 'parent', 'key', \
+        'strategy_key', 'strategy_opts'
 
-    def __init__(self, parent):
+    def __init__(self, parent, strategy_key):
         self.parent_property = parent
         self.is_class_level = False
         self.parent = self.parent_property.parent
         self.key = self.parent_property.key
+        self.strategy_key = strategy_key
+        self.strategy_opts = dict(strategy_key)
 
     def init_class_attribute(self, mapper):
         pass

@@ -120,8 +120,8 @@ class UninstrumentedColumnLoader(LoaderStrategy):
     """
     __slots__ = 'columns',
 
-    def __init__(self, parent):
-        super(UninstrumentedColumnLoader, self).__init__(parent)
+    def __init__(self, parent, strategy_key):
+        super(UninstrumentedColumnLoader, self).__init__(parent, strategy_key)
         self.columns = self.parent_property.columns
 
     def setup_query(
@@ -145,8 +145,8 @@ class ColumnLoader(LoaderStrategy):
 
     __slots__ = 'columns', 'is_composite'
 
-    def __init__(self, parent):
-        super(ColumnLoader, self).__init__(parent)
+    def __init__(self, parent, strategy_key):
+        super(ColumnLoader, self).__init__(parent, strategy_key)
         self.columns = self.parent_property.columns
         self.is_composite = hasattr(self.parent_property, 'composite_class')
 
@@ -201,8 +201,8 @@ class DeferredColumnLoader(LoaderStrategy):
 
     __slots__ = 'columns', 'group'
 
-    def __init__(self, parent):
-        super(DeferredColumnLoader, self).__init__(parent)
+    def __init__(self, parent, strategy_key):
+        super(DeferredColumnLoader, self).__init__(parent, strategy_key)
         if hasattr(self.parent_property, 'composite_class'):
             raise NotImplementedError("Deferred loading for composite "
                                       "types not implemented yet")
@@ -257,10 +257,12 @@ class DeferredColumnLoader(LoaderStrategy):
                 only_load_props and self.key in only_load_props
             )
         ):
-            self.parent_property._get_strategy_by_cls(ColumnLoader).\
-                setup_query(context, entity,
-                            path, loadopt, adapter,
-                            column_collection, memoized_populators, **kw)
+            self.parent_property._get_strategy(
+                (("deferred", False), ("instrument", True))
+            ).setup_query(
+                context, entity,
+                path, loadopt, adapter,
+                column_collection, memoized_populators, **kw)
         elif self.is_class_level:
             memoized_populators[self.parent_property] = _SET_DEFERRED_EXPIRED
         else:
@@ -326,8 +328,8 @@ class AbstractRelationshipLoader(LoaderStrategy):
 
     __slots__ = 'mapper', 'target', 'uselist'
 
-    def __init__(self, parent):
-        super(AbstractRelationshipLoader, self).__init__(parent)
+    def __init__(self, parent, strategy_key):
+        super(AbstractRelationshipLoader, self).__init__(parent, strategy_key)
         self.mapper = self.parent_property.mapper
         self.target = self.parent_property.target
         self.uselist = self.parent_property.uselist
@@ -366,35 +368,10 @@ class NoLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(lazy="raise")
-class RaiseLoader(NoLoader):
-    """Provide loading behavior for a :class:`.RelationshipProperty`
-    with "lazy='raise'".
-
-    """
-
-    __slots__ = ()
-
-    def create_row_processor(
-            self, context, path, loadopt, mapper,
-            result, adapter, populators):
-
-        def invoke_raise_load(state, passive):
-            raise sa_exc.InvalidRequestError(
-                "'%s' is not available due to lazy='raise'" % self
-            )
-
-        set_lazy_callable = InstanceState._instance_level_callable_processor(
-            mapper.class_manager,
-            invoke_raise_load,
-            self.key
-        )
-        populators["new"].append((self.key, set_lazy_callable))
-
-
-@log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy=True)
 @properties.RelationshipProperty.strategy_for(lazy="select")
+@properties.RelationshipProperty.strategy_for(lazy="raise")
+@properties.RelationshipProperty.strategy_for(lazy="raise_on_sql")
 class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=True", that is loads when first accessed.
@@ -404,10 +381,13 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     __slots__ = (
         '_lazywhere', '_rev_lazywhere', 'use_get', '_bind_to_col',
         '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns',
-        '_simple_lazy_clause')
+        '_simple_lazy_clause', '_raise_always', '_raise_on_sql')
 
-    def __init__(self, parent):
-        super(LazyLoader, self).__init__(parent)
+    def __init__(self, parent, strategy_key):
+        super(LazyLoader, self).__init__(parent, strategy_key)
+        self._raise_always = self.strategy_opts["lazy"] == "raise"
+        self._raise_on_sql = self.strategy_opts["lazy"] == "raise_on_sql"
+
         join_condition = self.parent_property._join_condition
         self._lazywhere, \
             self._bind_to_col, \
@@ -516,7 +496,13 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         return criterion, params
 
+    def _invoke_raise_load(self, state, passive, lazy):
+        raise sa_exc.InvalidRequestError(
+            "'%s' is not available due to lazy='%s'" % (self, lazy)
+        )
+
     def _load_for_state(self, state, passive):
+
         if not state.key and (
                 (
                     not self.parent_property.load_on_pending
@@ -535,6 +521,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             (not passive & attributes.NON_PERSISTENT_OK and pending)
         ):
             return attributes.PASSIVE_NO_RESULT
+
+        if self._raise_always:
+            self._invoke_raise_load(state, passive, "raise")
 
         session = _state_session(state)
         if not session:
@@ -612,6 +601,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             q = q._conditional_options(*state.load_options)
 
         if self.use_get:
+            if self._raise_on_sql:
+                self._invoke_raise_load(state, passive, "raise_on_sql")
             return loading.load_on_ident(q, ident_key)
 
         if self.parent_property.order_by:
@@ -635,6 +626,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 return None
         elif util.has_intersection(orm_util._never_set, params.values()):
             return None
+
+        if self._raise_on_sql:
+            self._invoke_raise_load(state, passive, "raise_on_sql")
 
         q = q.filter(lazy_clause).params(params)
 
@@ -669,7 +663,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # class-level lazyloader installed.
             set_lazy_callable = InstanceState._instance_level_callable_processor(
                 mapper.class_manager,
-                LoadLazyAttribute(key, self._strategy_keys[0]), key)
+                LoadLazyAttribute(key, self), key)
 
             populators["new"].append((self.key, set_lazy_callable))
         elif context.populate_existing or mapper.always_refresh:
@@ -690,9 +684,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
 
-    def __init__(self, key, strategy_key=(('lazy', 'select'),)):
+    def __init__(self, key, initiating_strategy):
         self.key = key
-        self.strategy_key = strategy_key
+        self.strategy_key = initiating_strategy.strategy_key
 
     def __call__(self, state, passive=attributes.PASSIVE_OFF):
         key = self.key
@@ -709,7 +703,7 @@ class ImmediateLoader(AbstractRelationshipLoader):
 
     def init_class_attribute(self, mapper):
         self.parent_property.\
-            _get_strategy_by_cls(LazyLoader).\
+            _get_strategy((("lazy", "select"),)).\
             init_class_attribute(mapper)
 
     def setup_query(
@@ -732,13 +726,13 @@ class ImmediateLoader(AbstractRelationshipLoader):
 class SubqueryLoader(AbstractRelationshipLoader):
     __slots__ = 'join_depth',
 
-    def __init__(self, parent):
-        super(SubqueryLoader, self).__init__(parent)
+    def __init__(self, parent, strategy_key):
+        super(SubqueryLoader, self).__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
 
     def init_class_attribute(self, mapper):
         self.parent_property.\
-            _get_strategy_by_cls(LazyLoader).\
+            _get_strategy((("lazy", "select"),)).\
             init_class_attribute(mapper)
 
     def setup_query(
@@ -1130,13 +1124,13 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     __slots__ = 'join_depth',
 
-    def __init__(self, parent):
-        super(JoinedLoader, self).__init__(parent)
+    def __init__(self, parent, strategy_key):
+        super(JoinedLoader, self).__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
 
     def init_class_attribute(self, mapper):
         self.parent_property.\
-            _get_strategy_by_cls(LazyLoader).init_class_attribute(mapper)
+            _get_strategy((("lazy", "select"),)).init_class_attribute(mapper)
 
     def setup_query(
             self, context, entity, path, loadopt, adapter,
@@ -1562,7 +1556,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 self._create_collection_loader(
                     context, key, _instance, populators)
         else:
-            self.parent_property._get_strategy_by_cls(LazyLoader).\
+            self.parent_property._get_strategy((("lazy", "select"),)).\
                 create_row_processor(
                     context, path, loadopt,
                     mapper, result, adapter, populators)

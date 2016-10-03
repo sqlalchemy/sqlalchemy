@@ -114,7 +114,7 @@ class RelationshipProperty(StrategizedProperty):
                  cascade_backrefs=True,
                  load_on_pending=False,
                  bake_queries=True,
-                 strategy_class=None, _local_remote_pairs=None,
+                 _local_remote_pairs=None,
                  query_class=None,
                  info=None):
         """Provide a relationship between two mapped classes.
@@ -543,6 +543,20 @@ class RelationshipProperty(StrategizedProperty):
           * ``raise`` - lazy loading is disallowed; accessing
             the attribute, if its value were not already loaded via eager
             loading, will raise an :exc:`~sqlalchemy.exc.InvalidRequestError`.
+            This strategy can be used when objects are to be detached from
+            their attached :class:`.Session` after they are loaded.
+
+            .. versionadded:: 1.1
+
+          * ``raise_on_sql`` - lazy loading that emits SQL is disallowed;
+            accessing the attribute, if its value were not already loaded via
+            eager loading, will raise an
+            :exc:`~sqlalchemy.exc.InvalidRequestError`, **if the lazy load
+            needs to emit SQL**.  If the lazy load can pull the related value
+            from the identity map or determine that it should be None, the
+            value is loaded.  This strategy can be used when objects will
+            remain associated with the attached :class:`.Session`, however
+            additional SELECT statements should be blocked.
 
             .. versionadded:: 1.1
 
@@ -842,10 +856,7 @@ class RelationshipProperty(StrategizedProperty):
         if info is not None:
             self.info = info
 
-        if strategy_class:
-            self.strategy_class = strategy_class
-        else:
-            self.strategy_class = self._strategy_lookup(("lazy", self.lazy))
+        self.strategy_key = (("lazy", self.lazy), )
 
         self._reverse_property = set()
 

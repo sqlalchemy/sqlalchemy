@@ -269,7 +269,7 @@ class CompositeProperty(DescriptorProperty):
             prop.active_history = self.active_history
             if self.deferred:
                 prop.deferred = self.deferred
-                prop.strategy_class = prop._strategy_lookup(
+                prop.strategy_key = (
                     ("deferred", True),
                     ("instrument", True))
             prop.group = self.group
