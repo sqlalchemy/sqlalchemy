@@ -25,9 +25,12 @@ the caching of the SQL calls and result sets themselves is available in
 
 .. note::
 
-    The :mod:`sqlalchemy.ext.baked` extension should be considered
-    **experimental** as of 1.0.0.  It provides a dramatically different system
-    of producing queries which has yet to be proven at scale.
+    The :mod:`sqlalchemy.ext.baked` extension is **not for beginners**.  Using
+    it correctly requires a good high level understanding of how SQLAlchemy, the
+    database driver, and the backend database interact with each other.  This
+    extension presents a very specific kind of optimization that is not ordinarily
+    needed.  As noted above, it **does not cache queries**, only the string
+    formulation of the SQL itself.
 
 Synopsis
 --------
