@@ -152,6 +152,10 @@
         as the order of the validators at the level of function decorator
         can't be made deterministic.
 
+        .. seealso::
+
+            :ref:`change_3776`
+
     .. change::
         :tags: bug, orm
 

@@ -969,44 +969,6 @@ case, and the fix should hopefully cover all other scenarios of this nature.
 
 :ticket:`3431`
 
-.. _change_3641:
-
-Columns no longer added redundantly with DISTINCT + ORDER BY
-------------------------------------------------------------
-
-A query such as the following will now augment only those columns
-that are missing from the SELECT list, without duplicates::
-
-    q = session.query(User.id, User.name.label('name')).\
-        distinct().\
-        order_by(User.id, User.name, User.fullname)
-
-Produces::
-
-    SELECT DISTINCT user.id AS a_id, user.name AS name,
-     user.fullname AS a_fullname
-    FROM a ORDER BY user.id, user.name, user.fullname
-
-Previously, it would produce::
-
-    SELECT DISTINCT user.id AS a_id, user.name AS name, user.name AS a_name,
-      user.fullname AS a_fullname
-    FROM a ORDER BY user.id, user.name, user.fullname
-
-Where above, the ``user.name`` column is added unnecessarily.  The results
-would not be affected, as the additional columns are not included in the
-result in any case, but the columns are unnecessary.
-
-Additionally, when the PostgreSQL DISTINCT ON format is used by passing
-expressions to :meth:`.Query.distinct`, the above "column adding" logic
-is disabled entirely.
-
-When the query is being bundled into a subquery for the purposes of
-joined eager loading, the "augment column list" rules are are necessarily
-more aggressive so that the ORDER BY can still be satisfied, so this case
-remains unchanged.
-
-:ticket:`3641`
 
 New MutableList and MutableSet helpers added to the mutation tracking extension
 -------------------------------------------------------------------------------
@@ -1179,31 +1141,6 @@ statement::
             FROM upsert))
 
 :ticket:`2551`
-
-.. _change_3809:
-
-String server_default now literal quoted
-----------------------------------------
-
-A server default passed to :paramref:`.Column.server_default` as a plain
-Python string that has quotes embedded is now
-passed through the literal quoting system::
-
-    >>> from sqlalchemy.schema import MetaData, Table, Column, CreateTable
-    >>> from sqlalchemy.types import String
-    >>> t = Table('t', MetaData(), Column('x', String(), server_default="hi ' there"))
-    >>> print CreateTable(t)
-
-    CREATE TABLE t (
-        x VARCHAR DEFAULT 'hi '' there'
-    )
-
-Previously the quote would render directly.     This change may be backwards
-incompatible for applications with such a use case who were working around
-the issue.
-
-
-:ticket:`3809`
 
 .. _change_3049:
 
@@ -1697,62 +1634,6 @@ within logging, exception reporting, as well as ``repr()`` of the row itself::
 
 :ticket:`2837`
 
-.. _change_2528:
-
-A UNION or similar of SELECTs with LIMIT/OFFSET/ORDER BY now parenthesizes the embedded selects
------------------------------------------------------------------------------------------------
-
-An issue that, like others, was long driven by SQLite's lack of capabilities
-has now been enhanced to work on all supporting backends.   We refer to a query that
-is a UNION of SELECT statements that themselves contain row-limiting or ordering
-features which include LIMIT, OFFSET, and/or ORDER BY::
-
-    (SELECT x FROM table1 ORDER BY y LIMIT 1) UNION
-    (SELECT x FROM table2 ORDER BY y LIMIT 2)
-
-The above query requires parenthesis within each sub-select in order to
-group the sub-results correctly.  Production of the above statement in
-SQLAlchemy Core looks like::
-
-    stmt1 = select([table1.c.x]).order_by(table1.c.y).limit(1)
-    stmt2 = select([table1.c.x]).order_by(table2.c.y).limit(2)
-
-    stmt = union(stmt1, stmt2)
-
-Previously, the above construct would not produce parenthesization for the
-inner SELECT statements, producing a query that fails on all backends.
-
-The above formats will **continue to fail on SQLite**; additionally, the format
-that includes ORDER BY but no LIMIT/SELECT will **continue to fail on Oracle**.
-This is not a backwards-incompatible change, because the queries fail without
-the parentheses as well; with the fix, the queries at least work on all other
-databases.
-
-In all cases, in order to produce a UNION of limited SELECT statements that
-also works on SQLite and in all cases on Oracle, the
-subqueries must be a SELECT of an ALIAS::
-
-    stmt1 = select([table1.c.x]).order_by(table1.c.y).limit(1).alias().select()
-    stmt2 = select([table2.c.x]).order_by(table2.c.y).limit(2).alias().select()
-
-    stmt = union(stmt1, stmt2)
-
-This workaround works on all SQLAlchemy versions.  In the ORM, it looks like::
-
-    stmt1 = session.query(Model1).order_by(Model1.y).limit(1).subquery().select()
-    stmt2 = session.query(Model2).order_by(Model2.y).limit(1).subquery().select()
-
-    stmt = session.query(Model1).from_statement(stmt1.union(stmt2))
-
-The behavior here has many parallels to the "join rewriting" behavior
-introduced in SQLAlchemy 0.9 in :ref:`feature_joins_09`; however in this case
-we have opted not to add new rewriting behavior to accommodate this
-case for SQLite.
-The existing rewriting behavior is very complicated already, and the case of
-UNIONs with parenthesized SELECT statements is much less common than the
-"right-nested-join" use case of that feature.
-
-:ticket:`2528`
 
 .. _change_3619:
 
@@ -2166,10 +2047,79 @@ as intended by the :func:`.type_coerce` function.
 
 :ticket:`3531`
 
-
 Key Behavioral Changes - ORM
 ============================
 
+.. _change_3641:
+
+Columns no longer added redundantly with DISTINCT + ORDER BY
+------------------------------------------------------------
+
+A query such as the following will now augment only those columns
+that are missing from the SELECT list, without duplicates::
+
+    q = session.query(User.id, User.name.label('name')).\
+        distinct().\
+        order_by(User.id, User.name, User.fullname)
+
+Produces::
+
+    SELECT DISTINCT user.id AS a_id, user.name AS name,
+     user.fullname AS a_fullname
+    FROM a ORDER BY user.id, user.name, user.fullname
+
+Previously, it would produce::
+
+    SELECT DISTINCT user.id AS a_id, user.name AS name, user.name AS a_name,
+      user.fullname AS a_fullname
+    FROM a ORDER BY user.id, user.name, user.fullname
+
+Where above, the ``user.name`` column is added unnecessarily.  The results
+would not be affected, as the additional columns are not included in the
+result in any case, but the columns are unnecessary.
+
+Additionally, when the PostgreSQL DISTINCT ON format is used by passing
+expressions to :meth:`.Query.distinct`, the above "column adding" logic
+is disabled entirely.
+
+When the query is being bundled into a subquery for the purposes of
+joined eager loading, the "augment column list" rules are are necessarily
+more aggressive so that the ORDER BY can still be satisfied, so this case
+remains unchanged.
+
+:ticket:`3641`
+
+.. _change_3776:
+
+Same-named @validates decorators will now raise an exception
+------------------------------------------------------------
+
+The :func:`.orm.validates` decorator is only intended to be created once
+per class for a particular attribute name.   Creating more than one
+now raises an error, whereas previously it would silently pick only the
+last defined validator::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+        data = Column(String)
+
+        @validates("data")
+        def _validate_data_one(self):
+            assert "x" in data
+
+        @validates("data")
+        def _validate_data_two(self):
+            assert "y" in data
+
+    configure_mappers()
+
+Will raise::
+
+    sqlalchemy.exc.InvalidRequestError: A validation function for mapped attribute 'data' on mapper Mapper|A|a already exists.
+
+:ticket:`3776`
 
 Key Behavioral Changes - Core
 =============================
@@ -2222,6 +2172,90 @@ necessary to worry about the names themselves in the textual SQL.
 .. seealso::
 
     :ref:`change_3501`
+
+.. _change_3809:
+
+String server_default now literal quoted
+----------------------------------------
+
+A server default passed to :paramref:`.Column.server_default` as a plain
+Python string that has quotes embedded is now
+passed through the literal quoting system::
+
+    >>> from sqlalchemy.schema import MetaData, Table, Column, CreateTable
+    >>> from sqlalchemy.types import String
+    >>> t = Table('t', MetaData(), Column('x', String(), server_default="hi ' there"))
+    >>> print CreateTable(t)
+
+    CREATE TABLE t (
+        x VARCHAR DEFAULT 'hi '' there'
+    )
+
+Previously the quote would render directly.     This change may be backwards
+incompatible for applications with such a use case who were working around
+the issue.
+
+
+:ticket:`3809`
+
+
+.. _change_2528:
+
+A UNION or similar of SELECTs with LIMIT/OFFSET/ORDER BY now parenthesizes the embedded selects
+-----------------------------------------------------------------------------------------------
+
+An issue that, like others, was long driven by SQLite's lack of capabilities
+has now been enhanced to work on all supporting backends.   We refer to a query that
+is a UNION of SELECT statements that themselves contain row-limiting or ordering
+features which include LIMIT, OFFSET, and/or ORDER BY::
+
+    (SELECT x FROM table1 ORDER BY y LIMIT 1) UNION
+    (SELECT x FROM table2 ORDER BY y LIMIT 2)
+
+The above query requires parenthesis within each sub-select in order to
+group the sub-results correctly.  Production of the above statement in
+SQLAlchemy Core looks like::
+
+    stmt1 = select([table1.c.x]).order_by(table1.c.y).limit(1)
+    stmt2 = select([table1.c.x]).order_by(table2.c.y).limit(2)
+
+    stmt = union(stmt1, stmt2)
+
+Previously, the above construct would not produce parenthesization for the
+inner SELECT statements, producing a query that fails on all backends.
+
+The above formats will **continue to fail on SQLite**; additionally, the format
+that includes ORDER BY but no LIMIT/SELECT will **continue to fail on Oracle**.
+This is not a backwards-incompatible change, because the queries fail without
+the parentheses as well; with the fix, the queries at least work on all other
+databases.
+
+In all cases, in order to produce a UNION of limited SELECT statements that
+also works on SQLite and in all cases on Oracle, the
+subqueries must be a SELECT of an ALIAS::
+
+    stmt1 = select([table1.c.x]).order_by(table1.c.y).limit(1).alias().select()
+    stmt2 = select([table2.c.x]).order_by(table2.c.y).limit(2).alias().select()
+
+    stmt = union(stmt1, stmt2)
+
+This workaround works on all SQLAlchemy versions.  In the ORM, it looks like::
+
+    stmt1 = session.query(Model1).order_by(Model1.y).limit(1).subquery().select()
+    stmt2 = session.query(Model2).order_by(Model2.y).limit(1).subquery().select()
+
+    stmt = session.query(Model1).from_statement(stmt1.union(stmt2))
+
+The behavior here has many parallels to the "join rewriting" behavior
+introduced in SQLAlchemy 0.9 in :ref:`feature_joins_09`; however in this case
+we have opted not to add new rewriting behavior to accommodate this
+case for SQLite.
+The existing rewriting behavior is very complicated already, and the case of
+UNIONs with parenthesized SELECT statements is much less common than the
+"right-nested-join" use case of that feature.
+
+:ticket:`2528`
+
 
 Dialect Improvements and Changes - PostgreSQL
 =============================================
