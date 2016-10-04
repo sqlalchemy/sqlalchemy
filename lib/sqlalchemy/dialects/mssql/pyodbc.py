@@ -104,8 +104,9 @@ versioning.
 
 from .base import MSExecutionContext, MSDialect, VARBINARY
 from ...connectors.pyodbc import PyODBCConnector
-from ... import types as sqltypes, util
+from ... import types as sqltypes, util, exc
 import decimal
+import re
 
 
 class _ms_numeric_pyodbc(object):
@@ -268,5 +269,23 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             hasattr(self.dbapi.Cursor, 'nextset')
         self._need_decimal_fix = self.dbapi and \
             self._dbapi_version() < (2, 1, 8)
+
+    def _get_server_version_info(self, connection):
+        try:
+            raw = connection.scalar("SELECT  SERVERPROPERTY('ProductVersion')")
+        except exc.ProgrammingError:
+            # SQL Server docs indicate this function isn't present prior to
+            # 2008
+            return super(MSDialect_pyodbc, self).\
+                _get_server_version_info(connection)
+        else:
+            version = []
+            r = re.compile('[.\-]')
+            for n in r.split(raw):
+                try:
+                    version.append(int(n))
+                except ValueError:
+                    version.append(n)
+            return tuple(version)
 
 dialect = MSDialect_pyodbc

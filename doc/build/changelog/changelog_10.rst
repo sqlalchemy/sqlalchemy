@@ -19,6 +19,15 @@
     :version: 1.0.16
 
     .. change::
+        :tags: bug, mssql
+        :tickets: 3814
+        :versions: 1.1.0
+
+        Updated the server version info scheme for pyodbc to use SQL Server
+        SERVERPROPERTY(), rather than relying upon pyodbc.SQL_DBMS_VER, which
+        continues to be unreliable particularly with FreeTDS.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3800
         :versions: 1.1.0

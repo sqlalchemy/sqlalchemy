@@ -571,6 +571,8 @@ from ...util import update_wrapper
 from . import information_schema as ischema
 
 # http://sqlserverbuilds.blogspot.com/
+MS_2016_VERSION = (13,)
+MS_2014_VERSION = (12,)
 MS_2012_VERSION = (11,)
 MS_2008_VERSION = (10,)
 MS_2005_VERSION = (9,)
@@ -1712,18 +1714,9 @@ class MSDialect(default.DefaultDialect):
 
     def _setup_version_attributes(self):
         if self.server_version_info[0] not in list(range(8, 17)):
-            # FreeTDS with version 4.2 seems to report here
-            # a number like "95.10.255".  Don't know what
-            # that is.  So emit warning.
-            # Use TDS Version 7.0 through 7.3, per the MS information here:
-            # https://msdn.microsoft.com/en-us/library/dd339982.aspx
-            # and FreeTDS information here (7.3 highest supported version):
-            # http://www.freetds.org/userguide/choosingtdsprotocol.htm
             util.warn(
-                "Unrecognized server version info '%s'.   Version specific "
-                "behaviors may not function properly.   If using ODBC "
-                "with FreeTDS, ensure TDS_VERSION 7.0 through 7.3, not "
-                "4.2, is configured in the FreeTDS configuration." %
+                "Unrecognized server version info '%s'.  Some SQL Server "
+                "features may not function properly." %
                 ".".join(str(x) for x in self.server_version_info))
         if self.server_version_info >= MS_2005_VERSION and \
                 'implicit_returning' not in self.__dict__:

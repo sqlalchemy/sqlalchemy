@@ -153,7 +153,6 @@ class PyODBCConnector(Connector):
         # run other initialization which asks for user name, etc.
         super(PyODBCConnector, self).initialize(connection)
 
-
     def _dbapi_version(self):
         if not self.dbapi:
             return ()
@@ -172,6 +171,9 @@ class PyODBCConnector(Connector):
         return vers
 
     def _get_server_version_info(self, connection):
+        # NOTE: this function is not reliable, particularly when
+        # freetds is in use.   Implement database-specific server version
+        # queries.
         dbapi_con = connection.connection
         version = []
         r = re.compile('[.\-]')
