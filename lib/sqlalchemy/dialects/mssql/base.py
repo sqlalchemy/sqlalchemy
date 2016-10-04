@@ -1730,17 +1730,13 @@ class MSDialect(default.DefaultDialect):
     def _get_default_schema_name(self, connection):
         if self.server_version_info < MS_2005_VERSION:
             return self.schema_name
-
-        query = sql.text("""
-            SELECT default_schema_name FROM
-            sys.database_principals
-            WHERE principal_id=database_principal_id()
-        """)
-        default_schema_name = connection.scalar(query)
-        if default_schema_name is not None:
-            return util.text_type(default_schema_name)
         else:
-            return self.schema_name
+            query = sql.text("SELECT schema_name()")
+            default_schema_name = connection.scalar(query)
+            if default_schema_name is not None:
+                return util.text_type(default_schema_name)
+            else:
+                return self.schema_name
 
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema):
