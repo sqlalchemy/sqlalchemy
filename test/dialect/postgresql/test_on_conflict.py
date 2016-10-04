@@ -59,14 +59,20 @@ class OnConflictTest(fixtures.TablesTest):
         users = self.tables.users
 
         with testing.db.connect() as conn:
-            conn.execute(
+            result = conn.execute(
                 insert(users).on_conflict_do_nothing(),
                 dict(id=1, name='name1')
             )
-            conn.execute(
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
+
+            result = conn.execute(
                 insert(users).on_conflict_do_nothing(),
                 dict(id=1, name='name2')
             )
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
+
             eq_(
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
                 [(1, 'name1')]
@@ -77,18 +83,24 @@ class OnConflictTest(fixtures.TablesTest):
         users = self.tables.users
 
         with testing.db.connect() as conn:
-            conn.execute(
+            result = conn.execute(
                 insert(users)
                 .on_conflict_do_nothing(
                     index_elements=users.primary_key.columns),
                 dict(id=1, name='name1')
             )
-            conn.execute(
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
+
+            result = conn.execute(
                 insert(users)
                 .on_conflict_do_nothing(
                     index_elements=users.primary_key.columns),
                 dict(id=1, name='name2')
             )
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
+
             eq_(
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
                 [(1, 'name1')]
@@ -104,7 +116,10 @@ class OnConflictTest(fixtures.TablesTest):
             i = i.on_conflict_do_update(
                 index_elements=[users.c.id],
                 set_=dict(name=i.excluded.name))
-            conn.execute(i, dict(id=1, name='name1'))
+            result = conn.execute(i, dict(id=1, name='name1'))
+
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
 
             eq_(
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
@@ -123,7 +138,10 @@ class OnConflictTest(fixtures.TablesTest):
                 set_=dict(id=i.excluded.id, name=i.excluded.name)
             )
 
-            conn.execute(i, dict(id=1, name='name2'))
+            result = conn.execute(i, dict(id=1, name='name2'))
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
+
             eq_(
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
                 [(1, 'name2')]
@@ -140,7 +158,9 @@ class OnConflictTest(fixtures.TablesTest):
                 index_elements=users.primary_key.columns,
                 set_=dict(name=i.excluded.name)
             )
-            conn.execute(i, dict(id=1, name='name3'))
+            result = conn.execute(i, dict(id=1, name='name3'))
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
 
             eq_(
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
@@ -159,7 +179,9 @@ class OnConflictTest(fixtures.TablesTest):
                 set_=dict(id=i.excluded.id, name=i.excluded.name)
             ).values(id=1, name='name4')
 
-            conn.execute(i)
+            result = conn.execute(i)
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
 
             eq_(
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
@@ -178,7 +200,9 @@ class OnConflictTest(fixtures.TablesTest):
                 set_=dict(id=10, name="I'm a name")
             ).values(id=1, name='name4')
 
-            conn.execute(i)
+            result = conn.execute(i)
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
 
             eq_(
                 conn.execute(
@@ -222,10 +246,12 @@ class OnConflictTest(fixtures.TablesTest):
                     name=i.excluded.name,
                     login_email=i.excluded.login_email)
             )
-            conn.execute(i, dict(
+            result = conn.execute(i, dict(
                 id=1, name='name2', login_email='name1@gmail.com',
                 lets_index_this='not')
             )
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, None)
 
             eq_(
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
@@ -246,10 +272,12 @@ class OnConflictTest(fixtures.TablesTest):
                           login_email=i.excluded.login_email)
             )
             # note: lets_index_this value totally ignored in SET clause.
-            conn.execute(i, dict(
+            result = conn.execute(i, dict(
                 id=42, name='nameunique',
                 login_email='name2@gmail.com', lets_index_this='unique')
             )
+            eq_(result.inserted_primary_key, [42])
+            eq_(result.returned_defaults, None)
 
             eq_(
                 conn.execute(
@@ -275,10 +303,12 @@ class OnConflictTest(fixtures.TablesTest):
             )
             # note: lets_index_this value totally ignored in SET clause.
 
-            conn.execute(i, dict(
+            result = conn.execute(i, dict(
                 id=43, name='nameunique2',
                 login_email='name2@gmail.com', lets_index_this='unique')
             )
+            eq_(result.inserted_primary_key, [43])
+            eq_(result.returned_defaults, None)
 
             eq_(
                 conn.execute(
@@ -286,6 +316,36 @@ class OnConflictTest(fixtures.TablesTest):
                     where(users.c.login_email == 'name2@gmail.com')
                 ).fetchall(),
                 [(43, 'nameunique2', 'name2@gmail.com', 'not')]
+            )
+
+    def test_on_conflict_do_update_exotic_targets_four_no_pk(self):
+        users = self.tables.users_xtra
+
+        with testing.db.connect() as conn:
+            self._exotic_targets_fixture(conn)
+            # try unique constraint by name: cause an
+            # upsert on target login_email, not id
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=[users.c.login_email],
+                set_=dict(
+                    id=i.excluded.id, name=i.excluded.name,
+                    login_email=i.excluded.login_email)
+            )
+
+            result = conn.execute(i, dict(
+                name='name3',
+                login_email='name1@gmail.com')
+            )
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, (1, ))
+
+            eq_(
+                conn.execute(users.select().order_by(users.c.id)).fetchall(),
+                [
+                    (1, 'name3', 'name1@gmail.com', 'not'),
+                    (2, 'name2', 'name2@gmail.com', 'not')
+                ]
             )
 
     def test_on_conflict_do_update_exotic_targets_five(self):
@@ -309,4 +369,29 @@ class OnConflictTest(fixtures.TablesTest):
                 dict(
                     id=1, name='namebogus', login_email='bogus@gmail.com',
                     lets_index_this='bogus')
+            )
+
+    def test_on_conflict_do_update_no_row_actually_affected(self):
+        users = self.tables.users_xtra
+
+        with testing.db.connect() as conn:
+            self._exotic_targets_fixture(conn)
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=[users.c.login_email],
+                set_=dict(name='new_name'),
+                where=(i.excluded.name == 'other_name')
+            )
+            result = conn.execute(
+                i, dict(name='name2', login_email='name1@gmail.com'))
+
+            eq_(result.returned_defaults, None)
+            eq_(result.inserted_primary_key, None)
+
+            eq_(
+                conn.execute(users.select()).fetchall(),
+                [
+                    (1, 'name1', 'name1@gmail.com', 'not'),
+                    (2, 'name2', 'name2@gmail.com', 'not')
+                ]
             )

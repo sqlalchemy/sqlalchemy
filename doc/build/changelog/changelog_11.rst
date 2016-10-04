@@ -32,6 +32,15 @@
         mechanism is invoked at all.
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3813
+
+        An adjustment to ON CONFLICT such that the "inserted_primary_key"
+        logic is able to accommodate the case where there's no INSERT or
+        UPDATE and there's no net change.  The value comes out as None
+        in this case, rather than failing on an exception.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3811
 

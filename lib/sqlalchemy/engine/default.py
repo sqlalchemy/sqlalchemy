@@ -502,6 +502,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     compiled = None
     statement = None
     result_column_struct = None
+    returned_defaults = None
     _is_implicit_returning = False
     _is_explicit_returning = False
 
@@ -917,10 +918,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         ]
 
     def _setup_ins_pk_from_implicit_returning(self, row):
+        if row is None:
+            self.inserted_primary_key = None
+            return
+
         key_getter = self.compiled._key_getters_for_crud_column[2]
         table = self.compiled.statement.table
         compiled_params = self.compiled_parameters[0]
-
         self.inserted_primary_key = [
             row[col] if value is None else value
             for col, value in [
