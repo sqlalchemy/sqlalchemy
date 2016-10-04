@@ -23,6 +23,18 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3811
+
+        Made an adjustment to the bug fix first introduced in [ticket:3431]
+        that involves an object appearing in multiple contexts in a single
+        result set, such that an eager loader that would set the related
+        object value to be None will still fire off, thus satisfying the
+        load of that attribute.  Previously, the adjustment only honored
+        a non-None value arriving for an eagerly loaded attribute in a
+        secondary row.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 3808
 
         Fixed bug in new :meth:`.SessionEvents.persistent_to_deleted` event

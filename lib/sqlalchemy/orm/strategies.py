@@ -1616,19 +1616,19 @@ class JoinedLoader(AbstractRelationshipLoader):
             # call _instance on the row, even though the object has
             # been created, so that we further descend into properties
             existing = _instance(row)
-            if existing is not None:
-                # conflicting value already loaded, this shouldn't happen
-                if key in dict_:
-                    if existing is not dict_[key]:
-                        util.warn(
-                            "Multiple rows returned with "
-                            "uselist=False for eagerly-loaded attribute '%s' "
-                            % self)
-                else:
-                    # this case is when one row has multiple loads of the
-                    # same entity (e.g. via aliasing), one has an attribute
-                    # that the other doesn't.
-                    dict_[key] = existing
+
+            # conflicting value already loaded, this shouldn't happen
+            if key in dict_:
+                if existing is not dict_[key]:
+                    util.warn(
+                        "Multiple rows returned with "
+                        "uselist=False for eagerly-loaded attribute '%s' "
+                        % self)
+            else:
+                # this case is when one row has multiple loads of the
+                # same entity (e.g. via aliasing), one has an attribute
+                # that the other doesn't.
+                dict_[key] = existing
 
         def load_scalar_from_joined_exec(state, dict_, row):
             _instance(row)
