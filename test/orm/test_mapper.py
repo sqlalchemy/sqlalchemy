@@ -2874,6 +2874,63 @@ class RaiseLoadTest(_fixtures.FixtureTest):
 
         self.sql_count_(0, go)
 
+    def test_m2o_raise_on_sql_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+        mapper(Address, addresses, properties={
+            'user': relationship(User)
+        })
+        mapper(User, users)
+        s = Session()
+        a1 = s.query(Address).filter_by(id=1).options(
+            sa.orm.raiseload('user', sql_only=True)).first()
+
+        def go():
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'Address.user' is not available due to lazy='raise_on_sql'",
+                lambda: a1.user)
+
+        self.sql_count_(0, go)
+
+        s.close()
+
+        u1 = s.query(User).first()
+        a1 = s.query(Address).filter_by(id=1).options(
+            sa.orm.raiseload('user', sql_only=True)).first()
+        assert 'user' not in a1.__dict__
+        is_(a1.user, u1)
+
+    def test_m2o_non_use_get_raise_on_sql_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+        mapper(Address, addresses, properties={
+            'user': relationship(
+                User,
+                primaryjoin=sa.and_(
+                    addresses.c.user_id == users.c.id ,
+                    users.c.name != None
+                )
+            )
+        })
+        mapper(User, users)
+        s = Session()
+        u1 = s.query(User).first()
+        a1 = s.query(Address).filter_by(id=1).options(
+            sa.orm.raiseload('user', sql_only=True)).first()
+
+        def go():
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'Address.user' is not available due to lazy='raise_on_sql'",
+                lambda: a1.user)
+
 
 class RequirementsTest(fixtures.MappedTest):
 

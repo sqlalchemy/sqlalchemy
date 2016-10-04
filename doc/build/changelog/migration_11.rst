@@ -981,21 +981,33 @@ added to the :ref:`mutable_toplevel` extension, to complement the existing
 
 .. _change_3512:
 
-New "raise" loader strategy
----------------------------
+New "raise" / "raise_on_sql" loader strategies
+----------------------------------------------
 
 To assist with the use case of preventing unwanted lazy loads from occurring
-after a series of objects are loaded, the new "lazy='raise'" strategy and
+after a series of objects are loaded, the new "lazy='raise'" and
+"lazy='raise_on_sql'" strategies and
 corresponding loader option :func:`.orm.raiseload` may be applied to a
 relationship attribute which will cause it to raise ``InvalidRequestError``
-when a non-eagerly-loaded attribute is accessed for read::
+when a non-eagerly-loaded attribute is accessed for read.  The two variants
+test for either a lazy load of any variety, including those that would
+only return None or retrieve from the identity map::
 
     >>> from sqlalchemy.orm import raiseload
-    >>> a1 = s.query(A).options(raiseload(A.bs)).first()
-    >>> a1.bs
+    >>> a1 = s.query(A).options(raiseload(A.some_b)).first()
+    >>> a1.some_b
     Traceback (most recent call last):
     ...
-    sqlalchemy.exc.InvalidRequestError: 'A.bs' is not available due to lazy='raise'
+    sqlalchemy.exc.InvalidRequestError: 'A.some_b' is not available due to lazy='raise'
+
+Or a lazy load only where SQL would be emitted::
+
+    >>> from sqlalchemy.orm import raiseload
+    >>> a1 = s.query(A).options(raiseload(A.some_b, sql_only=True)).first()
+    >>> a1.some_b
+    Traceback (most recent call last):
+    ...
+    sqlalchemy.exc.InvalidRequestError: 'A.bs' is not available due to lazy='raise_on_sql'
 
 :ticket:`3512`
 

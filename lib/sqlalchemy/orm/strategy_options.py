@@ -879,7 +879,7 @@ def noload(*keys):
 
 
 @loader_option()
-def raiseload(loadopt, attr):
+def raiseload(loadopt, attr, sql_only=False):
     """Indicate that the given relationship attribute should disallow lazy loads.
 
     A relationship attribute configured with :func:`.orm.raiseload` will
@@ -890,6 +890,11 @@ def raiseload(loadopt, attr):
     to read through SQL logs to ensure lazy loads aren't occurring, this
     strategy will cause them to raise immediately.
 
+    :param sql_only: if True, raise only if the lazy load would emit SQL,
+     but not if it is only checking the identity map, or determining that
+     the related value should just be None due to missing keys.  When False,
+     the strategy will raise for all varieties of lazyload.
+
     This function is part of the :class:`.Load` interface and supports
     both method-chained and standalone operation.
 
@@ -899,12 +904,13 @@ def raiseload(loadopt, attr):
 
     """
 
-    return loadopt.set_relationship_strategy(attr, {"lazy": "raise"})
+    return loadopt.set_relationship_strategy(
+        attr, {"lazy": "raise_on_sql" if sql_only else "raise"})
 
 
 @raiseload._add_unbound_fn
-def raiseload(*keys):
-    return _UnboundLoad._from_keys(_UnboundLoad.raiseload, keys, False, {})
+def raiseload(*keys, **kw):
+    return _UnboundLoad._from_keys(_UnboundLoad.raiseload, keys, False, kw)
 
 
 @loader_option()

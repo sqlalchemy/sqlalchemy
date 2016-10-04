@@ -576,7 +576,7 @@ class ResultTest(BakedTest):
                 Address(id=4, email_address='ed@lala.com'),
             ]),
             User(id=9,
-                addresses=[Address(id=5)], 
+                addresses=[Address(id=5)],
                 orders=[Order(id=2), Order(id=4)]),
             User(id=10, addresses=[])
         ]
@@ -728,7 +728,6 @@ class LazyLoaderTest(BakedTest):
 
     def test_systemwide_loaders_loadable_via_lazyloader(self):
         from sqlalchemy.orm import configure_mappers
-        from sqlalchemy.orm.strategies import LazyLoader
 
         baked.bake_lazy_loaders()
         try:
@@ -738,7 +737,7 @@ class LazyLoaderTest(BakedTest):
 
             is_(
                 User.addresses.property.
-                _get_strategy_by_cls(LazyLoader).__class__,
+                _get_strategy((('lazy', 'select'), )).__class__,
                 BakedLazyLoader
             )
         finally:

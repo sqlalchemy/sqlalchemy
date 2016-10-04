@@ -22,6 +22,16 @@
     :version: 1.1.0
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3812
+
+        Enhanced the new "raise" lazy loader strategy to also include a
+        "raise_on_sql" variant, available both via :paramref:`.orm.relationship.lazy`
+        as well as :func:`.orm.raiseload`.   This variant only raises if the
+        lazy load would actually emit SQL, vs. raising if the lazy loader
+        mechanism is invoked at all.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3811
 
