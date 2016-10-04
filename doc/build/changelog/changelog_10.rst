@@ -20,6 +20,18 @@
 
     .. change::
         :tags: bug, mssql
+        :tickets: 3810
+        :versions: 1.1.0
+
+        Changed the query used to get "default schema name", from one that
+        queries the database principals table to using the
+        "schema_name()" function, as issues have been reported that the
+        former system was unavailable on the Azure Data Warehouse edition.
+        It is hoped that this will finally work across all SQL Server
+        versions and authentication styles.
+
+    .. change::
+        :tags: bug, mssql
         :tickets: 3814
         :versions: 1.1.0
 
