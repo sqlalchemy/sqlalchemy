@@ -82,11 +82,15 @@ def _bulk_update(mapper, mappings, session_transaction,
 
     cached_connections = _cached_connection_dict(base_mapper)
 
+    search_keys = mapper._primary_key_propkeys
+    if mapper._version_id_prop:
+        search_keys = set([mapper._version_id_prop.key]).union(search_keys)
+
     def _changed_dict(mapper, state):
         return dict(
             (k, v)
             for k, v in state.dict.items() if k in state.committed_state or k
-            in mapper._primary_key_propkeys
+            in search_keys
         )
 
     if isstates:

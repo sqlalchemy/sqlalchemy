@@ -85,6 +85,15 @@
         collection of the mapped table, thereby interfering with the
         initialization of relationships.
 
+    .. change::
+        :tags: bug, orm
+        :tickets: 3781
+        :versions: 1.1.4
+
+        Fixed bug in :meth:`.Session.bulk_save` where an UPDATE would
+        not function correctly in conjunction with a mapping that
+        implements a version id counter.
+
 .. changelog::
     :version: 1.0.15
     :released: September 1, 2016
