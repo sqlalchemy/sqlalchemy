@@ -168,6 +168,12 @@ class Compiled(object):
 
     _cached_metadata = None
 
+    execution_options = util.immutabledict()
+    """
+    Execution options propagated from the statement.   In some cases,
+    sub-elements of the statement can modify these.
+    """
+
     def __init__(self, dialect, statement, bind=None,
                  schema_translate_map=None,
                  compile_kwargs=util.immutabledict()):
@@ -205,6 +211,8 @@ class Compiled(object):
         if statement is not None:
             self.statement = statement
             self.can_execute = statement.supports_execution
+            if self.can_execute:
+                self.execution_options = statement._execution_options
             self.string = self.process(self.statement, **compile_kwargs)
 
     @util.deprecated("0.7", ":class:`.Compiled` objects now compile "
@@ -363,6 +371,7 @@ class SQLCompiler(Compiled):
     """
 
     insert_prefetch = update_prefetch = ()
+
 
     def __init__(self, dialect, statement, column_keys=None,
                  inline=False, **kwargs):
@@ -1295,6 +1304,12 @@ class SQLCompiler(Compiled):
                     cte_name)
 
         self.ctes_by_name[cte_name] = cte
+
+        # look for embedded DML ctes and propagate autocommit
+        if 'autocommit' in cte.element._execution_options and \
+                'autocommit' not in self.execution_options:
+            self.execution_options = self.execution_options.union(
+                {"autocommit": cte.element._execution_options['autocommit']})
 
         if cte._cte_alias is not None:
             orig_cte = cte._cte_alias

@@ -1,4 +1,4 @@
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures, eq_
 from sqlalchemy.testing import AssertsCompiledSQL, assert_raises_message
 from sqlalchemy.sql import table, column, select, func, literal, exists, and_
 from sqlalchemy.dialects import mssql
@@ -589,6 +589,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         t = products.update().values(price='someprice').\
             returning(*products.c).cte('t')
         stmt = t.select()
+        assert 'autocommit' not in stmt._execution_options
+        eq_(stmt.compile().execution_options['autocommit'], True)
 
         self.assert_compile(
             stmt,
@@ -648,6 +650,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         stmt = select([cte])
 
+        assert 'autocommit' not in stmt._execution_options
+        eq_(stmt.compile().execution_options['autocommit'], True)
+
         self.assert_compile(
             stmt,
             "WITH pd AS "
@@ -661,8 +666,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         products = table('products', column('id'), column('price'))
 
         cte = products.select().cte('pd')
+        assert 'autocommit' not in cte._execution_options
 
         stmt = products.update().where(products.c.price == cte.c.price)
+        eq_(stmt.compile().execution_options['autocommit'], True)
 
         self.assert_compile(
             stmt,
