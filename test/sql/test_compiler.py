@@ -2822,6 +2822,39 @@ class KwargPropagationTest(fixtures.TestBase):
         self._do_test(c)
 
 
+class ExecutionOptionsTest(fixtures.TestBase):
+    def test_non_dml(self):
+        stmt = table1.select()
+        compiled = stmt.compile()
+
+        eq_(compiled.execution_options, {})
+
+    def test_dml(self):
+        stmt = table1.insert()
+        compiled = stmt.compile()
+
+        eq_(compiled.execution_options, {"autocommit": True})
+
+    def test_embedded_element_true_to_none(self):
+        stmt = table1.insert().cte()
+        eq_(stmt._execution_options, {"autocommit": True})
+        s2 = select([table1]).select_from(stmt)
+        eq_(s2._execution_options, {})
+
+        compiled = s2.compile()
+        eq_(compiled.execution_options, {"autocommit": True})
+
+    def test_embedded_element_true_to_false(self):
+        stmt = table1.insert().cte()
+        eq_(stmt._execution_options, {"autocommit": True})
+        s2 = select([table1]).select_from(stmt).\
+            execution_options(autocommit=False)
+        eq_(s2._execution_options, {"autocommit": False})
+
+        compiled = s2.compile()
+        eq_(compiled.execution_options, {"autocommit": False})
+
+
 class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 

@@ -22,6 +22,17 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, sql
+        :tickets: 3805
+
+        Execution options can now be propagated from within a
+        statement at compile time to the outermost statement, so that
+        if an embedded element wants to set "autocommit" to be True for example,
+        it can propagate this to the enclosing statement.  Currently, this
+        feature is enabled for a DML-oriented CTE embedded inside of a SELECT
+        statement, e.g. INSERT/UPDATE/DELETE inside of SELECT.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3802
 

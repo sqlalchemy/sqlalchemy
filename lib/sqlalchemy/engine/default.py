@@ -522,7 +522,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.compiled = compiled = compiled_ddl
         self.isddl = True
 
-        self.execution_options = compiled.statement._execution_options
+        self.execution_options = compiled.execution_options
         if connection._execution_options:
             self.execution_options = dict(self.execution_options)
             self.execution_options.update(connection._execution_options)
@@ -559,7 +559,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # we get here
         assert compiled.can_execute
 
-        self.execution_options = compiled.statement._execution_options.union(
+        self.execution_options = compiled.execution_options.union(
             connection._execution_options)
 
         self.result_column_struct = (
