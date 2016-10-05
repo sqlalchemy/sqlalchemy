@@ -13,6 +13,57 @@ class BulkTest(testing.AssertsExecutionResults):
     run_define_tables = 'each'
 
 
+class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('version_table', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('version_id', Integer, nullable=False),
+              Column('value', String(40), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Foo, version_table = cls.classes.Foo, cls.tables.version_table
+
+        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+
+    def test_bulk_insert_via_save(self):
+        Foo = self.classes.Foo
+
+        s = Session()
+
+        s.bulk_save_objects([Foo(value='value')])
+
+        eq_(
+            s.query(Foo).all(),
+            [Foo(version_id=1, value='value')]
+        )
+
+    def test_bulk_update_via_save(self):
+        Foo = self.classes.Foo
+
+        s = Session()
+
+        s.add(Foo(value='value'))
+        s.commit()
+
+        f1 = s.query(Foo).first()
+        f1.value = 'new value'
+        s.bulk_save_objects([f1])
+        s.expunge_all()
+
+        eq_(
+            s.query(Foo).all(),
+            [Foo(version_id=2, value='new value')]
+        )
+
+
 class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
     @classmethod
