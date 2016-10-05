@@ -9,7 +9,7 @@ The SQLAlchemy SQL Toolkit and Object Relational Mapper
 is a comprehensive set of tools for working with
 databases and Python. It has several distinct areas of
 functionality which can be used individually or combined
-together. Its major components are illustrated in below,
+together. Its major components are illustrated below,
 with component dependencies organized into layers:
 
 .. image:: sqla_arch_small.png
@@ -77,7 +77,7 @@ SQLAlchemy has been tested against the following platforms:
 .. versionchanged:: 0.9
    Python 2.6 is now the minimum Python version supported.
 
-Platforms that don't currently have support include Jython, IronPython.
+Platforms that don't currently have support include Jython and IronPython.
 Jython has been supported in the past and may be supported in future
 releases as well, depending on the state of Jython itself.
 
@@ -130,9 +130,9 @@ dealing with result sets.   The extensions are supported on both the 2.xx
 and 3.xx series of cPython.
 
 ``setup.py`` will automatically build the extensions if an appropriate platform is
-detected. If the build of the C extensions fails, due to missing compiler or
-other issue, the setup process will output a warning message, and re-run the
-build without the C extensions, upon completion reporting final status.
+detected. If the build of the C extensions fails due to a missing compiler or
+other issue, the setup process will output a warning message and re-run the
+build without the C extensions upon completion, reporting final status.
 
 To run the build/install without even attempting to compile the C extensions,
 the ``DISABLE_SQLALCHEMY_CEXT`` environment variable may be specified.  The
