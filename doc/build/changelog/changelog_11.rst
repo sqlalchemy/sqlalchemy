@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.0
+    :released: October 5, 2016
 
     .. change::
         :tags: bug, sql
