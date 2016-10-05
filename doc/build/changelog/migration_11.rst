@@ -214,7 +214,8 @@ Specific checks added for passing mapped classes, instances as SQL literals
 The typing system now has specific checks for passing of SQLAlchemy
 "inspectable" objects in contexts where they would otherwise be handled as
 literal values.   Any SQLAlchemy built-in object that is legal to pass as a
-SQL value includes a method ``__clause_element__()`` which provides a
+SQL value (which is not already a :class:`.ClauseElement` instance)
+includes a method ``__clause_element__()`` which provides a
 valid SQL expression for that object.  For SQLAlchemy objects that
 don't provide this, such as mapped classes, mappers, and mapped
 instances, a more informative error message is emitted rather than
@@ -2209,7 +2210,6 @@ the issue.
 
 
 :ticket:`3809`
-
 
 .. _change_2528:
 

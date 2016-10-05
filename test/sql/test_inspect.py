@@ -32,3 +32,13 @@ class TestCoreInspection(fixtures.TestBase):
         is_(inspect(c), c)
         assert not c.is_selectable
         assert not hasattr(c, 'selectable')
+
+    def test_no_clause_element_on_clauseelement(self):
+        # re [ticket:3802], there are in the wild examples
+        # of looping over __clause_element__, therefore the
+        # absense of __clause_element__ as a test for "this is the clause
+        # element" must be maintained
+
+        x = Column('foo', Integer)
+        assert not hasattr(x, '__clause_element__')
+

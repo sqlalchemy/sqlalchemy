@@ -482,6 +482,29 @@ class ClauseAttributesTest(fixtures.MappedTest):
         assert 'value' not in hb.__dict__
         eq_(hb.value, False)
 
+    def test_clauseelement_accessor(self):
+        class Thing(object):
+            def __init__(self, value):
+                self.value = value
+
+            def __clause_element__(self):
+                return literal_column(str(self.value))
+
+        User = self.classes.User
+
+        u = User(id=5, name='test', counter=Thing(3))
+
+        session = create_session()
+        session.add(u)
+        session.flush()
+
+        u.counter = Thing(5)
+        session.flush()
+
+        def go():
+            eq_(u.counter, 5)
+        self.sql_count_(1, go)
+
 
 class PassiveDeletesTest(fixtures.MappedTest):
     __requires__ = ('foreign_keys',)

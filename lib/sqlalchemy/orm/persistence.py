@@ -388,8 +388,10 @@ def _collect_insert_commands(
             col = propkey_to_col[propkey]
             if value is None and propkey not in eval_none and not render_nulls:
                 continue
-            elif not bulk and isinstance(value, sql.ClauseElement):
-                value_params[col.key] = value
+            elif not bulk and hasattr(value, '__clause_element__') or \
+                    isinstance(value, sql.ClauseElement):
+                value_params[col.key] = value.__clause_element__() \
+                    if hasattr(value, '__clause_element__') else value
             else:
                 params[col.key] = value
 
@@ -462,8 +464,10 @@ def _collect_update_commands(
                 value = state_dict[propkey]
                 col = propkey_to_col[propkey]
 
-                if isinstance(value, sql.ClauseElement):
-                    value_params[col] = value
+                if hasattr(value, '__clause_element__') or \
+                        isinstance(value, sql.ClauseElement):
+                    value_params[col] = value.__clause_element__() \
+                        if hasattr(value, '__clause_element__') else value
                 # guard against values that generate non-__nonzero__
                 # objects for __eq__()
                 elif state.manager[propkey].impl.is_equal(

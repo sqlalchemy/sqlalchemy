@@ -809,7 +809,7 @@ class Comparator(interfaces.PropComparator):
 
     def __clause_element__(self):
         expr = self.expression
-        while hasattr(expr, '__clause_element__'):
+        if hasattr(expr, '__clause_element__'):
             expr = expr.__clause_element__()
         return expr
 

@@ -22,6 +22,16 @@
     :version: 1.1.0
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3802
+
+        ORM attributes can now be assigned any object that is has a
+        ``__clause_element__()`` attribute, which will result in inline
+        SQL the way any :class:`.ClauseElement` class does.  This covers other
+        mapped attributes not otherwise transformed by further expression
+        constructs.
+
+    .. change::
         :tags: feature, orm
         :tickets: 3812
 
