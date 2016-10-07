@@ -837,7 +837,7 @@ class ResultProxy(object):
 
         In the case of a result that is the product of
         :ref:`connectionless execution <dbengine_implicit>`,
-        the underyling :class:`.Connection` object is also closed, which
+        the underlying :class:`.Connection` object is also closed, which
         :term:`releases` DBAPI connection resources.
 
         After this method is called, it is no longer valid to call upon
@@ -1134,7 +1134,7 @@ class ResultProxy(object):
         discarded.
 
         Calls to :meth:`.ResultProxy.fetchmany` after all rows have been
-        exhuasted will return
+        exhausted will return
         an empty list.   After the :meth:`.ResultProxy.close` method is
         called, the method will raise :class:`.ResourceClosedError`.
 

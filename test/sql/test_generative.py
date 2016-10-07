@@ -1814,7 +1814,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         i = i.values((5, 6, 7))
         eq_(i.parameters, {"col1": 5, "col2": 6, "col3": 7})
 
-    def test_kw_and_dict_simulatenously_single(self):
+    def test_kw_and_dict_simultaneously_single(self):
         i = t1.insert()
         i = i.values({"col1": 5}, col2=7)
         eq_(i.parameters, {"col1": 5, "col2": 7})
@@ -1904,7 +1904,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         i = t1.insert()
         assert_raises_message(
             exc.ArgumentError,
-            "Can't pass kwargs and multiple parameter sets simultaenously",
+            "Can't pass kwargs and multiple parameter sets simultaneously",
             i.values, [{"col1": 5}], col2=7
         )
 

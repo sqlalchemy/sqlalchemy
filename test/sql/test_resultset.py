@@ -424,7 +424,7 @@ class ResultProxyTest(fixtures.TablesTest):
             dict(user_id=1, user_name='john'),
         )
 
-        # unary experssions
+        # unary expressions
         r = select([users.c.user_name.distinct()]).order_by(
             users.c.user_name).execute().first()
         eq_(r[users.c.user_name], 'john')

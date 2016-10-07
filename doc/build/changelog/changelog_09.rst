@@ -1048,7 +1048,7 @@
 
         Fixed bug when the declarative ``__abstract__`` flag was not being
         distinguished for when it was actually the value ``False``.
-        The ``__abstract__`` flag needs to acutally evaluate to a True
+        The ``__abstract__`` flag needs to actually evaluate to a True
         value at the level being tested.
 
 .. changelog::
@@ -1852,7 +1852,7 @@
         fully usable within declarative relationship configuration, as its
         string classname would not be available in the registry of classnames
         at mapper configuration time.   The class now explicitly adds itself
-        to the class regsitry, and additionally both :class:`.AbstractConcreteBase`
+        to the class registry, and additionally both :class:`.AbstractConcreteBase`
         as well as :class:`.ConcreteBase` set themselves up *before* mappers
         are configured within the :func:`.configure_mappers` setup, using
         the new :meth:`.MapperEvents.before_configured` event.

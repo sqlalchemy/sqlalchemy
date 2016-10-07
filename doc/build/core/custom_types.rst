@@ -401,7 +401,7 @@ Output::
 
 For an example of subclassing a built in type directly, we subclass
 :class:`.postgresql.BYTEA` to provide a ``PGPString``, which will make use of the
-Postgresql ``pgcrypto`` extension to encrpyt/decrypt values
+Postgresql ``pgcrypto`` extension to encrypt/decrypt values
 transparently::
 
     from sqlalchemy import create_engine, String, select, func, \

@@ -391,7 +391,7 @@ This is a small change demonstrated as follows::
     # in 0.8, this would fail to load the unloaded state.
     assert attributes.get_history(a1, 'data') == ((), ['a1',], ())
 
-    # load_history() is now equiavlent to get_history() with
+    # load_history() is now equivalent to get_history() with
     # passive=PASSIVE_OFF ^ INIT_OK
     assert inspect(a1).attrs.data.load_history() == ((), ['a1',], ())
 
@@ -1502,7 +1502,7 @@ insensitive names).
 
 The :class:`.quoted_name` object is used internally as needed; however if
 other keywords require fixed quoting preferences, the class is available
-publically.
+publicly.
 
 :ticket:`2812`
 

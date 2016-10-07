@@ -659,7 +659,7 @@ scenes to provide two goals:
 Highlights of these changes include:
 
 * The construction of types within dialects has been totally
-  overhauled. Dialects now define publically available types
+  overhauled. Dialects now define publicly available types
   as UPPERCASE names exclusively, and internal
   implementation types using underscore identifiers (i.e.
   are private). The system by which types are expressed in

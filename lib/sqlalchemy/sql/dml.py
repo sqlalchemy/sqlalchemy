@@ -372,7 +372,7 @@ class ValuesBase(UpdateBase):
             if self._has_multi_parameters:
                 raise exc.ArgumentError(
                     "Can't pass kwargs and multiple parameter sets "
-                    "simultaenously")
+                    "simultaneously")
             else:
                 self.parameters.update(kwargs)
 

@@ -783,7 +783,7 @@
         itself differently to some MapperExtensions.
       
         The change also affects the internal attribute API, but not
-        the AttributeExtension interface nor any of the publically
+        the AttributeExtension interface nor any of the publicly
         documented attribute functions.
       
       - The unit of work no longer genererates a graph of "dependency"
@@ -1461,7 +1461,7 @@
 
       Query.from_self() as well as query.subquery() both disable
       the rendering of eager joins inside the subquery produced.
-      The "disable all eager joins" feature is available publically
+      The "disable all eager joins" feature is available publicly
       via a new query.enable_eagerloads() generative.
 
     .. change::

@@ -332,7 +332,7 @@ class LazyTest(_fixtures.FixtureTest):
         )
 
     def test_double(self):
-        """tests lazy loading with two relationships simulatneously,
+        """tests lazy loading with two relationships simultaneously,
         from the same table, using aliases.  """
 
         users, orders, User, Address, Order, addresses = (

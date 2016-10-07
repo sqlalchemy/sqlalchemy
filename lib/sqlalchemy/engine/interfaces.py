@@ -634,7 +634,7 @@ class Dialect(object):
         raise NotImplementedError()
 
     def do_recover_twophase(self, connection):
-        """Recover list of uncommited prepared two phase transaction
+        """Recover list of uncommitted prepared two phase transaction
         identifiers on the given connection.
 
         :param connection: a :class:`.Connection`.

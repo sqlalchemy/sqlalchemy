@@ -2753,7 +2753,7 @@
         :tickets: 
 
       a wide refactoring to "attribute loader" and "options" architectures.
-      ColumnProperty and PropertyLoader define their loading behaivor via switchable
+      ColumnProperty and PropertyLoader define their loading behavior via switchable
       "strategies", and MapperOptions no longer use mapper/property copying
       in order to function; they are instead propagated via QueryContext
       and SelectionContext objects at query/instances time.

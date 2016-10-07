@@ -5227,7 +5227,7 @@
         :tickets: 
 
       The construction of types within dialects has been totally
-      overhauled.  Dialects now define publically available types
+      overhauled.  Dialects now define publicly available types
       as UPPERCASE names exclusively, and internal implementation
       types using underscore identifiers (i.e. are private).
       The system by which types are expressed in SQL and DDL
@@ -5332,7 +5332,7 @@
 
       PickleType now uses == for comparison of values when
       mutable=True, unless the "comparator" argument with a
-      comparsion function is specified to the type. Objects
+      comparison function is specified to the type. Objects
       being pickled will be compared based on identity (which
       defeats the purpose of mutable=True) if __eq__() is not
       overridden or a comparison function is not provided.

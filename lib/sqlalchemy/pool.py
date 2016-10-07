@@ -134,7 +134,7 @@ class Pool(log.Identified):
           returned yet.  Offers a slight performance advantage at the
           cost of individual transactions by default.  The
           :meth:`.Pool.unique_connection` method is provided to return
-          a consistenty unique connection to bypass this behavior
+          a consistently unique connection to bypass this behavior
           when the flag is set.
 
           .. warning::  The :paramref:`.Pool.use_threadlocal` flag

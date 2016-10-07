@@ -1007,7 +1007,7 @@ def sort_tables_and_constraints(
     ``(Table, [ForeignKeyConstraint, ...])`` such that each
     :class:`.Table` follows its dependent :class:`.Table` objects.
     Remaining :class:`.ForeignKeyConstraint` objects that are separate due to
-    dependency rules not satisifed by the sort are emitted afterwards
+    dependency rules not satisfied by the sort are emitted afterwards
     as ``(None, [ForeignKeyConstraint ...])``.
 
     Tables are dependent on another based on the presence of

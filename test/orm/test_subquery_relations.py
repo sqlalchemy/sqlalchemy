@@ -559,7 +559,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 4)
 
     def test_double_same_mappers(self):
-        """Eager loading with two relationships simulatneously,
+        """Eager loading with two relationships simultaneously,
         from the same table, using aliases."""
 
         addresses, items, order_items, orders, Item, User, Address, Order, users = (self.tables.addresses,

@@ -3078,7 +3078,7 @@ class Query(object):
               deletes are not supported by SQL** as well as that the
               **join condition of an inheritance mapper is not
               automatically rendered**.  Care must be taken in any
-              multiple-table delete to first accomodate via some other means
+              multiple-table delete to first accommodate via some other means
               how the related table will be deleted, as well as to
               explicitly include the joining
               condition between those tables, even in mappings where

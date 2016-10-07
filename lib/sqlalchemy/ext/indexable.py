@@ -159,7 +159,7 @@ data structure does not exist, and a set operation is called:
   the default data structure will be a Python list of ``None`` values,
   at least as long as the index value; the value is then set at its
   place in the list.  This means for an index value of zero, the list
-  will be initalized to ``[None]`` before setting the given value,
+  will be initialized to ``[None]`` before setting the given value,
   and for an index value of five, the list will be initialized to
   ``[None, None, None, None, None]`` before setting the fifth element
   to the given value.   Note that an existing list is **not** extended

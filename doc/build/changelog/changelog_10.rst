@@ -436,7 +436,7 @@
         provided by :class:`.Session` and :class:`.Connection`, and taking
         place for operations such as a failure on "RELEASE SAVEPOINT".
         Previously, the fix was only in place for a specific path within
-        the ORM flush/commit process; it now takes place for all transational
+        the ORM flush/commit process; it now takes place for all transactional
         context managers as well.
 
     .. change::

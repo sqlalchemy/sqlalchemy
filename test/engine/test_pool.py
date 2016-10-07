@@ -262,7 +262,7 @@ class PoolTest(PoolTestBase):
 
     def test_rec_unconnected(self):
         # test production of a _ConnectionRecord with an
-        # initally unconnected state.
+        # initially unconnected state.
 
         dbapi = MockDBAPI()
         p1 = pool.Pool(
