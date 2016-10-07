@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table,\
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
-    assert_raises_message, fixtures, eq_
+    assert_raises_message, fixtures, eq_, expect_warnings
 from sqlalchemy.sql import crud
 
 class _InsertTestBase(object):
@@ -484,13 +484,16 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             't', MetaData(), Column('x', Integer, primary_key=True),
             Column('y', Integer, primary_key=True)
         )
-        assert_raises_message(
-            exc.CompileError,
+
+        with expect_warnings(
             "Column 't.y' is marked as a member.*"
             "Note that as of SQLAlchemy 1.1,",
-            t.insert().compile, column_keys=['x']
-
-        )
+        ):
+            self.assert_compile(
+                t.insert(),
+                "INSERT INTO t (x) VALUES (:x)",
+                params={'x': 5},
+            )
 
     def test_anticipate_no_pk_composite_pk_implicit_returning(self):
         t = Table(
@@ -499,13 +502,17 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
         d = postgresql.dialect()
         d.implicit_returning = True
-        assert_raises_message(
-            exc.CompileError,
+
+        with expect_warnings(
             "Column 't.y' is marked as a member.*"
             "Note that as of SQLAlchemy 1.1,",
-            t.insert().compile, dialect=d, column_keys=['x']
-
-        )
+        ):
+            self.assert_compile(
+                t.insert(),
+                "INSERT INTO t (x) VALUES (%(x)s)",
+                params={"x": 5},
+                dialect=d
+            )
 
     def test_anticipate_no_pk_composite_pk_prefetch(self):
         t = Table(
@@ -514,13 +521,16 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
         d = postgresql.dialect()
         d.implicit_returning = False
-        assert_raises_message(
-            exc.CompileError,
+        with expect_warnings(
             "Column 't.y' is marked as a member.*"
-            "Note that as of SQLAlchemy 1.1,",
-            t.insert().compile, dialect=d, column_keys=['x']
-
-        )
+            "Note that as of SQLAlchemy 1.1,"
+        ):
+            self.assert_compile(
+                t.insert(),
+                "INSERT INTO t (x) VALUES (%(x)s)",
+                params={'x': 5},
+                dialect=d
+            )
 
     def test_anticipate_nullable_composite_pk(self):
         t = Table(
@@ -539,13 +549,15 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column('x', Integer, primary_key=True, autoincrement=False),
             Column('q', Integer)
         )
-        assert_raises_message(
-            exc.CompileError,
+        with expect_warnings(
             "Column 't.x' is marked as a member.*"
-            "may not store NULL.$",
-            t.insert().compile, column_keys=['q']
-
-        )
+            "may not store NULL.$"
+        ):
+            self.assert_compile(
+                t.insert(),
+                "INSERT INTO t (q) VALUES (:q)",
+                params={"q": 5}
+            )
 
     def test_anticipate_no_pk_non_composite_pk_implicit_returning(self):
         t = Table(
@@ -555,13 +567,16 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
         d = postgresql.dialect()
         d.implicit_returning = True
-        assert_raises_message(
-            exc.CompileError,
+        with expect_warnings(
             "Column 't.x' is marked as a member.*"
             "may not store NULL.$",
-            t.insert().compile, dialect=d, column_keys=['q']
-
-        )
+        ):
+            self.assert_compile(
+                t.insert(),
+                "INSERT INTO t (q) VALUES (%(q)s)",
+                params={"q": 5},
+                dialect=d
+            )
 
     def test_anticipate_no_pk_non_composite_pk_prefetch(self):
         t = Table(
@@ -571,13 +586,17 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
         d = postgresql.dialect()
         d.implicit_returning = False
-        assert_raises_message(
-            exc.CompileError,
-            "Column 't.x' is marked as a member.*"
-            "may not store NULL.$",
-            t.insert().compile, dialect=d, column_keys=['q']
 
-        )
+        with expect_warnings(
+            "Column 't.x' is marked as a member.*"
+            "may not store NULL.$"
+        ):
+            self.assert_compile(
+                t.insert(),
+                "INSERT INTO t (q) VALUES (%(q)s)",
+                params={"q": 5},
+                dialect=d
+            )
 
 
 class InsertImplicitReturningTest(

@@ -1299,9 +1299,9 @@ have autoincrement set up; given a table such as::
         Column('y', Integer, primary_key=True)
     )
 
-An INSERT emitted with no values for this table will produce the exception::
+An INSERT emitted with no values for this table will produce this warning::
 
-    CompileError: Column 'b.x' is marked as a member of the primary
+    SAWarning: Column 'b.x' is marked as a member of the primary
     key for table 'b', but has no Python-side or server-side default
     generator indicated, nor does it indicate 'autoincrement=True',
     and no explicit value is passed.  Primary key columns may not

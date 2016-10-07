@@ -1,5 +1,5 @@
 from sqlalchemy.testing import eq_, assert_raises_message, \
-    assert_raises, AssertsCompiledSQL
+    assert_raises, AssertsCompiledSQL, expect_warnings
 import datetime
 from sqlalchemy.schema import CreateSequence, DropSequence, CreateTable
 from sqlalchemy.sql import select, text, literal_column
@@ -848,6 +848,7 @@ class AutoIncrementTest(fixtures.TablesTest):
         )
         assert x._autoincrement_column is None
 
+    @testing.only_on("sqlite")
     def test_non_autoincrement(self):
         # sqlite INT primary keys can be non-unique! (only for ints)
         nonai = Table(
@@ -861,13 +862,12 @@ class AutoIncrementTest(fixtures.TablesTest):
             # mysql in legacy mode fails on second row
             nonai.insert().execute(data='row 1')
             nonai.insert().execute(data='row 2')
-        assert_raises_message(
-            sa.exc.CompileError,
-            ".*has no Python-side or server-side default.*",
-            go
-        )
 
-        nonai.insert().execute(id=1, data='row 1')
+        # just testing SQLite for now, it passes
+        with expect_warnings(
+            ".*has no Python-side or server-side default.*",
+        ):
+            go()
 
     def test_col_w_sequence_non_autoinc_no_firing(self):
         metadata = self.metadata

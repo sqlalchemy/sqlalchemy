@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from sqlalchemy.testing import AssertsExecutionResults, eq_, \
-    assert_raises_message, AssertsCompiledSQL
+    assert_raises_message, AssertsCompiledSQL, expect_warnings, assert_raises
 from sqlalchemy import Table, Column, MetaData, Integer, String, bindparam, \
     Sequence, ForeignKey, text, select, func, extract, literal_column, \
     tuple_, DateTime, Time, literal, and_, Date, or_
@@ -69,11 +69,13 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             engines.testing_engine(options={'implicit_returning': False}),
             engines.testing_engine(options={'implicit_returning': True})
         ]:
-            assert_raises_message(
-                exc.CompileError,
-                ".*has no Python-side or server-side default.*",
-                eng.execute, t2.insert()
-            )
+            with expect_warnings(
+                ".*has no Python-side or server-side default.*"
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    eng.execute, t2.insert()
+                )
 
     def test_sequence_insert(self):
         table = Table(
@@ -523,24 +525,32 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         with engine.connect() as conn:
             conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
 
-            assert_raises_message(
-                exc.CompileError,
-                ".*has no Python-side or server-side default.*",
-                conn.execute, table.insert(), {'data': 'd2'})
-            assert_raises_message(
-                exc.CompileError,
-                ".*has no Python-side or server-side default.*",
-                conn.execute, table.insert(), {'data': 'd2'},
-                {'data': 'd3'})
-            assert_raises_message(
-                exc.CompileError,
-                ".*has no Python-side or server-side default.*",
-                conn.execute, table.insert(), {'data': 'd2'})
-            assert_raises_message(
-                exc.CompileError,
-                ".*has no Python-side or server-side default.*",
-                conn.execute, table.insert(), {'data': 'd2'},
-                {'data': 'd3'})
+            with expect_warnings(
+                    ".*has no Python-side or server-side default.*",
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute, table.insert(), {'data': 'd2'})
+            with expect_warnings(
+                    ".*has no Python-side or server-side default.*",
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute, table.insert(), {'data': 'd2'},
+                    {'data': 'd3'})
+            with expect_warnings(
+                    ".*has no Python-side or server-side default.*",
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute, table.insert(), {'data': 'd2'})
+            with expect_warnings(
+                    ".*has no Python-side or server-side default.*",
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute, table.insert(), {'data': 'd2'},
+                    {'data': 'd3'})
 
             conn.execute(
                 table.insert(),
@@ -560,15 +570,20 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         table = Table(table.name, m2, autoload=True)
         with engine.connect() as conn:
             conn.execute(table.insert(), {'id': 30, 'data': 'd1'})
-            assert_raises_message(
-                exc.CompileError,
-                ".*has no Python-side or server-side default.*",
-                conn.execute, table.insert(), {'data': 'd2'})
-            assert_raises_message(
-                exc.CompileError,
-                ".*has no Python-side or server-side default.*",
-                conn.execute, table.insert(), {'data': 'd2'},
-                {'data': 'd3'})
+
+            with expect_warnings(
+                    ".*has no Python-side or server-side default.*",
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute, table.insert(), {'data': 'd2'})
+            with expect_warnings(
+                    ".*has no Python-side or server-side default.*",
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute, table.insert(), {'data': 'd2'},
+                    {'data': 'd3'})
             conn.execute(
                 table.insert(),
                 {'id': 31, 'data': 'd2'}, {'id': 32, 'data': 'd3'})

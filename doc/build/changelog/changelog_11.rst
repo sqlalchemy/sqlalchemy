@@ -31,6 +31,18 @@
         was anticipated, the exception catch was not broad enough so it now
         catches all forms of pyodbc.Error.
 
+    .. change::
+        :tags: bug, core
+        :tickets: 3216
+
+        Changed the CompileError raised when various primary key missing
+        situations are detected to a warning.  The statement is again
+        passed to the database where it will fail and the DBAPI error (usually
+        IntegrityError) raises as usual.
+
+        .. seealso::
+
+            :ref:`change_3216`
 
 .. changelog::
     :version: 1.1.0

@@ -5,7 +5,7 @@ import os
 import datetime
 
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, is_
+    assert_raises_message, is_, expect_warnings
 from sqlalchemy import Table, select, bindparam, Column,\
     MetaData, func, extract, ForeignKey, text, DefaultClause, and_, \
     create_engine, UniqueConstraint, Index, PrimaryKeyConstraint
@@ -803,13 +803,20 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk2(self):
-        # now raises CompileError due to [ticket:3216]
-        assert_raises(
-            exc.CompileError, self._test_empty_insert,
-            Table(
-                'b', MetaData(testing.db),
-                Column('x', Integer, primary_key=True),
-                Column('y', Integer, primary_key=True)))
+        # now warns due to [ticket:3216]
+
+        with expect_warnings(
+            "Column 'b.x' is marked as a member of the "
+            "primary key for table 'b'",
+            "Column 'b.y' is marked as a member of the "
+            "primary key for table 'b'",
+        ):
+            assert_raises(
+                exc.IntegrityError, self._test_empty_insert,
+                Table(
+                    'b', MetaData(testing.db),
+                    Column('x', Integer, primary_key=True),
+                    Column('y', Integer, primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk2_fv(self):
@@ -824,13 +831,19 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk3(self):
-        # now raises CompileError due to [ticket:3216]
-        assert_raises(
-            exc.CompileError, self._test_empty_insert,
-            Table(
-                'c', MetaData(testing.db),
-                Column('x', Integer, primary_key=True),
-                Column('y', Integer, DefaultClause('123'), primary_key=True)))
+        # now warns due to [ticket:3216]
+        with expect_warnings(
+            "Column 'c.x' is marked as a member of the primary key for table"
+        ):
+            assert_raises(
+                exc.IntegrityError,
+                self._test_empty_insert,
+                Table(
+                    'c', MetaData(testing.db),
+                    Column('x', Integer, primary_key=True),
+                    Column('y', Integer,
+                           DefaultClause('123'), primary_key=True))
+            )
 
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk3_fv(self):

@@ -301,7 +301,7 @@ def _scan_cols(
             elif c.primary_key and \
                     c is not stmt.table._autoincrement_column and \
                     not c.nullable:
-                _raise_pk_with_no_anticipated_value(c)
+                _warn_pk_with_no_anticipated_value(c)
 
         elif compiler.isupdate:
             _append_param_update(
@@ -379,7 +379,7 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
     elif not c.nullable:
         # no .default, no .server_default, not autoincrement, we have
         # no indication this primary key column will have any value
-        _raise_pk_with_no_anticipated_value(c)
+        _warn_pk_with_no_anticipated_value(c)
 
 
 def _create_insert_prefetch_bind_param(compiler, c, process=True, name=None):
@@ -464,7 +464,7 @@ def _append_param_insert_pk(compiler, stmt, c, values, kw):
     elif c.default is None and c.server_default is None and not c.nullable:
         # no .default, no .server_default, not autoincrement, we have
         # no indication this primary key column will have any value
-        _raise_pk_with_no_anticipated_value(c)
+        _warn_pk_with_no_anticipated_value(c)
 
 
 def _append_param_insert_hasdefault(
@@ -671,7 +671,7 @@ def _get_returning_modifiers(compiler, stmt):
         implicit_return_defaults, postfetch_lastrowid
 
 
-def _raise_pk_with_no_anticipated_value(c):
+def _warn_pk_with_no_anticipated_value(c):
     msg = (
         "Column '%s.%s' is marked as a member of the "
         "primary key for table '%s', "
@@ -689,4 +689,4 @@ def _raise_pk_with_no_anticipated_value(c):
             "behavior is expected for one of the columns in the primary key. "
             "CREATE TABLE statements are impacted by this change as well on "
             "most backends.")
-    raise exc.CompileError(msg)
+    util.warn(msg)
