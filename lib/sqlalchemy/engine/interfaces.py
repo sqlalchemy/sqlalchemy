@@ -100,7 +100,7 @@ class Dialect(object):
     preexecute_autoincrement_sequences
       True if 'implicit' primary key functions must be executed separately
       in order to get their value.   This is currently oriented towards
-      Postgresql.
+      PostgreSQL.
 
     implicit_returning
       use RETURNING or equivalent during INSERT execution in order to load
@@ -136,7 +136,7 @@ class Dialect(object):
     sequences_optional
       If True, indicates if the "optional" flag on the Sequence() construct
       should signal to not generate a CREATE SEQUENCE. Applies only to
-      dialects that support sequences. Currently used only to allow Postgresql
+      dialects that support sequences. Currently used only to allow PostgreSQL
       SERIAL to be used on a column that specifies Sequence() for usage on
       other backends.
 

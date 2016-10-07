@@ -13,7 +13,7 @@ from .array import ARRAY
 
 
 class aggregate_order_by(expression.ColumnElement):
-    """Represent a Postgresql aggregate order by expression.
+    """Represent a PostgreSQL aggregate order by expression.
 
     E.g.::
 
@@ -157,7 +157,7 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
 
 
 def array_agg(*arg, **kw):
-    """Postgresql-specific form of :class:`.array_agg`, ensures
+    """PostgreSQL-specific form of :class:`.array_agg`, ensures
     return type is :class:`.postgresql.ARRAY` and not
     the plain :class:`.types.ARRAY`.
 

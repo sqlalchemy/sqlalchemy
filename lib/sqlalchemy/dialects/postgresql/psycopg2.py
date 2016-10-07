@@ -126,14 +126,14 @@ on all new connections based on the value passed to
 :func:`.create_engine` using the ``client_encoding`` parameter::
 
     # set_client_encoding() setting;
-    # works for *all* Postgresql versions
+    # works for *all* PostgreSQL versions
     engine = create_engine("postgresql://user:pass@host/dbname",
                            client_encoding='utf8')
 
-This overrides the encoding specified in the Postgresql client configuration.
+This overrides the encoding specified in the PostgreSQL client configuration.
 When using the parameter in this way, the psycopg2 driver emits
 ``SET client_encoding TO 'utf8'`` on the connection explicitly, and works
-in all Postgresql versions.
+in all PostgreSQL versions.
 
 Note that the ``client_encoding`` setting as passed to :func:`.create_engine`
 is **not the same** as the more recently added ``client_encoding`` parameter
@@ -142,14 +142,14 @@ is passed directly to ``psycopg2.connect()``, and from SQLAlchemy is passed
 using the :paramref:`.create_engine.connect_args` parameter::
 
     # libpq direct parameter setting;
-    # only works for Postgresql **9.1 and above**
+    # only works for PostgreSQL **9.1 and above**
     engine = create_engine("postgresql://user:pass@host/dbname",
                            connect_args={'client_encoding': 'utf8'})
 
     # using the query string is equivalent
     engine = create_engine("postgresql://user:pass@host/dbname?client_encoding=utf8")
 
-The above parameter was only added to libpq as of version 9.1 of Postgresql,
+The above parameter was only added to libpq as of version 9.1 of PostgreSQL,
 so using the previous method is better for cross-version support.
 
 .. _psycopg2_disable_native_unicode:
@@ -229,12 +229,12 @@ Psycopg2 Transaction Isolation Level
 -------------------------------------
 
 As discussed in :ref:`postgresql_isolation_level`,
-all Postgresql dialects support setting of transaction isolation level
+all PostgreSQL dialects support setting of transaction isolation level
 both via the ``isolation_level`` parameter passed to :func:`.create_engine`,
 as well as the ``isolation_level`` argument used by
 :meth:`.Connection.execution_options`.  When using the psycopg2 dialect, these
 options make use of psycopg2's ``set_isolation_level()`` connection method,
-rather than emitting a Postgresql directive; this is because psycopg2's
+rather than emitting a PostgreSQL directive; this is because psycopg2's
 API-level setting is always emitted at the start of each transaction in any
 case.
 
@@ -259,7 +259,7 @@ The psycopg2 dialect supports these constants for isolation level:
 NOTICE logging
 ---------------
 
-The psycopg2 dialect will log Postgresql NOTICE messages via the
+The psycopg2 dialect will log PostgreSQL NOTICE messages via the
 ``sqlalchemy.dialects.postgresql`` logger::
 
     import logging

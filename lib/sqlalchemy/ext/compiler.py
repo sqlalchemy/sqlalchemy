@@ -299,7 +299,7 @@ savings ends, without timezones because timezones are like character
 encodings - they're best applied only at the endpoints of an application
 (i.e. convert to UTC upon user input, re-apply desired timezone upon display).
 
-For Postgresql and Microsoft SQL Server::
+For PostgreSQL and Microsoft SQL Server::
 
     from sqlalchemy.sql import expression
     from sqlalchemy.ext.compiler import compiles

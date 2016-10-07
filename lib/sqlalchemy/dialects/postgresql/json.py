@@ -87,16 +87,16 @@ colspecs[sqltypes.JSON.JSONPathType] = JSONPathType
 
 
 class JSON(sqltypes.JSON):
-    """Represent the Postgresql JSON type.
+    """Represent the PostgreSQL JSON type.
 
     This type is a specialization of the Core-level :class:`.types.JSON`
     type.   Be sure to read the documentation for :class:`.types.JSON` for
     important tips regarding treatment of NULL values and ORM use.
 
-    .. versionchanged:: 1.1 :class:`.postgresql.JSON` is now a Postgresql-
+    .. versionchanged:: 1.1 :class:`.postgresql.JSON` is now a PostgreSQL-
        specific specialization of the new :class:`.types.JSON` type.
 
-    The operators provided by the Postgresql version of :class:`.JSON`
+    The operators provided by the PostgreSQL version of :class:`.JSON`
     include:
 
     * Index operations (the ``->`` operator)::
@@ -219,7 +219,7 @@ ischema_names['json'] = JSON
 
 
 class JSONB(JSON):
-    """Represent the Postgresql JSONB type.
+    """Represent the PostgreSQL JSONB type.
 
     The :class:`.JSONB` type stores arbitrary JSONB format data, e.g.::
 

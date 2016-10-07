@@ -269,7 +269,7 @@ class Connection(Connectable):
 
                 :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
 
-                :ref:`Postgresql Transaction Isolation <postgresql_isolation_level>`
+                :ref:`PostgreSQL Transaction Isolation <postgresql_isolation_level>`
 
                 :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
 

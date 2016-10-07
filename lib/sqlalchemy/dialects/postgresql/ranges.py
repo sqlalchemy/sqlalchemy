@@ -24,7 +24,7 @@ class RangeOperators(object):
     Table 9-45 of the postgres documentation. For these, the normal
     :func:`~sqlalchemy.sql.expression.func` object should be used.
 
-    .. versionadded:: 0.8.2  Support for Postgresql RANGE operations.
+    .. versionadded:: 0.8.2  Support for PostgreSQL RANGE operations.
 
     """
 
@@ -97,7 +97,7 @@ class RangeOperators(object):
 
 
 class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the Postgresql INT4RANGE type.
+    """Represent the PostgreSQL INT4RANGE type.
 
     .. versionadded:: 0.8.2
 
@@ -109,7 +109,7 @@ ischema_names['int4range'] = INT4RANGE
 
 
 class INT8RANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the Postgresql INT8RANGE type.
+    """Represent the PostgreSQL INT8RANGE type.
 
     .. versionadded:: 0.8.2
 
@@ -121,7 +121,7 @@ ischema_names['int8range'] = INT8RANGE
 
 
 class NUMRANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the Postgresql NUMRANGE type.
+    """Represent the PostgreSQL NUMRANGE type.
 
     .. versionadded:: 0.8.2
 
@@ -133,7 +133,7 @@ ischema_names['numrange'] = NUMRANGE
 
 
 class DATERANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the Postgresql DATERANGE type.
+    """Represent the PostgreSQL DATERANGE type.
 
     .. versionadded:: 0.8.2
 
@@ -145,7 +145,7 @@ ischema_names['daterange'] = DATERANGE
 
 
 class TSRANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the Postgresql TSRANGE type.
+    """Represent the PostgreSQL TSRANGE type.
 
     .. versionadded:: 0.8.2
 
@@ -157,7 +157,7 @@ ischema_names['tsrange'] = TSRANGE
 
 
 class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the Postgresql TSTZRANGE type.
+    """Represent the PostgreSQL TSTZRANGE type.
 
     .. versionadded:: 0.8.2
 

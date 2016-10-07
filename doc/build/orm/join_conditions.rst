@@ -185,7 +185,7 @@ along with :paramref:`~.relationship.foreign_keys` and :paramref:`~.relationship
 establish such a join.
 
 Below, a class ``HostEntry`` joins to itself, equating the string ``content``
-column to the ``ip_address`` column, which is a Postgresql type called ``INET``.
+column to the ``ip_address`` column, which is a PostgreSQL type called ``INET``.
 We need to use :func:`.cast` in order to cast one side of the join to the
 type of the other::
 
@@ -251,7 +251,7 @@ Using custom operators in join conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Another use case for relationships is the use of custom operators, such
-as Postgresql's "is contained within" ``<<`` operator when joining with
+as PostgreSQL's "is contained within" ``<<`` operator when joining with
 types such as :class:`.postgresql.INET` and :class:`.postgresql.CIDR`.
 For custom operators we use the :meth:`.Operators.op` function::
 

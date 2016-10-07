@@ -597,7 +597,7 @@ generated::
 
 .. _migration_2878:
 
-Postgresql CREATE TYPE <x> AS ENUM now applies quoting to values
+PostgreSQL CREATE TYPE <x> AS ENUM now applies quoting to values
 ----------------------------------------------------------------
 
 The :class:`.postgresql.ENUM` type will now apply escaping to single quote
@@ -879,7 +879,7 @@ New FOR UPDATE support on ``select()``, ``Query()``
 
 An attempt is made to simplify the specification of the ``FOR UPDATE``
 clause on ``SELECT`` statements made within Core and ORM, and support is added
-for the ``FOR UPDATE OF`` SQL supported by Postgresql and Oracle.
+for the ``FOR UPDATE OF`` SQL supported by PostgreSQL and Oracle.
 
 Using the core :meth:`.GenerativeSelect.with_for_update`, options like ``FOR SHARE`` and
 ``NOWAIT`` can be specified individually, rather than linking to arbitrary
@@ -976,11 +976,11 @@ identifier, or alternatively fetch the version identifier
 from each row at the same time the INSERT or UPDATE is emitted.   When using a
 server-generated version identifier, it is strongly
 recommended that this feature be used only on a backend with strong RETURNING
-support (Postgresql, SQL Server; Oracle also supports RETURNING but the cx_oracle
+support (PostgreSQL, SQL Server; Oracle also supports RETURNING but the cx_oracle
 driver has only limited support), else the additional SELECT statements will
 add significant performance
 overhead.   The example provided at :ref:`server_side_version_counter` illustrates
-the usage of the Postgresql ``xmin`` system column in order to integrate it with
+the usage of the PostgreSQL ``xmin`` system column in order to integrate it with
 the ORM's versioning feature.
 
 .. seealso::
@@ -1033,10 +1033,10 @@ from a backref::
 :ticket:`1535`
 
 
-Postgresql JSON Type
+PostgreSQL JSON Type
 --------------------
 
-The Postgresql dialect now features a :class:`.postgresql.JSON` type to
+The PostgreSQL dialect now features a :class:`.postgresql.JSON` type to
 complement the :class:`.postgresql.HSTORE` type.
 
 .. seealso::
@@ -1149,7 +1149,7 @@ but today it seems clear every database tested except SQLite now supports it
 (Oracle 8, a very old database, doesn't support the JOIN keyword at all,
 but SQLAlchemy has always had a simple rewriting scheme in place for Oracle's syntax).
 To make matters worse, SQLAlchemy's usual workaround of applying a
-SELECT often degrades performance on platforms like Postgresql and MySQL::
+SELECT often degrades performance on platforms like PostgreSQL and MySQL::
 
     SELECT a.*, anon_1.* FROM a LEFT OUTER JOIN (
                     SELECT b.id AS b_id, c.id AS c_id
@@ -1335,7 +1335,7 @@ immediately within the flush process.
 
 In 0.9, as a result of the version id enhancements, ``eager_defaults`` can now
 emit a RETURNING clause for these values, so on a backend with strong RETURNING
-support in particular Postgresql, the ORM can fetch newly generated default
+support in particular PostgreSQL, the ORM can fetch newly generated default
 and SQL expression values inline with the INSERT or UPDATE.  ``eager_defaults``,
 when enabled, makes use of RETURNING automatically when the target backend
 and :class:`.Table` supports "implicit returning".

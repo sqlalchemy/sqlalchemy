@@ -194,7 +194,7 @@
         :pullreq: bitbucket:45
         :versions: 1.0.0b1
 
-        Added support for the ``CONCURRENTLY`` keyword with Postgresql
+        Added support for the ``CONCURRENTLY`` keyword with PostgreSQL
         indexes, established using ``postgresql_concurrently``.  Pull
         request courtesy Iuri de Silvio.
 
@@ -312,7 +312,7 @@
         :tickets: 2940
         :versions: 1.0.0b1
 
-        Repaired support for Postgresql UUID types in conjunction with
+        Repaired support for PostgreSQL UUID types in conjunction with
         the ARRAY type when using psycopg2.  The psycopg2 dialect now
         employs use of the psycopg2.extras.register_uuid() hook
         so that UUID values are always passed to/from the DBAPI as
@@ -331,7 +331,7 @@
         additionally, the newly added psycopg2 extension
         ``extras.register_default_jsonb`` is used to establish a JSON
         deserializer passed to the dialect via the ``json_deserializer``
-        argument.  Also repaired the Postgresql integration tests which
+        argument.  Also repaired the PostgreSQL integration tests which
         weren't actually round-tripping the JSONB type as opposed to the
         JSON type.  Pull request courtesy Mateusz Susik.
 
@@ -374,7 +374,7 @@
         :versions: 1.0.0b1
         :tickets: 3174
 
-        Fixed bug where Postgresql dialect would fail to render an
+        Fixed bug where PostgreSQL dialect would fail to render an
         expression in an :class:`.Index` that did not correspond directly
         to a table-bound column; typically when a :func:`.text` construct
         was one of the expressions within the index; or could misinterpret the
@@ -770,7 +770,7 @@
         :versions: 1.0.0b1
         :tickets: 3159
 
-        Fixed bug where Postgresql JSON type was not able to persist or
+        Fixed bug where PostgreSQL JSON type was not able to persist or
         otherwise render a SQL NULL column value, rather than a JSON-encoded
         ``'null'``.  To support this case, changes are as follows:
 
@@ -891,7 +891,7 @@
         then force all :class:`.Boolean` and :class:`.Enum` types to
         require names as well, as these implicitly create a
         constraint, even if the ultimate target backend were one that does
-        not require generation of the constraint such as Postgresql.
+        not require generation of the constraint such as PostgreSQL.
         The mechanics of naming conventions for these particular
         constraints has been reorganized such that the naming
         determination is done at DDL compile time, rather than at
@@ -990,7 +990,7 @@
         :versions: 1.0.0b1
         :pullreq: github:101
 
-        Added support for Postgresql JSONB via :class:`.JSONB`.  Pull request
+        Added support for PostgreSQL JSONB via :class:`.JSONB`.  Pull request
         courtesy Damian Dimmich.
 
     .. change::
@@ -1103,7 +1103,7 @@
         :tickets: 3002
         :versions: 1.0.0b1
 
-        Added a new type :class:`.postgresql.OID` to the Postgresql dialect.
+        Added a new type :class:`.postgresql.OID` to the PostgreSQL dialect.
         While "oid" is generally a private type within PG that is not exposed
         in modern versions, there are some PG use cases such as large object
         support where these types might be exposed, as well as within some
@@ -1231,11 +1231,11 @@
         :pullreq: bitbucket:18
         :versions: 1.0.0b1
 
-        Added a new flag :paramref:`.ARRAY.zero_indexes` to the Postgresql
+        Added a new flag :paramref:`.ARRAY.zero_indexes` to the PostgreSQL
         :class:`.ARRAY` type.  When set to ``True``, a value of one will be
         added to all array index values before passing to the database, allowing
         better interoperability between Python style zero-based indexes and
-        Postgresql one-based indexes.  Pull request courtesy Alexey Terentev.
+        PostgreSQL one-based indexes.  Pull request courtesy Alexey Terentev.
 
     .. change::
         :tags: bug, engine
@@ -1957,7 +1957,7 @@
         Added a new dialect-level argument ``postgresql_ignore_search_path``;
         this argument is accepted by both the :class:`.Table` constructor
         as well as by the :meth:`.MetaData.reflect` method.  When in use
-        against Postgresql, a foreign-key referenced table which specifies
+        against PostgreSQL, a foreign-key referenced table which specifies
         a remote schema name will retain that schema name even if the name
         is present in the ``search_path``; the default behavior since 0.7.3
         has been that schemas present in ``search_path`` would not be copied
@@ -2500,7 +2500,7 @@
         :tickets: 2581
         :pullreq: github:50
 
-        Support for Postgresql JSON has been added, using the new
+        Support for PostgreSQL JSON has been added, using the new
         :class:`.JSON` type.   Huge thanks to Nathan Rice for
         implementing and testing this.
 
@@ -2550,7 +2550,7 @@
         :tags: feature, postgresql
         :pullreq: bitbucket:8
 
-        Added support for Postgresql TSVECTOR via the
+        Added support for PostgreSQL TSVECTOR via the
         :class:`.postgresql.TSVECTOR` type.  Pull request courtesy
         Noufal Ibrahim.
 
@@ -2825,8 +2825,8 @@
         :tags: feature, sql, postgresql, mysql
         :tickets: 2183
 
-        The Postgresql and MySQL dialects now support reflection/inspection
-        of foreign key options, including ON UPDATE, ON DELETE.  Postgresql
+        The PostgreSQL and MySQL dialects now support reflection/inspection
+        of foreign key options, including ON UPDATE, ON DELETE.  PostgreSQL
         also reflects MATCH, DEFERRABLE, and INITIALLY.  Coutesy ijl.
 
     .. change::
@@ -2936,7 +2936,7 @@
 
         Added support for rendering ``SMALLSERIAL`` when a :class:`.SmallInteger`
         type is used on a primary key autoincrement column, based on server
-        version detection of Postgresql version 9.2 or greater.
+        version detection of PostgreSQL version 9.2 or greater.
 
     .. change::
         :tags: feature, mysql

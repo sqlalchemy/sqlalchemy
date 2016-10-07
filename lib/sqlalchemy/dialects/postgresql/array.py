@@ -46,7 +46,7 @@ def All(other, arrexpr, operator=operators.eq):
 
 class array(expression.Tuple):
 
-    """A Postgresql ARRAY literal.
+    """A PostgreSQL ARRAY literal.
 
     This is used to produce ARRAY literals in SQL expressions, e.g.::
 
@@ -116,7 +116,7 @@ OVERLAP = operators.custom_op("&&", precedence=5)
 
 class ARRAY(SchemaEventTarget, sqltypes.ARRAY):
 
-    """Postgresql ARRAY type.
+    """PostgreSQL ARRAY type.
 
     .. versionchanged:: 1.1 The :class:`.postgresql.ARRAY` type is now
        a subclass of the core :class:`.types.ARRAY` type.
@@ -219,7 +219,7 @@ class ARRAY(SchemaEventTarget, sqltypes.ARRAY):
          they were declared.
 
         :param zero_indexes=False: when True, index values will be converted
-         between Python zero-based and Postgresql one-based indexes, e.g.
+         between Python zero-based and PostgreSQL one-based indexes, e.g.
          a value of one will be added to all index values before passing
          to the database.
 

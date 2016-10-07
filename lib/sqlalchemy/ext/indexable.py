@@ -143,7 +143,7 @@ Above, a query such as::
 
     q = session.query(Person).filter(Person.year == '1980')
 
-On a Postgresql backend, the above query will render as::
+On a PostgreSQL backend, the above query will render as::
 
     SELECT person.id, person.data
     FROM person
@@ -183,7 +183,7 @@ Subclassing
 
 :class:`.index_property` can be subclassed, in particular for the common
 use case of providing coercion of values or SQL expressions as they are
-accessed.  Below is a common recipe for use with a Postgresql JSON type,
+accessed.  Below is a common recipe for use with a PostgreSQL JSON type,
 where we want to also include automatic casting plus ``astext()``::
 
     class pg_json_property(index_property):
@@ -195,7 +195,7 @@ where we want to also include automatic casting plus ``astext()``::
             expr = super(pg_json_property, self).expr(model)
             return expr.astext.cast(self.cast_type)
 
-The above subclass can be used with the Postgresql-specific
+The above subclass can be used with the PostgreSQL-specific
 version of :class:`.postgresql.JSON`::
 
     from sqlalchemy import Column, Integer
@@ -213,7 +213,7 @@ version of :class:`.postgresql.JSON`::
         age = pg_json_property('data', 'age', Integer)
 
 The ``age`` attribute at the instance level works as before; however
-when rendering SQL, Postgresql's ``->>`` operator will be used
+when rendering SQL, PostgreSQL's ``->>`` operator will be used
 for indexed access, instead of the usual index opearator of ``->``::
 
     >>> query = session.query(Person).filter(Person.age < 20)

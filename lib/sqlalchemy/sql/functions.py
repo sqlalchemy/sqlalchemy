@@ -196,7 +196,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         This construct wraps the function in a named alias which
         is suitable for the FROM clause, in the style accepted for example
-        by Postgresql.
+        by PostgreSQL.
 
         e.g.::
 

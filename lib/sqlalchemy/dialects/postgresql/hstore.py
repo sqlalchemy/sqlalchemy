@@ -50,7 +50,7 @@ CONTAINED_BY = operators.custom_op(
 
 
 class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
-    """Represent the Postgresql HSTORE type.
+    """Represent the PostgreSQL HSTORE type.
 
     The :class:`.HSTORE` type stores dictionaries containing strings, e.g.::
 
@@ -117,7 +117,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
     .. seealso::
 
-        :class:`.hstore` - render the Postgresql ``hstore()`` function.
+        :class:`.hstore` - render the PostgreSQL ``hstore()`` function.
 
 
     """
@@ -254,10 +254,10 @@ ischema_names['hstore'] = HSTORE
 
 class hstore(sqlfunc.GenericFunction):
     """Construct an hstore value within a SQL expression using the
-    Postgresql ``hstore()`` function.
+    PostgreSQL ``hstore()`` function.
 
     The :class:`.hstore` function accepts one or two arguments as described
-    in the Postgresql documentation.
+    in the PostgreSQL documentation.
 
     E.g.::
 
@@ -276,7 +276,7 @@ class hstore(sqlfunc.GenericFunction):
 
     .. seealso::
 
-        :class:`.HSTORE` - the Postgresql ``HSTORE`` datatype.
+        :class:`.HSTORE` - the PostgreSQL ``HSTORE`` datatype.
 
     """
     type = HSTORE

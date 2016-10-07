@@ -954,7 +954,7 @@ class BindParameter(ColumnElement):
 
         Above, we see that ``Wendy`` is passed as a parameter to the database,
         while the placeholder ``:name_1`` is rendered in the appropriate form
-        for the target database, in this case the Postgresql database.
+        for the target database, in this case the PostgreSQL database.
 
         Similarly, :func:`.bindparam` is invoked automatically
         when working with :term:`CRUD` statements as far as the "VALUES"
@@ -1999,7 +1999,7 @@ class Tuple(ClauseList, ColumnElement):
         .. warning::
 
             The composite IN construct is not supported by all backends,
-            and is currently known to work on Postgresql and MySQL,
+            and is currently known to work on PostgreSQL and MySQL,
             but not SQLite.   Unsupported backends will raise
             a subclass of :class:`~sqlalchemy.exc.DBAPIError` when such
             an expression is invoked.
@@ -2808,7 +2808,7 @@ class CollectionAggregate(UnaryExpression):
     ANY and ALL.
 
     The ANY and ALL keywords are available in different ways on different
-    backends.  On Postgresql, they only work for an ARRAY type.  On
+    backends.  On PostgreSQL, they only work for an ARRAY type.  On
     MySQL, they only work for subqueries.
 
     """
@@ -3006,7 +3006,7 @@ class Slice(ColumnElement):
     """Represent SQL for a Python array-slice object.
 
     This is not a specific SQL construct at this level, but
-    may be interpreted by specific dialects, e.g. Postgresql.
+    may be interpreted by specific dialects, e.g. PostgreSQL.
 
     """
     __visit_name__ = 'slice'

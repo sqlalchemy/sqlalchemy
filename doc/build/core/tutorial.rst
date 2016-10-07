@@ -172,7 +172,7 @@ each table first before creating, so it's safe to call multiple times:
 .. note::
 
     Users familiar with the syntax of CREATE TABLE may notice that the
-    VARCHAR columns were generated without a length; on SQLite and Postgresql,
+    VARCHAR columns were generated without a length; on SQLite and PostgreSQL,
     this is a valid datatype, but on others, it's not allowed. So if running
     this tutorial on one of those databases, and you wish to use SQLAlchemy to
     issue CREATE TABLE, a "length" may be provided to the :class:`~sqlalchemy.types.String` type as
@@ -1722,7 +1722,7 @@ LATERAL correlation is a special sub-category of SQL correlation which
 allows a selectable unit to refer to another selectable unit within a
 single FROM clause.  This is an extremely special use case which, while
 part of the SQL standard, is only known to be supported by recent
-versions of Postgresql.
+versions of PostgreSQL.
 
 Normally, if a SELECT statement refers to
 ``table1 JOIN (some SELECT) AS subquery`` in its FROM clause, the subquery
@@ -1863,7 +1863,7 @@ is the DISTINCT modifier.  A simple DISTINCT clause can be added using the
 
 Most database backends support a system of limiting how many rows
 are returned, and the majority also feature a means of starting to return
-rows after a given "offset".   While common backends like Postgresql,
+rows after a given "offset".   While common backends like PostgreSQL,
 MySQL and SQLite support LIMIT and OFFSET keywords, other backends
 need to refer to more esoteric features such as "window functions"
 and row ids to achieve the same effect.  The :meth:`~.Select.limit`
@@ -2001,7 +2001,7 @@ Multiple Table Updates
 
 .. versionadded:: 0.7.4
 
-The Postgresql, Microsoft SQL Server, and MySQL backends all support UPDATE statements
+The PostgreSQL, Microsoft SQL Server, and MySQL backends all support UPDATE statements
 that refer to multiple tables.   For PG and MSSQL, this is the "UPDATE FROM" syntax,
 which updates one table at a time, but can reference additional tables in an additional
 "FROM" clause that can then be referenced in the WHERE clause directly.   On MySQL,

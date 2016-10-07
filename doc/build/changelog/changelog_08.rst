@@ -197,7 +197,7 @@
         :versions: 0.9.4
 
         Fixed regression caused by release 0.8.5 / 0.9.3's compatibility
-        enhancements where index reflection on Postgresql versions specific
+        enhancements where index reflection on PostgreSQL versions specific
         to only the 8.1, 8.2 series again
         broke, surrounding the ever problematic int2vector type.  While
         int2vector supports array operations as of 8.1, apparently it only
@@ -284,8 +284,8 @@
         :tags: postgresql, bug
         :versions: 0.9.3
 
-        Support has been improved for Postgresql reflection behavior on very old
-        (pre 8.1) versions of Postgresql, and potentially other PG engines
+        Support has been improved for PostgreSQL reflection behavior on very old
+        (pre 8.1) versions of PostgreSQL, and potentially other PG engines
         such as Redshift (assuming Redshift reports the version as < 8.1).
         The query for "indexes" as well as "primary keys" relies upon inspecting
         a so-called "int2vector" datatype, which refuses to coerce to an array
@@ -351,10 +351,10 @@
         :tickets: 2291
         :versions: 0.9.3
 
-        Revised this very old issue where the Postgresql "get primary key"
+        Revised this very old issue where the PostgreSQL "get primary key"
         reflection query were updated to take into account primary key constraints
         that were renamed; the newer query fails on very old versions of
-        Postgresql such as version 7, so the old query is restored in those cases
+        PostgreSQL such as version 7, so the old query is restored in those cases
         when server_version_info < (8, 0) is detected.
 
     .. change::
@@ -798,8 +798,8 @@
         :tickets: 2819
         :versions: 0.9.0b1
 
-        Fixed bug where Postgresql version strings that had a prefix preceding
-        the words "Postgresql" or "EnterpriseDB" would not parse.
+        Fixed bug where PostgreSQL version strings that had a prefix preceding
+        the words "PostgreSQL" or "EnterpriseDB" would not parse.
         Courtesy Scott Schaefer.
 
     .. change::
@@ -834,7 +834,7 @@
 
         Added a new flag ``system=True`` to :class:`.Column`, which marks
         the column as a "system" column which is automatically made present
-        by the database (such as Postgresql ``oid`` or ``xmin``).  The
+        by the database (such as PostgreSQL ``oid`` or ``xmin``).  The
         column will be omitted from the ``CREATE TABLE`` statement but will
         otherwise be available for querying.   In addition, the
         :class:`.CreateColumn` construct can be appled to a custom
@@ -942,7 +942,7 @@
         form of a some expressions when referring to the ``.c`` collection
         on a ``select()`` construct, but the ``str()`` form isn't available
         since the element relies on dialect-specific compilation constructs,
-        notably the ``__getitem__()`` operator as used with a Postgresql
+        notably the ``__getitem__()`` operator as used with a PostgreSQL
         ``ARRAY`` element.  The fix also adds a new exception class
         :exc:`.UnsupportedCompilationError` which is raised in those cases
         where a compiler is asked to compile something it doesn't know
@@ -1069,7 +1069,7 @@
         :versions: 0.9.0b1
 
         The behavior of :func:`.extract` has been simplified on the
-        Postgresql dialect to no longer inject a hardcoded ``::timestamp``
+        PostgreSQL dialect to no longer inject a hardcoded ``::timestamp``
         or similar cast into the given expression, as this interfered
         with types such as timezone-aware datetimes, but also
         does not appear to be at all necessary with modern versions
@@ -1103,7 +1103,7 @@
         :versions: 0.9.0b1
 
         Fixed bug where the order of columns in a multi-column
-        Postgresql index would be reflected in the wrong order.
+        PostgreSQL index would be reflected in the wrong order.
         Courtesy Roman Podolyaka.
 
     .. change::
@@ -1167,7 +1167,7 @@
         :tags: feature, postgresql
         :versions: 0.9.0b1
 
-        Support for Postgresql 9.2 range types has been added.
+        Support for PostgreSQL 9.2 range types has been added.
         Currently, no type translation is provided, so works
         directly with strings or psycopg2 2.5 range extension types
         at the moment.  Patch courtesy Chris Withers.
@@ -1463,7 +1463,7 @@
       :tags: bug, postgresql
       :tickets: 2681
 
-      The operators for the Postgresql ARRAY type supports
+      The operators for the PostgreSQL ARRAY type supports
       input types of sets, generators, etc. even when
       a dimension is not specified, by turning the given
       iterable into a collection unconditionally.
@@ -1872,7 +1872,7 @@
       is now copied in all cases when :meth:`.Table.tometadata` happens,
       and if ``inherit_schema=True``, the type will take on the new
       schema name passed to the method.   The ``schema`` is important
-      when used with the Postgresql backend, as the type results in
+      when used with the PostgreSQL backend, as the type results in
       a ``CREATE TYPE`` statement.
 
     .. change::
@@ -2153,7 +2153,7 @@
       The :class:`.Insert` construct now supports multi-valued inserts,
       that is, an INSERT that renders like
       "INSERT INTO table VALUES (...), (...), ...".
-      Supported by Postgresql, SQLite, and MySQL.
+      Supported by PostgreSQL, SQLite, and MySQL.
       Big thanks to Idan Kamara for doing the legwork on this one.
 
       .. seealso::
@@ -2272,7 +2272,7 @@
         :tags: postgresql, feature
         :tickets: 2606
 
-      :class:`.HSTORE` is now available in the Postgresql dialect.
+      :class:`.HSTORE` is now available in the PostgreSQL dialect.
       Will also use psycopg2's extensions if available.  Courtesy
       Audrius Kažukauskas.
 
@@ -3199,7 +3199,7 @@
       the `getitem` operator, i.e. the bracket
       operator in Python.  This is used at first
       to provide index and slice behavior to the
-      Postgresql ARRAY type, and also provides a hook
+      PostgreSQL ARRAY type, and also provides a hook
       for end-user definition of custom __getitem__
       schemes which can be applied at the type
       level as well as within ORM-level custom
@@ -3237,7 +3237,7 @@
       String types.  When present, renders as
       COLLATE <collation>.  This to support the
       COLLATE keyword now supported by several
-      databases including MySQL, SQLite, and Postgresql.
+      databases including MySQL, SQLite, and PostgreSQL.
 
     .. change::
         :tags: change, sql
@@ -3603,7 +3603,7 @@
         :tags: postgresql, feature
         :tickets: 2506
 
-      Added support for the Postgresql ONLY
+      Added support for the PostgreSQL ONLY
       keyword, which can appear corresponding to a
       table in a SELECT, UPDATE, or DELETE statement.
       The phrase is established using with_hint().
@@ -3614,7 +3614,7 @@
         :tickets:
 
       The "ischema_names" dictionary of the
-      Postgresql dialect is "unofficially" customizable.
+      PostgreSQL dialect is "unofficially" customizable.
       Meaning, new types such as PostGIS types can
       be added into this dictionary, and the PG type
       reflection code should be able to handle simple

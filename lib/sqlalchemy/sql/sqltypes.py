@@ -141,7 +141,7 @@ class String(Concatenable, TypeEngine):
 
         :param collation: Optional, a column-level collation for
           use in DDL and CAST expressions.  Renders using the
-          COLLATE keyword supported by SQLite, MySQL, and Postgresql.
+          COLLATE keyword supported by SQLite, MySQL, and PostgreSQL.
           E.g.::
 
             >>> from sqlalchemy import cast, select, String
@@ -923,7 +923,7 @@ class LargeBinary(_Binary):
 
     The :class:`.LargeBinary` type corresponds to a large and/or unlengthed
     binary type for the target platform, such as BLOB on MySQL and BYTEA for
-    Postgresql.  It also handles the necessary conversions for the DBAPI.
+    PostgreSQL.  It also handles the necessary conversions for the DBAPI.
 
     """
 
@@ -1177,7 +1177,7 @@ class Enum(String, SchemaType):
 
         :param metadata: Associate this type directly with a ``MetaData``
            object. For types that exist on the target database as an
-           independent schema construct (Postgresql), this type will be
+           independent schema construct (PostgreSQL), this type will be
            created and dropped within ``create_all()`` and ``drop_all()``
            operations. If the type is not associated with any ``MetaData``
            object, it will associate itself with each ``Table`` in which it is
@@ -1186,7 +1186,7 @@ class Enum(String, SchemaType):
            only dropped when ``drop_all()`` is called for that ``Table``
            object's metadata, however.
 
-        :param name: The name of this type. This is required for Postgresql
+        :param name: The name of this type. This is required for PostgreSQL
            and any future supported database which requires an explicitly
            named type, or an explicitly named constraint in order to generate
            the type and/or a table that uses it. If a PEP-435 enumerated
@@ -1198,7 +1198,7 @@ class Enum(String, SchemaType):
            constraint for all backends.
 
         :param schema: Schema name of this type. For types that exist on the
-           target database as an independent schema construct (Postgresql),
+           target database as an independent schema construct (PostgreSQL),
            this parameter specifies the named schema in which the type is
            present.
 
@@ -1572,13 +1572,13 @@ class Interval(_DateAffinity, TypeDecorator):
 
         :param native: when True, use the actual
           INTERVAL type provided by the database, if
-          supported (currently Postgresql, Oracle).
+          supported (currently PostgreSQL, Oracle).
           Otherwise, represent the interval data as
           an epoch value regardless.
 
         :param second_precision: For native interval types
           which support a "fractional seconds precision" parameter,
-          i.e. Oracle and Postgresql
+          i.e. Oracle and PostgreSQL
 
         :param day_precision: for native interval types which
           support a "day precision" parameter, i.e. Oracle.
@@ -1673,7 +1673,7 @@ class JSON(Indexable, TypeEngine):
     .. note::  :class:`.types.JSON` is provided as a facade for vendor-specific
        JSON types.  Since it supports JSON SQL operations, it only
        works on backends that have an actual JSON type, currently
-       Postgresql as well as certain versions of MySQL.
+       PostgreSQL as well as certain versions of MySQL.
 
     :class:`.types.JSON` is part of the Core in support of the growing
     popularity of native JSON datatypes.
@@ -1927,7 +1927,7 @@ class ARRAY(Indexable, Concatenable, TypeEngine):
     """Represent a SQL Array type.
 
     .. note::  This type serves as the basis for all ARRAY operations.
-       However, currently **only the Postgresql backend has support
+       However, currently **only the PostgreSQL backend has support
        for SQL arrays in SQLAlchemy**.  It is recommended to use the
        :class:`.postgresql.ARRAY` type directly when using ARRAY types
        with PostgreSQL, as it provides additional operators specific
@@ -1947,7 +1947,7 @@ class ARRAY(Indexable, Concatenable, TypeEngine):
             )
 
     The above type represents an N-dimensional array,
-    meaning a supporting backend such as Postgresql will interpret values
+    meaning a supporting backend such as PostgreSQL will interpret values
     with any number of dimensions automatically.   To produce an INSERT
     construct that passes in a 1-dimensional array of integers::
 
@@ -2243,7 +2243,7 @@ class TIMESTAMP(DateTime):
     """The SQL TIMESTAMP type.
 
     :class:`~.types.TIMESTAMP` datatypes have support for timezone
-    storage on some backends, such as Postgresql and Oracle.  Use the
+    storage on some backends, such as PostgreSQL and Oracle.  Use the
     :paramref:`~types.TIMESTAMP.timezone` argument in order to enable
     "TIMESTAMP WITH TIMEZONE" for these backends.
 

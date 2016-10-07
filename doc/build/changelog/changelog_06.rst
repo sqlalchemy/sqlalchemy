@@ -543,7 +543,7 @@
       of the auto-generated sequence of a SERIAL column,
       which currently only occurs if implicit_returning=False,
       now accommodates if the table + column name is greater
-      than 63 characters using the same logic Postgresql uses.
+      than 63 characters using the same logic PostgreSQL uses.
 
     .. change::
         :tags: postgresql
@@ -2850,7 +2850,7 @@
         :tags: postgresql
         :tickets: 1071
 
-      Postgresql now reflects sequence names associated with
+      PostgreSQL now reflects sequence names associated with
       SERIAL columns correctly, after the name of the sequence
       has been changed.  Thanks to Kumar McMillan for the patch.
 
@@ -2873,7 +2873,7 @@
         :tags: postgresql
         :tickets: 1769
 
-      Postgresql reflects the name of primary key constraints,
+      PostgreSQL reflects the name of primary key constraints,
       if one exists.
 
     .. change::
@@ -3462,7 +3462,7 @@
       as well as the adaptation of the Python operator into
       a SQL operator, based on the full left/right/operator
       of the given expression.  In particular
-      the date/time/interval system created for Postgresql
+      the date/time/interval system created for PostgreSQL
       EXTRACT in has now been generalized into
       the type system.   The previous behavior which often
       occurred of an expression "column + literal" forcing
@@ -4259,7 +4259,7 @@
 
       returning() support is native to insert(), update(),
       delete(). Implementations of varying levels of
-      functionality exist for Postgresql, Firebird, MSSQL and
+      functionality exist for PostgreSQL, Firebird, MSSQL and
       Oracle. returning() can be called explicitly with column
       expressions which are then returned in the resultset,
       usually via fetchone() or first().
@@ -4280,7 +4280,7 @@
       another will now be grouped with parenthesis - previously,
       the first compound element in the list would not be grouped,
       as SQLite doesn't like a statement to start with
-      parenthesis.   However, Postgresql in particular has
+      parenthesis.   However, PostgreSQL in particular has
       precedence rules regarding INTERSECT, and it is
       more consistent for parenthesis to be applied equally
       to all sub-elements.   So now, the workaround for SQLite
@@ -4586,7 +4586,7 @@
 
       The "start" and "increment" attributes on Sequence now
       generate "START WITH" and "INCREMENT BY" by default,
-      on Oracle and Postgresql.  Firebird doesn't support
+      on Oracle and PostgreSQL.  Firebird doesn't support
       these keywords right now.
 
     .. change::
@@ -5279,7 +5279,7 @@
       optimized, resulting in varying speed improvements:
       Unicode, PickleType, Interval, TypeDecorator, Binary.
       Also the following dbapi-specific implementations have been improved:
-      Time, Date and DateTime on Sqlite, ARRAY on Postgresql,
+      Time, Date and DateTime on Sqlite, ARRAY on PostgreSQL,
       Time on MySQL, Numeric(as_decimal=False) on MySQL, oursql and
       pypostgresql, DateTime on cx_oracle and LOB-based types on cx_oracle.
 

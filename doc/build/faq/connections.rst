@@ -63,7 +63,7 @@ this is the default behavior of the Python database API, meaning it
 must be assumed that a transaction is always in progress. The
 connection pool issues ``connection.rollback()`` when a connection is returned.
 This is so that any transactional resources remaining on the connection are
-released. On a database like Postgresql or MSSQL where table resources are
+released. On a database like PostgreSQL or MSSQL where table resources are
 aggressively locked, this is critical so that rows and tables don't remain
 locked within connections that are no longer in use. An application can
 otherwise hang. It's not just for locks, however, and is equally critical on

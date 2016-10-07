@@ -68,7 +68,7 @@ The URL format used by ``create_engine()`` has been enhanced
 to handle any number of DBAPIs for a particular backend,
 using a scheme that is inspired by that of JDBC.   The
 previous format still works, and will select a "default"
-DBAPI implementation, such as the Postgresql URL below that
+DBAPI implementation, such as the PostgreSQL URL below that
 will use psycopg2:
 
 ::
@@ -306,7 +306,7 @@ A rule that was designed to help SQLite has been removed,
 that of the first compound element within another compound
 (such as, a ``union()`` inside of an ``except_()``) wouldn't
 be parenthesized.   This is inconsistent and produces the
-wrong results on Postgresql, which has precedence rules
+wrong results on PostgreSQL, which has precedence rules
 regarding INTERSECTION, and its generally a surprise.   When
 using complex composites with SQLite, you now need to turn
 the first element into a subquery (which is also compatible
@@ -572,7 +572,7 @@ To use an inspector:
 
 the ``from_engine()`` method will in some cases provide a
 backend-specific inspector with additional capabilities,
-such as that of Postgresql which provides a
+such as that of PostgreSQL which provides a
 ``get_table_oid()`` method:
 
 ::
@@ -588,7 +588,7 @@ RETURNING Support
 
 The ``insert()``, ``update()`` and ``delete()`` constructs
 now support a ``returning()`` method, which corresponds to
-the SQL RETURNING clause as supported by Postgresql, Oracle,
+the SQL RETURNING clause as supported by PostgreSQL, Oracle,
 MS-SQL, and Firebird.   It is not supported for any other
 backend at this time.
 
@@ -747,7 +747,7 @@ Note that the ``assert_unicode`` flag is now deprecated.
 SQLAlchemy allows the DBAPI and backend database in use to
 handle Unicode parameters when available, and does not add
 operational overhead by checking the incoming type; modern
-systems like sqlite and Postgresql will raise an encoding
+systems like sqlite and PostgreSQL will raise an encoding
 error on their end if invalid data is passed.  In those
 cases where SQLAlchemy does need to coerce a bind parameter
 from Python Unicode to an encoded string, or when the
@@ -766,13 +766,13 @@ default, this type generates a ``VARCHAR`` using the size of
 the largest label, and applies a CHECK constraint to the
 table within the CREATE TABLE statement.   When using MySQL,
 the type by default uses MySQL's ENUM type, and when using
-Postgresql the type will generate a user defined type using
+PostgreSQL the type will generate a user defined type using
 ``CREATE TYPE <mytype> AS ENUM``.  In order to create the
-type using Postgresql, the ``name`` parameter must be
+type using PostgreSQL, the ``name`` parameter must be
 specified to the constructor.  The type also accepts a
 ``native_enum=False`` option which will issue the
 VARCHAR/CHECK strategy for all databases.  Note that
-Postgresql ENUM types currently don't work with pg8000 or
+PostgreSQL ENUM types currently don't work with pg8000 or
 zxjdbc.
 
 Reflection Returns Dialect-Specific Types
@@ -958,7 +958,7 @@ innerjoin=True on relation, joinedload
 
 Joined-eagerly loaded scalars and collections can now be
 instructed to use INNER JOIN instead of OUTER JOIN.   On
-Postgresql this is observed to provide a 300-600% speedup on
+PostgreSQL this is observed to provide a 300-600% speedup on
 some queries.   Set this flag for any many-to-one which is
 on a NOT NULLable foreign key, and similarly for any
 collection where related items are guaranteed to exist.
@@ -1049,7 +1049,7 @@ Mutable Primary Keys with Joined Table Inheritance
 
 A joined table inheritance config where the child table has
 a PK that foreign keys to the parent PK can now be updated
-on a CASCADE-capable database like Postgresql.
+on a CASCADE-capable database like PostgreSQL.
 ``mapper()`` now has an option ``passive_updates=True``
 which indicates this foreign key is updated automatically.
 If on a non-cascading database like SQLite or MySQL/MyISAM,

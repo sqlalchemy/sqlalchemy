@@ -51,7 +51,7 @@ The :class:`~.schema.DDL` construct introduced previously also has the
 ability to be invoked conditionally based on inspection of the
 database.  This feature is available using the :meth:`.DDLElement.execute_if`
 method.  For example, if we wanted to create a trigger but only on
-the Postgresql backend, we could invoke this as::
+the PostgreSQL backend, we could invoke this as::
 
     mytable = Table(
         'mytable', metadata,
@@ -87,7 +87,7 @@ of string dialect names::
 The :meth:`.DDLElement.execute_if` method can also work against a callable
 function that will receive the database connection in use.  In the
 example below, we use this to conditionally create a CHECK constraint,
-first looking within the Postgresql catalogs to see if it exists:
+first looking within the PostgreSQL catalogs to see if it exists:
 
 .. sourcecode:: python+sql
 

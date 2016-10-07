@@ -133,7 +133,7 @@
         :versions: 1.1.0b3
 
         Fixed bug whereby :class:`.TypeDecorator` and :class:`.Variant`
-        types were not deeply inspected enough by the Postgresql dialect
+        types were not deeply inspected enough by the PostgreSQL dialect
         to determine if SMALLSERIAL or BIGSERIAL needed to be rendered
         rather than SERIAL.
 
@@ -384,7 +384,7 @@
 
         Fixed bug in :func:`.expression.text` construct where a double-colon
         expression would not escape properly, e.g. ``some\:\:expr``, as is most
-        commonly required when rendering Postgresql-style CAST expressions.
+        commonly required when rendering PostgreSQL-style CAST expressions.
 
     .. change::
         :tags: bug, sql
@@ -627,7 +627,7 @@
 
         Fixed bug where CREATE TABLE with a no-column table, but a constraint
         such as a CHECK constraint would render an erroneous comma in the
-        definition; this scenario can occur such as with a Postgresql
+        definition; this scenario can occur such as with a PostgreSQL
         INHERITS table that has no columns of its own.
 
     .. change::
@@ -645,7 +645,7 @@
         :tickets: 3573
 
 
-        Fixed issue where the "FOR UPDATE OF" Postgresql-specific SELECT
+        Fixed issue where the "FOR UPDATE OF" PostgreSQL-specific SELECT
         modifier would fail if the referred table had a schema qualifier;
         PG needs the schema name to be omitted.  Pull request courtesy
         Diana Clarke.
@@ -782,7 +782,7 @@
 
         Fixed regression in 1.0 where new feature of using "executemany"
         for UPDATE statements in the ORM (e.g. :ref:`feature_updatemany`)
-        would break on Postgresql and other RETURNING backends
+        would break on PostgreSQL and other RETURNING backends
         when using server-side version generation
         schemes, as the server side value is retrieved via RETURNING which
         is not supported with executemany.
@@ -878,11 +878,11 @@
         :pullreq: github:190
 
 
-        An adjustment to the new Postgresql feature of reflecting storage
+        An adjustment to the new PostgreSQL feature of reflecting storage
         options and USING of :ticket:`3455` released in 1.0.6,
-        to disable the feature for Postgresql versions < 8.2 where the
+        to disable the feature for PostgreSQL versions < 8.2 where the
         ``reloptions`` column is not provided; this allows Amazon Redshift
-        to again work as it is based on an 8.0.x version of Postgresql.
+        to again work as it is based on an 8.0.x version of PostgreSQL.
         Fix courtesy Pete Hollobon.
 
 
@@ -967,7 +967,7 @@
         :pullreq: github:186
 
         Added support for the MINVALUE, MAXVALUE, NO MINVALUE, NO MAXVALUE,
-        and CYCLE arguments for CREATE SEQUENCE as supported by Postgresql
+        and CYCLE arguments for CREATE SEQUENCE as supported by PostgreSQL
         and Oracle.  Pull request courtesy jakeogh.
 
     .. change::
@@ -1552,7 +1552,7 @@
         label name for all backends, as described in :ref:`migration_1068`,
         even though 1.0 includes a rewrite of this logic as part of
         :ticket:`2992`.  As far
-        as emitting GROUP BY against a simple label, even Postgresql has
+        as emitting GROUP BY against a simple label, even PostgreSQL has
         cases where it will raise an error even though the label to group
         on should be apparent, so it is clear that GROUP BY should never
         be rendered in this way automatically.
@@ -1820,9 +1820,9 @@
         :tickets: 3343
 
         Fixed bug where updated PG index reflection as a result of
-        :ticket:`3184` would cause index operations to fail on Postgresql
+        :ticket:`3184` would cause index operations to fail on PostgreSQL
         versions 8.4 and earlier.  The enhancements are now
-        disabled when using an older version of Postgresql.
+        disabled when using an older version of PostgreSQL.
 
     .. change::
         :tags: bug, sql
@@ -2003,7 +2003,7 @@
         :tags: bug, postgresql
         :tickets: 3319
 
-        The Postgresql :class:`.postgresql.ENUM` type will emit a
+        The PostgreSQL :class:`.postgresql.ENUM` type will emit a
         DROP TYPE instruction when a plain ``table.drop()`` is called,
         assuming the object is not associated directly with a
         :class:`.MetaData` object.   In order to accommodate the use case of
@@ -2011,7 +2011,7 @@
         be associated directly with the :class:`.MetaData` object; in this
         case the type will only be created at the metadata level, or if
         created directly.  The rules for create/drop of
-        Postgresql enumerated types have been highly reworked in general.
+        PostgreSQL enumerated types have been highly reworked in general.
 
         .. seealso::
 
@@ -2494,7 +2494,7 @@
         ``pg_catalog.pg_table_is_visible(c.oid)``, rather than testing
         for an exact schema match, when the schema name is None; this
         so that the method will also illustrate that temporary tables
-        are present.  Note that this is a behavioral change, as Postgresql
+        are present.  Note that this is a behavioral change, as PostgreSQL
         allows a non-temporary table to silently overwrite an existing
         temporary table of the same name, so this changes the behavior
         of ``checkfirst`` in that unusual scenario.
@@ -2757,13 +2757,13 @@
         The :class:`.UniqueConstraint` construct is now included when
         reflecting a :class:`.Table` object, for databases where this
         is applicable.  In order to achieve this
-        with sufficient accuracy, MySQL and Postgresql now contain features
+        with sufficient accuracy, MySQL and PostgreSQL now contain features
         that correct for the duplication of indexes and unique constraints
         when reflecting tables, indexes, and constraints.
         In the case of MySQL, there is not actually a "unique constraint"
         concept independent of a "unique index", so for this backend
         :class:`.UniqueConstraint` continues to remain non-present for a
-        reflected :class:`.Table`.  For Postgresql, the query used to
+        reflected :class:`.Table`.  For PostgreSQL, the query used to
         detect indexes against ``pg_index`` has been improved to check for
         the same construct in ``pg_constraint``, and the implicitly
         constructed unique index is not included with a
@@ -2772,7 +2772,7 @@
         In both cases, the  :meth:`.Inspector.get_indexes` and the
         :meth:`.Inspector.get_unique_constraints` methods return both
         constructs individually, but include a new token
-        ``duplicates_constraint`` in the case of Postgresql or
+        ``duplicates_constraint`` in the case of PostgreSQL or
         ``duplicates_index`` in the case
         of MySQL to indicate when this condition is detected.
         Pull request courtesy Johannes Erdfelt.
@@ -2786,7 +2786,7 @@
         :pullreq: github:134
 
         Added support for the FILTER keyword as applied to aggregate
-        functions, supported by Postgresql 9.4.   Pull request
+        functions, supported by PostgreSQL 9.4.   Pull request
         courtesy Ilja Everilä.
 
         .. seealso::
@@ -2856,7 +2856,7 @@
         for a non-nullable or ``ondelete="SET NULL"`` for a nullable set
         of columns, the argument ``passive_deletes=True`` is also added to the
         relationship.  Note that not all backends support reflection of
-        ondelete, but backends that do include Postgresql and MySQL.
+        ondelete, but backends that do include PostgreSQL and MySQL.
 
     .. change::
         :tags: feature, sql
@@ -2907,7 +2907,7 @@
         and foreign tables, as well as support for materialized views
         within :meth:`.Inspector.get_view_names`, and a new method
         :meth:`.PGInspector.get_foreign_table_names` available on the
-        Postgresql version of :class:`.Inspector`.  Pull request courtesy
+        PostgreSQL version of :class:`.Inspector`.  Pull request courtesy
         Rodrigo Menezes.
 
         .. seealso::
@@ -3252,7 +3252,7 @@
         :pullreq: github:126
 
         Added new method :meth:`.PGInspector.get_enums`, when using the
-        inspector for Postgresql will provide a list of ENUM types.
+        inspector for PostgreSQL will provide a list of ENUM types.
         Pull request courtesy Ilya Pekelny.
 
     .. change::

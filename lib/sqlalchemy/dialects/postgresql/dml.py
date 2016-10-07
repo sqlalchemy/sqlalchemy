@@ -18,7 +18,7 @@ __all__ = ('Insert', 'insert')
 
 
 class Insert(StandardInsert):
-    """Postgresql-specific implementation of INSERT.
+    """PostgreSQL-specific implementation of INSERT.
 
     Adds methods for PG-specific syntaxes such as ON CONFLICT.
 

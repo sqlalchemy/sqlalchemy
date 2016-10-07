@@ -574,7 +574,7 @@ Glossary
         were created, as well as a way to get at server-generated
         default values in an atomic way.
 
-        An example of RETURNING, idiomatic to Postgresql, looks like::
+        An example of RETURNING, idiomatic to PostgreSQL, looks like::
 
             INSERT INTO user_account (name) VALUES ('new name') RETURNING id, timestamp
 
@@ -585,8 +585,8 @@ Glossary
         or SQL expressions can be placed into RETURNING, not just default-value columns).
 
         The backends that currently support
-        RETURNING or a similar construct are Postgresql, SQL Server, Oracle,
-        and Firebird.    The Postgresql and Firebird implementations are generally
+        RETURNING or a similar construct are PostgreSQL, SQL Server, Oracle,
+        and Firebird.    The PostgreSQL and Firebird implementations are generally
         full featured, whereas the implementations of SQL Server and Oracle
         have caveats. On SQL Server, the clause is known as "OUTPUT INSERTED"
         for INSERT and UPDATE statements and "OUTPUT DELETED" for DELETE statements;

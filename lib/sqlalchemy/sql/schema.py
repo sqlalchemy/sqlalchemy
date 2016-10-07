@@ -942,7 +942,7 @@ class Column(SchemaItem, ColumnClause):
           an INTEGER type with no stated client-side or python-side defaults
           should receive auto increment semantics automatically;
           all other varieties of primary key columns will not.  This
-          includes that :term:`DDL` such as Postgresql SERIAL or MySQL
+          includes that :term:`DDL` such as PostgreSQL SERIAL or MySQL
           AUTO_INCREMENT will be emitted for this column during a table
           create, as well as that the column is assumed to generate new
           integer primary key values when an INSERT statement invokes which
@@ -995,7 +995,7 @@ class Column(SchemaItem, ColumnClause):
           * DDL issued for the column will include database-specific
             keywords intended to signify this column as an
             "autoincrement" column, such as AUTO INCREMENT on MySQL,
-            SERIAL on Postgresql, and IDENTITY on MS-SQL.  It does
+            SERIAL on PostgreSQL, and IDENTITY on MS-SQL.  It does
             *not* issue AUTOINCREMENT for SQLite since this is a
             special SQLite flag that is not required for autoincrementing
             behavior.
@@ -2174,7 +2174,7 @@ class Sequence(DefaultGenerator):
          :class:`.Sequence` object only needs to be explicitly generated
          on backends that don't provide another way to generate primary
          key identifiers.  Currently, it essentially means, "don't create
-         this sequence on the Postgresql backend, where the SERIAL keyword
+         this sequence on the PostgreSQL backend, where the SERIAL keyword
          creates a sequence for us automatically".
         :param quote: boolean value, when ``True`` or ``False``, explicitly
          forces quoting of the schema name on or off.  When left at its

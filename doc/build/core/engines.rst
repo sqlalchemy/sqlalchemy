@@ -75,10 +75,10 @@ Examples for common connection styles follow below.  For a full index of
 detailed information on all included dialects as well as links to third-party dialects, see
 :ref:`dialect_toplevel`.
 
-Postgresql
+PostgreSQL
 ----------
 
-The Postgresql dialect uses psycopg2 as the default DBAPI.  pg8000 is
+The PostgreSQL dialect uses psycopg2 as the default DBAPI.  pg8000 is
 also available as a pure-Python substitute::
 
     # default
@@ -90,7 +90,7 @@ also available as a pure-Python substitute::
     # pg8000
     engine = create_engine('postgresql+pg8000://scott:tiger@localhost/mydatabase')
 
-More notes on connecting to Postgresql at :ref:`postgresql_toplevel`.
+More notes on connecting to PostgreSQL at :ref:`postgresql_toplevel`.
 
 MySQL
 -----

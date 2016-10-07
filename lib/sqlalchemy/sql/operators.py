@@ -365,7 +365,7 @@ class ColumnOperators(Operators):
         """Implement the [] operator.
 
         This can be used by some database-specific types
-        such as Postgresql ARRAY and HSTORE.
+        such as PostgreSQL ARRAY and HSTORE.
 
         """
         return self.operate(getitem, index)
@@ -557,7 +557,7 @@ class ColumnOperators(Operators):
         a MATCH-like function or operator provided by the backend.
         Examples include:
 
-        * Postgresql - renders ``x @@ to_tsquery(y)``
+        * PostgreSQL - renders ``x @@ to_tsquery(y)``
         * MySQL - renders ``MATCH (x) AGAINST (y IN BOOLEAN MODE)``
         * Oracle - renders ``CONTAINS(x, y)``
         * other backends may provide special implementations.

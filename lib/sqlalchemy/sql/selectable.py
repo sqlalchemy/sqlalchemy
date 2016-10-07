@@ -171,7 +171,7 @@ def lateral(selectable, name=None):
     FROM clause of an enclosing SELECT, but may correlate to other
     FROM clauses of that SELECT.   It is a special case of subquery
     only supported by a small number of backends, currently more recent
-    Postgresql versions.
+    PostgreSQL versions.
 
     .. versionadded:: 1.1
 
@@ -1315,7 +1315,7 @@ class Lateral(Alias):
     on all :class:`.FromClause` subclasses.
 
     While LATERAL is part of the SQL standard, curently only more recent
-    Postgresql versions provide support for this keyword.
+    PostgreSQL versions provide support for this keyword.
 
     .. versionadded:: 1.1
 
@@ -1469,7 +1469,7 @@ class HasCTE(object):
          conjunction with UNION ALL in order to derive rows
          from those already selected.
 
-        The following examples include two from Postgresql's documentation at
+        The following examples include two from PostgreSQL's documentation at
         http://www.postgresql.org/docs/current/static/queries-with.html,
         as well as additional examples.
 
@@ -2005,7 +2005,7 @@ class GenerativeSelect(SelectBase):
 
             stmt = select([table]).with_for_update(nowait=True)
 
-        On a database like Postgresql or Oracle, the above would render a
+        On a database like PostgreSQL or Oracle, the above would render a
         statement like::
 
             SELECT table.a, table.b FROM table FOR UPDATE NOWAIT
@@ -2021,10 +2021,10 @@ class GenerativeSelect(SelectBase):
         variants.
 
         :param nowait: boolean; will render ``FOR UPDATE NOWAIT`` on Oracle
-         and Postgresql dialects.
+         and PostgreSQL dialects.
 
         :param read: boolean; will render ``LOCK IN SHARE MODE`` on MySQL,
-         ``FOR SHARE`` on Postgresql.  On Postgresql, when combined with
+         ``FOR SHARE`` on PostgreSQL.  On PostgreSQL, when combined with
          ``nowait``, will render ``FOR SHARE NOWAIT``.
 
         :param of: SQL expression or list of SQL expression elements
@@ -2034,14 +2034,14 @@ class GenerativeSelect(SelectBase):
          backend.
 
         :param skip_locked: boolean, will render ``FOR UPDATE SKIP LOCKED``
-         on Oracle and Postgresql dialects or ``FOR SHARE SKIP LOCKED`` if
+         on Oracle and PostgreSQL dialects or ``FOR SHARE SKIP LOCKED`` if
          ``read=True`` is also specified.
 
          .. versionadded:: 1.1.0
 
         :param key_share: boolean, will render ``FOR NO KEY UPDATE``,
          or if combined with ``read=True`` will render ``FOR KEY SHARE``,
-         on the Postgresql dialect.
+         on the PostgreSQL dialect.
 
          .. versionadded:: 1.1.0
 
@@ -2585,7 +2585,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
           The boolean argument may also be a column expression or list
           of column expressions - this is a special calling form which
-          is understood by the Postgresql dialect to render the
+          is understood by the PostgreSQL dialect to render the
           ``DISTINCT ON (<columns>)`` syntax.
 
           ``distinct`` is also available on an existing :class:`.Select`
@@ -2607,10 +2607,10 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
           specific backends, including:
 
           * ``"read"`` - on MySQL, translates to ``LOCK IN SHARE MODE``;
-            on Postgresql, translates to ``FOR SHARE``.
-          * ``"nowait"`` - on Postgresql and Oracle, translates to
+            on PostgreSQL, translates to ``FOR SHARE``.
+          * ``"nowait"`` - on PostgreSQL and Oracle, translates to
             ``FOR UPDATE NOWAIT``.
-          * ``"read_nowait"`` - on Postgresql, translates to
+          * ``"read_nowait"`` - on PostgreSQL, translates to
             ``FOR SHARE NOWAIT``.
 
          .. seealso::
@@ -3177,7 +3177,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         columns clause.
 
         :param \*expr: optional column expressions.  When present,
-         the Postgresql dialect will render a ``DISTINCT ON (<expressions>>)``
+         the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>>)``
          construct.
 
         """

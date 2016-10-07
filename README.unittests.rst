@@ -183,12 +183,12 @@ preexisting tables will interfere with the tests.
 
 Several tests require alternate usernames or schemas to be present, which
 are used to test dotted-name access scenarios.  On some databases such
-as Oracle or Sybase, these are usernames, and others such as Postgresql
+as Oracle or Sybase, these are usernames, and others such as PostgreSQL
 and MySQL they are schemas.   The requirement applies to all backends
 except SQLite and Firebird.  The names are::
 
     test_schema
-    test_schema_2 (only used on Postgresql)
+    test_schema_2 (only used on PostgreSQL)
 
 Please refer to your vendor documentation for the proper syntax to create
 these namespaces - the database user must have permission to create and drop
@@ -335,6 +335,6 @@ For example, to run against sqlite, mysql, postgresql with four processes::
 
     tox -e -- -n 4 --db sqlite --db postgresql --db mysql
 
-Each backend has a different scheme for setting up the database.  Postgresql
+Each backend has a different scheme for setting up the database.  PostgreSQL
 still needs the "test_schema" and "test_schema_2" schemas present, as the
 parallel databases are created using the base database as a "template".

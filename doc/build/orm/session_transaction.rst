@@ -299,7 +299,7 @@ order to affect transaction isolation level, we need to act upon the
 
     :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
 
-    :ref:`Postgresql Isolation Level <postgresql_isolation_level>`
+    :ref:`PostgreSQL Isolation Level <postgresql_isolation_level>`
 
     :ref:`MySQL Isolation Level <mysql_isolation_level>`
 

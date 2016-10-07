@@ -310,14 +310,14 @@ These are implemented as an extension to the ``asc()`` and
 
 :ticket:`723`
 
-select.distinct(), query.distinct() accepts \*args for Postgresql DISTINCT ON
+select.distinct(), query.distinct() accepts \*args for PostgreSQL DISTINCT ON
 -----------------------------------------------------------------------------
 
 This was already available by passing a list of expressions
 to the ``distinct`` keyword argument of ``select()``, the
 ``distinct()`` method of ``select()`` and ``Query`` now
 accept positional arguments which are rendered as DISTINCT
-ON when a Postgresql backend is used.
+ON when a PostgreSQL backend is used.
 
 `distinct() <http://www.sqlalchemy.org/docs/07/core/expressi
 on_api.html#sqlalchemy.sql.expression.Select.distinct>`_
@@ -367,9 +367,9 @@ A "window function" provides to a statement information
 about the result set as it's produced. This allows criteria
 against various things like "row number", "rank" and so
 forth. They are known to be supported at least by
-Postgresql, SQL Server and Oracle, possibly others.
+PostgreSQL, SQL Server and Oracle, possibly others.
 
-The best introduction to window functions is on Postgresql's
+The best introduction to window functions is on PostgreSQL's
 site, where window functions have been supported since
 version 8.4:
 
@@ -425,7 +425,7 @@ The default isolation level is set using the
 ``isolation_level`` argument to ``create_engine()``.
 
 Transaction isolation support is currently only supported by
-the Postgresql and SQLite backends.
+the PostgreSQL and SQLite backends.
 
 `execution_options() <http://www.sqlalchemy.org/docs/07/core
 /connections.html#sqlalchemy.engine.base.Connection.executio
@@ -749,7 +749,7 @@ MS-SQL - ``String``/``Unicode``/``VARCHAR``/``NVARCHAR``/``VARBINARY`` emit "max
 On the MS-SQL backend, the String/Unicode types, and their
 counterparts VARCHAR/ NVARCHAR, as well as VARBINARY
 (:ticket:`1833`) emit "max" as the length when no length is
-specified. This makes it more compatible with Postgresql's
+specified. This makes it more compatible with PostgreSQL's
 VARCHAR type which is similarly unbounded when no length
 specified.   SQL Server defaults the length on these types
 to '1' when no length is specified.

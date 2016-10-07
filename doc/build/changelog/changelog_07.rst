@@ -88,7 +88,7 @@
         :tickets: 2676
         :versions: 0.8.0
 
-      Added support for Postgresql's traditional SUBSTRING
+      Added support for PostgreSQL's traditional SUBSTRING
       function syntax, renders as "SUBSTRING(x FROM y FOR z)"
       when regular ``func.substring()`` is used.
       Courtesy Gunnlaugur Þór Briem.
@@ -885,7 +885,7 @@
         :tickets: 2445
 
       Added new for_update/with_lockmode()
-      options for Postgresql: for_update="read"/
+      options for PostgreSQL: for_update="read"/
       with_lockmode("read"),
       for_update="read_nowait"/
       with_lockmode("read_nowait").
@@ -1873,7 +1873,7 @@
       The update() construct can now accommodate
       multiple tables in the WHERE clause, which will
       render an "UPDATE..FROM" construct, recognized by
-      Postgresql and MSSQL.  When compiled on MySQL,
+      PostgreSQL and MSSQL.  When compiled on MySQL,
       will instead generate "UPDATE t1, t2, ..".  MySQL
       additionally can render against multiple tables in the
       SET clause, if Column objects are used as keys
@@ -1968,7 +1968,7 @@
         :tickets: 1679
 
       a "has_schema" method has been implemented
-      on dialect, but only works on Postgresql so far.
+      on dialect, but only works on PostgreSQL so far.
       Courtesy Manlio Perillo.
 
     .. change::
@@ -2025,7 +2025,7 @@
         :tags: postgresql, bug
         :tickets: 2311
 
-      Postgresql dialect memoizes that an ENUM of a
+      PostgreSQL dialect memoizes that an ENUM of a
       particular name was processed
       during a create/drop sequence.  This allows
       a create/drop sequence to work without any
@@ -3696,7 +3696,7 @@
         :tickets: 2081
 
       REAL has been added to the core types.  Supported
-      by Postgresql, SQL Server, MySQL, SQLite.  Note
+      by PostgreSQL, SQL Server, MySQL, SQLite.  Note
       that the SQL Server and MySQL versions, which
       add extra arguments, are also still available
       from those dialects.
@@ -4348,7 +4348,7 @@
         :tickets: 1069
 
       Query.distinct() now accepts column expressions
-      as \*args, interpreted by the Postgresql dialect
+      as \*args, interpreted by the PostgreSQL dialect
       as DISTINCT ON (<expr>).
 
     .. change::
@@ -4448,7 +4448,7 @@
         :tickets: 1069
 
       select.distinct() now accepts column expressions
-      as \*args, interpreted by the Postgresql dialect
+      as \*args, interpreted by the PostgreSQL dialect
       as DISTINCT ON (<expr>).  Note this was already
       available via passing a list to the `distinct`
       keyword argument to select().
@@ -4531,7 +4531,7 @@
       "isolation_level" argument, sets transaction isolation
       level for that connection only until returned to the
       connection pool, for those backends which support it
-      (SQLite, Postgresql)
+      (SQLite, PostgreSQL)
 
     .. change::
         :tags: sql
@@ -4648,7 +4648,7 @@
       of the auto-generated sequence of a SERIAL column,
       which currently only occurs if implicit_returning=False,
       now accommodates if the table + column name is greater
-      than 63 characters using the same logic Postgresql uses. (also in 0.6.7)
+      than 63 characters using the same logic PostgreSQL uses. (also in 0.6.7)
 
     .. change::
         :tags: postgresql
@@ -4668,7 +4668,7 @@
       'unbounded'.  This also occurs for the VARBINARY type..
 
       This behavior makes these types more closely compatible
-      with Postgresql's VARCHAR type which is similarly unbounded
+      with PostgreSQL's VARCHAR type which is similarly unbounded
       when no length is specified.
 
     .. change::

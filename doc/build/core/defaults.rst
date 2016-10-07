@@ -169,7 +169,7 @@ is true:
   well as some MySQL dialects.
 * the dialect does not support the "RETURNING" clause or similar, or the
   ``implicit_returning`` flag is set to ``False`` for the dialect. Dialects
-  which support RETURNING currently include Postgresql, Oracle, Firebird, and
+  which support RETURNING currently include PostgreSQL, Oracle, Firebird, and
   MS-SQL.
 * the statement is a single execution, i.e. only supplies one set of
   parameters and doesn't use "executemany" behavior
@@ -278,7 +278,7 @@ Defining Sequences
 SQLAlchemy represents database sequences using the
 :class:`~sqlalchemy.schema.Sequence` object, which is considered to be a
 special case of "column default". It only has an effect on databases which
-have explicit support for sequences, which currently includes Postgresql,
+have explicit support for sequences, which currently includes PostgreSQL,
 Oracle, and Firebird. The :class:`~sqlalchemy.schema.Sequence` object is
 otherwise ignored.
 
@@ -304,7 +304,7 @@ for the sequence object as well, thus "bundling" the sequence object with its
 parent table.
 
 The :class:`~sqlalchemy.schema.Sequence` object also implements special
-functionality to accommodate Postgresql's SERIAL datatype. The SERIAL type in
+functionality to accommodate PostgreSQL's SERIAL datatype. The SERIAL type in
 PG automatically generates a sequence that is used implicitly during inserts.
 This means that if a :class:`~sqlalchemy.schema.Table` object defines a
 :class:`~sqlalchemy.schema.Sequence` on its primary key column so that it
@@ -343,7 +343,7 @@ sequence, available from the :meth:`.Sequence.next_value` method::
         Column("createdate", DateTime())
     )
 
-The above metadata will generate a CREATE TABLE statement on Postgresql as::
+The above metadata will generate a CREATE TABLE statement on PostgreSQL as::
 
     CREATE TABLE cartitems (
         cart_id INTEGER DEFAULT nextval('cart_id_seq') NOT NULL,
@@ -355,7 +355,7 @@ The above metadata will generate a CREATE TABLE statement on Postgresql as::
 We place the :class:`.Sequence` also as a Python-side default above, that
 is, it is mentioned twice in the :class:`.Column` definition.   Depending
 on the backend in use, this may not be strictly necessary, for example
-on the Postgresql backend the Core will use ``RETURNING`` to access the
+on the PostgreSQL backend the Core will use ``RETURNING`` to access the
 newly generated primary key value in any case.   However, for the best
 compatibility, :class:`.Sequence` was originally intended to be a Python-side
 directive first and foremost so it's probably a good idea to specify it

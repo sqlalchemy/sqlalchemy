@@ -35,7 +35,7 @@ External Dialects
    as external projects.   The rationale here is to keep the base
    SQLAlchemy install and test suite from growing inordinately large.
 
-   The "classic" dialects such as SQLite, MySQL, Postgresql, Oracle,
+   The "classic" dialects such as SQLite, MySQL, PostgreSQL, Oracle,
    SQL Server, and Firebird will remain in the Core for the time being.
 
 .. versionchanged:: 1.0
@@ -49,7 +49,7 @@ Production Ready
 * `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix,
   developed jointly by IBM and SQLAlchemy developers.
 * `sqlalchemy-redshift <https://pypi.python.org/pypi/sqlalchemy-redshift>`_ - driver for Amazon Redshift, adapts
-  the existing Postgresql/psycopg2 driver.
+  the existing PostgreSQL/psycopg2 driver.
 * `sqlalchemy_exasol <https://github.com/blue-yonder/sqlalchemy_exasol>`_ - driver for EXASolution.
 * `sqlalchemy-sqlany <https://github.com/sqlanywhere/sqlalchemy-sqlany>`_ - driver for SAP Sybase SQL
   Anywhere, developed by SAP.

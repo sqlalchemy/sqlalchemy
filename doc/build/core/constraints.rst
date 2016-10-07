@@ -145,7 +145,7 @@ most forms of ALTER.  Given a schema like::
     )
 
 When we call upon :meth:`.MetaData.create_all` on a backend such as the
-Postgresql backend, the cycle between these two tables is resolved and the
+PostgreSQL backend, the cycle between these two tables is resolved and the
 constraints are created separately:
 
 .. sourcecode:: pycon+sql
@@ -671,7 +671,7 @@ The above table will produce the constraint name ``ck_foo_flag_bool``::
     )
 
 The :class:`.SchemaType` classes use special internal symbols so that
-the naming convention is only determined at DDL compile time.  On Postgresql,
+the naming convention is only determined at DDL compile time.  On PostgreSQL,
 there's a native BOOLEAN type, so the CHECK constraint of :class:`.Boolean`
 is not needed; we are safe to set up a :class:`.Boolean` type without a
 name, even though a naming convention is in place for check constraints.
@@ -839,7 +839,7 @@ value, the :meth:`.ColumnElement.desc` modifier may be used::
 
     Index('someindex', mytable.c.somecol.desc())
 
-Or with a backend that supports functional indexes such as Postgresql,
+Or with a backend that supports functional indexes such as PostgreSQL,
 a "case insensitive" index can be created using the ``lower()`` function::
 
     from sqlalchemy import func, Index

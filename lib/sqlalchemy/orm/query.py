@@ -480,7 +480,7 @@ class Query(object):
         :meth:`.SelectBase.cte` method; see that method for
         further details.
 
-        Here is the `Postgresql WITH
+        Here is the `PostgreSQL WITH
         RECURSIVE example
         <http://www.postgresql.org/docs/8.4/static/queries-with.html>`_.
         Note that, in this example, the ``included_parts`` cte and the
@@ -1413,7 +1413,7 @@ class Query(object):
 
             q = sess.query(User).with_for_update(nowait=True, of=User)
 
-        The above query on a Postgresql backend will render like::
+        The above query on a PostgreSQL backend will render like::
 
             SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT
 
@@ -2568,7 +2568,7 @@ class Query(object):
             :attr:`.Query.statement` accessor, however.
 
         :param \*expr: optional column expressions.  When present,
-         the Postgresql dialect will render a ``DISTINCT ON (<expressions>>)``
+         the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>>)``
          construct.
 
         """

@@ -896,12 +896,12 @@ UniqueConstraint is now part of the Table reflection process
 A :class:`.Table` object populated using ``autoload=True`` will now
 include :class:`.UniqueConstraint` constructs as well as
 :class:`.Index` constructs.  This logic has a few caveats for
-Postgresql and Mysql:
+PostgreSQL and Mysql:
 
-Postgresql
+PostgreSQL
 ^^^^^^^^^^
 
-Postgresql has the behavior such that when a UNIQUE constraint is
+PostgreSQL has the behavior such that when a UNIQUE constraint is
 created, it implicitly creates a UNIQUE INDEX corresponding to that
 constraint as well. The :meth:`.Inspector.get_indexes` and the
 :meth:`.Inspector.get_unique_constraints` methods will continue to
@@ -1960,7 +1960,7 @@ The output does what we say, but again it warns us::
 The above behavior applies to all those places where we might want to refer
 to a so-called "label reference"; ORDER BY and GROUP BY, but also within an
 OVER clause as well as a DISTINCT ON clause that refers to columns (e.g. the
-Postgresql syntax).
+PostgreSQL syntax).
 
 We can still specify any arbitrary expression for ORDER BY or others using
 :func:`.text`::
@@ -2209,7 +2209,7 @@ reflection from temp tables as well, which is :ticket:`3203`.
 
 :ticket:`3204`
 
-Dialect Improvements and Changes - Postgresql
+Dialect Improvements and Changes - PostgreSQL
 =============================================
 
 .. _change_3319:
@@ -2217,7 +2217,7 @@ Dialect Improvements and Changes - Postgresql
 Overhaul of ENUM type create/drop rules
 ---------------------------------------
 
-The rules for Postgresql :class:`.postgresql.ENUM` have been made more strict
+The rules for PostgreSQL :class:`.postgresql.ENUM` have been made more strict
 with regards to creating and dropping of the TYPE.
 
 An :class:`.postgresql.ENUM` that is created **without** being explicitly
@@ -2263,7 +2263,7 @@ flag::
 
 :ticket:`3319`
 
-New Postgresql Table options
+New PostgreSQL Table options
 -----------------------------
 
 Added support for PG table options TABLESPACE, ON COMMIT,
@@ -2278,11 +2278,11 @@ the :class:`.Table` construct.
 
 .. _feature_get_enums:
 
-New get_enums() method with Postgresql Dialect
+New get_enums() method with PostgreSQL Dialect
 ----------------------------------------------
 
 The :func:`.inspect` method returns a :class:`.PGInspector` object in the
-case of Postgresql, which includes a new :meth:`.PGInspector.get_enums`
+case of PostgreSQL, which includes a new :meth:`.PGInspector.get_enums`
 method that returns information on all available ``ENUM`` types::
 
     from sqlalchemy import inspect, create_engine
@@ -2297,7 +2297,7 @@ method that returns information on all available ``ENUM`` types::
 
 .. _feature_2891:
 
-Postgresql Dialect reflects Materialized Views, Foreign Tables
+PostgreSQL Dialect reflects Materialized Views, Foreign Tables
 --------------------------------------------------------------
 
 Changes are as follows:
@@ -2308,12 +2308,12 @@ Changes are as follows:
 * :meth:`.Inspector.get_view_names` will return plain and materialized view
   names.
 
-* :meth:`.Inspector.get_table_names` does **not** change for Postgresql, it
+* :meth:`.Inspector.get_table_names` does **not** change for PostgreSQL, it
   continues to return only the names of plain tables.
 
 * A new method :meth:`.PGInspector.get_foreign_table_names` is added which
   will return the names of tables that are specifically marked as "foreign"
-  in the Postgresql schema tables.
+  in the PostgreSQL schema tables.
 
 The change to reflection involves adding ``'m'`` and ``'f'`` to the list
 of qualifiers we use when querying ``pg_class.relkind``, but this change
@@ -2324,7 +2324,7 @@ running 0.9 in production.
 
 .. _change_3264:
 
-Postgresql ``has_table()`` now works for temporary tables
+PostgreSQL ``has_table()`` now works for temporary tables
 ---------------------------------------------------------
 
 This is a simple fix such that "has table" for temporary tables now works,
@@ -2348,7 +2348,7 @@ so that code like the following may proceed::
         user_tmp.create(conn, checkfirst=True)
 
 The very unlikely case that this behavior will cause a non-failing application
-to behave differently, is because Postgresql allows a non-temporary table
+to behave differently, is because PostgreSQL allows a non-temporary table
 to silently overwrite a temporary table.  So code like the following will
 now act completely differently, no longer creating the real table following
 the temporary table::
@@ -2382,11 +2382,11 @@ the temporary table::
 
 .. _feature_gh134:
 
-Postgresql FILTER keyword
+PostgreSQL FILTER keyword
 -------------------------
 
 The SQL standard FILTER keyword for aggregate functions is now supported
-by Postgresql as of 9.4.  SQLAlchemy allows this using
+by PostgreSQL as of 9.4.  SQLAlchemy allows this using
 :meth:`.FunctionElement.filter`::
 
     func.count(1).filter(True)

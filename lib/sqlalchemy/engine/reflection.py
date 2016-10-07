@@ -143,7 +143,7 @@ class Inspector(object):
         """Return the default schema name presented by the dialect
         for the current engine's database user.
 
-        E.g. this is typically ``public`` for Postgresql and ``dbo``
+        E.g. this is typically ``public`` for PostgreSQL and ``dbo``
         for SQL Server.
 
         """

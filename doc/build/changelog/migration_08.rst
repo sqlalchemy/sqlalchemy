@@ -669,8 +669,8 @@ The new type is usable like any other type:
 
 
 New features which have come from this immediately include
-support for Postgresql's HSTORE type, as well as new
-operations associated with Postgresql's ARRAY
+support for PostgreSQL's HSTORE type, as well as new
+operations associated with PostgreSQL's ARRAY
 type.    It also paves the way for existing types to acquire
 lots more operators that are specific to those types, such
 as more string, integer and date operators.
@@ -691,7 +691,7 @@ Multiple-VALUES support for Insert
 The :meth:`.Insert.values` method now supports a list of dictionaries,
 which will render a multi-VALUES statement such as
 ``VALUES (<row1>), (<row2>), ...``.  This is only relevant to backends which
-support this syntax, including Postgresql, SQLite, and MySQL.  It is
+support this syntax, including PostgreSQL, SQLite, and MySQL.  It is
 not the same thing as the usual ``executemany()`` style of INSERT which
 remains unchanged::
 
@@ -804,10 +804,10 @@ against a particular target selectable::
 
     :meth:`.Select.correlate_except`
 
-Postgresql HSTORE type
+PostgreSQL HSTORE type
 ----------------------
 
-Support for Postgresql's ``HSTORE`` type is now available as
+Support for PostgreSQL's ``HSTORE`` type is now available as
 :class:`.postgresql.HSTORE`.   This type makes great usage
 of the new operator system to provide a full range of operators
 for HSTORE types, including index access, concatenation,
@@ -840,7 +840,7 @@ and containment methods such as
 
 :ticket:`2606`
 
-Enhanced Postgresql ARRAY type
+Enhanced PostgreSQL ARRAY type
 ------------------------------
 
 The :class:`.postgresql.ARRAY` type will accept an optional
@@ -939,7 +939,7 @@ Huge thanks to Nate Dub for the sprinting on this at Pycon 2012.
 
 :ticket:`2363`
 
-"COLLATE" supported across all dialects; in particular MySQL, Postgresql, SQLite
+"COLLATE" supported across all dialects; in particular MySQL, PostgreSQL, SQLite
 --------------------------------------------------------------------------------
 
 The "collate" keyword, long accepted by the MySQL dialect, is now established
@@ -1079,7 +1079,7 @@ The new behavior allows the following test case to work::
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
-    # note we're using Postgresql to ensure that referential integrity
+    # note we're using PostgreSQL to ensure that referential integrity
     # is enforced, for demonstration purposes.
     e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
 

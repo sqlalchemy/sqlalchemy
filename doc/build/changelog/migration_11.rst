@@ -2391,7 +2391,7 @@ The JSON cast() operation now requires ``.astext`` is called explicitly
 As part of the changes in :ref:`change_3503`, the workings of the
 :meth:`.ColumnElement.cast` operator on :class:`.postgresql.JSON` and
 :class:`.postgresql.JSONB` no longer implicitly invoke the
-:attr:`.postgresql.JSON.Comparator.astext` modifier; Postgresql's JSON/JSONB types
+:attr:`.postgresql.JSON.Comparator.astext` modifier; PostgreSQL's JSON/JSONB types
 support CAST operations to each other without the "astext" aspect.
 
 This means that in most cases, an application that was doing this::

@@ -369,7 +369,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         this logic is triggered currently by a left side that doesn't
         have a key.  The current supported use case is updating the index
-        of a Postgresql ARRAY type.
+        of a PostgreSQL ARRAY type.
 
         """
         table1 = self.tables.mytable

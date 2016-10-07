@@ -80,7 +80,7 @@ class TypeEngine(Visitable):
             However, using the addition operator with an :class:`.Integer`
             and a :class:`.Date` object will produce a :class:`.Date`, assuming
             "days delta" behavior by the database (in reality, most databases
-            other than Postgresql don't accept this particular operation).
+            other than PostgreSQL don't accept this particular operation).
 
             The method returns a tuple of the form <operator>, <type>.
             The resulting operator and type will be those applied to the
@@ -188,7 +188,7 @@ class TypeEngine(Visitable):
 
             :ref:`session_forcing_null` - in the ORM documentation
 
-            :paramref:`.postgresql.JSON.none_as_null` - Postgresql JSON
+            :paramref:`.postgresql.JSON.none_as_null` - PostgreSQL JSON
             interaction with this flag.
 
             :attr:`.TypeEngine.should_evaluate_none` - class-level flag

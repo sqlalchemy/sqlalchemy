@@ -111,7 +111,7 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
     """tests using percent signs, spaces in table and column names.
 
     This is a very fringe use case, doesn't work for MySQL
-    or Postgresql.  the requirement, "percent_schema_names",
+    or PostgreSQL.  the requirement, "percent_schema_names",
     is marked "skip" by default.
 
     """

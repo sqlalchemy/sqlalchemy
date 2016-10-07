@@ -652,7 +652,7 @@ class SuiteRequirements(Requirements):
 
             select data as foo from test order by foo || 'bar'
 
-        Lots of databases including Postgresql don't support this,
+        Lots of databases including PostgreSQL don't support this,
         so this is off by default.
 
         """
@@ -752,7 +752,7 @@ class SuiteRequirements(Requirements):
         """Test should be skipped if coverage is enabled.
 
         This is to block tests that exercise libraries that seem to be
-        sensitive to coverage, such as Postgresql notice logging.
+        sensitive to coverage, such as PostgreSQL notice logging.
 
         """
         return exclusions.skip_if(

@@ -124,7 +124,7 @@ class DefaultDialect(interfaces.Dialect):
             })
         ]
 
-    If the above construct is established on the Postgresql dialect,
+    If the above construct is established on the PostgreSQL dialect,
     the :class:`.Index` construct will now accept the keyword arguments
     ``postgresql_using``, ``postgresql_where``, nad ``postgresql_ops``.
     Any other argument specified to the constructor of :class:`.Index`

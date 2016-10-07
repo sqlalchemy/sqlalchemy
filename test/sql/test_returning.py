@@ -441,7 +441,7 @@ class ImplicitReturningFlag(fixtures.TestBase):
         e = engines.testing_engine()
 
         # starts as False.  This is because all of Firebird,
-        # Postgresql, Oracle, SQL Server started supporting RETURNING
+        # PostgreSQL, Oracle, SQL Server started supporting RETURNING
         # as of a certain version, and the flag is not set until
         # version detection occurs.  If some DB comes along that has
         # RETURNING in all cases, this test can be adjusted.

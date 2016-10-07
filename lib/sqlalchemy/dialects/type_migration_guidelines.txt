@@ -85,9 +85,9 @@ Example 4.  MySQL has a SET type, there's no analogue for this in types.py. So
 MySQL names it SET in the dialect's base.py, and it subclasses types.String, since 
 it ultimately deals with strings.
 
-Example 5.  Postgresql has a DATETIME type.  The DBAPIs handle dates correctly,
+Example 5.  PostgreSQL has a DATETIME type.  The DBAPIs handle dates correctly,
 and no special arguments are used in PG's DDL beyond what types.py provides.
-Postgresql dialect therefore imports types.DATETIME into its base.py.
+PostgreSQL dialect therefore imports types.DATETIME into its base.py.
 
 Ideally one should be able to specify a schema using names imported completely from a 
 dialect, all matching the real name on that backend:

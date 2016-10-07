@@ -145,7 +145,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support tables that can automatically generate
         PKs assuming they were reflected.
 
-        this is essentially all the DBs in "identity" plus Postgresql, which
+        this is essentially all the DBs in "identity" plus PostgreSQL, which
         has SERIAL support.  FB and Oracle (and sybase?) require the Sequence to
         be explicitly added, including if the table was reflected.
         """

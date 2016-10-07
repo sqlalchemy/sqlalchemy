@@ -224,7 +224,7 @@ implemented for that backend::
     )
 
 Where above, the INTEGER and VARCHAR types are ultimately from
-sqlalchemy.types, and INET is specific to the Postgresql dialect.
+sqlalchemy.types, and INET is specific to the PostgreSQL dialect.
 
 Some dialect level types have the same name as the SQL standard type,
 but also provide additional arguments.  For example, MySQL implements

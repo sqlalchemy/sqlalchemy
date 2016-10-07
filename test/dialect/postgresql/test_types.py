@@ -873,7 +873,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_array_functions_plus_getitem(self):
         """test parenthesizing of functions plus indexing, which seems
-        to be required by Postgresql.
+        to be required by PostgreSQL.
 
         """
         stmt = select([
@@ -2743,7 +2743,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     @testing.fails_on(
         "postgresql < 9.4",
-        "Improvement in Postgresql behavior?")
+        "Improvement in PostgreSQL behavior?")
     def test_multi_index_query(self):
         engine = testing.db
         self._fixture_data(engine)

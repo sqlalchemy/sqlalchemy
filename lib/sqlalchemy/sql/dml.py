@@ -255,7 +255,7 @@ class ValuesBase(UpdateBase):
          The :class:`.Insert` construct also supports being passed a list
          of dictionaries or full-table-tuples, which on the server will
          render the less common SQL syntax of "multiple values" - this
-         syntax is supported on backends such as SQLite, Postgresql, MySQL,
+         syntax is supported on backends such as SQLite, PostgreSQL, MySQL,
          but not necessarily others::
 
             users.insert().values([

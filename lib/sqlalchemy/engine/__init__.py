@@ -246,7 +246,7 @@ def create_engine(*args, **kwargs):
         fetch newly generated primary key values when a single row
         INSERT statement is emitted with no existing returning()
         clause.  This applies to those backends which support RETURNING
-        or a compatible construct, including Postgresql, Firebird, Oracle,
+        or a compatible construct, including PostgreSQL, Firebird, Oracle,
         Microsoft SQL Server.   Set this to ``False`` to disable
         the automatic usage of RETURNING.
 
@@ -272,7 +272,7 @@ def create_engine(*args, **kwargs):
 
             :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
 
-            :ref:`Postgresql Transaction Isolation <postgresql_isolation_level>`
+            :ref:`PostgreSQL Transaction Isolation <postgresql_isolation_level>`
 
             :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
 
