@@ -896,7 +896,7 @@ UniqueConstraint is now part of the Table reflection process
 A :class:`.Table` object populated using ``autoload=True`` will now
 include :class:`.UniqueConstraint` constructs as well as
 :class:`.Index` constructs.  This logic has a few caveats for
-PostgreSQL and Mysql:
+PostgreSQL and MySQL:
 
 PostgreSQL
 ^^^^^^^^^^
