@@ -273,9 +273,10 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     def _get_server_version_info(self, connection):
         try:
             raw = connection.scalar("SELECT  SERVERPROPERTY('ProductVersion')")
-        except exc.ProgrammingError:
+        except exc.DBAPIError:
             # SQL Server docs indicate this function isn't present prior to
-            # 2008
+            # 2008; additionally, unknown combinations of pyodbc aren't
+            # able to run this query.
             return super(MSDialect_pyodbc, self).\
                 _get_server_version_info(connection)
         else:

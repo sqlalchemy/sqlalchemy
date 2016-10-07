@@ -21,6 +21,17 @@
 .. changelog::
     :version: 1.1.1
 
+    .. change::
+        :tags: bug, mssql
+        :tickets: 3820
+
+        The "SELECT SERVERPROPERTY"
+        query added in :ticket:`3810` and :ticket:`3814` is failing on unknown
+        combinations of Pyodbc and SQL Server.  While failure of this function
+        was anticipated, the exception catch was not broad enough so it now
+        catches all forms of pyodbc.Error.
+
+
 .. changelog::
     :version: 1.1.0
     :released: October 5, 2016
