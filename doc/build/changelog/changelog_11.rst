@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.1
+    :released: October 7, 2016
 
     .. change::
         :tags: bug, mssql
