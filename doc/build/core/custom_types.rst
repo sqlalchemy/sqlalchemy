@@ -338,7 +338,7 @@ possible to define SQL-level transformations as well.  The rationale here is whe
 only the relational database contains a particular series of functions that are necessary
 to coerce incoming and outgoing data between an application and persistence format.
 Examples include using database-defined encryption/decryption functions, as well
-as stored procedures that handle geographic data.  The Postgis extension to PostgreSQL
+as stored procedures that handle geographic data.  The PostGIS extension to PostgreSQL
 includes an extensive array of SQL functions that are necessary for coercing
 data into particular formats.
 
@@ -348,7 +348,7 @@ can include implementations of
 when defined to return a non-``None`` value should return a :class:`.ColumnElement`
 expression to be injected into the SQL statement, either surrounding
 bound parameters or a column expression.  For example, to build a ``Geometry``
-type which will apply the Postgis function ``ST_GeomFromText`` to all outgoing
+type which will apply the PostGIS function ``ST_GeomFromText`` to all outgoing
 values and the function ``ST_AsText`` to all incoming data, we can create
 our own subclass of :class:`.UserDefinedType` which provides these methods
 in conjunction with :data:`~.sqlalchemy.sql.expression.func`::

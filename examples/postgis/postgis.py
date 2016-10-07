@@ -130,8 +130,8 @@ class LineString(Curve):
 
 
 # DDL integration
-# Postgis historically has required AddGeometryColumn/DropGeometryColumn
-# and other management methods in order to create Postgis columns.  Newer
+# PostGIS historically has required AddGeometryColumn/DropGeometryColumn
+# and other management methods in order to create PostGIS columns.  Newer
 # versions don't appear to require these special steps anymore.  However,
 # here we illustrate how to set up these features in any case.
 

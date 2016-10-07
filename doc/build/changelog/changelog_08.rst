@@ -3189,7 +3189,7 @@
       to augment bind- and result- behavior at the
       SQL level, as opposed to in the Python level.
       Allows for schemes like transparent encryption/
-      decryption, usage of Postgis functions, etc.
+      decryption, usage of PostGIS functions, etc.
 
     .. change::
         :tags: feature, sql
