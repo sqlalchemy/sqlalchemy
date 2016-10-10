@@ -1045,10 +1045,14 @@ class Column(SchemaItem, ColumnClause):
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
 
-        :param nullable: If set to the default of ``True``, indicates the
-            column will be rendered as allowing NULL, else it's rendered as
-            NOT NULL. This parameter is only used when issuing CREATE TABLE
-            statements.
+        :param nullable: When set to ``False``, will cause the "NOT NULL"
+            phrase to be added when generating DDL for the column.   When
+            ``True``, will normally generate nothing (in SQL this defaults to
+            "NULL"), except in some very specific backend-specific edge cases
+            where "NULL" may render explicitly.   Defaults to ``True`` unless
+            :paramref:`~.Column.primary_key` is also ``True``, in which case it
+            defaults to ``False``.  This parameter is only used when issuing
+            CREATE TABLE statements.
 
         :param onupdate: A scalar, Python callable, or
             :class:`~sqlalchemy.sql.expression.ClauseElement` representing a
