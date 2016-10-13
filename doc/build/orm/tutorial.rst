@@ -1780,8 +1780,8 @@ of loading by default, see the section :doc:`/orm/loading_relationships`.
 Deleting
 ========
 
-Let's try to delete ``jack`` and see how that goes. We'll mark as deleted in
-the session, then we'll issue a ``count`` query to see that no rows remain:
+Let's try to delete ``jack`` and see how that goes. We'll mark the object as deleted
+in the session, then we'll issue a ``count`` query to see that no rows remain:
 
 .. sourcecode:: python+sql
 
