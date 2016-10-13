@@ -19,6 +19,9 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.1.2
+
+.. changelog::
     :version: 1.1.1
     :released: October 7, 2016
 
