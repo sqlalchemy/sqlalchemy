@@ -40,6 +40,17 @@
         in [ticket:1495], where the rule would fail if the parent object
         had some other lazyloader-bound query options associated with it.
 
+    .. change::
+        :tags: bug, orm
+        :tickets: 3822
+
+        Fixed self-referential entity, deferred column loading issue in a
+        similar style as that of [ticket:3431], [ticket:3811] where an entity
+        is present in multiple positions within the row due to self-referential
+        eager loading; when the deferred loader only applies to one of the
+        paths, the "present" column loader will now override the deferred non-
+        load for that entity regardless of row ordering.
+
 .. changelog::
     :version: 1.1.1
     :released: October 7, 2016

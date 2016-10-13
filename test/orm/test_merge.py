@@ -1124,7 +1124,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         for u in s1_users:
             ustate = attributes.instance_state(u)
-            eq_(ustate.load_path, ())
+            eq_(ustate.load_path.path, (umapper, ))
             eq_(ustate.load_options, set())
 
         for u in s2_users:

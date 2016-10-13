@@ -441,14 +441,12 @@ class BakedLazyLoader(strategies.LazyLoader):
         if pending or passive & attributes.NO_AUTOFLUSH:
             q.add_criteria(lambda q: q.autoflush(False))
 
-        if state.load_path:
-            q.spoil()
-            q.add_criteria(
-                lambda q:
-                q._with_current_path(state.load_path[self.parent_property]))
-
         if state.load_options:
             q.spoil()
+            args = state.load_path[self.parent_property]
+            q.add_criteria(
+                lambda q:
+                q._with_current_path(args), args)
             q.add_criteria(
                 lambda q: q._conditional_options(*state.load_options))
 

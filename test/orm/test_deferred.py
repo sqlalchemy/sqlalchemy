@@ -680,6 +680,54 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
 
+class SelfReferentialMultiPathTest(testing.fixtures.DeclarativeMappedTest):
+    """test for [ticket:3822]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Node(Base):
+            __tablename__ = 'node'
+
+            id = sa.Column(sa.Integer, primary_key=True)
+            parent_id = sa.Column(sa.ForeignKey('node.id'))
+            parent = relationship('Node', remote_side=[id])
+            name = sa.Column(sa.String(10))
+
+    @classmethod
+    def insert_data(cls):
+        Node = cls.classes.Node
+
+        session = Session()
+        session.add_all([
+            Node(id=1, name='name'),
+            Node(id=2, parent_id=1, name='name'),
+            Node(id=3, parent_id=1, name='name')
+        ])
+        session.commit()
+
+    def test_present_overrides_deferred(self):
+        Node = self.classes.Node
+
+        session = Session()
+
+        q = session.query(Node).options(
+            joinedload(Node.parent).load_only(Node.id, Node.parent_id)
+        )
+
+        # Node #1 will appear first as Node.parent and have
+        # deferred applied to Node.name.  it will then appear
+        # as Node in the last row and "name" should be populated.
+        nodes = q.order_by(Node.id.desc()).all()
+
+        def go():
+            for node in nodes:
+                eq_(node.name, 'name')
+
+        self.assert_sql_count(testing.db, go, 0)
+
+
 class InheritanceTest(_Polymorphic):
     __dialect__ = 'default'
 

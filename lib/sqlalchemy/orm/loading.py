@@ -330,9 +330,8 @@ def _instance_processor(
                 context, path, mapper, result, adapter, populators)
 
     propagate_options = context.propagate_options
-    if propagate_options:
-        load_path = context.query._current_path + path \
-            if context.query._current_path.path else path
+    load_path = context.query._current_path + path \
+        if context.query._current_path.path else path
 
     session_identity_map = context.session.identity_map
 
@@ -426,12 +425,15 @@ def _instance_processor(
             # full population routines.  Objects here are either
             # just created, or we are doing a populate_existing
 
-            if isnew and propagate_options:
+            # be conservative about setting load_path when populate_existing
+            # is in effect; want to maintain options from the original
+            # load.  see test_expire->test_refresh_maintains_deferred_options
+            if isnew and (propagate_options or not populate_existing):
                 state.load_options = propagate_options
                 state.load_path = load_path
 
             _populate_full(
-                context, row, state, dict_, isnew,
+                context, row, state, dict_, isnew, load_path,
                 loaded_instance, populate_existing, populators)
 
             if isnew:
@@ -463,7 +465,7 @@ def _instance_processor(
                 # and add to the "context.partials" collection.
 
                 to_load = _populate_partial(
-                    context, row, state, dict_, isnew,
+                    context, row, state, dict_, isnew, load_path,
                     unloaded, populators)
 
                 if isnew:
@@ -486,7 +488,7 @@ def _instance_processor(
 
 
 def _populate_full(
-        context, row, state, dict_, isnew,
+        context, row, state, dict_, isnew, load_path,
         loaded_instance, populate_existing, populators):
     if isnew:
         # first time we are seeing a row with this identity.
@@ -507,15 +509,37 @@ def _populate_full(
             populator(state, dict_, row)
         for key, populator in populators["delayed"]:
             populator(state, dict_, row)
+    elif load_path != state.load_path:
+        # new load path, e.g. object is present in more than one
+        # column position in a series of rows
+        state.load_path = load_path
+
+        # if we have data, and the data isn't in the dict, OK, let's put
+        # it in.
+        for key, getter in populators["quick"]:
+            if key not in dict_:
+                dict_[key] = getter(row)
+
+        # otherwise treat like an "already seen" row
+        for key, populator in populators["existing"]:
+            populator(state, dict_, row)
+            # TODO:  allow "existing" populator to know this is
+            # a new path for the state:
+            # populator(state, dict_, row, new_path=True)
+
     else:
-        # have already seen rows with this identity.
+        # have already seen rows with this identity in this same path.
         for key, populator in populators["existing"]:
             populator(state, dict_, row)
 
+            # TODO: same path
+            # populator(state, dict_, row, new_path=False)
+
 
 def _populate_partial(
-        context, row, state, dict_, isnew,
+        context, row, state, dict_, isnew, load_path,
         unloaded, populators):
+
     if not isnew:
         to_load = context.partials[state]
         for key, populator in populators["existing"]:

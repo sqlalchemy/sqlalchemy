@@ -1435,6 +1435,47 @@ class RefreshTest(_fixtures.FixtureTest):
         s.expire(u)
         assert len(u.addresses) == 3
 
+    def test_refresh_maintains_deferred_options(self):
+        # testing a behavior that may have changed with
+        # [ticket:3822]
+        User, Address, Dingaling = self.classes(
+            "User", "Address", "Dingaling")
+        users, addresses, dingalings = self.tables(
+            "users", "addresses", "dingalings")
+
+        mapper(User, users, properties={
+            'addresses': relationship(Address)
+        })
+
+        mapper(Address, addresses, properties={
+            'dingalings': relationship(Dingaling)
+        })
+
+        mapper(Dingaling, dingalings)
+
+        s = create_session()
+        q = s.query(User).filter_by(name='fred').options(
+            sa.orm.lazyload('addresses').joinedload("dingalings"))
+
+        u1 = q.one()
+
+        # "addresses" is not present on u1, but when u1.addresses
+        # lazy loads, it should also joinedload dingalings.  This is
+        # present in state.load_options and state.load_path.   The
+        # refresh operation should not reset these attributes.
+        s.refresh(u1)
+
+        def go():
+            eq_(
+                u1.addresses,
+                [Address(
+                    email_address='fred@fred.com',
+                    dingalings=[Dingaling(data="ding 2/5")]
+                )]
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_refresh2(self):
         """test a hang condition that was occurring on expire/refresh"""
 
