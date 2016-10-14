@@ -1398,7 +1398,8 @@ def wrap_callable(wrapper, fn):
     else:
         _f = wrapper
         _f.__name__ = fn.__class__.__name__
-        _f.__module__ = fn.__module__
+        if hasattr(fn, '__module__'):
+            _f.__module__ = fn.__module__
 
         if hasattr(fn.__call__, '__doc__') and fn.__call__.__doc__:
             _f.__doc__ = fn.__call__.__doc__

@@ -382,6 +382,19 @@ class WrapCallableTest(fixtures.TestBase):
         eq_(c.__name__, "MyFancyDefault")
         eq_(c.__doc__, None)
 
+    def test_wrapping_update_wrapper_functools_parial(self):
+        def my_default(x):
+            return x
+
+        import functools
+        my_functools_default = functools.partial(my_default, 5)
+
+        c = util.wrap_callable(
+            lambda: my_functools_default(), my_functools_default)
+        eq_(c.__name__, "partial")
+        eq_(c.__doc__, my_functools_default.__call__.__doc__)
+        eq_(c(), 5)
+
 
 class ToListTest(fixtures.TestBase):
     def test_from_string(self):
