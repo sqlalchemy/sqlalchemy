@@ -85,6 +85,14 @@ class Load(Generative, MapperOption):
         self.context = {}
         self.local_opts = {}
 
+    @classmethod
+    def for_existing_path(cls, path):
+        load = cls.__new__(cls)
+        load.path = path
+        load.context = {}
+        load.local_opts = {}
+        return load
+
     def _generate(self):
         cloned = super(Load, self)._generate()
         cloned.local_opts = {}

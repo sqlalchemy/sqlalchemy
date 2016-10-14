@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, subqueryload, \
-    mapper, relationship, lazyload, clear_mappers
+    mapper, relationship, lazyload, clear_mappers, backref
 from sqlalchemy.testing import eq_, is_, is_not_
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import testing
@@ -628,7 +628,9 @@ class ResultTest(BakedTest):
                 sess.close()
 
 
-class LazyLoaderTest(BakedTest):
+from sqlalchemy.testing.assertsql import CompiledSQL
+
+class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
     run_setup_mappers = 'each'
 
     def _o2m_fixture(self, lazy="select", **kw):
@@ -919,6 +921,72 @@ class LazyLoaderTest(BakedTest):
                     self.assert_sql_count(testing.db, go, 2)
 
                 sess.close()
+
+    def test_useget_cancels_eager(self):
+        """test that a one to many lazyload cancels the unnecessary
+        eager many-to-one join on the other side."""
+
+        User = self.classes.User
+        Address = self.classes.Address
+
+        mapper(User, self.tables.users)
+        mapper(Address, self.tables.addresses, properties={
+            'user': relationship(
+                User, lazy='joined',
+                backref=backref('addresses', lazy='baked_select')
+            )
+        })
+
+        sess = Session()
+        u1 = sess.query(User).filter(User.id == 8).one()
+
+        def go():
+            eq_(u1.addresses[0].user, u1)
+        self.assert_sql_execution(
+            testing.db, go,
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                "addresses_user_id, addresses.email_address AS "
+                "addresses_email_address FROM addresses WHERE :param_1 = "
+                "addresses.user_id",
+                {'param_1': 8})
+            )
+
+    def test_useget_cancels_eager_propagated_present(self):
+        """test that a one to many lazyload cancels the unnecessary
+        eager many-to-one join on the other side, even when a propagated
+        option is present."""
+
+        User = self.classes.User
+        Address = self.classes.Address
+
+        mapper(User, self.tables.users)
+        mapper(Address, self.tables.addresses, properties={
+            'user': relationship(
+                User, lazy='joined',
+                backref=backref('addresses', lazy='baked_select')
+            )
+        })
+
+        from sqlalchemy.orm.interfaces import MapperOption
+
+        class MyBogusOption(MapperOption):
+            propagate_to_loaders = True
+
+        sess = Session()
+        u1 = sess.query(User).options(MyBogusOption()).filter(User.id == 8).one()
+
+        def go():
+            eq_(u1.addresses[0].user, u1)
+        self.assert_sql_execution(
+            testing.db, go,
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                "addresses_user_id, addresses.email_address AS "
+                "addresses_email_address FROM addresses WHERE :param_1 = "
+                "addresses.user_id",
+                {'param_1': 8})
+            )
 
     # additional tests:
     # 1. m2m w lazyload

@@ -31,6 +31,14 @@
         was a ``functools.partial`` or other object that doesn't have a
         ``__module__`` attribute.
 
+    .. change::
+        :tags: bug, orm
+        :tickets: 3824
+
+        Fixed bug involving the rule to disable a joined collection eager
+        loader on the other side of a many-to-one lazy loader, first added
+        in [ticket:1495], where the rule would fail if the parent object
+        had some other lazyloader-bound query options associated with it.
 
 .. changelog::
     :version: 1.1.1

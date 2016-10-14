@@ -615,7 +615,10 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 rev._use_get and \
                     not isinstance(rev.strategy, LazyLoader):
                 q = q.options(
-                    strategy_options.Load(rev.parent).lazyload(rev.key))
+                    strategy_options.Load.for_existing_path(
+                        q._current_path[rev.parent]
+                    ).lazyload(rev.key)
+                )
 
         lazy_clause, params = self._generate_lazy_clause(
             state, passive=passive)

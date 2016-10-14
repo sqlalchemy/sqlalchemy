@@ -467,11 +467,15 @@ class BakedLazyLoader(strategies.LazyLoader):
             if rev.direction is interfaces.MANYTOONE and \
                 rev._use_get and \
                     not isinstance(rev.strategy, strategies.LazyLoader):
+
                 q.add_criteria(
                     lambda q:
                     q.options(
-                        strategy_options.Load(
-                            rev.parent).baked_lazyload(rev.key)))
+                        strategy_options.Load.for_existing_path(
+                            q._current_path[rev.parent]
+                        ).baked_lazyload(rev.key)
+                    )
+                )
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
 

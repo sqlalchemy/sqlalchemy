@@ -898,6 +898,43 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 {'param_1': 8})
             )
 
+    def test_useget_cancels_eager_propagated_present(self):
+        """test that a one to many lazyload cancels the unnecessary
+        eager many-to-one join on the other side, even when a propagated
+        option is present."""
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User)
+
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user': relationship(User, lazy='joined', backref='addresses')
+        })
+
+        from sqlalchemy.orm.interfaces import MapperOption
+
+        class MyBogusOption(MapperOption):
+            propagate_to_loaders = True
+
+        sess = create_session()
+        u1 = sess.query(User).options(MyBogusOption()).filter(User.id == 8).one()
+
+        def go():
+            eq_(u1.addresses[0].user, u1)
+        self.assert_sql_execution(
+            testing.db, go,
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                "addresses_user_id, addresses.email_address AS "
+                "addresses_email_address FROM addresses WHERE :param_1 = "
+                "addresses.user_id",
+                {'param_1': 8})
+            )
+
+
     def test_manytoone_limit(self):
         """test that the subquery wrapping only occurs with
         limit/offset and m2m or o2m joins present."""
