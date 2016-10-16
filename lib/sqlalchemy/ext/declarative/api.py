@@ -181,9 +181,6 @@ class declared_attr(interfaces._MappedAttribute, property):
                     "non-mapped class %s" %
                     (desc.fget.__name__, cls.__name__))
             return desc.fget(cls)
-
-        if reg is None:
-            return desc.fget(cls)
         elif desc in reg:
             return reg[desc]
         else:
