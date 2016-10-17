@@ -64,6 +64,16 @@
         created for a non-native enumerated type, but more critically the
         ENUM object on the PostgreSQL backend.
 
+
+    .. change::
+        :tags: bug, postgresql, sql
+        :tickets: 3828
+
+        Changed the naming convention used when generating bound parameters
+        for a multi-VALUES insert statement, so that the numbered parameter
+        names don't conflict with the anonymized parameters of a WHERE clause,
+        as is now common in a PostgreSQL ON CONFLICT construct.
+
 .. changelog::
     :version: 1.1.1
     :released: October 7, 2016

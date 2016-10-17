@@ -1208,6 +1208,28 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
                             "WHERE mytable.name > %(name_1)s "
                             'DO UPDATE SET name = excluded.name')
 
+    def test_do_update_index_elements_where_target_multivalues(self):
+        i = insert(
+            self.table1,
+            values=[dict(name='foo'), dict(name='bar'), dict(name='bat')])
+        i = i.on_conflict_do_update(
+            index_elements=self.goofy_index.expressions,
+            index_where=self.goofy_index.dialect_options[
+                'postgresql']['where'],
+            set_=dict(name=i.excluded.name)
+        )
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) "
+            "VALUES (%(name_m0)s), (%(name_m1)s), (%(name_m2)s) "
+            "ON CONFLICT (name) "
+            "WHERE mytable.name > %(name_1)s "
+            "DO UPDATE SET name = excluded.name",
+            checkparams={
+                'name_1': 'm', 'name_m0': 'foo',
+                'name_m1': 'bar', 'name_m2': 'bat'}
+        )
+
     def test_do_update_unnamed_index_target(self):
         i = insert(
             self.table1, values=dict(name='foo'))
