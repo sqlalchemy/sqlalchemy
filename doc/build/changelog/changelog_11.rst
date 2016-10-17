@@ -21,6 +21,17 @@
 .. changelog::
     :version: 1.1.2
 
+    .. change::
+        :tags: bug, sql
+        :tickets: 3823
+
+        Fixed a regression caused by a newly added function that performs the
+        "wrap callable" function of sql :class:`.DefaultGenerator` objects,
+        an attribute error raised for ``__module__`` when the default callable
+        was a ``functools.partial`` or other object that doesn't have a
+        ``__module__`` attribute.
+
+
 .. changelog::
     :version: 1.1.1
     :released: October 7, 2016
