@@ -317,7 +317,7 @@ def _append_param_parameter(
             compiler, c, value, required=value is REQUIRED,
             name=_col_bind_name(c)
             if not stmt._has_multi_parameters
-            else "%s_0" % _col_bind_name(c),
+            else "%s_m0" % _col_bind_name(c),
             **kw
         )
     else:
@@ -396,7 +396,7 @@ def _create_update_prefetch_bind_param(compiler, c, process=True, name=None):
 
 class _multiparam_column(elements.ColumnElement):
     def __init__(self, original, index):
-        self.key = "%s_%d" % (original.key, index + 1)
+        self.key = "%s_m%d" % (original.key, index + 1)
         self.original = original
         self.default = original.default
         self.type = original.type
@@ -603,7 +603,7 @@ def _extend_values_for_multiparams(compiler, stmt, values, kw):
                 c,
                 (_create_bind_param(
                     compiler, c, row[c.key],
-                    name="%s_%d" % (c.key, i + 1)
+                    name="%s_m%d" % (c.key, i + 1)
                 ) if elements._is_literal(row[c.key])
                     else compiler.process(
                         row[c.key].self_group(), **kw))

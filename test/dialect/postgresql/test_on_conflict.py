@@ -210,6 +210,40 @@ class OnConflictTest(fixtures.TablesTest):
                 [(10, "I'm a name")]
             )
 
+    def test_on_conflict_do_update_multivalues(self):
+        users = self.tables.users
+
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), dict(id=1, name='name1'))
+            conn.execute(users.insert(), dict(id=2, name='name2'))
+
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=users.primary_key.columns,
+                set_=dict(name="updated"),
+                where=(i.excluded.name != 'name12')
+            ).values([
+                dict(id=1, name='name11'),
+                dict(id=2, name='name12'),
+                dict(id=3, name='name13'),
+                dict(id=4, name='name14'),
+            ])
+
+            result = conn.execute(i)
+            eq_(result.inserted_primary_key, [None])
+            eq_(result.returned_defaults, None)
+
+            eq_(
+                conn.execute(
+                    users.select().order_by(users.c.id)).fetchall(),
+                [
+                    (1, "updated"),
+                    (2, "name2"),
+                    (3, "name13"),
+                    (4, "name14")
+                ]
+            )
+
     def _exotic_targets_fixture(self, conn):
         users = self.tables.users_xtra
 

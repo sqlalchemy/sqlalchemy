@@ -640,11 +640,11 @@ class InsertImplicitReturningTest(
         self.assert_compile(
             ins,
             "INSERT INTO myothertable (othername) "
-            "VALUES (%(othername_0)s), "
-            "(%(othername_1)s)",
+            "VALUES (%(othername_m0)s), "
+            "(%(othername_m1)s)",
             checkparams={
-                'othername_1': 'bar',
-                'othername_0': 'foo'}
+                'othername_m1': 'bar',
+                'othername_m0': 'foo'}
         )
 
     def test_insert_multiple_values_return_defaults(self):
@@ -657,11 +657,11 @@ class InsertImplicitReturningTest(
         self.assert_compile(
             ins,
             "INSERT INTO myothertable (othername) "
-            "VALUES (%(othername_0)s), "
-            "(%(othername_1)s)",
+            "VALUES (%(othername_m0)s), "
+            "(%(othername_m1)s)",
             checkparams={
-                'othername_1': 'bar',
-                'othername_0': 'foo'}
+                'othername_m1': 'bar',
+                'othername_m0': 'foo'}
         )
 
     def test_insert_single_list_values(self):
@@ -671,8 +671,8 @@ class InsertImplicitReturningTest(
         self.assert_compile(
             ins,
             "INSERT INTO myothertable (othername) "
-            "VALUES (%(othername_0)s)",
-            checkparams={'othername_0': 'foo'}
+            "VALUES (%(othername_m0)s)",
+            checkparams={'othername_m0': 'foo'}
         )
 
     def test_insert_single_element_values(self):
@@ -769,15 +769,15 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ]
 
         checkparams = {
-            'myid_0': 1,
-            'myid_1': 2,
-            'myid_2': 3,
-            'name_0': 'a',
-            'name_1': 'c',
-            'name_2': 'e',
-            'description_0': 'b',
-            'description_1': 'd',
-            'description_2': 'f',
+            'myid_m0': 1,
+            'myid_m1': 2,
+            'myid_m2': 3,
+            'name_m0': 'a',
+            'name_m1': 'c',
+            'name_m2': 'e',
+            'description_m0': 'b',
+            'description_m1': 'd',
+            'description_m2': 'f',
         }
 
         dialect = default.DefaultDialect()
@@ -786,9 +786,9 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(
             table1.insert().values(values),
             'INSERT INTO mytable (myid, name, description) VALUES '
-            '(:myid_0, :name_0, :description_0), '
-            '(:myid_1, :name_1, :description_1), '
-            '(:myid_2, :name_2, :description_2)',
+            '(:myid_m0, :name_m0, :description_m0), '
+            '(:myid_m1, :name_m1, :description_m1), '
+            '(:myid_m2, :name_m2, :description_m2)',
             checkparams=checkparams,
             dialect=dialect)
 
@@ -859,21 +859,21 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ]
 
         checkparams = {
-            'id_0': 1,
-            'id_1': 2,
-            'id_2': 3,
-            'data_0': 'data1',
-            'data_1': 'data2',
-            'data_2': 'data3',
-            'foo_1': 'plainfoo',
+            'id_m0': 1,
+            'id_m1': 2,
+            'id_m2': 3,
+            'data_m0': 'data1',
+            'data_m1': 'data2',
+            'data_m2': 'data3',
+            'foo_m1': 'plainfoo',
         }
 
         self.assert_compile(
             table.insert().values(values),
             'INSERT INTO sometable (id, data, foo) VALUES '
-            '(%(id_0)s, %(data_0)s, foobar()), '
-            '(%(id_1)s, %(data_1)s, %(foo_1)s), '
-            '(%(id_2)s, %(data_2)s, foobar())',
+            '(%(id_m0)s, %(data_m0)s, foobar()), '
+            '(%(id_m1)s, %(data_m1)s, %(foo_m1)s), '
+            '(%(id_m2)s, %(data_m2)s, foobar())',
             checkparams=checkparams,
             dialect=postgresql.dialect())
 
@@ -891,15 +891,15 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ]
 
         checkparams = {
-            'id_0': 1,
-            'id_1': 2,
-            'id_2': 3,
-            'data_0': 'data1',
-            'data_1': 'data2',
-            'data_2': 'data3',
+            'id_m0': 1,
+            'id_m1': 2,
+            'id_m2': 3,
+            'data_m0': 'data1',
+            'data_m1': 'data2',
+            'data_m2': 'data3',
             'foo': None,  # evaluated later
-            'foo_1': 15,
-            'foo_2': None  # evaluated later
+            'foo_m1': 15,
+            'foo_m2': None  # evaluated later
         }
 
         stmt = table.insert().values(values)
@@ -910,17 +910,17 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 for (k, v) in
                 stmt.compile(dialect=postgresql.dialect()).binds.items()]),
             {
-                'foo': Integer, 'data_2': String, 'id_0': Integer,
-                'id_2': Integer, 'foo_1': Integer, 'data_1': String,
-                'id_1': Integer, 'foo_2': Integer, 'data_0': String}
+                'foo': Integer, 'data_m2': String, 'id_m0': Integer,
+                'id_m2': Integer, 'foo_m1': Integer, 'data_m1': String,
+                'id_m1': Integer, 'foo_m2': Integer, 'data_m0': String}
         )
 
         self.assert_compile(
             stmt,
             'INSERT INTO sometable (id, data, foo) VALUES '
-            '(%(id_0)s, %(data_0)s, %(foo)s), '
-            '(%(id_1)s, %(data_1)s, %(foo_1)s), '
-            '(%(id_2)s, %(data_2)s, %(foo_2)s)',
+            '(%(id_m0)s, %(data_m0)s, %(foo)s), '
+            '(%(id_m1)s, %(data_m1)s, %(foo_m1)s), '
+            '(%(id_m2)s, %(data_m2)s, %(foo_m2)s)',
             checkparams=checkparams,
             dialect=postgresql.dialect())
 
@@ -938,15 +938,15 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ]
 
         checkparams = {
-            'id_0': 1,
-            'id_1': 2,
-            'id_2': 3,
-            'data_0': 'data1',
-            'data_1': 'data2',
-            'data_2': 'data3',
+            'id_m0': 1,
+            'id_m1': 2,
+            'id_m2': 3,
+            'data_m0': 'data1',
+            'data_m1': 'data2',
+            'data_m2': 'data3',
             'foo': None,  # evaluated later
-            'foo_1': 15,
-            'foo_2': None,  # evaluated later
+            'foo_m1': 15,
+            'foo_m2': None,  # evaluated later
         }
 
         stmt = table.insert().values(values)
@@ -956,17 +956,17 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 for (k, v) in
                 stmt.compile(dialect=postgresql.dialect()).binds.items()]),
             {
-                'foo': Integer, 'data_2': String, 'id_0': Integer,
-                'id_2': Integer, 'foo_1': Integer, 'data_1': String,
-                'id_1': Integer, 'foo_2': Integer, 'data_0': String}
+                'foo': Integer, 'data_m2': String, 'id_m0': Integer,
+                'id_m2': Integer, 'foo_m1': Integer, 'data_m1': String,
+                'id_m1': Integer, 'foo_m2': Integer, 'data_m0': String}
         )
 
         self.assert_compile(
             stmt,
             "INSERT INTO sometable (id, data, foo) VALUES "
-            "(%(id_0)s, %(data_0)s, %(foo)s), "
-            "(%(id_1)s, %(data_1)s, %(foo_1)s), "
-            "(%(id_2)s, %(data_2)s, %(foo_2)s)",
+            "(%(id_m0)s, %(data_m0)s, %(foo)s), "
+            "(%(id_m1)s, %(data_m1)s, %(foo_m1)s), "
+            "(%(id_m2)s, %(data_m2)s, %(foo_m2)s)",
             checkparams=checkparams,
             dialect=postgresql.dialect())
 
@@ -985,31 +985,31 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             {"id": 5, "data": "bar", "foo": func.foob()},
         ]
         checkparams = {
-            'id_0': 1,
-            'data_0': 'foo',
+            'id_m0': 1,
+            'data_m0': 'foo',
 
-            'id_1': 2,
-            'data_1': 'bar',
+            'id_m1': 2,
+            'data_m1': 'bar',
 
-            'id_2': 3,
-            'data_2': 'bar',
+            'id_m2': 3,
+            'data_m2': 'bar',
 
-            'id_3': 4,
-            'data_3': 'bar',
-            'foo_3': 15,
+            'id_m3': 4,
+            'data_m3': 'bar',
+            'foo_m3': 15,
 
-            'id_4': 5,
-            'data_4': 'bar'
+            'id_m4': 5,
+            'data_m4': 'bar'
         }
 
         self.assert_compile(
             table.insert().values(values),
             "INSERT INTO sometable (id, data, foo) VALUES "
-            "(%(id_0)s, %(data_0)s, foob()), "
-            "(%(id_1)s, %(data_1)s, foob()), "
-            "(%(id_2)s, %(data_2)s, bar()), "
-            "(%(id_3)s, %(data_3)s, %(foo_3)s), "
-            "(%(id_4)s, %(data_4)s, foob())",
+            "(%(id_m0)s, %(data_m0)s, foob()), "
+            "(%(id_m1)s, %(data_m1)s, foob()), "
+            "(%(id_m2)s, %(data_m2)s, bar()), "
+            "(%(id_m3)s, %(data_m3)s, %(foo_m3)s), "
+            "(%(id_m4)s, %(data_m4)s, foob())",
             checkparams=checkparams,
             dialect=postgresql.dialect())
 
@@ -1027,20 +1027,20 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ]
 
         checkparams = {
-            'id_0': 1,
-            'id_1': 2,
-            'id_2': 3,
-            'data_0': 'data1',
-            'data_1': 'data2',
-            'data_2': 'data3',
+            'id_m0': 1,
+            'id_m1': 2,
+            'id_m2': 3,
+            'data_m0': 'data1',
+            'data_m1': 'data2',
+            'data_m2': 'data3',
         }
 
         self.assert_compile(
             table.insert().values(values),
             'INSERT INTO sometable (id, data) VALUES '
-            '(%(id_0)s, %(data_0)s), '
-            '(%(id_1)s, %(data_1)s), '
-            '(%(id_2)s, %(data_2)s)',
+            '(%(id_m0)s, %(data_m0)s), '
+            '(%(id_m1)s, %(data_m1)s), '
+            '(%(id_m2)s, %(data_m2)s)',
             checkparams=checkparams,
             dialect=postgresql.dialect())
 
