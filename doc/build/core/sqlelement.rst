@@ -3,11 +3,16 @@ Column Elements and Expressions
 
 .. module:: sqlalchemy.sql.expression
 
-The most fundamental part of the SQL expression API are the "column elements",
-which allow for basic SQL expression support.   The core of all SQL expression
-constructs is the :class:`.ClauseElement`, which is the base for several
-sub-branches.  The :class:`.ColumnElement` class is the fundamental unit
-used to construct any kind of typed SQL expression.
+The expression API consists of a series of classes that each represent a
+specific lexical element within a SQL string.  Composed together
+into a larger structure, they form a statement construct that may
+be *compiled* into a string representation that can be passed to a database.
+The classes are organized into a
+hierarchy that begins at the basemost ClauseElement class. Key subclasses
+include ColumnElement, which represents the role of any column-based expression
+in a SQL statement, such as in the columns clause, WHERE clause, and ORDER BY
+clause, and FromClause, which represents the role of a token that is placed in
+the FROM clause of a SELECT statement.
 
 .. autofunction:: all_
 
