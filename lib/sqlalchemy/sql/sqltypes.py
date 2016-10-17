@@ -1330,6 +1330,9 @@ class Enum(String, SchemaType):
         )
         assert e.table is table
 
+    def copy(self, **kw):
+        return SchemaType.copy(self, **kw)
+
     def adapt(self, impltype, **kw):
         schema = kw.pop('schema', self.schema)
         metadata = kw.pop('metadata', self.metadata)

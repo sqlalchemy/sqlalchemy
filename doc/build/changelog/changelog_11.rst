@@ -51,6 +51,19 @@
         paths, the "present" column loader will now override the deferred non-
         load for that entity regardless of row ordering.
 
+    .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 3827
+
+        Fixed regression in :class:`.Enum` type where event handlers were not
+        transferred in the case of the type object being copied, due to a
+        conflicting copy() method added as part of [ticket:3250].  This copy
+        occurs normally in situations when the column is copied, such as
+        in tometadata() or when using declarative mixins with columns.  The
+        event handler not being present would impact the constraint being
+        created for a non-native enumerated type, but more critically the
+        ENUM object on the PostgreSQL backend.
+
 .. changelog::
     :version: 1.1.1
     :released: October 7, 2016

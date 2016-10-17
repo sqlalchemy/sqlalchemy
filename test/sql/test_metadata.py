@@ -1,7 +1,6 @@
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import emits_warning
-
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
@@ -16,7 +15,7 @@ import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
-from sqlalchemy.testing import eq_, is_, mock
+from sqlalchemy.testing import eq_, is_, mock, is_true
 from contextlib import contextmanager
 from sqlalchemy import util
 
@@ -1534,25 +1533,38 @@ class PKAutoIncrementTest(fixtures.TestBase):
 
 class SchemaTypeTest(fixtures.TestBase):
 
-    class MyType(sqltypes.SchemaType, sqltypes.TypeEngine):
+    class TrackEvents(object):
         column = None
         table = None
         evt_targets = ()
 
         def _set_table(self, column, table):
-            super(SchemaTypeTest.MyType, self)._set_table(column, table)
+            super(SchemaTypeTest.TrackEvents, self)._set_table(column, table)
             self.column = column
             self.table = table
 
         def _on_table_create(self, target, bind, **kw):
-            super(SchemaTypeTest.MyType, self)._on_table_create(
+            super(SchemaTypeTest.TrackEvents, self)._on_table_create(
                 target, bind, **kw)
             self.evt_targets += (target,)
 
         def _on_metadata_create(self, target, bind, **kw):
-            super(SchemaTypeTest.MyType, self)._on_metadata_create(
+            super(SchemaTypeTest.TrackEvents, self)._on_metadata_create(
                 target, bind, **kw)
             self.evt_targets += (target,)
+
+    # TODO: Enum and Boolean put TypeEngine first.  Changing that here
+    # causes collection-mutate-while-iterated errors in the event system
+    # since the hooks here call upon the adapted type.  Need to figure out
+    # why Enum and Boolean don't have this problem.
+    class MyType(TrackEvents, sqltypes.SchemaType, sqltypes.TypeEngine):
+        pass
+
+    class WrapEnum(TrackEvents, Enum):
+        pass
+
+    class WrapBoolean(TrackEvents, Boolean):
+        pass
 
     class MyTypeWImpl(MyType):
 
@@ -1655,6 +1667,29 @@ class SchemaTypeTest(fixtures.TestBase):
         t2.dispatch.before_create(t2, testing.db)
         eq_(t1.c.y.type.evt_targets, (t1,))
         eq_(t2.c.y.type.evt_targets, (t2, t2))
+
+    def test_enum_column_copy_transfers_events(self):
+        m = MetaData()
+
+        type_ = self.WrapEnum('a', 'b', 'c', name='foo')
+        y = Column('y', type_)
+        y_copy = y.copy()
+        t1 = Table('x', m, y_copy)
+
+        is_true(y_copy.type._create_events)
+
+        m.dispatch.before_create(t1, testing.db)
+        eq_(t1.c.y.type.evt_targets, (t1, ))
+
+    def test_boolean_column_copy_transfers_events(self):
+        m = MetaData()
+
+        type_ = self.WrapBoolean()
+        y = Column('y', type_)
+        y_copy = y.copy()
+        t1 = Table('x', m, y_copy)
+
+        is_true(y_copy.type._create_events)
 
     def test_metadata_dispatch_no_new_impl(self):
         m1 = MetaData()
