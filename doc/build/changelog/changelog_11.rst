@@ -37,7 +37,7 @@
 
         Fixed bug involving the rule to disable a joined collection eager
         loader on the other side of a many-to-one lazy loader, first added
-        in [ticket:1495], where the rule would fail if the parent object
+        in :ticket:`1495`, where the rule would fail if the parent object
         had some other lazyloader-bound query options associated with it.
 
     .. change::
@@ -45,7 +45,7 @@
         :tickets: 3822
 
         Fixed self-referential entity, deferred column loading issue in a
-        similar style as that of [ticket:3431], [ticket:3811] where an entity
+        similar style as that of :ticket:`3431`, :ticket:`3811` where an entity
         is present in multiple positions within the row due to self-referential
         eager loading; when the deferred loader only applies to one of the
         paths, the "present" column loader will now override the deferred non-
@@ -57,7 +57,7 @@
 
         Fixed regression in :class:`.Enum` type where event handlers were not
         transferred in the case of the type object being copied, due to a
-        conflicting copy() method added as part of [ticket:3250].  This copy
+        conflicting copy() method added as part of :ticket:`3250`.  This copy
         occurs normally in situations when the column is copied, such as
         in tometadata() or when using declarative mixins with columns.  The
         event handler not being present would impact the constraint being
