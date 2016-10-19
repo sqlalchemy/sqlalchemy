@@ -1796,6 +1796,13 @@ class JSON(Indexable, TypeEngine):
              from sqlalchemy import null
              conn.execute(table.insert(), data=null())
 
+         .. note::
+
+              :paramref:`.JSON.none_as_null` does **not** apply to the
+              values passed to :paramref:`.Column.default` and
+              :paramref:`.Column.server_default`; a value of ``None`` passed for
+              these parameters means "no default present".
+
          .. seealso::
 
               :attr:`.types.JSON.NULL`

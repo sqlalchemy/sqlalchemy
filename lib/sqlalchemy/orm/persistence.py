@@ -396,6 +396,12 @@ def _collect_insert_commands(
                 params[col.key] = value
 
         if not bulk:
+            # for all the columns that have no default and we don't have
+            # a value and where "None" is not a special value, add
+            # explicit None to the INSERT.   This is a legacy behavior
+            # which might be worth removing, as it should not be necessary
+            # and also produces confusion, given that "missing" and None
+            # now have distinct meanings
             for colkey in mapper._insert_cols_as_none[table].\
                     difference(params).difference(value_params):
                 params[colkey] = None

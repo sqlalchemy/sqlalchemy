@@ -1676,30 +1676,64 @@ NULL values as well as expression handling.
 
 .. _change_3514:
 
-JSON "null" is inserted as expected with ORM operations, regardless of column default present
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+JSON "null" is inserted as expected with ORM operations, omitted when not present
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :class:`.types.JSON` type and its descendant types :class:`.postgresql.JSON`
 and :class:`.mysql.JSON` have a flag :paramref:`.types.JSON.none_as_null` which
 when set to True indicates that the Python value ``None`` should translate
 into a SQL NULL rather than a JSON NULL value.  This flag defaults to False,
-which means that the column should *never* insert SQL NULL or fall back
-to a default unless the :func:`.null` constant were used.  However, this would
-fail in the ORM under two circumstances; one is when the column also contained
-a default or server_default value, a positive value of ``None`` on the mapped
-attribute would still result in the column-level default being triggered,
+which means that the Python value ``None`` should result in a JSON NULL value.
+
+This logic would fail, and is now corrected, in the following circumstances:
+
+1. When the column also contained a default or server_default value,
+a positive value of ``None`` on the mapped attribute that expects to persist
+JSON "null" would still result in the column-level default being triggered,
 replacing the ``None`` value::
 
+    class MyObject(Base):
+        # ...
+
+        json_value = Column(JSON(none_as_null=False), default="some default")
+
+    # would insert "some default" instead of "'null'",
+    # now will insert "'null'"
     obj = MyObject(json_value=None)
     session.add(obj)
-    session.commit()   # would fire off default / server_default, not encode "'none'"
+    session.commit()
 
-The other is when the :meth:`.Session.bulk_insert_mappings`
-method were used, ``None`` would be ignored in all cases::
+2. When the column *did not* contain a default or server_default value, a missing
+value on a JSON column configured with none_as_null=False would still render
+JSON NULL rather than falling back to not inserting any value, behaving
+inconsistently vs. all other datatypes::
 
+    class MyObject(Base):
+        # ...
+
+        some_other_value = Column(String(50))
+        json_value = Column(JSON(none_as_null=False))
+
+    # would result in NULL for some_other_value,
+    # but json "'null'" for json_value.  Now results in NULL for both
+    # (the json_value is omitted from the INSERT)
+    obj = MyObject()
+    session.add(obj)
+    session.commit()
+
+This is a behavioral change that is backwards incompatible for an application
+that was relying upon this to default a missing value as JSON null.  This
+essentially establishes that a **missing value is distinguished from a present
+value of None**.  See :ref:`behavior_change_3514` for further detail.
+
+3. When the :meth:`.Session.bulk_insert_mappings` method were used, ``None``
+would be ignored in all cases::
+
+    # would insert SQL NULL and/or trigger defaults,
+    # now inserts "'null'"
     session.bulk_insert_mappings(
         MyObject,
-        [{"json_value": None}])  # would insert SQL NULL and/or trigger defaults
+        [{"json_value": None}])
 
 The :class:`.types.JSON` type now implements the
 :attr:`.TypeEngine.should_evaluate_none` flag,
@@ -1707,18 +1741,6 @@ indicating that ``None`` should not be ignored here; it is configured
 automatically based on the value of :paramref:`.types.JSON.none_as_null`.
 Thanks to :ticket:`3061`, we can differentiate when the value ``None`` is actively
 set by the user versus when it was never set at all.
-
-If the attribute is not set at all, then column level defaults *will*
-fire off and/or SQL NULL will be inserted as expected, as was the behavior
-previously.  Below, the two variants are illustrated::
-
-    obj = MyObject(json_value=None)
-    session.add(obj)
-    session.commit()   # *will not* fire off column defaults, will insert JSON 'null'
-
-    obj = MyObject()
-    session.add(obj)
-    session.commit()   # *will* fire off column defaults, and/or insert SQL NULL
 
 The feature applies as well to the new base :class:`.types.JSON` type
 and its descendant types.
@@ -2062,6 +2084,53 @@ as intended by the :func:`.type_coerce` function.
 
 Key Behavioral Changes - ORM
 ============================
+
+.. _behavior_change_3514:
+
+JSON Columns will not insert JSON NULL if no value is supplied and no default is established
+--------------------------------------------------------------------------------------------
+
+As detailed in :ref:`change_3514`, :class:`.types.JSON` will not render
+a JSON "null" value if the value is missing entirely.  To prevent SQL NULL,
+a default should be set up.  Given the following mapping::
+
+    class MyObject(Base):
+        # ...
+
+        json_value = Column(JSON(none_as_null=False), nullable=False)
+
+The following flush operation will fail with an integrity error::
+
+    obj = MyObject()  # note no json_value
+    session.add(obj)
+    session.commit()  # will fail with integrity error
+
+If the default for the column should be JSON NULL, set this on the
+Column::
+
+    class MyObject(Base):
+        # ...
+
+        json_value = Column(
+            JSON(none_as_null=False), nullable=False, default=JSON.NULL)
+
+Or, ensure the value is present on the object::
+
+    obj = MyObject(json_value=None)
+    session.add(obj)
+    session.commit()  # will insert JSON NULL
+
+Note that setting ``None`` for the default is the same as omitting it entirely;
+the :paramref:`.types.JSON.none_as_null` flag does not impact the value of ``None``
+passed to :paramref:`.Column.default` or :paramref:`.Column.server_default`::
+
+    # default=None is the same as omitting it entirely, does not apply JSON NULL
+    json_value = Column(JSON(none_as_null=False), nullable=False, default=None)
+
+
+.. seealso::
+
+    :ref:`change_3514`
 
 .. _change_3641:
 

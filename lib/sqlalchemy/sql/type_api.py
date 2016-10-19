@@ -182,6 +182,13 @@ class TypeEngine(Visitable):
         the :obj:`~.expression.null` SQL construct in an INSERT statement
         or associated with an ORM-mapped attribute.
 
+        .. note::
+
+            The "evaulates none" flag does **not** apply to a value
+            of ``None`` passed to :paramref:`.Column.default` or
+            :paramref:`.Column.server_default`; in these cases, ``None``
+            still means "no default".
+
         .. versionadded:: 1.1
 
         .. seealso::
