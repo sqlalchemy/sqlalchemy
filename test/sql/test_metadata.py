@@ -1574,6 +1574,66 @@ class SchemaTypeTest(fixtures.TestBase):
     class MyTypeImpl(MyTypeWImpl):
         pass
 
+    class MyTypeDecAndSchema(TypeDecorator, sqltypes.SchemaType):
+        impl = String()
+
+        evt_targets = ()
+
+        def __init__(self):
+            TypeDecorator.__init__(self)
+            sqltypes.SchemaType.__init__(self)
+
+        def _on_table_create(self, target, bind, **kw):
+            self.evt_targets += (target,)
+
+        def _on_metadata_create(self, target, bind, **kw):
+            self.evt_targets += (target,)
+
+    def test_before_parent_attach_plain(self):
+        typ = self.MyType()
+        self._test_before_parent_attach(typ)
+
+    def test_before_parent_attach_typedec_enclosing_schematype(self):
+        # additional test for [ticket:2919] as part of test for
+        # [ticket:3832]
+
+        class MySchemaType(sqltypes.TypeEngine, sqltypes.SchemaType):
+            pass
+
+        target_typ = MySchemaType()
+
+        class MyType(TypeDecorator):
+            impl = target_typ
+
+        typ = MyType()
+        self._test_before_parent_attach(typ, target_typ)
+
+    def test_before_parent_attach_typedec_of_schematype(self):
+        class MyType(TypeDecorator, sqltypes.SchemaType):
+            impl = String
+
+        typ = MyType()
+        self._test_before_parent_attach(typ)
+
+    def test_before_parent_attach_schematype_of_typedec(self):
+        class MyType(sqltypes.SchemaType, TypeDecorator):
+            impl = String
+
+        typ = MyType()
+        self._test_before_parent_attach(typ)
+
+    def _test_before_parent_attach(self, typ, evt_target=None):
+        canary = mock.Mock()
+
+        if evt_target is None:
+            evt_target = typ
+
+        event.listen(evt_target, "before_parent_attach", canary.go)
+
+        c = Column('q', typ)
+
+        eq_(canary.mock_calls, [mock.call.go(evt_target, c)])
+
     def test_independent_schema(self):
         m = MetaData()
         type_ = self.MyType(schema="q")
@@ -1708,6 +1768,13 @@ class SchemaTypeTest(fixtures.TestBase):
 
         dialect_impl = typ.dialect_impl(testing.db.dialect)
         eq_(dialect_impl.evt_targets, (m1, ))
+
+    def test_table_dispatch_decorator_schematype(self):
+        m1 = MetaData()
+        typ = self.MyTypeDecAndSchema()
+        t1 = Table('t1', m1, Column('x', typ))
+        m1.dispatch.before_create(t1, testing.db)
+        eq_(typ.evt_targets, (t1, ))
 
     def test_table_dispatch_no_new_impl(self):
         m1 = MetaData()

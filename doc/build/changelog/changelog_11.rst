@@ -21,6 +21,18 @@
 .. changelog::
     :version: 1.1.3
 
+    .. change::
+        :tags: bug, sql
+        :tickets: 3832
+
+        Fixed regression which occurred as a side effect of :ticket:`2919`,
+        which in the less typical case of a user-defined
+        :class:`.TypeDecorator` that was also itself an instance of
+        :class:`.SchemaType` (rather than the implementation being such)
+        would cause the column attachment events to be skipped for the
+        type itself.
+
+
 .. changelog::
     :version: 1.1.2
     :released: October 17, 2016

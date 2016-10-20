@@ -426,8 +426,6 @@ class SchemaEventTarget(object):
     def _set_parent(self, parent):
         """Associate with this SchemaEvent's parent object."""
 
-        raise NotImplementedError()
-
     def _set_parent_with_dispatch(self, parent):
         self.dispatch.before_parent_attach(self, parent)
         self._set_parent(parent)

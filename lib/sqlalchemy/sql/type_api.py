@@ -860,11 +860,15 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     def _set_parent(self, column):
         """Support SchemaEentTarget"""
 
+        super(TypeDecorator, self)._set_parent(column)
+
         if isinstance(self.impl, SchemaEventTarget):
             self.impl._set_parent(column)
 
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEentTarget"""
+
+        super(TypeDecorator, self)._set_parent_with_dispatch(parent)
 
         if isinstance(self.impl, SchemaEventTarget):
             self.impl._set_parent_with_dispatch(parent)
