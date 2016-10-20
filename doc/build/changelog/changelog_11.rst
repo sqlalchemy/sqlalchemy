@@ -23,6 +23,17 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3833
+
+        Fixed bug involving new value translation and validation feature
+        in :class:`.Enum` whereby using the enum object in a string
+        concatenation would maintain the :class:`.Enum` type as the type
+        of the expression overall, producing missing lookups.  A string
+        concatenation against an :class:`.Enum`-typed column now uses
+        :class:`.String` as the datatype of the expression itself.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3832
 
         Fixed regression which occurred as a side effect of :ticket:`2919`,

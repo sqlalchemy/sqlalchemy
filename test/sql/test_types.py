@@ -1264,6 +1264,25 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             ]
         )
 
+    def test_validators_not_in_concatenate_roundtrip(self):
+        enum_table = self.tables['non_native_enum_table']
+
+        enum_table.insert().execute([
+            {'id': 1, 'someenum': 'two'},
+            {'id': 2, 'someenum': 'two'},
+            {'id': 3, 'someenum': 'one'},
+        ])
+
+        eq_(
+            select(['foo' + enum_table.c.someenum]).
+            order_by(enum_table.c.id).execute().fetchall(),
+            [
+                ('footwo', ),
+                ('footwo', ),
+                ('fooone', )
+            ]
+        )
+
     @testing.fails_on(
         'postgresql+zxjdbc',
         'zxjdbc fails on ENUM: column "XXX" is of type XXX '
