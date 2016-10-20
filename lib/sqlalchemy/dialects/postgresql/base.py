@@ -2442,7 +2442,8 @@ class PGDialect(default.DefaultDialect):
         if default is not None:
             match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
             if match is not None:
-                autoincrement = True
+                if issubclass(coltype._type_affinity, sqltypes.Integer):
+                    autoincrement = True
                 # the default is related to a Sequence
                 sch = schema
                 if '.' not in match.group(2) and sch is not None:

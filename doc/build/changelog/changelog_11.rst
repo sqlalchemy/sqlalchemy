@@ -22,6 +22,18 @@
     :version: 1.1.3
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3835
+
+        Postgresql table reflection will ensure that the
+        :paramref:`.Column.autoincrement` flag is set to False when reflecting
+        a primary key column that is not of an :class:`.Integer` datatype,
+        even if the default is related to an integer-generating sequence.
+        This can happen if a column is created as SERIAL and the datatype
+        is changed.  The autoincrement flag can only be True if the datatype
+        is of integer affinity in the 1.1 series.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3833
 
