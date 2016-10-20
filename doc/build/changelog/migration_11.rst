@@ -1528,6 +1528,13 @@ string values::
     e.execute(t.insert(), {"value": MyEnum.two})
     assert e.scalar(t.select()) is MyEnum.two
 
+The ``Enum.enums`` collection is now a list instead of a tuple
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As part of the changes to :class:`.Enum`, the :attr:`.Enum.enums` collection
+of elements is now a list instead of a tuple.  This because lists
+are appropriate for variable length sequences of homogeneous items where
+the position of the element is not semantically significant.
 
 :ticket:`3292`
 
