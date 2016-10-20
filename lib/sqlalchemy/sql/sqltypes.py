@@ -1296,6 +1296,19 @@ class Enum(String, SchemaType):
                 raise LookupError(
                     '"%s" is not among the defined enum values' % elem)
 
+    class Comparator(String.Comparator):
+
+        def _adapt_expression(self, op, other_comparator):
+            op, typ = super(Enum.Comparator, self)._adapt_expression(
+                op, other_comparator)
+            if op is operators.concat_op:
+                typ = String(
+                    self.type.length,
+                    convert_unicode=self.type.convert_unicode)
+            return op, typ
+
+    comparator_factory = Comparator
+
     def _object_value_for_elem(self, elem):
         try:
             return self._object_lookup[elem]
