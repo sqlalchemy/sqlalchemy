@@ -165,7 +165,7 @@ class Query(object):
             info = inspect(from_obj)
             if hasattr(info, 'mapper') and \
                     (info.is_mapper or info.is_aliased_class):
-                self._select_from_entity = from_obj
+                self._select_from_entity = info
                 if set_base_alias:
                     raise sa_exc.ArgumentError(
                         "A selectable (FromClause) instance is "
@@ -3940,8 +3940,10 @@ class _ColumnEntity(_QueryEntity):
             self.entity_zero = _entity
             if _entity:
                 self.entities = [_entity]
+                self.mapper = _entity.mapper
             else:
                 self.entities = []
+                self.mapper = None
             self._from_entities = set(self.entities)
         else:
             all_elements = [
@@ -3963,10 +3965,13 @@ class _ColumnEntity(_QueryEntity):
             ])
             if self.entities:
                 self.entity_zero = self.entities[0]
+                self.mapper = self.entity_zero.mapper
             elif self.namespace is not None:
                 self.entity_zero = self.namespace
+                self.mapper = None
             else:
                 self.entity_zero = None
+                self.mapper = None
 
     supports_single_entity = False
 

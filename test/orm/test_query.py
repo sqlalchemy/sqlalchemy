@@ -813,6 +813,36 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         q = s.query(User, Address)
         assert_raises(sa_exc.InvalidRequestError, q.get, 5)
 
+    def test_entity_or_mapper_zero(self):
+        User, Address = self.classes.User, self.classes.Address
+        s = create_session()
+
+        q = s.query(User, Address)
+        is_(q._mapper_zero(), inspect(User))
+        is_(q._entity_zero(), inspect(User))
+
+        u1 = aliased(User)
+        q = s.query(u1, Address)
+        is_(q._mapper_zero(), inspect(User))
+        is_(q._entity_zero(), inspect(u1))
+
+        q = s.query(User).select_from(Address)
+        is_(q._mapper_zero(), inspect(User))
+        is_(q._entity_zero(), inspect(Address))
+
+        q = s.query(User.name, Address)
+        is_(q._mapper_zero(), inspect(User))
+        is_(q._entity_zero(), inspect(User))
+
+        q = s.query(u1.name, Address)
+        is_(q._mapper_zero(), inspect(User))
+        is_(q._entity_zero(), inspect(u1))
+
+        q1 = s.query(User).exists()
+        q = s.query(q1)
+        is_(q._mapper_zero(), None)
+        is_(q._entity_zero(), None)
+
     def test_from_statement(self):
         User = self.classes.User
 

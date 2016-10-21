@@ -34,6 +34,15 @@
         is of integer affinity in the 1.1 series.
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3836
+
+        Fixed regression where some :class:`.Query` methods like
+        :meth:`.Query.update` and others would fail if the :class:`.Query`
+        were against a series of mapped columns, rather than the mapped
+        entity as a whole.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3833
 
