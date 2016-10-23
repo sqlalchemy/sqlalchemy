@@ -188,7 +188,7 @@ Working with Relationships
 
 There's no essential difference when creating hybrids that work with
 related objects as opposed to column-based data. The need for distinct
-expressions tends to be greater.  Two variants of we'll illustrate
+expressions tends to be greater.  The two variants we'll illustrate
 are the "join-dependent" hybrid, and the "correlated subquery" hybrid.
 
 Join-Dependent Relationship Hybrid
@@ -505,7 +505,7 @@ into a hierarchical tree pattern::
 
     class Node(Base):
         __tablename__ = 'node'
-        id =Column(Integer, primary_key=True)
+        id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('node.id'))
         parent = relationship("Node", remote_side=id)
 
