@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.3
+    :released: October 27, 2016
 
     .. change::
         :tags: bug, orm
