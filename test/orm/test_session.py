@@ -1,5 +1,5 @@
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, assertions
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing import pickleable
 from sqlalchemy.util import pickle
@@ -346,6 +346,37 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.commit()
 
         eq_(sess.query(User).count(), 1)
+
+    def test_deleted_adds_to_imap_unconditionally(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        sess.delete(u1)
+        sess.flush()
+
+        # object is not in session
+        assert u1 not in sess
+
+        # but it *is* attached
+        assert u1._sa_instance_state.session_id == sess.hash_key
+
+        # mark as deleted again
+        sess.delete(u1)
+
+        # in the session again
+        assert u1 in sess
+
+        # commit proceeds w/ warning
+        with assertions.expect_warnings(
+                "DELETE statement on table 'users' "
+                r"expected to delete 1 row\(s\); 0 were matched."):
+            sess.commit()
 
     def test_autoflush_expressions(self):
         """test that an expression which is dependent on object state is

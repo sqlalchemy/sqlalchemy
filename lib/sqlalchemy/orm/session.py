@@ -1726,8 +1726,9 @@ class Session(_SessionClassMethods):
         if state in self._deleted:
             return
 
+        self.identity_map.add(state)
+
         if to_attach:
-            self.identity_map.add(state)
             self._after_attach(state, obj)
 
         if head:
@@ -2196,7 +2197,8 @@ class Session(_SessionClassMethods):
         for state in proc:
             is_orphan = (
                 _state_mapper(state)._is_orphan(state) and state.has_identity)
-            flush_context.register_object(state, isdelete=is_orphan)
+            _reg = flush_context.register_object(state, isdelete=is_orphan)
+            assert _reg, "Failed to add object to the flush context!"
             processed.add(state)
 
         # put all remaining deletes into the flush context.
@@ -2205,7 +2207,8 @@ class Session(_SessionClassMethods):
         else:
             proc = deleted.difference(processed)
         for state in proc:
-            flush_context.register_object(state, isdelete=True)
+            _reg = flush_context.register_object(state, isdelete=True)
+            assert _reg, "Failed to add object to the flush context!"
 
         if not flush_context.has_work:
             return

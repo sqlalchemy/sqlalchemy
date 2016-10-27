@@ -1567,6 +1567,26 @@ class BasicStaleChecksTest(fixtures.MappedTest):
                 )
 
     @testing.requires.sane_multi_rowcount
+    def test_delete_twice(self):
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        sess.add(p1)
+        sess.commit()
+
+        sess.delete(p1)
+        sess.flush()
+
+        sess.delete(p1)
+
+        assert_raises_message(
+            exc.SAWarning,
+            "DELETE statement on table 'parent' expected to "
+            "delete 1 row\(s\); 0 were matched.",
+            sess.commit
+        )
+
+    @testing.requires.sane_multi_rowcount
     def test_delete_multi_missing_warning(self):
         Parent, Child = self._fixture()
         sess = Session()

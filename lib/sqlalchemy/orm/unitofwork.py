@@ -242,6 +242,9 @@ class UOWTransaction(object):
                         listonly=False, cancel_delete=False,
                         operation=None, prop=None):
         if not self.session._contains_state(state):
+            # this condition is normal when objects are registered
+            # as part of a relationship cascade operation.  it should
+            # not occur for the top-level register from Session.flush().
             if not state.deleted and operation is not None:
                 util.warn("Object of type %s not in session, %s operation "
                           "along '%s' will not proceed" %

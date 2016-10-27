@@ -22,6 +22,21 @@
     :version: 1.1.3
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3839
+
+        Fixed regression caused by :ticket:`2677` whereby calling
+        :meth:`.Session.delete` on an object that was already flushed as
+        deleted in that session would fail to set up the object in the
+        identity map (or reject the object), causing flush errors as the
+        object were in a state not accommodated by the unit of work.
+        The pre-1.1 behavior in this case has been restored, which is that
+        the object is put back into the identity map so that the DELETE
+        statement will be attempted again, which emits a warning that the number
+        of expected rows was not matched (unless the row were restored outside
+        of the session).
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3835
 
