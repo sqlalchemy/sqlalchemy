@@ -1063,6 +1063,30 @@ class EnumSetTest(
             eq_(t.c.e6.type.values, ("", "a"))
             eq_(t.c.e7.type.values, ("", "'a'", "b'b", "'"))
 
+    @testing.provide_metadata
+    def test_broken_enum_returns_blanks(self):
+        t = Table(
+            'enum_missing',
+            self.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('e1', sqltypes.Enum('one', 'two', 'three')),
+            Column('e2', mysql.ENUM('one', 'two', 'three'))
+        )
+        t.create()
+
+        with testing.db.connect() as conn:
+            conn.execute(t.insert(), {"e1": "nonexistent", "e2": "nonexistent"})
+            conn.execute(t.insert(), {"e1": "", "e2": ""})
+            conn.execute(t.insert(), {"e1": "two", "e2": "two"})
+            conn.execute(t.insert(), {"e1": None, "e2": None})
+
+            eq_(
+                conn.execute(
+                    select([t.c.e1, t.c.e2]).order_by(t.c.id)
+                ).fetchall(),
+                [("", ""), ("", ""), ("two", "two"), (None, None)]
+            )
+
 
 def colspec(c):
     return testing.db.dialect.ddl_compiler(

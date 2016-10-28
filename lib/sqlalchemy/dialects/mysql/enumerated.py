@@ -130,6 +130,16 @@ class ENUM(sqltypes.Enum, _EnumeratedValues):
         values, length = self._init_values(values, kw)
         return sqltypes.Enum._setup_for_values(self, values, objects, kw)
 
+    def _object_value_for_elem(self, elem):
+        # mysql sends back a blank string for any value that
+        # was persisted that was not in the enums; that is, it does no
+        # validation on the incoming data, it "truncates" it to be
+        # the blank string.  Return it straight.
+        if elem == "":
+            return elem
+        else:
+            return super(ENUM, self)._object_value_for_elem(elem)
+
     def __repr__(self):
         return util.generic_repr(
             self, to_inspect=[ENUM, _StringType, sqltypes.Enum])

@@ -21,6 +21,18 @@
 .. changelog::
     :version: 1.1.4
 
+    .. change::
+        :tags: bug, mysql
+        :tickets: 3841
+
+        MySQL's native ENUM type supports any non-valid value being sent, and
+        in response will return a blank string.  A hardcoded rule to check for
+        "is returning the blank string" has been added to the  MySQL
+        implementation for ENUM so that this blank string is returned to the
+        application rather than being rejected as a non-valid value.  Note that
+        if your MySQL enum is linking values to objects, you still get the
+        blank string back.
+
 .. changelog::
     :version: 1.1.3
     :released: October 27, 2016
