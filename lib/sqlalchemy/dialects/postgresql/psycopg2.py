@@ -28,7 +28,8 @@ psycopg2-specific keyword arguments which are accepted by
   :class:`~sqlalchemy.engine.ResultProxy` uses special row-buffering
   behavior when this feature is enabled, such that groups of 100 rows at a
   time are fetched over the wire to reduce conversational overhead.
-  Note that the ``stream_results=True`` execution option is a more targeted
+  Note that the :paramref:`.Connection.execution_options.stream_results`
+  execution option is a more targeted
   way of enabling this mode on a per-execution basis.
 * ``use_native_unicode``: Enable the usage of Psycopg2 "native unicode" mode
   per connection.  True by default.
@@ -422,53 +423,24 @@ class _PGUUID(UUID):
                 return value
             return process
 
-# When we're handed literal SQL, ensure it's a SELECT query. Since
-# 8.3, combining cursors and "FOR UPDATE" has been fine.
-SERVER_SIDE_CURSOR_RE = re.compile(
-    r'\s*SELECT',
-    re.I | re.UNICODE)
 
 _server_side_id = util.counter()
 
 
 class PGExecutionContext_psycopg2(PGExecutionContext):
-    def create_cursor(self):
-        # TODO: coverage for server side cursors + select.for_update()
-
-        if self.dialect.server_side_cursors:
-            is_server_side = \
-                self.execution_options.get('stream_results', True) and (
-                    (self.compiled and isinstance(self.compiled.statement,
-                                                  expression.Selectable)
-                     or
-                     (
-                        (not self.compiled or
-                         isinstance(self.compiled.statement,
-                                    expression.TextClause))
-                        and self.statement and SERVER_SIDE_CURSOR_RE.match(
-                            self.statement))
-                     )
-                )
-        else:
-            is_server_side = \
-                self.execution_options.get('stream_results', False)
-
-        self.__is_server_side = is_server_side
-        if is_server_side:
-            # use server-side cursors:
-            # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
-            ident = "c_%s_%s" % (hex(id(self))[2:],
-                                 hex(_server_side_id())[2:])
-            return self._dbapi_connection.cursor(ident)
-        else:
-            return self._dbapi_connection.cursor()
+    def create_server_side_cursor(self):
+        # use server-side cursors:
+        # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
+        ident = "c_%s_%s" % (hex(id(self))[2:],
+                             hex(_server_side_id())[2:])
+        return self._dbapi_connection.cursor(ident)
 
     def get_result_proxy(self):
         # TODO: ouch
         if logger.isEnabledFor(logging.INFO):
             self._log_notices(self.cursor)
 
-        if self.__is_server_side:
+        if self._is_server_side:
             return _result.BufferedRowResultProxy(self)
         else:
             return _result.ResultProxy(self)
@@ -501,6 +473,8 @@ class PGDialect_psycopg2(PGDialect):
     driver = 'psycopg2'
     if util.py2k:
         supports_unicode_statements = False
+
+    supports_server_side_cursors = True
 
     default_paramstyle = 'pyformat'
     # set to true based on psycopg2 version

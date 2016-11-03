@@ -751,7 +751,9 @@ class Query(object):
             :meth:`~sqlalchemy.orm.query.Query.yield_per` will set the
             ``stream_results`` execution option to True, currently
             this is only understood by
-            :mod:`~sqlalchemy.dialects.postgresql.psycopg2` dialect
+            :mod:`~sqlalchemy.dialects.postgresql.psycopg2`,
+            :mod:`~sqlalchemy.dialects.mysql.mysqldb` and
+            :mod:`~sqlalchemy.dialects.mysql.pymysql` dialects
             which will stream results using server side cursors
             instead of pre-buffer all rows for this query. Other
             DBAPIs **pre-buffer all rows** before making them

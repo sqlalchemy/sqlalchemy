@@ -38,6 +38,11 @@ using a URL like the following::
 
     mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>
 
+Server Side Cursors
+-------------------
+
+The mysqldb dialect supports server-side cursors. See :ref:`mysql_ss_cursors`.
+
 """
 
 from .base import (MySQLDialect, MySQLExecutionContext,
@@ -86,6 +91,19 @@ class MySQLDialect_mysqldb(MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer_mysqldb
+
+    def __init__(self, server_side_cursors=False, **kwargs):
+        super(MySQLDialect_mysqldb, self).__init__(**kwargs)
+        self.server_side_cursors = server_side_cursors
+
+    @util.langhelpers.memoized_property
+    def supports_server_side_cursors(self):
+        try:
+            cursors = __import__('MySQLdb.cursors').cursors
+            self._sscursor = cursors.SSCursor
+            return True
+        except (ImportError, AttributeError):
+            return False
 
     @classmethod
     def dbapi(cls):

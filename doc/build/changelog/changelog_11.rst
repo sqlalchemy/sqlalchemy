@@ -48,6 +48,16 @@
         ignored.
 
     .. change::
+        :tags: feature, mysql
+
+        Added support for server side cursors to the mysqlclient and
+        pymysql dialects.   This feature is available via the
+        :paramref:`.Connection.execution_options.stream_results` flag as well
+        as the ``server_side_cursors=True`` dialect argument in the
+        same way that it has been for psycopg2 on Postgresql.  Pull request
+        courtesy Roman Podoliaka.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 3841
 

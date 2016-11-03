@@ -30,7 +30,7 @@ to the pymysql driver as well.
 """
 
 from .mysqldb import MySQLDialect_mysqldb
-from ...util import py3k
+from ...util import langhelpers, py3k
 
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
@@ -43,6 +43,19 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     # to 0.4 either way.  See [ticket:3337]
     supports_unicode_statements = True
     supports_unicode_binds = True
+
+    def __init__(self, server_side_cursors=False, **kwargs):
+        super(MySQLDialect_pymysql, self).__init__(**kwargs)
+        self.server_side_cursors = server_side_cursors
+
+    @langhelpers.memoized_property
+    def supports_server_side_cursors(self):
+        try:
+            cursors = __import__('pymysql.cursors').cursors
+            self._sscursor = cursors.SSCursor
+            return True
+        except (ImportError, AttributeError):
+            return False
 
     @classmethod
     def dbapi(cls):

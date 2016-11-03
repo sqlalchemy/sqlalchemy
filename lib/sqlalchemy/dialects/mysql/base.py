@@ -177,6 +177,22 @@ multi-column key for some storage engines::
         Column('id', Integer, primary_key=True)
        )
 
+.. _mysql_ss_cursors:
+
+Server Side Cursors
+-------------------
+
+Server-side cursor support is available for the MySQLdb and PyMySQL dialects.
+From a MySQL point of view this means that the ``MySQLdb.cursors.SSCursor`` or
+``pymysql.cursors.SSCursor`` class is used when building up the cursor which
+will receive results.  The most typical way of invoking this feature is via the
+:paramref:`.Connection.execution_options.stream_results` connection execution
+option.   Server side cursors can also be enabled for all SELECT statements
+unconditionally by passing ``server_side_cursors=True`` to
+:func:`.create_engine`.
+
+.. versionadded:: 1.1.4 - added server-side cursor support.
+
 .. _mysql_unicode:
 
 Unicode
@@ -742,6 +758,12 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_RE.match(statement)
+
+    def create_server_side_cursor(self):
+        if self.dialect.supports_server_side_cursors:
+            return self._dbapi_connection.cursor(self.dialect._sscursor)
+        else:
+            raise NotImplementedError()
 
 
 class MySQLCompiler(compiler.SQLCompiler):

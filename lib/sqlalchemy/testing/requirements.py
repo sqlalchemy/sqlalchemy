@@ -288,6 +288,14 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def server_side_cursors(self):
+        """Target dialect must support server side cursors."""
+
+        return exclusions.only_if([
+            lambda config: config.db.dialect.supports_server_side_cursors
+        ], "no server side cursors support")
+
+    @property
     def sequences(self):
         """Target database must support SEQUENCEs."""
 
