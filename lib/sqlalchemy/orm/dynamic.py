@@ -32,15 +32,13 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
                 "many-to-one/one-to-one relationships and/or "
                 "uselist=False." % self.parent_property)
         strategies._register_attribute(
-            self,
+            self.parent_property,
             mapper,
             useobject=True,
-            uselist=True,
             impl_class=DynamicAttributeImpl,
             target_mapper=self.parent_property.mapper,
             order_by=self.parent_property.order_by,
             query_class=self.parent_property.query_class,
-            backref=self.parent_property.back_populates,
         )
 
 

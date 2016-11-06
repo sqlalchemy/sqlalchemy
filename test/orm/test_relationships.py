@@ -11,7 +11,7 @@ from sqlalchemy.orm import mapper, relationship, relation, \
     Session, composite, column_property, foreign,\
     remote, synonym, joinedload, subqueryload
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
-from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_
+from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_, in_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import exc
@@ -1619,6 +1619,54 @@ class ManualBackrefTest(_fixtures.FixtureTest):
                               "relationship Address.dingaling, which does not "
                               "reference mapper Mapper\|User\|users",
                               configure_mappers)
+
+
+
+class NoLoadBackPopulates(_fixtures.FixtureTest):
+
+    """test the noload stratgegy which unlike others doesn't use
+    lazyloader to set up instrumentation"""
+
+    def test_o2m(self):
+        users, Address, addresses, User = (self.tables.users,
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
+
+        mapper(User, users, properties={
+            'addresses': relationship(
+                Address, back_populates='user', lazy="noload")
+        })
+
+        mapper(Address, addresses, properties={
+            'user': relationship(User)
+        })
+
+        u1 = User()
+        a1 = Address()
+        u1.addresses.append(a1)
+        is_(a1.user, u1)
+
+    def test_m2o(self):
+        users, Address, addresses, User = (self.tables.users,
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
+
+        mapper(User, users, properties={
+            'addresses': relationship(
+                Address)
+        })
+
+        mapper(Address, addresses, properties={
+            'user': relationship(
+                User, back_populates='addresses', lazy="noload")
+        })
+
+        u1 = User()
+        a1 = Address()
+        a1.user = u1
+        in_(a1, u1.addresses)
 
 
 class JoinConditionErrorTest(fixtures.TestBase):

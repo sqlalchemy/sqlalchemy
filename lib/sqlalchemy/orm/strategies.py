@@ -28,10 +28,9 @@ import itertools
 
 
 def _register_attribute(
-    strategy, mapper, useobject,
+    prop, mapper, useobject,
     compare_function=None,
     typecallable=None,
-    uselist=False,
     callable_=None,
     proxy_property=None,
     active_history=False,
@@ -39,11 +38,11 @@ def _register_attribute(
     **kw
 ):
 
-    prop = strategy.parent_property
-
     attribute_ext = list(util.to_list(prop.extension, default=[]))
 
     listen_hooks = []
+
+    uselist = useobject and prop.uselist
 
     if useobject and prop.single_parent:
         listen_hooks.append(single_parent_validator)
@@ -61,15 +60,16 @@ def _register_attribute(
 
     # need to assemble backref listeners
     # after the singleparentvalidator, mapper validator
-    backref = kw.pop('backref', None)
-    if backref:
-        listen_hooks.append(
-            lambda desc, prop: attributes.backref_listeners(
-                desc,
-                backref,
-                uselist
+    if useobject:
+        backref = prop.back_populates
+        if backref:
+            listen_hooks.append(
+                lambda desc, prop: attributes.backref_listeners(
+                    desc,
+                    backref,
+                    uselist
+                )
             )
-        )
 
     # a single MapperProperty is shared down a class inheritance
     # hierarchy, so we set up attribute instrumentation and backref event
@@ -173,7 +173,7 @@ class ColumnLoader(LoaderStrategy):
             mapper.version_id_col in set(self.columns)
 
         _register_attribute(
-            self, mapper, useobject=False,
+            self.parent_property, mapper, useobject=False,
             compare_function=coltype.compare_values,
             active_history=active_history
         )
@@ -228,7 +228,7 @@ class DeferredColumnLoader(LoaderStrategy):
         self.is_class_level = True
 
         _register_attribute(
-            self, mapper, useobject=False,
+            self.parent_property, mapper, useobject=False,
             compare_function=self.columns[0].type.compare_values,
             callable_=self._load_for_state,
             expire_missing=False
@@ -350,9 +350,8 @@ class NoLoader(AbstractRelationshipLoader):
         self.is_class_level = True
 
         _register_attribute(
-            self, mapper,
+            self.parent_property, mapper,
             useobject=True,
-            uselist=self.parent_property.uselist,
             typecallable=self.parent_property.collection_class,
         )
 
@@ -434,12 +433,10 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         # in that case.  otherwise we don't need the
         # "old" value during backref operations.
         _register_attribute(
-            self,
+            self.parent_property,
             mapper,
             useobject=True,
             callable_=self._load_for_state,
-            uselist=self.parent_property.uselist,
-            backref=self.parent_property.back_populates,
             typecallable=self.parent_property.collection_class,
             active_history=active_history
         )

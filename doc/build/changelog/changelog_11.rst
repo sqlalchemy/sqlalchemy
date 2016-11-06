@@ -22,6 +22,14 @@
     :version: 1.1.4
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3845
+
+        Fixed long-standing bug where the "noload" relationship loading
+        strategy would cause backrefs and/or back_populates options to be
+        ignored.
+
+    .. change::
         :tags: bug, mysql
         :tickets: 3841
 
