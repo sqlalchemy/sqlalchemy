@@ -22,6 +22,13 @@
     :version: 1.1.4
 
     .. change::
+        :tags: bug, sqlite
+
+        Added quotes to the PRAGMA directives in the pysqlcipher dialect
+        to support additional cipher arguments appropriately.  Pull request
+        courtesy Kevin Jurczyk.
+
+    .. change::
         :tags: bug, postgresql
         :tickets: 3846, 3807
 

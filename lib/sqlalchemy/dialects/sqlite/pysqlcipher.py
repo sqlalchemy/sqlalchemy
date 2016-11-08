@@ -100,7 +100,7 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
         conn.execute('pragma key="%s"' % passphrase)
         for prag, value in pragmas.items():
             if value is not None:
-                conn.execute('pragma %s=%s' % (prag, value))
+                conn.execute('pragma %s="%s"' % (prag, value))
 
         return conn
 
