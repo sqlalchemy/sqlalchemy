@@ -1205,7 +1205,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name) "
-                            "WHERE mytable.name > %(name_1)s "
+                            "WHERE name > %(name_1)s "
                             'DO UPDATE SET name = excluded.name')
 
     def test_do_update_index_elements_where_target_multivalues(self):
@@ -1223,7 +1223,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             "INSERT INTO mytable (name) "
             "VALUES (%(name_m0)s), (%(name_m1)s), (%(name_m2)s) "
             "ON CONFLICT (name) "
-            "WHERE mytable.name > %(name_1)s "
+            "WHERE name > %(name_1)s "
             "DO UPDATE SET name = excluded.name",
             checkparams={
                 'name_1': 'm', 'name_m0': 'foo',
@@ -1246,7 +1246,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name) "
-                            "WHERE mytable.name > %(name_1)s "
+                            "WHERE name > %(name_1)s "
                             'DO UPDATE SET name = excluded.name')
 
     def test_do_update_unnamed_exclude_constraint_target(self):
@@ -1259,7 +1259,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name, description) "
-                            "WHERE mytable.description != %(description_1)s "
+                            "WHERE description != %(description_1)s "
                             'DO UPDATE SET name = excluded.name')
 
     def test_do_update_add_whereclause(self):
@@ -1275,7 +1275,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name, description) "
-                            "WHERE mytable.description != %(description_1)s "
+                            "WHERE description != %(description_1)s "
                             'DO UPDATE SET name = excluded.name '
                             "WHERE mytable.name != %(name_1)s "
                             "AND mytable.description != %(description_2)s")
@@ -1292,7 +1292,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES '
                             "(%(name)s) ON CONFLICT (name, description) "
-                            "WHERE mytable.description != %(description_1)s "
+                            "WHERE description != %(description_1)s "
                             'DO UPDATE SET name = excluded.name '
                             "WHERE mytable.name != excluded.name")
 

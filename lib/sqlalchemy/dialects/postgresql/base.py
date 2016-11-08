@@ -1433,6 +1433,7 @@ class PGCompiler(compiler.SQLCompiler):
                 target_text += ' WHERE %s' % \
                     self.process(
                         clause.inferred_target_whereclause,
+                        include_table=False,
                         use_schema=False
                     )
         else:

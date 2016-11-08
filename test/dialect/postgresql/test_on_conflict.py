@@ -28,6 +28,12 @@ class OnConflictTest(fixtures.TablesTest):
             Column('login_email', String(50)),
             Column('lets_index_this', String(50))
         )
+        cls.unique_partial_index = schema.Index(
+            'idx_unique_partial_name',
+            users_xtra.c.name, users_xtra.c.lets_index_this,
+            unique=True,
+            postgresql_where=users_xtra.c.lets_index_this == 'unique_name')
+
         cls.unique_constraint = schema.UniqueConstraint(
             users_xtra.c.login_email, name='uq_login_email')
         cls.bogus_index = schema.Index(
@@ -403,6 +409,44 @@ class OnConflictTest(fixtures.TablesTest):
                 dict(
                     id=1, name='namebogus', login_email='bogus@gmail.com',
                     lets_index_this='bogus')
+            )
+
+    def test_on_conflict_do_update_exotic_targets_six(self):
+        users = self.tables.users_xtra
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                insert(users),
+                dict(
+                    id=1, name='name1',
+                    login_email='mail1@gmail.com',
+                    lets_index_this='unique_name'
+                )
+            )
+
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=self.unique_partial_index.columns,
+                index_where=self.unique_partial_index.dialect_options
+                ['postgresql']['where'],
+                set_=dict(
+                    name=i.excluded.name,
+                    login_email=i.excluded.login_email),
+            )
+
+            conn.execute(
+                i,
+                [
+                    dict(name='name1', login_email='mail2@gmail.com',
+                         lets_index_this='unique_name'),
+                ]
+            )
+
+            eq_(
+                conn.execute(users.select()).fetchall(),
+                [
+                    (1, 'name1', 'mail2@gmail.com', 'unique_name'),
+                ]
             )
 
     def test_on_conflict_do_update_no_row_actually_affected(self):

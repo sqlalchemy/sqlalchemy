@@ -22,6 +22,17 @@
     :version: 1.1.4
 
     .. change::
+        :tags: bug, postgresql
+        :tickets: 3846, 3807
+
+        Fixed regression caused by the fix in :ticket:`3807` (version 1.1.0)
+        where we ensured that the tablename was qualified in the WHERE clause
+        of the DO UPDATE portion of PostgreSQL's ON CONFLICT, however you
+        *cannot* put the table name in the  WHERE clause in the actual ON
+        CONFLICT itself.   This was an incorrect assumption, so that portion
+        of the change in :ticket:`3807` is rolled back.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3845
 
