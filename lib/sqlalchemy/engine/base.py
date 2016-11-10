@@ -1458,9 +1458,6 @@ class Connection(Connectable):
         else:
             util.reraise(*exc_info)
 
-    def default_schema_name(self):
-        return self.engine.dialect.get_default_schema_name(self)
-
     def transaction(self, callable_, *args, **kwargs):
         """Execute the given function within a transaction boundary.
 
