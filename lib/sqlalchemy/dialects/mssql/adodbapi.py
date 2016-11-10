@@ -56,7 +56,14 @@ class MSDialect_adodbapi(MSDialect):
     )
 
     def create_connect_args(self, url):
-        keys = url.query
+        def check_quote(token):
+            if ";" in str(token):
+                token = "'%s'" % token
+            return token
+
+        keys = dict(
+            (k, check_quote(v)) for k, v in url.query.items()
+        )
 
         connectors = ["Provider=SQLOLEDB"]
         if 'port' in keys:

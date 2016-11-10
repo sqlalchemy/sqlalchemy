@@ -2,7 +2,7 @@
 from sqlalchemy.testing import eq_, engines
 from sqlalchemy import *
 from sqlalchemy import exc
-from sqlalchemy.dialects.mssql import pyodbc, pymssql
+from sqlalchemy.dialects.mssql import pyodbc, pymssql, adodbapi
 from sqlalchemy.engine import url
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
@@ -122,6 +122,49 @@ class ParseConnectTest(fixtures.TestBase):
         connection = dialect.create_connect_args(u)
         eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UI'
             'D=username;PWD=password'], {}], connection)
+
+    def test_pyodbc_token_injection(self):
+        token1 = "someuser%3BPORT%3D50001"
+        token2 = "somepw%3BPORT%3D50001"
+        token3 = "somehost%3BPORT%3D50001"
+        token4 = "somedb%3BPORT%3D50001"
+
+        u = url.make_url(
+            'mssql+pyodbc://%s:%s@%s/%s?driver=foob' % (
+                token1, token2, token3, token4
+            )
+        )
+        dialect = pyodbc.dialect()
+        connection = dialect.create_connect_args(u)
+        eq_(
+            [[
+                "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
+                "Database=somedb%3BPORT%3D50001;UID='someuser;PORT=50001';"
+                "PWD='somepw;PORT=50001'"], {}],
+            connection
+        )
+
+    def test_adodbapi_token_injection(self):
+        token1 = "someuser%3BPORT%3D50001"
+        token2 = "somepw%3BPORT%3D50001"
+        token3 = "somehost%3BPORT%3D50001"
+        token4 = "someport%3BPORT%3D50001"
+
+        # this URL format is all wrong
+        u = url.make_url(
+            'mssql+adodbapi://@/?user=%s&password=%s&host=%s&port=%s' % (
+                token1, token2, token3, token4
+            )
+        )
+        dialect = adodbapi.dialect()
+        connection = dialect.create_connect_args(u)
+        eq_(
+            [["Provider=SQLOLEDB;"
+              "Data Source='somehost;PORT=50001', 'someport;PORT=50001';"
+              "Initial Catalog=None;User Id='someuser;PORT=50001';"
+              "Password='somepw;PORT=50001'"], {}],
+            connection
+        )
 
     def test_pymssql_port_setting(self):
         dialect = pymssql.dialect()

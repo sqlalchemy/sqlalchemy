@@ -55,6 +55,7 @@ class PyODBCConnector(Connector):
         opts.update(url.query)
 
         keys = opts
+
         query = url.query
 
         connect_args = {}
@@ -65,6 +66,15 @@ class PyODBCConnector(Connector):
         if 'odbc_connect' in keys:
             connectors = [util.unquote_plus(keys.pop('odbc_connect'))]
         else:
+            def check_quote(token):
+                if ";" in str(token):
+                    token = "'%s'" % token
+                return token
+
+            keys = dict(
+                (k, check_quote(v)) for k, v in keys.items()
+            )
+
             dsn_connection = 'dsn' in keys or \
                 ('host' in keys and 'database' not in keys)
             if dsn_connection:
@@ -107,6 +117,7 @@ class PyODBCConnector(Connector):
                                   keys.pop("odbc_autotranslate"))
 
             connectors.extend(['%s=%s' % (k, v) for k, v in keys.items()])
+
         return [[";".join(connectors)], connect_args]
 
     def is_disconnect(self, e, connection, cursor):
