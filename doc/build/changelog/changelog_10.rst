@@ -94,6 +94,17 @@
         not function correctly in conjunction with a mapping that
         implements a version id counter.
 
+    .. 3778
+
+    .. change::
+        :tickets: 3778
+        :versions: 1.1.4
+
+        Fixed bug where the :attr:`.Mapper.attrs`,
+        :attr:`.Mapper.all_orm_descriptors` and other derived attributes would
+        fail to refresh when mapper properties or other ORM constructs were
+        added to the mapper/class after these  accessors were first called.
+
 .. changelog::
     :version: 1.0.15
     :released: September 1, 2016
