@@ -77,6 +77,14 @@
         if your MySQL enum is linking values to objects, you still get the
         blank string back.
 
+    .. change::
+        :tags: bug, sqlite, py3k
+
+        Added an optional import for the pysqlcipher3 DBAPI when using the
+        pysqlcipher dialect.  This package will attempt to be imported
+        if the Python-2 only pysqlcipher DBAPI is non-present.
+        Pull request courtesy Kevin Jurczyk.
+
 .. changelog::
     :version: 1.1.3
     :released: October 27, 2016
