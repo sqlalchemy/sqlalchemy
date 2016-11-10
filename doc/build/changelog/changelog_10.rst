@@ -19,6 +19,14 @@
     :version: 1.0.16
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3849
+        :versions: 1.1.4
+
+        Fixed bug in :meth:`.Session.bulk_update_mappings` where an alternate-named
+        primary key attribute would not track properly into the UPDATE statement.
+
+    .. change::
         :tags: bug, mssql
         :tickets: 3810
         :versions: 1.1.0
