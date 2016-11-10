@@ -232,6 +232,109 @@ class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
         eq_(a1.y, 2)
 
 
+class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'people_keys', metadata,
+            Column(
+                'person_id', Integer,
+                primary_key=True, key='id'),
+            Column('name', String(50), key='personname'))
+
+        Table(
+            'people_attrs', metadata,
+            Column(
+                'person_id', Integer,
+                primary_key=True),
+            Column('name', String(50)))
+
+        Table(
+            'people_both', metadata,
+            Column(
+                'person_id', Integer,
+                primary_key=True, key="id_key"),
+            Column('name', String(50), key='name_key'))
+
+    @classmethod
+    def setup_classes(cls):
+        class PersonKeys(cls.Comparable):
+            pass
+
+        class PersonAttrs(cls.Comparable):
+            pass
+
+        class PersonBoth(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        PersonKeys, PersonAttrs, PersonBoth = cls.classes(
+            "PersonKeys", "PersonAttrs", "PersonBoth")
+        people_keys, people_attrs, people_both = cls.tables(
+            "people_keys", "people_attrs", "people_both")
+
+        mapper(PersonKeys, people_keys)
+        mapper(PersonAttrs, people_attrs, properties={
+            'id': people_attrs.c.person_id,
+            'personname': people_attrs.c.name
+        })
+
+        mapper(PersonBoth, people_both, properties={
+            'id': people_both.c.id_key,
+            'personname': people_both.c.name_key
+        })
+
+    def test_insert_keys(self):
+        self._test_insert(self.classes.PersonKeys)
+
+    def test_insert_attrs(self):
+        self._test_insert(self.classes.PersonAttrs)
+
+    def test_insert_both(self):
+        self._test_insert(self.classes.PersonBoth)
+
+    def test_update_keys(self):
+        self._test_update(self.classes.PersonKeys)
+
+    def test_update_attrs(self):
+        self._test_update(self.classes.PersonAttrs)
+
+    def test_update_both(self):
+        # want to make sure that before [ticket:3849], this did not have
+        # a successful behavior or workaround
+        self._test_update(self.classes.PersonBoth)
+
+    def _test_insert(self, person_cls):
+        Person = person_cls
+
+        s = Session()
+        s.bulk_insert_mappings(
+            Person, [{"id": 5, "personname": "thename"}]
+        )
+
+        eq_(
+            s.query(Person).first(),
+            Person(id=5, personname="thename")
+        )
+
+    def _test_update(self, person_cls):
+        Person = person_cls
+
+        s = Session()
+        s.add(Person(id=5, personname="thename"))
+        s.commit()
+
+        s.bulk_update_mappings(
+            Person, [{"id": 5, "personname": "newname"}]
+        )
+
+        eq_(
+            s.query(Person).first(),
+            Person(id=5, personname="newname")
+        )
+
+
 class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

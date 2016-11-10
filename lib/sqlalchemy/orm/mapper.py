@@ -2020,6 +2020,16 @@ class Mapper(InspectionAttr):
         )
 
     @_memoized_configured_property
+    def _pk_attr_keys_by_table(self):
+        return dict(
+            (
+                table,
+                frozenset([self._columntoproperty[col].key for col in pks])
+            )
+            for table, pks in self._pks_by_table.items()
+        )
+
+    @_memoized_configured_property
     def _server_default_cols(self):
         return dict(
             (

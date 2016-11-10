@@ -522,7 +522,7 @@ def _collect_update_commands(
                 (propkey_to_col[propkey]._label, state_dict.get(propkey))
                 for propkey in
                 set(propkey_to_col).
-                intersection(mapper._pk_keys_by_table[table])
+                intersection(mapper._pk_attr_keys_by_table[table])
             )
         else:
             pk_params = {}
