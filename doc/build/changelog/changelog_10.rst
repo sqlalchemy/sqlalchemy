@@ -106,6 +106,16 @@
         fail to refresh when mapper properties or other ORM constructs were
         added to the mapper/class after these  accessors were first called.
 
+    .. change:: 3762
+        :tags: bug, mssql
+        :tickets: 3762
+        :versions: 1.1.4
+
+        Fixed bug in pyodbc dialect (as well as in the mostly non-working
+        adodbapi dialect) whereby a semicolon present in the password
+        or username fields could be interpreted as a separator for another
+        token; the values are now quoted when semicolons are present.
+
 .. changelog::
     :version: 1.0.15
     :released: September 1, 2016
