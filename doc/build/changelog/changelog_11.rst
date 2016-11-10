@@ -22,6 +22,14 @@
     :version: 1.1.4
 
     .. change::
+        :tags: bug, engine
+
+        Removed long-broken "default_schema_name()" method from
+        :class:`.Connection`.  This method was left over from a very old
+        version and was non-working (e.g. would raise).  Pull request
+        courtesy Benjamin Dopplinger.
+
+    .. change::
         :tags: bug, sqlite
 
         Added quotes to the PRAGMA directives in the pysqlcipher dialect
