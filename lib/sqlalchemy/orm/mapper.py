@@ -2111,7 +2111,7 @@ class Mapper(InspectionAttr):
                     continue
                 yield c
 
-    @util.memoized_property
+    @_memoized_configured_property
     def attrs(self):
         """A namespace of all :class:`.MapperProperty` objects
         associated this mapper.
@@ -2149,7 +2149,7 @@ class Mapper(InspectionAttr):
             configure_mappers()
         return util.ImmutableProperties(self._props)
 
-    @util.memoized_property
+    @_memoized_configured_property
     def all_orm_descriptors(self):
         """A namespace of all :class:`.InspectionAttr` attributes associated
         with the mapped class.

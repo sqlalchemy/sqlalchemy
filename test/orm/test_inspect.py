@@ -423,6 +423,34 @@ class TestORMInspection(_fixtures.FixtureTest):
         )
         assert 'name' in u1.__dict__
 
+    def test_attrs_props_prop_added_after_configure(self):
+        class AnonClass(object):
+            pass
+
+        from sqlalchemy.orm import mapper, column_property
+        from sqlalchemy.ext.hybrid import hybrid_property
+        m = mapper(AnonClass, self.tables.users)
+
+        eq_(
+            set(inspect(AnonClass).attrs.keys()),
+            set(['id', 'name']))
+        eq_(
+            set(inspect(AnonClass).all_orm_descriptors.keys()),
+            set(['id', 'name']))
+
+        m.add_property('q', column_property(self.tables.users.c.name))
+
+        def desc(self):
+            return self.name
+        AnonClass.foob = hybrid_property(desc)
+
+        eq_(
+            set(inspect(AnonClass).attrs.keys()),
+            set(['id', 'name', 'q']))
+        eq_(
+            set(inspect(AnonClass).all_orm_descriptors.keys()),
+            set(['id', 'name', 'q', 'foob']))
+
     def test_instance_state_ident_transient(self):
         User = self.classes.User
         u1 = User(name='ed')
