@@ -97,6 +97,7 @@
     .. 3778
 
     .. change::
+        :tags: bug, orm
         :tickets: 3778
         :versions: 1.1.4
 

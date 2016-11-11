@@ -21,7 +21,7 @@
 .. changelog::
     :version: 1.1.4
 
-    .. change::
+    .. change::  default_schema
         :tags: bug, engine
 
         Removed long-broken "default_schema_name()" method from
@@ -29,14 +29,14 @@
         version and was non-working (e.g. would raise).  Pull request
         courtesy Benjamin Dopplinger.
 
-    .. change::
+    .. change:: pragma
         :tags: bug, sqlite
 
         Added quotes to the PRAGMA directives in the pysqlcipher dialect
         to support additional cipher arguments appropriately.  Pull request
         courtesy Kevin Jurczyk.
 
-    .. change::
+    .. change:: 3846
         :tags: bug, postgresql
         :tickets: 3846, 3807
 
@@ -47,7 +47,7 @@
         CONFLICT itself.   This was an incorrect assumption, so that portion
         of the change in :ticket:`3807` is rolled back.
 
-    .. change::
+    .. change:: 3845
         :tags: bug, orm
         :tickets: 3845
 
@@ -55,7 +55,7 @@
         strategy would cause backrefs and/or back_populates options to be
         ignored.
 
-    .. change::
+    .. change:: sscursor_mysql
         :tags: feature, mysql
 
         Added support for server side cursors to the mysqlclient and
