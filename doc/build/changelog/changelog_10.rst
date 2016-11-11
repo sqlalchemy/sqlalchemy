@@ -18,7 +18,7 @@
 .. changelog::
     :version: 1.0.16
 
-    .. change::
+    .. change:: 3849
         :tags: bug, orm
         :tickets: 3849
         :versions: 1.1.4
@@ -66,7 +66,7 @@
         :meth:`.Session.bind_table`,
         or the constructor would fail to be correctly raised.
 
-    .. change::
+    .. change:: 3791
         :tags: bug, mssql
         :tickes: 3791
         :versions: 1.1.0
@@ -75,7 +75,7 @@
         disconnect exceptions that result in a connection pool reset.  Pull
         request courtesy Ken Robbins.
 
-    .. change::
+    .. change:: 3797
         :tags: bug, orm.declarative
         :tickets: 3797
         :versions: 1.1.0
@@ -85,7 +85,7 @@
         collection of the mapped table, thereby interfering with the
         initialization of relationships.
 
-    .. change::
+    .. change:: 3781
         :tags: bug, orm
         :tickets: 3781
         :versions: 1.1.4
@@ -94,9 +94,8 @@
         not function correctly in conjunction with a mapping that
         implements a version id counter.
 
-    .. 3778
-
-    .. change::
+    .. change:: 3778
+        :tags: bug, orm
         :tickets: 3778
         :versions: 1.1.4
 
