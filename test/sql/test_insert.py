@@ -598,6 +598,23 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 dialect=d
             )
 
+    def test_anticipate_no_pk_lower_case_table(self):
+        t = table(
+            't',
+            Column(
+                'id', Integer, primary_key=True, autoincrement=False),
+            Column('notpk', String(10), nullable=True)
+        )
+        with expect_warnings(
+            "Column 't.id' is marked as a member.*"
+            "may not store NULL.$"
+        ):
+            self.assert_compile(
+                t.insert(),
+                "INSERT INTO t () VALUES ()",
+                params={}
+            )
+
 
 class InsertImplicitReturningTest(
         _InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):

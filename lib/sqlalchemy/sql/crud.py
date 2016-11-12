@@ -681,7 +681,7 @@ def _warn_pk_with_no_anticipated_value(c):
         "Primary key columns typically may not store NULL."
         %
         (c.table.fullname, c.name, c.table.fullname))
-    if len(c.table.primary_key.columns) > 1:
+    if len(c.table.primary_key) > 1:
         msg += (
             " Note that as of SQLAlchemy 1.1, 'autoincrement=True' must be "
             "indicated explicitly for composite (e.g. multicolumn) primary "
