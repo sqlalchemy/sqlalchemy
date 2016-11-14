@@ -1,6 +1,7 @@
 from sqlalchemy.testing import eq_
 from sqlalchemy.util import pickle
 import sqlalchemy as sa
+import copy
 from sqlalchemy import testing
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing import assert_raises_message
@@ -172,6 +173,36 @@ class PickleTest(fixtures.MappedTest):
         sess = Session()
         sess.add(u2)
         assert u2.addresses
+
+    def test_invalidated_flag_pickle(self):
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
+
+        mapper(User, users, properties={
+            'addresses': relationship(Address, lazy='noload')
+        })
+        mapper(Address, addresses)
+
+        u1 = User()
+        u1.addresses.append(Address())
+        u2 = pickle.loads(pickle.dumps(u1))
+        u2.addresses.append(Address())
+        eq_(len(u2.addresses), 2)
+
+    def test_invalidated_flag_deepcopy(self):
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
+
+        mapper(User, users, properties={
+            'addresses': relationship(Address, lazy='noload')
+        })
+        mapper(Address, addresses)
+
+        u1 = User()
+        u1.addresses.append(Address())
+        u2 = copy.deepcopy(u1)
+        u2.addresses.append(Address())
+        eq_(len(u2.addresses), 2)
 
     @testing.requires.non_broken_pickle
     def test_instance_deferred_cols(self):

@@ -714,12 +714,18 @@ class CollectionAdapter(object):
     def __getstate__(self):
         return {'key': self._key,
                 'owner_state': self.owner_state,
-                'data': self.data}
+                'owner_cls': self.owner_state.class_,
+                'data': self.data,
+                'invalidated': self.invalidated}
 
     def __setstate__(self, d):
         self._key = d['key']
         self.owner_state = d['owner_state']
         self._data = weakref.ref(d['data'])
+        self._converter = d['data']._sa_converter
+        d['data']._sa_adapter = self
+        self.invalidated = d['invalidated']
+        self.attr = getattr(d['owner_cls'], self._key).impl
 
 
 def bulk_replace(values, existing_adapter, new_adapter):

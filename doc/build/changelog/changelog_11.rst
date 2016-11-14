@@ -29,6 +29,15 @@
         autoincrement setting (see :ref:`change_3216`) would fail to emit
         correctly when invoked upon a lower-case :func:`.table` construct.
 
+    .. change::  3852
+        :tags: bug, orm
+        :tickets: 3852
+
+        Fixed regression in collections due to :ticket:`3457` whereby
+        deserialize during pickle or deepcopy would fail to establish all
+        attributes of an ORM collection, causing further mutation operations to
+        fail.
+
     .. change::  default_schema
         :tags: bug, engine
 
