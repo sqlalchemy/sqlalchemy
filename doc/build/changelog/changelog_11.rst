@@ -21,6 +21,15 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3548
+        :tag: bug, firebird
+        :tickets: 3548
+
+        Ported the fix for Oracle quoted-lowercase names to Firebird, so that
+        a table name that is quoted as lower case can be reflected properly
+        including when the table name comes from the get_table_names()
+        inspection function.
+
 .. changelog::
     :version: 1.1.4
     :released: November 15, 2016

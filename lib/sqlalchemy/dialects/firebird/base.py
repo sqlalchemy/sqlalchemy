@@ -77,6 +77,7 @@ from sqlalchemy import exc, types as sqltypes, sql, util
 from sqlalchemy.sql import expression
 from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler
+from sqlalchemy.sql.elements import quoted_name
 
 from sqlalchemy.types import (BIGINT, BLOB, DATE, FLOAT, INTEGER, NUMERIC,
                               SMALLINT, TEXT, TIME, TIMESTAMP, Integer)
@@ -439,6 +440,8 @@ class FBDialect(default.DefaultDialect):
         elif name.upper() == name and \
                 not self.identifier_preparer._requires_quotes(name.lower()):
             return name.lower()
+        elif name.lower() == name:
+            return quoted_name(name, quote=True)
         else:
             return name
 

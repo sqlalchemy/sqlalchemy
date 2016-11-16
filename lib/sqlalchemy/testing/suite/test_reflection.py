@@ -14,6 +14,8 @@ from .. import config
 import operator
 from sqlalchemy.schema import DDL, Index
 from sqlalchemy import event
+from sqlalchemy.sql.elements import quoted_name
+from sqlalchemy import ForeignKey
 
 metadata, users = None, None
 
@@ -705,4 +707,40 @@ class ComponentReflectionTest(fixtures.TablesTest):
             assert id_.get('autoincrement', True)
 
 
-__all__ = ('ComponentReflectionTest', 'HasTableTest')
+class NormalizedNameTest(fixtures.TablesTest):
+    __requires__ = 'denormalized_names',
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            quoted_name('t1', quote=True), metadata,
+            Column('id', Integer, primary_key=True),
+        )
+        Table(
+            quoted_name('t2', quote=True), metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1id', ForeignKey('t1.id'))
+        )
+
+    def test_reflect_lowercase_forced_tables(self):
+
+        m2 = MetaData(testing.db)
+        t2_ref = Table(quoted_name('t2', quote=True), m2, autoload=True)
+        t1_ref = m2.tables['t1']
+        assert t2_ref.c.t1id.references(t1_ref.c.id)
+
+        m3 = MetaData(testing.db)
+        m3.reflect(only=lambda name, m: name.lower() in ('t1', 't2'))
+        assert m3.tables['t2'].c.t1id.references(m3.tables['t1'].c.id)
+
+    def test_get_table_names(self):
+        tablenames = [
+            t for t in inspect(testing.db).get_table_names()
+            if t.lower() in ("t1", "t2")]
+
+        eq_(tablenames[0].upper(), tablenames[0].lower())
+        eq_(tablenames[1].upper(), tablenames[1].lower())
+
+
+__all__ = ('ComponentReflectionTest', 'HasTableTest', 'NormalizedNameTest')
