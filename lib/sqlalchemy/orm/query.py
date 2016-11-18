@@ -1607,6 +1607,11 @@ class Query(object):
         else:
             self._having = criterion
 
+    def _set_op(self, expr_fn, *q):
+        return self._from_selectable(
+            expr_fn(*([self] + list(q)))
+        )._set_enable_single_crit(False)
+
     def union(self, *q):
         """Produce a UNION of this Query against one or more queries.
 
@@ -1644,9 +1649,7 @@ class Query(object):
         its SELECT statement.
 
         """
-
-        return self._from_selectable(
-            expression.union(*([self] + list(q))))
+        return self._set_op(expression.union, *q)
 
     def union_all(self, *q):
         """Produce a UNION ALL of this Query against one or more queries.
@@ -1655,9 +1658,7 @@ class Query(object):
         that method for usage examples.
 
         """
-        return self._from_selectable(
-            expression.union_all(*([self] + list(q)))
-        )
+        return self._set_op(expression.union_all, *q)
 
     def intersect(self, *q):
         """Produce an INTERSECT of this Query against one or more queries.
@@ -1666,9 +1667,7 @@ class Query(object):
         that method for usage examples.
 
         """
-        return self._from_selectable(
-            expression.intersect(*([self] + list(q)))
-        )
+        return self._set_op(expression.intersect, *q)
 
     def intersect_all(self, *q):
         """Produce an INTERSECT ALL of this Query against one or more queries.
@@ -1677,9 +1676,7 @@ class Query(object):
         that method for usage examples.
 
         """
-        return self._from_selectable(
-            expression.intersect_all(*([self] + list(q)))
-        )
+        return self._set_op(expression.intersect_all, *q)
 
     def except_(self, *q):
         """Produce an EXCEPT of this Query against one or more queries.
@@ -1688,9 +1685,7 @@ class Query(object):
         that method for usage examples.
 
         """
-        return self._from_selectable(
-            expression.except_(*([self] + list(q)))
-        )
+        return self._set_op(expression.except_, *q)
 
     def except_all(self, *q):
         """Produce an EXCEPT ALL of this Query against one or more queries.
@@ -1699,9 +1694,7 @@ class Query(object):
         that method for usage examples.
 
         """
-        return self._from_selectable(
-            expression.except_all(*([self] + list(q)))
-        )
+        return self._set_op(expression.except_all, *q)
 
     def join(self, *props, **kwargs):
         """Create a SQL JOIN against this :class:`.Query` object's criterion
@@ -3447,7 +3440,6 @@ class Query(object):
         subtypes are selected from the total results.
 
         """
-
         for (ext_info, adapter) in set(self._mapper_adapter_map.values()):
             if ext_info in self._join_entities:
                 continue

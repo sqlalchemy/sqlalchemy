@@ -21,6 +21,18 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3856
+        :tags: bug, orm
+        :tickets: 3856
+
+        Fixed bug related to :ticket:`3177`, where a UNION or other set operation
+        emitted by a :class:`.Query` would apply "single-inheritance" criteria
+        to the outside of the union (also referencing the wrong selectable),
+        even though this criteria is now expected to
+        be already present on the inside subqueries.  The single-inheritance
+        criteria is now omitted once union() or another set operation is
+        called against :class:`.Query` in the same way as :meth:`.Query.from_self`.
+
     .. change:: 3548
         :tag: bug, firebird
         :tickets: 3548
