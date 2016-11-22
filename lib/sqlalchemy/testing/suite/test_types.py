@@ -5,7 +5,7 @@ from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
-    Text, Numeric, Float, literal, Boolean, cast, null, JSON, and_
+    Text, Numeric, Float, literal, Boolean, cast, null, JSON, and_, type_coerce
 from ..schema import Table, Column
 from ... import testing
 import decimal
@@ -623,6 +623,12 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         }
     }
 
+    data6 = {
+        "a": 5,
+        "b": "some value",
+        "c": {"foo": "bar"}
+    }
+
     @classmethod
     def define_tables(cls, metadata):
         Table('data_table', metadata,
@@ -730,10 +736,11 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
              {"name": "r2", "data": self.data2},
              {"name": "r3", "data": self.data3},
              {"name": "r4", "data": self.data4},
-             {"name": "r5", "data": self.data5}]
+             {"name": "r5", "data": self.data5},
+             {"name": "r6", "data": self.data6}]
         )
 
-    def _test_index_criteria(self, crit, expected):
+    def _test_index_criteria(self, crit, expected, test_literal=True):
         self._criteria_fixture()
         with config.db.connect() as conn:
             stmt = select([self.tables.data_table.c.name]).where(crit)
@@ -743,10 +750,11 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
                 expected
             )
 
-            literal_sql = str(stmt.compile(
-                config.db, compile_kwargs={"literal_binds": True}))
+            if test_literal:
+                literal_sql = str(stmt.compile(
+                    config.db, compile_kwargs={"literal_binds": True}))
 
-            eq_(conn.scalar(literal_sql), expected)
+                eq_(conn.scalar(literal_sql), expected)
 
     def test_crit_spaces_in_key(self):
         name = self.tables.data_table.c.name
@@ -789,6 +797,45 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             cast(col[("nested", "elem2", "elem3", "elem4")], String)
             == '"elem5"',
             "r5"
+        )
+
+    def test_crit_against_string_basic(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c['data']
+
+        self._test_index_criteria(
+            and_(name == 'r6', cast(col["b"], String) == '"some value"'),
+            "r6"
+        )
+
+    def test_crit_against_string_coerce_type(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c['data']
+
+        self._test_index_criteria(
+            and_(name == 'r6',
+                 cast(col["b"], String) == type_coerce("some value", JSON)),
+            "r6",
+            test_literal=False
+        )
+
+    def test_crit_against_int_basic(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c['data']
+
+        self._test_index_criteria(
+            and_(name == 'r6', cast(col["a"], String) == '5'),
+            "r6"
+        )
+
+    def test_crit_against_int_coerce_type(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c['data']
+
+        self._test_index_criteria(
+            and_(name == 'r6', cast(col["a"], String) == type_coerce(5, JSON)),
+            "r6",
+            test_literal=False
         )
 
     def test_unicode_round_trip(self):

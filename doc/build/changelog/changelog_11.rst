@@ -21,6 +21,19 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3859
+        :tags: bug, sql
+        :tickets: 3859
+
+        Fixed issue in :class:`.Variant` where the "right hand coercion" logic,
+        inherited from :class:`.TypeDecorator`, would
+        coerce the right-hand side into the :class:`.Variant` itself, rather than
+        what the default type for the :class:`.Variant` would do.   In the
+        case of :class:`.Variant`, we want the type to act mostly like the base
+        type so the default logic of :class:`.TypeDecorator` is now overridden
+        to fall back to the underlying wrapped type's logic.   Is mostly relevant
+        for JSON at the moment.
+
     .. change:: 3856
         :tags: bug, orm
         :tickets: 3856

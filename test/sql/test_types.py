@@ -1987,17 +1987,37 @@ class ExpressionTest(
         tab = table('test', column('bvalue', MyTypeDec))
         expr = tab.c.bvalue + 6
 
+
         self.assert_compile(
             expr,
             "test.bvalue || :bvalue_1",
             use_default_dialect=True
         )
 
-        assert expr.type.__class__ is MyTypeDec
+        is_(expr.right.type.__class__, MyTypeDec)
+        is_(expr.type.__class__, MyTypeDec)
+
         eq_(
             testing.db.execute(select([expr.label('foo')])).scalar(),
             "BIND_INfooBIND_IN6BIND_OUT"
         )
+
+    def test_variant_righthand_coercion(self):
+        my_json_normal = JSON()
+        my_json_variant = JSON().with_variant(String(), "sqlite")
+
+        tab = table(
+            'test',
+            column('avalue', my_json_normal),
+            column('bvalue', my_json_variant)
+        )
+        expr = tab.c.avalue['foo'] == 'bar'
+
+        is_(expr.right.type._type_affinity, String)
+
+        expr = tab.c.bvalue['foo'] == 'bar'
+
+        is_(expr.right.type._type_affinity, String)
 
     def test_bind_typing(self):
         from sqlalchemy.sql import column
