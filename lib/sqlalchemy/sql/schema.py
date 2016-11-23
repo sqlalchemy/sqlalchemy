@@ -485,6 +485,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         autoload = kwargs.pop('autoload', autoload_with is not None)
         # this argument is only used with _init_existing()
         kwargs.pop('autoload_replace', True)
+        _extend_on = kwargs.pop("_extend_on", None)
+
         include_columns = kwargs.pop('include_columns', None)
 
         self.implicit_returning = kwargs.pop('implicit_returning', True)
@@ -504,19 +506,22 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         # we do it after the table is in the singleton dictionary to support
         # circular foreign keys
         if autoload:
-            self._autoload(metadata, autoload_with, include_columns)
+            self._autoload(
+                metadata, autoload_with,
+                include_columns, _extend_on=_extend_on)
 
         # initialize all the column, etc. objects.  done after reflection to
         # allow user-overrides
         self._init_items(*args)
 
     def _autoload(self, metadata, autoload_with, include_columns,
-                  exclude_columns=()):
+                  exclude_columns=(), _extend_on=None):
 
         if autoload_with:
             autoload_with.run_callable(
                 autoload_with.dialect.reflecttable,
-                self, include_columns, exclude_columns
+                self, include_columns, exclude_columns,
+                _extend_on=_extend_on
             )
         else:
             bind = _bind_or_error(
@@ -528,7 +533,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 "metadata.bind=<someengine>")
             bind.run_callable(
                 bind.dialect.reflecttable,
-                self, include_columns, exclude_columns
+                self, include_columns, exclude_columns,
+                _extend_on=_extend_on
             )
 
     @property
@@ -557,6 +563,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         autoload = kwargs.pop('autoload', autoload_with is not None)
         autoload_replace = kwargs.pop('autoload_replace', True)
         schema = kwargs.pop('schema', None)
+        _extend_on = kwargs.pop('_extend_on', None)
+
         if schema and schema != self.schema:
             raise exc.ArgumentError(
                 "Can't change schema of existing table from '%s' to '%s'",
@@ -579,12 +587,15 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         if autoload:
             if not autoload_replace:
+                # don't replace columns already present.
+                # we'd like to do this for constraints also however we don't
+                # have simple de-duping for unnamed constraints.
                 exclude_columns = [c.name for c in self.c]
             else:
                 exclude_columns = ()
             self._autoload(
                 self.metadata, autoload_with,
-                include_columns, exclude_columns)
+                include_columns, exclude_columns, _extend_on=_extend_on)
 
         self._extra_kwargs(**kwargs)
         self._init_items(*args)
@@ -3758,7 +3769,8 @@ class MetaData(SchemaItem):
                 'autoload': True,
                 'autoload_with': conn,
                 'extend_existing': extend_existing,
-                'autoload_replace': autoload_replace
+                'autoload_replace': autoload_replace,
+                '_extend_on': set()
             }
 
             reflect_opts.update(dialect_kwargs)

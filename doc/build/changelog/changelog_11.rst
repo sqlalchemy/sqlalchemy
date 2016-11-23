@@ -28,6 +28,18 @@
         datatypes now support a setting of zero for "precision"; previously
         a zero would be ignored.  Pull request courtesy Ionuț Ciocîrlan.
 
+    .. change:: 3861
+        :tags: bug, engine
+        :tickets: 3861
+
+        The "extend_existing" option of :class:`.Table` reflection would
+        cause indexes and constraints to be doubled up in the case that the parameter
+        were used with :meth:`.MetaData.reflect` (as the automap extension does)
+        due to tables being reflected both within the foreign key path as well
+        as directly.  A new de-duplicating set is passed through within the
+        :meth:`.MetaData.reflect` sequence to prevent double reflection in this
+        way.
+
     .. change:: 3859
         :tags: bug, sql
         :tickets: 3859

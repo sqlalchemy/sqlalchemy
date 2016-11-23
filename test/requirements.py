@@ -320,6 +320,10 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def unique_constraint_reflection_no_index_overlap(self):
+        return self.unique_constraint_reflection + skip_if("mysql")
+
+    @property
     def check_constraint_reflection(self):
         return fails_on_everything_except(
                     "postgresql",

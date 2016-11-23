@@ -532,7 +532,8 @@ class Inspector(object):
         return self.dialect.get_check_constraints(
             self.bind, table_name, schema, info_cache=self.info_cache, **kw)
 
-    def reflecttable(self, table, include_columns, exclude_columns=()):
+    def reflecttable(self, table, include_columns, exclude_columns=(),
+                     _extend_on=None):
         """Given a Table object, load its internal constructs based on
         introspection.
 
@@ -553,6 +554,13 @@ class Inspector(object):
           in the reflection process.  If ``None``, all columns are reflected.
 
         """
+
+        if _extend_on is not None:
+            if table in _extend_on:
+                return
+            else:
+                _extend_on.add(table)
+
         dialect = self.bind.dialect
 
         schema = self.bind.schema_for_object(table)
@@ -602,7 +610,7 @@ class Inspector(object):
 
         self._reflect_fk(
             table_name, schema, table, cols_by_orig_name,
-            exclude_columns, reflection_options)
+            exclude_columns, _extend_on, reflection_options)
 
         self._reflect_indexes(
             table_name, schema, table, cols_by_orig_name,
@@ -692,7 +700,7 @@ class Inspector(object):
 
     def _reflect_fk(
             self, table_name, schema, table, cols_by_orig_name,
-            exclude_columns, reflection_options):
+            exclude_columns, _extend_on, reflection_options):
         fkeys = self.get_foreign_keys(
             table_name, schema, **table.dialect_kwargs)
         for fkey_d in fkeys:
@@ -715,6 +723,7 @@ class Inspector(object):
                 sa_schema.Table(referred_table, table.metadata,
                                 autoload=True, schema=referred_schema,
                                 autoload_with=self.bind,
+                                _extend_on=_extend_on,
                                 **reflection_options
                                 )
                 for column in referred_columns:
@@ -724,6 +733,7 @@ class Inspector(object):
                 sa_schema.Table(referred_table, table.metadata, autoload=True,
                                 autoload_with=self.bind,
                                 schema=sa_schema.BLANK_SCHEMA,
+                                _extend_on=_extend_on,
                                 **reflection_options
                                 )
                 for column in referred_columns:
