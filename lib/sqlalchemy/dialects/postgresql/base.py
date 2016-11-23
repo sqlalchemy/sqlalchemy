@@ -1730,15 +1730,15 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_TIMESTAMP(self, type_, **kw):
         return "TIMESTAMP%s %s" % (
-            getattr(type_, 'precision', None) and "(%d)" %
-            type_.precision or "",
+            "(%d)" % type_.precision
+            if getattr(type_, 'precision', None) is not None else "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
         )
 
     def visit_TIME(self, type_, **kw):
         return "TIME%s %s" % (
-            getattr(type_, 'precision', None) and "(%d)" %
-            type_.precision or "",
+            "(%d)" % type_.precision
+            if getattr(type_, 'precision', None) is not None else "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
         )
 

@@ -697,6 +697,10 @@ class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
              'TIMESTAMP(5) WITHOUT TIME ZONE'),
             (postgresql.TIMESTAMP(timezone=True, precision=5),
              'TIMESTAMP(5) WITH TIME ZONE'),
+            (postgresql.TIME(precision=0),
+             'TIME(0) WITHOUT TIME ZONE'),
+            (postgresql.TIMESTAMP(precision=0),
+             'TIMESTAMP(0) WITHOUT TIME ZONE'),
         ]:
             self.assert_compile(type_, expected)
 

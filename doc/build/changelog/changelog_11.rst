@@ -21,6 +21,13 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: pg_timestamp_zero_prec
+        :tags: bug, postgresql
+
+        The :class:`.postgresql.TIME` and :class:`.postgresql.TIMESTAMP`
+        datatypes now support a setting of zero for "precision"; previously
+        a zero would be ignored.  Pull request courtesy Ionuț Ciocîrlan.
+
     .. change:: 3859
         :tags: bug, sql
         :tickets: 3859
