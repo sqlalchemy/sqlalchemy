@@ -139,6 +139,15 @@
         :class:`.Engine`, concealing the URL password.  Pull request courtesy
         Valery Yundin.
 
+    .. change:: 3867
+        :tags: bug, mysql
+        :tickets: 3867
+
+        The MySQL dialect now will not warn when a reflected column has a
+        "COMMENT" keyword on it, but note however the comment is not yet
+        reflected; this is on the roadmap for a future release.  Pull request
+        courtesy Lele Long.
+
     .. change:: pg_timestamp_zero_prec
         :tags: bug, postgresql
 
