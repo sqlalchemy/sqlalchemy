@@ -13,6 +13,22 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 4003
+        :tags: feature, oracle
+
+        The Oracle dialect now inspects unique and check constraints when using
+        :meth:`.Inspector.get_unique_constraints`,
+        :meth:`.Inspector.get_check_constraints`.
+        As Oracle does not have unique constraints that are separate from a unique
+        :class:`.Index`, a :class:`.Table` that's reflected will still continue
+        to not have :class:`.UniqueConstraint` objects associated with it.
+        Pull requests courtesy Eloy Felix.
+
+        .. seealso::
+
+            :ref:`change_4003`
+
+
     .. change:: 3996
         :tags: bug, orm
         :tickets: 3996

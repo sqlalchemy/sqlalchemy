@@ -340,18 +340,21 @@ class DefaultRequirements(SuiteRequirements):
         return fails_on_everything_except(
                     "postgresql",
                     "mysql",
-                    "sqlite"
+                    "sqlite",
+                    "oracle"
                 )
 
     @property
     def unique_constraint_reflection_no_index_overlap(self):
-        return self.unique_constraint_reflection + skip_if("mysql")
+        return self.unique_constraint_reflection + \
+            skip_if("mysql")  + skip_if("oracle")
 
     @property
     def check_constraint_reflection(self):
         return fails_on_everything_except(
                     "postgresql",
-                    "sqlite"
+                    "sqlite",
+                    "oracle"
                 )
 
     @property

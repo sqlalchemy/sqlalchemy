@@ -926,6 +926,27 @@ Dialect Improvements and Changes - SQLite
 Dialect Improvements and Changes - Oracle
 =========================================
 
+.. _change_4003:
+
+Oracle Unique, Check constraints now reflected
+----------------------------------------------
+
+UNIQUE and CHECK constraints now reflect via
+:meth:`.Inspector.get_unique_constraints` and
+:meth:`.Inspector.get_check_constraints`.  A :class:`.Table` object  that's
+reflected will now include :class:`.CheckConstraint` objects as well.
+See the notes at :ref:`oracle_constraint_reflection` for information
+on behavioral quirks here, including that most :class:`.Table` objects
+will still not include any :class:`.UniqueConstraint` objects as these
+usually represent via :class:`.Index`.
+
+.. seealso::
+
+    :ref:`oracle_constraint_reflection`
+
+
+:ticket:`4003`
+
 .. _change_3276:
 
 Oracle foreign key constraint names are now "name normalized"

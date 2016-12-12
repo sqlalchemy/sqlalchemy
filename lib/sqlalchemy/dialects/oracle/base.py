@@ -195,6 +195,51 @@ accepted, including methods such as :meth:`.MetaData.reflect` and
 
 If synonyms are not in use, this flag should be left disabled.
 
+.. _oracle_constraint_reflection:
+
+Constraint Reflection
+---------------------
+
+The Oracle dialect can return information about foreign key, unique, and
+CHECK constraints, as well as indexes on tables.
+
+Raw information regarding these constraints can be acquired using
+:meth:`.Inspector.get_foreign_keys`, :meth:`.Inspector.get_unique_constraints`,
+:meth:`.Inspector.get_check_constraints`, and :meth:`.Inspector.get_indexes`.
+
+.. versionchanged:: 1.2  The Oracle dialect can now reflect UNIQUE and
+   CHECK constraints.
+
+When using reflection at the :class:`.Table` level, the :class:`.Table`
+will also include these constraints.
+
+Note the following caveats:
+
+* When using the :meth:`.Inspector.get_check_constraints` method, Oracle
+  builds a special "IS NOT NULL" constraint for columns that specify
+  "NOT NULL".  This constraint is **not** returned by default; to include
+  the "IS NOT NULL" constraints, pass the flag ``include_all=True``::
+
+      from sqlalchemy import create_engine, inspect
+
+      engine = create_engine("oracle+cx_oracle://s:t@dsn")
+      inspector = inspect(engine)
+      all_check_constraints = inspector.get_check_constraints(
+          "some_table", include_all=True)
+
+* in most cases, when reflecting a :class:`.Table`, a UNIQUE constraint will
+  **not** be available as a :class:`.UniqueConstraint` object, as Oracle
+  mirrors unique constraints with a UNIQUE index in most cases (the exception
+  seems to be when two or more unique constraints represent the same columns);
+  the :class:`.Table` will instead represent these using :class:`.Index`
+  with the ``unique=True`` flag set.
+
+* Oracle creates an implicit index for the primary key of a table; this index
+  is **excluded** from all index results.
+
+* the list of columns reflected for an index will not include column names
+  that start with SYS_NC.
+
 Table names with SYSTEM/SYSAUX tablespaces
 -------------------------------------------
 
@@ -310,6 +355,7 @@ from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy import types as sqltypes, schema as sa_schema
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, \
     BLOB, CLOB, TIMESTAMP, FLOAT
+from itertools import groupby
 
 RESERVED_WORDS = \
     set('SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN '
@@ -1472,12 +1518,13 @@ class OracleDialect(default.DefaultDialect):
             "\nrem.column_name AS remote_column,"\
             "\nrem.owner AS remote_owner,"\
             "\nloc.position as loc_pos,"\
-            "\nrem.position as rem_pos"\
+            "\nrem.position as rem_pos,"\
+            "\nac.search_condition"\
             "\nFROM all_constraints%(dblink)s ac,"\
             "\nall_cons_columns%(dblink)s loc,"\
             "\nall_cons_columns%(dblink)s rem"\
             "\nWHERE ac.table_name = :table_name"\
-            "\nAND ac.constraint_type IN ('R','P')"
+            "\nAND ac.constraint_type IN ('R','P', 'U', 'C')"
 
         if schema is not None:
             params['owner'] = schema
@@ -1605,6 +1652,40 @@ class OracleDialect(default.DefaultDialect):
         return list(fkeys.values())
 
     @reflection.cache
+    def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+        resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
+        dblink = kw.get('dblink', '')
+        info_cache = kw.get('info_cache')
+
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
+
+        constraint_data = self._get_constraint_data(
+            connection, table_name, schema, dblink,
+            info_cache=kw.get('info_cache'))
+
+        unique_keys = filter(lambda x: x[1] == 'U', constraint_data)
+        uniques_group = groupby(unique_keys, lambda x: x[0])
+
+        index_names = set([ix['name'] for ix in self.get_indexes(connection, table_name, schema=schema)])
+        return [
+            {
+                'name': name,
+                'column_names': cols,
+                'duplicates_index': name if name in index_names else None
+            }
+            for name, cols in
+            [
+                [
+                    self.normalize_name(i[0]),
+                    [self.normalize_name(x[2]) for x in i[1]]
+                ] for i in uniques_group
+            ]
+        ]
+
+    @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None,
                             resolve_synonyms=False, dblink='', **kw):
         info_cache = kw.get('info_cache')
@@ -1627,6 +1708,32 @@ class OracleDialect(default.DefaultDialect):
             return rp
         else:
             return None
+
+    @reflection.cache
+    def get_check_constraints(self, connection, table_name, schema=None,
+                              include_all=False, **kw):
+        resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
+        dblink = kw.get('dblink', '')
+        info_cache = kw.get('info_cache')
+
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
+
+        constraint_data = self._get_constraint_data(
+            connection, table_name, schema, dblink,
+            info_cache=kw.get('info_cache'))
+
+        check_constraints = filter(lambda x: x[1] == 'C', constraint_data)
+
+        return [
+            {
+                'name': self.normalize_name(cons[0]),
+                'sqltext': cons[8],
+            }
+            for cons in check_constraints if include_all or
+            not re.match(r'..+?. IS NOT NULL$', cons[8])]
 
 
 class _OuterJoinColumn(sql.ClauseElement):

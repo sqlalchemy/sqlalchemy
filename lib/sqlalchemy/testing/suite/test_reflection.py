@@ -677,11 +677,35 @@ class ComponentReflectionTest(fixtures.TablesTest):
             key=operator.itemgetter('name')
         )
 
+        names_that_duplicate_index = set()
+
         for orig, refl in zip(uniques, reflected):
             # Different dialects handle duplicate index and constraints
             # differently, so ignore this flag
-            refl.pop('duplicates_index', None)
+            dupe = refl.pop('duplicates_index', None)
+            if dupe:
+                names_that_duplicate_index.add(dupe)
             eq_(orig, refl)
+
+        reflected_metadata = MetaData()
+        reflected = Table(
+            'testtbl', reflected_metadata, autoload_with=orig_meta.bind,
+            schema=schema)
+
+        # test "deduplicates for index" logic.   MySQL and Oracle
+        # "unique constraints" are actually unique indexes (with possible
+        # exception of a unique that is a dupe of another one in the case
+        # of Oracle).  make sure # they aren't duplicated.
+        idx_names = set([idx.name for idx in reflected.indexes])
+        uq_names = set([
+            uq.name for uq in reflected.constraints
+            if isinstance(uq, sa.UniqueConstraint)]).difference(
+            ['unique_c_a_b'])
+
+        assert not idx_names.intersection(uq_names)
+        if names_that_duplicate_index:
+            eq_(names_that_duplicate_index, idx_names)
+            eq_(uq_names, set())
 
     @testing.provide_metadata
     def _test_get_view_definition(self, schema=None):

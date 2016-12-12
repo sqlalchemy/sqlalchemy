@@ -1224,6 +1224,14 @@ class ConstraintTest(fixtures.TablesTest):
                                          onupdate='CASCADE'))
         assert_raises(exc.SAWarning, bat.create)
 
+    def test_reflect_check_include_all(self):
+        insp = inspect(testing.db)
+        eq_(insp.get_check_constraints('foo'), [])
+        eq_(
+            [rec['sqltext']
+             for rec in insp.get_check_constraints('foo', include_all=True)],
+            ['"ID" IS NOT NULL'])
+
 
 class TwoPhaseTest(fixtures.TablesTest):
     """test cx_oracle two phase, which remains in a semi-broken state
