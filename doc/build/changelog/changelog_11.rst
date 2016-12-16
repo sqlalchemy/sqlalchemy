@@ -119,6 +119,15 @@
         be inserted into the query in the case that the :class:`.Bundle`
         construct were used as the selection criteria.
 
+    .. change:: repr_for_url_reflect
+        :tags: bug, sql
+
+        The engine URL embedded in the exception for "could not reflect"
+        in :meth:`.MetaData.reflect` now conceals the password; also
+        the ``__repr__`` for :class:`.TLEngine` now acts like that of
+        :class:`.Engine`, concealing the URL password.  Pull request courtesy
+        Valery Yundin.
+
     .. change:: pg_timestamp_zero_prec
         :tags: bug, postgresql
 
