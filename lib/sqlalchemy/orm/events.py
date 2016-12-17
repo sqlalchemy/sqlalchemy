@@ -1812,7 +1812,7 @@ class AttributeEvents(event.Events):
         def validate_phone(target, value, oldvalue, initiator):
             "Strip non-numeric characters from a phone number"
 
-            return re.sub(r'(?![0-9])', '', value)
+            return re.sub(r'\D', '', value)
 
         # setup listener on UserContact.phone attribute, instructing
         # it to use the return value
