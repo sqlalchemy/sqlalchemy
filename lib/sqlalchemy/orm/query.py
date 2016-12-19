@@ -3802,9 +3802,14 @@ class _BundleEntity(_QueryEntity):
                 else:
                     _ColumnEntity(self, expr, namespace=self)
 
-        self.entities = ()
-
         self.supports_single_entity = self.bundle.single_entity
+
+    @property
+    def entities(self):
+        entities = []
+        for ent in self._entities:
+            entities.extend(ent.entities)
+        return entities
 
     @property
     def entity_zero(self):

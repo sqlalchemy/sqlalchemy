@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3874
+        :tags: bug, orm
+        :tickets: 3874
+
+        Fixed bug where the single-table inheritance query criteria would not
+        be inserted into the query in the case that the :class:`.Bundle`
+        construct were used as the selection criteria.
+
     .. change:: pg_timestamp_zero_prec
         :tags: bug, postgresql
 

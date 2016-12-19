@@ -51,12 +51,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
         mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
 
-    def test_single_inheritance(self):
-        Employee, JuniorEngineer, Manager, Engineer = (self.classes.Employee,
-                                self.classes.JuniorEngineer,
-                                self.classes.Manager,
-                                self.classes.Engineer)
-
+    def _fixture_one(self):
+        Employee, JuniorEngineer, Manager, Engineer = (
+            self.classes.Employee,
+            self.classes.JuniorEngineer,
+            self.classes.Manager,
+            self.classes.Engineer)
 
         session = create_session()
 
@@ -65,6 +65,16 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed')
         session.add_all([m1, e1, e2])
         session.flush()
+        return session, m1, e1, e2
+
+    def test_single_inheritance(self):
+        Employee, JuniorEngineer, Manager, Engineer = (
+            self.classes.Employee,
+            self.classes.JuniorEngineer,
+            self.classes.Manager,
+            self.classes.Engineer)
+
+        session, m1, e1, e2 = self._fixture_one()
 
         assert session.query(Employee).all() == [m1, e1, e2]
         assert session.query(Engineer).all() == [e1, e2]
@@ -80,18 +90,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         assert row.employee_id == e1.employee_id
 
     def test_multi_qualification(self):
-        JuniorEngineer, Manager, Engineer = (self.classes.JuniorEngineer,
-                                self.classes.Manager,
-                                self.classes.Engineer)
+        JuniorEngineer, Manager, Engineer = (
+            self.classes.JuniorEngineer,
+            self.classes.Manager,
+            self.classes.Engineer)
 
-        session = create_session()
-
-        m1 = Manager(name='Tom', manager_data='knows how to manage things')
-        e1 = Engineer(name='Kurt', engineer_info='knows how to hack')
-        e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed')
-
-        session.add_all([m1, e1, e2])
-        session.flush()
+        session, m1, e1, e2 = self._fixture_one()
 
         ealias = aliased(Engineer)
         eq_(
@@ -129,6 +133,88 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         #    session.query(Employee.name, Manager.manager_data, Engineer.engineer_info).all(),
         #    []
         # )
+
+    def test_column_qualification(self):
+        Employee, JuniorEngineer, Manager, Engineer = (
+            self.classes.Employee,
+            self.classes.JuniorEngineer,
+            self.classes.Manager,
+            self.classes.Engineer)
+
+        session, m1, e1, e2 = self._fixture_one()
+
+        m1id, e1id, e2id = m1.employee_id, e1.employee_id, e2.employee_id
+
+        def scalar(q):
+            return [x for x, in q]
+
+        eq_(
+            scalar(session.query(Employee.employee_id)),
+            [m1id, e1id, e2id]
+        )
+
+        eq_(
+            scalar(session.query(Engineer.employee_id)),
+            [e1id, e2id]
+        )
+
+        eq_(
+            scalar(session.query(Manager.employee_id)), [m1id]
+        )
+
+        # this currently emits "WHERE type IN (?, ?) AND type IN (?, ?)",
+        # so no result.
+        eq_(
+            session.query(Manager.employee_id, Engineer.employee_id).all(),
+            []
+        )
+
+        eq_(
+            scalar(session.query(JuniorEngineer.employee_id)),
+            [e2id]
+        )
+
+    def test_bundle_qualification(self):
+        Employee, JuniorEngineer, Manager, Engineer = (
+            self.classes.Employee,
+            self.classes.JuniorEngineer,
+            self.classes.Manager,
+            self.classes.Engineer)
+
+        session, m1, e1, e2 = self._fixture_one()
+
+        m1id, e1id, e2id = m1.employee_id, e1.employee_id, e2.employee_id
+
+        def scalar(q):
+            return [x[0] for x, in q]
+
+        eq_(
+            scalar(session.query(Bundle("name", Employee.employee_id))),
+            [m1id, e1id, e2id]
+        )
+
+        eq_(
+            scalar(session.query(Bundle("name", Engineer.employee_id))),
+            [e1id, e2id]
+        )
+
+        eq_(
+            scalar(session.query(Bundle("name", Manager.employee_id))), [m1id]
+        )
+
+        # this currently emits "WHERE type IN (?, ?) AND type IN (?, ?)",
+        # so no result.
+        eq_(
+            session.query(
+                Bundle("name", Manager.employee_id, Engineer.employee_id)
+            ).all(),
+            []
+        )
+
+        eq_(
+            scalar(session.query(Bundle("name", JuniorEngineer.employee_id))),
+            [e2id]
+        )
 
     def test_from_self(self):
         Engineer = self.classes.Engineer
