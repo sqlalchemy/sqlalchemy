@@ -1026,7 +1026,7 @@ class OracleDialect(default.DefaultDialect):
     @property
     def _supports_table_compression(self):
         return self.server_version_info and \
-            self.server_version_info >= (9, 2, )
+            self.server_version_info >= (10, 1, )
 
     @property
     def _supports_table_compress_for(self):

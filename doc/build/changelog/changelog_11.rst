@@ -21,6 +21,15 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3875
+        :tags: bug, oracle
+        :tickets: 3875
+
+        Fixed bug where the "COMPRESSION" keyword was used in the ALL_TABLES
+        query on Oracle 9.2; even though Oracle docs state table compression
+        was introduced in 9i, the actual column is not present until
+        10.1.
+
     .. change:: 3874
         :tags: bug, orm
         :tickets: 3874
