@@ -1463,6 +1463,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         mapper(Child, child)
         return Parent, Child
 
+    @testing.requires.sane_rowcount
     def test_update_single_missing(self):
         Parent, Child = self._fixture()
         sess = Session()
@@ -1480,6 +1481,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             sess.flush
         )
 
+    @testing.requires.sane_rowcount
     def test_update_single_missing_broken_multi_rowcount(self):
         @util.memoized_property
         def rowcount(self):
