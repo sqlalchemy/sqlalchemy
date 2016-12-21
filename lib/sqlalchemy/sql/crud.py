@@ -505,7 +505,7 @@ def _append_param_insert_select_hasdefault(
             (not c.default.optional or
              not compiler.dialect.sequences_optional):
             proc = c.default
-            values.append((c, proc))
+            values.append((c, proc.next_value()))
     elif c.default.is_clause_element:
         proc = c.default.arg.self_group()
         values.append((c, proc))

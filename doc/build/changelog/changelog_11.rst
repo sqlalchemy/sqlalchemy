@@ -21,6 +21,13 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3877
+        :tags: bug, oracle, postgresql
+        :tickets: 3877
+
+        Fixed bug where an INSERT from SELECT where the source table contains
+        an autoincrementing Sequence would fail to compile correctly.
+
     .. change:: 3875
         :tags: bug, oracle
         :tickets: 3875

@@ -1,7 +1,8 @@
 #! coding:utf-8
 
 from sqlalchemy import Column, Integer, MetaData, String, Table,\
-    bindparam, exc, func, insert, select, column, text, table
+    bindparam, exc, func, insert, select, column, text, table,\
+    Sequence
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
@@ -236,6 +237,24 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name FROM mytable "
             "WHERE mytable.name = :name_1",
             checkparams={"name_1": "foo"}
+        )
+
+    def test_insert_from_select_seq(self):
+        m = MetaData()
+
+        t1 = Table(
+            't', m,
+            Column('id', Integer, Sequence('id_seq'), primary_key=True),
+            Column('data', String)
+        )
+
+        stmt = t1.insert().from_select(('data', ), select([t1.c.data]))
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t (data, id) SELECT t.data, "
+            "nextval('id_seq') AS next_value_1 FROM t",
+            dialect=postgresql.dialect()
         )
 
     def test_insert_from_select_cte_one(self):
