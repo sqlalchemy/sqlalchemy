@@ -1022,7 +1022,8 @@ class MSExecutionContext(default.DefaultExecutionContext):
             else:
                 self._enable_identity_insert = False
 
-            self._select_lastrowid = insert_has_sequence and \
+            self._select_lastrowid = not self.compiled.inline and \
+                insert_has_sequence and \
                 not self.compiled.returning and \
                 not self._enable_identity_insert and \
                 not self.executemany

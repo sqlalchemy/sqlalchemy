@@ -141,6 +141,56 @@ class InsertBehaviorTest(fixtures.TablesTest):
         assert len(r.fetchall())
 
     @requirements.insert_from_select
+    def test_insert_from_select_autoinc(self):
+        src_table = self.tables.manual_pk
+        dest_table = self.tables.autoinc_pk
+        config.db.execute(
+            src_table.insert(),
+            [
+                dict(id=1, data="data1"),
+                dict(id=2, data="data2"),
+                dict(id=3, data="data3"),
+            ]
+        )
+
+        result = config.db.execute(
+            dest_table.insert().
+            from_select(
+                ("data",),
+                select([src_table.c.data]).
+                where(src_table.c.data.in_(["data2", "data3"]))
+            )
+        )
+
+        eq_(result.inserted_primary_key, [None])
+
+        result = config.db.execute(
+            select([dest_table.c.data]).order_by(dest_table.c.data)
+        )
+        eq_(result.fetchall(), [("data2", ), ("data3", )])
+
+    @requirements.insert_from_select
+    def test_insert_from_select_autoinc_no_rows(self):
+        src_table = self.tables.manual_pk
+        dest_table = self.tables.autoinc_pk
+
+        result = config.db.execute(
+            dest_table.insert().
+            from_select(
+                ("data",),
+                select([src_table.c.data]).
+                where(src_table.c.data.in_(["data2", "data3"]))
+            )
+        )
+        eq_(result.inserted_primary_key, [None])
+
+        result = config.db.execute(
+            select([dest_table.c.data]).order_by(dest_table.c.data)
+        )
+
+        eq_(result.fetchall(), [])
+
+    @requirements.insert_from_select
     def test_insert_from_select(self):
         table = self.tables.manual_pk
         config.db.execute(

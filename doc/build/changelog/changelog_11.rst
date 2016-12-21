@@ -27,6 +27,15 @@
 
         Fixed bug where an INSERT from SELECT where the source table contains
         an autoincrementing Sequence would fail to compile correctly.
+    .. change:: 3876
+        :tags: bug, mssql
+        :tickets: 3876
+
+        Fixed bug where SQL Server dialects would attempt to select the
+        last row identity for an INSERT from SELECT, failing in the case when
+        the SELECT has no rows.  For such a statement,
+        the inline flag is set to True indicating no last primary key
+        should be fetched.
 
     .. change:: 3875
         :tags: bug, oracle
