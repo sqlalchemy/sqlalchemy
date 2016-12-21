@@ -1307,9 +1307,13 @@ class RowswitchAccountingTest(fixtures.MappedTest):
         sess.flush()
 
         eq_(
-            select([func.count('*')]).select_from(self.tables.parent).scalar(),
-            0)
+            sess.scalar(
+                select([func.count('*')]).select_from(self.tables.parent)
+            ),
+            0
+        )
 
+        sess.close()
 
 class RowswitchM2OTest(fixtures.MappedTest):
     # tests for #3060 and related issues
