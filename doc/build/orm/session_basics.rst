@@ -88,7 +88,7 @@ be set up as in the example above, using the ``bind`` argument.
 When you write your application, place the
 :class:`.sessionmaker` factory at the global level.   This
 factory can then
-be used by the rest of the applcation as the source of new :class:`.Session`
+be used by the rest of the application as the source of new :class:`.Session`
 instances, keeping the configuration for how :class:`.Session` objects
 are constructed in one place.
 
