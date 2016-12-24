@@ -646,7 +646,7 @@
 
         Made a slight behavioral change in the ``sqlalchemy.ext.compiler``
         extension, whereby the existing compilation schemes for an established
-        construct would be removed if that construct was itself didn't already
+        construct would be removed if that construct itself didn't already
         have its own dedicated ``__visit_name__``.  This was a
         rare occurrence in 1.0, however in 1.1 :class:`.postgresql.ARRAY`
         subclasses :class:`.sqltypes.ARRAY` and has this behavior.
