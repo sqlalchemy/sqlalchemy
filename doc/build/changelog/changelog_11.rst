@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3878
+        :tags: bug, sql
+        :tickets: 3878
+
+        Fixed 1.1 regression where "import *" would not work for
+        sqlalchemy.sql.expression, due to mis-spelled "any_" and "all_"
+        functions.
+
     .. change:: 3877
         :tags: bug, oracle, postgresql
         :tickets: 3877
