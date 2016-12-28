@@ -27,6 +27,7 @@
 
         Fixed bug where an INSERT from SELECT where the source table contains
         an autoincrementing Sequence would fail to compile correctly.
+
     .. change:: 3876
         :tags: bug, mssql
         :tickets: 3876
