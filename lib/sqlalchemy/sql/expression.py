@@ -15,7 +15,7 @@ class.
 """
 
 __all__ = [
-    'Alias', 'Any', 'All', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
+    'Alias', 'any_', 'all_', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
     'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 'Lateral',
     'Select',
     'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc', 'between',
