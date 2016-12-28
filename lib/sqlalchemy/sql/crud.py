@@ -603,7 +603,7 @@ def _extend_values_for_multiparams(compiler, stmt, values, kw):
                 c,
                 (_create_bind_param(
                     compiler, c, row[c.key],
-                    name="%s_m%d" % (c.key, i + 1)
+                    name="%s_m%d" % (c.key, i + 1), **kw
                 ) if elements._is_literal(row[c.key])
                     else compiler.process(
                         row[c.key].self_group(), **kw))
