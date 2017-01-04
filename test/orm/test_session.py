@@ -1,5 +1,5 @@
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, assertions
+    assert_raises_message, assertions, is_true
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing import pickleable
 from sqlalchemy.util import pickle
@@ -317,6 +317,17 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u in sess.query(User).all()
         assert u not in sess.new
 
+    def test_with_no_autoflush_after_exception(self):
+        sess = Session(autoflush=True)
+
+        assert_raises(
+            ZeroDivisionError,
+            testing.run_as_contextmanager,
+            sess.no_autoflush,
+            lambda obj: 1 / 0
+        )
+
+        is_true(sess.autoflush)
 
     def test_deleted_flag(self):
         users, User = self.tables.users, self.classes.User

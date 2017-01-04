@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: try_finally_for_noautoflush
+        :tags: bug, orm
+
+        The :attr:`.Session.no_autoflush` context manager now ensures that
+        the autoflush flag is reset within a "finally" block, so that if
+        an exception is raised within the block, the state still resets
+        appropriately.  Pull request courtesy Emin Arakelian.
+
     .. change:: 3878
         :tags: bug, sql
         :tickets: 3878

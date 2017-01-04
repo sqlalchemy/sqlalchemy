@@ -1354,8 +1354,10 @@ class Session(_SessionClassMethods):
         """
         autoflush = self.autoflush
         self.autoflush = False
-        yield self
-        self.autoflush = autoflush
+        try:
+            yield self
+        finally:
+            self.autoflush = autoflush
 
     def _autoflush(self):
         if self.autoflush and not self._flushing:
