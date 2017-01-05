@@ -814,6 +814,29 @@ This type is not included as a built-in type as it would be incompatible
 with a DBAPI that suddenly decides to support ARRAY of ENUM directly in
 a new version.
 
+.. _postgresql_array_of_json:
+
+Using JSON/JSONB with ARRAY
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Similar to using ENUM, for an ARRAY of JSON/JSONB we need to render the
+appropriate CAST, however current psycopg2 drivers seem to handle the result
+for ARRAY of JSON automatically, so the type is simpler::
+
+
+    class CastingArray(ARRAY):
+        def bind_expression(self, bindvalue):
+            return sa.cast(bindvalue, self)
+
+E.g.::
+
+    Table(
+        'mydata', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', CastingArray(JSONB))
+    )
+
+
 """
 from collections import defaultdict
 import re
