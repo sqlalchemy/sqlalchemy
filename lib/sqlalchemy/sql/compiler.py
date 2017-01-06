@@ -580,11 +580,11 @@ class SQLCompiler(Compiled):
         if self.stack and self.dialect.supports_simple_order_by_label:
             selectable = self.stack[-1]['selectable']
 
-            with_cols, only_froms = selectable._label_resolve_dict
+            with_cols, only_froms, only_cols = selectable._label_resolve_dict
             if within_columns_clause:
                 resolve_dict = only_froms
             else:
-                resolve_dict = with_cols
+                resolve_dict = only_cols
 
             # this can be None in the case that a _label_reference()
             # were subject to a replacement operation, in which case
@@ -593,11 +593,11 @@ class SQLCompiler(Compiled):
             order_by_elem = element.element._order_by_label_element
 
             if order_by_elem is not None and order_by_elem.name in \
-                    resolve_dict:
-
+                    resolve_dict and \
+                    order_by_elem.shares_lineage(
+                        resolve_dict[order_by_elem.name]):
                 kwargs['render_label_as_label'] = \
                     element.element._order_by_label_element
-
         return self.process(
             element.element, within_columns_clause=within_columns_clause,
             **kwargs)
@@ -611,7 +611,7 @@ class SQLCompiler(Compiled):
             )
 
         selectable = self.stack[-1]['selectable']
-        with_cols, only_froms = selectable._label_resolve_dict
+        with_cols, only_froms, only_cols = selectable._label_resolve_dict
         try:
             if within_columns_clause:
                 col = only_froms[element.element]
