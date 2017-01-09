@@ -1368,8 +1368,8 @@ class JoinedLoader(AbstractRelationshipLoader):
                 # name on it.
                 efm = inspect(adapter.aliased_class).\
                     _entity_for_mapper(
-                        parentmapper
-                        if parentmapper.isa(self.parent) else self.parent)
+                        localparent
+                        if localparent.isa(self.parent) else self.parent)
 
                 # look for our attribute on the adapted entity, else fall back
                 # to our straight property
