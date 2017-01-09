@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, Column, Integer, String, \
     ForeignKey, Boolean, select
 from sqlalchemy.orm import clear_mappers, Session, deferred, relationship, \
     column_property
-from sqlalchemy.testing import AssertsCompiledSQL, eq_, assert_raises
+from sqlalchemy.testing import AssertsCompiledSQL, eq_, assert_raises, ne_
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.orm import exc as orm_exc
 import warnings
@@ -679,3 +679,47 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         self.assertEqual(v1.id, v2.id)
         self.assertEqual(v2.description_, 'Bar')
         self.assertEqual(v1.description_, 'Foo')
+
+    def test_unique_identifiers_across_deletes(self):
+        """Ensure unique integer values are used for the primary table.
+
+        Checks whether the database assigns the same identifier twice
+        within the span of a table.  SQLite will do this if
+        sqlite_autoincrement is not set (e.g. SQLite's AUTOINCREMENT flag).
+
+        """
+
+        class SomeClass(Versioned, self.Base, ComparableEntity):
+            __tablename__ = 'sometable'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        self.create_tables()
+        sess = self.session
+        sc = SomeClass(name='sc1')
+        sess.add(sc)
+        sess.commit()
+
+        sess.delete(sc)
+        sess.commit()
+
+        sc2 = SomeClass(name='sc2')
+        sess.add(sc2)
+        sess.commit()
+
+        SomeClassHistory = SomeClass.__history_mapper__.class_
+
+        # only one entry should exist in the history table; one()
+        # ensures that
+        scdeleted = sess.query(SomeClassHistory).one()
+
+        # If sc2 has the same id that deleted sc1 had,
+        # it will fail when modified or deleted
+        # because of the violation of the uniqueness of the primary key on
+        # sometable_history
+        ne_(sc2.id, scdeleted.id)
+
+        # If previous assertion fails, this will also fail:
+        sc2.name = 'sc2 modified'
+        sess.commit()

@@ -41,6 +41,7 @@ def _history_mapper(local_mapper):
         orig.info['history_copy'] = col
         col.unique = False
         col.default = col.server_default = None
+        col.autoincrement = False
         return col
 
     properties = util.OrderedDict()
@@ -156,6 +157,10 @@ class Versioned(object):
             _history_mapper(mp)
             return mp
         return map
+
+    __table_args__ = {'sqlite_autoincrement': True}
+    """Use sqlite_autoincrement, to ensure unique integer values
+    are used for new rows even for rows taht have been deleted."""
 
 
 def versioned_objects(iter):

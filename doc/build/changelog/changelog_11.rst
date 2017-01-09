@@ -21,6 +21,17 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3872
+        :tags: bug, examples
+        :tickets: 3872
+
+        Fixed two issues with the versioned_history example, one is that
+        the history table now gets autoincrement=False to avoid 1.1's new
+        errors regarding composite primary keys with autoincrement; the other
+        is that the sqlite_autoincrement flag is now used to ensure on SQLite,
+        unique identifiers are used for the lifespan of a table even if
+        some rows are deleted.  Pull request courtesy Carlos García Montoro.
+
     .. change:: 3882
         :tags: bug, sql
         :tikets: 3882
