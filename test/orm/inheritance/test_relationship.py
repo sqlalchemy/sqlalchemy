@@ -1,6 +1,6 @@
 from sqlalchemy.orm import create_session, relationship, mapper, \
     contains_eager, joinedload, subqueryload, subqueryload_all,\
-    Session, aliased, with_polymorphic, joinedload_all
+    Session, aliased, with_polymorphic, joinedload_all, backref
 
 from sqlalchemy import Integer, String, ForeignKey, select, func
 from sqlalchemy.engine import default
@@ -1934,3 +1934,73 @@ class SameNameOnJoined(fixtures.MappedTest):
         s.commit()
 
         eq_(s.query(B).count(), 0)
+
+
+class BetweenSubclassJoinWExtraJoinedLoad(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsCompiledSQL):
+    """test for [ticket:3884]"""
+
+    run_define_tables = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Person(Base):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on': discriminator}
+
+        class Manager(Person):
+            __tablename__ = 'managers'
+            __mapper_args__ = {'polymorphic_identity': 'manager'}
+            id = Column(Integer, ForeignKey('people.id'), primary_key=True)
+
+        class Engineer(Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'polymorphic_identity': 'engineer'}
+            id = Column(Integer, ForeignKey('people.id'), primary_key=True)
+            primary_language = Column(String(50))
+            manager_id = Column(Integer, ForeignKey('managers.id'))
+            manager = relationship(
+                Manager, primaryjoin=(Manager.id == manager_id))
+
+        class LastSeen(Base):
+            __tablename__ = 'seen'
+            id = Column(Integer, ForeignKey('people.id'), primary_key=True)
+            timestamp = Column(Integer)
+            taggable = relationship(
+                Person, primaryjoin=(Person.id == id),
+                backref=backref("last_seen", lazy=False))
+
+    def test_query(self):
+        Engineer, Manager = self.classes("Engineer", "Manager")
+
+        sess = Session()
+
+        # eager join is both from Enginer->LastSeen as well as
+        # Manager->LastSeen.  In the case of Manager->LastSeen,
+        # Manager is internally aliased, and comes to JoinedEagerLoader
+        # with no "parent" entity but an adapter.
+        q = sess.query(Engineer, Manager).join(Engineer.manager)
+        self.assert_compile(
+            q,
+            "SELECT people.type AS people_type, engineers.id AS engineers_id, "
+            "people.id AS people_id, "
+            "engineers.primary_language AS engineers_primary_language, "
+            "engineers.manager_id AS engineers_manager_id, "
+            "people_1.type AS people_1_type, managers_1.id AS managers_1_id, "
+            "people_1.id AS people_1_id, seen_1.id AS seen_1_id, "
+            "seen_1.timestamp AS seen_1_timestamp, seen_2.id AS seen_2_id, "
+            "seen_2.timestamp AS seen_2_timestamp "
+            "FROM people JOIN engineers ON people.id = engineers.id "
+            "JOIN (people AS people_1 JOIN managers AS managers_1 "
+            "ON people_1.id = managers_1.id) "
+            "ON managers_1.id = engineers.manager_id LEFT OUTER JOIN "
+            "seen AS seen_1 ON people.id = seen_1.id LEFT OUTER JOIN "
+            "seen AS seen_2 ON people_1.id = seen_2.id"
+        )
+

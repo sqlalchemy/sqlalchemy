@@ -16,6 +16,19 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.0.17
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3884
+        :versions: 1.1.5
+
+        Fixed bug involving joined eager loading against multiple entities
+        when polymorphic inheritance is also in use which would throw
+        "'NoneType' object has no attribute 'isa'".  The issue was introduced
+        by the fix for :ticket:`3611`.
+
+.. changelog::
     :version: 1.0.16
     :released: November 15, 2016
 
