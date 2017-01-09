@@ -2275,7 +2275,7 @@ class CompoundSelect(GenerativeSelect):
         d = dict(
             (c.key, c) for c in self.c
         )
-        return d, d
+        return d, d, d
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
@@ -2948,10 +2948,11 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         only_froms = dict(
             (c.key, c) for c in
             _select_iterables(self.froms) if c._allow_label_resolve)
+        only_cols = with_cols.copy()
         for key, value in only_froms.items():
             with_cols.setdefault(key, value)
 
-        return with_cols, only_froms
+        return with_cols, only_froms, only_cols
 
     def is_derived_from(self, fromclause):
         if self in fromclause._cloned_set:

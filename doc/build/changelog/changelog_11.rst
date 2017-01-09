@@ -21,6 +21,21 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3882
+        :tags: bug, sql
+        :tikets: 3882
+
+        Fixed bug originally introduced in 0.9 via :ticket:`1068` where
+        order_by(<some Label()>) would order by the label name based on name
+        alone, that is, even if the labeled expression were not at all the same
+        expression otherwise present, implicitly or explicitly, in the
+        selectable.  The logic that orders by label now ensures that the
+        labeled expression is related to the one that resolves to that name
+        before ordering by the label name; additionally, the name has to
+        resolve to an actual label explicit in the expression elsewhere, not
+        just a column name.  This logic is carefully kept separate from the
+        order by(textual name) feature that has a slightly different purpose.
+
     .. change:: try_finally_for_noautoflush
         :tags: bug, orm
 

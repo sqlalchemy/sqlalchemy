@@ -952,6 +952,56 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect
         )
 
+        # expression isn't actually the same thing (even though label is)
+        self.assert_compile(
+            select([lab1, lab2]).order_by(
+                table1.c.myid.label('foo'),
+                desc(table1.c.name.label('bar'))
+            ),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY mytable.myid, mytable.name DESC",
+            dialect=dialect
+        )
+
+        # it's also an exact match, not aliased etc.
+        self.assert_compile(
+            select([lab1, lab2]).order_by(
+                desc(table1.alias().c.name.label('bar'))
+            ),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY mytable_1.name DESC",
+            dialect=dialect
+        )
+
+        # but! it's based on lineage
+        lab2_lineage = lab2.element._clone()
+        self.assert_compile(
+            select([lab1, lab2]).order_by(
+                desc(lab2_lineage.label('bar'))
+            ),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            "ORDER BY bar DESC",
+            dialect=dialect
+        )
+
+        # here, 'name' is implicitly available, but w/ #3882 we don't
+        # want to render a name that isn't specifically a Label elsewhere
+        # in the query
+        self.assert_compile(
+            select([table1.c.myid]).order_by(table1.c.name.label('name')),
+            "SELECT mytable.myid FROM mytable ORDER BY mytable.name"
+        )
+
+        # as well as if it doesn't match
+        self.assert_compile(
+            select([table1.c.myid]).order_by(
+                func.lower(table1.c.name).label('name')),
+            "SELECT mytable.myid FROM mytable ORDER BY lower(mytable.name)"
+        )
+
     def test_order_by_labels_disabled(self):
         lab1 = (table1.c.myid + 12).label('foo')
         lab2 = func.somefunc(table1.c.name).label('bar')
