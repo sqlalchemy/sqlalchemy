@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Provides an API for creation of custom ClauseElements and compilers.
+r"""Provides an API for creation of custom ClauseElements and compilers.
 
 Synopsis
 ========
@@ -159,7 +159,7 @@ is a "frozen" dictionary which supplies a generative ``union()`` method)::
     from sqlalchemy.sql.expression import Executable, ClauseElement
 
     class MyInsertThing(Executable, ClauseElement):
-        _execution_options = \\
+        _execution_options = \
             Executable._execution_options.union({'autocommit': True})
 
 More succinctly, if the construct is truly similar to an INSERT, UPDATE, or
@@ -362,7 +362,7 @@ accommodates two arguments::
 
 Example usage::
 
-    Session.query(Account).\\
+    Session.query(Account).\
             filter(
                 greatest(
                     Account.checking_balance,

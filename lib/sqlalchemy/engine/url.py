@@ -156,7 +156,7 @@ class URL(object):
         return dialect_cls
 
     def translate_connect_args(self, names=[], **kw):
-        """Translate url attributes into a dictionary of connection arguments.
+        r"""Translate url attributes into a dictionary of connection arguments.
 
         Returns attributes of this url (`host`, `database`, `username`,
         `password`, `port`) as a plain dictionary.  The attribute names are

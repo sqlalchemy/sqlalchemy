@@ -165,7 +165,7 @@ class Connection(Connectable):
         self.close()
 
     def execution_options(self, **opt):
-        """ Set non-SQL options for the connection which take effect
+        r""" Set non-SQL options for the connection which take effect
         during execution.
 
         The method returns a copy of this :class:`.Connection` which references
@@ -175,7 +175,7 @@ class Connection(Connectable):
         underlying resource, it's usually a good idea to ensure that the copies
         will be discarded immediately, which is implicit if used as in::
 
-            result = connection.execution_options(stream_results=True).\\
+            result = connection.execution_options(stream_results=True).\
                                 execute(stmt)
 
         Note that any key/value can be passed to
@@ -877,7 +877,7 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def execute(self, object, *multiparams, **params):
-        """Executes a SQL statement construct and returns a
+        r"""Executes a SQL statement construct and returns a
         :class:`.ResultProxy`.
 
         :param object: The statement to be executed.  May be
@@ -1459,7 +1459,7 @@ class Connection(Connectable):
             util.reraise(*exc_info)
 
     def transaction(self, callable_, *args, **kwargs):
-        """Execute the given function within a transaction boundary.
+        r"""Execute the given function within a transaction boundary.
 
         The function is passed this :class:`.Connection`
         as the first argument, followed by the given \*args and \**kwargs,
@@ -1510,7 +1510,7 @@ class Connection(Connectable):
                 trans.rollback()
 
     def run_callable(self, callable_, *args, **kwargs):
-        """Given a callable object or function, execute it, passing
+        r"""Given a callable object or function, execute it, passing
         a :class:`.Connection` as the first argument.
 
         The given \*args and \**kwargs are passed subsequent
@@ -1769,7 +1769,7 @@ class Engine(Connectable, log.Identified):
             self.update_execution_options(**execution_options)
 
     def update_execution_options(self, **opt):
-        """Update the default execution_options dictionary
+        r"""Update the default execution_options dictionary
         of this :class:`.Engine`.
 
         The given keys/values in \**opt are added to the
@@ -1978,7 +1978,7 @@ class Engine(Connectable, log.Identified):
         return Engine._trans_ctx(conn, trans, close_with_result)
 
     def transaction(self, callable_, *args, **kwargs):
-        """Execute the given function within a transaction boundary.
+        r"""Execute the given function within a transaction boundary.
 
         The function is passed a :class:`.Connection` newly procured
         from :meth:`.Engine.contextual_connect` as the first argument,
@@ -2020,7 +2020,7 @@ class Engine(Connectable, log.Identified):
             return conn.transaction(callable_, *args, **kwargs)
 
     def run_callable(self, callable_, *args, **kwargs):
-        """Given a callable object or function, execute it, passing
+        r"""Given a callable object or function, execute it, passing
         a :class:`.Connection` as the first argument.
 
         The given \*args and \**kwargs are passed subsequent

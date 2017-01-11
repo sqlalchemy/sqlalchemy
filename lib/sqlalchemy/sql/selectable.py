@@ -103,7 +103,7 @@ def _offset_or_limit_clause_asint(clause, attrname):
 
 
 def subquery(alias, *args, **kwargs):
-    """Return an :class:`.Alias` object derived
+    r"""Return an :class:`.Alias` object derived
     from a :class:`.Select`.
 
     name
@@ -244,7 +244,7 @@ class HasPrefixes(object):
 
     @_generative
     def prefix_with(self, *expr, **kw):
-        """Add one or more expressions following the statement keyword, i.e.
+        r"""Add one or more expressions following the statement keyword, i.e.
         SELECT, INSERT, UPDATE, or DELETE. Generative.
 
         This is used to support backend-specific prefix keywords such as those
@@ -281,7 +281,7 @@ class HasSuffixes(object):
 
     @_generative
     def suffix_with(self, *expr, **kw):
-        """Add one or more expressions following the statement as a whole.
+        r"""Add one or more expressions following the statement as a whole.
 
         This is used to support backend-specific suffix keywords on
         certain constructs.
@@ -1055,14 +1055,14 @@ class Join(FromClause):
                 "join explicitly." % (a.description, b.description))
 
     def select(self, whereclause=None, **kwargs):
-        """Create a :class:`.Select` from this :class:`.Join`.
+        r"""Create a :class:`.Select` from this :class:`.Join`.
 
         The equivalent long-hand form, given a :class:`.Join` object
         ``j``, is::
 
             from sqlalchemy import select
-            j = select([j.left, j.right], **kw).\\
-                        where(whereclause).\\
+            j = select([j.left, j.right], **kw).\
+                        where(whereclause).\
                         select_from(j)
 
         :param whereclause: the WHERE criterion that will be sent to
@@ -1082,7 +1082,7 @@ class Join(FromClause):
 
     @util.dependencies("sqlalchemy.sql.util")
     def alias(self, sqlutil, name=None, flat=False):
-        """return an alias of this :class:`.Join`.
+        r"""return an alias of this :class:`.Join`.
 
         The default behavior here is to first produce a SELECT
         construct from this :class:`.Join`, then to produce an
@@ -1107,9 +1107,9 @@ class Join(FromClause):
 
             from sqlalchemy import select, alias
             j = alias(
-                select([j.left, j.right]).\\
-                    select_from(j).\\
-                    with_labels(True).\\
+                select([j.left, j.right]).\
+                    select_from(j).\
+                    with_labels(True).\
                     correlate(False),
                 name=name
             )
@@ -1438,7 +1438,7 @@ class HasCTE(object):
     """
 
     def cte(self, name=None, recursive=False):
-        """Return a new :class:`.CTE`, or Common Table Expression instance.
+        r"""Return a new :class:`.CTE`, or Common Table Expression instance.
 
         Common table expressions are a SQL standard whereby SELECT
         statements can draw upon secondary statements specified along
@@ -1493,7 +1493,7 @@ class HasCTE(object):
                             ]).group_by(orders.c.region).cte("regional_sales")
 
 
-            top_regions = select([regional_sales.c.region]).\\
+            top_regions = select([regional_sales.c.region]).\
                     where(
                         regional_sales.c.total_sales >
                         select([
@@ -1528,8 +1528,8 @@ class HasCTE(object):
             included_parts = select([
                                 parts.c.sub_part,
                                 parts.c.part,
-                                parts.c.quantity]).\\
-                                where(parts.c.part=='our part').\\
+                                parts.c.quantity]).\
+                                where(parts.c.part=='our part').\
                                 cte(recursive=True)
 
 
@@ -1548,7 +1548,7 @@ class HasCTE(object):
                         included_parts.c.sub_part,
                         func.sum(included_parts.c.quantity).
                           label('total_quantity')
-                    ]).\\
+                    ]).\
                     group_by(included_parts.c.sub_part)
 
             result = conn.execute(statement).fetchall()
@@ -2279,7 +2279,7 @@ class CompoundSelect(GenerativeSelect):
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
-        """Return a ``UNION`` of multiple selectables.
+        r"""Return a ``UNION`` of multiple selectables.
 
         The returned object is an instance of
         :class:`.CompoundSelect`.
@@ -2299,7 +2299,7 @@ class CompoundSelect(GenerativeSelect):
 
     @classmethod
     def _create_union_all(cls, *selects, **kwargs):
-        """Return a ``UNION ALL`` of multiple selectables.
+        r"""Return a ``UNION ALL`` of multiple selectables.
 
         The returned object is an instance of
         :class:`.CompoundSelect`.
@@ -2319,7 +2319,7 @@ class CompoundSelect(GenerativeSelect):
 
     @classmethod
     def _create_except(cls, *selects, **kwargs):
-        """Return an ``EXCEPT`` of multiple selectables.
+        r"""Return an ``EXCEPT`` of multiple selectables.
 
         The returned object is an instance of
         :class:`.CompoundSelect`.
@@ -2336,7 +2336,7 @@ class CompoundSelect(GenerativeSelect):
 
     @classmethod
     def _create_except_all(cls, *selects, **kwargs):
-        """Return an ``EXCEPT ALL`` of multiple selectables.
+        r"""Return an ``EXCEPT ALL`` of multiple selectables.
 
         The returned object is an instance of
         :class:`.CompoundSelect`.
@@ -2353,7 +2353,7 @@ class CompoundSelect(GenerativeSelect):
 
     @classmethod
     def _create_intersect(cls, *selects, **kwargs):
-        """Return an ``INTERSECT`` of multiple selectables.
+        r"""Return an ``INTERSECT`` of multiple selectables.
 
         The returned object is an instance of
         :class:`.CompoundSelect`.
@@ -2370,7 +2370,7 @@ class CompoundSelect(GenerativeSelect):
 
     @classmethod
     def _create_intersect_all(cls, *selects, **kwargs):
-        """Return an ``INTERSECT ALL`` of multiple selectables.
+        r"""Return an ``INTERSECT ALL`` of multiple selectables.
 
         The returned object is an instance of
         :class:`.CompoundSelect`.
@@ -2874,7 +2874,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def with_hint(self, selectable, text, dialect_name='*'):
-        """Add an indexing or other executional context hint for the given
+        r"""Add an indexing or other executional context hint for the given
         selectable to this :class:`.Select`.
 
         The text of the hint is rendered in the appropriate
@@ -2886,7 +2886,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         the table or alias. E.g. when using Oracle, the
         following::
 
-            select([mytable]).\\
+            select([mytable]).\
                 with_hint(mytable, "index(%(name)s ix_mytable)")
 
         Would render SQL as::
@@ -2897,8 +2897,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         hint to a particular backend. Such as, to add hints for both Oracle
         and Sybase simultaneously::
 
-            select([mytable]).\\
-                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\\
+            select([mytable]).\
+                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
 
         .. seealso::
@@ -3060,7 +3060,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def with_only_columns(self, columns):
-        """Return a new :func:`.select` construct with its columns
+        r"""Return a new :func:`.select` construct with its columns
         clause replaced with the given columns.
 
         .. versionchanged:: 0.7.3
@@ -3111,7 +3111,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         else (i.e. not in the WHERE clause, etc.) is to set it using
         :meth:`.Select.select_from`::
 
-            >>> s1 = select([table1.c.a, table2.c.b]).\\
+            >>> s1 = select([table1.c.a, table2.c.b]).\
             ...         select_from(table1.join(table2,
             ...                 table1.c.a==table2.c.a))
             >>> s2 = s1.with_only_columns([table2.c.b])
@@ -3174,7 +3174,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def distinct(self, *expr):
-        """Return a new select() construct which will apply DISTINCT to its
+        r"""Return a new select() construct which will apply DISTINCT to its
         columns clause.
 
         :param \*expr: optional column expressions.  When present,
@@ -3193,7 +3193,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def select_from(self, fromclause):
-        """return a new :func:`.select` construct with the
+        r"""return a new :func:`.select` construct with the
         given FROM expression
         merged into its list of FROM objects.
 
@@ -3201,7 +3201,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
             table1 = table('t1', column('a'))
             table2 = table('t2', column('b'))
-            s = select([table1.c.a]).\\
+            s = select([table1.c.a]).\
                 select_from(
                     table1.join(table2, table1.c.a==table2.c.b)
                 )
@@ -3227,7 +3227,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def correlate(self, *fromclauses):
-        """return a new :class:`.Select` which will correlate the given FROM
+        r"""return a new :class:`.Select` which will correlate the given FROM
         clauses to that of an enclosing :class:`.Select`.
 
         Calling this method turns off the :class:`.Select` object's
@@ -3290,7 +3290,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def correlate_except(self, *fromclauses):
-        """return a new :class:`.Select` which will omit the given FROM
+        r"""return a new :class:`.Select` which will omit the given FROM
         clauses from the auto-correlation process.
 
         Calling :meth:`.Select.correlate_except` turns off the

@@ -81,7 +81,7 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
     where = None
 
     def __init__(self, *elements, **kw):
-        """
+        r"""
         :param \*elements:
           A sequence of two tuples of the form ``(column, operator)`` where
           column must be a column name or Column object and operator must

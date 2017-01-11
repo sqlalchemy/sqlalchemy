@@ -72,7 +72,7 @@ class CascadeOptions(frozenset):
     def from_string(cls, arg):
         values = [
             c for c
-            in re.split('\s*,\s*', arg or "")
+            in re.split(r'\s*,\s*', arg or "")
             if c
         ]
         return cls(values)
@@ -309,7 +309,7 @@ class ORMAdapter(sql_util.ColumnAdapter):
 
 
 class AliasedClass(object):
-    """Represents an "aliased" form of a mapped class for usage with Query.
+    r"""Represents an "aliased" form of a mapped class for usage with Query.
 
     The ORM equivalent of a :func:`sqlalchemy.sql.expression.alias`
     construct, this object mimics the mapped class using a
@@ -323,8 +323,8 @@ class AliasedClass(object):
 
         # find all pairs of users with the same name
         user_alias = aliased(User)
-        session.query(User, user_alias).\\
-                        join((user_alias, User.id > user_alias.id)).\\
+        session.query(User, user_alias).\
+                        join((user_alias, User.id > user_alias.id)).\
                         filter(User.name==user_alias.name)
 
     The resulting object is an instance of :class:`.AliasedClass`.
@@ -888,7 +888,7 @@ class _ORMJoin(expression.Join):
 def join(
         left, right, onclause=None, isouter=False,
         full=False, join_to_left=None):
-    """Produce an inner join between left and right clauses.
+    r"""Produce an inner join between left and right clauses.
 
     :func:`.orm.join` is an extension to the core join interface
     provided by :func:`.sql.expression.join()`, where the
@@ -907,15 +907,15 @@ def join(
     :meth:`.Query.select_from` method, as in::
 
         from sqlalchemy.orm import join
-        session.query(User).\\
-            select_from(join(User, Address, User.addresses)).\\
+        session.query(User).\
+            select_from(join(User, Address, User.addresses)).\
             filter(Address.email_address=='foo@bar.com')
 
     In modern SQLAlchemy the above join can be written more
     succinctly as::
 
-        session.query(User).\\
-                join(User.addresses).\\
+        session.query(User).\
+                join(User.addresses).\
                 filter(Address.email_address=='foo@bar.com')
 
     See :meth:`.Query.join` for information on modern usage

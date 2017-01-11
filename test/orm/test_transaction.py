@@ -490,9 +490,9 @@ class SessionTransactionTest(FixtureTest):
         trans2.rollback()
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "This Session's transaction has been rolled back by a nested "
-            "rollback\(\) call.  To begin a new transaction, issue "
-            "Session.rollback\(\) first.",
+            r"This Session's transaction has been rolled back by a nested "
+            r"rollback\(\) call.  To begin a new transaction, issue "
+            r"Session.rollback\(\) first.",
             trans.commit
         )
 
@@ -506,10 +506,10 @@ class SessionTransactionTest(FixtureTest):
             trans2.rollback(_capture_exception=True)
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "This Session's transaction has been rolled back due to a "
-            "previous exception during flush. To begin a new transaction "
-            "with this Session, first issue Session.rollback\(\). "
-            "Original exception was: test",
+            r"This Session's transaction has been rolled back due to a "
+            r"previous exception during flush. To begin a new transaction "
+            r"with this Session, first issue Session.rollback\(\). "
+            r"Original exception was: test",
             trans.commit
         )
 

@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Provide support for tracking of in-place changes to scalar values,
+r"""Provide support for tracking of in-place changes to scalar values,
 which are propagated into ORM change events on owning parent objects.
 
 .. versionadded:: 0.7 :mod:`sqlalchemy.ext.mutable` replaces SQLAlchemy's
@@ -252,8 +252,8 @@ and to also route attribute set events via ``__setattr__`` to the
             return self.x, self.y
 
         def __eq__(self, other):
-            return isinstance(other, Point) and \\
-                other.x == self.x and \\
+            return isinstance(other, Point) and \
+                other.x == self.x and \
                 other.y == self.y
 
         def __ne__(self, other):

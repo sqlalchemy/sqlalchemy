@@ -1409,7 +1409,7 @@ class PositionalTextTest(fixtures.TablesTest):
 
         with assertions.expect_warnings(
                 r"Number of columns in textual SQL \(4\) is "
-                "smaller than number of columns requested \(2\)"):
+                r"smaller than number of columns requested \(2\)"):
             result = testing.db.execute(stmt)
 
         row = result.first()

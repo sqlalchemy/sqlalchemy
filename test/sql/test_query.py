@@ -250,7 +250,7 @@ class QueryTest(fixtures.TestBase):
 
         a_eq(prep(r'select \foo'), r'select \foo')
         a_eq(prep(r"time='12\:30:00'"), r"time='12\:30:00'")
-        a_eq(prep(":this \:that"), "? :that")
+        a_eq(prep(r":this \:that"), "? :that")
         a_eq(prep(r"(\:that$other)"), "(:that$other)")
         a_eq(prep(r".\:that$ :other."), ".:that$ ?.")
 
