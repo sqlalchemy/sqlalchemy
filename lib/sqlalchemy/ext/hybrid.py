@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Define attributes on ORM-mapped classes that have "hybrid" behavior.
+r"""Define attributes on ORM-mapped classes that have "hybrid" behavior.
 
 "hybrid" means the attribute has distinct behaviors defined at the
 class level and at the instance level.
@@ -245,7 +245,7 @@ However, at the expression level, it's expected that the ``User`` class will
 be used in an appropriate context such that an appropriate join to
 ``SavingsAccount`` will be present::
 
-    >>> print Session().query(User, User.balance).\\
+    >>> print Session().query(User, User.balance).\
     ...     join(User.accounts).filter(User.balance > 5000)
     SELECT "user".id AS user_id, "user".name AS user_name,
     account.balance AS account_balance
@@ -303,8 +303,8 @@ we can adjust our ``SavingsAccount`` example to aggregate the balances for
 
         @balance.expression
         def balance(cls):
-            return select([func.sum(SavingsAccount.balance)]).\\
-                    where(SavingsAccount.user_id==cls.id).\\
+            return select([func.sum(SavingsAccount.balance)]).\
+                    where(SavingsAccount.user_id==cls.id).\
                     label('total_balance')
 
 The above recipe will give us the ``balance`` column which renders
@@ -448,7 +448,7 @@ SQL expression versus SQL expression::
     >>> sw2 = aliased(SearchWord)
     >>> print Session().query(
     ...                    sw1.word_insensitive,
-    ...                    sw2.word_insensitive).\\
+    ...                    sw2.word_insensitive).\
     ...                        filter(
     ...                            sw1.word_insensitive > sw2.word_insensitive
     ...                        )
@@ -537,7 +537,7 @@ filtered based on the given criterion::
             def transform(q):
                 cls = self.__clause_element__()
                 parent_alias = aliased(cls)
-                return q.join(parent_alias, cls.parent).\\
+                return q.join(parent_alias, cls.parent).\
                             filter(op(parent_alias.parent, other))
             return transform
 
@@ -573,8 +573,8 @@ into :class:`.Query.filter`:
 
     >>> from sqlalchemy.orm import Session
     >>> session = Session()
-    {sql}>>> session.query(Node).\\
-    ...        with_transformation(Node.grandparent==Node(id=5)).\\
+    {sql}>>> session.query(Node).\
+    ...        with_transformation(Node.grandparent==Node(id=5)).\
     ...        all()
     SELECT node.id AS node_id, node.parent_id AS node_parent_id
     FROM node JOIN node AS node_1 ON node_1.id = node.parent_id
@@ -616,8 +616,8 @@ with each class::
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> session.query(Node).\\
-    ...            with_transformation(Node.grandparent.join).\\
+    {sql}>>> session.query(Node).\
+    ...            with_transformation(Node.grandparent.join).\
     ...            filter(Node.grandparent==Node(id=5))
     SELECT node.id AS node_id, node.parent_id AS node_parent_id
     FROM node JOIN node AS node_1 ON node_1.id = node.parent_id

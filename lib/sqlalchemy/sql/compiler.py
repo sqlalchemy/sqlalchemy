@@ -252,7 +252,7 @@ class Compiled(object):
 class TypeCompiler(util.with_metaclass(util.EnsureKWArgType, object)):
     """Produces DDL specification for TypeEngine objects."""
 
-    ensure_kwarg = 'visit_\w+'
+    ensure_kwarg = r'visit_\w+'
 
     def __init__(self, dialect):
         self.dialect = dialect

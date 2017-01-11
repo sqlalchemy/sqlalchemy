@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: sqlite
     :name: SQLite
 
@@ -386,7 +386,7 @@ The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
         union
         select x.a, x.b from x where a=2
     ''')
-    assert [c[0] for c in cursor.description] == ['a', 'b'], \\
+    assert [c[0] for c in cursor.description] == ['a', 'b'], \
         [c[0] for c in cursor.description]
 
 The second assertion fails::
@@ -523,7 +523,7 @@ class _DateTimeMixin(object):
 
 
 class DATETIME(_DateTimeMixin, sqltypes.DateTime):
-    """Represent a Python datetime object in SQLite using a string.
+    r"""Represent a Python datetime object in SQLite using a string.
 
     The default string storage format is::
 
@@ -617,7 +617,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
 
 class DATE(_DateTimeMixin, sqltypes.Date):
-    """Represent a Python date object in SQLite using a string.
+    r"""Represent a Python date object in SQLite using a string.
 
     The default string storage format is::
 
@@ -678,7 +678,7 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
 
 class TIME(_DateTimeMixin, sqltypes.Time):
-    """Represent a Python time object in SQLite using a string.
+    r"""Represent a Python time object in SQLite using a string.
 
     The default string storage format is::
 
@@ -1328,9 +1328,9 @@ class SQLiteDialect(default.DefaultDialect):
 
         def parse_fks():
             FK_PATTERN = (
-                '(?:CONSTRAINT (\w+) +)?'
-                'FOREIGN KEY *\( *(.+?) *\) +'
-                'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\((.+?)\)'
+                r'(?:CONSTRAINT (\w+) +)?'
+                r'FOREIGN KEY *\( *(.+?) *\) +'
+                r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\((.+?)\)'
             )
 
             for match in re.finditer(FK_PATTERN, table_data, re.I):
@@ -1399,10 +1399,10 @@ class SQLiteDialect(default.DefaultDialect):
         unique_constraints = []
 
         def parse_uqs():
-            UNIQUE_PATTERN = '(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
+            UNIQUE_PATTERN = r'(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
-                '(?:(".+?")|([a-z0-9]+)) '
-                '+[a-z0-9_ ]+? +UNIQUE')
+                r'(?:(".+?")|([a-z0-9]+)) '
+                r'+[a-z0-9_ ]+? +UNIQUE')
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
                 name, cols = match.group(1, 2)

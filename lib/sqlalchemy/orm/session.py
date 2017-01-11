@@ -578,7 +578,7 @@ class Session(_SessionClassMethods):
                  weak_identity_map=True, binds=None, extension=None,
                  info=None,
                  query_cls=query.Query):
-        """Construct a new Session.
+        r"""Construct a new Session.
 
         See also the :class:`.sessionmaker` function which is used to
         generate a :class:`.Session`-producing callable with a given
@@ -887,7 +887,7 @@ class Session(_SessionClassMethods):
                    close_with_result=False,
                    execution_options=None,
                    **kw):
-        """Return a :class:`.Connection` object corresponding to this
+        r"""Return a :class:`.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
 
         If this :class:`.Session` is configured with ``autocommit=False``,
@@ -966,7 +966,7 @@ class Session(_SessionClassMethods):
             return conn
 
     def execute(self, clause, params=None, mapper=None, bind=None, **kw):
-        """Execute a SQL expression construct or string statement within
+        r"""Execute a SQL expression construct or string statement within
         the current transaction.
 
         Returns a :class:`.ResultProxy` representing
@@ -2419,7 +2419,7 @@ class Session(_SessionClassMethods):
 
     def is_modified(self, instance, include_collections=True,
                     passive=True):
-        """Return ``True`` if the given instance has locally
+        r"""Return ``True`` if the given instance has locally
         modified attributes.
 
         This method retrieves the history for each instrumented
@@ -2477,6 +2477,7 @@ class Session(_SessionClassMethods):
          or many-to-one foreign keys) that would result in an UPDATE for this
          instance upon flush.
         :param passive:
+
          .. versionchanged:: 0.8
              Ignored for backwards compatibility.
              When using SQLAlchemy 0.7 and earlier, this flag should always
@@ -2681,7 +2682,7 @@ class sessionmaker(_SessionClassMethods):
                  autocommit=False,
                  expire_on_commit=True,
                  info=None, **kw):
-        """Construct a new :class:`.sessionmaker`.
+        r"""Construct a new :class:`.sessionmaker`.
 
         All arguments here except for ``class_`` correspond to arguments
         accepted by :class:`.Session` directly.  See the

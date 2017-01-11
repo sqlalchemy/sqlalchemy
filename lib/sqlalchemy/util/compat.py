@@ -8,6 +8,7 @@
 """Handle Python version/platform incompatibilities."""
 
 import sys
+from contextlib import contextmanager
 
 try:
     import threading
@@ -231,35 +232,38 @@ def with_metaclass(meta, *bases):
     return metaclass('temporary_class', None, {})
 
 
-from contextlib import contextmanager
 
-try:
-    from contextlib import nested
-except ImportError:
-    # removed in py3k, credit to mitsuhiko for
-    # workaround
 
-    @contextmanager
-    def nested(*managers):
-        exits = []
-        vars = []
-        exc = (None, None, None)
-        try:
-            for mgr in managers:
-                exit = mgr.__exit__
-                enter = mgr.__enter__
-                vars.append(enter())
-                exits.append(exit)
-            yield vars
-        except:
-            exc = sys.exc_info()
-        finally:
-            while exits:
-                exit = exits.pop()
-                try:
-                    if exit(*exc):
-                        exc = (None, None, None)
-                except:
-                    exc = sys.exc_info()
-            if exc != (None, None, None):
-                reraise(exc[0], exc[1], exc[2])
+@contextmanager
+def nested(*managers):
+    """Implement contextlib.nested, mostly for unit tests.
+
+    As tests still need to run on py2.6 we can't use multiple-with yet.
+
+    Function is removed in py3k but also emits deprecation warning in 2.7
+    so just roll it here for everyone.
+
+    """
+
+    exits = []
+    vars = []
+    exc = (None, None, None)
+    try:
+        for mgr in managers:
+            exit = mgr.__exit__
+            enter = mgr.__enter__
+            vars.append(enter())
+            exits.append(exit)
+        yield vars
+    except:
+        exc = sys.exc_info()
+    finally:
+        while exits:
+            exit = exits.pop()
+            try:
+                if exit(*exc):
+                    exc = (None, None, None)
+            except:
+                exc = sys.exc_info()
+        if exc != (None, None, None):
+            reraise(exc[0], exc[1], exc[2])

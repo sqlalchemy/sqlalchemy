@@ -765,8 +765,8 @@ class ConfigurationTest(fixtures.MappedTest):
             # renders here, so the "%" operator in the string needs to
             # apply the tuple also
             r"Composite expects Column objects or mapped "
-            "attributes/attribute names as "
-            "arguments, got: \(Column",
+            r"attributes/attribute names as "
+            r"arguments, got: \(Column",
             configure_mappers
         )
 

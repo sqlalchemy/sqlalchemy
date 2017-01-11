@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 
 .. dialect:: firebird
     :name: Firebird
@@ -55,13 +55,13 @@ extends that to deletes and updates. This is generically exposed by
 the SQLAlchemy ``returning()`` method, such as::
 
     # INSERT..RETURNING
-    result = table.insert().returning(table.c.col1, table.c.col2).\\
+    result = table.insert().returning(table.c.col1, table.c.col2).\
                    values(name='foo')
     print result.fetchall()
 
     # UPDATE..RETURNING
-    raises = empl.update().returning(empl.c.id, empl.c.salary).\\
-                  where(empl.c.sales>100).\\
+    raises = empl.update().returning(empl.c.id, empl.c.salary).\
+                  where(empl.c.sales>100).\
                   values(dict(salary=empl.c.salary * 1.1))
     print raises.fetchall()
 

@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: sqlite+pysqlite
     :name: pysqlite
     :dbapi: sqlite3
@@ -58,7 +58,7 @@ To use a Windows path, regular drive specifications and backslashes can be
 used. Double backslashes are probably needed::
 
     # absolute path on Windows
-    e = create_engine('sqlite:///C:\\\\path\\\\to\\\\database.db')
+    e = create_engine('sqlite:///C:\\path\\to\\database.db')
 
 The sqlite ``:memory:`` identifier is the default if no filepath is
 present.  Specify ``sqlite://`` and nothing else::

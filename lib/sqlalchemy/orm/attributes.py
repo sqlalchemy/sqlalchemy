@@ -382,7 +382,7 @@ class AttributeImpl(object):
                  parent_token=None, expire_missing=True,
                  send_modified_events=True,
                  **kwargs):
-        """Construct an AttributeImpl.
+        r"""Construct an AttributeImpl.
 
         \class_
           associated class

@@ -3594,8 +3594,8 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.InvalidRequestError,
-            "Naming convention including \%\(constraint_name\)s token "
-            "requires that constraint is explicitly named.",
+            r"Naming convention including \%\(constraint_name\)s token "
+            r"requires that constraint is explicitly named.",
             schema.CreateTable(u1).compile
         )
 

@@ -129,7 +129,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         )
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Can't call inserted_primary_key when returning\(\) is used.",
+            r"Can't call inserted_primary_key when returning\(\) is used.",
             getattr, result, "inserted_primary_key"
         )
 

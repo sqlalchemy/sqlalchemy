@@ -630,7 +630,7 @@ class MapperEvents(event.Events):
         _MapperEventsHold._clear()
 
     def instrument_class(self, mapper, class_):
-        """Receive a class when the mapper is first constructed,
+        r"""Receive a class when the mapper is first constructed,
         before instrumentation is applied to the mapped class.
 
         This event is the earliest phase of mapper construction.
@@ -653,7 +653,7 @@ class MapperEvents(event.Events):
         """
 
     def mapper_configured(self, mapper, class_):
-        """Called when a specific mapper has completed its own configuration
+        r"""Called when a specific mapper has completed its own configuration
         within the scope of the :func:`.configure_mappers` call.
 
         The :meth:`.MapperEvents.mapper_configured` event is invoked

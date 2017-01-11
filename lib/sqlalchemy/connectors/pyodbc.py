@@ -187,7 +187,7 @@ class PyODBCConnector(Connector):
         # queries.
         dbapi_con = connection.connection
         version = []
-        r = re.compile('[.\-]')
+        r = re.compile(r'[.\-]')
         for n in r.split(dbapi_con.getinfo(self.dbapi.SQL_DBMS_VER)):
             try:
                 version.append(int(n))

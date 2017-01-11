@@ -114,9 +114,9 @@ def py_fallback():
             return value and True or False
 
     DATETIME_RE = re.compile(
-        "(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
-    TIME_RE = re.compile("(\d+):(\d+):(\d+)(?:\.(\d+))?")
-    DATE_RE = re.compile("(\d+)-(\d+)-(\d+)")
+        r"(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
+    TIME_RE = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
+    DATE_RE = re.compile(r"(\d+)-(\d+)-(\d+)")
 
     str_to_datetime = str_to_datetime_processor_factory(DATETIME_RE,
                                                         datetime.datetime)

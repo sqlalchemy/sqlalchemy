@@ -1469,8 +1469,8 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         p1.data = 3
         assert_raises_message(
             orm_exc.StaleDataError,
-            "UPDATE statement on table 'parent' expected to "
-            "update 1 row\(s\); 0 were matched.",
+            r"UPDATE statement on table 'parent' expected to "
+            r"update 1 row\(s\); 0 were matched.",
             sess.flush
         )
 
@@ -1498,8 +1498,8 @@ class BasicStaleChecksTest(fixtures.MappedTest):
                 p1.data = 3
                 assert_raises_message(
                     orm_exc.StaleDataError,
-                    "UPDATE statement on table 'parent' expected to "
-                    "update 1 row\(s\); 0 were matched.",
+                    r"UPDATE statement on table 'parent' expected to "
+                    r"update 1 row\(s\); 0 were matched.",
                     sess.flush
                 )
 
@@ -1559,8 +1559,8 @@ class BasicStaleChecksTest(fixtures.MappedTest):
                 p1.data = literal(1)
                 assert_raises_message(
                     orm_exc.StaleDataError,
-                    "UPDATE statement on table 'parent' expected to "
-                    "update 1 row\(s\); 0 were matched.",
+                    r"UPDATE statement on table 'parent' expected to "
+                    r"update 1 row\(s\); 0 were matched.",
                     sess.flush
                 )
 
@@ -1579,8 +1579,8 @@ class BasicStaleChecksTest(fixtures.MappedTest):
 
         assert_raises_message(
             exc.SAWarning,
-            "DELETE statement on table 'parent' expected to "
-            "delete 2 row\(s\); 0 were matched.",
+            r"DELETE statement on table 'parent' expected to "
+            r"delete 2 row\(s\); 0 were matched.",
             sess.flush
         )
 

@@ -20,6 +20,13 @@ def setup_filters():
     warnings.filterwarnings('error', category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings('error', category=sa_exc.SAWarning)
 
+    # some selected deprecations...
+    warnings.filterwarnings('error', category=DeprecationWarning)
+    warnings.filterwarnings(
+        "ignore", category=DeprecationWarning, message=".*StopIteration")
+    warnings.filterwarnings(
+        "ignore", category=DeprecationWarning, message=".*inspect.getargspec")
+
 
 def assert_warnings(fn, warning_msgs, regex=False):
     """Assert that each of the given warnings are emitted by fn.

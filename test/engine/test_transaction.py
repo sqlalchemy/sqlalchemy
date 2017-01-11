@@ -227,7 +227,7 @@ class TransactionTest(fixtures.TestBase):
             with expect_warnings(
                 "An exception has occurred during handling of a previous "
                 "exception.  The previous exception "
-                "is:.*..SQL\:.*RELEASE SAVEPOINT"
+                r"is:.*..SQL\:.*RELEASE SAVEPOINT"
             ):
                 def go():
                     with connection.begin_nested() as savepoint:
@@ -235,7 +235,7 @@ class TransactionTest(fixtures.TestBase):
                             connection, savepoint._savepoint)
                 assert_raises_message(
                     exc.DBAPIError,
-                    ".*SQL\:.*ROLLBACK TO SAVEPOINT",
+                    r".*SQL\:.*ROLLBACK TO SAVEPOINT",
                     go
                 )
 

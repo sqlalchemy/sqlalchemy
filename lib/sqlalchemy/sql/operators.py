@@ -160,7 +160,7 @@ class Operators(object):
         return against
 
     def operate(self, op, *other, **kwargs):
-        """Operate on an argument.
+        r"""Operate on an argument.
 
         This is the lowest level of operation, raises
         :class:`NotImplementedError` by default.

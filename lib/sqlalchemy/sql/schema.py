@@ -120,7 +120,7 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
 
 class Table(DialectKWArgs, SchemaItem, TableClause):
-    """Represent a table in a database.
+    r"""Represent a table in a database.
 
     e.g.::
 
@@ -894,7 +894,7 @@ class Column(SchemaItem, ColumnClause):
     __visit_name__ = 'column'
 
     def __init__(self, *args, **kwargs):
-        """
+        r"""
         Construct a new ``Column`` object.
 
         :param name: The name of this column as represented in the database.
@@ -1498,7 +1498,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                  initially=None, link_to_name=False, match=None,
                  info=None,
                  **dialect_kw):
-        """
+        r"""
         Construct a column-level FOREIGN KEY.
 
         The :class:`.ForeignKey` object when constructed generates a
@@ -2399,7 +2399,7 @@ class Constraint(DialectKWArgs, SchemaItem):
     def __init__(self, name=None, deferrable=None, initially=None,
                  _create_rule=None, info=None, _type_bound=False,
                  **dialect_kw):
-        """Create a SQL constraint.
+        r"""Create a SQL constraint.
 
         :param name:
           Optional, the in-database name of this ``Constraint``.
@@ -2579,7 +2579,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
     """A constraint that proxies a ColumnCollection."""
 
     def __init__(self, *columns, **kw):
-        """
+        r"""
         :param \*columns:
           A sequence of column names or Column objects.
 
@@ -2646,7 +2646,7 @@ class CheckConstraint(ColumnCollectionConstraint):
     def __init__(self, sqltext, name=None, deferrable=None,
                  initially=None, table=None, info=None, _create_rule=None,
                  _autoattach=True, _type_bound=False):
-        """Construct a CHECK constraint.
+        r"""Construct a CHECK constraint.
 
         :param sqltext:
           A string containing the constraint definition, which will be used
@@ -2734,7 +2734,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                  ondelete=None, deferrable=None, initially=None,
                  use_alter=False, link_to_name=False, match=None,
                  table=None, info=None, **dialect_kw):
-        """Construct a composite-capable FOREIGN KEY.
+        r"""Construct a composite-capable FOREIGN KEY.
 
         :param columns: A sequence of local column names. The named columns
           must be defined and present in the parent Table. The names should
@@ -3183,7 +3183,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
     __visit_name__ = 'index'
 
     def __init__(self, name, *expressions, **kw):
-        """Construct an index object.
+        r"""Construct an index object.
 
         :param name:
           The name of the index
@@ -3607,7 +3607,7 @@ class MetaData(SchemaItem):
                 extend_existing=False,
                 autoload_replace=True,
                 **dialect_kwargs):
-        """Load all available table definitions from the database.
+        r"""Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
         table available in the database but not yet present in the
