@@ -683,6 +683,18 @@ class InsertImplicitReturningTest(
                 'othername_m0': 'foo'}
         )
 
+    def test_insert_multiple_values_literal_binds(self):
+        ins = self.tables.myothertable.insert().values([
+            {"othername": "foo"},
+            {"othername": "bar"},
+        ])
+        self.assert_compile(
+            ins,
+            "INSERT INTO myothertable (othername) VALUES ('foo'), ('bar')",
+            checkparams={},
+            literal_binds=True
+        )
+
     def test_insert_multiple_values_return_defaults(self):
         # TODO: not sure if this should raise an
         # error or what

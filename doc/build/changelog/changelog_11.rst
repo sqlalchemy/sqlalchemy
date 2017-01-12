@@ -63,6 +63,14 @@
         sqlalchemy.sql.expression, due to mis-spelled "any_" and "all_"
         functions.
 
+    .. change:: 3880
+        :tags: bg, sql
+        :tickets: 3880
+
+        Fixed bug where literal_binds compiler flag was not honored by the
+        :class:`.Insert` construct for the "multiple values" feature; the
+        subsequent values are now rendered as literals.
+
     .. change:: 3877
         :tags: bug, oracle, postgresql
         :tickets: 3877
