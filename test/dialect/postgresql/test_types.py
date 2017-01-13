@@ -1709,7 +1709,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         assert_raises_message(
             ValueError,
             r'''After u?'\[\.\.\.\], "key1"=>"value1", ', could not parse '''
-            '''residual at position 36: u?'crapcrapcrap, "key3"\[\.\.\.\]''',
+            r'''residual at position 36: u?'crapcrapcrap, "key3"\[\.\.\.\]''',
             proc,
             '"key2"=>"value2", "key1"=>"value1", '
             'crapcrapcrap, "key3"=>"value3"'

@@ -742,8 +742,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(
             exc.InvalidRequestError,
             r"Select objects don't have a type\.  Call as_scalar\(\) "
-            "on this Select object to return a 'scalar' "
-            "version of this Select\.",
+            r"on this Select object to return a 'scalar' "
+            r"version of this Select\.",
             func.coalesce, select([table1.c.myid])
         )
 

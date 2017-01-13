@@ -92,13 +92,13 @@ class UpdateBase(
 
     @_generative
     def returning(self, *cols):
-        """Add a :term:`RETURNING` or equivalent clause to this statement.
+        r"""Add a :term:`RETURNING` or equivalent clause to this statement.
 
         e.g.::
 
-            stmt = table.update().\\
-                      where(table.c.data == 'value').\\
-                      values(status='X').\\
+            stmt = table.update().\
+                      where(table.c.data == 'value').\
+                      values(status='X').\
                       returning(table.c.server_flag,
                                 table.c.updated_timestamp)
 
@@ -206,7 +206,7 @@ class ValuesBase(UpdateBase):
 
     @_generative
     def values(self, *args, **kwargs):
-        """specify a fixed VALUES clause for an INSERT statement, or the SET
+        r"""specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
         Note that the :class:`.Insert` and :class:`.Update` constructs support
@@ -616,21 +616,21 @@ class Update(ValuesBase):
                  return_defaults=False,
                  preserve_parameter_order=False,
                  **dialect_kw):
-        """Construct an :class:`.Update` object.
+        r"""Construct an :class:`.Update` object.
 
         E.g.::
 
             from sqlalchemy import update
 
-            stmt = update(users).where(users.c.id==5).\\
+            stmt = update(users).where(users.c.id==5).\
                     values(name='user #5')
 
         Similar functionality is available via the
         :meth:`~.TableClause.update` method on
         :class:`.Table`::
 
-            stmt = users.update().\\
-                        where(users.c.id==5).\\
+            stmt = users.update().\
+                        where(users.c.id==5).\
                         values(name='user #5')
 
         :param table: A :class:`.Table` object representing the database
@@ -650,8 +650,8 @@ class Update(ValuesBase):
          subquery::
 
             users.update().values(name='ed').where(
-                    users.c.name==select([addresses.c.email_address]).\\
-                                where(addresses.c.user_id==users.c.id).\\
+                    users.c.name==select([addresses.c.email_address]).\
+                                where(addresses.c.user_id==users.c.id).\
                                 as_scalar()
                     )
 
@@ -719,8 +719,8 @@ class Update(ValuesBase):
         being updated::
 
             users.update().values(
-                    name=select([addresses.c.email_address]).\\
-                            where(addresses.c.user_id==users.c.id).\\
+                    name=select([addresses.c.email_address]).\
+                            where(addresses.c.user_id==users.c.id).\
                             as_scalar()
                 )
 

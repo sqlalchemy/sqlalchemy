@@ -185,11 +185,11 @@ class LogParamsTest(fixtures.TestBase):
         assert_raises_message(
             tsa.exc.DBAPIError,
             r".*'INSERT INTO nonexistent \(data\) values \(:data\)'\] "
-            "\[parameters: "
-            "\[{'data': '0'}, {'data': '1'}, {'data': '2'}, "
-            "{'data': '3'}, {'data': '4'}, {'data': '5'}, "
-            "{'data': '6'}, {'data': '7'}  ... displaying 10 of "
-            "100 total bound parameter sets ...  {'data': '98'}, {'data': '99'}\]",
+            r"\[parameters: "
+            r"\[{'data': '0'}, {'data': '1'}, {'data': '2'}, "
+            r"{'data': '3'}, {'data': '4'}, {'data': '5'}, "
+            r"{'data': '6'}, {'data': '7'}  ... displaying 10 of "
+            r"100 total bound parameter sets ...  {'data': '98'}, {'data': '99'}\]",
             lambda: self.eng.execute(
                 "INSERT INTO nonexistent (data) values (:data)",
                 [{"data": str(i)} for i in range(100)]
@@ -200,11 +200,11 @@ class LogParamsTest(fixtures.TestBase):
         assert_raises_message(
             tsa.exc.DBAPIError,
             r".*INSERT INTO nonexistent \(data\) values "
-            "\(\?\)'\] \[parameters: \[\('0',\), \('1',\), \('2',\), \('3',\), "
-            "\('4',\), \('5',\), \('6',\), \('7',\)  "
-            "... displaying "
-            "10 of 100 total bound parameter sets ...  "
-            "\('98',\), \('99',\)\]",
+            r"\(\?\)'\] \[parameters: \[\('0',\), \('1',\), \('2',\), \('3',\), "
+            r"\('4',\), \('5',\), \('6',\), \('7',\)  "
+            r"... displaying "
+            r"10 of 100 total bound parameter sets ...  "
+            r"\('98',\), \('99',\)\]",
             lambda: self.eng.execute(
                 "INSERT INTO nonexistent (data) values (?)",
                 [(str(i), ) for i in range(100)]

@@ -247,7 +247,7 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
 
 
 class PropComparator(operators.ColumnOperators):
-    """Defines SQL operators for :class:`.MapperProperty` objects.
+    r"""Defines SQL operators for :class:`.MapperProperty` objects.
 
     SQLAlchemy allows for operators to
     be redefined at both the Core and ORM level.  :class:`.PropComparator`
@@ -273,9 +273,9 @@ class PropComparator(operators.ColumnOperators):
 
         # definition of custom PropComparator subclasses
 
-        from sqlalchemy.orm.properties import \\
-                                ColumnProperty,\\
-                                CompositeProperty,\\
+        from sqlalchemy.orm.properties import \
+                                ColumnProperty,\
+                                CompositeProperty,\
                                 RelationshipProperty
 
         class MyColumnComparator(ColumnProperty.Comparator):
@@ -387,14 +387,14 @@ class PropComparator(operators.ColumnOperators):
         return a.of_type(class_)
 
     def of_type(self, class_):
-        """Redefine this object in terms of a polymorphic subclass.
+        r"""Redefine this object in terms of a polymorphic subclass.
 
         Returns a new PropComparator from which further criterion can be
         evaluated.
 
         e.g.::
 
-            query.join(Company.employees.of_type(Engineer)).\\
+            query.join(Company.employees.of_type(Engineer)).\
                filter(Engineer.name=='foo')
 
         :param \class_: a class or mapper indicating that criterion will be
@@ -406,7 +406,7 @@ class PropComparator(operators.ColumnOperators):
         return self.operate(PropComparator.of_type_op, class_)
 
     def any(self, criterion=None, **kwargs):
-        """Return true if this collection contains any member that meets the
+        r"""Return true if this collection contains any member that meets the
         given criterion.
 
         The usual implementation of ``any()`` is
@@ -424,7 +424,7 @@ class PropComparator(operators.ColumnOperators):
         return self.operate(PropComparator.any_op, criterion, **kwargs)
 
     def has(self, criterion=None, **kwargs):
-        """Return true if this element references a member which meets the
+        r"""Return true if this element references a member which meets the
         given criterion.
 
         The usual implementation of ``has()`` is

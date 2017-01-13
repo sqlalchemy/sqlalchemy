@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: postgresql
     :name: PostgreSQL
 
@@ -233,17 +233,17 @@ primary key identifiers.   To specify an explicit ``RETURNING`` clause,
 use the :meth:`._UpdateBase.returning` method on a per-statement basis::
 
     # INSERT..RETURNING
-    result = table.insert().returning(table.c.col1, table.c.col2).\\
+    result = table.insert().returning(table.c.col1, table.c.col2).\
         values(name='foo')
     print result.fetchall()
 
     # UPDATE..RETURNING
-    result = table.update().returning(table.c.col1, table.c.col2).\\
+    result = table.update().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo').values(name='bar')
     print result.fetchall()
 
     # DELETE..RETURNING
-    result = table.delete().returning(table.c.col1, table.c.col2).\\
+    result = table.delete().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo')
     print result.fetchall()
 
@@ -2234,8 +2234,8 @@ class PGDialect(default.DefaultDialect):
     def _get_server_version_info(self, connection):
         v = connection.execute("select version()").scalar()
         m = re.match(
-            '.*(?:PostgreSQL|EnterpriseDB) '
-            '(\d+)\.(\d+)(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
+            r'.*(?:PostgreSQL|EnterpriseDB) '
+            r'(\d+)\.(\d+)(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
             v)
         if not m:
             raise AssertionError(
@@ -2400,12 +2400,12 @@ class PGDialect(default.DefaultDialect):
 
         nullable = not notnull
         is_array = format_type.endswith('[]')
-        charlen = re.search('\(([\d,]+)\)', format_type)
+        charlen = re.search(r'\(([\d,]+)\)', format_type)
         if charlen:
             charlen = charlen.group(1)
-        args = re.search('\((.*)\)', format_type)
+        args = re.search(r'\((.*)\)', format_type)
         if args and args.group(1):
-            args = tuple(re.split('\s*,\s*', args.group(1)))
+            args = tuple(re.split(r'\s*,\s*', args.group(1)))
         else:
             args = ()
         kwargs = {}
@@ -2925,7 +2925,7 @@ class PGDialect(default.DefaultDialect):
         domains = {}
         for domain in c.fetchall():
             # strip (30) from character varying(30)
-            attype = re.search('([^\(]+)', domain['attype']).group(1)
+            attype = re.search(r'([^\(]+)', domain['attype']).group(1)
             if domain['visible']:
                 # 'visible' just means whether or not the domain is in a
                 # schema that's on the search path -- or not overridden by

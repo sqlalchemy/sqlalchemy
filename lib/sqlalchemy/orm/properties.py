@@ -42,7 +42,7 @@ class ColumnProperty(StrategizedProperty):
         '_mapped_by_synonym', '_deferred_column_loader')
 
     def __init__(self, *columns, **kwargs):
-        """Provide a column-level property for use with a Mapper.
+        r"""Provide a column-level property for use with a Mapper.
 
         Column-based properties can normally be applied to the mapper's
         ``properties`` dictionary using the :class:`.Column` element directly.

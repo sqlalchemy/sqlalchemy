@@ -253,7 +253,8 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_missing_bind_kw(self):
         assert_raises_message(
             exc.ArgumentError,
-            "This text\(\) construct doesn't define a bound parameter named 'bar'",
+            r"This text\(\) construct doesn't define "
+            r"a bound parameter named 'bar'",
             text(":foo").bindparams,
             foo=5,
             bar=7)
@@ -261,7 +262,8 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_missing_bind_posn(self):
         assert_raises_message(
             exc.ArgumentError,
-            "This text\(\) construct doesn't define a bound parameter named 'bar'",
+            r"This text\(\) construct doesn't define "
+            r"a bound parameter named 'bar'",
             text(":foo").bindparams,
             bindparam(
                 'foo',
@@ -273,8 +275,8 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_escaping_colons(self):
         # test escaping out text() params with a backslash
         self.assert_compile(
-            text("select * from foo where clock='05:06:07' "
-                 "and mork='\:mindy'"),
+            text(r"select * from foo where clock='05:06:07' "
+                 r"and mork='\:mindy'"),
             "select * from foo where clock='05:06:07' and mork=':mindy'",
             checkparams={},
             params={},
@@ -284,8 +286,8 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_escaping_double_colons(self):
         self.assert_compile(
             text(
-                "SELECT * FROM pg_attribute WHERE "
-                "attrelid = :tab\:\:regclass"),
+                r"SELECT * FROM pg_attribute WHERE "
+                r"attrelid = :tab\:\:regclass"),
             "SELECT * FROM pg_attribute WHERE "
             "attrelid = %(tab)s::regclass",
             params={'tab': None},
