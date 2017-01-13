@@ -378,7 +378,7 @@ class Dialect(object):
 
     def get_unique_constraints(
             self, connection, table_name, schema=None, **kw):
-        """Return information about unique constraints in `table_name`.
+        r"""Return information about unique constraints in `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return
         unique constraint information as a list of dicts with these keys:

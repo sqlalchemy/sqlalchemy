@@ -626,7 +626,7 @@ class Float(Numeric):
 
     def __init__(self, precision=None, asdecimal=False,
                  decimal_return_scale=None, **kwargs):
-        """
+        r"""
         Construct a Float.
 
         :param precision: the numeric precision for use in DDL ``CREATE
@@ -1076,7 +1076,7 @@ class Enum(String, SchemaType):
     __visit_name__ = 'enum'
 
     def __init__(self, *enums, **kw):
-        """Construct an enum.
+        r"""Construct an enum.
 
         Keyword arguments which don't apply to a specific backend are ignored
         by that backend.

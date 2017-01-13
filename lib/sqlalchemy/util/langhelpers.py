@@ -221,7 +221,7 @@ class PluginLoader(object):
 
 
 def get_cls_kwargs(cls, _set=None):
-    """Return the full set of inherited kwargs for the given `cls`.
+    r"""Return the full set of inherited kwargs for the given `cls`.
 
     Probes a class's __init__ method, collecting all named arguments.  If the
     __init__ defines a \**kwargs catch-all, then the constructor is presumed
@@ -1006,7 +1006,7 @@ def asint(value):
 
 
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
-    """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
+    r"""If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
     when coercing to boolean.
     """

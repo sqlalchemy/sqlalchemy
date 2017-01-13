@@ -158,7 +158,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         FunctionElement.clauses._reset(self)
 
     def alias(self, name=None, flat=False):
-        """Produce a :class:`.Alias` construct against this
+        r"""Produce a :class:`.Alias` construct against this
         :class:`.FunctionElement`.
 
         This construct wraps the function in a named alias which
@@ -169,8 +169,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
             from sqlalchemy.sql import column
 
-            stmt = select([column('data_view')]).\\
-                select_from(SomeTable).\\
+            stmt = select([column('data_view')]).\
+                select_from(SomeTable).\
                 select_from(func.unnest(SomeTable.data).alias('data_view')
             )
 
@@ -572,7 +572,7 @@ class random(GenericFunction):
 
 
 class count(GenericFunction):
-    """The ANSI COUNT aggregate function.  With no arguments,
+    r"""The ANSI COUNT aggregate function.  With no arguments,
     emits COUNT \*.
 
     """

@@ -322,7 +322,7 @@ def splice_joins(left, right, stop_on=None):
 
 
 def reduce_columns(columns, *clauses, **kw):
-    """given a list of columns, return a 'reduced' set based on natural
+    r"""given a list of columns, return a 'reduced' set based on natural
     equivalents.
 
     the set is reduced to the smallest list of columns which have no natural

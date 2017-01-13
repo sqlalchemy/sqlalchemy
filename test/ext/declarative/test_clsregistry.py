@@ -155,8 +155,8 @@ class ClsRegistryTest(fixtures.TestBase):
         resolver = resolver("Foo")
         assert_raises_message(
             exc.InvalidRequestError,
-            "When initializing mapper some_parent, expression "
-            "'Foo' failed to locate a name \('Foo'\).",
+            r"When initializing mapper some_parent, expression "
+            r"'Foo' failed to locate a name \('Foo'\).",
             resolver
         )
 

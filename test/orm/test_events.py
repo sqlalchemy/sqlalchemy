@@ -388,17 +388,17 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         mapper(User, users)
         assert_raises_message(
             sa.exc.SAWarning,
-            "before_configured' and 'after_configured' ORM events only "
-            "invoke with the mapper\(\) function or Mapper class as "
-            "the target.",
+            r"before_configured' and 'after_configured' ORM events only "
+            r"invoke with the mapper\(\) function or Mapper class as "
+            r"the target.",
             event.listen, User, 'before_configured', m1
         )
 
         assert_raises_message(
             sa.exc.SAWarning,
-            "before_configured' and 'after_configured' ORM events only "
-            "invoke with the mapper\(\) function or Mapper class as "
-            "the target.",
+            r"before_configured' and 'after_configured' ORM events only "
+            r"invoke with the mapper\(\) function or Mapper class as "
+            r"the target.",
             event.listen, User, 'after_configured', m1
         )
 

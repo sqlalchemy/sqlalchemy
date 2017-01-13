@@ -106,7 +106,7 @@ class MySQLDialect_zxjdbc(ZxJDBCConnector, MySQLDialect):
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
-        r = re.compile('[.\-]')
+        r = re.compile(r'[.\-]')
         for n in r.split(dbapi_con.dbversion):
             try:
                 version.append(int(n))

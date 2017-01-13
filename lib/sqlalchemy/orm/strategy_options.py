@@ -537,7 +537,7 @@ See :func:`.orm.%(name)s` for usage examples.
 
 @loader_option()
 def contains_eager(loadopt, attr, alias=None):
-    """Indicate that the given attribute should be eagerly loaded from
+    r"""Indicate that the given attribute should be eagerly loaded from
     columns stated manually in the query.
 
     This function is part of the :class:`.Load` interface and supports
@@ -546,8 +546,8 @@ def contains_eager(loadopt, attr, alias=None):
     The option is used in conjunction with an explicit join that loads
     the desired rows, i.e.::
 
-        sess.query(Order).\\
-                join(Order.user).\\
+        sess.query(Order).\
+                join(Order.user).\
                 options(contains_eager(Order.user))
 
     The above query would join from the ``Order`` entity to its related
@@ -560,8 +560,8 @@ def contains_eager(loadopt, attr, alias=None):
     the eagerly-loaded rows are to come from an aliased table::
 
         user_alias = aliased(User)
-        sess.query(Order).\\
-                join((user_alias, Order.user)).\\
+        sess.query(Order).\
+                join((user_alias, Order.user)).\
                 options(contains_eager(Order.user, alias=user_alias))
 
     .. seealso::
@@ -903,7 +903,7 @@ def defaultload(*keys):
 
 @loader_option()
 def defer(loadopt, key):
-    """Indicate that the given column-oriented attribute should be deferred, e.g.
+    r"""Indicate that the given column-oriented attribute should be deferred, e.g.
     not loaded until accessed.
 
     This function is part of the :class:`.Load` interface and supports
@@ -967,7 +967,7 @@ def defer(key, *addl_attrs):
 
 @loader_option()
 def undefer(loadopt, key):
-    """Indicate that the given column-oriented attribute should be undeferred,
+    r"""Indicate that the given column-oriented attribute should be undeferred,
     e.g. specified within the SELECT statement of the entity as a whole.
 
     The column being undeferred is typically set up on the mapping as a

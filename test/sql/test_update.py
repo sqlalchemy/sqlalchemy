@@ -306,8 +306,8 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
         testing.assert_raises_message(
             ValueError,
-            "When preserve_parameter_order is True, values\(\) "
-            "only accepts a list of 2-tuples",
+            r"When preserve_parameter_order is True, values\(\) "
+            r"only accepts a list of 2-tuples",
             table1.update(preserve_parameter_order=True).values,
             {"description": "foo", "name": "bar"}
         )

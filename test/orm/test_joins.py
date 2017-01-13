@@ -441,8 +441,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Don't know how to join from x; please use select_from\(\) to "
-            "establish the left entity/selectable of this join",
+            r"Don't know how to join from x; please use select_from\(\) to "
+            r"establish the left entity/selectable of this join",
             sess.query(literal_column('x'), User).join, Address
         )
 
@@ -454,7 +454,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users LEFT OUTER JOIN orders ON users.id = orders.user_id"
         )
-
 
     def test_multi_tuple_form(self):
         """test the 'tuple' form of join, now superseded

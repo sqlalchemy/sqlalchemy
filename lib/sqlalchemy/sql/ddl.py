@@ -143,7 +143,7 @@ class DDLElement(Executable, _DDLCompiles):
 
     @_generative
     def execute_if(self, dialect=None, callable_=None, state=None):
-        """Return a callable that will execute this
+        r"""Return a callable that will execute this
         DDLElement conditionally.
 
         Used to provide a wrapper for event listening::

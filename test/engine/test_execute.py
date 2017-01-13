@@ -290,7 +290,7 @@ class ExecuteTest(fixtures.TestBase):
             assert_raises_message(
                 tsa.exc.StatementError,
                 r"\(test.engine.test_execute.SomeException\) "
-                "nope \[SQL\: u?'SELECT 1 ",
+                r"nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).
                 where(
@@ -1428,7 +1428,7 @@ class HandleErrorTest(fixtures.TestBase):
             assert_raises_message(
                 tsa.exc.StatementError,
                 r"\(test.engine.test_execute.SomeException\) "
-                "nope \[SQL\: u?'SELECT 1 ",
+                r"nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(
                     column('foo') == literal('bar', MyType()))
@@ -1620,7 +1620,7 @@ class HandleErrorTest(fixtures.TestBase):
             assert_raises_message(
                 tsa.exc.StatementError,
                 r"\(test.engine.test_execute.SomeException\) "
-                "nope \[SQL\: u?'SELECT 1 ",
+                r"nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(
                     column('foo') == literal('bar', MyType()))

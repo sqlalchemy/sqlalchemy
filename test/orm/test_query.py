@@ -3718,7 +3718,7 @@ class ImmediateTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.orm.exc.MultipleResultsFound,
-            "Multiple rows were found for one_or_none\(\)",
+            r"Multiple rows were found for one_or_none\(\)",
             sess.query(User).one_or_none)
 
         eq_(sess.query(User.id, User.name).filter(User.id == 99).one_or_none(), None)

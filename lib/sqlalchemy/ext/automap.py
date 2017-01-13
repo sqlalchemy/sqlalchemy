@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Define an extension to the :mod:`sqlalchemy.ext.declarative` system
+r"""Define an extension to the :mod:`sqlalchemy.ext.declarative` system
 which automatically generates mapped classes and relationships from a database
 schema, typically though not necessarily one which is reflected.
 
@@ -187,7 +187,7 @@ scheme for class names and a "pluralizer" for collection names using the
         "Produce a 'camelized' class name, e.g. "
         "'words_and_underscores' -> 'WordsAndUnderscores'"
 
-        return str(tablename[0].upper() + \\
+        return str(tablename[0].upper() + \
                 re.sub(r'_([a-z])', lambda m: m.group(1).upper(), tablename[1:]))
 
     _pluralizer = inflect.engine()

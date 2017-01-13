@@ -123,7 +123,7 @@ class MxODBCConnector(Connector):
         # of what we're doing here
         dbapi_con = connection.connection
         version = []
-        r = re.compile('[.\-]')
+        r = re.compile(r'[.\-]')
         # 18 == pyodbc.SQL_DBMS_VER
         for n in r.split(dbapi_con.getinfo(18)[1]):
             try:
