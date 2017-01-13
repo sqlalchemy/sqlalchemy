@@ -70,6 +70,8 @@ class Insert(StandardInsert):
         Required argument. A dictionary or other mapping object
         with column names as keys and expressions or literals as values,
         specifying the ``SET`` actions to take.
+        If the target :class:`.Column` specifies a ".key" attribute distinct
+        from the column name, that key should be used.
 
         .. warning:: This dictionary does **not** take into account
            Python-specified default UPDATE values or generation functions,
@@ -205,7 +207,7 @@ class OnConflictDoUpdate(OnConflictClause):
         if (not isinstance(set_, dict) or not set_):
             raise ValueError("set parameter must be a non-empty dictionary")
         self.update_values_to_set = [
-            (key, _literal_as_binds(value))
+            (key, value)
             for key, value in set_.items()
         ]
         self.update_whereclause = where

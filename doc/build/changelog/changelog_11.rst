@@ -21,6 +21,20 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3888
+        :tags: bug, postgresql
+        :tickets: 3888
+
+        Fixed bug in new "ON CONFLICT DO UPDATE" feature where the "set"
+        values for the UPDATE clause would not be subject to type-level
+        processing, as normally takes effect to handle both user-defined
+        type level conversions as well as dialect-required conversions, such
+        as those required for JSON datatypes.   Additionally, clarified that
+        the keys in the set_ dictionary should match the "key" of the column,
+        if distinct from the column name.  A warning is emitted
+        for remaining column names that don't match column keys; for
+        compatibility reasons, these are emitted as they were previously.
+
     .. change:: 3872
         :tags: bug, examples
         :tickets: 3872
