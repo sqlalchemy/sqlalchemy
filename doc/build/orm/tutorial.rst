@@ -759,13 +759,26 @@ Here's a rundown of some of the most common operators used in
 
     query.filter(User.name.like('%ed%'))
 
+ .. note:: :meth:`.ColumnOperators.like` renders the LIKE operator, which
+    is case insensitive on some backends, and case sensitive
+    on others.  For guaranteed case-insensitive comparisons, use
+    :meth:`.ColumnOperators.ilike`.
+
+* :meth:`ILIKE <.ColumnOperators.ilike>` (case-insensitive LIKE)::
+
+    query.filter(User.name.ilike('%ed%'))
+
+ .. note:: most backends don't support ILIKE directly.  For those,
+    the :meth:`.ColumnOperators.ilike` operator renders an expression
+    combining LIKE with the LOWER SQL function applied to each operand.
+
 * :meth:`IN <.ColumnOperators.in_>`::
 
     query.filter(User.name.in_(['ed', 'wendy', 'jack']))
 
     # works with query objects too:
     query.filter(User.name.in_(
-            session.query(User.name).filter(User.name.like('%ed%'))
+        session.query(User.name).filter(User.name.like('%ed%'))
     ))
 
 * :meth:`NOT IN <.ColumnOperators.notin_>`::
