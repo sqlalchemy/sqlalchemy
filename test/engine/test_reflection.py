@@ -932,11 +932,13 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         self.assert_(set(m3.tables.keys()) == set(['rt_c']))
 
         m4 = MetaData(testing.db)
-        try:
-            m4.reflect(only=['rt_a', 'rt_f'])
-            self.assert_(False)
-        except sa.exc.InvalidRequestError as e:
-            self.assert_(e.args[0].endswith('(rt_f)'))
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Could not reflect: requested table\(s\) not available in "
+            r"Engine\(.*?\): \(rt_f\)",
+            m4.reflect, only=['rt_a', 'rt_f']
+        )
 
         m5 = MetaData(testing.db)
         m5.reflect(only=[])
