@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: postgresql
     :name: PostgreSQL
 
@@ -233,17 +233,17 @@ primary key identifiers.   To specify an explicit ``RETURNING`` clause,
 use the :meth:`._UpdateBase.returning` method on a per-statement basis::
 
     # INSERT..RETURNING
-    result = table.insert().returning(table.c.col1, table.c.col2).\\
+    result = table.insert().returning(table.c.col1, table.c.col2).\
         values(name='foo')
     print result.fetchall()
 
     # UPDATE..RETURNING
-    result = table.update().returning(table.c.col1, table.c.col2).\\
+    result = table.update().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo').values(name='bar')
     print result.fetchall()
 
     # DELETE..RETURNING
-    result = table.delete().returning(table.c.col1, table.c.col2).\\
+    result = table.delete().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo')
     print result.fetchall()
 
@@ -862,6 +862,7 @@ import re
 import datetime as dt
 
 
+from sqlalchemy.sql import elements
 from ... import sql, schema, exc, util
 from ...engine import default, reflection
 from ...sql import compiler, expression
@@ -1499,17 +1500,52 @@ class PGCompiler(compiler.SQLCompiler):
         target_text = self._on_conflict_target(on_conflict, **kw)
 
         action_set_ops = []
-        for k, v in clause.update_values_to_set:
-            key_text = (
-                self.preparer.quote(k)
-                if isinstance(k, util.string_types)
-                else self.process(k, use_schema=False)
+
+        set_parameters = dict(clause.update_values_to_set)
+        # create a list of column assignment clauses as tuples
+        cols = self.statement.table.c
+        for c in cols:
+            col_key = c.key
+            if col_key in set_parameters:
+                value = set_parameters.pop(col_key)
+                if elements._is_literal(value):
+                    value = elements.BindParameter(
+                        None, value, type_=c.type
+                    )
+
+                else:
+                    if isinstance(value, elements.BindParameter) and \
+                            value.type._isnull:
+                        value = value._clone()
+                        value.type = c.type
+                value_text = self.process(value.self_group(), use_schema=False)
+
+                key_text = (
+                    self.preparer.quote(col_key)
+                )
+                action_set_ops.append('%s = %s' % (key_text, value_text))
+
+        # check for names that don't match columns
+        if set_parameters:
+            util.warn(
+                "Additional column names not matching "
+                "any column keys in table '%s': %s" % (
+                    self.statement.table.name,
+                    (", ".join("'%s'" % c for c in set_parameters))
+                )
             )
-            value_text = self.process(
-                v,
-                use_schema=False
-            )
-            action_set_ops.append('%s = %s' % (key_text, value_text))
+            for k, v in set_parameters.items():
+                key_text = (
+                    self.preparer.quote(k)
+                    if isinstance(k, util.string_types)
+                    else self.process(k, use_schema=False)
+                )
+                value_text = self.process(
+                    elements._literal_as_binds(v),
+                    use_schema=False
+                )
+                action_set_ops.append('%s = %s' % (key_text, value_text))
+
         action_text = ', '.join(action_set_ops)
         if clause.update_whereclause is not None:
             action_text += ' WHERE %s' % \
@@ -2234,8 +2270,8 @@ class PGDialect(default.DefaultDialect):
     def _get_server_version_info(self, connection):
         v = connection.execute("select version()").scalar()
         m = re.match(
-            '.*(?:PostgreSQL|EnterpriseDB) '
-            '(\d+)\.(\d+)(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
+            r'.*(?:PostgreSQL|EnterpriseDB) '
+            r'(\d+)\.(\d+)(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
             v)
         if not m:
             raise AssertionError(
@@ -2400,12 +2436,12 @@ class PGDialect(default.DefaultDialect):
 
         nullable = not notnull
         is_array = format_type.endswith('[]')
-        charlen = re.search('\(([\d,]+)\)', format_type)
+        charlen = re.search(r'\(([\d,]+)\)', format_type)
         if charlen:
             charlen = charlen.group(1)
-        args = re.search('\((.*)\)', format_type)
+        args = re.search(r'\((.*)\)', format_type)
         if args and args.group(1):
-            args = tuple(re.split('\s*,\s*', args.group(1)))
+            args = tuple(re.split(r'\s*,\s*', args.group(1)))
         else:
             args = ()
         kwargs = {}
@@ -2925,7 +2961,7 @@ class PGDialect(default.DefaultDialect):
         domains = {}
         for domain in c.fetchall():
             # strip (30) from character varying(30)
-            attype = re.search('([^\(]+)', domain['attype']).group(1)
+            attype = re.search(r'([^\(]+)', domain['attype']).group(1)
             if domain['visible']:
                 # 'visible' just means whether or not the domain is in a
                 # schema that's on the search path -- or not overridden by

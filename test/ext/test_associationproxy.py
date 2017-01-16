@@ -1464,7 +1464,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "Non-empty has\(\) not allowed",
+            r"Non-empty has\(\) not allowed",
             User.singular_value.has,
             User.singular_value == "singular4"
         )
@@ -1476,7 +1476,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "Non-empty has\(\) not allowed",
+            r"Non-empty has\(\) not allowed",
             User.singular_value.has, singular_value="singular4"
         )
 

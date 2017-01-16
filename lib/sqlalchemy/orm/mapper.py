@@ -118,7 +118,7 @@ class Mapper(InspectionAttr):
                  legacy_is_orphan=False,
                  _compiled_cache_size=100,
                  ):
-        """Return a new :class:`~.Mapper` object.
+        r"""Return a new :class:`~.Mapper` object.
 
         This function is typically used behind the scenes
         via the Declarative extension.   When using Declarative,
@@ -698,7 +698,7 @@ class Mapper(InspectionAttr):
 
     @property
     def entity(self):
-        """Part of the inspection API.
+        r"""Part of the inspection API.
 
         Returns self.class\_.
 
@@ -2886,7 +2886,7 @@ def reconstructor(fn):
 
 
 def validates(*names, **kw):
-    """Decorate a method as a 'validator' for one or more named properties.
+    r"""Decorate a method as a 'validator' for one or more named properties.
 
     Designates a method as a validator, a method which receives the
     name of the attribute as well as a value to be assigned, or in the

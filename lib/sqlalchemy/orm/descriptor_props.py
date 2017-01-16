@@ -91,7 +91,7 @@ class CompositeProperty(DescriptorProperty):
     """
 
     def __init__(self, class_, *attrs, **kwargs):
-        """Return a composite column-based property for use with a Mapper.
+        r"""Return a composite column-based property for use with a Mapper.
 
         See the mapping documentation section :ref:`mapper_composite` for a
         full usage example.

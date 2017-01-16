@@ -22,7 +22,7 @@ from ..sql import not_, or_
 
 
 def association_proxy(target_collection, attr, **kw):
-    """Return a Python property implementing a view of a target
+    r"""Return a Python property implementing a view of a target
     attribute which references an attribute on members of the
     target.
 

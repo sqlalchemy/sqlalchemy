@@ -1746,19 +1746,19 @@ class FlushWarningsTest(fixtures.MappedTest):
         Address = self.classes.Address
         def evt(mapper, conn, instance):
             object_session(instance).add(Address(email='x1'))
-        self._test(evt, "Session.add\(\)")
+        self._test(evt, r"Session.add\(\)")
 
     def test_plain_merge(self):
         Address = self.classes.Address
         def evt(mapper, conn, instance):
             object_session(instance).merge(Address(email='x1'))
-        self._test(evt, "Session.merge\(\)")
+        self._test(evt, r"Session.merge\(\)")
 
     def test_plain_delete(self):
         Address = self.classes.Address
         def evt(mapper, conn, instance):
             object_session(instance).delete(Address(email='x1'))
-        self._test(evt, "Session.delete\(\)")
+        self._test(evt, r"Session.delete\(\)")
 
     def _test(self, fn, method):
         User = self.classes.User

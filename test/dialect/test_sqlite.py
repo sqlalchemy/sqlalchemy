@@ -248,7 +248,7 @@ class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
                 "%(year)04d%(month)02d%(day)02d"
                 "%(hour)02d%(minute)02d%(second)02d%(microsecond)06d"
             ),
-            regexp="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{6})",
+            regexp=r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{6})",
         )
         bp = sldt.bind_processor(None)
         eq_(bp(dt), '20080627120000000125')
@@ -272,7 +272,7 @@ class DateTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(str(dt), '2008-06-27')
         sldt = sqlite.DATE(
             storage_format="%(month)02d/%(day)02d/%(year)04d",
-            regexp="(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)",
+            regexp=r"(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)",
         )
         bp = sldt.bind_processor(None)
         eq_(bp(dt), '06/27/2008')
@@ -306,7 +306,7 @@ class TimeTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(str(dt), '2008-06-27')
         sldt = sqlite.DATE(
             storage_format="%(year)04d%(month)02d%(day)02d",
-            regexp="(\d{4})(\d{2})(\d{2})",
+            regexp=r"(\d{4})(\d{2})(\d{2})",
         )
         bp = sldt.bind_processor(None)
         eq_(bp(dt), '20080627')

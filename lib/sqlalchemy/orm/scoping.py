@@ -51,7 +51,7 @@ class scoped_session(object):
             self.registry = ThreadLocalRegistry(session_factory)
 
     def __call__(self, **kw):
-        """Return the current :class:`.Session`, creating it
+        r"""Return the current :class:`.Session`, creating it
         using the :attr:`.scoped_session.session_factory` if not present.
 
         :param \**kw: Keyword arguments will be passed to the

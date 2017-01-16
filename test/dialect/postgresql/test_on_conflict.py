@@ -4,7 +4,7 @@ from sqlalchemy.testing.assertions import eq_, assert_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy import Table, Column, Integer, String
-from sqlalchemy import exc, schema
+from sqlalchemy import exc, schema, types as sqltypes, sql
 from sqlalchemy.dialects.postgresql import insert
 
 
@@ -19,6 +19,18 @@ class OnConflictTest(fixtures.TablesTest):
             'users', metadata,
             Column('id', Integer, primary_key=True),
             Column('name', String(50))
+        )
+
+        class SpecialType(sqltypes.TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                return value + " processed"
+
+        Table(
+            'bind_targets', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', SpecialType())
         )
 
         users_xtra = Table(
@@ -473,3 +485,30 @@ class OnConflictTest(fixtures.TablesTest):
                     (2, 'name2', 'name2@gmail.com', 'not')
                 ]
             )
+
+    def test_on_conflict_do_update_special_types_in_set(self):
+        bind_targets = self.tables.bind_targets
+
+        with testing.db.connect() as conn:
+            i = insert(bind_targets)
+            conn.execute(i, {"id": 1, "data": "initial data"})
+
+            eq_(
+                conn.scalar(sql.select([bind_targets.c.data])),
+                "initial data processed"
+            )
+
+            i = insert(bind_targets)
+            i = i.on_conflict_do_update(
+                index_elements=[bind_targets.c.id],
+                set_=dict(data="new updated data")
+            )
+            conn.execute(
+                i, {"id": 1, "data": "new inserted data"}
+            )
+
+            eq_(
+                conn.scalar(sql.select([bind_targets.c.data])),
+                "new updated data processed"
+            )
+

@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: mssql+pyodbc
     :name: PyODBC
     :dbapi: pyodbc
@@ -281,7 +281,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 _get_server_version_info(connection)
         else:
             version = []
-            r = re.compile('[.\-]')
+            r = re.compile(r'[.\-]')
             for n in r.split(raw):
                 try:
                     version.append(int(n))

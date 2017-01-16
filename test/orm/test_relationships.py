@@ -725,7 +725,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert_raises_message(
             exc.SAWarning,
             r"relationship .* will copy column .* to column "
-            "employee_t.company_id, which conflicts with relationship\(s\)",
+            r"employee_t.company_id, which conflicts with relationship\(s\)",
             configure_mappers
         )
 
@@ -1615,9 +1615,9 @@ class ManualBackrefTest(_fixtures.FixtureTest):
 
         assert_raises_message(sa.exc.ArgumentError,
                               r"reverse_property 'dingaling' on relationship "
-                              "User.addresses references "
-                              "relationship Address.dingaling, which does not "
-                              "reference mapper Mapper\|User\|users",
+                              r"User.addresses references "
+                              r"relationship Address.dingaling, which does not "
+                              r"reference mapper Mapper\|User\|users",
                               configure_mappers)
 
 
