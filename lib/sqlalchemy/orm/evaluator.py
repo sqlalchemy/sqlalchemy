@@ -59,7 +59,9 @@ class EvaluatorCompiler(object):
                 )
             key = parentmapper._columntoproperty[clause].key
         else:
-            key = clause.key
+            raise UnevaluatableError(
+                "Cannot evaluate column: %s" % clause
+            )
 
         get_corresponding_attr = operator.attrgetter(key)
         return lambda obj: get_corresponding_attr(obj)

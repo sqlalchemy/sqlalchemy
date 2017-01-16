@@ -13,6 +13,17 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3366
+        :tags: bug, orm
+        :tickets: 3366
+
+        The "evaluate" strategy used by :meth:`.Query.update` and
+        :meth:`.Query.delete` can now accommodate a simple
+        object comparison from a many-to-one relationship to an instance,
+        when the attribute names of the primary key / foreign key columns
+        don't match the actual names of the columns.  Previously this would
+        do a simple name-based match and fail with an AttributeError.
+
     .. change:: 3938
         :tags: bug, engine
         :tickets: 3938

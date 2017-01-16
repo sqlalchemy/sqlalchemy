@@ -1727,8 +1727,8 @@ class RelationshipProperty(StrategizedProperty):
             support_sync=not self.viewonly,
             can_be_synced_fn=self._columns_are_mapped
         )
-        self.primaryjoin = jc.deannotated_primaryjoin
-        self.secondaryjoin = jc.deannotated_secondaryjoin
+        self.primaryjoin = jc.primaryjoin
+        self.secondaryjoin = jc.secondaryjoin
         self.direction = jc.direction
         self.local_remote_pairs = jc.local_remote_pairs
         self.remote_side = jc.remote_columns
@@ -1987,6 +1987,7 @@ class JoinCondition(object):
         self._annotate_fks()
         self._annotate_remote()
         self._annotate_local()
+        self._annotate_parentmapper()
         self._setup_pairs()
         self._check_foreign_cols(self.primaryjoin, True)
         if self.secondaryjoin is not None:
@@ -2450,6 +2451,19 @@ class JoinCondition(object):
             self.primaryjoin, {}, locals_
         )
 
+    def _annotate_parentmapper(self):
+        if self.prop is None:
+            return
+
+        def parentmappers_(elem):
+            if "remote" in elem._annotations:
+                return elem._annotate({"parentmapper": self.prop.mapper})
+            elif "local" in elem._annotations:
+                return elem._annotate({"parentmapper": self.prop.parent})
+        self.primaryjoin = visitors.replacement_traverse(
+            self.primaryjoin, {}, parentmappers_
+        )
+
     def _check_remote_side(self):
         if not self.local_remote_pairs:
             raise sa_exc.ArgumentError(
@@ -2707,17 +2721,6 @@ class JoinCondition(object):
     def foreign_key_columns(self):
         return self._gather_join_annotations("foreign")
 
-    @util.memoized_property
-    def deannotated_primaryjoin(self):
-        return _deep_deannotate(self.primaryjoin)
-
-    @util.memoized_property
-    def deannotated_secondaryjoin(self):
-        if self.secondaryjoin is not None:
-            return _deep_deannotate(self.secondaryjoin)
-        else:
-            return None
-
     def _gather_join_annotations(self, annotation):
         s = set(
             self._gather_columns_with_annotation(
@@ -2855,9 +2858,6 @@ class JoinCondition(object):
             lazywhere = sql.and_(lazywhere, secondaryjoin)
 
         bind_to_col = dict((binds[col].key, col) for col in binds)
-
-        # this is probably not necessary
-        lazywhere = _deep_deannotate(lazywhere)
 
         return lazywhere, bind_to_col, equated_columns
 

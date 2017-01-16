@@ -9,6 +9,14 @@ from sqlalchemy import and_, or_, not_
 from sqlalchemy.orm import evaluator
 from sqlalchemy.orm import mapper
 
+from sqlalchemy.orm import relationship, Session
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import is_
+from sqlalchemy import inspect
+
+
 compiler = evaluator.EvaluatorCompiler()
 
 
@@ -76,6 +84,21 @@ class EvaluateTest(fixtures.MappedTest):
         eval_eq(User.name == None,  # noqa
                 testcases=[(User(name='foo'), False), (User(name=None), True)])
 
+    def test_raise_on_unannotated_column(self):
+        User = self.classes.User
+
+        assert_raises_message(
+            evaluator.UnevaluatableError,
+            "Cannot evaluate column: foo",
+            compiler.process, User.id == Column('foo', Integer)
+        )
+
+        # if we let the above method through as we did
+        # prior to [ticket:3366], we would get
+        # AttributeError: 'User' object has no attribute 'foo'
+        # u1 = User(id=5)
+        # meth(u1)
+
     def test_true_false(self):
         User = self.classes.User
 
@@ -134,3 +157,39 @@ class EvaluateTest(fixtures.MappedTest):
             (User(id=None, name='foo'), None),
             (User(id=None, name=None), None),
         ])
+
+
+class M2OEvaluateTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+
+        class Child(Base):
+            __tablename__ = "child"
+            _id_parent = Column(
+                "id_parent", Integer, ForeignKey(Parent.id), primary_key=True)
+            name = Column(String(50), primary_key=True)
+            parent = relationship(Parent)
+
+    def test_delete(self):
+        Parent, Child = self.classes('Parent', 'Child')
+
+        session = Session()
+
+        p = Parent(id=1)
+        session.add(p)
+        session.commit()
+
+        c = Child(name="foo", parent=p)
+        session.add(c)
+        session.commit()
+
+        session.query(Child).filter(Child.parent == p).delete("evaluate")
+
+        is_(
+            inspect(c).deleted, True
+        )
