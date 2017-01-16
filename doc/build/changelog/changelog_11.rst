@@ -21,6 +21,17 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: 3854
+        :tags: bug, orm
+        :tickets: 3854
+
+        Fixed bug in subquery loading where an object encountered as an
+        "existing" row, e.g. already loaded from a different path in the
+        same query, would not invoke subquery loaders for unloaded attributes
+        that specified this loading.  This issue is in the same area
+        as that of :ticket:`3431`, :ticket:`3811` which involved
+        similar issues with joined loading.
+
     .. change:: 3888
         :tags: bug, postgresql
         :tickets: 3888

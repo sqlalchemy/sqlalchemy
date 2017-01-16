@@ -1087,7 +1087,15 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                 set_committed_value(state, dict_, collection)
 
-        populators["new"].append((self.key, load_collection_from_subq))
+        def load_collection_from_subq_existing_row(state, dict_, row):
+            if self.key not in dict_:
+                load_collection_from_subq(state, dict_, row)
+
+        populators["new"].append(
+            (self.key, load_collection_from_subq))
+        populators["existing"].append(
+            (self.key, load_collection_from_subq_existing_row))
+
         if context.invoke_all_eagers:
             populators["eager"].append((self.key, collections.loader))
 
@@ -1108,7 +1116,14 @@ class SubqueryLoader(AbstractRelationshipLoader):
             state.get_impl(self.key).\
                 set_committed_value(state, dict_, scalar)
 
-        populators["new"].append((self.key, load_scalar_from_subq))
+        def load_scalar_from_subq_existing_row(state, dict_, row):
+            if self.key not in dict_:
+                load_scalar_from_subq(state, dict_, row)
+
+        populators["new"].append(
+            (self.key, load_scalar_from_subq))
+        populators["existing"].append(
+            (self.key, load_scalar_from_subq_existing_row))
         if context.invoke_all_eagers:
             populators["eager"].append((self.key, collections.loader))
 

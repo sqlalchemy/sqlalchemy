@@ -1,4 +1,4 @@
-from sqlalchemy.testing import eq_, is_, is_not_
+from sqlalchemy.testing import eq_, is_, is_not_, is_true
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, bindparam, inspect
@@ -2072,3 +2072,122 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
             [Child(name='c1')]
         )
 
+
+class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+            a2_id = Column(ForeignKey('a2.id'))
+            a2 = relationship("A2")
+            b = relationship("B")
+
+        class A2(Base):
+            __tablename__ = 'a2'
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+            b = relationship("B")
+
+        class B(Base):
+            __tablename__ = 'b'
+
+            id = Column(Integer, primary_key=True)
+
+            c1_m2o_id = Column(ForeignKey('c1_m2o.id'))
+            c2_m2o_id = Column(ForeignKey('c2_m2o.id'))
+
+            c1_o2m = relationship("C1o2m")
+            c2_o2m = relationship("C2o2m")
+            c1_m2o = relationship("C1m2o")
+            c2_m2o = relationship("C2m2o")
+
+        class C1o2m(Base):
+            __tablename__ = 'c1_o2m'
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+
+        class C2o2m(Base):
+            __tablename__ = 'c2_o2m'
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+
+        class C1m2o(Base):
+            __tablename__ = 'c1_m2o'
+
+            id = Column(Integer, primary_key=True)
+
+        class C2m2o(Base):
+            __tablename__ = 'c2_m2o'
+
+            id = Column(Integer, primary_key=True)
+
+    @classmethod
+    def insert_data(cls):
+        A, A2, B, C1o2m, C2o2m, C1m2o, C2m2o = cls.classes(
+            'A', 'A2', 'B', 'C1o2m', 'C2o2m', 'C1m2o', 'C2m2o'
+        )
+
+        s = Session()
+
+        b = B(
+            c1_o2m=[C1o2m()],
+            c2_o2m=[C2o2m()],
+            c1_m2o=C1m2o(),
+            c2_m2o=C2m2o(),
+        )
+
+        s.add(A(b=b, a2=A2(b=b)))
+        s.commit()
+
+    def test_o2m(self):
+        A, A2, B, C1o2m, C2o2m = self.classes(
+            'A', 'A2', 'B', 'C1o2m', 'C2o2m'
+        )
+
+        s = Session()
+
+        # A -J-> B -L-> C1
+        # A -J-> B -S-> C2
+
+        # A -J-> A2 -J-> B -S-> C1
+        # A -J-> A2 -J-> B -L-> C2
+
+        q = s.query(A).options(
+            joinedload(A.b).subqueryload(B.c2_o2m),
+            joinedload(A.a2).joinedload(A2.b).subqueryload(B.c1_o2m)
+        )
+
+        a1 = q.all()[0]
+
+        is_true('c1_o2m' in a1.b.__dict__)
+        is_true('c2_o2m' in a1.b.__dict__)
+
+    def test_m2o(self):
+        A, A2, B, C1m2o, C2m2o = self.classes(
+            'A', 'A2', 'B', 'C1m2o', 'C2m2o'
+        )
+
+        s = Session()
+
+        # A -J-> B -L-> C1
+        # A -J-> B -S-> C2
+
+        # A -J-> A2 -J-> B -S-> C1
+        # A -J-> A2 -J-> B -L-> C2
+
+        q = s.query(A).options(
+            joinedload(A.b).subqueryload(B.c2_m2o),
+            joinedload(A.a2).joinedload(A2.b).subqueryload(B.c1_m2o)
+        )
+
+        a1 = q.all()[0]
+        is_true('c1_m2o' in a1.b.__dict__)
+        is_true('c2_m2o' in a1.b.__dict__)
