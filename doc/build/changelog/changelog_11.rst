@@ -164,7 +164,7 @@
         called against :class:`.Query` in the same way as :meth:`.Query.from_self`.
 
     .. change:: 3548
-        :tag: bug, firebird
+        :tags: bug, firebird
         :tickets: 3548
 
         Ported the fix for Oracle quoted-lowercase names to Firebird, so that
