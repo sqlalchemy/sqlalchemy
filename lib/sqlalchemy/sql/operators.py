@@ -398,13 +398,16 @@ class ColumnOperators(Operators):
         return self.operate(concat_op, other)
 
     def like(self, other, escape=None):
-        """Implement the ``like`` operator.
+        r"""Implement the ``like`` operator.
 
-        In a column context, produces the clause ``a LIKE other``.
+        In a column context, produces the expression::
+
+            a LIKE other
 
         E.g.::
 
-            select([sometable]).where(sometable.c.column.like("%foobar%"))
+            stmt = select([sometable]).\
+                where(sometable.c.column.like("%foobar%"))
 
         :param other: expression to be compared
         :param escape: optional escape character, renders the ``ESCAPE``
@@ -420,13 +423,20 @@ class ColumnOperators(Operators):
         return self.operate(like_op, other, escape=escape)
 
     def ilike(self, other, escape=None):
-        """Implement the ``ilike`` operator.
+        r"""Implement the ``ilike`` operator, e.g. case insensitive LIKE.
 
-        In a column context, produces the clause ``a ILIKE other``.
+        In a column context, produces an expression either of the form::
+
+            lower(a) LIKE lower(other)
+
+        Or on backends that support the ILIKE operator::
+
+            a ILIKE other
 
         E.g.::
 
-            select([sometable]).where(sometable.c.column.ilike("%foobar%"))
+            stmt = select([sometable]).\
+                where(sometable.c.column.ilike("%foobar%"))
 
         :param other: expression to be compared
         :param escape: optional escape character, renders the ``ESCAPE``
