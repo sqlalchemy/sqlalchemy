@@ -34,6 +34,7 @@ SQLAlchemy is currnetly tested on versions 3.5 and 3.6.
 New Features and Improvements - ORM
 ===================================
 
+
 New Features and Improvements - Core
 ====================================
 
@@ -102,6 +103,41 @@ within this event; meaning that unloaded attributes will still not be
 able to load within the scope of the event.
 
 :ticket:`3934`
+
+.. _change_3891:
+
+Fixed issue involving single-table inheritance with ``select_from()``
+---------------------------------------------------------------------
+
+The :meth:`.Query.select_from` method now honors the single-table inheritance
+column discriminator when generating SQL; previously, only the expressions
+in the query column list would be taken into account.
+
+Supposing ``Manager`` is a subclass of ``Employee``.  A query like the following::
+
+    sess.query(Manager.id)
+
+Would generate SQL as::
+
+    SELECT employee.id FROM employee WHERE employee.type IN ('manager')
+
+However, if ``Manager`` were only specified by :meth:`.Query.select_from`
+and not in the columns list, the discriminator would not be added::
+
+    sess.query(func.count(1)).select_from(Manager)
+
+would generate::
+
+    SELECT count(1) FROM employee
+
+With the fix, :meth:`.Query.select_from` now works correctly and we get::
+
+    SELECT count(1) FROM employee WHERE employee.type IN ('manager')
+
+Applications that may have been working around this by supplying the
+WHERE clause manually may need to be adjusted.
+
+:ticket:`3891`
 
 Key Behavioral Changes - Core
 =============================

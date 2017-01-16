@@ -22,6 +22,19 @@
         of SQL expressions) could not be reliably serialized.  Also bumped
         the default pickle level for the serializer to "HIGHEST_PROTOCOL".
 
+    .. change:: 3891
+        :tags: bug, orm
+        :tickets: 3891
+
+        Fixed bug in single-table inheritance where the select_from()
+        argument would not be taken into account when limiting rows
+        to a subclass.  Previously, only expressions in the
+        columns requested would be taken into account.
+
+        .. seealso::
+
+            :ref:`change_3891`
+
     .. change:: 3932
         :tags: bug, oracle
         :tickets: 3932

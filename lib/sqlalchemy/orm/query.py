@@ -3475,12 +3475,22 @@ class Query(object):
         """Apply single-table-inheritance filtering.
 
         For all distinct single-table-inheritance mappers represented in
-        the columns clause of this query, add criterion to the WHERE
+        the columns clause of this query, as well as the "select from entity",
+        add criterion to the WHERE
         clause of the given QueryContext such that only the appropriate
         subtypes are selected from the total results.
 
         """
-        for (ext_info, adapter) in set(self._mapper_adapter_map.values()):
+
+        search = set(self._mapper_adapter_map.values())
+        if self._select_from_entity:
+            # based on the behavior in _set_select_from,
+            # when we have self._select_from_entity, we don't
+            # have  _from_obj_alias.
+            # assert self._from_obj_alias is None
+            search = search.union([(self._select_from_entity, None)])
+
+        for (ext_info, adapter) in search:
             if ext_info in self._join_entities:
                 continue
             single_crit = ext_info.mapper._single_table_criterion
