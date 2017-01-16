@@ -3811,8 +3811,8 @@ class MetaData(SchemaItem):
                     s = schema and (" schema '%s'" % schema) or ''
                     raise exc.InvalidRequestError(
                         'Could not reflect: requested table(s) not available '
-                        'in %s%s: (%s)' %
-                        (bind.engine.url, s, ', '.join(missing)))
+                        'in %r%s: (%s)' %
+                        (bind.engine, s, ', '.join(missing)))
                 load = [name for name in only if extend_existing or
                         name not in current]
 

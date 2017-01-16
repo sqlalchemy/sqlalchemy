@@ -135,4 +135,4 @@ class TLEngine(base.Engine):
             self._connections.trans = []
 
     def __repr__(self):
-        return 'TLEngine(%s)' % str(self.url)
+        return 'TLEngine(%r)' % self.url
