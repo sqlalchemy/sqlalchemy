@@ -606,7 +606,7 @@ def name_for_collection_relationship(
 
 def generate_relationship(
         base, direction, return_fn, attrname, local_cls, referred_cls, **kw):
-    """Generate a :func:`.relationship` or :func:`.backref` on behalf of two
+    r"""Generate a :func:`.relationship` or :func:`.backref` on behalf of two
     mapped classes.
 
     An alternate implementation of this function can be specified using the
@@ -820,7 +820,7 @@ class AutomapBase(object):
 
 
 def automap_base(declarative_base=None, **kw):
-    """Produce a declarative automap base.
+    r"""Produce a declarative automap base.
 
     This function produces a new base class that is a product of the
     :class:`.AutomapBase` class as well a declarative base produced by
