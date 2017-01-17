@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.5
+    :released: January 17, 2017
 
     .. change:: mysql_index_prefix
         :tags: feature, mysql
