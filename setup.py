@@ -93,10 +93,10 @@ class PyTest(TestCommand):
         self.test_suite = True
 
     def run_tests(self):
+        import shlex
         # import here, cause outside the eggs aren't loaded
         import pytest
-        errno = pytest.main(
-            " ".join(self.default_options) + " " + self.pytest_args)
+        errno = pytest.main(self.default_options + shlex.split(self.pytest_args))
         sys.exit(errno)
 
 cmdclass['test'] = PyTest
