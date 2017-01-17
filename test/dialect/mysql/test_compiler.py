@@ -40,6 +40,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(schema.CreateIndex(idx),
                             'CREATE INDEX test_idx1 ON testtbl (data)')
 
+    def test_create_index_with_prefix(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String(255)))
+        idx = Index('test_idx1', tbl.c.data, mysql_length=10, mysql_prefix='FULLTEXT')
+
+        self.assert_compile(schema.CreateIndex(idx),
+                            'CREATE FULLTEXT INDEX test_idx1 ON testtbl (data(10))')
+
     def test_create_index_with_length(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String(255)))

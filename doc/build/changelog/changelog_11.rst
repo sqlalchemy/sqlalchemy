@@ -21,6 +21,13 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: mysql_index_prefix
+        :tags: feature, mysql
+
+        Added a new parameter ``mysql_prefix`` supported by the :class:`.Index`
+        construct, allows specification of MySQL-specific prefixes such as
+        "FULLTEXT". Pull request courtesy Joseph Schorr.
+
     .. change:: 3854
         :tags: bug, orm
         :tickets: 3854
