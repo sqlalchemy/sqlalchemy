@@ -17,6 +17,7 @@
 
 .. changelog::
     :version: 1.0.17
+    :released: January 17, 2017
 
      .. change::
         :tags: bug, py3k
