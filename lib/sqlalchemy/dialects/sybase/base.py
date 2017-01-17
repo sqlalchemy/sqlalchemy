@@ -1,5 +1,5 @@
 # sybase/base.py
-# Copyright (C) 2010-2016 the SQLAlchemy authors and contributors
+# Copyright (C) 2010-2017 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # get_select_precolumns(), limit_clause() implementation
 # copyright (C) 2007 Fisch Asset Management
