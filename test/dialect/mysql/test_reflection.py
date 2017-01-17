@@ -552,6 +552,18 @@ class RawReflectionTest(fixtures.TestBase):
             '  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE  = 16')
         assert not regex.match(
             '  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE = = 16')
+        assert regex.match(
+            "  KEY (`id`) USING BTREE COMMENT 'comment'")
+        # `SHOW CREATE TABLE` returns COMMENT '''comment'
+        # after creating table with COMMENT '\'comment'
+        assert regex.match(
+            "  KEY (`id`) USING BTREE COMMENT '''comment'")
+        assert regex.match(
+            "  KEY (`id`) USING BTREE COMMENT 'comment'''")
+        assert regex.match(
+            "  KEY (`id`) USING BTREE COMMENT 'prefix''suffix'")
+        assert regex.match(
+            "  KEY (`id`) USING BTREE COMMENT 'prefix''text''suffix'")
 
     def test_fk_reflection(self):
         regex = self.parser._re_constraint

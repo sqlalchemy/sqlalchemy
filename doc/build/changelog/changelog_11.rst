@@ -21,6 +21,13 @@
 .. changelog::
     :version: 1.1.5
 
+    .. change:: mysql_index_prefix
+        :tags: feature, mysql
+
+        Added a new parameter ``mysql_prefix`` supported by the :class:`.Index`
+        construct, allows specification of MySQL-specific prefixes such as
+        "FULLTEXT". Pull request courtesy Joseph Schorr.
+
     .. change:: 3854
         :tags: bug, orm
         :tickets: 3854
@@ -138,6 +145,15 @@
         the ``__repr__`` for :class:`.TLEngine` now acts like that of
         :class:`.Engine`, concealing the URL password.  Pull request courtesy
         Valery Yundin.
+
+    .. change:: 3867
+        :tags: bug, mysql
+        :tickets: 3867
+
+        The MySQL dialect now will not warn when a reflected column has a
+        "COMMENT" keyword on it, but note however the comment is not yet
+        reflected; this is on the roadmap for a future release.  Pull request
+        courtesy Lele Long.
 
     .. change:: pg_timestamp_zero_prec
         :tags: bug, postgresql

@@ -391,6 +391,25 @@ BLOB.
 .. versionadded:: 0.8.2 ``mysql_length`` may now be specified as a dictionary
    for use with composite indexes.
 
+Index Prefixes
+~~~~~~~~~~~~~~
+
+MySQL storage engines permit you to specify an index prefix when creating
+an index. SQLAlchemy provides this feature via the
+``mysql_prefix`` parameter on :class:`.Index`::
+
+    Index('my_index', my_table.c.data, mysql_prefix='FULLTEXT')
+
+The value passed to the keyword argument will be simply passed through to the
+underlying CREATE INDEX, so it *must* be a valid index prefix for your MySQL
+storage engine.
+
+.. versionadded:: 1.1.5
+
+.. seealso::
+
+    `CREATE INDEX <http://dev.mysql.com/doc/refman/5.0/en/create-index.html>`_ - MySQL documentation
+
 Index Types
 ~~~~~~~~~~~~~
 
@@ -1039,6 +1058,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
+
+        index_prefix = index.kwargs.get('mysql_prefix', None)
+        if index_prefix:
+          text += index_prefix + ' '
+
         text += "INDEX %s ON %s " % (name, table)
 
         length = index.dialect_options['mysql']['length']
@@ -1468,6 +1492,7 @@ class MySQLDialect(default.DefaultDialect):
         (sa_schema.Index, {
             "using": None,
             "length": None,
+            "prefix": None,
         })
     ]
 
