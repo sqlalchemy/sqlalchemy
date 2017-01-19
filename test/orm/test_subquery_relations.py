@@ -2073,6 +2073,85 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
         )
 
 
+class SelfRefInheritanceAliasedTest(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Foo(Base):
+            __tablename__ = "foo"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50))
+
+            foo_id = Column(Integer, ForeignKey("foo.id"))
+            foo = relationship(
+                lambda: Foo, foreign_keys=foo_id, remote_side=id)
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "foo",
+            }
+
+        class Bar(Foo):
+            __mapper_args__ = {
+                "polymorphic_identity": "bar",
+            }
+
+    @classmethod
+    def insert_data(cls):
+        Foo, Bar = cls.classes('Foo', 'Bar')
+
+        session = Session()
+        target = Bar(id=1)
+        b1 = Bar(id=2, foo=Foo(id=3, foo=target))
+        session.add(b1)
+        session.commit()
+
+    def test_twolevel_subquery_w_polymorphic(self):
+        Foo, Bar = self.classes('Foo', 'Bar')
+
+        I = with_polymorphic(Foo, "*", aliased=True)
+        attr1 = Foo.foo.of_type(I)
+        attr2 = I.foo
+
+        s = Session()
+        q = s.query(Foo).filter(Foo.id == 2).options(
+            subqueryload(attr1).subqueryload(attr2))
+
+        self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT foo.id AS foo_id_1, foo.type AS foo_type, "
+                "foo.foo_id AS foo_foo_id FROM foo WHERE foo.id = :id_1",
+                [{'id_1': 2}]
+            ),
+            CompiledSQL(
+                "SELECT foo_1.id AS foo_1_id, foo_1.type AS foo_1_type, "
+                "foo_1.foo_id AS foo_1_foo_id, "
+                "anon_1.foo_foo_id AS anon_1_foo_foo_id "
+                "FROM (SELECT DISTINCT foo.foo_id AS foo_foo_id "
+                "FROM foo WHERE foo.id = :id_1) AS anon_1 "
+                "JOIN foo AS foo_1 ON foo_1.id = anon_1.foo_foo_id "
+                "ORDER BY anon_1.foo_foo_id",
+                {'id_1': 2}
+            ),
+            CompiledSQL(
+                "SELECT foo.id AS foo_id_1, foo.type AS foo_type, "
+                "foo.foo_id AS foo_foo_id, foo_1.foo_id AS foo_1_foo_id "
+                "FROM (SELECT DISTINCT foo.foo_id AS foo_foo_id FROM foo "
+                "WHERE foo.id = :id_1) AS anon_1 "
+                "JOIN foo AS foo_1 ON foo_1.id = anon_1.foo_foo_id "
+                "JOIN foo ON foo.id = foo_1.foo_id ORDER BY foo_1.foo_id",
+                {'id_1': 2}
+            ),
+        )
+
+
 class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
     @classmethod
     def setup_classes(cls):

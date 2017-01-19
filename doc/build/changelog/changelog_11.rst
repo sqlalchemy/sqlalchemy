@@ -21,6 +21,15 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change:: 3893
+        :tags: bug, orm
+        :tickets: 3893
+
+        Fixed bug first introduced in 0.9.7 as a result of :ticket:`3106`
+        which would cause an incorrect query in some forms of multi-level
+        subqueryload against aliased entities, with an unnecessary extra
+        FROM entity in the innermost subquery.
+
 .. changelog::
     :version: 1.1.5
     :released: January 17, 2017
