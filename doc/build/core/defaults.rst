@@ -334,7 +334,7 @@ the SQL commandline, we can use the :paramref:`.Column.server_default`
 parameter in conjunction with the value-generation function of the
 sequence, available from the :meth:`.Sequence.next_value` method::
 
-    cart_id_seq = Sequence('cart_id_seq')
+    cart_id_seq = Sequence('cart_id_seq', metadata=meta)
     table = Table("cartitems", meta,
         Column(
             "cart_id", Integer, cart_id_seq,
@@ -343,7 +343,32 @@ sequence, available from the :meth:`.Sequence.next_value` method::
         Column("createdate", DateTime())
     )
 
-The above metadata will generate a CREATE TABLE statement on PostgreSQL as::
+or with the ORM::
+
+    class CartItem(Base):
+        __tablename__ = 'cartitems'
+
+        cart_id_seq = Sequence('cart_id_seq', metadata=Base.metadata)
+        cart_id = Column(
+            Integer, cart_id_seq,
+            server_default=cart_id_seq.next_value(), primary_key=True)
+        description = Column(String(40))
+        createdate = Column(DateTime)
+
+In the above two examples, we set the :paramref:`.Sequence.metadata` parameter
+of the :class:`.Sequence` object to refer to the same :class:`.MetaData` object
+as that of the :class:`.Table`. The purpose of this is so that when we invoke
+:meth:`.MetaData.create_all`, the "CREATE SEQUENCE" statement will be emitted
+for the :class:`.Sequence`::
+
+    CREATE SEQUENCE cart_id_seq
+
+Alternatively, we can emit the "CREATE SEQUENCE" using the :class:`.Sequence`
+object itself as in ``cart_id_seq.create(engine)``, in the same way as
+:meth:`.Table.create`.
+
+When the "CREATE TABLE" statement is emitted, on PostgreSQL it would be
+emitted as::
 
     CREATE TABLE cartitems (
         cart_id INTEGER DEFAULT nextval('cart_id_seq') NOT NULL,
@@ -352,15 +377,38 @@ The above metadata will generate a CREATE TABLE statement on PostgreSQL as::
         PRIMARY KEY (cart_id)
     )
 
-We place the :class:`.Sequence` also as a Python-side default above, that
-is, it is mentioned twice in the :class:`.Column` definition.   Depending
-on the backend in use, this may not be strictly necessary, for example
-on the PostgreSQL backend the Core will use ``RETURNING`` to access the
-newly generated primary key value in any case.   However, for the best
-compatibility, :class:`.Sequence` was originally intended to be a Python-side
-directive first and foremost so it's probably a good idea to specify it
-in this way as well.
+In the definition for the :class:`.Column`, the above examples
+illustrate placement of the :class:`.Sequence` twice in the definition
+in two different contexts;
+as both a client side default generator object as well as a server
+side default::
 
+    Column(
+        "cart_id", Integer, cart_id_seq,
+        server_default=cart_id_seq.next_value(),
+        primary_key=True)
+
+Placing the :class:`.Sequence` as the "client side" default means that when the
+Core or ORM runs a :class:`.Insert` construct, it will either pre-invoke the
+:class:`.Sequence` and use the new value in the subsequent INSERT statement, or
+more commonly will render an invocation of the sequence explicitly within the
+INSERT statement itself, in conjunction with the use of RETURNING to get the
+newly generated value from the statement, assuming that this column is part of
+the table's primary key.   Assuming that RETURNING is available and enabled, it
+doesn't matter whether the :class:`.Sequence` is specified as a "client side"
+default in addition to :paramref:`.Column.server_default`, or only as
+:paramref:`.Column.server_default`.  RETURNING is normally used on the
+PostgreSQL and Oracle backends for single-row INSERT statements in order to
+retrieve newly created primary key values, so in most cases the "client side"
+setting isn't needed, however including :class:`.Sequence` as an explicit
+default generation object will allow the best compatibility, as
+:class:`.Sequence` was originally designed to be used in this way.
+
+.. seealso::
+
+    :ref:`postgresql_sequences` - in the Postgresql dialect documentation
+
+    :ref:`oracle_returning` - in the Oracle dialect documentation
 
 Default Objects API
 -------------------

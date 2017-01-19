@@ -9,6 +9,7 @@ r"""
 .. dialect:: postgresql
     :name: PostgreSQL
 
+.. _postgresql_sequences:
 
 Sequences/SERIAL
 ----------------
