@@ -636,7 +636,7 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 
      Above, functions on ``aggregated_unit_price`` which refer to
      ``.price`` will return the
-     ``fund.sum(UnitPrice.price).label('price')`` column, as it is
+     ``func.sum(UnitPrice.price).label('price')`` column, as it is
      matched on the name "price".  Ordinarily, the "price" function
      wouldn't have any "column correspondence" to the actual
      ``UnitPrice.price`` column as it is not a proxy of the original.
