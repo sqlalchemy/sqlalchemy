@@ -91,10 +91,19 @@ def _validator_events(
 
     if include_removes:
         def append(state, value, initiator):
-            if include_backrefs or not detect_is_backref(state, initiator):
+            if (
+                initiator.op is not attributes.OP_BULK_REPLACE and
+                (include_backrefs or not detect_is_backref(state, initiator))
+            ):
                 return validator(state.obj(), key, value, False)
             else:
                 return value
+
+        def bulk_set(state, values, initiator):
+            if include_backrefs or not detect_is_backref(state, initiator):
+                obj = state.obj()
+                values[:] = [
+                    validator(obj, key, value, False) for value in values]
 
         def set_(state, value, oldvalue, initiator):
             if include_backrefs or not detect_is_backref(state, initiator):
@@ -108,10 +117,19 @@ def _validator_events(
 
     else:
         def append(state, value, initiator):
-            if include_backrefs or not detect_is_backref(state, initiator):
+            if (
+                initiator.op is not attributes.OP_BULK_REPLACE and
+                (include_backrefs or not detect_is_backref(state, initiator))
+            ):
                 return validator(state.obj(), key, value)
             else:
                 return value
+
+        def bulk_set(state, values, initiator):
+            if include_backrefs or not detect_is_backref(state, initiator):
+                obj = state.obj()
+                values[:] = [
+                    validator(obj, key, value) for value in values]
 
         def set_(state, value, oldvalue, initiator):
             if include_backrefs or not detect_is_backref(state, initiator):
@@ -120,6 +138,7 @@ def _validator_events(
                 return value
 
     event.listen(desc, 'append', append, raw=True, retval=True)
+    event.listen(desc, 'bulk_replace', bulk_set, raw=True)
     event.listen(desc, 'set', set_, raw=True, retval=True)
     if include_removes:
         event.listen(desc, "remove", remove, raw=True, retval=True)

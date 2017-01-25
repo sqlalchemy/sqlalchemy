@@ -24,6 +24,37 @@
         don't match the actual names of the columns.  Previously this would
         do a simple name-based match and fail with an AttributeError.
 
+    .. change:: 3896_a
+        :tags: feature, orm
+        :tickets: 3896
+
+        Added new attribute event :meth:`.AttributeEvents.bulk_replace`.
+        This event is triggered when a collection is assigned to a
+        relationship, before the incoming collection is compared with the
+        existing one.  This early event allows for conversion of incoming
+        non-ORM objects as well.  The event is integrated with the
+        ``@validates`` decorator.
+
+        .. seealso::
+
+            :ref:`change_3896_event`
+
+    .. change:: 3896_b
+        :tags: bug, orm
+        :tickets: 3896
+
+        The ``@validates`` decorator now allows the decorated method to receive
+        objects from a "bulk collection set" operation that have not yet
+        been compared to the existing collection.  This allows incoming values
+        to be converted to compatible ORM objects as is already allowed
+        from an "append" event.   Note that this means that the
+        ``@validates`` method is called for **all** values during a collection
+        assignment, rather than just the ones that are new.
+
+        .. seealso::
+
+            :ref:`change_3896_validates`
+
     .. change:: 3938
         :tags: bug, engine
         :tickets: 3938

@@ -143,9 +143,46 @@ class ValidatorTest(_fixtures.FixtureTest):
             call('addresses', a1, False), call('addresses', a2, False),
             # set to [a2, a3] - this is a remove of a1,
             # append of a3.  the appends are first.
+            # in 1.2 due to #3896, we also get 'a2' in the
+            # validates as it is part of the set
+            call('addresses', a2, False),
             call('addresses', a3, False),
             call('addresses', a1, True),
         ])
+
+    def test_validator_bulk_collection_set(self):
+        users, addresses, Address = (self.tables.users,
+                                     self.tables.addresses,
+                                     self.classes.Address)
+
+        class User(fixtures.ComparableEntity):
+
+            @validates('addresses', include_removes=True)
+            def validate_address(self, key, item, remove):
+                if not remove:
+                    assert isinstance(item, str)
+                else:
+                    assert isinstance(item, Address)
+                item = Address(email_address=item)
+                return item
+
+        mapper(User, users, properties={
+            'addresses': relationship(Address)
+        })
+        mapper(Address, addresses)
+
+        u1 = User()
+        u1.addresses.append("e1")
+        u1.addresses.append("e2")
+        eq_(
+            u1.addresses,
+            [Address(email_address="e1"), Address(email_address="e2")]
+        )
+        u1.addresses = ["e3", "e4"]
+        eq_(
+            u1.addresses,
+            [Address(email_address="e3"), Address(email_address="e4")]
+        )
 
     def test_validator_multi_warning(self):
         users = self.tables.users

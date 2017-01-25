@@ -34,6 +34,124 @@ SQLAlchemy is currnetly tested on versions 3.5 and 3.6.
 New Features and Improvements - ORM
 ===================================
 
+.. _change_3896_validates:
+
+A @validates method receives all values on bulk-collection set before comparison
+--------------------------------------------------------------------------------
+
+A method that uses ``@validates`` will now receive all members of a collection
+during a "bulk set" operation, before comparison is applied against the
+existing collection.
+
+Given a mapping as::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B")
+
+        @validates('bs')
+        def convert_dict_to_b(self, key, value):
+            return B(data=value['data'])
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+        data = Column(String)
+
+Above, we could use the validator as follows, to convert from an incoming
+dictionary to an instance of ``B`` upon collection append::
+
+    a1 = A()
+    a1.bs.append({"data": "b1"})
+
+However, a collection assignment would fail, since the ORM would assume
+incoming objects are already instances of ``B`` as it attempts to compare  them
+to the existing members of the collection, before doing collection appends
+which actually invoke the validator.  This would make it impossible for bulk
+set operations to accomodate non-ORM objects like dictionaries that needed
+up-front modification::
+
+    a1 = A()
+    a1.bs = [{"data": "b1"}]
+
+The new logic uses the new :meth:`.AttributeEvents.bulk_replace` event to ensure
+that all values are sent to the ``@validates`` function up front.
+
+As part of this change, this means that validators will now receive
+**all** members of a collection upon bulk set, not just the members that
+are new.   Supposing a simple validator such as::
+
+    class A(Base):
+        # ...
+
+        @validates('bs')
+        def validate_b(self, key, value):
+            assert value.data is not None
+            return value
+
+Above, if we began with a collection as::
+
+    a1 = A()
+
+    b1, b2 = B(data="one"), B(data="two")
+    a1.bs = [b1, b2]
+
+And then, replaced the collection with one that overlaps the first::
+
+    b3 = B(data="three")
+    a1.bs = [b2, b3]
+
+Previously, the second assignment would trigger the ``A.validate_b``
+method only once, for the ``b3`` object.  The ``b2`` object would be seen
+as being already present in the collection and not validated.  With the new
+behavior, both ``b2`` and ``b3`` are passed to ``A.validate_b`` before passing
+onto the collection.   It is thus important that valiation methods employ
+idempotent behavior to suit such a case.
+
+.. seealso::
+
+    :ref:`change_3896_event`
+
+:ticket:`3896`
+
+.. _change_3896_event:
+
+New bulk_replace event
+----------------------
+
+To suit the validation use case described in :ref:`change_3896_validates`,
+a new :meth:`.AttributeEvents.bulk_replace` method is added, which is
+called in conjunction with the :meth:`.AttributeEvents.append` and
+:meth:`.AttributeEvents.remove` events.  "bulk_replace" is called before
+"append" and "remove" so that the collection can be modified ahead of comparison
+to the existing collection.   After that, individual items
+are appended to a new target collection, firing off the "append"
+event for items new to the collection, as was the previous behavior.
+Below illustrates both "bulk_replace" and
+"append" at the same time, including that "append" will receive an object
+already handled by "bulk_replace" if collection assignment is used.
+A new symbol :attr:`~.attributes.OP_BULK_REPLACE` may be used to determine
+if this "append" event is the second part of a bulk replace::
+
+    from sqlalchemy.orm.attributes import OP_BULK_REPLACE
+
+    @event.listens_for(SomeObject.collection, "bulk_replace")
+    def process_collection(target, values, initiator):
+        values[:] = [_make_value(value) for value in values]
+
+    @event.listens_for(SomeObject.collection, "append", retval=True)
+    def process_collection(target, value, initiator):
+        # make sure bulk_replace didn't already do it
+        if initiator is None or initiator.op is not OP_BULK_REPLACE:
+            return _make_value(value)
+        else:
+            return value
+
+
+:ticket:`3896`
+
 
 New Features and Improvements - Core
 ====================================

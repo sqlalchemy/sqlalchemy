@@ -324,6 +324,7 @@ def create_proxied_attribute(descriptor):
 OP_REMOVE = util.symbol("REMOVE")
 OP_APPEND = util.symbol("APPEND")
 OP_REPLACE = util.symbol("REPLACE")
+OP_BULK_REPLACE = util.symbol("BULK_REPLACE")
 
 
 class Event(object):
@@ -348,8 +349,9 @@ class Event(object):
     :var impl: The :class:`.AttributeImpl` which is the current event
      initiator.
 
-    :var op: The symbol :attr:`.OP_APPEND`, :attr:`.OP_REMOVE` or
-     :attr:`.OP_REPLACE`, indicating the source operation.
+    :var op: The symbol :attr:`.OP_APPEND`, :attr:`.OP_REMOVE`,
+     :attr:`.OP_REPLACE`, or :attr:`.OP_BULK_REPLACE`, indicating the
+     source operation.
 
     """
 
@@ -1062,6 +1064,10 @@ class CollectionAttributeImpl(AttributeImpl):
                     iterable = iter(iterable)
         new_values = list(iterable)
 
+        evt = Event(self, OP_BULK_REPLACE)
+
+        self.dispatch.bulk_replace(state, new_values, evt)
+
         old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         if old is PASSIVE_NO_RESULT:
             old = self.initialize(state, dict_)
@@ -1078,7 +1084,8 @@ class CollectionAttributeImpl(AttributeImpl):
         dict_[self.key] = user_data
 
         collections.bulk_replace(
-            new_values, old_collection, new_collection)
+            new_values, old_collection, new_collection,
+            initiator=evt)
 
         del old._sa_adapter
         self.dispatch.dispose_collection(state, old, old_collection)
@@ -1163,7 +1170,7 @@ def backref_listeners(attribute, key, uselist):
             impl = old_state.manager[key].impl
 
             if initiator.impl is not impl or \
-                    initiator.op not in (OP_REPLACE, OP_REMOVE):
+                    initiator.op is OP_APPEND:
                 impl.pop(old_state,
                          old_dict,
                          state.obj(),
@@ -1179,7 +1186,7 @@ def backref_listeners(attribute, key, uselist):
                     initiator.parent_token is not child_impl.parent_token:
                 _acceptable_key_err(state, initiator, child_impl)
             elif initiator.impl is not child_impl or \
-                    initiator.op not in (OP_APPEND, OP_REPLACE):
+                    initiator.op is OP_REMOVE:
                 child_impl.append(
                     child_state,
                     child_dict,
@@ -1200,7 +1207,7 @@ def backref_listeners(attribute, key, uselist):
                 initiator.parent_token is not child_impl.parent_token:
             _acceptable_key_err(state, initiator, child_impl)
         elif initiator.impl is not child_impl or \
-                initiator.op not in (OP_APPEND, OP_REPLACE):
+                initiator.op is OP_REMOVE:
             child_impl.append(
                 child_state,
                 child_dict,
@@ -1215,7 +1222,7 @@ def backref_listeners(attribute, key, uselist):
                 instance_dict(child)
             child_impl = child_state.manager[key].impl
             if initiator.impl is not child_impl or \
-                    initiator.op not in (OP_REMOVE, OP_REPLACE):
+                    initiator.op is OP_APPEND:
                 child_impl.pop(
                     child_state,
                     child_dict,

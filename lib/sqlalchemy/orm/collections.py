@@ -728,7 +728,7 @@ class CollectionAdapter(object):
         self.attr = getattr(d['owner_cls'], self._key).impl
 
 
-def bulk_replace(values, existing_adapter, new_adapter):
+def bulk_replace(values, existing_adapter, new_adapter, initiator=None):
     """Load a new collection, firing events based on prior like membership.
 
     Appends instances in ``values`` onto the ``new_adapter``. Events will be
@@ -759,13 +759,13 @@ def bulk_replace(values, existing_adapter, new_adapter):
 
     for member in values or ():
         if member in additions:
-            appender(member)
+            appender(member, _sa_initiator=initiator)
         elif member in constants:
             appender(member, _sa_initiator=False)
 
     if existing_adapter:
         for member in removals:
-            existing_adapter.fire_remove_event(member)
+            existing_adapter.fire_remove_event(member, initiator=initiator)
 
 
 def prepare_instrumentation(factory):
