@@ -38,6 +38,13 @@
         2000, as the necessary system view is not available prior to SQL Server
         2005.
 
+    .. change:: 3897
+        :tags: feature, ext
+        :tickets: 3896
+
+        Added :meth:`.baked.Result.scalar` and :meth:`.baked.Result.count`
+        to the "baked" query system.
+
     .. change:: 3893
         :tags: bug, orm
         :tickets: 3893
