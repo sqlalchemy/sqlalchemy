@@ -21,6 +21,15 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change:: 3898
+        :tags: bug, mssql
+        :tickets: 3898
+
+        Added a version check to the "get_isolation_level" feature, which is
+        invoked upon first connect, so that it skips for SQL Server version
+        2000, as the necessary system view is not available prior to SQL Server
+        2005.
+
     .. change:: 3893
         :tags: bug, orm
         :tickets: 3893

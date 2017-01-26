@@ -1685,6 +1685,10 @@ class MSDialect(default.DefaultDialect):
         cursor.close()
 
     def get_isolation_level(self, connection):
+        if self.server_version_info < MS_2005_VERSION:
+            raise NotImplementedError(
+                "Can't fetch isolation level prior to SQL Server 2005")
+
         cursor = connection.cursor()
         cursor.execute("""
           SELECT CASE transaction_isolation_level
