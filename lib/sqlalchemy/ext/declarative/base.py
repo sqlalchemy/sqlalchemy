@@ -492,8 +492,12 @@ class _MapperConfig(object):
 
             if 'exclude_properties' not in mapper_args:
                 mapper_args['exclude_properties'] = exclude_properties = \
-                    set([c.key for c in inherited_table.c
-                         if c not in inherited_mapper._columntoproperty])
+                    set(
+                        [c.key for c in inherited_table.c
+                         if c not in inherited_mapper._columntoproperty]
+                ).union(
+                    inherited_mapper.exclude_properties or ()
+                )
                 exclude_properties.difference_update(
                     [c.key for c in self.declared_columns])
 

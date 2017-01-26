@@ -53,6 +53,15 @@
         Added :meth:`.baked.Result.scalar` and :meth:`.baked.Result.count`
         to the "baked" query system.
 
+    .. change:: 3895
+        :tags: bug, orm, declarative
+        :tickets: 3895
+
+        Fixed bug where the "automatic exclude" feature of declarative that
+        ensures a column local to a single table inheritance subclass does
+        not appear as an attribute on other derivations of the base would
+        not take effect for multiple levels of subclassing from the base.
+
     .. change:: 3893
         :tags: bug, orm
         :tickets: 3893
