@@ -24,10 +24,51 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
 
     def __init__(self, *elements, **kw):
         r"""
+        Create an :class:`.ExcludeConstraint` object.
+
+        E.g.::
+
+            const = ExcludeConstraint(
+                (Column('period'), '&&'),
+                (Column('group'), '='),
+                where=(Column('group') != 'some group')
+            )
+
+        The constraint is normally embedded into the :class:`.Table` construct
+        directly, or added later using :meth:`.append_constraint`::
+
+            some_table = Table(
+                'some_table', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('period', TSRANGE()),
+                Column('group', String)
+            )
+
+            some_table.append_constraint(
+                ExcludeConstraint(
+                    (some_table.c.period, '&&'),
+                    (some_table.c.group, '='),
+                    where=some_table.c.group != 'some group',
+                    name='some_table_excl_const'
+                )
+            )
+
         :param \*elements:
           A sequence of two tuples of the form ``(column, operator)`` where
-          column must be a column name or Column object and operator must
-          be a string containing the operator to use.
+          "column" is a SQL expression element or a raw SQL string, most
+          typically a :class:`.Column` object,
+          and "operator" is a string containing the operator to use.
+
+          .. note::
+
+                A plain string passed for the value of "column" is interpreted
+                as an arbitrary SQL  expression; when passing a plain string,
+                any necessary quoting and escaping syntaxes must be applied
+                manually. In order to specify a column name when a
+                :class:`.Column` object is not available, while ensuring that
+                any necessary quoting rules take effect, an ad-hoc
+                :class:`.Column` or :func:`.sql.expression.column` object may
+                be used.
 
         :param name:
           Optional, the in-database name of this constraint.
@@ -45,8 +86,15 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
           for this constraint. Defaults to 'gist'.
 
         :param where:
-          Optional string.  If set, emit WHERE <predicate> when issuing DDL
+          Optional SQL expression construct or literal SQL string.
+          If set, emit WHERE <predicate> when issuing DDL
           for this constraint.
+
+          .. note::
+
+                A plain string passed here is interpreted as an arbitrary SQL
+                expression; when passing a plain string, any necessary quoting
+                and escaping syntaxes must be applied manually.
 
         """
         columns = []
