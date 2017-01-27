@@ -3141,7 +3141,6 @@ class Query(object):
             :ref:`inserts_and_updates` - Core SQL tutorial
 
         """
-        # TODO: cascades need handling.
 
         delete_op = persistence.BulkDelete.factory(
             self, synchronize_session)
