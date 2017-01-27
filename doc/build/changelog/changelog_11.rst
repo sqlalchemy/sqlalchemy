@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change:: 3901
+        :tags: bug, ext
+        :tickets: 3901
+
+        Fixed bug in new :mod:`sqlalchemy.ext.indexable` extension
+        where setting of a property that itself refers to another property
+        would fail.
+
     .. change:: 3900
         :tags: bug, postgresql
         :tickets: 3900

@@ -372,3 +372,17 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
 
         jq = s.query(Json).filter(Json.subfield == 'multi').first()
         eq_(j.id, jq.id)
+
+    def test_nested_property_init(self):
+        Json = self.classes.Json
+
+        # subfield initializer
+        j = Json(subfield='a')
+        eq_(j.json, {'other': {'field': 'a'}})
+
+    def test_nested_property_set(self):
+        Json = self.classes.Json
+
+        j = Json()
+        j.subfield = 'a'
+        eq_(j.json, {'other': {'field': 'a'}})

@@ -227,6 +227,7 @@ The above query will render::
 """
 from __future__ import absolute_import
 
+from sqlalchemy import inspect
 from ..orm.attributes import flag_modified
 from ..ext.hybrid import hybrid_property
 
@@ -318,13 +319,14 @@ class index_property(hybrid_property):  # noqa
 
     def fset(self, instance, value):
         attr_name = self.attr_name
-        column_value = getattr(instance, attr_name)
+        column_value = getattr(instance, attr_name, None)
         if column_value is None:
             column_value = self.datatype()
             setattr(instance, attr_name, column_value)
         column_value[self.index] = value
         setattr(instance, attr_name, column_value)
-        flag_modified(instance, attr_name)
+        if attr_name in inspect(instance).mapper.attrs:
+            flag_modified(instance, attr_name)
 
     def fdel(self, instance):
         attr_name = self.attr_name
