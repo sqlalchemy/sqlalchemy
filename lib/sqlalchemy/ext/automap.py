@@ -633,9 +633,9 @@ def generate_relationship(
      that user-defined implementations correctly differentiate between the two
      functions, if a custom relationship function is being used.
 
-    :attrname: the attribute name to which this relationship is being assigned.
-     If the value of :paramref:`.generate_relationship.return_fn` is the
-     :func:`.backref` function, then this name is the name that is being
+    :param attrname: the attribute name to which this relationship is being
+     assigned. If the value of :paramref:`.generate_relationship.return_fn` is
+     the :func:`.backref` function, then this name is the name that is being
      assigned to the backref.
 
     :param local_cls: the "local" class to which this relationship or backref
