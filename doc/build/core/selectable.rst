@@ -90,6 +90,7 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: SelectBase
    :members:
+   :inherited-members:
 
 .. autoclass:: TableClause
    :members:
