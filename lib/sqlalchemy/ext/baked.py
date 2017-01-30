@@ -17,7 +17,7 @@ from ..orm.query import Query
 from ..orm import strategies, attributes, properties, \
     strategy_options, util as orm_util, interfaces
 from .. import log as sqla_log
-from ..sql import util as sql_util
+from ..sql import util as sql_util, func, literal_column
 from ..orm import exc as orm_exc
 from .. import exc as sa_exc
 from .. import util
@@ -253,6 +253,40 @@ class Result(object):
             self.session._autoflush()
         return context.query.params(self._params).\
             with_session(self.session)._execute_and_instances(context)
+
+    def count(self):
+        """return the 'count'.
+
+        Equivalent to :meth:`.Query.count`.
+
+        Note this uses a subquery to ensure an accurate count regardless
+        of the structure of the original statement.
+
+        .. versionadded:: 1.1.6
+
+        """
+
+        col = func.count(literal_column('*'))
+        bq = self.bq.with_criteria(lambda q: q.from_self(col))
+        return bq.for_session(self.session).scalar()
+
+    def scalar(self):
+        """Return the first element of the first result or None
+        if no rows present.  If multiple rows are returned,
+        raises MultipleResultsFound.
+
+        Equivalent to :meth:`.Query.scalar`.
+
+        .. versionadded:: 1.1.6
+
+        """
+        try:
+            ret = self.one()
+            if not isinstance(ret, tuple):
+                return ret
+            return ret[0]
+        except orm_exc.NoResultFound:
+            return None
 
     def first(self):
         """Return the first row.

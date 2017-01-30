@@ -6,7 +6,7 @@ from sqlalchemy import testing
 from test.orm import _fixtures
 from sqlalchemy.ext.baked import BakedQuery, baked_lazyload, BakedLazyLoader
 from sqlalchemy.ext import baked
-from sqlalchemy import bindparam, func
+from sqlalchemy import bindparam, func, literal_column
 from sqlalchemy.orm import exc as orm_exc
 import itertools
 from sqlalchemy.testing import mock
@@ -240,6 +240,43 @@ class LikeQueryTest(BakedTest):
             u2 = bq(sess).get(8)
             eq_(u2.name, 'ed')
         self.assert_sql_count(testing.db, go, 1)
+
+    def test_scalar(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User.id))
+
+        sess = Session()
+
+        bq += lambda q: q.filter(User.id == 7)
+
+        eq_(
+            bq(sess).scalar(), 7
+        )
+
+    def test_count(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+
+        sess = Session()
+
+        eq_(
+            bq(sess).count(),
+            4
+        )
+
+        bq += lambda q: q.filter(User.id.in_([8, 9]))
+
+        eq_(
+            bq(sess).count(), 2
+        )
+
+        # original query still works
+        eq_(
+            set([(u.id, u.name) for u in bq(sess).all()]),
+            set([(8, 'ed'), (9, 'fred')])
+        )
 
     def test_get_pk_w_null(self):
         """test the re-implementation of logic to do get with IS NULL."""
