@@ -199,7 +199,9 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
         c = self.__class__(*elements,
                            name=self.name,
                            deferrable=self.deferrable,
-                           initially=self.initially)
+                           initially=self.initially,
+                           where=self.where,
+                           using=self.using)
         c.dispatch._update(self.dispatch)
         return c
 

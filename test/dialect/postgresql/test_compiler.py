@@ -555,6 +555,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'ALTER TABLE testtbl ADD EXCLUDE USING gist '
                             '(room WITH =)')
 
+    def test_exclude_constraint_copy_where_using(self):
+        m = MetaData()
+        tbl = Table('testtbl', m,
+                    Column('room', Integer, primary_key=True),
+                    )
+        cons = ExcludeConstraint(
+            (tbl.c.room, '='), where=tbl.c.room > 5, using='foobar')
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            "ALTER TABLE testtbl ADD EXCLUDE USING foobar "
+            "(room WITH =) WHERE (testtbl.room > 5)"
+        )
+
+        m2 = MetaData()
+        tbl2 = tbl.tometadata(m2)
+        self.assert_compile(
+            schema.CreateTable(tbl2),
+            "CREATE TABLE testtbl (room SERIAL NOT NULL, "
+            "PRIMARY KEY (room), "
+            "EXCLUDE USING foobar "
+            "(room WITH =) WHERE (testtbl.room > 5))"
+        )
+
     def test_exclude_constraint_text(self):
         m = MetaData()
         cons = ExcludeConstraint((text('room::TEXT'), '='))

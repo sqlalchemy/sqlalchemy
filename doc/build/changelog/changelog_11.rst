@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change:: 3900
+        :tags: bug, postgresql
+        :tickets: 3900
+
+        Fixed bug in Postgresql :class:`.ExcludeConstraint` where the
+        "whereclause" and "using" parameters would not be copied during an
+        operation like :meth:`.Table.tometadata`.
+
     .. change:: 3898
         :tags: bug, mssql
         :tickets: 3898
