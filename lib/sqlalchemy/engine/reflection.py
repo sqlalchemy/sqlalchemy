@@ -340,20 +340,17 @@ class Inspector(object):
         Given a string `table_name` and an optional string `schema`, return
         column information as a list of dicts with these keys:
 
-        name
-          the column's name
+        * ``name`` - the column's name
 
-        type
+        * ``type`` - the type of this column; an instance of
           :class:`~sqlalchemy.types.TypeEngine`
 
-        nullable
-          boolean
+        * ``nullable`` - boolean flag if the column is NULL or NOT NULL
 
-        default
-          the column's default value
+        * ``default`` - the column's server default value - this is returned
+          as a string SQL expression.
 
-        attrs
-          dict containing optional column attributes
+        * ``attrs``  - dict containing optional column attributes
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -361,6 +358,9 @@ class Inspector(object):
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
          use :class:`.quoted_name`.
+
+        :return: list of dictionaries, each representing the definition of
+         a database column.
 
         """
 
@@ -649,14 +649,14 @@ class Inspector(object):
 
         colargs = []
         if col_d.get('default') is not None:
-            # the "default" value is assumed to be a literal SQL
-            # expression, so is wrapped in text() so that no quoting
-            # occurs on re-issuance.
-            colargs.append(
-                sa_schema.DefaultClause(
-                    sql.text(col_d['default']), _reflected=True
-                )
-            )
+            default = col_d['default']
+            if isinstance(default, sql.elements.TextClause):
+                default = sa_schema.DefaultClause(default, _reflected=True)
+            elif not isinstance(default, sa_schema.FetchedValue):
+                default = sa_schema.DefaultClause(
+                    sql.text(col_d['default']), _reflected=True)
+
+            colargs.append(default)
 
         if 'sequence' in col_d:
             self._reflect_col_sequence(col_d, colargs)

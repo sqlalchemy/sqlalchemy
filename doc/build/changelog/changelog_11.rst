@@ -21,6 +21,17 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change:: 3905
+        :tags: bug, sql
+        :tickets: 3905
+
+        Fixed bug whereby the :meth:`.DDLEvents.column_reflect` event would not
+        allow a non-textual expression to be passed as the value of the
+        "default" for the new column, such as a :class:`.FetchedValue`
+        object to indicate a generic triggered default or a
+        :func:`.sql.expression.text` construct.  Clarified the documentation
+        in this regard as well.
+
     .. change:: 3901
         :tags: bug, ext
         :tickets: 3901

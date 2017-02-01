@@ -178,7 +178,29 @@ class DDLEvents(event.Events):
         The dictionary of column information as returned by the
         dialect is passed, and can be modified.  The dictionary
         is that returned in each element of the list returned
-        by :meth:`.reflection.Inspector.get_columns`.
+        by :meth:`.reflection.Inspector.get_columns`:
+
+            * ``name`` - the column's name
+
+            * ``type`` - the type of this column, which should be an instance
+              of :class:`~sqlalchemy.types.TypeEngine`
+
+            * ``nullable`` - boolean flag if the column is NULL or NOT NULL
+
+            * ``default`` - the column's server default value.  This is
+              normally specified as a plain string SQL expression, however the
+              event can pass a :class:`.FetchedValue`, :class:`.DefaultClause`,
+              or :func:`.sql.expression.text` object as well.
+
+              .. versionchanged:: 1.1.6
+
+                    The :meth:`.DDLEvents.column_reflect` event allows a non
+                    string :class:`.FetchedValue`,
+                    :func:`.sql.expression.text`, or derived object to be
+                    specified as the value of ``default`` in the column
+                    dictionary.
+
+            * ``attrs``  - dict containing optional column attributes
 
         The event is called before any action is taken against
         this dictionary, and the contents can be modified.
