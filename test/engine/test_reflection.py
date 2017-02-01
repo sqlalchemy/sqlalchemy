@@ -1,13 +1,14 @@
 import unicodedata
 import sqlalchemy as sa
-from sqlalchemy import schema, inspect
+from sqlalchemy import schema, inspect, sql
 from sqlalchemy import MetaData, Integer, String, Index, ForeignKey, \
-    UniqueConstraint
+    UniqueConstraint, FetchedValue, DefaultClause
 from sqlalchemy.testing import (
     ComparesTables, engines, AssertsCompiledSQL,
     fixtures, skip)
 from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.testing import eq_, is_true, assert_raises, \
+    assert_raises_message
 from sqlalchemy import testing
 from sqlalchemy.util import ue
 from sqlalchemy.testing import config
@@ -1769,4 +1770,50 @@ class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
         self._do_test(
             "x", {"info": {"a": "b"}},
             lambda table: eq_(table.c.x.info, {"a": "b"})
+        )
+
+    def test_override_server_default_fetchedvalue(self):
+        my_default = FetchedValue()
+        self._do_test(
+            "x", {"default": my_default},
+            lambda table: eq_(table.c.x.server_default, my_default)
+        )
+
+    def test_override_server_default_default_clause(self):
+        my_default = DefaultClause("1")
+        self._do_test(
+            "x", {"default": my_default},
+            lambda table: eq_(table.c.x.server_default, my_default)
+        )
+
+    def test_override_server_default_plain_text(self):
+        my_default = "1"
+
+        def assert_text_of_one(table):
+            is_true(
+                isinstance(
+                    table.c.x.server_default.arg, sql.elements.TextClause)
+            )
+            eq_(
+                str(table.c.x.server_default.arg), "1"
+            )
+        self._do_test(
+            "x", {"default": my_default},
+            assert_text_of_one
+        )
+
+    def test_override_server_default_textclause(self):
+        my_default = sa.text("1")
+
+        def assert_text_of_one(table):
+            is_true(
+                isinstance(
+                    table.c.x.server_default.arg, sql.elements.TextClause)
+            )
+            eq_(
+                str(table.c.x.server_default.arg), "1"
+            )
+        self._do_test(
+            "x", {"default": my_default},
+            assert_text_of_one
         )
