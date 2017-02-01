@@ -1104,10 +1104,17 @@ class Enum(String, SchemaType):
     the production of the CHECK constraint is configurable using the
     :paramref:`.Enum.create_constraint` flag.
 
-    The :class:`.Enum` type also provides in-Python validation of both
-    input values and database-returned values.   A ``LookupError`` is raised
-    for any Python value that's not located in the given list of possible
-    values.
+    The :class:`.Enum` type also provides in-Python validation of string
+    values during both read and write operations.  When reading a value
+    from the database in a result set, the string value is always checked
+    against the list of possible values and a ``LookupError`` is raised
+    if no match is found.  When passing a value to the database as a
+    plain string within a SQL statement, if the
+    :paramref:`.Enum.validate_strings` parameter is
+    set to True, a ``LookupError`` is raised for any string value that's
+    not located in the given list of possible values; note that this
+    impacts usage of LIKE expressions with enumerated values (an unusual
+    use case).
 
     .. versionchanged:: 1.1 the :class:`.Enum` type now provides in-Python
        validation of input values as well as on data being returned by
@@ -1217,8 +1224,10 @@ class Enum(String, SchemaType):
            ``schema`` attribute.   This also takes effect when using the
            :meth:`.Table.tometadata` operation.
 
-        :param validate_strings: when True, invalid string values will
-           be validated and not be allowed to pass through.
+        :param validate_strings: when True, string values that are being
+           passed to the database in a SQL statement will be checked
+           for validity against the list of enumerated values.  Unrecognized
+           values will result in a ``LookupError`` being raised.
 
            .. versionadded:: 1.1.0b2
 
