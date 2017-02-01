@@ -1131,9 +1131,9 @@ class Enum(String, SchemaType):
 
         import enum
         class MyEnum(enum.Enum):
-            one = "one"
-            two = "two"
-            three = "three"
+            one = 1
+            two = 2
+            three = 3
 
 
         t = Table(
@@ -1143,6 +1143,11 @@ class Enum(String, SchemaType):
 
         connection.execute(t.insert(), {"value": MyEnum.two})
         assert connection.scalar(t.select()) is MyEnum.two
+
+    Above, the string names of each element, e.g. "one", "two", "three",
+    are persisted to the database; the values of the Python Enum, here
+    indicated as integers, are **not** used; the value of each enum can
+    therefore be any kind of Python object whether or not it is persistable.
 
     .. versionadded:: 1.1 - support for PEP-435-style enumerated
        classes.

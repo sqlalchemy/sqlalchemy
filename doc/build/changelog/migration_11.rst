@@ -1505,16 +1505,16 @@ Support for Python's native ``enum`` type and compatible forms
 The :class:`.Enum` type can now be constructed using any
 PEP-435 compliant enumerated type.   When using this mode, input values
 and return values are the actual enumerated objects, not the
-string values::
+string/integer/etc values::
 
     import enum
     from sqlalchemy import Table, MetaData, Column, Enum, create_engine
 
 
     class MyEnum(enum.Enum):
-        one = "one"
-        two = "two"
-        three = "three"
+        one = 1
+        two = 2
+        three = 3
 
 
     t = Table(
