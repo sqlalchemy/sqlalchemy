@@ -8,9 +8,10 @@ from sqlalchemy.util import partial
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import eq_
 
+
 class TestDescriptor(descriptor_props.DescriptorProperty):
     def __init__(self, cls, key, descriptor=None, doc=None,
-            comparator_factory = None):
+                 comparator_factory=None):
         self.parent = cls.__mapper__
         self.key = key
         self.doc = doc
@@ -19,6 +20,7 @@ class TestDescriptor(descriptor_props.DescriptorProperty):
             self._comparator_factory = partial(comparator_factory, self)
         else:
             self._comparator_factory = lambda mapper: None
+
 
 class DescriptorInstrumentationTest(fixtures.ORMTest):
     def _fixture(self):
@@ -40,7 +42,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
 
     def test_property_wrapped_classlevel(self):
         Foo = self._fixture()
-        prop = property(lambda self:None)
+        prop = property(lambda self: None)
         Foo.foo = prop
 
         d = TestDescriptor(Foo, 'foo')
@@ -58,7 +60,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
             def method1(self):
                 return "method1"
 
-        prop = myprop(lambda self:None)
+        prop = myprop(lambda self: None)
         Foo.foo = prop
 
         d = TestDescriptor(Foo, 'foo')
@@ -99,13 +101,13 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
             "foo = upper(:upper_1)"
         )
 
-
     def test_aliased_comparator(self):
         class Comparator(ColumnProperty.Comparator):
             __hash__ = None
+
             def __eq__(self, other):
                 return func.foobar(self.__clause_element__()) ==\
-                            func.foobar(other)
+                    func.foobar(other)
 
         Foo = self._fixture()
         Foo._name = Column('name', String)
@@ -119,10 +121,9 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
 
         eq_(
             str(Foo.foo == 'ed'),
-           "foobar(foo.name) = foobar(:foobar_1)"
+            "foobar(foo.name) = foobar(:foobar_1)"
         )
         eq_(
             str(aliased(Foo).foo == 'ed'),
             "foobar(foo_1.name) = foobar(:foobar_1)"
         )
-

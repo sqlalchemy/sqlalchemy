@@ -6,7 +6,9 @@ from sqlalchemy import *
 from sqlalchemy import types as sqltypes, exc, schema
 from sqlalchemy.sql import table, column
 from sqlalchemy.sql.elements import quoted_name
-from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
+from sqlalchemy.testing import (fixtures,
+                                AssertsExecutionResults,
+                                AssertsCompiledSQL)
 from sqlalchemy import testing
 from sqlalchemy.util import u, b
 from sqlalchemy import util
@@ -20,6 +22,7 @@ import datetime
 import os
 from sqlalchemy import sql
 from sqlalchemy.testing.mock import Mock
+
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'oracle+cx_oracle'
@@ -41,11 +44,12 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_out_params(self):
         result = testing.db.execute(text('begin foo(:x_in, :x_out, :y_out, '
-                               ':z_out); end;',
-                               bindparams=[bindparam('x_in', Float),
-                               outparam('x_out', Integer),
-                               outparam('y_out', Float),
-                               outparam('z_out', String)]), x_in=5)
+                                         ':z_out); end;',
+                                    bindparams=[bindparam('x_in', Float),
+                                                outparam('x_out', Integer),
+                                                outparam('y_out', Float),
+                                                outparam('z_out', String)]),
+                                    x_in=5)
         eq_(result.out_parameters,
             {'x_out': 10, 'y_out': 75, 'z_out': None})
         assert isinstance(result.out_parameters['x_out'], int)
@@ -53,6 +57,7 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def teardown_class(cls):
         testing.db.execute("DROP PROCEDURE foo")
+
 
 class CXOracleArgsTest(fixtures.TestBase):
     __only_on__ = 'oracle+cx_oracle'
@@ -72,8 +77,9 @@ class CXOracleArgsTest(fixtures.TestBase):
     def test_exclude_inputsizes_custom(self):
         import cx_Oracle
         dialect = cx_oracle.dialect(dbapi=cx_Oracle,
-                            exclude_setinputsizes=('NCLOB',))
+                                    exclude_setinputsizes=('NCLOB',))
         eq_(dialect.exclude_setinputsizes, set([cx_Oracle.NCLOB]))
+
 
 class QuotedBindRoundTripTest(fixtures.TestBase):
 
@@ -86,13 +92,12 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
 
         metadata = self.metadata
         table = Table("t1", metadata,
-            Column("option", Integer),
-            Column("plain", Integer, quote=True),
-            # test that quote works for a reserved word
-            # that the dialect isn't aware of when quote
-            # is set
-            Column("union", Integer, quote=True)
-        )
+                      Column("option", Integer),
+                      Column("plain", Integer, quote=True),
+                      # test that quote works for a reserved word
+                      # that the dialect isn't aware of when quote
+                      # is set
+                      Column("union", Integer, quote=True))
         metadata.create_all()
 
         table.insert().execute(
@@ -131,8 +136,9 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             testing.db.scalar(t.select()), 10
         )
 
+
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = "oracle" #oracle.dialect()
+    __dialect__ = "oracle"  # oracle.dialect()
 
     def test_true_false(self):
         self.assert_compile(
@@ -161,8 +167,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([s.c.col1, s.c.col2])
 
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT "
-                                "sometable.col1 AS col1, sometable.col2 "
-                                "AS col2 FROM sometable)")
+                               "sometable.col1 AS col1, sometable.col2 "
+                               "AS col2 FROM sometable)")
 
     def test_bindparam_quote(self):
         """test that bound parameters take on quoting for reserved words,
@@ -178,7 +184,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         t = Table("s", MetaData(), Column('plain', Integer, quote=True))
         self.assert_compile(
-            t.insert().values(plain=5), 'INSERT INTO s ("plain") VALUES (:"plain")'
+            t.insert().values(plain=5),
+            'INSERT INTO s ("plain") VALUES (:"plain")'
         )
         self.assert_compile(
             t.update().values(plain=5), 'UPDATE s SET "plain"=:"plain"'
@@ -253,8 +260,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
                             'FROM (SELECT sometable.col1 AS col1, '
                             'sometable.col2 AS col2 FROM sometable) '
-                            'WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > '
-                            ':param_2)',
+                            'WHERE ROWNUM <= :param_1 + :param_2) '
+                            'WHERE ora_rn > :param_2)',
                             checkparams={'param_1': 10, 'param_2': 20})
 
         self.assert_compile(s2,
@@ -262,8 +269,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
                             'FROM (SELECT sometable.col1 AS col1, '
                             'sometable.col2 AS col2 FROM sometable) '
-                            'WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > '
-                            ':param_2)')
+                            'WHERE ROWNUM <= :param_1 + :param_2) '
+                            'WHERE ora_rn > :param_2)')
         c = s2.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)
         assert s.c.col1 in set(c._create_result_map()['col1'][1])
@@ -303,7 +310,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update(self):
         table1 = table('mytable',
-                    column('myid'), column('name'), column('description'))
+                       column('myid'), column('name'), column('description'))
 
         self.assert_compile(
             table1.select(table1.c.myid == 7).with_for_update(),
@@ -311,9 +318,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE")
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(of=table1.c.myid),
+            table1
+            .select(table1.c.myid == 7)
+            .with_for_update(of=table1.c.myid),
             "SELECT mytable.myid, mytable.name, mytable.description "
-            "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF mytable.myid")
+            "FROM mytable WHERE mytable.myid = :myid_1 "
+            "FOR UPDATE OF mytable.myid")
 
         self.assert_compile(
             table1.select(table1.c.myid == 7).with_for_update(nowait=True),
@@ -321,44 +331,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE NOWAIT")
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).
-                                with_for_update(nowait=True, of=table1.c.myid),
+            table1
+            .select(table1.c.myid == 7)
+            .with_for_update(nowait=True, of=table1.c.myid),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 "
             "FOR UPDATE OF mytable.myid NOWAIT")
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).
-                with_for_update(nowait=True, of=[table1.c.myid, table1.c.name]),
+            table1
+            .select(table1.c.myid == 7)
+            .with_for_update(nowait=True, of=[table1.c.myid, table1.c.name]),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF "
             "mytable.myid, mytable.name NOWAIT")
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).
-                with_for_update(skip_locked=True, of=[table1.c.myid, table1.c.name]),
+            table1.select(table1.c.myid == 7)
+            .with_for_update(skip_locked=True,
+                             of=[table1.c.myid, table1.c.name]),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF "
             "mytable.myid, mytable.name SKIP LOCKED")
 
         # key_share has no effect
         self.assert_compile(
-            table1.select(table1.c.myid == 7).
-                with_for_update(key_share=True),
+            table1.select(table1.c.myid == 7).with_for_update(key_share=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE")
 
         # read has no effect
         self.assert_compile(
-            table1.select(table1.c.myid == 7).
-                with_for_update(read=True, key_share=True),
+            table1
+            .select(table1.c.myid == 7)
+            .with_for_update(read=True, key_share=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE")
 
         ta = table1.alias()
         self.assert_compile(
-            ta.select(ta.c.myid == 7).
-                with_for_update(of=[ta.c.myid, ta.c.name]),
+            ta
+            .select(ta.c.myid == 7)
+            .with_for_update(of=[ta.c.myid, ta.c.name]),
             "SELECT mytable_1.myid, mytable_1.name, mytable_1.description "
             "FROM mytable mytable_1 "
             "WHERE mytable_1.myid = :myid_1 FOR UPDATE OF "
@@ -451,46 +465,52 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = table('sometable', column('col1'), column('col2'))
         dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
-        self.assert_compile(select([t]).limit(10),
-                "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-                "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= 10",
-                dialect=dialect)
+        self.assert_compile(
+            select([t]).limit(10),
+            "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
+            "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= 10",
+            dialect=dialect)
 
-        self.assert_compile(select([t]).offset(10),
-                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
-                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-                "FROM sometable)) WHERE ora_rn > 10",
-                dialect=dialect)
+        self.assert_compile(
+            select([t]).offset(10),
+            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+            "FROM sometable)) WHERE ora_rn > 10",
+            dialect=dialect)
 
-        self.assert_compile(select([t]).limit(10).offset(10),
-                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
-                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-                "FROM sometable) WHERE ROWNUM <= 20) WHERE ora_rn > 10",
-                dialect=dialect)
+        self.assert_compile(
+            select([t]).limit(10).offset(10),
+            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+            "FROM sometable) WHERE ROWNUM <= 20) WHERE ora_rn > 10",
+            dialect=dialect)
 
     def test_use_binds_for_limits_enabled(self):
         t = table('sometable', column('col1'), column('col2'))
         dialect = oracle.OracleDialect(use_binds_for_limits=True)
 
-        self.assert_compile(select([t]).limit(10),
-                "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-                "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM "
-                "<= :param_1",
-                dialect=dialect)
+        self.assert_compile(
+            select([t]).limit(10),
+            "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
+            "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM "
+            "<= :param_1",
+            dialect=dialect)
 
-        self.assert_compile(select([t]).offset(10),
-                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
-                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-                "FROM sometable)) WHERE ora_rn > :param_1",
-                dialect=dialect)
+        self.assert_compile(
+            select([t]).offset(10),
+            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+            "FROM sometable)) WHERE ora_rn > :param_1",
+            dialect=dialect)
 
-        self.assert_compile(select([t]).limit(10).offset(10),
-                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
-                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-                "FROM sometable) WHERE ROWNUM <= :param_1 + :param_2) "
-                "WHERE ora_rn > :param_2",
-                dialect=dialect,
-                checkparams={'param_1': 10, 'param_2': 10})
+        self.assert_compile(
+            select([t]).limit(10).offset(10),
+            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+            "FROM sometable) WHERE ROWNUM <= :param_1 + :param_2) "
+            "WHERE ora_rn > :param_2",
+            dialect=dialect,
+            checkparams={'param_1': 10, 'param_2': 10})
 
     def test_long_labels(self):
         dialect = default.DefaultDialect()
@@ -510,11 +530,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             m,
             Column('id', Integer, primary_key=True),
             Column('thirty_characters_table_id',
-                Integer,
-                ForeignKey('thirty_characters_table_xxxxxx.id'),
-                primary_key=True
-            )
-        )
+                   Integer,
+                   ForeignKey('thirty_characters_table_xxxxxx.id'),
+                   primary_key=True))
 
         anon = a_table.alias()
         self.assert_compile(select([other_table,
@@ -551,10 +569,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_outer_join(self):
         table1 = table('mytable',
-            column('myid', Integer),
-            column('name', String),
-            column('description', String),
-        )
+                       column('myid', Integer),
+                       column('name', String),
+                       column('description', String))
 
         table2 = table(
             'myothertable',
@@ -568,11 +585,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column('otherstuff', String),
         )
 
-        query = select([table1, table2], or_(table1.c.name == 'fred',
-                       table1.c.myid == 10, table2.c.othername != 'jack',
-                       text('EXISTS (select yay from foo where boo = lar)')
-                       ), from_obj=[outerjoin(table1, table2,
-                       table1.c.myid == table2.c.otherid)])
+        query = select([table1, table2],
+                       or_(table1.c.name == 'fred',
+                           table1.c.myid == 10, table2.c.othername != 'jack',
+                           text('EXISTS (select yay from foo where boo = lar)')
+                           ),
+                       from_obj=[outerjoin(table1,
+                                           table2,
+                                           table1.c.myid == table2.c.otherid)])
         self.assert_compile(query,
                             'SELECT mytable.myid, mytable.name, '
                             'mytable.description, myothertable.otherid,'
@@ -584,9 +604,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'lar)) AND mytable.myid = '
                             'myothertable.otherid(+)',
                             dialect=oracle.OracleDialect(use_ansi=False))
-        query = table1.outerjoin(table2, table1.c.myid
-                                 == table2.c.otherid).outerjoin(table3,
-                table3.c.userid == table2.c.otherid)
+        query = table1.outerjoin(table2,
+                                 table1.c.myid == table2.c.otherid) \
+                      .outerjoin(table3, table3.c.userid == table2.c.otherid)
         self.assert_compile(query.select(),
                             'SELECT mytable.myid, mytable.name, '
                             'mytable.description, myothertable.otherid,'
@@ -607,9 +627,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'myothertable.otherid AND mytable.myid = '
                             'myothertable.otherid(+)',
                             dialect=oracle.dialect(use_ansi=False))
-        query = table1.join(table2, table1.c.myid
-                            == table2.c.otherid).join(table3,
-                table3.c.userid == table2.c.otherid)
+        query = table1.join(table2,
+                            table1.c.myid == table2.c.otherid) \
+                      .join(table3, table3.c.userid == table2.c.otherid)
         self.assert_compile(query.select(),
                             'SELECT mytable.myid, mytable.name, '
                             'mytable.description, myothertable.otherid,'
@@ -620,11 +640,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'myothertable.otherid AND mytable.myid = '
                             'myothertable.otherid',
                             dialect=oracle.dialect(use_ansi=False))
-        query = table1.join(table2, table1.c.myid
-                            == table2.c.otherid).outerjoin(table3,
-                table3.c.userid == table2.c.otherid)
+        query = table1.join(table2,
+                            table1.c.myid == table2.c.otherid) \
+                      .outerjoin(table3, table3.c.userid == table2.c.otherid)
         self.assert_compile(query.select().order_by(table1.c.name).
-                        limit(10).offset(5),
+                            limit(10).offset(5),
                             'SELECT myid, name, description, otherid, '
                             'othername, userid, otherstuff FROM '
                             '(SELECT myid, name, description, otherid, '
@@ -638,16 +658,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'mytable, myothertable, thirdtable WHERE '
                             'thirdtable.userid(+) = '
                             'myothertable.otherid AND mytable.myid = '
-                            'myothertable.otherid ORDER BY '
-                            'mytable.name) WHERE ROWNUM <= :param_1 + :param_2) '
+                            'myothertable.otherid ORDER BY mytable.name) '
+                            'WHERE ROWNUM <= :param_1 + :param_2) '
                             'WHERE ora_rn > :param_2',
                             checkparams={'param_1': 10, 'param_2': 5},
                             dialect=oracle.dialect(use_ansi=False))
 
-        subq = select([table1]).select_from(table1.outerjoin(table2,
-                table1.c.myid == table2.c.otherid)).alias()
-        q = select([table3]).select_from(table3.outerjoin(subq,
-                table3.c.userid == subq.c.myid))
+        subq = select([table1]).select_from(
+            table1.outerjoin(table2, table1.c.myid == table2.c.otherid)) \
+            .alias()
+        q = select([table3]).select_from(
+            table3.outerjoin(subq, table3.c.userid == subq.c.myid))
 
         self.assert_compile(q,
                             'SELECT thirdtable.userid, '
@@ -676,8 +697,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT mytable.name FROM mytable WHERE '
                             'mytable.name = :name_1',
                             dialect=oracle.dialect(use_ansi=False))
-        subq = select([table3.c.otherstuff]).where(table3.c.otherstuff
-                == table1.c.name).label('bar')
+        subq = select([table3.c.otherstuff]) \
+            .where(table3.c.otherstuff == table1.c.name).label('bar')
         q = select([table1.c.name, subq])
         self.assert_compile(q,
                             'SELECT mytable.name, (SELECT '
@@ -700,7 +721,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=oracle.OracleDialect(use_ansi=False)
         )
 
-
         j = a.outerjoin(b.join(c, b.c.b == c.c.c), a.c.a == b.c.b)
 
         self.assert_compile(
@@ -719,7 +739,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=oracle.OracleDialect(use_ansi=False)
         )
 
-
     def test_alias_outer_join(self):
         address_types = table('address_types', column('id'),
                               column('name'))
@@ -727,11 +746,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                           column('address_type_id'),
                           column('email_address'))
         at_alias = address_types.alias()
-        s = select([at_alias,
-                   addresses]).select_from(addresses.outerjoin(at_alias,
-                addresses.c.address_type_id
-                == at_alias.c.id)).where(addresses.c.user_id
-                == 7).order_by(addresses.c.id, address_types.c.id)
+        s = select([at_alias, addresses]) \
+            .select_from(
+                addresses.outerjoin(
+                    at_alias,
+                    addresses.c.address_type_id == at_alias.c.id)) \
+            .where(addresses.c.user_id == 7) \
+            .order_by(addresses.c.id, address_types.c.id)
         self.assert_compile(s,
                             'SELECT address_types_1.id, '
                             'address_types_1.name, addresses.id, '
@@ -748,25 +769,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             t1.insert().values(c1=1).returning(t1.c.c2, t1.c.c3),
             "INSERT INTO t1 (c1) VALUES (:c1) RETURNING "
-                "t1.c2, t1.c3 INTO :ret_0, :ret_1"
-        )
+            "t1.c2, t1.c3 INTO :ret_0, :ret_1")
 
     def test_returning_insert_functional(self):
-        t1 = table('t1', column('c1'), column('c2', String()), column('c3', String()))
+        t1 = table('t1',
+                   column('c1'),
+                   column('c2', String()),
+                   column('c3', String()))
         fn = func.lower(t1.c.c2, type_=String())
         stmt = t1.insert().values(c1=1).returning(fn, t1.c.c3)
         compiled = stmt.compile(dialect=oracle.dialect())
-        eq_(
-            compiled._create_result_map(),
+        eq_(compiled._create_result_map(),
             {'ret_1': ('ret_1', (t1.c.c3, 'c3', 'c3'), t1.c.c3.type),
-            'ret_0': ('ret_0', (fn, 'lower', None), fn.type)}
-
-        )
+            'ret_0': ('ret_0', (fn, 'lower', None), fn.type)})
         self.assert_compile(
             stmt,
             "INSERT INTO t1 (c1) VALUES (:c1) RETURNING "
-                "lower(t1.c2), t1.c3 INTO :ret_0, :ret_1"
-        )
+            "lower(t1.c2), t1.c3 INTO :ret_0, :ret_1")
 
     def test_returning_insert_labeled(self):
         t1 = table('t1', column('c1'), column('c2'), column('c3'))
@@ -774,8 +793,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t1.insert().values(c1=1).returning(
                         t1.c.c2.label('c2_l'), t1.c.c3.label('c3_l')),
             "INSERT INTO t1 (c1) VALUES (:c1) RETURNING "
-                "t1.c2, t1.c3 INTO :ret_0, :ret_1"
-        )
+            "t1.c2, t1.c3 INTO :ret_0, :ret_1")
 
     def test_compound(self):
         t1 = table('t1', column('c1'), column('c2'), column('c3'))
@@ -803,9 +821,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_create_index_alt_schema(self):
         m = MetaData()
         t1 = Table('foo', m,
-                Column('x', Integer),
-                schema="alt_schema"
-            )
+                   Column('x', Integer),
+                   schema="alt_schema")
         self.assert_compile(
             schema.CreateIndex(Index("bar", t1.c.x)),
             "CREATE INDEX alt_schema.bar ON alt_schema.foo (x)"
@@ -814,8 +831,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_create_index_expr(self):
         m = MetaData()
         t1 = Table('foo', m,
-                Column('x', Integer)
-            )
+                   Column('x', Integer))
         self.assert_compile(
             schema.CreateIndex(Index("bar", t1.c.x > 5)),
             "CREATE INDEX bar ON foo (x > 5)"
@@ -836,7 +852,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE GLOBAL TEMPORARY TABLE "
             "foo (x INTEGER) ON COMMIT PRESERVE ROWS"
         )
-
 
     def test_create_table_compress(self):
         m = MetaData()
@@ -881,7 +896,6 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect._get_default_schema_name = Mock()
         return dialect
 
-
     def test_ora8_flags(self):
         dialect = self._dialect((8, 2, 5))
 
@@ -899,11 +913,9 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(Unicode(50), "VARCHAR2(50)", dialect=dialect)
         self.assert_compile(UnicodeText(), "CLOB", dialect=dialect)
 
-
         dialect = self._dialect((8, 2, 5), implicit_returning=True)
         dialect.initialize(testing.db.connect())
         assert dialect.implicit_returning
-
 
     def test_default_flags(self):
         """test with no initialization or server version info"""
@@ -993,14 +1005,14 @@ drop synonym %(test_schema)s.local_table;
         schema = testing.db.dialect.default_schema_name
         meta = self.metadata
         parent = Table('parent', meta,
-            Column('pid', Integer, primary_key=True),
-            schema=schema
-        )
+                       Column('pid', Integer, primary_key=True),
+                       schema=schema)
         child = Table('child', meta,
-            Column('cid', Integer, primary_key=True),
-            Column('pid', Integer, ForeignKey('%s.parent.pid' % schema)),
-            schema=schema
-        )
+                      Column('cid', Integer, primary_key=True),
+                      Column('pid',
+                             Integer,
+                             ForeignKey('%s.parent.pid' % schema)),
+                      schema=schema)
         meta.create_all()
         parent.insert().execute({'pid': 1})
         child.insert().execute({'cid': 1, 'pid': 1})
@@ -1008,12 +1020,14 @@ drop synonym %(test_schema)s.local_table;
 
     def test_reflect_alt_table_owner_local_synonym(self):
         meta = MetaData(testing.db)
-        parent = Table('%s_pt' % testing.config.test_schema, meta, autoload=True,
-                            oracle_resolve_synonyms=True)
+        parent = Table('%s_pt' % testing.config.test_schema,
+                       meta,
+                       autoload=True,
+                       oracle_resolve_synonyms=True)
         self.assert_compile(parent.select(),
-                "SELECT %(test_schema)s_pt.id, "
-                "%(test_schema)s_pt.data FROM %(test_schema)s_pt"
-                 % {"test_schema": testing.config.test_schema})
+                            "SELECT %(test_schema)s_pt.id, "
+                            "%(test_schema)s_pt.data FROM %(test_schema)s_pt"
+                            % {"test_schema": testing.config.test_schema})
         select([parent]).execute().fetchall()
 
     def test_reflect_alt_synonym_owner_local_table(self):
@@ -1033,13 +1047,12 @@ drop synonym %(test_schema)s.local_table;
     @testing.provide_metadata
     def test_create_same_names_implicit_schema(self):
         meta = self.metadata
-        parent = Table('parent', meta,
-            Column('pid', Integer, primary_key=True),
-        )
+        parent = Table('parent',
+                       meta,
+                       Column('pid', Integer, primary_key=True))
         child = Table('child', meta,
-            Column('cid', Integer, primary_key=True),
-            Column('pid', Integer, ForeignKey('parent.pid')),
-        )
+                      Column('cid', Integer, primary_key=True),
+                      Column('pid', Integer, ForeignKey('parent.pid')))
         meta.create_all()
         parent.insert().execute({'pid': 1})
         child.insert().execute({'cid': 1, 'pid': 1})
@@ -1153,16 +1166,17 @@ class ConstraintTest(fixtures.TablesTest):
 
     def test_oracle_has_no_on_update_cascade(self):
         bar = Table('bar', self.metadata,
-                Column('id', Integer, primary_key=True),
-                Column('foo_id', Integer,
-                    ForeignKey('foo.id', onupdate='CASCADE')))
+                    Column('id', Integer, primary_key=True),
+                    Column('foo_id',
+                           Integer,
+                           ForeignKey('foo.id', onupdate='CASCADE')))
         assert_raises(exc.SAWarning, bar.create)
 
         bat = Table('bat', self.metadata,
-                Column('id', Integer, primary_key=True),
-                Column('foo_id', Integer),
+                    Column('id', Integer, primary_key=True),
+                    Column('foo_id', Integer),
                     ForeignKeyConstraint(['foo_id'], ['foo.id'],
-                    onupdate='CASCADE'))
+                                         onupdate='CASCADE'))
         assert_raises(exc.SAWarning, bat.create)
 
 
@@ -1176,9 +1190,8 @@ class TwoPhaseTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('datatable', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('data', String(50))
-            )
+              Column('id', Integer, primary_key=True),
+              Column('data', String(50)))
 
     def _connection(self):
         conn = testing.db.connect()
@@ -1190,6 +1203,7 @@ class TwoPhaseTest(fixtures.TablesTest):
             testing.db.scalar("select count(*) from datatable"),
             rows
         )
+
     def test_twophase_prepare_false(self):
         conn = self._connection()
         for i in range(2):
@@ -1205,7 +1219,7 @@ class TwoPhaseTest(fixtures.TablesTest):
         for i in range(2):
             trans = conn.begin_twophase()
             conn.execute("insert into datatable (id, data) "
-                    "values (%s, 'somedata')" % i)
+                         "values (%s, 'somedata')" % i)
             trans.prepare()
             trans.commit()
         conn.close()
@@ -1215,12 +1229,12 @@ class TwoPhaseTest(fixtures.TablesTest):
         conn = self._connection()
         trans = conn.begin_twophase()
         conn.execute("insert into datatable (id, data) "
-                "values (%s, 'somedata')" % 1)
+                     "values (%s, 'somedata')" % 1)
         trans.rollback()
 
         trans = conn.begin_twophase()
         conn.execute("insert into datatable (id, data) "
-                "values (%s, 'somedata')" % 1)
+                     "values (%s, 'somedata')" % 1)
         trans.prepare()
         trans.commit()
 
@@ -1231,10 +1245,11 @@ class TwoPhaseTest(fixtures.TablesTest):
         conn = self._connection()
         trans = conn.begin_twophase()
         conn.execute("insert into datatable (id, data) "
-                "values (%s, 'somedata')" % 1)
+                     "values (%s, 'somedata')" % 1)
         trans.commit()
         conn.close()
         self._assert_data(1)
+
 
 class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = oracle.OracleDialect()
@@ -1263,7 +1278,6 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             b.type.dialect_impl(dialect).get_dbapi_type(dbapi),
             'STRING'
         )
-
 
     def test_long(self):
         self.assert_compile(oracle.LONG(), "LONG")
@@ -1328,7 +1342,7 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
                                 (oracle.INTERVAL(second_precision=5),
                                 'INTERVAL DAY TO SECOND(5)'),
                                 (oracle.INTERVAL(day_precision=2,
-                                second_precision=5),
+                                 second_precision=5),
                                 'INTERVAL DAY(2) TO SECOND(5)')]:
             self.assert_compile(type_, expected)
 
@@ -1338,14 +1352,12 @@ class TypesTest(fixtures.TestBase):
     __dialect__ = oracle.OracleDialect()
     __backend__ = True
 
-
     @testing.fails_on('+zxjdbc', 'zxjdbc lacks the FIXED_CHAR dbapi type')
     def test_fixed_char(self):
         m = MetaData(testing.db)
         t = Table('t1', m,
-            Column('id', Integer, primary_key=True),
-            Column('data', CHAR(30), nullable=False)
-        )
+                  Column('id', Integer, primary_key=True),
+                  Column('data', CHAR(30), nullable=False))
 
         t.create()
         try:
@@ -1389,9 +1401,7 @@ class TypesTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_rowid(self):
         metadata = self.metadata
-        t = Table('t1', metadata,
-            Column('x', Integer)
-        )
+        t = Table('t1', metadata, Column('x', Integer))
         t.create()
         t.insert().execute(x=5)
         s1 = select([t])
@@ -1402,11 +1412,9 @@ class TypesTest(fixtures.TestBase):
         # as cx_oracle just treats it as a string,
         # but we want to make sure the ROWID works...
         rowid_col = column('rowid', oracle.ROWID)
-        s3 = select([t.c.x, rowid_col]).\
-                    where(rowid_col == cast(rowid, oracle.ROWID))
-        eq_(s3.select().execute().fetchall(),
-        [(5, rowid)]
-        )
+        s3 = select([t.c.x, rowid_col]) \
+            .where(rowid_col == cast(rowid, oracle.ROWID))
+        eq_(s3.select().execute().fetchall(), [(5, rowid)])
 
     @testing.fails_on('+zxjdbc',
                       'Not yet known how to pass values of the '
@@ -1421,8 +1429,7 @@ class TypesTest(fixtures.TestBase):
                                oracle.INTERVAL(day_precision=3)))
         metadata.create_all()
         interval_table.insert().\
-            execute(day_interval=datetime.timedelta(days=35,
-                seconds=5743))
+            execute(day_interval=datetime.timedelta(days=35, seconds=5743))
         row = interval_table.select().execute().first()
         eq_(row['day_interval'], datetime.timedelta(days=35,
             seconds=5743))
@@ -1431,16 +1438,14 @@ class TypesTest(fixtures.TestBase):
     def test_numerics(self):
         m = self.metadata
         t1 = Table('t1', m,
-            Column('intcol', Integer),
-            Column('numericcol', Numeric(precision=9, scale=2)),
-            Column('floatcol1', Float()),
-            Column('floatcol2', FLOAT()),
-            Column('doubleprec', oracle.DOUBLE_PRECISION),
-            Column('numbercol1', oracle.NUMBER(9)),
-            Column('numbercol2', oracle.NUMBER(9, 3)),
-            Column('numbercol3', oracle.NUMBER),
-
-        )
+                   Column('intcol', Integer),
+                   Column('numericcol', Numeric(precision=9, scale=2)),
+                   Column('floatcol1', Float()),
+                   Column('floatcol2', FLOAT()),
+                   Column('doubleprec', oracle.DOUBLE_PRECISION),
+                   Column('numbercol1', oracle.NUMBER(9)),
+                   Column('numbercol2', oracle.NUMBER(9, 3)),
+                   Column('numbercol3', oracle.NUMBER))
         t1.create()
         t1.insert().execute(
             intcol=1,
@@ -1507,12 +1512,11 @@ class TypesTest(fixtures.TestBase):
         # this test requires cx_oracle 5
 
         foo = Table('foo', metadata,
-            Column('idata', Integer),
-            Column('ndata', Numeric(20, 2)),
-            Column('ndata2', Numeric(20, 2)),
-            Column('nidata', Numeric(5, 0)),
-            Column('fdata', Float()),
-        )
+                    Column('idata', Integer),
+                    Column('ndata', Numeric(20, 2)),
+                    Column('ndata2', Numeric(20, 2)),
+                    Column('nidata', Numeric(5, 0)),
+                    Column('fdata', Float()))
         foo.create()
 
         foo.insert().execute({
@@ -1524,7 +1528,6 @@ class TypesTest(fixtures.TestBase):
             })
 
         stmt = "SELECT idata, ndata, ndata2, nidata, fdata FROM foo"
-
 
         row = testing.db.execute(stmt).fetchall()[0]
         eq_(
@@ -1549,11 +1552,11 @@ class TypesTest(fixtures.TestBase):
         SELECT
             (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
             (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL)
-             AS ndata,
-             (SELECT CAST((SELECT ndata2 FROM foo) AS NUMERIC(20, 2)) FROM DUAL)
-              AS ndata2,
-             (SELECT CAST((SELECT nidata FROM foo) AS NUMERIC(5, 0)) FROM DUAL)
-              AS nidata,
+            AS ndata,
+            (SELECT CAST((SELECT ndata2 FROM foo) AS NUMERIC(20, 2)) FROM DUAL)
+            AS ndata2,
+            (SELECT CAST((SELECT nidata FROM foo) AS NUMERIC(5, 0)) FROM DUAL)
+            AS nidata,
             (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) AS fdata
         FROM dual
         """
@@ -1568,13 +1571,12 @@ class TypesTest(fixtures.TestBase):
         )
 
         row = testing.db.execute(text(stmt,
-                                typemap={
-                                        'idata': Integer(),
-                                        'ndata': Numeric(20, 2),
-                                        'ndata2': Numeric(20, 2),
-                                        'nidata': Numeric(5, 0),
-                                        'fdata': Float()
-                                })).fetchall()[0]
+                                      typemap={
+                                          'idata': Integer(),
+                                          'ndata': Numeric(20, 2),
+                                          'ndata2': Numeric(20, 2),
+                                          'nidata': Numeric(5, 0),
+                                          'fdata': Float()})).fetchall()[0]
         eq_(
             [type(x) for x in row],
             [int, decimal.Decimal, decimal.Decimal, decimal.Decimal, float]
@@ -1619,13 +1621,13 @@ class TypesTest(fixtures.TestBase):
         )
 
         row = testing.db.execute(text(stmt,
-                                typemap={
-                                        'anon_1_idata': Integer(),
-                                        'anon_1_ndata': Numeric(20, 2),
-                                        'anon_1_ndata2': Numeric(20, 2),
-                                        'anon_1_nidata': Numeric(5, 0),
-                                        'anon_1_fdata': Float()
-                                })).fetchall()[0]
+                                      typemap={
+                                          'anon_1_idata': Integer(),
+                                          'anon_1_ndata': Numeric(20, 2),
+                                          'anon_1_ndata2': Numeric(20, 2),
+                                          'anon_1_nidata': Numeric(5, 0),
+                                          'anon_1_fdata': Float()
+                                      })).fetchall()[0]
         eq_(
             [type(x) for x in row],
             [int, decimal.Decimal, decimal.Decimal, decimal.Decimal, float]
@@ -1636,14 +1638,15 @@ class TypesTest(fixtures.TestBase):
                 decimal.Decimal('53'), 45.683920000000001)
         )
 
-        row = testing.db.execute(text(stmt,
-                                typemap={
-                                        'anon_1_idata': Integer(),
-                                        'anon_1_ndata': Numeric(20, 2, asdecimal=False),
-                                        'anon_1_ndata2': Numeric(20, 2, asdecimal=False),
-                                        'anon_1_nidata': Numeric(5, 0, asdecimal=False),
-                                        'anon_1_fdata': Float(asdecimal=True)
-                                })).fetchall()[0]
+        row = testing.db.execute(text(
+            stmt,
+            typemap={
+                'anon_1_idata': Integer(),
+                'anon_1_ndata': Numeric(20, 2, asdecimal=False),
+                'anon_1_ndata2': Numeric(20, 2, asdecimal=False),
+                'anon_1_nidata': Numeric(5, 0, asdecimal=False),
+                'anon_1_fdata': Float(asdecimal=True)
+            })).fetchall()[0]
         eq_(
             [type(x) for x in row],
             [int, float, float, float, decimal.Decimal]
@@ -1652,7 +1655,6 @@ class TypesTest(fixtures.TestBase):
             row,
             (5, 45.6, 45, 53, decimal.Decimal('45.68392'))
         )
-
 
     @testing.provide_metadata
     def test_reflect_dates(self):
@@ -1682,10 +1684,9 @@ class TypesTest(fixtures.TestBase):
 
     def test_reflect_all_types_schema(self):
         types_table = Table('all_types', MetaData(testing.db),
-            Column('owner', String(30), primary_key=True),
-            Column('type_name', String(30), primary_key=True),
-            autoload=True, oracle_resolve_synonyms=True
-            )
+                            Column('owner', String(30), primary_key=True),
+                            Column('type_name', String(30), primary_key=True),
+                            autoload=True, oracle_resolve_synonyms=True)
         for row in types_table.select().execute().fetchall():
             [row[k] for k in row.keys()]
 
@@ -1693,9 +1694,8 @@ class TypesTest(fixtures.TestBase):
     def test_raw_roundtrip(self):
         metadata = self.metadata
         raw_table = Table('raw', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', oracle.RAW(35))
-        )
+                          Column('id', Integer, primary_key=True),
+                          Column('data', oracle.RAW(35)))
         metadata.create_all()
         testing.db.execute(raw_table.insert(), id=1, data=b("ABCDEF"))
         eq_(
@@ -1706,9 +1706,7 @@ class TypesTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_reflect_nvarchar(self):
         metadata = self.metadata
-        Table('t', metadata,
-            Column('data', sqltypes.NVARCHAR(255))
-        )
+        Table('t', metadata, Column('data', sqltypes.NVARCHAR(255)))
         metadata.create_all()
         m2 = MetaData(testing.db)
         t2 = Table('t', m2, autoload=True)
@@ -1727,15 +1725,13 @@ class TypesTest(fixtures.TestBase):
         eq_(res, data)
         assert isinstance(res, util.text_type)
 
-
     @testing.provide_metadata
     def test_char_length(self):
         metadata = self.metadata
         t1 = Table('t1', metadata,
-              Column("c1", VARCHAR(50)),
-              Column("c2", NVARCHAR(250)),
-              Column("c3", CHAR(200))
-        )
+                   Column("c1", VARCHAR(50)),
+                   Column("c2", NVARCHAR(250)),
+                   Column("c3", CHAR(200)))
         t1.create()
         m2 = MetaData(testing.db)
         t2 = Table('t1', m2, autoload=True)
@@ -1747,9 +1743,7 @@ class TypesTest(fixtures.TestBase):
     def test_long_type(self):
         metadata = self.metadata
 
-        t = Table('t', metadata,
-                Column('data', oracle.LONG)
-            )
+        t = Table('t', metadata, Column('data', oracle.LONG))
         metadata.create_all(testing.db)
         testing.db.execute(t.insert(), data='xyz')
         eq_(
@@ -1777,21 +1771,28 @@ class TypesTest(fixtures.TestBase):
     def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         metadata = MetaData()
-        t = Table("z_test", metadata, Column('id', Integer, primary_key=True),
-                 Column('data', Text), Column('bindata', LargeBinary))
+        t = Table("z_test",
+                  metadata,
+                  Column('id', Integer, primary_key=True),
+                  Column('data', Text),
+                  Column('bindata', LargeBinary))
         t.create(engine)
         try:
-            engine.execute(t.insert(), id=1,
-                                        data='this is text',
-                                        bindata=b('this is binary'))
+            engine.execute(t.insert(),
+                           id=1,
+                           data='this is text',
+                           bindata=b('this is binary'))
             row = engine.execute(t.select()).first()
             eq_(row['data'].read(), 'this is text')
             eq_(row['bindata'].read(), b('this is binary'))
         finally:
             t.drop(engine)
 
+
 class EuroNumericTest(fixtures.TestBase):
-    """test the numeric output_type_handler when using non-US locale for NLS_LANG."""
+    """
+    test the numeric output_type_handler when using non-US locale for NLS_LANG.
+    """
 
     __only_on__ = 'oracle+cx_oracle'
     __backend__ = True
@@ -1813,11 +1814,11 @@ class EuroNumericTest(fixtures.TestBase):
             ("SELECT 0.1 FROM DUAL", decimal.Decimal("0.1"), {}),
             ("SELECT 15 FROM DUAL", 15, {}),
             ("SELECT CAST(15 AS NUMERIC(3, 1)) FROM DUAL",
-                                    decimal.Decimal("15"), {}),
+             decimal.Decimal("15"), {}),
             ("SELECT CAST(0.1 AS NUMERIC(5, 2)) FROM DUAL",
-                                    decimal.Decimal("0.1"), {}),
+             decimal.Decimal("0.1"), {}),
             ("SELECT :num FROM DUAL", decimal.Decimal("2.5"),
-                                    {'num': decimal.Decimal("2.5")})
+             {'num': decimal.Decimal("2.5")})
         ]:
             test_exp = self.engine.scalar(stmt, **kw)
             eq_(
@@ -1833,8 +1834,12 @@ class SystemTableTablenamesTest(fixtures.TestBase):
 
     def setup(self):
         testing.db.execute("create table my_table (id integer)")
-        testing.db.execute("create global temporary table my_temp_table (id integer)")
-        testing.db.execute("create table foo_table (id integer) tablespace SYSTEM")
+        testing.db.execute(
+            "create global temporary table my_temp_table (id integer)"
+        )
+        testing.db.execute(
+            "create table foo_table (id integer) tablespace SYSTEM"
+        )
 
     def teardown(self):
         testing.db.execute("drop table my_temp_table")
@@ -1857,7 +1862,8 @@ class SystemTableTablenamesTest(fixtures.TestBase):
         engine = testing_engine(options={"exclude_tablespaces": ["FOO"]})
         insp = inspect(engine)
         eq_(
-            set(insp.get_table_names()).intersection(["my_table", "foo_table"]),
+            set(insp.get_table_names()).intersection(["my_table",
+                                                      "foo_table"]),
             set(["my_table", "foo_table"])
         )
 
@@ -1894,6 +1900,7 @@ class DontReflectIOTTest(fixtures.TestBase):
             set(['admin_docindex'])
         )
 
+
 class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
     __backend__ = True
@@ -1903,9 +1910,8 @@ class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
         global binary_table, stream, meta
         meta = MetaData(testing.db)
         binary_table = Table('binary_table', meta,
-           Column('id', Integer, primary_key=True),
-           Column('data', LargeBinary)
-        )
+                             Column('id', Integer, primary_key=True),
+                             Column('data', LargeBinary))
         meta.create_all()
         stream = os.path.join(
                         os.path.dirname(__file__), "..",
@@ -1929,8 +1935,9 @@ class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_fetch_single_arraysize(self):
         eng = testing_engine(options={'arraysize': 1})
         result = eng.execute(binary_table.select().
-                            order_by(binary_table.c.id)).fetchall()
+                             order_by(binary_table.c.id)).fetchall()
         eq_(result, [(i, stream) for i in range(1, 11)])
+
 
 class UnsupportedIndexReflectTest(fixtures.TestBase):
     __only_on__ = 'oracle'
@@ -1941,8 +1948,7 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
     def test_reflect_functional_index(self):
         metadata = self.metadata
         Table('test_index_reflect', metadata,
-                    Column('data', String(20), primary_key=True)
-                )
+              Column('data', String(20), primary_key=True))
         metadata.create_all()
 
         testing.db.execute('CREATE INDEX DATA_IDX ON '
@@ -1958,7 +1964,7 @@ def all_tables_compression_missing():
                 "select * from v$version"):
             return True
         return False
-    except:
+    except Exception:
         return True
 
 
@@ -1969,7 +1975,7 @@ def all_tables_compress_for_missing():
                 "select * from v$version"):
             return True
         return False
-    except:
+    except Exception:
         return True
 
 
@@ -2009,8 +2015,6 @@ class TableReflectionTest(fixtures.TestBase):
         assert tbl.dialect_options['oracle']['compress'] == "OLTP"
 
 
-
-
 class RoundTripIndexTest(fixtures.TestBase):
     __only_on__ = 'oracle'
     __backend__ = True
@@ -2020,12 +2024,14 @@ class RoundTripIndexTest(fixtures.TestBase):
         metadata = self.metadata
 
         table = Table("sometable", metadata,
-            Column("id_a", Unicode(255), primary_key=True),
-            Column("id_b", Unicode(255), primary_key=True, unique=True),
-            Column("group", Unicode(255), primary_key=True),
-            Column("col", Unicode(255)),
-            UniqueConstraint('col', 'group'),
-        )
+                      Column("id_a", Unicode(255), primary_key=True),
+                      Column("id_b",
+                             Unicode(255),
+                             primary_key=True,
+                             unique=True),
+                      Column("group", Unicode(255), primary_key=True),
+                      Column("col", Unicode(255)),
+                      UniqueConstraint('col', 'group'))
 
         # "group" is a keyword, so lower case
         normalind = Index('tableind', table.c.id_b, table.c.group)
@@ -2044,8 +2050,9 @@ class RoundTripIndexTest(fixtures.TestBase):
         inspect.reflect()
 
         def obj_definition(obj):
-            return obj.__class__, tuple([c.name for c in
-                    obj.columns]), getattr(obj, 'unique', None)
+            return (obj.__class__,
+                    tuple([c.name for c in obj.columns]),
+                    getattr(obj, 'unique', None))
 
         # find what the primary k constraint name should be
         primaryconsname = testing.db.scalar(
@@ -2091,6 +2098,7 @@ class RoundTripIndexTest(fixtures.TestBase):
         eq_(len(reflectedtable.constraints), 1)
         eq_(len(reflectedtable.indexes), 5)
 
+
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_basic(self):
@@ -2131,9 +2139,10 @@ class ExecuteTest(fixtures.TestBase):
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
         # very well.
 
-        t = Table('t1', metadata, Column('id', Integer, primary_key=True),
-            Column('data', Integer)
-        )
+        t = Table('t1',
+                  metadata,
+                  Column('id', Integer, primary_key=True),
+                  Column('data', Integer))
         metadata.create_all()
 
         t.insert().execute(
@@ -2168,8 +2177,9 @@ class UnicodeSchemaTest(fixtures.TestBase):
     def test_quoted_column_non_unicode(self):
         metadata = self.metadata
         table = Table("atable", metadata,
-            Column("_underscorecolumn", Unicode(255), primary_key=True),
-        )
+                      Column("_underscorecolumn",
+                             Unicode(255),
+                             primary_key=True))
         metadata.create_all()
 
         table.insert().execute(
@@ -2184,8 +2194,7 @@ class UnicodeSchemaTest(fixtures.TestBase):
     def test_quoted_column_unicode(self):
         metadata = self.metadata
         table = Table("atable", metadata,
-            Column(u("méil"), Unicode(255), primary_key=True),
-        )
+                      Column(u("méil"), Unicode(255), primary_key=True))
         metadata.create_all()
 
         table.insert().execute(
@@ -2208,14 +2217,13 @@ class DBLinkReflectionTest(fixtures.TestBase):
         cls.dblink = config.file_config.get('sqla_testing', 'oracle_db_link')
 
         # note that the synonym here is still not totally functional
-        # when accessing via a different username as we do with the multiprocess
-        # test suite, so testing here is minimal
+        # when accessing via a different username as we do with the
+        # multiprocess test suite, so testing here is minimal
         with testing.db.connect() as conn:
-            conn.execute(
-                "create table test_table "
-                "(id integer primary key, data varchar2(50))")
+            conn.execute("create table test_table "
+                         "(id integer primary key, data varchar2(50))")
             conn.execute("create synonym test_table_syn "
-                "for test_table@%s" % cls.dblink)
+                         "for test_table@%s" % cls.dblink)
 
     @classmethod
     def teardown_class(cls):
@@ -2228,7 +2236,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
         m = MetaData()
 
         t = Table('test_table_syn', m, autoload=True,
-                autoload_with=testing.db, oracle_resolve_synonyms=True)
+                  autoload_with=testing.db, oracle_resolve_synonyms=True)
         eq_(list(t.c.keys()), ['id', 'data'])
         eq_(list(t.primary_key), [t.c.id])
 

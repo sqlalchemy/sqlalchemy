@@ -82,8 +82,9 @@ class CompareClausesTest(fixtures.TestBase):
         b3 = bindparam("bar", type_=Integer())
         b4 = bindparam("foo", type_=String())
 
-        c1 = lambda: 5  # noqa
-        c2 = lambda: 6  # noqa
+        def c1(): return 5
+
+        def c2(): return 6
 
         b5 = bindparam("foo", type_=Integer(), callable_=c1)
         b6 = bindparam("foo", type_=Integer(), callable_=c2)

@@ -171,7 +171,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         cte = s1.cte(name="cte", recursive=True)
 
         # can't do it here...
-        #bar = select([cte]).cte('bar')
+        # bar = select([cte]).cte('bar')
         cte = cte.union_all(
             select([cte.c.x + 1]).where(cte.c.x < 10)
         )
@@ -480,7 +480,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             'WITH regional_sales AS (SELECT "order"."order" AS "order" '
-            'FROM "order") oracle suffix  SELECT "order"."order" FROM "order", '
+            'FROM "order") oracle suffix  '
+            'SELECT "order"."order" FROM "order", '
             'regional_sales WHERE "order"."order" > regional_sales."order"',
             dialect='oracle'
         )

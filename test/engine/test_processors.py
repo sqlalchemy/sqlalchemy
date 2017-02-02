@@ -34,7 +34,6 @@ class _BooleanProcessorTest(fixtures.TestBase):
         )
 
 
-
 class PyBooleanProcessorTest(_BooleanProcessorTest):
     @classmethod
     def setup_class(cls):
@@ -129,12 +128,12 @@ class PyDateProcessorTest(_DateProcessorTest):
     @classmethod
     def setup_class(cls):
         from sqlalchemy import processors
-        cls.module = type("util", (object,),
-                dict(
-                    (k, staticmethod(v))
-                        for k, v in list(processors.py_fallback().items())
-                )
-            )
+        cls.module = type(
+            "util",
+            (object,),
+            dict((k, staticmethod(v))
+                 for k, v in list(processors.py_fallback().items()))
+        )
 
 
 class CDateProcessorTest(_DateProcessorTest):
@@ -233,11 +232,11 @@ class PyDistillArgsTest(_DistillArgsTest):
     @classmethod
     def setup_class(cls):
         from sqlalchemy.engine import util
-        cls.module = type("util", (object,),
-                dict(
-                    (k, staticmethod(v))
-                        for k, v in list(util.py_fallback().items())
-                )
+        cls.module = type(
+            "util",
+            (object,),
+            dict((k, staticmethod(v))
+                 for k, v in list(util.py_fallback().items()))
         )
 
 

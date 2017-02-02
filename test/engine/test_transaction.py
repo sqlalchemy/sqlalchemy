@@ -22,10 +22,9 @@ class TransactionTest(fixtures.TestBase):
         global users, metadata
         metadata = MetaData()
         users = Table('query_users', metadata,
-            Column('user_id', INT, primary_key=True),
-            Column('user_name', VARCHAR(20)),
-            test_needs_acid=True,
-        )
+                      Column('user_id', INT, primary_key=True),
+                      Column('user_name', VARCHAR(20)),
+                      test_needs_acid=True)
         users.create(testing.db)
 
     def teardown(self):
@@ -92,13 +91,11 @@ class TransactionTest(fixtures.TestBase):
 
         testing.db.transaction(go, users, [dict(user_id=1,
                                user_name='user1')])
-        eq_(testing.db.execute(users.select()).fetchall(), [(1, 'user1'
-            )])
+        eq_(testing.db.execute(users.select()).fetchall(), [(1, 'user1')])
         assert_raises(exc.DBAPIError, testing.db.transaction, go,
                       users, [{'user_id': 2, 'user_name': 'user2'},
-                      {'user_id': 1, 'user_name': 'user3'}])
-        eq_(testing.db.execute(users.select()).fetchall(), [(1, 'user1'
-            )])
+                              {'user_id': 1, 'user_name': 'user3'}])
+        eq_(testing.db.execute(users.select()).fetchall(), [(1, 'user1')])
 
     def test_nested_rollback(self):
         connection = testing.db.connect()
@@ -114,12 +111,12 @@ class TransactionTest(fixtures.TestBase):
                 trans2 = connection.begin()
                 try:
                     connection.execute(users.insert(), user_id=4,
-                            user_name='user4')
+                                       user_name='user4')
                     connection.execute(users.insert(), user_id=5,
-                            user_name='user5')
+                                       user_name='user5')
                     raise Exception('uh oh')
                     trans2.commit()
-                except:
+                except Exception:
                     trans2.rollback()
                     raise
                 transaction.rollback()
@@ -128,8 +125,9 @@ class TransactionTest(fixtures.TestBase):
                 raise
         except Exception as e:
             try:
-                assert str(e) == 'uh oh'  # and not "This transaction is
-                                          # inactive"
+                # and not "This transaction is inactive"
+                # comment moved here to fix pep8
+                assert str(e) == 'uh oh'
             finally:
                 connection.close()
 
@@ -263,7 +261,7 @@ class TransactionTest(fixtures.TestBase):
         trans2.commit()
         transaction.rollback()
         self.assert_(connection.scalar('select count(*) from '
-                     'query_users') == 0)
+                                       'query_users') == 0)
         result = connection.execute('select * from query_users')
         assert len(result.fetchall()) == 0
         connection.close()
@@ -280,14 +278,14 @@ class TransactionTest(fixtures.TestBase):
 
         assert not trans.is_active
         self.assert_(connection.scalar('select count(*) from '
-                     'query_users') == 0)
+                                       'query_users') == 0)
 
         trans = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         trans.__exit__(None, None, None)
         assert not trans.is_active
         self.assert_(connection.scalar('select count(*) from '
-                     'query_users') == 1)
+                                       'query_users') == 1)
         connection.close()
 
     def test_close(self):
@@ -305,7 +303,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
         assert not connection.in_transaction()
         self.assert_(connection.scalar('select count(*) from '
-                     'query_users') == 5)
+                                       'query_users') == 5)
         result = connection.execute('select * from query_users')
         assert len(result.fetchall()) == 5
         connection.close()
@@ -325,7 +323,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.close()
         assert not connection.in_transaction()
         self.assert_(connection.scalar('select count(*) from '
-                     'query_users') == 0)
+                                       'query_users') == 0)
         result = connection.execute('select * from query_users')
         assert len(result.fetchall()) == 0
         connection.close()
@@ -341,7 +339,7 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=3, user_name='user3')
         transaction.commit()
         eq_(connection.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                               order_by(users.c.user_id)).fetchall(),
             [(1, ), (3, )])
         connection.close()
 
@@ -359,7 +357,7 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=3, user_name='user3')
         transaction.commit()
         eq_(connection.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                               order_by(users.c.user_id)).fetchall(),
             [(1, ), (2, ), (3, )])
         connection.close()
 
@@ -376,7 +374,7 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=4, user_name='user4')
         transaction.commit()
         eq_(connection.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                               order_by(users.c.user_id)).fetchall(),
             [(1, ), (4, )])
         connection.close()
 
@@ -400,7 +398,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.rollback()
         transaction.close()
         eq_(connection.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                               order_by(users.c.user_id)).fetchall(),
             [(1, ), (2, )])
         connection.close()
 
@@ -431,7 +429,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.prepare()
         transaction.commit()
         eq_(connection.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                               order_by(users.c.user_id)).fetchall(),
             [(1, ), (2, ), (5, )])
         connection.close()
 
@@ -454,12 +452,12 @@ class TransactionTest(fixtures.TestBase):
         eq_(
             connection2.execution_options(autocommit=True).
             execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(), [])
+                    order_by(users.c.user_id)).fetchall(), [])
         recoverables = connection2.recover_twophase()
         assert transaction.xid in recoverables
         connection2.commit_prepared(transaction.xid, recover=True)
         eq_(connection2.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                                order_by(users.c.user_id)).fetchall(),
             [(1, )])
         connection2.close()
 
@@ -483,7 +481,7 @@ class TransactionTest(fixtures.TestBase):
         xa.commit()
         result = \
             conn.execute(select([users.c.user_name]).
-                order_by(users.c.user_id))
+                         order_by(users.c.user_id))
         eq_(result.fetchall(), [('user1', ), ('user4', )])
         conn.close()
 
@@ -515,7 +513,7 @@ class TransactionTest(fixtures.TestBase):
         with eng.connect() as conn:
             result = \
                 conn.execute(select([users.c.user_name]).
-                    order_by(users.c.user_id))
+                             order_by(users.c.user_id))
             eq_(result.fetchall(), [])
 
 
@@ -641,9 +639,10 @@ class AutoRollbackTest(fixtures.TestBase):
 
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-        users = Table('deadlock_users', metadata, Column('user_id',
-                      INT, primary_key=True), Column('user_name',
-                      VARCHAR(20)), test_needs_acid=True)
+        users = Table('deadlock_users', metadata,
+                      Column('user_id', INT, primary_key=True),
+                      Column('user_name', VARCHAR(20)),
+                      test_needs_acid=True)
         users.create(conn1)
         conn1.execute('select * from deadlock_users')
         conn1.close()
@@ -670,8 +669,9 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
     def setup_class(cls):
         global metadata, foo
         metadata = MetaData(testing.db)
-        foo = Table('foo', metadata, Column('id', Integer,
-                    primary_key=True), Column('data', String(100)))
+        foo = Table('foo', metadata,
+                    Column('id', Integer, primary_key=True),
+                    Column('data', String(100)))
         metadata.create_all()
         testing.db.execute("create function insert_foo(varchar) "
                            "returns integer as 'insert into foo(data) "
@@ -705,8 +705,8 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
     def test_explicit_compiled(self):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-        conn1.execute(select([func.insert_foo('data1'
-                      )]).execution_options(autocommit=True))
+        conn1.execute(select([func.insert_foo('data1')])
+                      .execution_options(autocommit=True))
         assert conn2.execute(select([foo.c.data])).fetchall() \
             == [('data1', )]
         conn1.close()
@@ -716,34 +716,31 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
         conn1.execution_options(autocommit=True).\
-            execute(select([func.insert_foo('data1'
-                )]))
-        eq_(conn2.execute(select([foo.c.data])).fetchall(), [('data1',
-            )])
+            execute(select([func.insert_foo('data1')]))
+        eq_(conn2.execute(select([foo.c.data])).fetchall(), [('data1',)])
 
         # connection supersedes statement
 
         conn1.execution_options(autocommit=False).\
-            execute(select([func.insert_foo('data2'
-                )]).execution_options(autocommit=True))
-        eq_(conn2.execute(select([foo.c.data])).fetchall(), [('data1',
-            )])
+            execute(select([func.insert_foo('data2')])
+                    .execution_options(autocommit=True))
+        eq_(conn2.execute(select([foo.c.data])).fetchall(), [('data1',)])
 
         # ditto
 
         conn1.execution_options(autocommit=True).\
-            execute(select([func.insert_foo('data3'
-                )]).execution_options(autocommit=False))
-        eq_(conn2.execute(select([foo.c.data])).fetchall(), [('data1',
-            ), ('data2', ), ('data3', )])
+            execute(select([func.insert_foo('data3')])
+                    .execution_options(autocommit=False))
+        eq_(conn2.execute(select([foo.c.data])).fetchall(),
+            [('data1',), ('data2', ), ('data3', )])
         conn1.close()
         conn2.close()
 
     def test_explicit_text(self):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-        conn1.execute(text("select insert_foo('moredata')"
-                      ).execution_options(autocommit=True))
+        conn1.execute(text("select insert_foo('moredata')")
+                      .execution_options(autocommit=True))
         assert conn2.execute(select([foo.c.data])).fetchall() \
             == [('moredata', )]
         conn1.close()
@@ -754,8 +751,7 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
     def test_explicit_compiled_deprecated(self):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-        conn1.execute(select([func.insert_foo('data1')],
-                      autocommit=True))
+        conn1.execute(select([func.insert_foo('data1')], autocommit=True))
         assert conn2.execute(select([foo.c.data])).fetchall() \
             == [('data1', )]
         conn1.execute(select([func.insert_foo('data2')]).autocommit())
@@ -768,8 +764,7 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
     def test_explicit_text_deprecated(self):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-        conn1.execute(text("select insert_foo('moredata')",
-                      autocommit=True))
+        conn1.execute(text("select insert_foo('moredata')", autocommit=True))
         assert conn2.execute(select([foo.c.data])).fetchall() \
             == [('moredata', )]
         conn1.close()
@@ -778,8 +773,7 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
     def test_implicit_text(self):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-        conn1.execute(text("insert into foo (data) values "
-                      "('implicitdata')"))
+        conn1.execute(text("insert into foo (data) values ('implicitdata')"))
         assert conn2.execute(select([foo.c.data])).fetchall() \
             == [('implicitdata', )]
         conn1.close()
@@ -798,10 +792,12 @@ class TLTransactionTest(fixtures.TestBase):
         global users, metadata, tlengine
         tlengine = testing_engine(options=dict(strategy='threadlocal'))
         metadata = MetaData()
-        users = Table('query_users', metadata, Column('user_id', INT,
-                      Sequence('query_users_id_seq', optional=True),
-                      primary_key=True), Column('user_name',
-                      VARCHAR(20)), test_needs_acid=True)
+        users = Table('query_users', metadata,
+                      Column('user_id',
+                             INT,
+                             Sequence('query_users_id_seq', optional=True),
+                             primary_key=True),
+                      Column('user_name', VARCHAR(20)), test_needs_acid=True)
         metadata.create_all(tlengine)
 
     def teardown(self):
@@ -819,7 +815,8 @@ class TLTransactionTest(fixtures.TestBase):
 
         tlengine.close()
 
-    @testing.crashes('oracle', 'TNS error of unknown origin occurs on the buildbot.')
+    @testing.crashes('oracle',
+                     'TNS error of unknown origin occurs on the buildbot.')
     def test_rollback_no_trans(self):
         tlengine = testing_engine(options=dict(strategy="threadlocal"))
 
@@ -879,8 +876,7 @@ class TLTransactionTest(fixtures.TestBase):
         assert len(result.fetchall()) == 4
         t.close()
         external_connection = tlengine.connect()
-        result = external_connection.execute('select * from query_users'
-                )
+        result = external_connection.execute('select * from query_users')
         try:
             assert len(result.fetchall()) == 0
         finally:
@@ -896,8 +892,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.execute(users.insert(), user_id=3, user_name='user3')
         tlengine.rollback()
         external_connection = tlengine.connect()
-        result = external_connection.execute('select * from query_users'
-                )
+        result = external_connection.execute('select * from query_users')
         try:
             assert len(result.fetchall()) == 0
         finally:
@@ -912,8 +907,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.execute(users.insert(), user_id=3, user_name='user3')
         tlengine.commit()
         external_connection = tlengine.connect()
-        result = external_connection.execute('select * from query_users'
-                )
+        result = external_connection.execute('select * from query_users')
         try:
             assert len(result.fetchall()) == 3
         finally:
@@ -932,7 +926,8 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.execute(users.insert(), user_id=4, user_name='user4')
         trans.__exit__(None, None, None)
         eq_(
-            tlengine.execute(users.select().order_by(users.c.user_id)).fetchall(),
+            tlengine.execute(users.select().order_by(users.c.user_id))
+                    .fetchall(),
             [
                 (1, 'user1'),
                 (2, 'user2'),
@@ -955,8 +950,8 @@ class TLTransactionTest(fixtures.TestBase):
         transaction.commit()
         transaction = connection.begin()
         result = connection.execute('select * from query_users')
-        l = result.fetchall()
-        assert len(l) == 3, 'expected 3 got %d' % len(l)
+        rows = result.fetchall()
+        assert len(rows) == 3, 'expected 3 got %d' % len(rows)
         transaction.commit()
         connection.close()
 
@@ -972,8 +967,7 @@ class TLTransactionTest(fixtures.TestBase):
         conn.execute(users.insert(), user_id=3, user_name='user3')
         trans.rollback()
         external_connection = tlengine.connect()
-        result = external_connection.execute('select * from query_users'
-                )
+        result = external_connection.execute('select * from query_users')
         try:
             assert len(result.fetchall()) == 0
         finally:
@@ -993,8 +987,7 @@ class TLTransactionTest(fixtures.TestBase):
         conn.execute(users.insert(), user_id=3, user_name='user3')
         trans.rollback()
         external_connection = tlengine.connect()
-        result = external_connection.execute('select * from query_users'
-                )
+        result = external_connection.execute('select * from query_users')
         try:
             assert len(result.fetchall()) == 0
         finally:
@@ -1010,8 +1003,7 @@ class TLTransactionTest(fixtures.TestBase):
         conn.execute(users.insert(), user_id=3, user_name='user3')
         trans.commit()
         external_connection = tlengine.connect()
-        result = external_connection.execute('select * from query_users'
-                )
+        result = external_connection.execute('select * from query_users')
         try:
             assert len(result.fetchall()) == 3
         finally:
@@ -1035,8 +1027,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.rollback()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(*) from query_users'
-                         ) == 0)
+                'select count(*) from query_users') == 0)
         finally:
             external_connection.close()
 
@@ -1057,8 +1048,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.commit()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(*) from query_users'
-                         ) == 5)
+                'select count(*) from query_users') == 5)
         finally:
             external_connection.close()
 
@@ -1089,8 +1079,7 @@ class TLTransactionTest(fixtures.TestBase):
         conn.close()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(*) from query_users'
-                         ) == 0)
+                'select count(*) from query_users') == 0)
         finally:
             external_connection.close()
 
@@ -1116,8 +1105,7 @@ class TLTransactionTest(fixtures.TestBase):
         connection.close()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(*) from query_users'
-                         ) == 0)
+                'select count(*) from query_users') == 0)
         finally:
             external_connection.close()
 
@@ -1132,7 +1120,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.commit()
         tlengine.close()
         eq_(tlengine.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                             order_by(users.c.user_id)).fetchall(),
             [(1, ), (3, )])
         tlengine.close()
 
@@ -1150,7 +1138,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.commit()
         tlengine.close()
         eq_(tlengine.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                             order_by(users.c.user_id)).fetchall(),
             [(1, ), (2, ), (3, )])
         tlengine.close()
 
@@ -1168,7 +1156,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.commit()
         tlengine.close()
         eq_(tlengine.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                             order_by(users.c.user_id)).fetchall(),
             [(1, ), (4, )])
         tlengine.close()
 
@@ -1206,7 +1194,8 @@ class TLTransactionTest(fixtures.TestBase):
         assert r2.connection.closed
         assert tlengine.closed
 
-    @testing.crashes('oracle+cx_oracle', 'intermittent failures on the buildbot')
+    @testing.crashes('oracle+cx_oracle',
+                     'intermittent failures on the buildbot')
     def test_dispose(self):
         eng = testing_engine(options=dict(strategy='threadlocal'))
         result = eng.execute(select([1]))
@@ -1230,7 +1219,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.prepare()
         tlengine.rollback()
         eq_(tlengine.execute(select([users.c.user_id]).
-            order_by(users.c.user_id)).fetchall(),
+                             order_by(users.c.user_id)).fetchall(),
             [(1, ), (2, )])
 
 
@@ -1403,10 +1392,10 @@ class IsolationLevelTest(fixtures.TestBase):
         eng = testing_engine()
         c1 = eng.connect()
         with expect_warnings(
-            "Connection is already established with a Transaction; "
-            "setting isolation_level may implicitly rollback or commit "
-            "the existing transaction, or have no effect until next "
-            "transaction"
+                "Connection is already established with a Transaction; "
+                "setting isolation_level may implicitly rollback or commit "
+                "the existing transaction, or have no effect until next "
+                "transaction"
         ):
             with c1.begin():
                 c1 = c1.execution_options(
@@ -1440,7 +1429,7 @@ class IsolationLevelTest(fixtures.TestBase):
             testing.db.url,
             execution_options={
                 'isolation_level':
-                    self._non_default_isolation_level()}
+                self._non_default_isolation_level()}
         )
         conn = eng.connect()
         eq_(

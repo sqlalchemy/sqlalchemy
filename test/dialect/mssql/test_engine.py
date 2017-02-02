@@ -42,7 +42,9 @@ class ParseConnectTest(fixtures.TestBase):
 
     def test_pyodbc_hostname(self):
         dialect = pyodbc.dialect()
-        u = url.make_url('mssql://username:password@hostspec/database?driver=SQL+Server')
+        u = url.make_url(
+            'mssql://username:password@hostspec/database?driver=SQL+Server'
+        )
         connection = dialect.create_connect_args(u)
         eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UI'
             'D=username;PWD=password'], {}], connection)
@@ -88,9 +90,9 @@ class ParseConnectTest(fixtures.TestBase):
         eq_(connection[1], {})
         eq_(connection[0][0]
             in ('DRIVER={SQL Server};Server=hostspec;Database=database;'
-            'UID=username;PWD=password;foo=bar;LANGUAGE=us_english',
-            'DRIVER={SQL Server};Server=hostspec;Database=database;UID='
-            'username;PWD=password;LANGUAGE=us_english;foo=bar'), True)
+                'UID=username;PWD=password;foo=bar;LANGUAGE=us_english',
+                'DRIVER={SQL Server};Server=hostspec;Database=database;UID='
+                'username;PWD=password;LANGUAGE=us_english;foo=bar'), True)
 
     def test_pyodbc_odbc_connect(self):
         dialect = pyodbc.dialect()
@@ -174,7 +176,7 @@ class ParseConnectTest(fixtures.TestBase):
         connection = dialect.create_connect_args(u)
         eq_(
             [[], {'host': 'somehost', 'password': 'tiger',
-                    'user': 'scott', 'database': 'test'}], connection
+                  'user': 'scott', 'database': 'test'}], connection
         )
 
         u = \
@@ -182,7 +184,7 @@ class ParseConnectTest(fixtures.TestBase):
         connection = dialect.create_connect_args(u)
         eq_(
             [[], {'host': 'somehost:5000', 'password': 'tiger',
-                    'user': 'scott', 'database': 'test'}], connection
+                  'user': 'scott', 'database': 'test'}], connection
         )
 
     def test_pymssql_disconnect(self):
@@ -195,7 +197,7 @@ class ParseConnectTest(fixtures.TestBase):
                 'Error 10054',
                 'Not connected to any MS SQL server',
                 'Connection is closed'
-                ]:
+        ]:
             eq_(dialect.is_disconnect(error, None, None), True)
 
         eq_(dialect.is_disconnect("not an error", None, None), False)

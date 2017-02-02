@@ -16,28 +16,33 @@ class InheritTest(fixtures.MappedTest):
         global user_group_map
 
         principals = Table('principals', metadata,
-            Column('principal_id', Integer,
-                   Sequence('principal_id_seq', optional=False),
-                   primary_key=True),
-            Column('name', String(50), nullable=False))
+                           Column('principal_id', Integer,
+                                  Sequence('principal_id_seq', optional=False),
+                                  primary_key=True),
+                           Column('name', String(50), nullable=False))
 
         users = Table('prin_users', metadata,
-            Column('principal_id', Integer,
-                   ForeignKey('principals.principal_id'), primary_key=True),
-            Column('password', String(50), nullable=False),
-            Column('email', String(50), nullable=False),
-            Column('login_id', String(50), nullable=False))
+                      Column('principal_id', Integer,
+                             ForeignKey('principals.principal_id'),
+                             primary_key=True),
+                      Column('password', String(50), nullable=False),
+                      Column('email', String(50), nullable=False),
+                      Column('login_id', String(50), nullable=False))
 
         groups = Table('prin_groups', metadata,
-            Column('principal_id', Integer,
-                   ForeignKey('principals.principal_id'), primary_key=True))
+                       Column(
+                           'principal_id', Integer,
+                           ForeignKey('principals.principal_id'),
+                           primary_key=True))
 
-        user_group_map = Table('prin_user_group_map', metadata,
-            Column('user_id', Integer, ForeignKey( "prin_users.principal_id"),
-                   primary_key=True ),
-            Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"),
-                   primary_key=True ),
-            )
+        user_group_map = Table(
+            'prin_user_group_map', metadata,
+            Column(
+                'user_id', Integer, ForeignKey("prin_users.principal_id"),
+                primary_key=True),
+            Column(
+                'group_id', Integer, ForeignKey("prin_groups.principal_id"),
+                primary_key=True),)
 
     def test_basic(self):
         class Principal(object):
@@ -56,15 +61,19 @@ class InheritTest(fixtures.MappedTest):
 
         mapper(Group, groups, inherits=Principal, properties={
             'users': relationship(User, secondary=user_group_map,
-                              lazy='select', backref="groups")
-            })
+                                  lazy='select', backref="groups")
+        })
 
         g = Group(name="group1")
-        g.users.append(User(name="user1", password="pw", email="foo@bar.com", login_id="lg1"))
+        g.users.append(
+            User(
+                name="user1", password="pw", email="foo@bar.com",
+                login_id="lg1"))
         sess = create_session()
         sess.add(g)
         sess.flush()
         # TODO: put an assertion
+
 
 class InheritTest2(fixtures.MappedTest):
     """deals with inheritance and many-to-many relationships"""
@@ -72,25 +81,26 @@ class InheritTest2(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, foo_bar
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_id_seq', optional=True),
-                   primary_key=True),
-            Column('data', String(20)),
-            )
+                    Column('id', Integer,
+                           Sequence('foo_id_seq', optional=True),
+                           primary_key=True),
+                    Column('data', String(20)))
 
         bar = Table('bar', metadata,
-            Column('bid', Integer, ForeignKey('foo.id'), primary_key=True),
-            #Column('fid', Integer, ForeignKey('foo.id'), )
-            )
+                    Column('bid', Integer, ForeignKey('foo.id'),
+                           primary_key=True))
 
         foo_bar = Table('foo_bar', metadata,
-            Column('foo_id', Integer, ForeignKey('foo.id')),
-            Column('bar_id', Integer, ForeignKey('bar.bid')))
+                        Column('foo_id', Integer, ForeignKey('foo.id')),
+                        Column('bar_id', Integer, ForeignKey('bar.bid')))
 
     def test_get(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data
-        class Bar(Foo):pass
+
+        class Bar(Foo):
+            pass
 
         mapper(Foo, foo)
         mapper(Bar, bar, inherits=Foo)
@@ -112,6 +122,7 @@ class InheritTest2(fixtures.MappedTest):
                 self.data = data
 
         mapper(Foo, foo)
+
         class Bar(Foo):
             pass
 
@@ -132,13 +143,18 @@ class InheritTest2(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        l = sess.query(Bar).all()
-        print(l[0])
-        print(l[0].foos)
-        self.assert_unordered_result(l, Bar,
-#            {'id':1, 'data':'barfoo', 'bid':1, 'foos':(Foo, [{'id':2,'data':'subfoo1'}, {'id':3,'data':'subfoo2'}])},
-            {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
-            )
+        result = sess.query(Bar).all()
+        print(result[0])
+        print(result[0].foos)
+        self.assert_unordered_result(result, Bar,
+                                     {'id': b.id,
+                                      'data': 'barfoo',
+                                      'foos': (
+                                         Foo, [{'id': f1.id,
+                                                'data': 'subfoo1'},
+                                               {'id': f2.id,
+                                                'data': 'subfoo2'}])})
+
 
 class InheritTest3(fixtures.MappedTest):
     """deals with inheritance and many-to-many relationships"""
@@ -146,36 +162,38 @@ class InheritTest3(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, blub, bar_foo, blub_bar, blub_foo
 
-        # the 'data' columns are to appease SQLite which cant handle a blank INSERT
+        # the 'data' columns are to appease SQLite which cant handle a blank
+        # INSERT
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_seq', optional=True),
-                   primary_key=True),
-            Column('data', String(20)))
+                    Column('id', Integer, Sequence('foo_seq', optional=True),
+                           primary_key=True),
+                    Column('data', String(20)))
 
-        bar = Table('bar', metadata,
-            Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-            Column('bar_data', String(20)))
+        bar = Table('bar', metadata, Column('id', Integer, ForeignKey(
+            'foo.id'), primary_key=True), Column('bar_data', String(20)))
 
         blub = Table('blub', metadata,
-            Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
-            Column('blub_data', String(20)))
+                     Column('id', Integer, ForeignKey('bar.id'),
+                            primary_key=True),
+                     Column('blub_data', String(20)))
 
         bar_foo = Table('bar_foo', metadata,
-            Column('bar_id', Integer, ForeignKey('bar.id')),
-            Column('foo_id', Integer, ForeignKey('foo.id')))
+                        Column('bar_id', Integer, ForeignKey('bar.id')),
+                        Column('foo_id', Integer, ForeignKey('foo.id')))
 
         blub_bar = Table('bar_blub', metadata,
-            Column('blub_id', Integer, ForeignKey('blub.id')),
-            Column('bar_id', Integer, ForeignKey('bar.id')))
+                         Column('blub_id', Integer, ForeignKey('blub.id')),
+                         Column('bar_id', Integer, ForeignKey('bar.id')))
 
         blub_foo = Table('blub_foo', metadata,
-            Column('blub_id', Integer, ForeignKey('blub.id')),
-            Column('foo_id', Integer, ForeignKey('foo.id')))
+                         Column('blub_id', Integer, ForeignKey('blub.id')),
+                         Column('foo_id', Integer, ForeignKey('foo.id')))
 
     def test_basic(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data
+
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
         mapper(Foo, foo)
@@ -185,7 +203,7 @@ class InheritTest3(fixtures.MappedTest):
                 return "Bar id %d, data %s" % (self.id, self.data)
 
         mapper(Bar, bar, inherits=Foo, properties={
-            'foos' :relationship(Foo, secondary=bar_foo, lazy='select')
+            'foos': relationship(Foo, secondary=bar_foo, lazy='select')
         })
 
         sess = create_session()
@@ -196,15 +214,16 @@ class InheritTest3(fixtures.MappedTest):
         sess.flush()
         compare = [repr(b)] + sorted([repr(o) for o in b.foos])
         sess.expunge_all()
-        l = sess.query(Bar).all()
-        print(repr(l[0]) + repr(l[0].foos))
-        found = [repr(l[0])] + sorted([repr(o) for o in l[0].foos])
+        result = sess.query(Bar).all()
+        print(repr(result[0]) + repr(result[0].foos))
+        found = [repr(result[0])] + sorted([repr(o) for o in result[0].foos])
         eq_(found, compare)
 
     def test_advanced(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data
+
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
         mapper(Foo, foo)
@@ -217,8 +236,8 @@ class InheritTest3(fixtures.MappedTest):
         class Blub(Bar):
             def __repr__(self):
                 return "Blub id %d, data %s, bars %s, foos %s" % (
-                        self.id, self.data, repr([b for b in self.bars]),
-                        repr([f for f in self.foos]))
+                    self.id, self.data, repr([b for b in self.bars]),
+                    repr([f for f in self.foos]))
 
         mapper(Blub, blub, inherits=Bar, properties={
             'bars': relationship(Bar, secondary=blub_bar, lazy='joined'),
@@ -239,12 +258,10 @@ class InheritTest3(fixtures.MappedTest):
         blubid = bl1.id
         sess.expunge_all()
 
-        l = sess.query(Blub).all()
-        print(l)
-        self.assert_(repr(l[0]) == compare)
+        result = sess.query(Blub).all()
+        print(result)
+        self.assert_(repr(result[0]) == compare)
         sess.expunge_all()
         x = sess.query(Blub).filter_by(id=blubid).one()
         print(x)
         self.assert_(repr(x) == compare)
-
-

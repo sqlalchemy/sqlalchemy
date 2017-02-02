@@ -9,6 +9,7 @@ from sqlalchemy.testing import AssertsCompiledSQL,\
     assert_raises_message, fixtures, eq_, expect_warnings
 from sqlalchemy.sql import crud
 
+
 class _InsertTestBase(object):
 
     @classmethod
@@ -24,8 +25,7 @@ class _InsertTestBase(object):
               Column('id', Integer, primary_key=True),
               Column('x', Integer, default=10),
               Column('y', Integer, server_default=text('5')),
-              Column('z', Integer, default=lambda: 10)
-            )
+              Column('z', Integer, default=lambda: 10))
 
 
 class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
@@ -425,7 +425,6 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "INSERT INTO mytable (foo, bar) "
             "SELECT mytable.foo, :bar AS anon_1 FROM mytable"
         )
-
 
     def test_insert_mix_select_values_exception(self):
         table1 = self.tables.mytable

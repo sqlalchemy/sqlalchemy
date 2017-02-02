@@ -351,7 +351,7 @@ class RudimentaryFlushTest(UOWTest):
 
         session.flush()
 
-        #pid = parent.id
+        # pid = parent.id
         c1id = c1.id
         c2id = c2.id
 
@@ -414,7 +414,7 @@ class RudimentaryFlushTest(UOWTest):
 
         session.flush()
 
-        #pid = parent.id
+        # pid = parent.id
         c1id = c1.id
         c2id = c2.id
 
@@ -734,7 +734,7 @@ class SingleCycleTest(UOWTest):
                         {'nodes_id': n3.id, 'parent_id': None},
                         {'nodes_id': n2.id, 'parent_id': None}
                     ]
-                    )
+                )
             ),
             CompiledSQL(
                 "DELETE FROM nodes WHERE nodes.id = :id", lambda ctx: {
@@ -1314,6 +1314,7 @@ class RowswitchAccountingTest(fixtures.MappedTest):
         )
 
         sess.close()
+
 
 class RowswitchM2OTest(fixtures.MappedTest):
     # tests for #3060 and related issues
@@ -2320,6 +2321,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 dialect='postgresql'
             )
         )
+
 
 class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     """test support for custom datatypes that return a non-__bool__ value

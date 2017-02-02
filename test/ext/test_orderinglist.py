@@ -10,16 +10,20 @@ from sqlalchemy.testing.util import picklers
 
 metadata = None
 
-# order in whole steps
+
 def step_numbering(step):
+    """ order in whole steps """
     def f(index, collection):
         return step * index
     return f
 
-# almost fibonacci- skip the first 2 steps
-# e.g. 1, 2, 3, 5, 8, ... instead of 0, 1, 1, 2, 3, ...
-# otherwise ordering of the elements at '1' is undefined... ;)
+
 def fibonacci_numbering(order_col):
+    """
+    almost fibonacci- skip the first 2 steps
+    e.g. 1, 2, 3, 5, 8, ... instead of 0, 1, 1, 2, 3, ...
+    otherwise ordering of the elements at '1' is undefined... ;)
+    """
     def f(index, collection):
         if index == 0:
             return 1
@@ -30,8 +34,11 @@ def fibonacci_numbering(order_col):
                     getattr(collection[index - 2], order_col))
     return f
 
-# 0 -> A, 1 -> B, ... 25 -> Z, 26 -> AA, 27 -> AB, ...
+
 def alpha_ordering(index, collection):
+    """
+    0 -> A, 1 -> B, ... 25 -> Z, 26 -> AA, 27 -> AB, ...
+    """
     s = ''
     while index > 25:
         d = index / 26
@@ -39,6 +46,7 @@ def alpha_ordering(index, collection):
         index -= d * 26
     s += chr(index + 65)
     return s
+
 
 class OrderingListTest(fixtures.TestBase):
     def setup(self):
@@ -68,21 +76,22 @@ class OrderingListTest(fixtures.TestBase):
         class Slide(object):
             def __init__(self, name):
                 self.name = name
+
             def __repr__(self):
                 return '<Slide "%s">' % self.name
 
         class Bullet(object):
             def __init__(self, text):
                 self.text = text
+
             def __repr__(self):
                 return '<Bullet "%s" pos %s>' % (self.text, self.position)
 
         mapper(Slide, slides_table, properties={
             'bullets': relationship(Bullet, lazy='joined',
-                                collection_class=test_collection_class,
-                                backref='slide',
-                                order_by=[bullets_table.c.position])
-            })
+                                    collection_class=test_collection_class,
+                                    backref='slide',
+                                    order_by=[bullets_table.c.position])})
         mapper(Bullet, bullets_table)
 
         metadata.create_all()
@@ -144,7 +153,7 @@ class OrderingListTest(fixtures.TestBase):
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 4)
 
-        titles = ['s1/b1','s1/b2','s1/b100','s1/b4']
+        titles = ['s1/b1', 's1/b2', 's1/b100', 's1/b4']
         found = [b.text for b in srt.bullets]
 
         self.assert_(titles == found)
@@ -208,7 +217,7 @@ class OrderingListTest(fixtures.TestBase):
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 5)
 
-        titles = ['s1/b1','s1/b2','s1/b100','s1/b4', 'raw']
+        titles = ['s1/b1', 's1/b2', 's1/b100', 's1/b4', 'raw']
         found = [b.text for b in srt.bullets]
         eq_(titles, found)
 
@@ -218,7 +227,7 @@ class OrderingListTest(fixtures.TestBase):
         session.expunge_all()
 
         srt = session.query(Slide).get(id)
-        titles = ['s1/b1','s1/b2','s1/b100','s1/b4', 'raw', 'raw2']
+        titles = ['s1/b1', 's1/b2', 's1/b100', 's1/b4', 'raw', 'raw2']
         found = [b.text for b in srt.bullets]
         eq_(titles, found)
 
@@ -265,7 +274,7 @@ class OrderingListTest(fixtures.TestBase):
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 6)
 
-        texts = ['1','2','insert_at_2','3','4','999']
+        texts = ['1', '2', 'insert_at_2', '3', '4', '999']
         found = [b.text for b in srt.bullets]
 
         self.assert_(texts == found)
@@ -273,8 +282,8 @@ class OrderingListTest(fixtures.TestBase):
     def test_slice(self):
         self._setup(ordering_list('position'))
 
-        b = [ Bullet('1'), Bullet('2'), Bullet('3'),
-              Bullet('4'), Bullet('5'), Bullet('6') ]
+        b = [Bullet('1'), Bullet('2'), Bullet('3'),
+             Bullet('4'), Bullet('5'), Bullet('6')]
         s1 = Slide('Slide #1')
 
         # 1, 2, 3
@@ -285,13 +294,13 @@ class OrderingListTest(fixtures.TestBase):
 
         # 1, 4, 5, 6, 3
         s1.bullets[1:2] = b[3:6]
-        for li, bi in (0,0), (1,3), (2,4), (3,5), (4,2):
+        for li, bi in (0, 0), (1, 3), (2, 4), (3, 5), (4, 2):
             self.assert_(s1.bullets[li].position == li)
             self.assert_(s1.bullets[li] == b[bi])
 
         # 1, 6, 3
         del s1.bullets[1:3]
-        for li, bi in (0,0), (1,5), (2,2):
+        for li, bi in (0, 0), (1, 5), (2, 2):
             self.assert_(s1.bullets[li].position == li)
             self.assert_(s1.bullets[li] == b[bi])
 
@@ -317,7 +326,7 @@ class OrderingListTest(fixtures.TestBase):
         self._setup(ordering_list('position'))
 
         s1 = Slide('Slide #1')
-        s1.bullets = [ Bullet('1'), Bullet('2'), Bullet('3') ]
+        s1.bullets = [Bullet('1'), Bullet('2'), Bullet('3')]
 
         self.assert_(len(s1.bullets) == 3)
         self.assert_(s1.bullets[2].position == 2)
@@ -330,7 +339,7 @@ class OrderingListTest(fixtures.TestBase):
         self.assert_(new_bullet.position is None)
 
         # mark existing bullet as db-deleted before replacement.
-        #session.delete(s1.bullets[1])
+        # session.delete(s1.bullets[1])
         s1.bullets[1] = new_bullet
 
         self.assert_(new_bullet.position == 1)
@@ -370,7 +379,6 @@ class OrderingListTest(fixtures.TestBase):
             [0, 1, 2]
         )
 
-
     def test_funky_ordering(self):
         class Pos(object):
             def __init__(self):
@@ -385,11 +393,12 @@ class OrderingListTest(fixtures.TestBase):
         stepped.append(Pos())
         stepped.append(Pos())
 
-        for li, pos in (0,0), (1,2), (2,4), (3,6):
+        for li, pos in (0, 0), (1, 2), (2, 4), (3, 6):
             self.assert_(stepped[li].position == pos)
 
-        fib_factory = ordering_list('position',
-          ordering_func=fibonacci_numbering('position'))
+        fib_factory = ordering_list(
+            'position',
+            ordering_func=fibonacci_numbering('position'))
 
         fibbed = fib_factory()
         fibbed.append(Pos())
@@ -398,7 +407,7 @@ class OrderingListTest(fixtures.TestBase):
         fibbed.append(Pos())
         fibbed.append(Pos())
 
-        for li, pos in (0,1), (1,2), (2,3), (3,5), (4,8):
+        for li, pos in (0, 1), (1, 2), (2, 3), (3, 5), (4, 8):
             self.assert_(fibbed[li].position == pos)
 
         fibbed.insert(2, Pos())
@@ -414,7 +423,7 @@ class OrderingListTest(fixtures.TestBase):
             (5, 13),
             (6, 21),
             (7, 34),
-            ):
+        ):
             self.assert_(fibbed[li].position == pos)
 
         alpha_factory = ordering_list('position',
@@ -426,9 +435,8 @@ class OrderingListTest(fixtures.TestBase):
 
         alpha.insert(1, Pos())
 
-        for li, pos in (0,'A'), (1,'B'), (2,'C'), (3,'D'):
+        for li, pos in (0, 'A'), (1, 'B'), (2, 'C'), (3, 'D'):
             self.assert_(alpha[li].position == pos)
-
 
     def test_picklability(self):
         from sqlalchemy.ext.orderinglist import OrderingList
@@ -442,6 +450,7 @@ class OrderingListTest(fixtures.TestBase):
 
             self.assert_(copy == olist)
             self.assert_(copy.__dict__ == olist.__dict__)
+
 
 class DummyItem(object):
     def __init__(self, order=None):

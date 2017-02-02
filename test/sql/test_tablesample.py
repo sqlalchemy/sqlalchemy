@@ -51,4 +51,3 @@ class TableSampleTest(fixtures.TablesTest, AssertsCompiledSQL):
             'SELECT alias.people_id FROM '
             'people AS alias TABLESAMPLE system(1)'
         )
-

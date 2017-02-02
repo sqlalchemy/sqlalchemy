@@ -93,7 +93,8 @@ class AutomapTest(fixtures.MappedTest):
         """
         The underlying reflect call accepts an optional schema argument.
         This is for determining which database schema to load.
-        This test verifies that prepare passes a default None if no schema is provided.
+        This test verifies that prepare passes a default None if no schema is
+        provided.
         """
         Base = automap_base(metadata=self.metadata)
         engine_mock = Mock()

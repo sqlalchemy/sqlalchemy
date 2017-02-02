@@ -515,7 +515,6 @@ class ExecuteTest(fixtures.TestBase):
         conn.close()
         eng.dispose()
 
-
         conn = eng.connect()
         conn.close()
 
@@ -877,9 +876,10 @@ class MockStrategyTest(fixtures.TestBase):
         engine, buf = self._engine_fixture()
         metadata = MetaData()
         t = Table('testtable', metadata,
-                  Column(
-                      'pk', Integer, Sequence('testtable_pk_seq'), primary_key=True)
-                  )
+                  Column('pk',
+                         Integer,
+                         Sequence('testtable_pk_seq'),
+                         primary_key=True))
 
         t.create(engine)
         t.drop(engine)
@@ -1292,7 +1292,7 @@ class EngineEventsTest(fixtures.TestBase):
                 engines.testing_engine(options=dict(implicit_returning=False,
                                                     strategy='threadlocal')),
                 engines.testing_engine(options=dict(implicit_returning=False)).
-            connect()
+                connect()
         ]:
             event.listen(engine, 'before_execute', execute)
             event.listen(engine, 'before_cursor_execute', cursor_execute)
@@ -2054,7 +2054,8 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
         def handle_error(ctx):
             assert ctx.engine is eng
             assert ctx.connection is conn
-            assert isinstance(ctx.sqlalchemy_exception, tsa.exc.ProgrammingError)
+            assert isinstance(ctx.sqlalchemy_exception,
+                              tsa.exc.ProgrammingError)
             raise MySpecialException("failed operation")
 
         conn = eng.connect()
@@ -2312,9 +2313,9 @@ class ProxyConnectionTest(fixtures.TestBase):
                         ('INSERT INTO t1 (c1, c2)', {'c1': 6}, None),
                         ('select * from t1', {}, None),
                         ('DROP TABLE t1', {}, None)]
-            if not testing.against('oracle+zxjdbc'):  # or engine.dialect.pr
-                                                      # eexecute_pk_sequence
-                                                      # s:
+            # or engine.dialect.pr eexecute_pk_sequence s:
+            # original comment above moved here for pep8 fix
+            if not testing.against('oracle+zxjdbc'):
                 cursor = [
                     ('CREATE TABLE t1', {}, ()),
                     ('INSERT INTO t1 (c1, c2)', {
@@ -2634,5 +2635,3 @@ class DialectEventTest(fixtures.TestBase):
         conn.connection.invalidate()
         conn = e.connect()
         eq_(conn.info['boom'], "one")
-
-

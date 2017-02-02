@@ -287,7 +287,8 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
             Json(json={'field': 20})])
         s.commit()
 
-        a1 = s.query(Json).filter(Json.json['field'].astext.cast(Integer) == 10)\
+        a1 = s.query(Json)\
+            .filter(Json.json['field'].astext.cast(Integer) == 10)\
             .one()
         a2 = s.query(Json).filter(Json.field.astext == '10').one()
         eq_(a1.id, a2.id)

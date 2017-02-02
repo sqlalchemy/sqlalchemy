@@ -38,16 +38,16 @@ class MatchTest(fixtures.TestBase):
         metadata = MetaData(testing.db)
 
         cattable = Table('cattable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('description', String(50)),
-            mysql_engine='MyISAM'
-        )
+                         Column('id', Integer, primary_key=True),
+                         Column('description', String(50)),
+                         mysql_engine='MyISAM')
         matchtable = Table('matchtable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('title', String(200)),
-            Column('category_id', Integer, ForeignKey('cattable.id')),
-            mysql_engine='MyISAM'
-        )
+                           Column('id', Integer, primary_key=True),
+                           Column('title', String(200)),
+                           Column('category_id',
+                                  Integer,
+                                  ForeignKey('cattable.id')),
+                           mysql_engine='MyISAM')
         metadata.create_all()
 
         cattable.insert().execute([
@@ -103,7 +103,8 @@ class MatchTest(fixtures.TestBase):
         # test [ticket:3263]
         result = testing.db.execute(
             select([
-                matchtable.c.title.match('Agile Ruby Programming').label('ruby'),
+                matchtable.c.title.match('Agile Ruby Programming')
+                .label('ruby'),
                 matchtable.c.title.match('Dive Python').label('python'),
                 matchtable.c.title
             ]).order_by(matchtable.c.id)
@@ -149,7 +150,7 @@ class MatchTest(fixtures.TestBase):
 
     def test_match_across_joins(self):
         results = (matchtable.select().
-                   where(and_(cattable.c.id==matchtable.c.category_id,
+                   where(and_(cattable.c.id == matchtable.c.category_id,
                               or_(cattable.c.description.match('Ruby'),
                                   matchtable.c.title.match('nutshell')))).
                    order_by(matchtable.c.id).
@@ -211,4 +212,3 @@ class AnyAllTest(fixtures.TablesTest):
         is_(
             testing.db.execute(stmt).scalar(), True
         )
-

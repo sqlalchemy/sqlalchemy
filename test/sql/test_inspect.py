@@ -41,4 +41,3 @@ class TestCoreInspection(fixtures.TestBase):
 
         x = Column('foo', Integer)
         assert not hasattr(x, '__clause_element__')
-

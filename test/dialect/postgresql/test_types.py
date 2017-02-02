@@ -548,7 +548,7 @@ class NumericInterpretationTest(fixtures.TestBase):
             psycopg2, psycopg2cffi, base
 
         dialects = (pg8000.dialect(), pygresql.dialect(),
-                psycopg2.dialect(), psycopg2cffi.dialect())
+                    psycopg2.dialect(), psycopg2cffi.dialect())
         for dialect in dialects:
             typ = Numeric().dialect_impl(dialect)
             for code in base._INT_TYPES + base._FLOAT_TYPES + \
@@ -1089,10 +1089,11 @@ class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_array_comparison(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(id=5, intarr=[1, 2, 3],
-                    strarr=[util.u('abc'), util.u('def')])
-        results = select([arrtable.c.id]).\
-                        where(arrtable.c.intarr < [4, 5, 6]).execute()\
-                        .fetchall()
+                                  strarr=[util.u('abc'), util.u('def')])
+        results = select([arrtable.c.id])\
+            .where(arrtable.c.intarr < [4, 5, 6])\
+            .execute()\
+            .fetchall()
         eq_(len(results), 1)
         eq_(results[0][0], 5)
 
@@ -1819,7 +1820,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_where_getitem(self):
         self._test_where(
-            self.hashcol['bar'] == None,
+            self.hashcol['bar'] == None,  # noqa
             "(test_table.hash -> %(hash_1)s) IS NULL"
         )
 
@@ -1908,7 +1909,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_cols_against_is(self):
         self._test_cols(
-            self.hashcol['foo'] != None,
+            self.hashcol['foo'] != None,  # noqa
             "(test_table.hash -> %(hash_1)s) IS NOT NULL AS anon_1"
         )
 
@@ -2445,13 +2446,13 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     # do anything
     def test_where_getitem(self):
         self._test_where(
-            self.jsoncol['bar'] == None,
+            self.jsoncol['bar'] == None,  # noqa
             "(test_table.test_column -> %(test_column_1)s) IS NULL"
         )
 
     def test_where_path(self):
         self._test_where(
-            self.jsoncol[("foo", 1)] == None,
+            self.jsoncol[("foo", 1)] == None,  # noqa
             "(test_table.test_column #> %(test_column_1)s) IS NULL"
         )
 
@@ -2490,7 +2491,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_where_getitem_as_text(self):
         self._test_where(
-            self.jsoncol['bar'].astext == None,
+            self.jsoncol['bar'].astext == None,  # noqa
             "(test_table.test_column ->> %(test_column_1)s) IS NULL"
         )
 
@@ -2510,7 +2511,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_where_path_as_text(self):
         self._test_where(
-            self.jsoncol[("foo", 1)].astext == None,
+            self.jsoncol[("foo", 1)].astext == None,  # noqa
             "(test_table.test_column #>> %(test_column_1)s) IS NULL"
         )
 

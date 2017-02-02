@@ -222,7 +222,8 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
         asserter.assert_(
             CompiledSQL(
-                "INSERT INTO orders (id, description) VALUES (:id, :description)",
+                "INSERT INTO orders (id, description) "
+                "VALUES (:id, :description)",
                 [{'id': 1, 'description': 'u1new'},
                  {'id': 2, 'description': None},
                  {'id': 3, 'description': 'u3new'}]

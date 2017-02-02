@@ -416,7 +416,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         ]
         eq_(len(b_calls), 3)
 
-
     def test_check_descriptor_as_method(self):
         User, users = self.classes.User, self.tables.users
 
@@ -548,7 +547,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
                 if other is None:
-                    return col == None
+                    return col is None
                 else:
                     return sa.func.upper(col) == sa.func.upper(other)
 
@@ -1037,8 +1036,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         mapper(User, usersaddresses, primary_key=[users.c.id],
                properties={'add_id': addresses.c.id}
                )
-        l = create_session().query(User).order_by(users.c.id).all()
-        eq_(l, self.static.user_result[:3])
+        result = create_session().query(User).order_by(users.c.id).all()
+        eq_(result, self.static.user_result[:3])
 
     def test_mapping_to_join_exclude_prop(self):
         """Mapping to a join"""
@@ -1052,8 +1051,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         mapper(User, usersaddresses, primary_key=[users.c.id],
                exclude_properties=[addresses.c.id]
                )
-        l = create_session().query(User).order_by(users.c.id).all()
-        eq_(l, self.static.user_result[:3])
+        result = create_session().query(User).order_by(users.c.id).all()
+        eq_(result, self.static.user_result[:3])
 
     def test_mapping_to_join_no_pk(self):
         email_bounces, addresses, Address = (self.tables.email_bounces,
@@ -1091,9 +1090,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             address_id=addresses.c.id))
 
         session = create_session()
-        l = session.query(User).order_by(User.id, User.address_id).all()
+        result = session.query(User).order_by(User.id, User.address_id).all()
 
-        eq_(l, [
+        eq_(result, [
             User(id=7, address_id=1),
             User(id=8, address_id=2),
             User(id=8, address_id=3),
@@ -1115,9 +1114,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             address_id=addresses.c.id))
 
         session = create_session()
-        l = session.query(User).order_by(User.id, User.address_id).all()
+        result = session.query(User).order_by(User.id, User.address_id).all()
 
-        eq_(l, [
+        eq_(result, [
             User(id=7, address_id=1),
             User(id=8, address_id=2),
             User(id=8, address_id=3),
@@ -1162,13 +1161,13 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             orders=relationship(Order)))
 
         session = create_session()
-        l = (session.query(User).
-             select_from(users.join(orders).
-                         join(order_items).
-                         join(items)).
-             filter(items.c.description == 'item 4')).all()
+        result = (session.query(User).
+                  select_from(users.join(orders).
+                              join(order_items).
+                              join(items)).
+                  filter(items.c.description == 'item 4')).all()
 
-        eq_(l, [self.static.user_result[0]])
+        eq_(result, [self.static.user_result[0]])
 
     @testing.uses_deprecated("Mapper.order_by")
     def test_cancel_order_by(self):
@@ -1213,11 +1212,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         mapper(User, s)
         sess = create_session()
-        l = sess.query(User).order_by(s.c.id).all()
+        result = sess.query(User).order_by(s.c.id).all()
 
         for idx, total in enumerate((14, 16)):
-            eq_(l[idx].concat, l[idx].id * 2)
-            eq_(l[idx].concat, total)
+            eq_(result[idx].concat, result[idx].id * 2)
+            eq_(result[idx].concat, total)
 
     def test_count(self):
         """The count function on Query."""
@@ -1480,7 +1479,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
                 if other is None:
-                    return col == None
+                    return col is None
                 else:
                     return sa.func.upper(col) == sa.func.upper(other)
 
@@ -1943,12 +1942,12 @@ class OptionsTest(_fixtures.FixtureTest):
                                    order_by=addresses.c.id)))
 
         sess = create_session()
-        l = (sess.query(User).
-             order_by(User.id).
-             options(sa.orm.joinedload('addresses'))).all()
+        result = (sess.query(User).
+                  order_by(User.id).
+                  options(sa.orm.joinedload('addresses'))).all()
 
         def go():
-            eq_(l, self.static.user_address_result)
+            eq_(result, self.static.user_address_result)
         self.sql_count_(0, go)
 
     def test_eager_options_with_limit(self):
@@ -2012,8 +2011,8 @@ class OptionsTest(_fixtures.FixtureTest):
         # first test straight eager load, 1 statement
 
         def go():
-            l = sess.query(User).order_by(User.id).all()
-            eq_(l, self.static.user_address_result)
+            result = sess.query(User).order_by(User.id).all()
+            eq_(result, self.static.user_address_result)
         self.sql_count_(1, go)
 
         sess.expunge_all()
@@ -2025,8 +2024,8 @@ class OptionsTest(_fixtures.FixtureTest):
         r = users.select().order_by(users.c.id).execute()
 
         def go():
-            l = list(sess.query(User).instances(r))
-            eq_(l, self.static.user_address_result)
+            result = list(sess.query(User).instances(r))
+            eq_(result, self.static.user_address_result)
         self.sql_count_(4, go)
 
     def test_eager_degrade_deep(self):
@@ -2072,8 +2071,8 @@ class OptionsTest(_fixtures.FixtureTest):
 
         # first test straight eager load, 1 statement
         def go():
-            l = sess.query(User).order_by(User.id).all()
-            eq_(l, self.static.user_all_result)
+            result = sess.query(User).order_by(User.id).all()
+            eq_(result, self.static.user_all_result)
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
@@ -2083,8 +2082,8 @@ class OptionsTest(_fixtures.FixtureTest):
         r = users.select().execute()
 
         def go():
-            l = list(sess.query(User).instances(r))
-            eq_(l, self.static.user_all_result)
+            result = list(sess.query(User).instances(r))
+            eq_(result, self.static.user_all_result)
         self.assert_sql_count(testing.db, go, 6)
 
     def test_lazy_options(self):
@@ -2100,12 +2099,12 @@ class OptionsTest(_fixtures.FixtureTest):
         ))
 
         sess = create_session()
-        l = (sess.query(User).
-             order_by(User.id).
-             options(sa.orm.lazyload('addresses'))).all()
+        result = (sess.query(User).
+                  order_by(User.id).
+                  options(sa.orm.lazyload('addresses'))).all()
 
         def go():
-            eq_(l, self.static.user_address_result)
+            eq_(result, self.static.user_address_result)
         self.sql_count_(4, go)
 
     def test_option_propagate(self):
@@ -2187,21 +2186,23 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         sess = create_session()
 
-        l = (sess.query(User).
-             order_by(User.id).
-             options(sa.orm.joinedload_all('orders.items.keywords'))).all()
+        result = (sess.query(User).
+                  order_by(User.id).
+                  options(
+                      sa.orm.joinedload_all('orders.items.keywords'))).all()
 
         def go():
-            l[0].orders[1].items[0].keywords[1]
+            result[0].orders[1].items[0].keywords[1]
         self.sql_count_(0, go)
 
         sess = create_session()
 
-        l = (sess.query(User).
-             options(sa.orm.subqueryload_all('orders.items.keywords'))).all()
+        result = (sess.query(User).
+                  options(
+                      sa.orm.subqueryload_all('orders.items.keywords'))).all()
 
         def go():
-            l[0].orders[1].items[0].keywords[1]
+            result[0].orders[1].items[0].keywords[1]
         self.sql_count_(0, go)
 
     def test_deep_options_3(self):
@@ -2440,9 +2441,10 @@ class SecondaryOptionsTest(fixtures.MappedTest):
         mapper(Child1, child1, inherits=Base,
                polymorphic_identity='child1',
                properties={
-                   'child2': relationship(Child2,
-                                          primaryjoin=child1.c.child2id == base.c.id,
-                                          foreign_keys=child1.c.child2id)
+                   'child2': relationship(
+                       Child2,
+                       primaryjoin=child1.c.child2id == base.c.id,
+                       foreign_keys=child1.c.child2id)
                })
         mapper(Child2, child2, inherits=Base, polymorphic_identity='child2')
         mapper(Related, related)
@@ -2710,16 +2712,16 @@ class NoLoadTest(_fixtures.FixtureTest):
             addresses=relationship(mapper(Address, addresses), lazy='noload')
         ))
         q = create_session().query(m)
-        l = [None]
+        result = [None]
 
         def go():
             x = q.filter(User.id == 7).all()
             x[0].addresses
-            l[0] = x
+            result[0] = x
         self.assert_sql_count(testing.db, go, 1)
 
         self.assert_result(
-            l[0], User,
+            result[0], User,
             {'id': 7, 'addresses': (Address, [])},
         )
 
@@ -2734,16 +2736,16 @@ class NoLoadTest(_fixtures.FixtureTest):
             addresses=relationship(mapper(Address, addresses), lazy='noload')
         ))
         q = create_session().query(m).options(sa.orm.lazyload('addresses'))
-        l = [None]
+        result = [None]
 
         def go():
             x = q.filter(User.id == 7).all()
             x[0].addresses
-            l[0] = x
+            result[0] = x
         self.sql_count_(2, go)
 
         self.assert_result(
-            l[0], User,
+            result[0], User,
             {'id': 7, 'addresses': (Address, [{'id': 1}])},
         )
 
@@ -2782,7 +2784,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             addresses=relationship(Address, lazy='raise')
         ))
         q = create_session().query(User)
-        l = [None]
+        result = [None]
 
         def go():
             x = q.filter(User.id == 7).all()
@@ -2790,11 +2792,11 @@ class RaiseLoadTest(_fixtures.FixtureTest):
                 sa.exc.InvalidRequestError,
                 "'User.addresses' is not available due to lazy='raise'",
                 lambda: x[0].addresses)
-            l[0] = x
+            result[0] = x
         self.assert_sql_count(testing.db, go, 1)
 
         self.assert_result(
-            l[0], User,
+            result[0], User,
             {'id': 7},
         )
 
@@ -2810,7 +2812,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             addresses=relationship(Address)
         ))
         q = create_session().query(User)
-        l = [None]
+        result = [None]
 
         def go():
             x = q.options(
@@ -2819,11 +2821,11 @@ class RaiseLoadTest(_fixtures.FixtureTest):
                 sa.exc.InvalidRequestError,
                 "'User.addresses' is not available due to lazy='raise'",
                 lambda: x[0].addresses)
-            l[0] = x
+            result[0] = x
         self.assert_sql_count(testing.db, go, 1)
 
         self.assert_result(
-            l[0], User,
+            result[0], User,
             {'id': 7},
         )
 
@@ -2839,16 +2841,16 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             addresses=relationship(Address, lazy='raise')
         ))
         q = create_session().query(User).options(sa.orm.lazyload('addresses'))
-        l = [None]
+        result = [None]
 
         def go():
             x = q.filter(User.id == 7).all()
             x[0].addresses
-            l[0] = x
+            result[0] = x
         self.sql_count_(2, go)
 
         self.assert_result(
-            l[0], User,
+            result[0], User,
             {'id': 7, 'addresses': (Address, [{'id': 1}])},
         )
 
@@ -2914,8 +2916,8 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             'user': relationship(
                 User,
                 primaryjoin=sa.and_(
-                    addresses.c.user_id == users.c.id ,
-                    users.c.name != None
+                    addresses.c.user_id == users.c.id,
+                    users.c.name != None  # noqa
                 )
             )
         })
@@ -3058,9 +3060,7 @@ class RequirementsTest(fixtures.MappedTest):
         h1.h1s.append(H1())
 
         s.flush()
-        eq_(
-            select([func.count('*')]).select_from(ht1)
-                .scalar(), 4)
+        eq_(select([func.count('*')]).select_from(ht1).scalar(), 4)
 
         h6 = H6()
         h6.h1a = h1

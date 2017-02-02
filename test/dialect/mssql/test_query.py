@@ -477,7 +477,7 @@ def full_text_search_missing():
             connection.execute('CREATE FULLTEXT CATALOG Catalog AS '
                                'DEFAULT')
             return False
-        except:
+        except Exception:
             return True
     finally:
         connection.close()

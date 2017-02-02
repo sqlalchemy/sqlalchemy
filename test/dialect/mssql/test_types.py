@@ -427,6 +427,7 @@ class TypeDDLTest(fixtures.TestBase):
                         % (col.name, columns[index][3]))
             self.assert_(repr(col))
 
+
 metadata = None
 
 
@@ -826,6 +827,7 @@ class MonkeyPatchedBinaryTest(fixtures.TestBase):
         result = module.Binary(input)
         eq_(result, expected_result)
 
+
 binary_table = None
 MyPickleType = None
 
@@ -930,17 +932,17 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
                         mypickle=MyPickleType),
                     bind=testing.db):
             with engine.connect() as conn:
-                l = conn.execute(stmt).fetchall()
-            eq_(list(stream1), list(l[0]['data']))
+                result = conn.execute(stmt).fetchall()
+            eq_(list(stream1), list(result[0]['data']))
             paddedstream = list(stream1[0:100])
             paddedstream.extend(['\x00'] * (100 - len(paddedstream)))
-            eq_(paddedstream, list(l[0]['data_slice']))
-            eq_(list(stream2), list(l[1]['data']))
-            eq_(list(stream2), list(l[1]['data_image']))
-            eq_(testobj1, l[0]['pickled'])
-            eq_(testobj2, l[1]['pickled'])
-            eq_(testobj3.moredata, l[0]['mypickle'].moredata)
-            eq_(l[0]['mypickle'].stuff, 'this is the right stuff')
+            eq_(paddedstream, list(result[0]['data_slice']))
+            eq_(list(stream2), list(result[1]['data']))
+            eq_(list(stream2), list(result[1]['data_image']))
+            eq_(testobj1, result[0]['pickled'])
+            eq_(testobj2, result[1]['pickled'])
+            eq_(testobj3.moredata, result[0]['mypickle'].moredata)
+            eq_(result[0]['mypickle'].stuff, 'this is the right stuff')
 
     def _test_binary_none(self, deprecate_large_types):
         engine = engines.testing_engine(

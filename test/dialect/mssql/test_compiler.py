@@ -11,6 +11,7 @@ from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
     UniqueConstraint, Index, Sequence, literal
 from sqlalchemy import testing
 
+
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
 

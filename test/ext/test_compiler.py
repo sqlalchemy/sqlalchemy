@@ -19,7 +19,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_column(self):
 
         class MyThingy(ColumnClause):
-            def __init__(self, arg= None):
+            def __init__(self, arg=None):
                 super(MyThingy, self).__init__(arg or 'MYTHINGY!')
 
         @compiles(MyThingy)
@@ -45,13 +45,14 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
                 return compiler.visit_create_column(element, **kw)
 
         t = Table('t', MetaData(), Column('a', Integer),
-                            Column('xmin', Integer),
-                            Column('c', Integer))
+                  Column('xmin', Integer),
+                  Column('c', Integer))
 
         self.assert_compile(
             CreateTable(t),
             "CREATE TABLE t (a INTEGER, c INTEGER)"
         )
+
     def test_types(self):
         class MyType(TypeEngine):
             pass
@@ -78,7 +79,6 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             "POSTGRES_FOO",
             dialect=postgresql.dialect()
         )
-
 
     def test_stateful(self):
         class MyThingy(ColumnClause):
@@ -119,7 +119,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             InsertFromSelect(
                 t1,
-                select([t1]).where(t1.c.x>5)
+                select([t1]).where(t1.c.x > 5)
             ),
             "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z "
             "FROM mytable WHERE mytable.x > :x_1)"
@@ -227,37 +227,28 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         def visit_drop_thingy(thingy, compiler, **kw):
             return "DROP THINGY"
 
-        self.assert_compile(AddThingy(),
-            "ADD THINGY"
-        )
+        self.assert_compile(AddThingy(), "ADD THINGY")
 
-        self.assert_compile(DropThingy(),
-            "DROP THINGY"
-        )
+        self.assert_compile(DropThingy(), "DROP THINGY")
 
         from sqlalchemy.dialects.sqlite import base
         self.assert_compile(AddThingy(),
-            "ADD SPECIAL SL THINGY",
-            dialect=base.dialect()
-        )
+                            "ADD SPECIAL SL THINGY",
+                            dialect=base.dialect())
 
         self.assert_compile(DropThingy(),
-            "DROP THINGY",
-            dialect=base.dialect()
-        )
+                            "DROP THINGY",
+                            dialect=base.dialect())
 
         @compiles(DropThingy, 'sqlite')
         def visit_drop_thingy(thingy, compiler, **kw):
             return "DROP SPECIAL SL THINGY"
 
         self.assert_compile(DropThingy(),
-            "DROP SPECIAL SL THINGY",
-            dialect=base.dialect()
-        )
+                            "DROP SPECIAL SL THINGY",
+                            dialect=base.dialect())
 
-        self.assert_compile(DropThingy(),
-            "DROP THINGY",
-        )
+        self.assert_compile(DropThingy(), "DROP THINGY")
 
     def test_functions(self):
         from sqlalchemy.dialects import postgresql
@@ -403,10 +394,9 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_binds_in_select(self):
         t = table('t',
-            column('a'),
-            column('b'),
-            column('c')
-        )
+                  column('a'),
+                  column('b'),
+                  column('c'))
 
         @compiles(BindParameter)
         def gen_bind(element, compiler, **kw):
@@ -420,10 +410,9 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_binds_in_dml(self):
         t = table('t',
-            column('a'),
-            column('b'),
-            column('c')
-        )
+                  column('a'),
+                  column('b'),
+                  column('c'))
 
         @compiles(BindParameter)
         def gen_bind(element, compiler, **kw):
@@ -432,6 +421,6 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             t.insert(),
             "INSERT INTO t (a, b) VALUES (BIND(:a), BIND(:b))",
-            {'a':1, 'b':2},
+            {'a': 1, 'b': 2},
             use_default_dialect=True
         )

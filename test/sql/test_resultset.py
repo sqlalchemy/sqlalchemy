@@ -56,10 +56,10 @@ class ResultProxyTest(fixtures.TablesTest):
             {'user_id': 9, 'user_name': 'fred'},
         )
         r = users.select().execute()
-        l = []
+        rows = []
         for row in r:
-            l.append(row)
-        eq_(len(l), 3)
+            rows.append(row)
+        eq_(len(rows), 3)
 
     @testing.requires.subqueries
     def test_anonymous_rows(self):
@@ -245,10 +245,10 @@ class ResultProxyTest(fixtures.TablesTest):
         users.insert().execute(user_id=8, user_name='ed')
         users.insert().execute(user_id=9, user_name='fred')
         r = users.select().execute()
-        l = []
+        rows = []
         for row in r.fetchmany(size=2):
-            l.append(row)
-        eq_(len(l), 2)
+            rows.append(row)
+        eq_(len(rows), 2)
 
     def test_column_slices(self):
         users = self.tables.users
@@ -942,14 +942,14 @@ class ResultProxyTest(fixtures.TablesTest):
 
         class MyList(object):
 
-            def __init__(self, l):
-                self.l = l
+            def __init__(self, data):
+                self.internal_list = data
 
             def __len__(self):
-                return len(self.l)
+                return len(self.internal_list)
 
             def __getitem__(self, i):
-                return list.__getitem__(self.l, i)
+                return list.__getitem__(self.internal_list, i)
 
         proxy = RowProxy(object(), MyList(['value']), [None], {
                          'key': (None, None, 0), 0: (None, None, 0)})
@@ -1109,7 +1109,6 @@ class ResultProxyTest(fixtures.TablesTest):
 
             finally:
                 r.close()
-
 
 
 class KeyTargetingTest(fixtures.TablesTest):
@@ -1709,4 +1708,3 @@ class AlternateResultProxyTest(fixtures.TablesTest):
                         len(result._BufferedRowResultProxy__rowbuffer),
                         27
                     )
-

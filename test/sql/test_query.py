@@ -225,7 +225,8 @@ class QueryTest(fixtures.TestBase):
 
     def test_bindparam_detection(self):
         dialect = default.DefaultDialect(paramstyle='qmark')
-        prep = lambda q: str(sql.text(q).compile(dialect=dialect))
+
+        def prep(q): return str(sql.text(q).compile(dialect=dialect))
 
         def a_eq(got, wanted):
             if got != wanted:
@@ -547,7 +548,7 @@ class RequiredBindTest(fixtures.TablesTest):
         is_(bindparam('foo', 'bar').required, False)
         is_(bindparam('foo', 'bar', required=True).required, True)
 
-        c = lambda: None
+        def c(): return None
         is_(bindparam('foo', callable_=c, required=True).required, True)
         is_(bindparam('foo', callable_=c).required, False)
         is_(bindparam('foo', callable_=c, required=False).required, False)
@@ -941,6 +942,7 @@ class CompoundTest(fixtures.TestBase):
         found = self._fetchall_sorted(ua.select().execute())
         eq_(found, wanted)
 
+
 t1 = t2 = t3 = None
 
 
@@ -1198,6 +1200,7 @@ class JoinTest(fixtures.TestBase):
                      t3.c.name == 't3 #30'),
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
             self.assertRows(expr, [(10, 20, 30)])
+
 
 metadata = flds = None
 

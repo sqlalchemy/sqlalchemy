@@ -671,7 +671,6 @@ class MutableColumnDefaultTest(_MutableDictTestFixture, fixtures.MappedTest):
         assert f1 in sess.dirty
 
 
-
 class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
 
     @classmethod
@@ -726,7 +725,8 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
         self._test_non_mutable()
 
 
-class MutableListWithScalarPickleTest(_MutableListTestBase, fixtures.MappedTest):
+class MutableListWithScalarPickleTest(_MutableListTestBase,
+                                      fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):

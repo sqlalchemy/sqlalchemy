@@ -17,6 +17,7 @@ from sqlalchemy.sql import util as sql_util
 from sqlalchemy.util import u, OrderedDict
 from sqlalchemy.dialects.postgresql import aggregate_order_by, insert
 
+
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
     __prefer__ = 'postgresql'
 
@@ -414,9 +415,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String))
 
-        idx1 = Index('test_idx1', tbl.c.data)
-        idx2 = Index('test_idx2', tbl.c.data, postgresql_tablespace='sometablespace')
-        idx3 = Index('test_idx3', tbl.c.data, postgresql_tablespace='another table space')
+        idx1 = Index('test_idx1',
+                     tbl.c.data)
+        idx2 = Index('test_idx2',
+                     tbl.c.data,
+                     postgresql_tablespace='sometablespace')
+        idx3 = Index('test_idx3',
+                     tbl.c.data,
+                     postgresql_tablespace='another table space')
 
         self.assert_compile(schema.CreateIndex(idx1),
                             'CREATE INDEX test_idx1 ON testtbl '
@@ -437,13 +443,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String))
 
-        idx1 = Index(
-                'test_idx1',
-                tbl.c.data,
-                postgresql_using='btree',
-                postgresql_tablespace='atablespace',
-                postgresql_with={"fillfactor": 60},
-                postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+        idx1 = Index('test_idx1',
+                     tbl.c.data,
+                     postgresql_using='btree',
+                     postgresql_tablespace='atablespace',
+                     postgresql_with={"fillfactor": 60},
+                     postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
 
         self.assert_compile(schema.CreateIndex(idx1),
                             'CREATE INDEX test_idx1 ON testtbl '
@@ -928,8 +933,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql.array([1, 2]) == [3, 4, 5],
             "ARRAY[%(param_1)s, %(param_2)s] = "
             "ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]",
-            checkparams={'param_5': 5, 'param_4': 4, 'param_1': 1,
-                'param_3': 3, 'param_2': 2}
+            checkparams={'param_5': 5,
+                         'param_4': 4,
+                         'param_1': 1,
+                         'param_3': 3,
+                         'param_2': 2}
 
         )
 
@@ -1053,7 +1061,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt2 = sql_util.ClauseAdapter(a1).traverse(stmt)
         self.assert_compile(
             stmt2,
-            "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 FROM table1 AS foo"
+            "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 "
+            "FROM table1 AS foo"
         )
 
 

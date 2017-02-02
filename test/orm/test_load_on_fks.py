@@ -15,18 +15,20 @@ engine = testing.db
 class FlushOnPendingTest(AssertsExecutionResults, fixtures.TestBase):
     def setUp(self):
         global Parent, Child, Base
-        Base= declarative_base()
+        Base = declarative_base()
 
         class Parent(Base):
             __tablename__ = 'parent'
 
-            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
             name = Column(String(50), nullable=False)
             children = relationship("Child", load_on_pending=True)
 
         class Child(Base):
             __tablename__ = 'child'
-            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
             parent_id = Column(Integer, ForeignKey('parent.id'))
 
         Base.metadata.create_all(engine)
@@ -58,23 +60,26 @@ class FlushOnPendingTest(AssertsExecutionResults, fixtures.TestBase):
             assert p1.children == []
         self.assert_sql_count(testing.db, go, 0)
 
+
 class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
 
     def setUp(self):
         global Parent, Child, Base
-        Base= declarative_base()
+        Base = declarative_base()
 
         class Parent(Base):
             __tablename__ = 'parent'
-            __table_args__ = {'mysql_engine':'InnoDB'}
+            __table_args__ = {'mysql_engine': 'InnoDB'}
 
-            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
 
         class Child(Base):
             __tablename__ = 'child'
-            __table_args__ = {'mysql_engine':'InnoDB'}
+            __table_args__ = {'mysql_engine': 'InnoDB'}
 
-            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
             parent_id = Column(Integer, ForeignKey('parent.id'))
 
             parent = relationship(Parent, backref=backref("children"))
@@ -185,6 +190,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         p2 = Parent(id=p1.id)
         sess.add(p2)
         # load should emit since PK is populated
+
         def go():
             assert p2.children
         self.assert_sql_count(testing.db, go, 1)
@@ -195,6 +201,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         sess.add(p2)
         # load should not emit since "None" is the bound
         # param list
+
         def go():
             assert not p2.children
         self.assert_sql_count(testing.db, go, 0)
@@ -223,7 +230,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         c3.parent = p1
         c3.parent = p1
         c3.parent = p1
-        assert len(p1.children)== 2
+        assert len(p1.children) == 2
 
     def test_m2o_lazy_loader_on_persistent(self):
         """Compare the behaviors from the lazyloader using
@@ -256,18 +263,22 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
                                 sess.expire(c1, ['parent'])
 
                             # old 0.6 behavior
-                            #if manualflush and (not loadrel or fake_autoexpire):
+                            # if manualflush and (not loadrel or
+                            #                     fake_autoexpire):
                             #    # a flush occurs, we get p2
                             #    assert c1.parent is p2
-                            #elif not loadrel and not loadfk:
-                            #    # problematically - we get None since committed state
-                            #    # is empty when c1.parent_id was mutated, since we want
+                            # elif not loadrel and not loadfk:
+                            #    # problematically - we get None since
+                            #    # committed state
+                            #    # is empty when c1.parent_id was mutated,
+                            #    # since we want
                             #    # to save on selects.  this is
-                            #    # why the patch goes in in 0.6 - this is mostly a bug.
+                            #    # why the patch goes in in 0.6 - this is
+                            #    # mostly a bug.
                             #    assert c1.parent is None
-                            #else:
-                            #    # if things were loaded, autoflush doesn't even
-                            #    # happen.
+                            # else:
+                            #    # if things were loaded, autoflush doesn't
+                            #    # even happen.
                             #    assert c1.parent is p1
 
                             # new behavior
@@ -289,7 +300,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
                     c2.parent_id = p2.id
 
                     if manualflush:
-                       sess.flush()
+                        sess.flush()
 
                     if loadonpending or manualflush:
                         assert c2.parent is p2
@@ -304,7 +315,8 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
                 for autoflush in (False, True):
                     for manualflush in (False, True):
                         for enable_relationship_rel in (False, True):
-                            Child.parent.property.load_on_pending = loadonpending
+                            Child.parent.property.load_on_pending = \
+                                loadonpending
                             sess.autoflush = autoflush
                             c2 = Child()
 
@@ -318,9 +330,10 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
                             c2.parent_id = p2.id
 
                             if manualflush:
-                               sess.flush()
+                                sess.flush()
 
-                            if (loadonpending and attach) or enable_relationship_rel:
+                            if (loadonpending and attach) \
+                                    or enable_relationship_rel:
                                 assert c2.parent is p2
                             else:
                                 assert c2.parent is None

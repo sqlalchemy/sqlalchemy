@@ -10,7 +10,10 @@ from sqlalchemy.engine import default
 from sqlalchemy.testing import engines
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import AllOf, RegexSQL, CompiledSQL, DialectSQL
+from sqlalchemy.testing.assertsql import (AllOf,
+                                          RegexSQL,
+                                          CompiledSQL,
+                                          DialectSQL)
 from sqlalchemy.sql import table, column
 
 
@@ -451,11 +454,6 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
                 ),
             )
 
-
-
-
-
-
     @testing.requires.check_constraints
     @testing.provide_metadata
     def test_check_constraint_create(self):
@@ -616,11 +614,11 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             RegexSQL("^CREATE TABLE events"),
             AllOf(
                 CompiledSQL('CREATE UNIQUE INDEX ix_events_name ON events '
-                         '(name)'),
+                            '(name)'),
                 CompiledSQL('CREATE INDEX ix_events_location ON events '
-                         '(location)'),
+                            '(location)'),
                 CompiledSQL('CREATE UNIQUE INDEX sport_announcer ON events '
-                         '(sport, announcer)'),
+                            '(sport, announcer)'),
                 CompiledSQL('CREATE INDEX idx_winners ON events (winner)'),
             )
         )
@@ -828,11 +826,11 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_deferrable_pk(self):
-        factory = lambda **kw: PrimaryKeyConstraint('a', **kw)
+        def factory(**kw): return PrimaryKeyConstraint('a', **kw)
         self._test_deferrable(factory)
 
     def test_deferrable_table_fk(self):
-        factory = lambda **kw: ForeignKeyConstraint(['b'], ['tbl.a'], **kw)
+        def factory(**kw): return ForeignKeyConstraint(['b'], ['tbl.a'], **kw)
         self._test_deferrable(factory)
 
     def test_deferrable_column_fk(self):
@@ -896,11 +894,11 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_deferrable_unique(self):
-        factory = lambda **kw: UniqueConstraint('b', **kw)
+        def factory(**kw): return UniqueConstraint('b', **kw)
         self._test_deferrable(factory)
 
     def test_deferrable_table_check(self):
-        factory = lambda **kw: CheckConstraint('a < b', **kw)
+        def factory(**kw): return CheckConstraint('a < b', **kw)
         self._test_deferrable(factory)
 
     def test_multiple(self):
@@ -1148,5 +1146,3 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(constraint),
             "CREATE INDEX name ON tbl (a + 5)"
         )
-
-

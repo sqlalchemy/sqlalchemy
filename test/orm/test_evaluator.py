@@ -73,16 +73,15 @@ class EvaluateTest(fixtures.MappedTest):
     def test_compare_to_none(self):
         User = self.classes.User
 
-        eval_eq(User.name == None, testcases=[
-            (User(name='foo'), False),
-            (User(name=None), True),
-        ])
+        eval_eq(User.name == None,  # noqa
+                testcases=[(User(name='foo'), False), (User(name=None), True)])
 
     def test_true_false(self):
         User = self.classes.User
 
         eval_eq(
-            User.name == False, testcases=[
+            User.name == False,  # noqa
+            testcases=[
                 (User(name='foo'), False),
                 (User(name=True), False),
                 (User(name=False), True),
@@ -90,7 +89,8 @@ class EvaluateTest(fixtures.MappedTest):
         )
 
         eval_eq(
-            User.name == True, testcases=[
+            User.name == True,  # noqa
+            testcases=[
                 (User(name='foo'), False),
                 (User(name=True), True),
                 (User(name=False), False),
@@ -134,4 +134,3 @@ class EvaluateTest(fixtures.MappedTest):
             (User(id=None, name='foo'), None),
             (User(id=None, name=None), None),
         ])
-

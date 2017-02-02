@@ -16,23 +16,25 @@ class CompileTest(fixtures.ORMTest):
         metadata = MetaData(testing.db)
 
         order = Table('orders', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('employee_id', Integer, ForeignKey('employees.id'), nullable=False),
-            Column('type', Unicode(16)))
+                      Column('id', Integer, primary_key=True),
+                      Column('employee_id', Integer, ForeignKey(
+                          'employees.id'), nullable=False),
+                      Column('type', Unicode(16)))
 
         employee = Table('employees', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('name', Unicode(16), unique=True, nullable=False))
+                         Column('id', Integer, primary_key=True),
+                         Column('name', Unicode(16), unique=True,
+                                nullable=False))
 
         product = Table('products', metadata,
-            Column('id', Integer, primary_key=True),
-        )
+                        Column('id', Integer, primary_key=True))
 
         orderproduct = Table('orderproducts', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('order_id', Integer, ForeignKey("orders.id"), nullable=False),
-            Column('product_id', Integer, ForeignKey("products.id"), nullable=False),
-        )
+                             Column('id', Integer, primary_key=True),
+                             Column('order_id', Integer, ForeignKey(
+                                 "orders.id"), nullable=False),
+                             Column('product_id', Integer, ForeignKey(
+                                 "products.id"), nullable=False))
 
         class Order(object):
             pass
@@ -49,21 +51,25 @@ class CompileTest(fixtures.ORMTest):
         order_join = order.select().alias('pjoin')
 
         order_mapper = mapper(Order, order,
-            with_polymorphic=('*', order_join),
-            polymorphic_on=order_join.c.type,
-            polymorphic_identity='order',
-            properties={
-                'orderproducts': relationship(OrderProduct, lazy='select', backref='order')}
-            )
+                              with_polymorphic=('*', order_join),
+                              polymorphic_on=order_join.c.type,
+                              polymorphic_identity='order',
+                              properties={
+                                  'orderproducts': relationship(
+                                      OrderProduct, lazy='select',
+                                      backref='order')}
+                              )
 
         mapper(Product, product,
-            properties={
-                'orderproducts': relationship(OrderProduct, lazy='select', backref='product')}
-            )
+               properties={
+                   'orderproducts': relationship(OrderProduct, lazy='select',
+                                                 backref='product')}
+               )
 
         mapper(Employee, employee,
-            properties={
-                'orders': relationship(Order, lazy='select', backref='employee')})
+               properties={
+                   'orders': relationship(Order, lazy='select',
+                                          backref='employee')})
 
         mapper(OrderProduct, orderproduct)
 
@@ -78,18 +84,19 @@ class CompileTest(fixtures.ORMTest):
         metadata = MetaData(testing.db)
 
         order = Table('orders', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('type', Unicode(16)))
+                      Column('id', Integer, primary_key=True),
+                      Column('type', Unicode(16)))
 
         product = Table('products', metadata,
-            Column('id', Integer, primary_key=True),
-        )
+                        Column('id', Integer, primary_key=True))
 
         orderproduct = Table('orderproducts', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('order_id', Integer, ForeignKey("orders.id"), nullable=False),
-            Column('product_id', Integer, ForeignKey("products.id"), nullable=False),
-        )
+                             Column('id', Integer, primary_key=True),
+                             Column('order_id', Integer,
+                                    ForeignKey("orders.id"), nullable=False),
+                             Column('product_id', Integer,
+                                    ForeignKey("products.id"),
+                                    nullable=False))
 
         class Order(object):
             pass
@@ -103,17 +110,20 @@ class CompileTest(fixtures.ORMTest):
         order_join = order.select().alias('pjoin')
 
         order_mapper = mapper(Order, order,
-            with_polymorphic=('*', order_join),
-            polymorphic_on=order_join.c.type,
-            polymorphic_identity='order',
-            properties={
-                'orderproducts': relationship(OrderProduct, lazy='select', backref='product')}
-            )
+                              with_polymorphic=('*', order_join),
+                              polymorphic_on=order_join.c.type,
+                              polymorphic_identity='order',
+                              properties={
+                                  'orderproducts': relationship(
+                                      OrderProduct, lazy='select',
+                                      backref='product')}
+                              )
 
         mapper(Product, product,
-            properties={
-                'orderproducts': relationship(OrderProduct, lazy='select', backref='product')}
-            )
+               properties={
+                   'orderproducts': relationship(OrderProduct, lazy='select',
+                                                 backref='product')}
+               )
 
         mapper(OrderProduct, orderproduct)
 
@@ -126,35 +136,41 @@ class CompileTest(fixtures.ORMTest):
     def test_misc_one(self):
         metadata = MetaData(testing.db)
         node_table = Table("node", metadata,
-            Column('node_id', Integer, primary_key=True),
-            Column('name_index', Integer, nullable=True),
-            )
+                           Column('node_id', Integer, primary_key=True),
+                           Column('name_index', Integer, nullable=True))
         node_name_table = Table("node_name", metadata,
-            Column('node_name_id', Integer, primary_key=True),
-            Column('node_id', Integer, ForeignKey('node.node_id')),
-            Column('host_id', Integer, ForeignKey('host.host_id')),
-            Column('name', String(64), nullable=False),
-            )
+                                Column('node_name_id', Integer,
+                                       primary_key=True),
+                                Column('node_id', Integer,
+                                       ForeignKey('node.node_id')),
+                                Column('host_id', Integer,
+                                       ForeignKey('host.host_id')),
+                                Column('name', String(64), nullable=False))
         host_table = Table("host", metadata,
-            Column('host_id', Integer, primary_key=True),
-            Column('hostname', String(64), nullable=False,
-        unique=True),
-            )
+                           Column('host_id', Integer, primary_key=True),
+                           Column('hostname', String(64), nullable=False,
+                                  unique=True))
         metadata.create_all()
         try:
             node_table.insert().execute(node_id=1, node_index=5)
-            class Node(object):pass
-            class NodeName(object):pass
-            class Host(object):pass
+
+            class Node(object):
+                pass
+
+            class NodeName(object):
+                pass
+
+            class Host(object):
+                pass
 
             node_mapper = mapper(Node, node_table)
             host_mapper = mapper(Host, host_table)
             node_name_mapper = mapper(NodeName, node_name_table,
-            properties = {
-                'node' : relationship(Node, backref=backref('names')),
-                'host' : relationship(Host),
-                }
-            )
+                                      properties={
+                                          'node': relationship(
+                                              Node, backref=backref('names')),
+                                          'host': relationship(Host),
+                                      })
             sess = create_session()
             assert sess.query(Node).get(1).names == []
         finally:
@@ -165,18 +181,19 @@ class CompileTest(fixtures.ORMTest):
 
         a = Table('a', meta, Column('id', Integer, primary_key=True))
         b = Table('b', meta, Column('id', Integer, primary_key=True),
-                                Column('a_id', Integer, ForeignKey('a.id')))
+                  Column('a_id', Integer, ForeignKey('a.id')))
 
         class A(object):
             pass
+
         class B(object):
             pass
 
         mapper(A, a, properties={
-            'b':relationship(B, backref='a')
+            'b': relationship(B, backref='a')
         })
         mapper(B, b, properties={
-            'a':relationship(A, backref='b')
+            'a': relationship(A, backref='b')
         })
 
         assert_raises_message(
@@ -190,12 +207,14 @@ class CompileTest(fixtures.ORMTest):
 
         a = Table('a', meta, Column('id', Integer, primary_key=True))
         b = Table('b', meta, Column('id', Integer, primary_key=True),
-                                Column('a_id', Integer, ForeignKey('a.id')))
+                  Column('a_id', Integer, ForeignKey('a.id')))
 
         class A(object):
             pass
+
         class B(object):
             pass
+
         class C(B):
             pass
 

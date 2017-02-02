@@ -32,25 +32,31 @@ class EagerTest(fixtures.MappedTest):
 
         cls.other['false'] = false
 
-        Table('owners', metadata ,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+        Table('owners', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('data', String(30)))
 
         Table('categories', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('name', String(20)))
 
-        Table('tests', metadata ,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+        Table('tests', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('owner_id', Integer, ForeignKey('owners.id'),
                      nullable=False),
               Column('category_id', Integer, ForeignKey('categories.id'),
                      nullable=False))
 
-        Table('options', metadata ,
-              Column('test_id', Integer, ForeignKey('tests.id'), primary_key=True),
-              Column('owner_id', Integer, ForeignKey('owners.id'), primary_key=True),
-              Column('someoption', sa.Boolean, server_default=false, nullable=False))
+        Table('options', metadata,
+              Column('test_id', Integer, ForeignKey('tests.id'),
+                     primary_key=True),
+              Column('owner_id', Integer, ForeignKey('owners.id'),
+                     primary_key=True),
+              Column('someoption', sa.Boolean, server_default=false,
+                     nullable=False))
 
     @classmethod
     def setup_classes(cls):
@@ -68,14 +74,15 @@ class EagerTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        Category, owners, Option, tests, Thing, Owner, options, categories = (cls.classes.Category,
-                                cls.tables.owners,
-                                cls.classes.Option,
-                                cls.tables.tests,
-                                cls.classes.Thing,
-                                cls.classes.Owner,
-                                cls.tables.options,
-                                cls.tables.categories)
+        Category, owners, Option, tests, Thing, Owner, options, categories = (
+            cls.classes.Category,
+            cls.tables.owners,
+            cls.classes.Option,
+            cls.tables.tests,
+            cls.classes.Thing,
+            cls.classes.Owner,
+            cls.tables.options,
+            cls.tables.categories)
 
         mapper(Owner, owners)
 
@@ -88,18 +95,19 @@ class EagerTest(fixtures.MappedTest):
         mapper(Thing, tests, properties=dict(
             owner=relationship(Owner, backref='tests'),
             category=relationship(Category),
-            owner_option=relationship(Option,
-                primaryjoin=sa.and_(tests.c.id == options.c.test_id,
-                                    tests.c.owner_id == options.c.owner_id),
+            owner_option=relationship(
+                Option, primaryjoin=sa.and_(
+                    tests.c.id == options.c.test_id,
+                    tests.c.owner_id == options.c.owner_id),
                 foreign_keys=[options.c.test_id, options.c.owner_id],
                 uselist=False)))
 
     @classmethod
     def insert_data(cls):
         Owner, Category, Option, Thing = (cls.classes.Owner,
-                                cls.classes.Category,
-                                cls.classes.Option,
-                                cls.classes.Thing)
+                                          cls.classes.Category,
+                                          cls.classes.Option,
+                                          cls.classes.Thing)
 
         session = create_session()
 
@@ -116,8 +124,8 @@ class EagerTest(fixtures.MappedTest):
         """test the control case"""
 
         tests, options, categories = (self.tables.tests,
-                                self.tables.options,
-                                self.tables.categories)
+                                      self.tables.options,
+                                      self.tables.categories)
 
         # I want to display a list of tests owned by owner 1
         # if someoption is false or they haven't specified it yet (null)
@@ -131,34 +139,35 @@ class EagerTest(fixtures.MappedTest):
         # not orm style correct query
         print("Obtaining correct results without orm")
         result = sa.select(
-            [tests.c.id,categories.c.name],
+            [tests.c.id, categories.c.name],
             sa.and_(tests.c.owner_id == 1,
-                    sa.or_(options.c.someoption==None,
-                           options.c.someoption==False)),
+                    sa.or_(options.c.someoption == None,  # noqa
+                           options.c.someoption == False)),
             order_by=[tests.c.id],
             from_obj=[tests.join(categories).outerjoin(options, sa.and_(
                 tests.c.id == options.c.test_id,
                 tests.c.owner_id == options.c.owner_id))]
-            ).execute().fetchall()
+        ).execute().fetchall()
         eq_(result, [(1, 'Some Category'), (3, 'Some Category')])
 
     def test_withoutjoinedload(self):
         Thing, tests, options = (self.classes.Thing,
-                                self.tables.tests,
-                                self.tables.options)
+                                 self.tables.tests,
+                                 self.tables.options)
 
         s = create_session()
-        l = (s.query(Thing).
-             select_from(tests.outerjoin(options,
-                                         sa.and_(tests.c.id == options.c.test_id,
-                                                 tests.c.owner_id ==
-                                                 options.c.owner_id))).
-             filter(sa.and_(tests.c.owner_id==1,
-                            sa.or_(options.c.someoption==None,
-                                   options.c.someoption==False))))
+        result = (s.query(Thing)
+                  .select_from(tests.outerjoin(
+                      options,
+                      sa.and_(tests.c.id == options.c.test_id,
+                              tests.c.owner_id == options.c.owner_id)))
+                  .filter(sa.and_(
+                      tests.c.owner_id == 1,
+                      sa.or_(options.c.someoption == None,  # noqa
+                             options.c.someoption == False))))
 
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, ['1 Some Category', '3 Some Category'])
+        result_str = ["%d %s" % (t.id, t.category.name) for t in result]
+        eq_(result_str, ['1 Some Category', '3 Some Category'])
 
     def test_withjoinedload(self):
         """
@@ -169,88 +178,90 @@ class EagerTest(fixtures.MappedTest):
         """
 
         Thing, tests, options = (self.classes.Thing,
-                                self.tables.tests,
-                                self.tables.options)
+                                 self.tables.tests,
+                                 self.tables.options)
 
         s = create_session()
-        q=s.query(Thing).options(sa.orm.joinedload('category'))
+        q = s.query(Thing).options(sa.orm.joinedload('category'))
 
-        l=(q.select_from(tests.outerjoin(options,
-                                         sa.and_(tests.c.id ==
-                                                 options.c.test_id,
-                                                 tests.c.owner_id ==
-                                                 options.c.owner_id))).
-           filter(sa.and_(tests.c.owner_id == 1,
-                          sa.or_(options.c.someoption==None,
-                                 options.c.someoption==False))))
+        result = (q.select_from(tests.outerjoin(options,
+                                                sa.and_(tests.c.id ==
+                                                        options.c.test_id,
+                                                        tests.c.owner_id ==
+                                                        options.c.owner_id))).
+                  filter(sa.and_(tests.c.owner_id == 1,
+                                 sa.or_(options.c.someoption == None,  # noqa
+                                        options.c.someoption == False))))
 
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, ['1 Some Category', '3 Some Category'])
+        result_str = ["%d %s" % (t.id, t.category.name) for t in result]
+        eq_(result_str, ['1 Some Category', '3 Some Category'])
 
     def test_dslish(self):
         """test the same as withjoinedload except using generative"""
 
         Thing, tests, options = (self.classes.Thing,
-                                self.tables.tests,
-                                self.tables.options)
+                                 self.tables.tests,
+                                 self.tables.options)
 
         s = create_session()
         q = s.query(Thing).options(sa.orm.joinedload('category'))
-        l = q.filter (
+        result = q.filter(
             sa.and_(tests.c.owner_id == 1,
-                    sa.or_(options.c.someoption == None,
+                    sa.or_(options.c.someoption == None,  # noqa
                            options.c.someoption == False))
-            ).outerjoin('owner_option')
+        ).outerjoin('owner_option')
 
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, ['1 Some Category', '3 Some Category'])
+        result_str = ["%d %s" % (t.id, t.category.name) for t in result]
+        eq_(result_str, ['1 Some Category', '3 Some Category'])
 
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     def test_without_outerjoin_literal(self):
         Thing, tests, false = (self.classes.Thing,
-                                self.tables.tests,
-                                self.other.false)
+                               self.tables.tests,
+                               self.other.false)
 
         s = create_session()
         q = s.query(Thing).options(sa.orm.joinedload('category'))
-        l = (q.filter(
-            (tests.c.owner_id==1) &
-            text('options.someoption is null or options.someoption=%s' % false)).
-             join('owner_option'))
+        result = (q.filter(
+                (tests.c.owner_id == 1) &
+                text(
+                    'options.someoption is null or options.someoption=%s' %
+                    false)).join('owner_option'))
 
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, ['3 Some Category'])
+        result_str = ["%d %s" % (t.id, t.category.name) for t in result]
+        eq_(result_str, ['3 Some Category'])
 
     def test_withoutouterjoin(self):
         Thing, tests, options = (self.classes.Thing,
-                                self.tables.tests,
-                                self.tables.options)
+                                 self.tables.tests,
+                                 self.tables.options)
 
         s = create_session()
         q = s.query(Thing).options(sa.orm.joinedload('category'))
-        l = q.filter(
-            (tests.c.owner_id==1) &
-            ((options.c.someoption==None) | (options.c.someoption==False))
-                    ).join('owner_option')
+        result = q.filter(
+            (tests.c.owner_id == 1) &
+            ((options.c.someoption == None) | (options.c.someoption == False))  # noqa
+        ).join('owner_option')
 
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        eq_(result, ['3 Some Category'])
+        result_str = ["%d %s" % (t.id, t.category.name) for t in result]
+        eq_(result_str, ['3 Some Category'])
 
 
 class EagerTest2(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('left', metadata,
-            Column('id', Integer, ForeignKey('middle.id'), primary_key=True),
-            Column('data', String(50), primary_key=True))
+              Column('id', Integer, ForeignKey('middle.id'), primary_key=True),
+              Column('data', String(50), primary_key=True))
 
         Table('middle', metadata,
-            Column('id', Integer, primary_key = True, test_needs_autoincrement=True),
-            Column('data', String(50)))
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', String(50)))
 
         Table('right', metadata,
-            Column('id', Integer, ForeignKey('middle.id'), primary_key=True),
-            Column('data', String(50), primary_key=True))
+              Column('id', Integer, ForeignKey('middle.id'), primary_key=True),
+              Column('data', String(50), primary_key=True))
 
     @classmethod
     def setup_classes(cls):
@@ -269,22 +280,22 @@ class EagerTest2(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         Right, Middle, middle, right, left, Left = (cls.classes.Right,
-                                cls.classes.Middle,
-                                cls.tables.middle,
-                                cls.tables.right,
-                                cls.tables.left,
-                                cls.classes.Left)
+                                                    cls.classes.Middle,
+                                                    cls.tables.middle,
+                                                    cls.tables.right,
+                                                    cls.tables.left,
+                                                    cls.classes.Left)
 
         # set up bi-directional eager loads
         mapper(Left, left)
         mapper(Right, right)
         mapper(Middle, middle, properties=dict(
             left=relationship(Left,
-                          lazy='joined',
-                          backref=backref('middle',lazy='joined')),
+                              lazy='joined',
+                              backref=backref('middle', lazy='joined')),
             right=relationship(Right,
-                           lazy='joined',
-                           backref=backref('middle', lazy='joined')))),
+                               lazy='joined',
+                               backref=backref('middle', lazy='joined')))),
 
     def test_eager_terminate(self):
         """Eager query generation does not include the same mapper's table twice.
@@ -295,8 +306,8 @@ class EagerTest2(fixtures.MappedTest):
         """
 
         Middle, Right, Left = (self.classes.Middle,
-                                self.classes.Right,
-                                self.classes.Left)
+                               self.classes.Right,
+                               self.classes.Left)
 
         p = Middle('m1')
         p.left.append(Left('l1'))
@@ -310,22 +321,26 @@ class EagerTest2(fixtures.MappedTest):
 
 
 class EagerTest3(fixtures.MappedTest):
-    """Eager loading combined with nested SELECT statements, functions, and aggregates."""
+    """Eager loading combined with nested SELECT statements, functions, and
+    aggregates."""
 
     @classmethod
     def define_tables(cls, metadata):
         Table('datas', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('a', Integer, nullable=False))
 
         Table('foo', metadata,
-              Column('data_id', Integer, ForeignKey('datas.id'),primary_key=True),
+              Column('data_id', Integer, ForeignKey('datas.id'),
+                     primary_key=True),
               Column('bar', Integer))
 
         Table('stats', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('data_id', Integer, ForeignKey('datas.id')),
-              Column('somedata', Integer, nullable=False ))
+              Column('somedata', Integer, nullable=False))
 
     @classmethod
     def setup_classes(cls):
@@ -340,18 +355,18 @@ class EagerTest3(fixtures.MappedTest):
 
     def test_nesting_with_functions(self):
         Stat, Foo, stats, foo, Data, datas = (self.classes.Stat,
-                                self.classes.Foo,
-                                self.tables.stats,
-                                self.tables.foo,
-                                self.classes.Data,
-                                self.tables.datas)
+                                              self.classes.Foo,
+                                              self.tables.stats,
+                                              self.tables.foo,
+                                              self.classes.Data,
+                                              self.tables.datas)
 
         mapper(Data, datas)
         mapper(Foo, foo, properties={
-            'data': relationship(Data,backref=backref('foo',uselist=False))})
+            'data': relationship(Data, backref=backref('foo', uselist=False))})
 
         mapper(Stat, stats, properties={
-            'data':relationship(Data)})
+            'data': relationship(Data)})
 
         session = create_session()
 
@@ -379,7 +394,7 @@ class EagerTest3(fixtures.MappedTest):
         arb_result = arb_data.execute().fetchall()
 
         # order the result list descending based on 'max'
-        arb_result.sort(key = lambda a: a['max'], reverse=True)
+        arb_result.sort(key=lambda a: a['max'], reverse=True)
 
         # extract just the "data_id" from it
         arb_result = [row['data_id'] for row in arb_result]
@@ -390,7 +405,8 @@ class EagerTest3(fixtures.MappedTest):
         # "order by max desc" separately
         q = (session.query(Data).
              options(sa.orm.joinedload('foo')).
-             select_from(datas.join(arb_data, arb_data.c.data_id == datas.c.id)).
+             select_from(datas.join(arb_data,
+                                    arb_data.c.data_id == datas.c.id)).
              order_by(sa.desc(arb_data.c.max)).
              limit(10))
 
@@ -399,16 +415,19 @@ class EagerTest3(fixtures.MappedTest):
 
         eq_(verify_result, arb_result)
 
+
 class EagerTest4(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
         Table('departments', metadata,
-              Column('department_id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('department_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('name', String(50)))
 
         Table('employees', metadata,
-              Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('person_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('name', String(50)),
               Column('department_id', Integer,
                      ForeignKey('departments.department_id')))
@@ -422,16 +441,15 @@ class EagerTest4(fixtures.MappedTest):
             pass
 
     def test_basic(self):
-        Department, Employee, employees, departments = (self.classes.Department,
-                                self.classes.Employee,
-                                self.tables.employees,
-                                self.tables.departments)
+        Department, Employee, employees, departments = (
+            self.classes.Department, self.classes.Employee,
+            self.tables.employees, self.tables.departments)
 
         mapper(Employee, employees)
         mapper(Department, departments, properties=dict(
             employees=relationship(Employee,
-                               lazy='joined',
-                               backref='department')))
+                                   lazy='joined',
+                                   backref='department')))
 
         d1 = Department(name='One')
         for e in 'Jim', 'Jack', 'John', 'Susan':
@@ -456,7 +474,8 @@ class EagerTest4(fixtures.MappedTest):
 
 
 class EagerTest5(fixtures.MappedTest):
-    """Construction of AliasedClauses for the same eager load property but different parent mappers, due to inheritance."""
+    """Construction of AliasedClauses for the same eager load property but
+    different parent mappers, due to inheritance."""
 
     @classmethod
     def define_tables(cls, metadata):
@@ -465,16 +484,22 @@ class EagerTest5(fixtures.MappedTest):
               Column('x', String(30)))
 
         Table('derived', metadata,
-              Column('uid', String(30), ForeignKey('base.uid'), primary_key=True),
+              Column('uid', String(30),
+                     ForeignKey('base.uid'),
+                     primary_key=True),
               Column('y', String(30)))
 
         Table('derivedII', metadata,
-              Column('uid', String(30), ForeignKey('base.uid'), primary_key=True),
+              Column('uid', String(30),
+                     ForeignKey('base.uid'),
+                     primary_key=True),
               Column('z', String(30)))
 
         Table('comments', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-              Column('uid', String(30), ForeignKey('base.uid')),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('uid', String(30),
+                     ForeignKey('base.uid')),
               Column('comment', String(30)))
 
     @classmethod
@@ -502,20 +527,21 @@ class EagerTest5(fixtures.MappedTest):
                 self.comment = comment
 
     def test_basic(self):
-        Comment, Derived, derived, comments, DerivedII, Base, base, derivedII = (self.classes.Comment,
-                                self.classes.Derived,
-                                self.tables.derived,
-                                self.tables.comments,
-                                self.classes.DerivedII,
-                                self.classes.Base,
-                                self.tables.base,
-                                self.tables.derivedII)
+        Comment, Derived, derived, comments, \
+            DerivedII, Base, base, derivedII = (self.classes.Comment,
+                                                self.classes.Derived,
+                                                self.tables.derived,
+                                                self.tables.comments,
+                                                self.classes.DerivedII,
+                                                self.classes.Base,
+                                                self.tables.base,
+                                                self.tables.derivedII)
 
         commentMapper = mapper(Comment, comments)
 
         baseMapper = mapper(Base, base, properties=dict(
             comments=relationship(Comment, lazy='joined',
-                              cascade='all, delete-orphan')))
+                                  cascade='all, delete-orphan')))
 
         mapper(Derived, derived, inherits=baseMapper)
 
@@ -554,21 +580,25 @@ class EagerTest6(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('design_types', metadata,
-            Column('design_type_id', Integer, primary_key=True, test_needs_autoincrement=True))
+              Column('design_type_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True))
 
         Table('design', metadata,
-              Column('design_id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('design_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('design_type_id', Integer,
                      ForeignKey('design_types.design_type_id')))
 
         Table('parts', metadata,
-              Column('part_id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('part_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('design_id', Integer, ForeignKey('design.design_id')),
               Column('design_type_id', Integer,
                      ForeignKey('design_types.design_type_id')))
 
         Table('inherited_part', metadata,
-              Column('ip_id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('ip_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('part_id', Integer, ForeignKey('parts.part_id')),
               Column('design_id', Integer, ForeignKey('design.design_id')))
 
@@ -587,14 +617,15 @@ class EagerTest6(fixtures.MappedTest):
             pass
 
     def test_one(self):
-        Part, inherited_part, design_types, DesignType, parts, design, Design, InheritedPart = (self.classes.Part,
-                                self.tables.inherited_part,
-                                self.tables.design_types,
-                                self.classes.DesignType,
-                                self.tables.parts,
-                                self.tables.design,
-                                self.classes.Design,
-                                self.classes.InheritedPart)
+        Part, inherited_part, design_types, DesignType, \
+            parts, design, Design, InheritedPart = (self.classes.Part,
+                                                    self.tables.inherited_part,
+                                                    self.tables.design_types,
+                                                    self.classes.DesignType,
+                                                    self.tables.parts,
+                                                    self.tables.design,
+                                                    self.classes.Design,
+                                                    self.classes.InheritedPart)
 
         p_m = mapper(Part, parts)
 
@@ -603,8 +634,8 @@ class EagerTest6(fixtures.MappedTest):
 
         d_m = mapper(Design, design, properties=dict(
             inheritedParts=relationship(InheritedPart,
-                                    cascade="all, delete-orphan",
-                                    backref="design")))
+                                        cascade="all, delete-orphan",
+                                        backref="design")))
 
         mapper(DesignType, design_types)
 
@@ -615,7 +646,6 @@ class EagerTest6(fixtures.MappedTest):
             "design", relationship(
                 Design, lazy='joined',
                 backref=backref("parts", cascade="all, delete-orphan")))
-
 
         d = Design()
         sess = create_session()
@@ -630,23 +660,30 @@ class EagerTest7(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('companies', metadata,
-              Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('company_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('company_name', String(40)))
 
         Table('addresses', metadata,
-              Column('address_id', Integer, primary_key=True,test_needs_autoincrement=True),
-              Column('company_id', Integer, ForeignKey("companies.company_id")),
+              Column('address_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('company_id', Integer,
+                     ForeignKey("companies.company_id")),
               Column('address', String(40)))
 
         Table('phone_numbers', metadata,
-              Column('phone_id', Integer, primary_key=True,test_needs_autoincrement=True),
-              Column('address_id', Integer, ForeignKey('addresses.address_id')),
+              Column('phone_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('address_id', Integer,
+                     ForeignKey('addresses.address_id')),
               Column('type', String(20)),
               Column('number', String(10)))
 
         Table('invoices', metadata,
-              Column('invoice_id', Integer, primary_key=True, test_needs_autoincrement=True),
-              Column('company_id', Integer, ForeignKey("companies.company_id")),
+              Column('invoice_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('company_id', Integer,
+                     ForeignKey("companies.company_id")),
               Column('date', sa.DateTime))
 
     @classmethod
@@ -672,17 +709,14 @@ class EagerTest7(fixtures.MappedTest):
 
         """
 
-        addresses, invoices, Company, companies, Invoice, Address = (self.tables.addresses,
-                                self.tables.invoices,
-                                self.classes.Company,
-                                self.tables.companies,
-                                self.classes.Invoice,
-                                self.classes.Address)
+        addresses, invoices, Company, companies, Invoice, Address = (
+            self.tables.addresses, self.tables.invoices, self.classes.Company,
+            self.tables.companies, self.classes.Invoice, self.classes.Address)
 
         mapper(Address, addresses)
 
         mapper(Company, companies, properties={
-            'addresses' : relationship(Address, lazy='joined')})
+            'addresses': relationship(Address, lazy='joined')})
 
         mapper(Invoice, invoices, properties={
             'company': relationship(Company, lazy='joined')})
@@ -691,7 +725,6 @@ class EagerTest7(fixtures.MappedTest):
         a2 = Address(address='a2 address')
         c1 = Company(company_name='company 1', addresses=[a1, a2])
         i1 = Invoice(date=datetime.datetime.now(), company=c1)
-
 
         session = create_session()
         session.add(i1)
@@ -712,39 +745,45 @@ class EagerTest7(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 0)
 
 
-
 class EagerTest8(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
         Table('prj', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-              Column('created', sa.DateTime ),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('created', sa.DateTime),
               Column('title', sa.String(100)))
 
         Table('task', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-              Column('status_id', Integer,
-                     ForeignKey('task_status.id'), nullable=False),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('status_id', Integer, ForeignKey('task_status.id'),
+                     nullable=False),
               Column('title', sa.String(100)),
-              Column('task_type_id', Integer ,
-                     ForeignKey('task_type.id'), nullable=False),
-              Column('prj_id', Integer , ForeignKey('prj.id'), nullable=False))
+              Column('task_type_id', Integer, ForeignKey('task_type.id'),
+                     nullable=False),
+              Column('prj_id', Integer, ForeignKey('prj.id'),
+                     nullable=False))
 
         Table('task_status', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True))
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True))
 
         Table('task_type', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True))
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True))
 
         Table('msg', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('posted', sa.DateTime, index=True,),
               Column('type_id', Integer, ForeignKey('msg_type.id')),
               Column('task_id', Integer, ForeignKey('task.id')))
 
         Table('msg_type', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('name', sa.String(20)),
               Column('display_name', sa.String(20)))
 
@@ -773,11 +812,11 @@ class EagerTest8(fixtures.MappedTest):
 
     def test_nested_joins(self):
         task, Task_Type, Joined, prj, task_type, msg = (self.tables.task,
-                                self.classes.Task_Type,
-                                self.classes.Joined,
-                                self.tables.prj,
-                                self.tables.task_type,
-                                self.tables.msg)
+                                                        self.classes.Task_Type,
+                                                        self.classes.Joined,
+                                                        self.tables.prj,
+                                                        self.tables.task_type,
+                                                        self.tables.msg)
 
         # this is testing some subtle column resolution stuff,
         # concerning corresponding_column() being extremely accurate
@@ -785,13 +824,13 @@ class EagerTest8(fixtures.MappedTest):
 
         mapper(Task_Type, task_type)
 
-        tsk_cnt_join = sa.outerjoin(prj, task, task.c.prj_id==prj.c.id)
+        tsk_cnt_join = sa.outerjoin(prj, task, task.c.prj_id == prj.c.id)
 
-        j   = sa.outerjoin(task, msg, task.c.id==msg.c.task_id)
-        jj  = sa.select([ task.c.id.label('task_id'),
-                          sa.func.count(msg.c.id).label('props_cnt')],
-                        from_obj=[j],
-                        group_by=[task.c.id]).alias('prop_c_s')
+        j = sa.outerjoin(task, msg, task.c.id == msg.c.task_id)
+        jj = sa.select([task.c.id.label('task_id'),
+                        sa.func.count(msg.c.id).label('props_cnt')],
+                       from_obj=[j],
+                       group_by=[task.c.id]).alias('prop_c_s')
         jjj = sa.join(task, jj, task.c.id == jj.c.task_id)
 
         mapper(Joined, jjj, properties=dict(
@@ -814,20 +853,22 @@ class EagerTest9(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('accounts', metadata,
-            Column('account_id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('name', String(40)))
+              Column('account_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(40)))
 
         Table('transactions', metadata,
-            Column('transaction_id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('name', String(40)))
+              Column('transaction_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(40)))
 
         Table('entries', metadata,
-            Column('entry_id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('name', String(40)),
-            Column('account_id', Integer,
-                   ForeignKey('accounts.account_id')),
-            Column('transaction_id', Integer,
-                   ForeignKey('transactions.transaction_id')))
+              Column('entry_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(40)),
+              Column('account_id', Integer, ForeignKey('accounts.account_id')),
+              Column('transaction_id', Integer,
+                     ForeignKey('transactions.transaction_id')))
 
     @classmethod
     def setup_classes(cls):
@@ -842,31 +883,33 @@ class EagerTest9(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        Account, Transaction, transactions, accounts, entries, Entry = (cls.classes.Account,
-                                cls.classes.Transaction,
-                                cls.tables.transactions,
-                                cls.tables.accounts,
-                                cls.tables.entries,
-                                cls.classes.Entry)
+        Account, Transaction, transactions, accounts, entries, Entry = (
+            cls.classes.Account, cls.classes.Transaction, cls.tables.
+            transactions, cls.tables.accounts, cls.tables.entries, cls.classes.
+            Entry)
 
         mapper(Account, accounts)
 
         mapper(Transaction, transactions)
 
-        mapper(Entry, entries, properties=dict(
-            account=relationship(Account,
-                             uselist=False,
-                             backref=backref('entries', lazy='select',
-                                             order_by=entries.c.entry_id)),
-            transaction=relationship(Transaction,
-                                 uselist=False,
-                                 backref=backref('entries', lazy='joined',
-                                                 order_by=entries.c.entry_id))))
+        mapper(
+            Entry, entries,
+            properties=dict(
+                account=relationship(
+                    Account, uselist=False,
+                    backref=backref(
+                        'entries', lazy='select',
+                        order_by=entries.c.entry_id)),
+                transaction=relationship(
+                    Transaction, uselist=False,
+                    backref=backref(
+                        'entries', lazy='joined',
+                        order_by=entries.c.entry_id))))
 
     def test_joinedload_on_path(self):
         Entry, Account, Transaction = (self.classes.Entry,
-                                self.classes.Account,
-                                self.classes.Transaction)
+                                       self.classes.Account,
+                                       self.classes.Transaction)
 
         session = create_session()
 
@@ -890,9 +933,10 @@ class EagerTest9(fixtures.MappedTest):
             # all objects saved thus far, but will not eagerly load the
             # "accounts" off the immediate "entries"; only the "accounts" off
             # the entries->transaction->entries
-            acc = (session.query(Account).
-                   options(sa.orm.joinedload_all('entries.transaction.entries.account')).
-                   order_by(Account.account_id)).first()
+            acc = (session.query(Account).options(
+                sa.orm.joinedload_all(
+                    'entries.transaction.entries.account')).order_by(
+                        Account.account_id)).first()
 
             # no sql occurs
             eq_(acc.name, 'acc1')
@@ -905,6 +949,3 @@ class EagerTest9(fixtures.MappedTest):
                 assert e.account is acc
 
         self.assert_sql_count(testing.db, go, 1)
-
-
-

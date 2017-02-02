@@ -1,4 +1,11 @@
-from sqlalchemy import Table, Column, String, func, MetaData, select, TypeDecorator, cast
+from sqlalchemy import (Table,
+                        Column,
+                        String,
+                        func,
+                        MetaData,
+                        select,
+                        TypeDecorator,
+                        cast)
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_

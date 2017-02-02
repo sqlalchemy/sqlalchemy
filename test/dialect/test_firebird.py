@@ -4,13 +4,17 @@ from sqlalchemy.databases import firebird
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import table, column
 from sqlalchemy import types as sqltypes
-from sqlalchemy.testing import fixtures, AssertsExecutionResults, AssertsCompiledSQL
+from sqlalchemy.testing import (fixtures,
+                                AssertsExecutionResults,
+                                AssertsCompiledSQL)
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy import String, VARCHAR, NVARCHAR, Unicode, Integer,\
     func, insert, update, MetaData, select, Table, Column, text,\
     Sequence, Float
 from sqlalchemy import schema
+from sqlalchemy.testing.mock import Mock, call
+
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     "Test Firebird domains"
@@ -29,7 +33,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             con.execute('CREATE DOMAIN img_domain AS BLOB SUB_TYPE '
                         'BINARY')
         except ProgrammingError as e:
-            if not 'attempt to store duplicate value' in str(e):
+            if 'attempt to store duplicate value' not in str(e):
                 raise e
         con.execute('''CREATE GENERATOR gen_testtable_id''')
         con.execute('''CREATE TABLE testtable (question int_domain,
@@ -75,8 +79,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             'dt',
             'redundant',
             ]),
-                "Columns of reflected table didn't equal expected "
-                "columns")
+            "Columns of reflected table didn't equal expected "
+            "columns")
         eq_(table.c.question.primary_key, True)
 
         # disabled per http://www.sqlalchemy.org/trac/ticket/1660
@@ -106,7 +110,8 @@ class BuggyDomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'firebird'
 
     # NB: spacing and newlines are *significant* here!
-    # PS: this test is superfluous on recent FB, where the issue 356 is probably fixed...
+    # PS: this test is superfluous on recent FB, where the issue 356 is
+    # probably fixed...
 
     AUTOINC_DM = """\
 CREATE DOMAIN AUTOINC_DM
@@ -268,11 +273,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 exc.CompileError,
                 "VARCHAR requires a length on dialect firebird",
                 type_.compile,
-            dialect=firebird.dialect())
+                dialect=firebird.dialect())
 
             t1 = Table('sometable', MetaData(),
-                Column('somecolumn', type_)
-            )
+                       Column('somecolumn', type_))
             assert_raises_message(
                 exc.CompileError,
                 r"\(in table 'sometable', column 'somecolumn'\)\: "
@@ -286,8 +290,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(func.current_time(), 'CURRENT_TIME')
         self.assert_compile(func.foo(), 'foo')
         m = MetaData()
-        t = Table('sometable', m, Column('col1', Integer), Column('col2'
-                  , Integer))
+        t = Table('sometable',
+                  m,
+                  Column('col1', Integer),
+                  Column('col2', Integer))
         self.assert_compile(select([func.max(t.c.col1)]),
                             'SELECT max(sometable.col1) AS max_1 FROM '
                             'sometable')
@@ -300,11 +306,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SUBSTRING(:substring_1 FROM :substring_2)')
 
     def test_update_returning(self):
-        table1 = table('mytable', column('myid', Integer), column('name'
-                       , String(128)), column('description',
-                       String(128)))
-        u = update(table1, values=dict(name='foo'
-                   )).returning(table1.c.myid, table1.c.name)
+        table1 = table('mytable',
+                       column('myid', Integer),
+                       column('name', String(128)),
+                       column('description', String(128)))
+        u = update(table1, values=dict(name='foo'))\
+            .returning(table1.c.myid, table1.c.name)
         self.assert_compile(u,
                             'UPDATE mytable SET name=:name RETURNING '
                             'mytable.myid, mytable.name')
@@ -313,18 +320,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'UPDATE mytable SET name=:name RETURNING '
                             'mytable.myid, mytable.name, '
                             'mytable.description')
-        u = update(table1, values=dict(name='foo'
-                   )).returning(func.length(table1.c.name))
+        u = update(table1, values=dict(name='foo')) \
+            .returning(func.length(table1.c.name))
         self.assert_compile(u,
                             'UPDATE mytable SET name=:name RETURNING '
                             'char_length(mytable.name) AS length_1')
 
     def test_insert_returning(self):
-        table1 = table('mytable', column('myid', Integer), column('name'
-                       , String(128)), column('description',
-                       String(128)))
-        i = insert(table1, values=dict(name='foo'
-                   )).returning(table1.c.myid, table1.c.name)
+        table1 = table('mytable',
+                       column('myid', Integer),
+                       column('name', String(128)),
+                       column('description', String(128)))
+        i = insert(table1, values=dict(name='foo'))\
+            .returning(table1.c.myid, table1.c.name)
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES (:name) '
                             'RETURNING mytable.myid, mytable.name')
@@ -333,8 +341,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'INSERT INTO mytable (name) VALUES (:name) '
                             'RETURNING mytable.myid, mytable.name, '
                             'mytable.description')
-        i = insert(table1, values=dict(name='foo'
-                   )).returning(func.length(table1.c.name))
+        i = insert(table1, values=dict(name='foo'))\
+            .returning(func.length(table1.c.name))
         self.assert_compile(i,
                             'INSERT INTO mytable (name) VALUES (:name) '
                             'RETURNING char_length(mytable.name) AS '
@@ -361,6 +369,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("$somecol"),
             '"$somecol"'
         )
+
+
 class TypesTest(fixtures.TestBase):
     __only_on__ = 'firebird'
 
@@ -368,13 +378,12 @@ class TypesTest(fixtures.TestBase):
     def test_infinite_float(self):
         metadata = self.metadata
         t = Table('t', metadata,
-            Column('data', Float)
-        )
+                  Column('data', Float))
         metadata.create_all()
         t.insert().execute(data=float('inf'))
         eq_(t.select().execute().fetchall(),
-            [(float('inf'),)]
-        )
+            [(float('inf'),)])
+
 
 class MiscTest(fixtures.TestBase):
 
@@ -390,9 +399,10 @@ class MiscTest(fixtures.TestBase):
         # string length the UDF was declared to accept). This test
         # checks that at least it works ok in other cases.
 
-        t = Table('t1', metadata, Column('id', Integer,
-                  Sequence('t1idseq'), primary_key=True), Column('name'
-                  , String(10)))
+        t = Table('t1',
+                  metadata,
+                  Column('id', Integer, Sequence('t1idseq'), primary_key=True),
+                  Column('name', String(10)))
         metadata.create_all()
         t.insert(values=dict(name='dante')).execute()
         t.insert(values=dict(name='alighieri')).execute()
@@ -421,10 +431,8 @@ class MiscTest(fixtures.TestBase):
         metadata.bind = engine
         t = Table('t1', metadata, Column('data', String(10)))
         metadata.create_all()
-        r = t.insert().execute({'data': 'd1'}, {'data': 'd2'}, {'data'
-                               : 'd3'})
-        r = t.update().where(t.c.data == 'd2').values(data='d3'
-                ).execute()
+        r = t.insert().execute({'data': 'd1'}, {'data': 'd2'}, {'data': 'd3'})
+        r = t.update().where(t.c.data == 'd2').values(data='d3').execute()
         eq_(r.rowcount, 1)
         r = t.delete().where(t.c.data == 'd3').execute()
         eq_(r.rowcount, 2)
@@ -432,14 +440,11 @@ class MiscTest(fixtures.TestBase):
             t.delete().execution_options(enable_rowcount=False).execute()
         eq_(r.rowcount, -1)
         engine.dispose()
-        engine = engines.testing_engine(options={'enable_rowcount'
-                : False})
+        engine = engines.testing_engine(options={'enable_rowcount': False})
         assert not engine.dialect.supports_sane_rowcount
         metadata.bind = engine
-        r = t.insert().execute({'data': 'd1'}, {'data': 'd2'}, {'data'
-                               : 'd3'})
-        r = t.update().where(t.c.data == 'd2').values(data='d3'
-                ).execute()
+        r = t.insert().execute({'data': 'd1'}, {'data': 'd2'}, {'data': 'd3'})
+        r = t.update().where(t.c.data == 'd2').values(data='d3').execute()
         eq_(r.rowcount, -1)
         r = t.delete().where(t.c.data == 'd3').execute()
         eq_(r.rowcount, -1)
@@ -456,8 +461,6 @@ class MiscTest(fixtures.TestBase):
             (text("select 'hello % world' from rdb$database"),
              'hello % world'):
             eq_(testing.db.scalar(expr), result)
-
-from sqlalchemy.testing.mock import Mock, call
 
 
 class ArgumentTest(fixtures.TestBase):
@@ -480,8 +483,7 @@ class ArgumentTest(fixtures.TestBase):
                     _initialize=False
             )
         )
-        engine = engines.testing_engine("firebird+%s://" % type_,
-                                options=kw)
+        engine = engines.testing_engine("firebird+%s://" % type_, options=kw)
         return engine
 
     def test_retaining_flag_default_kinterbasdb(self):
@@ -508,7 +510,6 @@ class ArgumentTest(fixtures.TestBase):
         engine = self._engine("fdb", retaining=False)
         self._assert_retaining(engine, False)
 
-
     def _assert_retaining(self, engine, flag):
         conn = engine.connect()
         trans = conn.begin()
@@ -524,8 +525,3 @@ class ArgumentTest(fixtures.TestBase):
             engine.dialect.dbapi.connect.return_value.rollback.mock_calls,
             [call(flag)]
         )
-
-
-
-
-

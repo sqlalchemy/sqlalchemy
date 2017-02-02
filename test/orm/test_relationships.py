@@ -824,7 +824,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             set([
                 (employee_t.c.company_id, employee_t.c.company_id),
                 (employee_t.c.reports_to_id, employee_t.c.emp_id),
-                ])
+            ])
         )
 
     def _setup_data(self, sess):
@@ -1120,7 +1120,7 @@ class FKsAsPksTest(fixtures.MappedTest):
                                 self.tables.tableA)
 
         for cascade in ("save-update, delete",
-                        #"save-update, delete-orphan",
+                        # "save-update, delete-orphan",
                         "save-update, delete, delete-orphan"):
             mapper(B, tableB, properties={
                 'a': relationship(A, cascade=cascade, single_parent=True)
@@ -1150,7 +1150,7 @@ class FKsAsPksTest(fixtures.MappedTest):
                                 self.tables.tableA)
 
         for cascade in ("save-update, delete",
-                        #"save-update, delete-orphan",
+                        # "save-update, delete-orphan",
                         "save-update, delete, delete-orphan"):
             mapper(A, tableA, properties={
                 'bs': relationship(B, cascade=cascade)
@@ -1458,7 +1458,7 @@ class BackrefPropagatesForwardsArgs(fixtures.MappedTest):
         sess.commit()
         eq_(sess.query(Address).all(), [
             Address(email='a1', user=User(name='u1'))
-            ])
+        ])
 
 
 class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
@@ -1616,10 +1616,10 @@ class ManualBackrefTest(_fixtures.FixtureTest):
         assert_raises_message(sa.exc.ArgumentError,
                               r"reverse_property 'dingaling' on relationship "
                               r"User.addresses references "
-                              r"relationship Address.dingaling, which does not "
+                              r"relationship Address.dingaling, "
+                              r"which does not "
                               r"reference mapper Mapper\|User\|users",
                               configure_mappers)
-
 
 
 class NoLoadBackPopulates(_fixtures.FixtureTest):
@@ -3205,15 +3205,16 @@ class SecondaryNestedJoinTest(fixtures.MappedTest, AssertsCompiledSQL,
         A, B, C, D = cls.classes.A, cls.classes.B, cls.classes.C, cls.classes.D
         a, b, c, d = cls.tables.a, cls.tables.b, cls.tables.c, cls.tables.d
         j = sa.join(b, d, b.c.d_id == d.c.id).join(c, c.c.d_id == d.c.id)
-        #j = join(b, d, b.c.d_id == d.c.id).join(c, c.c.d_id == d.c.id).alias()
+        # j = join(b, d, b.c.d_id == d.c.id).join(c, c.c.d_id == d.c.id) \
+        # .alias()
         mapper(A, a, properties={
             "b": relationship(B),
             "d": relationship(
                 D, secondary=j,
                 primaryjoin=and_(a.c.b_id == b.c.id, a.c.id == c.c.a_id),
                 secondaryjoin=d.c.id == b.c.d_id,
-                #primaryjoin=and_(a.c.b_id == j.c.b_id, a.c.id == j.c.c_a_id),
-                #secondaryjoin=d.c.id == j.c.b_d_id,
+                # primaryjoin=and_(a.c.b_id == j.c.b_id, a.c.id == j.c.c_a_id),
+                # secondaryjoin=d.c.id == j.c.b_d_id,
                 uselist=False,
                 viewonly=True
             )
@@ -3547,8 +3548,8 @@ class InvalidRelationshipEscalationTest(
         mapper(Bar, bars)
 
         self._assert_raises_no_equality(configure_mappers,
-                                        "foos.id > foos.fid", "Foo.foos", "primary"
-                                        )
+                                        "foos.id > foos.fid", "Foo.foos",
+                                        "primary")
 
     def test_no_equated_viewonly(self):
         bars, Bar, bars_with_fks, foos_with_fks, Foo, foos = (
@@ -3800,7 +3801,8 @@ class InvalidRelationshipEscalationTestM2M(
         # ensure m2m backref is set up with correct annotations
         # [ticket:2578]
         mapper(Foo, foos, properties={
-            'bars': relationship(Bar, secondary=foobars_with_fks, backref="foos")
+            'bars': relationship(Bar, secondary=foobars_with_fks,
+                                 backref="foos")
         })
         mapper(Bar, bars)
         sa.orm.configure_mappers()

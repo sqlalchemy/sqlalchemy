@@ -20,3 +20,4 @@ sqlnet.log
 /mapping_setup.py
 /test.py
 /.cache/
+*.sw[o,p]

@@ -10,7 +10,11 @@ from sqlalchemy.sql.visitors import ClauseVisitor, CloningVisitor, \
     cloned_traverse, ReplacingCloningVisitor
 from sqlalchemy import exc
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.testing import eq_, is_, is_not_, assert_raises, assert_raises_message
+from sqlalchemy.testing import (eq_,
+                                is_,
+                                is_not_,
+                                assert_raises,
+                                assert_raises_message)
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
@@ -1011,7 +1015,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         t2alias = t2.alias('t2alias')
         vis = sql_util.ClauseAdapter(t1alias)
 
-        s = select([literal_column('*')], from_obj=[t1alias, t2alias]).as_scalar()
+        s = select([literal_column('*')],
+                   from_obj=[t1alias, t2alias]).as_scalar()
         assert t2alias in s._froms
         assert t1alias in s._froms
 
@@ -1033,8 +1038,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT * FROM table2 AS t2alias WHERE '
                             't2alias.col1 = (SELECT * FROM table1 AS '
                             't1alias)')
-        s = select([literal_column('*')], from_obj=[t1alias,
-                                    t2alias]).correlate(t2alias).as_scalar()
+        s = select([literal_column('*')],
+                   from_obj=[t1alias, t2alias]).correlate(t2alias).as_scalar()
         self.assert_compile(select([literal_column('*')], t2alias.c.col1 == s),
                             'SELECT * FROM table2 AS t2alias WHERE '
                             't2alias.col1 = (SELECT * FROM table1 AS '
@@ -1050,7 +1055,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             't2alias.col1 = (SELECT * FROM table1 AS '
                             't1alias)')
 
-        s = select([literal_column('*')]).where(t1.c.col1 == t2.c.col1).as_scalar()
+        s = select([literal_column('*')]).where(t1.c.col1 == t2.c.col1) \
+            .as_scalar()
         self.assert_compile(select([t1.c.col1, s]),
                             'SELECT table1.col1, (SELECT * FROM table2 '
                             'WHERE table1.col1 = table2.col1) AS '
@@ -1066,8 +1072,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT t1alias.col1, (SELECT * FROM '
                             'table2 WHERE t1alias.col1 = table2.col1) '
                             'AS anon_1 FROM table1 AS t1alias')
-        s = select([literal_column('*')]).where(t1.c.col1
-                                == t2.c.col1).correlate(t1).as_scalar()
+        s = select([literal_column('*')]).where(t1.c.col1 == t2.c.col1) \
+            .correlate(t1).as_scalar()
         self.assert_compile(select([t1.c.col1, s]),
                             'SELECT table1.col1, (SELECT * FROM table2 '
                             'WHERE table1.col1 = table2.col1) AS '
@@ -1116,21 +1122,22 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_table_to_alias_2(self):
         t1alias = t1.alias('t1alias')
         vis = sql_util.ClauseAdapter(t1alias)
-        self.assert_compile(vis.traverse(select([literal_column('*')], from_obj=[t1])),
-                            'SELECT * FROM table1 AS t1alias')
+        self.assert_compile(
+            vis.traverse(select([literal_column('*')], from_obj=[t1])),
+            'SELECT * FROM table1 AS t1alias')
 
     def test_table_to_alias_3(self):
         t1alias = t1.alias('t1alias')
         vis = sql_util.ClauseAdapter(t1alias)
-        self.assert_compile(select([literal_column('*')], t1.c.col1 == t2.c.col2),
-                            'SELECT * FROM table1, table2 WHERE '
-                            'table1.col1 = table2.col2')
+        self.assert_compile(
+            select([literal_column('*')], t1.c.col1 == t2.c.col2),
+            'SELECT * FROM table1, table2 WHERE table1.col1 = table2.col2')
 
     def test_table_to_alias_4(self):
         t1alias = t1.alias('t1alias')
         vis = sql_util.ClauseAdapter(t1alias)
-        self.assert_compile(vis.traverse(select([literal_column('*')], t1.c.col1
-                                                == t2.c.col2)),
+        self.assert_compile(vis.traverse(select([literal_column('*')],
+                                                t1.c.col1 == t2.c.col2)),
                             'SELECT * FROM table1 AS t1alias, table2 '
                             'WHERE t1alias.col1 = table2.col2')
 
@@ -1151,13 +1158,12 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_table_to_alias_6(self):
         t1alias = t1.alias('t1alias')
         vis = sql_util.ClauseAdapter(t1alias)
-        self.assert_compile(
-            select([t1alias, t2]).where(
-                t1alias.c.col1 == vis.traverse(
-                    select([literal_column('*')], t1.c.col1 == t2.c.col2, from_obj=[t1, t2]).
-                    correlate(t1)
-                )
-            ),
+        self.assert_compile(select([t1alias, t2]).where(
+            t1alias.c.col1 == vis.traverse(
+                select([literal_column('*')],
+                       t1.c.col1 == t2.c.col2, from_obj=[t1, t2]).correlate(t1)
+            )
+        ),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
             "table2.col1, table2.col2, table2.col3 "
             "FROM table1 AS t1alias, table2 WHERE t1alias.col1 = "
@@ -1170,7 +1176,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([t1alias, t2]).
             where(t1alias.c.col1 == vis.traverse(
-                select([literal_column('*')], t1.c.col1 == t2.c.col2, from_obj=[t1, t2]).
+                select([literal_column('*')],
+                       t1.c.col1 == t2.c.col2, from_obj=[t1, t2]).
                 correlate(t2))),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
             "table2.col1, table2.col2, table2.col3 "
@@ -1240,11 +1247,12 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         vis = sql_util.ClauseAdapter(t1alias)
         t2alias = t2.alias('t2alias')
         vis.chain(sql_util.ClauseAdapter(t2alias))
-        self.assert_compile(vis.traverse(select([literal_column('*')], t1.c.col1
-                                                == t2.c.col2)),
-                            'SELECT * FROM table1 AS t1alias, table2 '
-                            'AS t2alias WHERE t1alias.col1 = '
-                            't2alias.col2')
+        self.assert_compile(
+            vis.traverse(
+                select([literal_column('*')], t1.c.col1 == t2.c.col2)),
+            'SELECT * FROM table1 AS t1alias, table2 '
+            'AS t2alias WHERE t1alias.col1 = '
+            't2alias.col2')
 
     def test_table_to_alias_15(self):
         t1alias = t1.alias('t1alias')

@@ -13,13 +13,17 @@ from sqlalchemy.util import u, ue
 
 from sqlalchemy.testing import fixtures
 
+
 class User(fixtures.ComparableEntity):
     pass
+
 
 class Address(fixtures.ComparableEntity):
     pass
 
+
 users = addresses = Session = None
+
 
 class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
 
@@ -41,26 +45,26 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
     def setup_mappers(cls):
         global Session
         Session = scoped_session(sessionmaker())
-        mapper(User, users, properties={'addresses'
-               : relationship(Address, backref='user',
-               order_by=addresses.c.id)})
+        mapper(User, users,
+               properties={'addresses': relationship(Address, backref='user',
+                                                     order_by=addresses.c.id)})
         mapper(Address, addresses)
         configure_mappers()
 
     @classmethod
     def insert_data(cls):
         params = [dict(list(zip(('id', 'name'), column_values)))
-                  for column_values in [(7, 'jack'), (8, 'ed'), (9,
-                  'fred'), (10, 'chuck')]]
+                  for column_values in [(7, 'jack'), (8, 'ed'), (9, 'fred'),
+                                        (10, 'chuck')]]
         users.insert().execute(params)
-        addresses.insert().execute([dict(list(zip(('id', 'user_id', 'email'
-                                   ), column_values)))
-                                   for column_values in [(1, 7,
-                                   'jack@bean.com'), (2, 8,
-                                   'ed@wood.com'), (3, 8,
-                                   'ed@bettyboop.com'), (4, 8,
-                                   'ed@lala.com'), (5, 9,
-                                   'fred@fred.com')]])
+        addresses.insert().execute([dict(list(zip(('id', 'user_id', 'email'),
+                                                  column_values)))
+                                   for column_values in [
+                                           (1, 7, 'jack@bean.com'),
+                                           (2, 8, 'ed@wood.com'),
+                                           (3, 8, 'ed@bettyboop.com'),
+                                           (4, 8, 'ed@lala.com'),
+                                           (5, 9, 'fred@fred.com')]])
 
     def test_tables(self):
         assert serializer.loads(serializer.dumps(users, -1),
@@ -90,25 +94,24 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             (8, 'ed'), (8, 'ed'), (9, 'fred')])
 
     def test_query_one(self):
-        q = Session.query(User).\
-                filter(User.name == 'ed').\
-                    options(joinedload(User.addresses))
+        q = Session.query(User).filter(User.name == 'ed').\
+            options(joinedload(User.addresses))
 
-        q2 = serializer.loads(
-                    serializer.dumps(q, -1),
-                            users.metadata, Session)
+        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata, Session)
+
         def go():
-            eq_(q2.all(), [
-                    User(name='ed', addresses=[Address(id=2),
-                    Address(id=3), Address(id=4)])])
+            eq_(q2.all(),
+                [User(name='ed',
+                      addresses=[Address(id=2), Address(id=3), Address(id=4)])]
+                )
 
         self.assert_sql_count(testing.db, go, 1)
 
         eq_(q2.join(User.addresses).filter(Address.email
             == 'ed@bettyboop.com').value(func.count(literal_column('*'))), 1)
         u1 = Session.query(User).get(8)
-        q = Session.query(Address).filter(Address.user
-                == u1).order_by(desc(Address.email))
+        q = Session.query(Address).filter(Address.user == u1)\
+            .order_by(desc(Address.email))
         q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
                               Session)
         eq_(q2.all(), [Address(email='ed@wood.com'),
@@ -117,17 +120,16 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
 
     @testing.requires.non_broken_pickle
     def test_query_two(self):
-        q = \
-            Session.query(User).join(User.addresses).\
-               filter(Address.email.like('%fred%'))
+        q = Session.query(User).join(User.addresses).\
+            filter(Address.email.like('%fred%'))
         q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
                               Session)
         eq_(q2.all(), [User(name='fred')])
         eq_(list(q2.values(User.id, User.name)), [(9, 'fred')])
 
     # fails too often/randomly
-    #@testing.requires.non_broken_pickle
-    #def test_query_three(self):
+    # @testing.requires.non_broken_pickle
+    # def test_query_three(self):
     #    ua = aliased(User)
     #    q = \
     #        Session.query(ua).join(ua.addresses).\
@@ -156,9 +158,10 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_aliases(self):
         u7, u8, u9, u10 = Session.query(User).order_by(User.id).all()
         ualias = aliased(User)
-        q = Session.query(User, ualias).join(ualias, User.id
-                < ualias.id).filter(User.id < 9).order_by(User.id,
-                ualias.id)
+        q = Session.query(User, ualias)\
+            .join(ualias, User.id < ualias.id)\
+            .filter(User.id < 9)\
+            .order_by(User.id, ualias.id)
         eq_(list(q.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9),
             (u8, u10)])
         q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
@@ -176,7 +179,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_unicode(self):
         m = MetaData()
         t = Table(ue('\u6e2c\u8a66'), m,
-                Column(ue('\u6e2c\u8a66_id'), Integer))
+                  Column(ue('\u6e2c\u8a66_id'), Integer))
 
         expr = select([t]).where(t.c[ue('\u6e2c\u8a66_id')] == 5)
 

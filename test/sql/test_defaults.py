@@ -329,7 +329,6 @@ class DefaultTest(fixtures.TestBase):
             c = sa.ColumnDefault(fn)
             c.arg("context")
 
-
     @testing.fails_on('firebird', 'Data type unknown')
     def test_standalone(self):
         c = testing.db.engine.contextual_connect()
@@ -427,9 +426,9 @@ class DefaultTest(fixtures.TestBase):
 
         ctexec = sa.select(
             [currenttime.label('now')], bind=testing.db).scalar()
-        l = t.select().order_by(t.c.col1).execute()
+        result = t.select().order_by(t.c.col1).execute()
         today = datetime.date.today()
-        eq_(l.fetchall(), [
+        eq_(result.fetchall(), [
             (x, 'imthedefault', f, ts, ts, ctexec, True, False,
              12, today, 'py', 'hi', 'BINDfoo')
             for x in range(51, 54)])
@@ -447,9 +446,9 @@ class DefaultTest(fixtures.TestBase):
         t.insert().execute({}, {}, {})
 
         ctexec = currenttime.scalar()
-        l = t.select().execute()
+        result = t.select().execute()
         today = datetime.date.today()
-        eq_(l.fetchall(),
+        eq_(result.fetchall(),
             [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, 'py', 'hi', 'BINDfoo'),
              (52, 'imthedefault', f, ts, ts, ctexec, True, False,
@@ -463,9 +462,9 @@ class DefaultTest(fixtures.TestBase):
         t.insert().values([{}, {}, {}]).execute()
 
         ctexec = currenttime.scalar()
-        l = t.select().execute()
+        result = t.select().execute()
         today = datetime.date.today()
-        eq_(l.fetchall(),
+        eq_(result.fetchall(),
             [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, 'py', 'hi', 'BINDfoo'),
              (52, 'imthedefault', f, ts, ts, ctexec, True, False,
@@ -513,8 +512,8 @@ class DefaultTest(fixtures.TestBase):
 
     def test_insert_values(self):
         t.insert(values={'col3': 50}).execute()
-        l = t.select().execute()
-        eq_(50, l.first()['col3'])
+        result = t.select().execute()
+        eq_(50, result.first()['col3'])
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_updatemany(self):
@@ -533,10 +532,10 @@ class DefaultTest(fixtures.TestBase):
             {'pkval': 52},
             {'pkval': 53})
 
-        l = t.select().execute()
+        result = t.select().execute()
         ctexec = currenttime.scalar()
         today = datetime.date.today()
-        eq_(l.fetchall(),
+        eq_(result.fetchall(),
             [(51, 'im the update', f2, ts, ts, ctexec, False, False,
               13, today, 'py', 'hi', 'BINDfoo'),
              (52, 'im the update', f2, ts, ts, ctexec, True, False,
@@ -550,9 +549,9 @@ class DefaultTest(fixtures.TestBase):
         pk = r.inserted_primary_key[0]
         t.update(t.c.col1 == pk).execute(col4=None, col5=None)
         ctexec = currenttime.scalar()
-        l = t.select(t.c.col1 == pk).execute()
-        l = l.first()
-        eq_(l,
+        result = t.select(t.c.col1 == pk).execute()
+        result = result.first()
+        eq_(result,
             (pk, 'im the update', f2, None, None, ctexec, True, False,
              13, datetime.date.today(), 'py', 'hi', 'BINDfoo'))
         eq_(11, f2)
@@ -562,9 +561,9 @@ class DefaultTest(fixtures.TestBase):
         r = t.insert().execute()
         pk = r.inserted_primary_key[0]
         t.update(t.c.col1 == pk, values={'col3': 55}).execute()
-        l = t.select(t.c.col1 == pk).execute()
-        l = l.first()
-        eq_(55, l['col3'])
+        result = t.select(t.c.col1 == pk).execute()
+        result = result.first()
+        eq_(55, result['col3'])
 
 
 class CTEDefaultTest(fixtures.TablesTest):
@@ -751,10 +750,10 @@ class PKIncrementTest(fixtures.TablesTest):
         try:
             try:
                 self._test_autoincrement(con)
-            except:
+            except Exception:
                 try:
                     tx.rollback()
-                except:
+                except Exception:
                     pass
                 raise
             else:
@@ -1213,6 +1212,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         result = testing.db.execute(t.insert())
         eq_(result.inserted_primary_key, [1])
+
 
 cartitems = sometable = metadata = None
 

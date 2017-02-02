@@ -5,8 +5,10 @@ from sqlalchemy import exc, util
 from sqlalchemy import inspection, inspect
 from sqlalchemy.testing import fixtures
 
+
 class TestFixture(object):
     pass
+
 
 class TestInspection(fixtures.TestBase):
 
@@ -21,7 +23,7 @@ class TestInspection(fixtures.TestBase):
 
         @inspection._inspects(SomeFoo)
         def insp_somefoo(subject):
-            return {"insp":subject}
+            return {"insp": subject}
 
         somefoo = SomeFoo()
         insp = inspect(somefoo)

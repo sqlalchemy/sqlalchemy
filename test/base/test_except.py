@@ -33,6 +33,7 @@ class OutOfSpec(DatabaseError):
 class WrongNameError(DatabaseError):
     pass
 
+
 # but they're going to call it their "IntegrityError"
 IntegrityError = WrongNameError
 

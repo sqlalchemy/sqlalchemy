@@ -205,12 +205,11 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
                                                startswith('L')))) == 2
             assert len(fulltable(Animal.select(Animal.c.Species.
                                                endswith('pede')))) == 2
-            assert len(fulltable(Animal.select(Animal.c.LastEscape
-                                               != None))) == 1
+            assert len(fulltable(
+                Animal.select(Animal.c.LastEscape != None))) == 1  # noqa
             assert len(
-                fulltable(
-                    Animal.select(
-                        None == Animal.c.LastEscape))) == ITERATIONS + 11
+                fulltable(Animal.select(
+                    None == Animal.c.LastEscape))) == ITERATIONS + 11  # noqa
 
             # In operator (containedby)
 
@@ -256,7 +255,7 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
                 fulltable(
                     Zoo.select(
                         and_(
-                            Zoo.c.Founded != None,
+                            Zoo.c.Founded != None,  # noqa
                             Zoo.c.Founded < func.current_timestamp(
                                 _type=Date))))) == 3
             assert len(
@@ -313,7 +312,7 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
                 assert lifespan == expected[species]
             expected = ['Montr\xe9al Biod\xf4me', 'Wild Animal Park']
             e = select([Zoo.c.Name],
-                       and_(Zoo.c.Founded != None,
+                       and_(Zoo.c.Founded != None,  # noqa
                             Zoo.c.Founded <= func.current_timestamp(),
                             Zoo.c.Founded >= datetime.date(1990,
                                                            1,

@@ -384,7 +384,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_criterion(self):
         self.assert_compile(
             func.count(1).filter(
-                table1.c.name != None
+                table1.c.name != None  # noqa
             ),
             "count(:count_1) FILTER (WHERE mytable.name IS NOT NULL)"
         )
@@ -392,7 +392,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_compound_criterion(self):
         self.assert_compile(
             func.count(1).filter(
-                table1.c.name == None,
+                table1.c.name == None,  # noqa
                 table1.c.myid > 0
             ),
             "count(:count_1) FILTER (WHERE mytable.name IS NULL AND "
@@ -402,7 +402,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_label(self):
         self.assert_compile(
             select([func.count(1).filter(
-                table1.c.description != None
+                table1.c.description != None  # noqa
             ).label('foo')]),
             "SELECT count(:count_1) FILTER (WHERE mytable.description "
             "IS NOT NULL) AS foo FROM mytable"
@@ -414,7 +414,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([
                 func.max(table1.c.name).filter(
-                    literal_column('description') != None
+                    literal_column('description') != None  # noqa
                 )
             ]),
             "SELECT max(mytable.name) FILTER (WHERE description "

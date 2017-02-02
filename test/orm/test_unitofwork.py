@@ -22,6 +22,7 @@ from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 class UnitOfWorkTest(object):
     pass
 
+
 class HistoryTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -29,18 +30,19 @@ class HistoryTest(_fixtures.FixtureTest):
     def setup_classes(cls):
         class User(cls.Comparable):
             pass
+
         class Address(cls.Comparable):
             pass
 
     def test_backref(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         am = mapper(Address, addresses)
         m = mapper(User, users, properties=dict(
-            addresses = relationship(am, backref='user', lazy='joined')))
+            addresses=relationship(am, backref='user', lazy='joined')))
 
         session = create_session(autocommit=False)
 
@@ -57,6 +59,7 @@ class HistoryTest(_fixtures.FixtureTest):
         assert u.addresses[0].user == u
         session.close()
 
+
 class UnicodeTest(fixtures.MappedTest):
     __requires__ = ('unicode_connections',)
 
@@ -66,18 +69,19 @@ class UnicodeTest(fixtures.MappedTest):
             sa.Unicode(50, collation="utf8_unicode_ci"), "mysql")
 
         Table('uni_t1', metadata,
-            Column('id',  Integer, primary_key=True,
-                   test_needs_autoincrement=True),
-            Column('txt', uni_type, unique=True))
+              Column('id',  Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('txt', uni_type, unique=True))
         Table('uni_t2', metadata,
-            Column('id',  Integer, primary_key=True,
-                   test_needs_autoincrement=True),
-            Column('txt', uni_type, ForeignKey('uni_t1')))
+              Column('id',  Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('txt', uni_type, ForeignKey('uni_t1')))
 
     @classmethod
     def setup_classes(cls):
         class Test(cls.Basic):
             pass
+
         class Test2(cls.Basic):
             pass
 
@@ -98,9 +102,9 @@ class UnicodeTest(fixtures.MappedTest):
 
     def test_relationship(self):
         Test, uni_t2, uni_t1, Test2 = (self.classes.Test,
-                                self.tables.uni_t2,
-                                self.tables.uni_t1,
-                                self.classes.Test2)
+                                       self.tables.uni_t2,
+                                       self.tables.uni_t1,
+                                       self.classes.Test2)
 
         mapper(Test, uni_t1, properties={
             't2s': relationship(Test2)})
@@ -119,6 +123,7 @@ class UnicodeTest(fixtures.MappedTest):
         t1 = session.query(Test).filter_by(id=t1.id).one()
         assert len(t1.t2s) == 2
 
+
 class UnicodeSchemaTest(fixtures.MappedTest):
     __requires__ = ('unicode_connections', 'unicode_ddl',)
 
@@ -127,18 +132,20 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         t1 = Table('unitable1', metadata,
-              Column(u('méil'), Integer, primary_key=True, key='a', test_needs_autoincrement=True),
-              Column(ue('\u6e2c\u8a66'), Integer, key='b'),
-              Column('type',  String(20)),
-              test_needs_fk=True,
-              test_needs_autoincrement=True)
+                   Column(u('méil'), Integer, primary_key=True,
+                          key='a', test_needs_autoincrement=True),
+                   Column(ue('\u6e2c\u8a66'), Integer, key='b'),
+                   Column('type',  String(20)),
+                   test_needs_fk=True,
+                   test_needs_autoincrement=True)
         t2 = Table(u('Unitéble2'), metadata,
-              Column(u('méil'), Integer, primary_key=True, key="cc", test_needs_autoincrement=True),
-              Column(ue('\u6e2c\u8a66'), Integer,
-                     ForeignKey('unitable1.a'), key="d"),
-              Column(ue('\u6e2c\u8a66_2'), Integer, key="e"),
-              test_needs_fk=True,
-              test_needs_autoincrement=True)
+                   Column(u('méil'), Integer, primary_key=True,
+                          key="cc", test_needs_autoincrement=True),
+                   Column(ue('\u6e2c\u8a66'), Integer,
+                          ForeignKey('unitable1.a'), key="d"),
+                   Column(ue('\u6e2c\u8a66_2'), Integer, key="e"),
+                   test_needs_fk=True,
+                   test_needs_autoincrement=True)
 
         cls.tables['t1'] = t1
         cls.tables['t2'] = t2
@@ -151,18 +158,20 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     def teardown_class(cls):
         super(UnicodeSchemaTest, cls).teardown_class()
 
-    @testing.fails_on('mssql+pyodbc',
-                      'pyodbc returns a non unicode encoding of the results description.')
+    @testing.fails_on(
+        'mssql+pyodbc',
+        'pyodbc returns a non unicode encoding of the results description.')
     def test_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
         class A(fixtures.ComparableEntity):
             pass
+
         class B(fixtures.ComparableEntity):
             pass
 
         mapper(A, t1, properties={
-            't2s':relationship(B)})
+            't2s': relationship(B)})
         mapper(B, t2)
 
         a1 = A()
@@ -190,13 +199,15 @@ class UnicodeSchemaTest(fixtures.MappedTest):
         assert new_a1.t2s[0].d == b1.d
         session.expunge_all()
 
-    @testing.fails_on('mssql+pyodbc',
-                      'pyodbc returns a non unicode encoding of the results description.')
+    @testing.fails_on(
+        'mssql+pyodbc',
+        'pyodbc returns a non unicode encoding of the results description.')
     def test_inheritance_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
         class A(fixtures.ComparableEntity):
             pass
+
         class B(A):
             pass
 
@@ -216,13 +227,14 @@ class UnicodeSchemaTest(fixtures.MappedTest):
 
         eq_([A(b=5), B(e=7)], session.query(A).all())
 
+
 class BinaryHistTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', sa.Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', sa.LargeBinary),
-        )
+              Column('id', sa.Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', sa.LargeBinary))
 
     @classmethod
     def setup_classes(cls):
@@ -249,9 +261,11 @@ class BinaryHistTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             sa.orm.attributes.get_history(f1, "data"),
             ((), [data], ())
         )
+
         def go():
             s.flush()
         self.assert_sql_count(testing.db, go, 0)
+
 
 class PKTest(fixtures.MappedTest):
 
@@ -270,8 +284,10 @@ class PKTest(fixtures.MappedTest):
               Column('data', String(30)))
         Table('multipk3', metadata,
               Column('pri_code', String(30), key='primary', primary_key=True),
-              Column('sec_code', String(30), key='secondary', primary_key=True),
-              Column('date_assigned', sa.Date, key='assigned', primary_key=True),
+              Column('sec_code', String(30), key='secondary',
+                     primary_key=True),
+              Column('date_assigned', sa.Date,
+                     key='assigned', primary_key=True),
               Column('data', String(30)))
 
     @classmethod
@@ -317,8 +333,8 @@ class PKTest(fixtures.MappedTest):
 
         mapper(Entry, multipk3)
 
-        e = Entry(primary= 'pk1', secondary='pk2',
-                   assigned=datetime.date.today(), data='some more data')
+        e = Entry(primary='pk1', secondary='pk2',
+                  assigned=datetime.date.today(), data='some more data')
 
         session = create_session()
         session.add(e)
@@ -344,18 +360,19 @@ class ForeignPKTest(fixtures.MappedTest):
     def setup_classes(cls):
         class Person(cls.Basic):
             pass
+
         class PersonSite(cls.Basic):
             pass
 
     def test_basic(self):
         peoplesites, PersonSite, Person, people = (self.tables.peoplesites,
-                                self.classes.PersonSite,
-                                self.classes.Person,
-                                self.tables.people)
+                                                   self.classes.PersonSite,
+                                                   self.classes.Person,
+                                                   self.tables.people)
 
         m1 = mapper(PersonSite, peoplesites)
         m2 = mapper(Person, people, properties={
-            'sites' : relationship(PersonSite)})
+            'sites': relationship(PersonSite)})
 
         sa.orm.configure_mappers()
         eq_(list(m2.get_property('sites').synchronize_pairs),
@@ -370,9 +387,10 @@ class ForeignPKTest(fixtures.MappedTest):
         session.flush()
 
         p_count = select([func.count('*')]).where(
-            people.c.person=='im the key').scalar()
+            people.c.person == 'im the key').scalar()
         eq_(p_count, 1)
-        eq_(select([func.count('*')]).where(peoplesites.c.person=='im the key').scalar(), 1)
+        eq_(select([func.count('*')]).where(peoplesites.c.person ==
+                                            'im the key').scalar(), 1)
 
 
 class ClauseAttributesTest(fixtures.MappedTest):
@@ -380,16 +398,15 @@ class ClauseAttributesTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users_t', metadata,
-            Column('id', Integer, primary_key=True,
-                   test_needs_autoincrement=True),
-            Column('name', String(30)),
-            Column('counter', Integer, default=1))
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(30)),
+              Column('counter', Integer, default=1))
 
         Table('boolean_t', metadata,
-            Column('id', Integer, primary_key=True,
-                   test_needs_autoincrement=True),
-            Column('value', Boolean),
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('value', Boolean))
 
     @classmethod
     def setup_classes(cls):
@@ -467,7 +484,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
         assert_raises_message(
             TypeError,
             "Boolean value of this clause is not defined",
-            bool, None == sa.false()
+            bool, None == sa.false()  # noqa
         )
         s = create_session()
         hb = HasBoolean(value=None)
@@ -512,12 +529,14 @@ class PassiveDeletesTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('mytable', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('data', String(30)),
               test_needs_fk=True)
 
         Table('myothertable', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('parent_id', Integer),
               Column('data', String(30)),
               sa.ForeignKeyConstraint(['parent_id'],
@@ -529,20 +548,22 @@ class PassiveDeletesTest(fixtures.MappedTest):
     def setup_classes(cls):
         class MyClass(cls.Basic):
             pass
+
         class MyOtherClass(cls.Basic):
             pass
 
     def test_basic(self):
-        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
-                                self.classes.MyClass,
-                                self.classes.MyOtherClass,
-                                self.tables.mytable)
+        myothertable, MyClass, MyOtherClass, mytable = (
+            self.tables.myothertable,
+            self.classes.MyClass,
+            self.classes.MyOtherClass,
+            self.tables.mytable)
 
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
-            'children':relationship(MyOtherClass,
-                                passive_deletes=True,
-                                cascade="all")})
+            'children': relationship(MyOtherClass,
+                                     passive_deletes=True,
+                                     cascade="all")})
         session = create_session()
         mc = MyClass()
         mc.children.append(MyOtherClass())
@@ -562,7 +583,8 @@ class PassiveDeletesTest(fixtures.MappedTest):
         eq_(select([func.count('*')]).select_from(mytable).scalar(), 0)
         eq_(select([func.count('*')]).select_from(myothertable).scalar(), 0)
 
-    @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
+    @testing.emits_warning(
+        r".*'passive_deletes' is normally configured on one-to-many")
     def test_backwards_pd(self):
         """Test that passive_deletes=True disables a delete from an m2o.
 
@@ -571,13 +593,15 @@ class PassiveDeletesTest(fixtures.MappedTest):
 
         """
 
-        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
-                                self.classes.MyClass,
-                                self.classes.MyOtherClass,
-                                self.tables.mytable)
+        myothertable, MyClass, MyOtherClass, mytable = (
+            self.tables.myothertable,
+            self.classes.MyClass,
+            self.classes.MyOtherClass,
+            self.tables.mytable)
 
         mapper(MyOtherClass, myothertable, properties={
-            'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
+            'myclass': relationship(MyClass, cascade="all, delete",
+                                    passive_deletes=True)
         })
         mapper(MyClass, mytable)
 
@@ -600,19 +624,23 @@ class PassiveDeletesTest(fixtures.MappedTest):
         eq_(select([func.count('*')]).select_from(myothertable).scalar(), 0)
 
     def test_aaa_m2o_emits_warning(self):
-        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
-                                self.classes.MyClass,
-                                self.classes.MyOtherClass,
-                                self.tables.mytable)
+        myothertable, MyClass, MyOtherClass, mytable = (
+            self.tables.myothertable,
+            self.classes.MyClass,
+            self.classes.MyOtherClass,
+            self.tables.mytable)
 
         mapper(MyOtherClass, myothertable, properties={
-            'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
+            'myclass': relationship(MyClass, cascade="all, delete",
+                                    passive_deletes=True)
         })
         mapper(MyClass, mytable)
         assert_raises(sa.exc.SAWarning, sa.orm.configure_mappers)
 
+
 class BatchDeleteIgnoresRowcountTest(fixtures.DeclarativeMappedTest):
     __requires__ = ('foreign_keys',)
+
     @classmethod
     def setup_classes(cls):
         class A(cls.DeclarativeBasic):
@@ -637,18 +665,21 @@ class BatchDeleteIgnoresRowcountTest(fixtures.DeclarativeMappedTest):
         # no issue with multi-row count here
         session.flush()
 
+
 class ExtraPassiveDeletesTest(fixtures.MappedTest):
     __requires__ = ('foreign_keys',)
 
     @classmethod
     def define_tables(cls, metadata):
         Table('mytable', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('data', String(30)),
               test_needs_fk=True)
 
         Table('myothertable', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('parent_id', Integer),
               Column('data', String(30)),
               # no CASCADE, the same as ON DELETE RESTRICT
@@ -660,39 +691,42 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
     def setup_classes(cls):
         class MyClass(cls.Basic):
             pass
+
         class MyOtherClass(cls.Basic):
             pass
 
     def test_assertions(self):
-        myothertable, MyOtherClass = self.tables.myothertable, self.classes.MyOtherClass
+        myothertable, MyOtherClass = (self.tables.myothertable,
+                                      self.classes.MyOtherClass)
         mytable, MyClass = self.tables.mytable, self.classes.MyClass
 
         mapper(MyClass, mytable, properties={
             'foo': relationship(MyOtherClass,
-                                    passive_deletes='all',
-                                    cascade="all")
-            })
+                                passive_deletes='all',
+                                cascade="all")
+        })
         mapper(MyOtherClass, myothertable)
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "On MyClass.foo, can't set passive_deletes='all' in conjunction with 'delete' "
+            "On MyClass.foo, can't set passive_deletes='all' in conjunction "
+            "with 'delete' "
             "or 'delete-orphan' cascade",
             sa.orm.configure_mappers
         )
 
     def test_extra_passive(self):
         myothertable, MyClass, MyOtherClass, mytable = (
-                                self.tables.myothertable,
-                                self.classes.MyClass,
-                                self.classes.MyOtherClass,
-                                self.tables.mytable)
+            self.tables.myothertable,
+            self.classes.MyClass,
+            self.classes.MyOtherClass,
+            self.tables.mytable)
 
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children': relationship(MyOtherClass,
-                                 passive_deletes='all',
-                                 cascade="save-update")})
+                                     passive_deletes='all',
+                                     cascade="save-update")})
 
         session = create_session()
         mc = MyClass()
@@ -710,16 +744,17 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         assert_raises(sa.exc.DBAPIError, session.flush)
 
     def test_extra_passive_2(self):
-        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
-                                self.classes.MyClass,
-                                self.classes.MyOtherClass,
-                                self.tables.mytable)
+        myothertable, MyClass, MyOtherClass, mytable = (
+            self.tables.myothertable,
+            self.classes.MyClass,
+            self.classes.MyOtherClass,
+            self.tables.mytable)
 
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children': relationship(MyOtherClass,
-                                 passive_deletes='all',
-                                 cascade="save-update")})
+                                     passive_deletes='all',
+                                     cascade="save-update")})
 
         session = create_session()
         mc = MyClass()
@@ -736,16 +771,17 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         assert_raises(sa.exc.DBAPIError, session.flush)
 
     def test_dont_emit(self):
-        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
-                                self.classes.MyClass,
-                                self.classes.MyOtherClass,
-                                self.tables.mytable)
+        myothertable, MyClass, MyOtherClass, mytable = (
+            self.tables.myothertable,
+            self.classes.MyClass,
+            self.classes.MyOtherClass,
+            self.tables.mytable)
 
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children': relationship(MyOtherClass,
-                                 passive_deletes='all',
-                                 cascade="save-update")})
+                                     passive_deletes='all',
+                                     cascade="save-update")})
         session = Session()
         mc = MyClass()
         session.add(mc)
@@ -757,16 +793,17 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         # no load for "children" should occur
         self.assert_sql_count(testing.db, session.flush, 1)
 
+
 class ColumnCollisionTest(fixtures.MappedTest):
     """Ensure the mapper doesn't break bind param naming rules on flush."""
 
     @classmethod
     def define_tables(cls, metadata):
         Table('book', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('book_id', String(50)),
-            Column('title', String(50))
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('book_id', String(50)),
+              Column('title', String(50)))
 
     def test_naming(self):
         book = self.tables.book
@@ -790,7 +827,6 @@ class ColumnCollisionTest(fixtures.MappedTest):
         )
 
 
-
 class DefaultTest(fixtures.MappedTest):
     """Exercise mappings on columns with DefaultGenerators.
 
@@ -803,7 +839,8 @@ class DefaultTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        use_string_defaults = testing.against('postgresql', 'oracle', 'sqlite', 'mssql')
+        use_string_defaults = testing.against(
+            'postgresql', 'oracle', 'sqlite', 'mssql')
 
         if use_string_defaults:
             hohotype = String(30)
@@ -818,17 +855,20 @@ class DefaultTest(fixtures.MappedTest):
         cls.other['althohoval'] = althohoval
 
         dt = Table('default_t', metadata,
-            Column('id', Integer, primary_key=True,
-                   test_needs_autoincrement=True),
-            Column('hoho', hohotype, server_default=str(hohoval)),
-            Column('counter', Integer, default=sa.func.char_length("1234567", type_=Integer)),
-            Column('foober', String(30), default="im foober", onupdate="im the update"),
-            mysql_engine='MyISAM')
+                   Column('id', Integer, primary_key=True,
+                          test_needs_autoincrement=True),
+                   Column('hoho', hohotype, server_default=str(hohoval)),
+                   Column('counter', Integer, default=sa.func.char_length(
+                       "1234567", type_=Integer)),
+                   Column('foober', String(30), default="im foober",
+                          onupdate="im the update"),
+                   mysql_engine='MyISAM')
 
         st = Table('secondary_table', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', String(50)),
-            mysql_engine='MyISAM')
+                   Column('id', Integer, primary_key=True,
+                          test_needs_autoincrement=True),
+                   Column('data', String(50)),
+                   mysql_engine='MyISAM')
 
         if testing.against('postgresql', 'oracle'):
             dt.append_column(
@@ -849,15 +889,16 @@ class DefaultTest(fixtures.MappedTest):
     def setup_classes(cls):
         class Hoho(cls.Comparable):
             pass
+
         class Secondary(cls.Comparable):
             pass
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
     def test_insert(self):
         althohoval, hohoval, default_t, Hoho = (self.other.althohoval,
-                                self.other.hohoval,
-                                self.tables.default_t,
-                                self.classes.Hoho)
+                                                self.other.hohoval,
+                                                self.tables.default_t,
+                                                self.classes.Hoho)
 
         mapper(Hoho, default_t)
 
@@ -897,7 +938,7 @@ class DefaultTest(fixtures.MappedTest):
         eq_(h3.hoho, althohoval)
         self.assert_(h2.hoho == h4.hoho == h5.hoho == hohoval)
         self.assert_(h3.counter == h2.counter == 12)
-        self.assert_(h1.counter ==  h4.counter == h5.counter == 7)
+        self.assert_(h1.counter == h4.counter == h5.counter == 7)
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
         eq_(h5.foober, 'im the new foober')
 
@@ -905,15 +946,14 @@ class DefaultTest(fixtures.MappedTest):
     @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_eager_defaults(self):
         hohoval, default_t, Hoho = (self.other.hohoval,
-                                self.tables.default_t,
-                                self.classes.Hoho)
+                                    self.tables.default_t,
+                                    self.classes.Hoho)
         Secondary = self.classes.Secondary
 
         mapper(Hoho, default_t, eager_defaults=True, properties={
-                "sec": relationship(Secondary),
-                "syn": sa.orm.synonym(default_t.c.counter)
-            })
-
+            "sec": relationship(Secondary),
+            "syn": sa.orm.synonym(default_t.c.counter)
+        })
 
         mapper(Secondary, self.tables.secondary_table)
         h1 = Hoho()
@@ -934,7 +974,6 @@ class DefaultTest(fixtures.MappedTest):
         session.flush()
         eq_(h2.hoho, hohoval)
         eq_(h2.counter, 5)
-
 
     def test_insert_nopostfetch(self):
         default_t, Hoho = self.tables.default_t, self.classes.Hoho
@@ -974,15 +1013,16 @@ class DefaultTest(fixtures.MappedTest):
     def test_used_in_relationship(self):
         """A server-side default can be used as the target of a foreign key"""
 
-        Hoho, hohoval, default_t, secondary_table, Secondary = (self.classes.Hoho,
-                                self.other.hohoval,
-                                self.tables.default_t,
-                                self.tables.secondary_table,
-                                self.classes.Secondary)
-
+        Hoho, hohoval, default_t, secondary_table, Secondary = (
+            self.classes.Hoho,
+            self.other.hohoval,
+            self.tables.default_t,
+            self.tables.secondary_table,
+            self.classes.Secondary)
 
         mapper(Hoho, default_t, properties={
-            'secondaries':relationship(Secondary, order_by=secondary_table.c.id)})
+            'secondaries': relationship(Secondary,
+                                        order_by=secondary_table.c.id)})
         mapper(Secondary, secondary_table)
 
         h1 = Hoho()
@@ -997,7 +1037,7 @@ class DefaultTest(fixtures.MappedTest):
         eq_(session.query(Hoho).get(h1.id),
             Hoho(hoho=hohoval,
                  secondaries=[
-                   Secondary(data='s1')]))
+                     Secondary(data='s1')]))
 
         h1 = session.query(Hoho).get(h1.id)
         h1.secondaries.append(Secondary(data='s2'))
@@ -1007,22 +1047,22 @@ class DefaultTest(fixtures.MappedTest):
         eq_(session.query(Hoho).get(h1.id),
             Hoho(hoho=hohoval,
                  secondaries=[
-                    Secondary(data='s1'),
-                    Secondary(data='s2')]))
+                     Secondary(data='s1'),
+                     Secondary(data='s2')]))
+
 
 class ColumnPropertyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('data', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('a', String(50)),
-            Column('b', String(50))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('a', String(50)),
+              Column('b', String(50)))
 
         Table('subdata', metadata,
-            Column('id', Integer, ForeignKey('data.id'), primary_key=True),
-            Column('c', String(50)),
-            )
+              Column('id', Integer, ForeignKey('data.id'), primary_key=True),
+              Column('c', String(50)))
 
     @classmethod
     def setup_mappers(cls):
@@ -1033,7 +1073,8 @@ class ColumnPropertyTest(fixtures.MappedTest):
         Data, data = self.classes.Data, self.tables.data
 
         mapper(Data, data, properties={
-            'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b)
+            'aplusb': column_property(
+                data.c.a + literal_column("' '") + data.c.b)
         })
         self._test(True)
 
@@ -1041,8 +1082,9 @@ class ColumnPropertyTest(fixtures.MappedTest):
         Data, data = self.classes.Data, self.tables.data
 
         mapper(Data, data, properties={
-            'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b,
-                        expire_on_flush=False)
+            'aplusb': column_property(
+                data.c.a + literal_column("' '") + data.c.b,
+                expire_on_flush=False)
         })
         self._test(False)
 
@@ -1050,18 +1092,20 @@ class ColumnPropertyTest(fixtures.MappedTest):
         Data, data = self.classes.Data, self.tables.data
 
         m = mapper(Data, data)
-        m.add_property('aplusb', column_property(data.c.a + literal_column("' '") + data.c.b))
+        m.add_property('aplusb', column_property(
+            data.c.a + literal_column("' '") + data.c.b))
         self._test(True)
 
     def test_with_inheritance(self):
         subdata, data, Data = (self.tables.subdata,
-                                self.tables.data,
-                                self.classes.Data)
+                               self.tables.data,
+                               self.classes.Data)
 
         class SubData(Data):
             pass
         mapper(Data, data, properties={
-            'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b)
+            'aplusb': column_property(
+                data.c.a + literal_column("' '") + data.c.b)
         })
         mapper(SubData, subdata, inherits=Data)
 
@@ -1089,11 +1133,11 @@ class ColumnPropertyTest(fixtures.MappedTest):
         else:
             eq_(d1.aplusb, "hello there")
 
-
         d1.b = 'foobar'
         d1.aplusb = 'im setting this explicitly'
         sess.flush()
         eq_(d1.aplusb, "im setting this explicitly")
+
 
 class OneToManyTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1102,15 +1146,14 @@ class OneToManyTest(_fixtures.FixtureTest):
         """Basic save of one to many."""
 
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy='select')
+            addresses=relationship(mapper(Address, addresses), lazy='select')
         ))
-        u = User(name= 'one2manytester')
+        u = User(name='one2manytester')
         a = Address(email_address='one2many@test.org')
         u.addresses.append(a)
 
@@ -1147,13 +1190,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         """Modifying the child items of an object."""
 
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy='select')))
+            addresses=relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u1.addresses = []
@@ -1186,11 +1228,11 @@ class OneToManyTest(_fixtures.FixtureTest):
             ("UPDATE addresses SET user_id=:user_id "
              "WHERE addresses.id = :addresses_id",
              [
-                {'user_id': None, 'addresses_id': a1.id},
-                {'user_id': u1.id, 'addresses_id': a3.id}
-            ]),
+                 {'user_id': None, 'addresses_id': a1.id},
+                 {'user_id': u1.id, 'addresses_id': a3.id}
+             ]),
 
-            ])
+        ])
 
     def test_child_move(self):
         """Moving a child from one parent to another, with a delete.
@@ -1202,12 +1244,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         """
 
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy='select')))
+            addresses=relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u2 = User(name='user2')
@@ -1230,12 +1272,12 @@ class OneToManyTest(_fixtures.FixtureTest):
 
     def test_child_move_2(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy='select')))
+            addresses=relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u2 = User(name='user2')
@@ -1257,14 +1299,14 @@ class OneToManyTest(_fixtures.FixtureTest):
 
     def test_o2m_delete_parent(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         m = mapper(User, users, properties=dict(
-            address = relationship(mapper(Address, addresses),
-                               lazy='select',
-                               uselist=False)))
+            address=relationship(mapper(Address, addresses),
+                                 lazy='select',
+                                 uselist=False)))
 
         u = User(name='one2onetester')
         a = Address(email_address='myonlyaddress@foo.com')
@@ -1280,18 +1322,19 @@ class OneToManyTest(_fixtures.FixtureTest):
         assert a.id is not None
         assert a.user_id is None
         assert sa.orm.attributes.instance_state(a).key in session.identity_map
-        assert sa.orm.attributes.instance_state(u).key not in session.identity_map
+        assert sa.orm.attributes.instance_state(
+            u).key not in session.identity_map
 
     def test_one_to_one(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         m = mapper(User, users, properties=dict(
-            address = relationship(mapper(Address, addresses),
-                               lazy='select',
-                               uselist=False)))
+            address=relationship(mapper(Address, addresses),
+                                 lazy='select',
+                                 uselist=False)))
 
         u = User(name='one2onetester')
         u.address = Address(email_address='myonlyaddress@foo.com')
@@ -1308,14 +1351,13 @@ class OneToManyTest(_fixtures.FixtureTest):
 
     def test_bidirectional(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         m1 = mapper(User, users)
         m2 = mapper(Address, addresses, properties=dict(
-            user = relationship(m1, lazy='joined', backref='addresses')))
-
+            user=relationship(m1, lazy='joined', backref='addresses')))
 
         u = User(name='test')
         a = Address(email_address='testaddress', user=u)
@@ -1328,18 +1370,22 @@ class OneToManyTest(_fixtures.FixtureTest):
 
     def test_double_relationship(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         m2 = mapper(Address, addresses)
         m = mapper(User, users, properties={
-            'boston_addresses' : relationship(m2, primaryjoin=
-                        sa.and_(users.c.id==addresses.c.user_id,
-                                addresses.c.email_address.like('%boston%'))),
-            'newyork_addresses' : relationship(m2, primaryjoin=
-                        sa.and_(users.c.id==addresses.c.user_id,
-                                addresses.c.email_address.like('%newyork%')))})
+            'boston_addresses': relationship(
+                m2,
+                primaryjoin=sa.and_(
+                    users.c.id == addresses.c.user_id,
+                    addresses.c.email_address.like('%boston%'))),
+            'newyork_addresses': relationship(
+                m2,
+                primaryjoin=sa.and_(
+                    users.c.id == addresses.c.user_id,
+                    addresses.c.email_address.like('%newyork%')))})
 
         u = User(name='u1')
         a = Address(email_address='foo@boston.com')
@@ -1350,6 +1396,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(u)
         session.flush()
+
 
 class SaveTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1400,6 +1447,7 @@ class SaveTest(_fixtures.FixtureTest):
         class SUser(fixtures.BasicEntity):
             def _get_name(self):
                 return "User:" + self.name
+
             def _set_name(self, name):
                 self.name = name + ":User"
             syn_name = property(_get_name, _set_name)
@@ -1428,11 +1476,11 @@ class SaveTest(_fixtures.FixtureTest):
         """
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
-        mapper(User, users, properties = {
+        mapper(User, users, properties={
             'addresses': relationship(mapper(Address, addresses))})
 
         u = User(name='u1')
@@ -1455,8 +1503,8 @@ class SaveTest(_fixtures.FixtureTest):
         """a user object that also has the users mailing address."""
 
         users, addresses, User = (self.tables.users,
-                                self.tables.addresses,
-                                self.classes.User)
+                                  self.tables.addresses,
+                                  self.classes.User)
 
         m1 = mapper(User, users)
 
@@ -1466,8 +1514,8 @@ class SaveTest(_fixtures.FixtureTest):
         # define a mapper for AddressUser that inherits the User.mapper, and
         # joins on the id column
         mapper(AddressUser, addresses, inherits=m1, properties={
-                'address_id': addresses.c.id
-            })
+            'address_id': addresses.c.id
+        })
 
         au = AddressUser(name='u', email_address='u@e')
 
@@ -1484,7 +1532,6 @@ class SaveTest(_fixtures.FixtureTest):
         """Deferred column operations"""
 
         orders, Order = self.tables.orders, self.classes.Order
-
 
         mapper(Order, orders, properties={
             'description': sa.orm.deferred(orders.c.description)})
@@ -1505,6 +1552,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         # assert that a set operation doesn't trigger a load operation
         o = session.query(Order).filter(Order.description == 'foo').one()
+
         def go():
             o.description = 'hoho'
         self.sql_count_(0, go)
@@ -1549,16 +1597,16 @@ class SaveTest(_fixtures.FixtureTest):
         """
 
         addresses, users, User = (self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                  self.tables.users,
+                                  self.classes.User)
 
         usersaddresses = sa.join(users, addresses,
                                  users.c.id == addresses.c.user_id)
 
         m = mapper(User, usersaddresses,
-            properties=dict(
-                email = addresses.c.email_address,
-                foo_id = [users.c.id, addresses.c.user_id]))
+                   properties=dict(
+                       email=addresses.c.email_address,
+                       foo_id=[users.c.id, addresses.c.user_id]))
 
         u = User(name='multitester', email='multi@test.org')
         session = create_session()
@@ -1571,18 +1619,22 @@ class SaveTest(_fixtures.FixtureTest):
         u = session.query(User).get(id)
         assert u.name == 'multitester'
 
-        user_rows = users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
+        user_rows = users.select(users.c.id.in_(
+            [u.foo_id])).execute().fetchall()
         eq_(list(user_rows[0].values()), [u.foo_id, 'multitester'])
-        address_rows = addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
+        address_rows = addresses.select(
+            addresses.c.id.in_([u.id])).execute().fetchall()
         eq_(list(address_rows[0].values()), [u.id, u.foo_id, 'multi@test.org'])
 
         u.email = 'lala@hey.com'
         u.name = 'imnew'
         session.flush()
 
-        user_rows = users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
+        user_rows = users.select(users.c.id.in_(
+            [u.foo_id])).execute().fetchall()
         eq_(list(user_rows[0].values()), [u.foo_id, 'imnew'])
-        address_rows = addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
+        address_rows = addresses.select(
+            addresses.c.id.in_([u.id])).execute().fetchall()
         eq_(list(address_rows[0].values()), [u.id, u.foo_id, 'lala@hey.com'])
 
         session.expunge_all()
@@ -1593,12 +1645,12 @@ class SaveTest(_fixtures.FixtureTest):
         """The history lazy-fetches data when it wasn't otherwise loaded."""
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, cascade="all, delete-orphan")})
+            'addresses': relationship(Address, cascade="all, delete-orphan")})
         mapper(Address, addresses)
 
         u = User(name='u1')
@@ -1620,12 +1672,13 @@ class SaveTest(_fixtures.FixtureTest):
 
         users, User = self.tables.users, self.classes.User
 
-
         names = []
+
         class Events(object):
             def before_insert(self, mapper, connection, instance):
                 self.current_instance = instance
                 names.append(instance.name)
+
             def after_insert(self, mapper, connection, instance):
                 assert instance is self.current_instance
 
@@ -1671,22 +1724,23 @@ class ManyToOneTest(_fixtures.FixtureTest):
 
     def test_m2o_one_to_one(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         # TODO: put assertion in here !!!
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy='select', uselist=False)))
+            user=relationship(mapper(User, users), lazy='select',
+                              uselist=False)))
 
         session = create_session()
 
         data = [
-            {'name': 'thesub' ,  'email_address': 'bar@foo.com'},
-            {'name': 'assdkfj' , 'email_address': 'thesdf@asdf.com'},
-            {'name': 'n4knd' ,   'email_address': 'asf3@bar.org'},
-            {'name': 'v88f4' ,   'email_address': 'adsd5@llala.net'},
-            {'name': 'asdf8d' ,  'email_address': 'theater@foo.com'}
+            {'name': 'thesub',  'email_address': 'bar@foo.com'},
+            {'name': 'assdkfj', 'email_address': 'thesdf@asdf.com'},
+            {'name': 'n4knd',   'email_address': 'asf3@bar.org'},
+            {'name': 'v88f4',   'email_address': 'adsd5@llala.net'},
+            {'name': 'asdf8d',  'email_address': 'theater@foo.com'}
         ]
         objects = []
         for elem in data:
@@ -1702,36 +1756,42 @@ class ManyToOneTest(_fixtures.FixtureTest):
         objects[3].user = User()
         objects[3].user.name = 'imnewlyadded'
         self.assert_sql_execution(testing.db,
-                        session.flush,
-                        CompiledSQL("INSERT INTO users (name) VALUES (:name)",
-                         {'name': 'imnewlyadded'} ),
+                                  session.flush,
+                                  CompiledSQL("INSERT INTO users (name) "
+                                              "VALUES (:name)",
+                                              {'name': 'imnewlyadded'}),
 
-                         AllOf(
-                            CompiledSQL("UPDATE addresses SET email_address=:email_address "
-                                        "WHERE addresses.id = :addresses_id",
-                                        lambda ctx: {'email_address': 'imnew@foo.bar',
-                                          'addresses_id': objects[2].id}),
-                            CompiledSQL("UPDATE addresses SET user_id=:user_id "
+                                  AllOf(
+                                      CompiledSQL(
+                                          "UPDATE addresses "
+                                          "SET email_address=:email_address "
                                           "WHERE addresses.id = :addresses_id",
-                                          lambda ctx: {'user_id': objects[3].user.id,
-                                                       'addresses_id': objects[3].id})
-                        )
-                    )
+                                          lambda ctx: {
+                                              'email_address': 'imnew@foo.bar',
+                                              'addresses_id': objects[2].id}),
+                                      CompiledSQL(
+                                          "UPDATE addresses "
+                                          "SET user_id=:user_id "
+                                          "WHERE addresses.id = :addresses_id",
+                                          lambda ctx: {
+                                              'user_id': objects[3].user.id,
+                                              'addresses_id': objects[3].id}))
+                                  )
 
-        l = sa.select([users, addresses],
-                      sa.and_(users.c.id==addresses.c.user_id,
-                              addresses.c.id==a.id)).execute()
-        eq_(list(l.first().values()),
+        result = sa.select([users, addresses],
+                           sa.and_(users.c.id == addresses.c.user_id,
+                                   addresses.c.id == a.id)).execute()
+        eq_(list(result.first().values()),
             [a.user.id, 'asdf8d', a.id, a.user_id, 'theater@foo.com'])
 
     def test_many_to_one_1(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy='select')))
+            user=relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         u1 = User(name='user1')
@@ -1755,12 +1815,12 @@ class ManyToOneTest(_fixtures.FixtureTest):
 
     def test_many_to_one_2(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy='select')))
+            user=relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         a2 = Address(email_address='emailaddress2')
@@ -1790,12 +1850,12 @@ class ManyToOneTest(_fixtures.FixtureTest):
 
     def test_many_to_one_3(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy='select')))
+            user=relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         u1 = User(name='user1')
@@ -1822,12 +1882,12 @@ class ManyToOneTest(_fixtures.FixtureTest):
 
     def test_bidirectional_no_load(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy='noload')})
+            'addresses': relationship(Address, backref='user', lazy='noload')})
         mapper(Address, addresses)
 
         # try it on unsaved objects
@@ -1853,44 +1913,45 @@ class ManyToManyTest(_fixtures.FixtureTest):
     run_inserts = None
 
     def test_many_to_many(self):
-        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
-                                self.tables.items,
-                                self.tables.item_keywords,
-                                self.classes.Keyword,
-                                self.classes.Item)
+        keywords, items, item_keywords, Keyword, Item = (
+            self.tables.keywords,
+            self.tables.items,
+            self.tables.item_keywords,
+            self.classes.Keyword,
+            self.classes.Item)
 
         mapper(Keyword, keywords)
 
         m = mapper(Item, items, properties=dict(
-                keywords=relationship(Keyword,
+            keywords=relationship(Keyword,
                                   item_keywords,
                                   lazy='joined',
                                   order_by=keywords.c.name)))
 
         data = [Item,
-            {'description': 'mm_item1',
-             'keywords' : (Keyword, [{'name': 'big'},
-                                     {'name': 'green'},
-                                     {'name': 'purple'},
-                                     {'name': 'round'}])},
-            {'description': 'mm_item2',
-             'keywords' : (Keyword, [{'name':'blue'},
-                                     {'name':'imnew'},
-                                     {'name':'round'},
-                                     {'name':'small'}])},
-            {'description': 'mm_item3',
-             'keywords' : (Keyword, [])},
-            {'description': 'mm_item4',
-             'keywords' : (Keyword, [{'name':'big'},
-                                    {'name':'blue'},])},
-            {'description': 'mm_item5',
-             'keywords' : (Keyword, [{'name':'big'},
-                                     {'name':'exacting'},
-                                     {'name':'green'}])},
-            {'description': 'mm_item6',
-             'keywords' : (Keyword, [{'name':'red'},
-                                     {'name':'round'},
-                                     {'name':'small'}])}]
+                {'description': 'mm_item1',
+                 'keywords': (Keyword, [{'name': 'big'},
+                                        {'name': 'green'},
+                                        {'name': 'purple'},
+                                        {'name': 'round'}])},
+                {'description': 'mm_item2',
+                    'keywords': (Keyword, [{'name': 'blue'},
+                                           {'name': 'imnew'},
+                                           {'name': 'round'},
+                                           {'name': 'small'}])},
+                {'description': 'mm_item3',
+                    'keywords': (Keyword, [])},
+                {'description': 'mm_item4',
+                    'keywords': (Keyword, [{'name': 'big'},
+                                           {'name': 'blue'}, ])},
+                {'description': 'mm_item5',
+                    'keywords': (Keyword, [{'name': 'big'},
+                                           {'name': 'exacting'},
+                                           {'name': 'green'}])},
+                {'description': 'mm_item6',
+                    'keywords': (Keyword, [{'name': 'red'},
+                                           {'name': 'round'},
+                                           {'name': 'small'}])}]
 
         session = create_session()
 
@@ -1912,11 +1973,11 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.add_all(objects)
         session.flush()
 
-        l = (session.query(Item).
-             filter(Item.description.in_([e['description']
-                                          for e in data[1:]])).
-             order_by(Item.description).all())
-        self.assert_result(l, *data)
+        result = (session.query(Item).
+                  filter(Item.description.in_([e['description']
+                                               for e in data[1:]])).
+                  order_by(Item.description).all())
+        self.assert_result(result, *data)
 
         objects[4].description = 'item4updated'
         k = Keyword()
@@ -1927,20 +1988,20 @@ class ManyToManyTest(_fixtures.FixtureTest):
             session.flush,
             AllOf(
                 CompiledSQL("UPDATE items SET description=:description "
-                 "WHERE items.id = :items_id",
-                     {'description': 'item4updated',
-                      'items_id': objects[4].id},
-                ),
+                            "WHERE items.id = :items_id",
+                            {'description': 'item4updated',
+                             'items_id': objects[4].id},
+                            ),
                 CompiledSQL("INSERT INTO keywords (name) "
-                    "VALUES (:name)",
-                    {'name': 'yellow'},
-                )
+                            "VALUES (:name)",
+                            {'name': 'yellow'},
+                            )
             ),
             CompiledSQL("INSERT INTO item_keywords (item_id, keyword_id) "
-                    "VALUES (:item_id, :keyword_id)",
-                     lambda ctx: [{'item_id': objects[5].id,
-                                   'keyword_id': k.id}])
-            )
+                        "VALUES (:item_id, :keyword_id)",
+                        lambda ctx: [{'item_id': objects[5].id,
+                                      'keyword_id': k.id}])
+        )
 
         objects[2].keywords.append(k)
         dkid = objects[5].keywords[1].id
@@ -1949,13 +2010,14 @@ class ManyToManyTest(_fixtures.FixtureTest):
             testing.db,
             session.flush,
             CompiledSQL("DELETE FROM item_keywords "
-                     "WHERE item_keywords.item_id = :item_id AND "
-                     "item_keywords.keyword_id = :keyword_id",
-                     [{'item_id': objects[5].id, 'keyword_id': dkid}]),
+                        "WHERE item_keywords.item_id = :item_id AND "
+                        "item_keywords.keyword_id = :keyword_id",
+                        [{'item_id': objects[5].id, 'keyword_id': dkid}]),
             CompiledSQL("INSERT INTO item_keywords (item_id, keyword_id) "
-                    "VALUES (:item_id, :keyword_id)",
-                    lambda ctx: [{'item_id': objects[2].id, 'keyword_id': k.id}]
-             ))
+                        "VALUES (:item_id, :keyword_id)",
+                        lambda ctx: [
+                            {'item_id': objects[2].id, 'keyword_id': k.id}]
+                        ))
 
         session.delete(objects[3])
         session.flush()
@@ -1968,16 +2030,17 @@ class ManyToManyTest(_fixtures.FixtureTest):
 
         """
 
-        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
-                                self.tables.items,
-                                self.tables.item_keywords,
-                                self.classes.Keyword,
-                                self.classes.Item)
+        keywords, items, item_keywords, Keyword, Item = (
+            self.tables.keywords,
+            self.tables.items,
+            self.tables.item_keywords,
+            self.classes.Keyword,
+            self.classes.Item)
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-            keywords = relationship(Keyword, item_keywords, lazy='joined'),
-            ))
+            keywords=relationship(Keyword, item_keywords, lazy='joined'),
+        ))
 
         i = Item(description='i1')
         k1 = Keyword(name='k1')
@@ -1997,17 +2060,18 @@ class ManyToManyTest(_fixtures.FixtureTest):
     def test_scalar(self):
         """sa.dependency won't delete an m2m relationship referencing None."""
 
-        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
-                                self.tables.items,
-                                self.tables.item_keywords,
-                                self.classes.Keyword,
-                                self.classes.Item)
-
+        keywords, items, item_keywords, Keyword, Item = (
+            self.tables.keywords,
+            self.tables.items,
+            self.tables.item_keywords,
+            self.classes.Keyword,
+            self.classes.Item)
 
         mapper(Keyword, keywords)
 
         mapper(Item, items, properties=dict(
-            keyword=relationship(Keyword, secondary=item_keywords, uselist=False)))
+            keyword=relationship(Keyword, secondary=item_keywords,
+                                 uselist=False)))
 
         i = Item(description='x')
         session = create_session()
@@ -2019,18 +2083,19 @@ class ManyToManyTest(_fixtures.FixtureTest):
     def test_many_to_many_update(self):
         """Assorted history operations on a many to many"""
 
-        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
-                                self.tables.items,
-                                self.tables.item_keywords,
-                                self.classes.Keyword,
-                                self.classes.Item)
+        keywords, items, item_keywords, Keyword, Item = (
+            self.tables.keywords,
+            self.tables.items,
+            self.tables.item_keywords,
+            self.classes.Keyword,
+            self.classes.Item)
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword,
-                              secondary=item_keywords,
-                              lazy='joined',
-                              order_by=keywords.c.name)))
+                                  secondary=item_keywords,
+                                  lazy='joined',
+                                  order_by=keywords.c.name)))
 
         k1 = Keyword(name='keyword 1')
         k2 = Keyword(name='keyword 2')
@@ -2055,12 +2120,12 @@ class ManyToManyTest(_fixtures.FixtureTest):
     def test_association(self):
         """Basic test of an association object"""
 
-        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
-                                self.tables.items,
-                                self.tables.item_keywords,
-                                self.classes.Keyword,
-                                self.classes.Item)
-
+        keywords, items, item_keywords, Keyword, Item = (
+            self.tables.keywords,
+            self.tables.items,
+            self.tables.item_keywords,
+            self.classes.Keyword,
+            self.classes.Item)
 
         class IKAssociation(fixtures.ComparableEntity):
             pass
@@ -2072,14 +2137,19 @@ class ManyToManyTest(_fixtures.FixtureTest):
         # affected this, but was fixed again
 
         mapper(IKAssociation, item_keywords,
-               primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
+               primary_key=[item_keywords.c.item_id,
+                            item_keywords.c.keyword_id],
                properties=dict(
-                 keyword=relationship(mapper(Keyword, keywords, non_primary=True),
-                                  lazy='joined',
-                                  uselist=False,
-                                  order_by=keywords.c.name      # note here is a valid place where order_by can be used
-                                  )))                           # on a scalar relationship(); to determine eager ordering of
-                                                                # the parent object within its collection.
+                   keyword=relationship(mapper(Keyword, keywords,
+                                               non_primary=True),
+                                        lazy='joined',
+                                        uselist=False,
+                                        # note here is a valid place where
+                                        # order_by can be used on a scalar
+                                        # relationship(); to determine eager
+                                        # ordering of the parent object within
+                                        # its collection.
+                                        order_by=keywords.c.name)))
 
         mapper(Item, items, properties=dict(
             keywords=relationship(IKAssociation, lazy='joined')))
@@ -2115,13 +2185,13 @@ class SaveTest2(_fixtures.FixtureTest):
 
     def test_m2o_nonmatch(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users)
         mapper(Address, addresses, properties=dict(
-            user = relationship(User, lazy='select', uselist=False)))
+            user=relationship(User, lazy='select', uselist=False)))
 
         session = create_session()
 
@@ -2136,16 +2206,17 @@ class SaveTest2(_fixtures.FixtureTest):
             testing.db,
             session.flush,
             CompiledSQL("INSERT INTO users (name) VALUES (:name)",
-             {'name': 'u1'}),
+                        {'name': 'u1'}),
             CompiledSQL("INSERT INTO users (name) VALUES (:name)",
-             {'name': 'u2'}),
+                        {'name': 'u2'}),
             CompiledSQL("INSERT INTO addresses (user_id, email_address) "
-             "VALUES (:user_id, :email_address)",
-             {'user_id': 1, 'email_address': 'a1'}),
+                        "VALUES (:user_id, :email_address)",
+                        {'user_id': 1, 'email_address': 'a1'}),
             CompiledSQL("INSERT INTO addresses (user_id, email_address) "
-             "VALUES (:user_id, :email_address)",
-             {'user_id': 2, 'email_address': 'a2'}),
+                        "VALUES (:user_id, :email_address)",
+                        {'user_id': 2, 'email_address': 'a2'}),
         )
+
 
 class SaveTest3(fixtures.MappedTest):
     @classmethod
@@ -2169,22 +2240,23 @@ class SaveTest3(fixtures.MappedTest):
     def setup_classes(cls):
         class Keyword(cls.Basic):
             pass
+
         class Item(cls.Basic):
             pass
 
     def test_manytomany_xtracol_delete(self):
-        """A many-to-many on a table that has an extra column can properly delete rows from the table without referencing the extra column"""
+        """A many-to-many on a table that has an extra column can properly
+        delete rows from the table without referencing the extra column"""
 
         keywords, items, assoc, Keyword, Item = (self.tables.keywords,
-                                self.tables.items,
-                                self.tables.assoc,
-                                self.classes.Keyword,
-                                self.classes.Item)
-
+                                                 self.tables.items,
+                                                 self.tables.assoc,
+                                                 self.classes.Keyword,
+                                                 self.classes.Item)
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-                keywords = relationship(Keyword, secondary=assoc, lazy='joined'),))
+            keywords=relationship(Keyword, secondary=assoc, lazy='joined'),))
 
         i = Item()
         k1 = Keyword()
@@ -2240,26 +2312,30 @@ class BooleanColTest(fixtures.MappedTest):
             if clear:
                 sess.expunge_all()
             eq_(
-                sess.query(T).filter(T.value == True).order_by(T.id).all(),
+                sess.query(T).filter(T.value == True)  # noqa
+                .order_by(T.id).all(),
                 [T(value=True, name="t1"), T(value=True, name="t3")])
             if clear:
                 sess.expunge_all()
             eq_(
-                sess.query(T).filter(T.value == False).order_by(T.id).all(),
+                sess.query(T).filter(T.value == False)  # noqa
+                .order_by(T.id).all(),
                 [T(value=False, name="t2")])
 
         t2 = sess.query(T).get(t2.id)
         t2.value = True
         sess.flush()
         eq_(
-            sess.query(T).filter(T.value == True).order_by(T.id).all(),
+            sess.query(T).filter(T.value == True)  # noqa
+            .order_by(T.id).all(),
             [
                 T(value=True, name="t1"),
                 T(value=True, name="t2"), T(value=True, name="t3")])
         t2.value = False
         sess.flush()
         eq_(
-            sess.query(T).filter(T.value == True).order_by(T.id).all(),
+            sess.query(T).filter(T.value == True)  # noqa
+            .order_by(T.id).all(),
             [T(value=True, name="t1"), T(value=True, name="t3")])
 
 
@@ -2268,24 +2344,24 @@ class RowSwitchTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         # parent
         Table('t5', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30), nullable=False))
+              Column('id', Integer, primary_key=True),
+              Column('data', String(30), nullable=False))
 
         # onetomany
         Table('t6', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30), nullable=False),
-            Column('t5id', Integer, ForeignKey('t5.id'),nullable=False))
+              Column('id', Integer, primary_key=True),
+              Column('data', String(30), nullable=False),
+              Column('t5id', Integer, ForeignKey('t5.id'), nullable=False))
 
         # associated
         Table('t7', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30), nullable=False))
+              Column('id', Integer, primary_key=True),
+              Column('data', String(30), nullable=False))
 
-        #manytomany
+        # manytomany
         Table('t5t7', metadata,
-            Column('t5id', Integer, ForeignKey('t5.id'),nullable=False),
-            Column('t7id', Integer, ForeignKey('t7.id'),nullable=False))
+              Column('t5id', Integer, ForeignKey('t5.id'), nullable=False),
+              Column('t7id', Integer, ForeignKey('t7.id'), nullable=False))
 
     @classmethod
     def setup_classes(cls):
@@ -2300,12 +2376,12 @@ class RowSwitchTest(fixtures.MappedTest):
 
     def test_onetomany(self):
         t6, T6, t5, T5 = (self.tables.t6,
-                                self.classes.T6,
-                                self.tables.t5,
-                                self.classes.T5)
+                          self.classes.T6,
+                          self.tables.t5,
+                          self.classes.T5)
 
         mapper(T5, t5, properties={
-            't6s':relationship(T6, cascade="all, delete-orphan")
+            't6s': relationship(T6, cascade="all, delete-orphan")
         })
         mapper(T6, t6)
 
@@ -2330,7 +2406,7 @@ class RowSwitchTest(fixtures.MappedTest):
         o6 = T5(data='some other t5', id=o5.id, t6s=[
             T6(data='third t6', id=3),
             T6(data='fourth t6', id=4),
-            ])
+        ])
         sess.delete(o5)
         sess.add(o6)
         sess.flush()
@@ -2352,7 +2428,7 @@ class RowSwitchTest(fixtures.MappedTest):
                                 self.classes.T7)
 
         mapper(T5, t5, properties={
-            't7s':relationship(T7, secondary=t5t7, cascade="all")
+            't7s': relationship(T7, secondary=t5t7, cascade="all")
         })
         mapper(T7, t7)
 
@@ -2366,13 +2442,15 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.flush()
 
         assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some t5')]
-        assert testing.rowset(sess.execute(t5t7.select(), mapper=T5)) == set([(1,1), (1, 2)])
-        assert list(sess.execute(t7.select(), mapper=T5)) == [(1, 'some t7'), (2, 'some other t7')]
+        assert testing.rowset(sess.execute(
+            t5t7.select(), mapper=T5)) == set([(1, 1), (1, 2)])
+        assert list(sess.execute(t7.select(), mapper=T5)) == [
+            (1, 'some t7'), (2, 'some other t7')]
 
         o6 = T5(data='some other t5', id=1, t7s=[
             T7(data='third t7', id=3),
             T7(data='fourth t7', id=4),
-            ])
+        ])
 
         sess.delete(o5)
         assert o5 in sess.deleted
@@ -2382,18 +2460,19 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some other t5')]
-        assert list(sess.execute(t7.select(), mapper=T5)) == [(3, 'third t7'), (4, 'fourth t7')]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [
+            (1, 'some other t5')]
+        assert list(sess.execute(t7.select(), mapper=T5)) == [
+            (3, 'third t7'), (4, 'fourth t7')]
 
     def test_manytoone(self):
         t6, T6, t5, T5 = (self.tables.t6,
-                                self.classes.T6,
-                                self.tables.t5,
-                                self.classes.T5)
-
+                          self.classes.T6,
+                          self.tables.t5,
+                          self.classes.T5)
 
         mapper(T6, t6, properties={
-            't5':relationship(T5)
+            't5': relationship(T5)
         })
         mapper(T5, t5)
 
@@ -2406,7 +2485,8 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.flush()
 
         assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some t5')]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some t6', 1)]
+        assert list(sess.execute(t6.select(), mapper=T5)) == [
+            (1, 'some t6', 1)]
 
         o6 = T6(data='some other t6', id=1, t5=T5(data='some other t5', id=2))
         sess.delete(o5)
@@ -2414,21 +2494,22 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(2, 'some other t5')]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some other t6', 2)]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [
+            (2, 'some other t5')]
+        assert list(sess.execute(t6.select(), mapper=T5)) == [
+            (1, 'some other t6', 2)]
+
 
 class InheritingRowSwitchTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-            Column('pid', Integer, primary_key=True),
-            Column('pdata', String(30))
-        )
+              Column('pid', Integer, primary_key=True),
+              Column('pdata', String(30)))
         Table('child', metadata,
-            Column('cid', Integer, primary_key=True),
-            Column('pid', Integer, ForeignKey('parent.pid')),
-            Column('cdata', String(30))
-        )
+              Column('cid', Integer, primary_key=True),
+              Column('pid', Integer, ForeignKey('parent.pid')),
+              Column('cdata', String(30)))
 
     @classmethod
     def setup_classes(cls):
@@ -2440,9 +2521,9 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
 
     def test_row_switch_no_child_table(self):
         P, C, parent, child = (self.classes.P,
-                                self.classes.C,
-                                self.tables.parent,
-                                self.tables.child)
+                               self.classes.C,
+                               self.tables.parent,
+                               self.tables.child)
 
         mapper(P, parent)
         mapper(C, child, inherits=P)
@@ -2458,19 +2539,23 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
         sess.add(c2)
         sess.delete(c1)
 
-        self.assert_sql_execution(testing.db, sess.flush,
-            CompiledSQL("UPDATE parent SET pdata=:pdata WHERE parent.pid = :parent_pid",
-                {'pdata':'c2', 'parent_pid':1}
+        self.assert_sql_execution(
+            testing.db, sess.flush,
+            CompiledSQL(
+                "UPDATE parent SET pdata=:pdata "
+                "WHERE parent.pid = :parent_pid",
+                {'pdata': 'c2', 'parent_pid': 1}
             ),
 
             # this fires as of [ticket:1362], since we synchronzize
             # PK/FKs on UPDATES.  c2 is new so the history shows up as
             # pure added, update occurs.  If a future change limits the
-            # sync operation during _save_obj().update, this is safe to remove again.
-            CompiledSQL("UPDATE child SET pid=:pid WHERE child.cid = :child_cid",
-                {'pid':1, 'child_cid':1}
-            )
-        )
+            # sync operation during _save_obj().update, this is safe to remove
+            # again.
+            CompiledSQL("UPDATE child SET pid=:pid "
+                        "WHERE child.cid = :child_cid",
+                        {'pid': 1, 'child_cid': 1}))
+
 
 class TransactionTest(fixtures.MappedTest):
     __requires__ = ('deferrable_or_no_constraints',)
@@ -2478,13 +2563,14 @@ class TransactionTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         t1 = Table('t1', metadata,
-            Column('id', Integer, primary_key=True))
+                   Column('id', Integer, primary_key=True))
 
         t2 = Table('t2', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('t1_id', Integer,
-                   ForeignKey('t1.id', deferrable=True, initially='deferred')
-                   ))
+                   Column('id', Integer, primary_key=True),
+                   Column('t1_id', Integer,
+                          ForeignKey('t1.id', deferrable=True,
+                                     initially='deferred')))
+
     @classmethod
     def setup_classes(cls):
         class T1(cls.Comparable):
@@ -2496,9 +2582,9 @@ class TransactionTest(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         T2, T1, t2, t1 = (cls.classes.T2,
-                                cls.classes.T1,
-                                cls.tables.t2,
-                                cls.tables.t1)
+                          cls.classes.T1,
+                          cls.tables.t2,
+                          cls.tables.t1)
 
         orm_mapper(T1, t1)
         orm_mapper(T2, t2)
@@ -2515,7 +2601,7 @@ class TransactionTest(fixtures.MappedTest):
         try:
             session.flush()
             assert False
-        except:
+        except Exception:
             # Flush needs to rollback also when commit fails
             assert session.transaction is None
 
@@ -2525,6 +2611,7 @@ class TransactionTest(fixtures.MappedTest):
         if testing.against('postgresql'):
             t1.bind.engine.dispose()
 
+
 class PartialNullPKTest(fixtures.MappedTest):
     # sqlite totally fine with NULLs in pk columns.
     # no other DB is like this.
@@ -2533,10 +2620,9 @@ class PartialNullPKTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('col1', String(10), primary_key=True, nullable=True),
-            Column('col2', String(10), primary_key=True, nullable=True),
-            Column('col3', String(50))
-            )
+              Column('col1', String(10), primary_key=True, nullable=True),
+              Column('col2', String(10), primary_key=True, nullable=True),
+              Column('col3', String(50)))
 
     @classmethod
     def setup_classes(cls):

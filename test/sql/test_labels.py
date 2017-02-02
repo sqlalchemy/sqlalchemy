@@ -90,7 +90,8 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         table1 = self.table1
         compiled = s.compile(dialect=self._length_fixture())
 
-        assert set(compiled._create_result_map()['some_large_named_table__2'][1]).\
+        assert set(
+            compiled._create_result_map()['some_large_named_table__2'][1]).\
             issuperset(
             [
                 'some_large_named_table_this_is_the_data_column',
@@ -99,7 +100,8 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             ]
         )
 
-        assert set(compiled._create_result_map()['some_large_named_table__1'][1]).\
+        assert set(
+            compiled._create_result_map()['some_large_named_table__1'][1]).\
             issuperset(
             [
                 'some_large_named_table_this_is_the_primarykey_column',
@@ -137,8 +139,8 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             set(compiled._create_result_map()['this_is_the_data_column'][1]).\
             issuperset(['this_is_the_data_column',
                         s.c.this_is_the_data_column])
-        assert \
-            set(compiled._create_result_map()['this_is_the_primarykey__1'][1]).\
+        assert set(
+            compiled._create_result_map()['this_is_the_primarykey__1'][1]).\
             issuperset(['this_is_the_primarykey_column',
                         'this_is_the_primarykey__1',
                         s.c.this_is_the_primarykey_column])
@@ -170,14 +172,16 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1", dialect=dialect)
 
         compiled = s.compile(dialect=dialect)
-        assert set(compiled._create_result_map()['anon_1_this_is_the_data_3'][1]).\
+        assert set(
+            compiled._create_result_map()['anon_1_this_is_the_data_3'][1]).\
             issuperset([
                 'anon_1_this_is_the_data_3',
                 q.corresponding_column(
                     table1.c.this_is_the_data_column)
             ])
 
-        assert set(compiled._create_result_map()['anon_1_this_is_the_prim_1'][1]).\
+        assert set(
+            compiled._create_result_map()['anon_1_this_is_the_prim_1'][1]).\
             issuperset([
                 'anon_1_this_is_the_prim_1',
                 q.corresponding_column(
@@ -253,8 +257,8 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_bind_param_non_truncated(self):
         table1 = self.table1
         stmt = table1.insert().values(
-            this_is_the_data_column=
-            bindparam("this_is_the_long_bindparam_name")
+            this_is_the_data_column=bindparam(
+                "this_is_the_long_bindparam_name")
         )
         compiled = stmt.compile(dialect=self._length_fixture(length=10))
         eq_(
@@ -563,5 +567,3 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
             set(compiled._create_result_map()),
             set(['tablename_columnn_1', 'tablename_columnn_2'])
         )
-
-

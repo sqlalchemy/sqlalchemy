@@ -39,7 +39,6 @@ class ExecutionTest(_fixtures.FixtureTest):
 
         users = self.tables.users
 
-
         sess = create_session(bind=self.metadata.bind)
         users.insert().execute(id=7, name='jack')
 
@@ -48,24 +47,20 @@ class ExecutionTest(_fixtures.FixtureTest):
                          {'id': 7}).fetchall(),
             [(7, 'jack')])
 
-
         # use :bindparam style
-        eq_(sess.scalar("select id from users where id=:id",
-                         {'id': 7}),
-            7)
+        eq_(sess.scalar("select id from users where id=:id", {'id': 7}), 7)
 
     def test_parameter_execute(self):
         users = self.tables.users
         sess = Session(bind=testing.db)
         sess.execute(users.insert(), [
-                {"id": 7, "name": "u7"},
-                {"id": 8, "name": "u8"}
-            ]
-        )
+            {"id": 7, "name": "u7"},
+            {"id": 8, "name": "u8"}
+        ])
         sess.execute(users.insert(), {"id": 9, "name": "u9"})
         eq_(
-            sess.execute(sa.select([users.c.id]).\
-                    order_by(users.c.id)).fetchall(),
+            sess.execute(sa.select([users.c.id]).
+                         order_by(users.c.id)).fetchall(),
             [(7, ), (8, ), (9, )]
         )
 
@@ -122,9 +117,10 @@ class TransScopingTest(_fixtures.FixtureTest):
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
 
-        assert testing.db.connect().execute('select count(1) from users'
-                ).scalar() == 1
+        assert testing.db.connect().execute('select count(1) from users') \
+            .scalar() == 1
         sess.close()
+
 
 class SessionUtilTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -310,6 +306,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         u = User()
         u.name = 'ed'
         sess.add(u)
+
         def go(obj):
             assert u not in sess.query(User).all()
         testing.run_as_contextmanager(sess.no_autoflush, go)
@@ -397,9 +394,9 @@ class SessionStateTest(_fixtures.FixtureTest):
         """
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
             'addresses': relationship(Address, backref="user")})
@@ -420,8 +417,6 @@ class SessionStateTest(_fixtures.FixtureTest):
         gc_collect()
         eq_(q.one(), Address(email_address='foo'))
 
-
-
     @testing.requires.independent_connections
     @engines.close_open_connections
     def test_autoflush_unbound(self):
@@ -437,15 +432,15 @@ class SessionStateTest(_fixtures.FixtureTest):
             assert u2 is u
             assert sess.execute('select count(1) from users',
                                 mapper=User).scalar() == 1
-            assert testing.db.connect().execute('select count(1) from '
-                    'users').scalar() == 0
+            assert testing.db.connect().execute('select count(1) from users') \
+                .scalar() == 0
             sess.commit()
             assert sess.execute('select count(1) from users',
                                 mapper=User).scalar() == 1
-            assert testing.db.connect().execute('select count(1) from '
-                    'users').scalar() == 1
+            assert testing.db.connect().execute('select count(1) from users') \
+                .scalar() == 1
             sess.close()
-        except:
+        except Exception:
             sess.rollback()
             raise
 
@@ -462,10 +457,9 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.add(u)
         sess.commit()
         assert conn1.execute('select count(1) from users').scalar() == 1
-        assert testing.db.connect().execute('select count(1) from users'
-                ).scalar() == 1
+        assert testing.db.connect().execute('select count(1) from users') \
+            .scalar() == 1
         sess.commit()
-
 
     def test_autocommit_doesnt_raise_on_pending(self):
         User, users = self.classes.User, self.tables.users
@@ -487,14 +481,12 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.rollback()
         assert not sess.is_active
 
-
     @engines.close_open_connections
     def test_add_delete(self):
         User, Address, addresses, users = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users)
-
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users)
 
         s = create_session()
         mapper(User, users, properties={
@@ -662,9 +654,11 @@ class SessionStateTest(_fixtures.FixtureTest):
         users = self.tables.users
 
         sess = create_session()
+
         class Foo(object):
             def __init__(self):
                 sess.add(self)
+
         class Bar(Foo):
             def __init__(self):
                 sess.add(self)
@@ -811,9 +805,9 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
 
     def test_autoflush_rollback(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         mapper(Address, addresses)
         mapper(User, users, properties={
@@ -837,15 +831,15 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
 
     def test_expunge_cascade(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses': relationship(Address,
-                                 backref=backref("user", cascade="all"),
-                                 cascade="all")})
+                                      backref=backref("user", cascade="all"),
+                                      cascade="all")})
 
         session = create_session()
         u = session.query(User).filter_by(id=7).one()
@@ -1008,6 +1002,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
         self._assert_no_cycle(u1)
         self._assert_not_modified(u1)
 
+
 class WeakIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -1017,7 +1012,6 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         references modified items."""
 
         users, User = self.tables.users, self.classes.User
-
 
         s = create_session()
         mapper(User, users)
@@ -1082,9 +1076,9 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
     @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2m(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         s = sessionmaker()()
         mapper(User, users, properties={
@@ -1116,9 +1110,9 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
     @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2o(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         s = sessionmaker()()
         mapper(User, users, properties={
@@ -1360,12 +1354,12 @@ class IsModifiedTest(_fixtures.FixtureTest):
         User, Address = self._default_mapping_fixture()
 
         s = Session()
-        u = User(name='fred', addresses=[
-                    Address(email_address='foo')])
+        u = User(name='fred', addresses=[Address(email_address='foo')])
         s.add(u)
         s.commit()
 
         u.id
+
         def go():
             assert not s.is_modified(u)
         self.assert_sql_count(
@@ -1393,6 +1387,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
         s.commit()
 
         u.id
+
         def go():
             assert not s.is_modified(u, passive=True)
         self.assert_sql_count(
@@ -1402,6 +1397,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
         )
 
         u.name = 'newname'
+
         def go():
             assert s.is_modified(u, passive=True)
         self.assert_sql_count(
@@ -1422,6 +1418,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
         s.commit()
         assert not s.is_modified(u)
 
+
 class DisposedStates(fixtures.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
@@ -1430,8 +1427,9 @@ class DisposedStates(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata, Column('id', Integer,
-                   primary_key=True, test_needs_autoincrement=True),
-                   Column('data', String(50)))
+                                     primary_key=True,
+                                     test_needs_autoincrement=True),
+              Column('data', String(50)))
 
     @classmethod
     def setup_classes(cls):
@@ -1471,8 +1469,8 @@ class DisposedStates(fixtures.MappedTest):
         T = self.classes.T
         sess = create_session(**kwargs)
 
-        data = o1, o2, o3, o4, o5 = [T('t1'), T('t2'), T('t3'), T('t4'
-                ), T('t5')]
+        data = o1, o2, o3, o4, o5 = [T('t1'), T('t2'), T('t3'), T('t4'),
+                                     T('t5')]
 
         sess.add_all(data)
 
@@ -1532,9 +1530,9 @@ class SessionInterface(fixtures.TestBase):
         return ok
 
     def _map_it(self, cls):
-        return mapper(cls, Table('t', sa.MetaData(), Column('id',
-                      Integer, primary_key=True,
-                      test_needs_autoincrement=True)))
+        return mapper(cls, Table('t', sa.MetaData(),
+                                 Column('id', Integer, primary_key=True,
+                                        test_needs_autoincrement=True)))
 
     def _test_instance_guards(self, user_arg):
         watchdog = set()
@@ -1543,7 +1541,7 @@ class SessionInterface(fixtures.TestBase):
             watchdog.add(method)
             callable_ = getattr(obj, method)
             assert_raises(sa.orm.exc.UnmappedInstanceError,
-                              callable_, *args, **kw)
+                          callable_, *args, **kw)
 
         def raises_(method, *args, **kw):
             x_raises_(create_session(), method, *args, **kw)
@@ -1657,8 +1655,8 @@ class TLTransactionTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('users', metadata, Column('id', Integer,
-              primary_key=True, test_needs_autoincrement=True),
+        Table('users', metadata, Column('id', Integer, primary_key=True,
+                                        test_needs_autoincrement=True),
               Column('name', String(20)), test_needs_acid=True)
 
     @classmethod
@@ -1684,29 +1682,27 @@ class TLTransactionTest(fixtures.MappedTest):
         self.bind.commit()
 
 
-
 class FlushWarningsTest(fixtures.MappedTest):
     run_setup_mappers = 'each'
 
     @classmethod
     def define_tables(cls, metadata):
         Table('user', metadata,
-                Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-                Column('name', String(20))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(20)))
 
         Table('address', metadata,
-                Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-                Column('user_id', Integer, ForeignKey('user.id')),
-                Column('email', String(20))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('user_id', Integer, ForeignKey('user.id')),
+              Column('email', String(20)))
 
     @classmethod
     def setup_classes(cls):
         class User(cls.Basic):
             pass
+
         class Address(cls.Basic):
             pass
 
@@ -1715,12 +1711,13 @@ class FlushWarningsTest(fixtures.MappedTest):
         user, User = cls.tables.user, cls.classes.User
         address, Address = cls.tables.address, cls.classes.Address
         mapper(User, user, properties={
-                'addresses': relationship(Address, backref="user")
-            })
+            'addresses': relationship(Address, backref="user")
+        })
         mapper(Address, address)
 
     def test_o2m_cascade_add(self):
         Address = self.classes.Address
+
         def evt(mapper, conn, instance):
             instance.addresses.append(Address(email='x1'))
         self._test(evt, "collection append")
@@ -1732,6 +1729,7 @@ class FlushWarningsTest(fixtures.MappedTest):
 
     def test_m2o_cascade_add(self):
         User = self.classes.User
+
         def evt(mapper, conn, instance):
             instance.addresses[0].user = User(name='u2')
         self._test(evt, "related attribute set")
@@ -1744,18 +1742,21 @@ class FlushWarningsTest(fixtures.MappedTest):
 
     def test_plain_add(self):
         Address = self.classes.Address
+
         def evt(mapper, conn, instance):
             object_session(instance).add(Address(email='x1'))
         self._test(evt, r"Session.add\(\)")
 
     def test_plain_merge(self):
         Address = self.classes.Address
+
         def evt(mapper, conn, instance):
             object_session(instance).merge(Address(email='x1'))
         self._test(evt, r"Session.merge\(\)")
 
     def test_plain_delete(self):
         Address = self.classes.Address
+
         def evt(mapper, conn, instance):
             object_session(instance).delete(Address(email='x1'))
         self._test(evt, r"Session.delete\(\)")

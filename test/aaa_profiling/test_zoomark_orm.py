@@ -134,24 +134,24 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
         self.session.add(Animal(Species='Ostrich', Legs=2, Lifespan=103.2))
         self.session.add(Animal(Species='Centipede', Legs=100))
         self.session.add(Animal(Species='Emperor Penguin', Legs=2,
-                           ZooID=seaworld.ID))
+                                ZooID=seaworld.ID))
         self.session.add(Animal(Species='Adelie Penguin', Legs=2,
-                           ZooID=seaworld.ID))
+                                ZooID=seaworld.ID))
         self.session.add(Animal(Species='Millipede', Legs=1000000,
-                           ZooID=sdz.ID))
+                                ZooID=sdz.ID))
 
         # Add a mother and child to test relationships
 
         bai_yun = Animal(Species='Ape', Nameu='Bai Yun', Legs=2)
         self.session.add(bai_yun)
         self.session.add(Animal(Species='Ape', Name='Hua Mei', Legs=2,
-                           MotherID=bai_yun.ID))
+                                MotherID=bai_yun.ID))
         self.session.commit()
 
     def _baseline_2_insert(self):
         for x in range(ITERATIONS):
             self.session.add(Animal(Species='Tick', Name='Tick %d' % x,
-                               Legs=8))
+                                    Legs=8))
         self.session.flush()
 
     def _baseline_3_properties(self):
@@ -187,30 +187,30 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
         for x in range(ITERATIONS):
             assert len(list(self.session.query(Zoo))) == 5
             assert len(list(self.session.query(Animal))) == ITERATIONS + 12
-            assert len(list(self.session.query(Animal).filter(Animal.Legs
-                                                         == 4))) == 4
-            assert len(list(self.session.query(Animal).filter(Animal.Legs
-                                                         == 2))) == 5
+            assert len(list(self.session.query(Animal)
+                            .filter(Animal.Legs == 4))) == 4
+            assert len(list(self.session.query(Animal)
+                            .filter(Animal.Legs == 2))) == 5
             assert len(
                 list(
                     self.session.query(Animal).filter(
                         and_(
                             Animal.Legs >= 2,
                             Animal.Legs < 20)))) == ITERATIONS + 9
-            assert len(list(self.session.query(Animal).filter(Animal.Legs
-                                                         > 10))) == 2
-            assert len(list(self.session.query(Animal).filter(Animal.Lifespan
-                                                         > 70))) == 2
+            assert len(list(self.session.query(Animal)
+                            .filter(Animal.Legs > 10))) == 2
+            assert len(list(self.session.query(Animal)
+                            .filter(Animal.Lifespan > 70))) == 2
             assert len(list(self.session.query(Animal).
                             filter(Animal.Species.like('L%')))) == 2
             assert len(list(self.session.query(Animal).
                             filter(Animal.Species.like('%pede')))) == 2
-            assert len(list(self.session.query(Animal).filter(Animal.LastEscape
-                                                         != None))) == 1
+            assert len(list(self.session.query(Animal)
+                            .filter(Animal.LastEscape != None))) == 1  # noqa
             assert len(
                 list(
                     self.session.query(Animal).filter(
-                        Animal.LastEscape == None))) == ITERATIONS + 11
+                        Animal.LastEscape == None))) == ITERATIONS + 11  # noqa
 
             # In operator (containedby)
 
@@ -248,10 +248,10 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
                 list(
                     self.session.query(Zoo).filter(
                         and_(
-                            Zoo.Founded != None,
+                            Zoo.Founded != None,  # noqa
                             Zoo.Founded < func.now())))) == 3
-            assert len(list(self.session.query(Animal).filter(Animal.LastEscape
-                                                         == func.now()))) == 0
+            assert len(list(self.session.query(Animal)
+                            .filter(Animal.LastEscape == func.now()))) == 0
             assert len(list(self.session.query(Animal).filter(
                 func.date_part('year', Animal.LastEscape) == 2004))) == 1
             assert len(
@@ -294,7 +294,7 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
                 assert lifespan == expected[species]
             expected = ['Montr\xe9al Biod\xf4me', 'Wild Animal Park']
             e = select([Zoo.c.Name],
-                       and_(Zoo.c.Founded != None,
+                       and_(Zoo.c.Founded != None,  # noqa
                             Zoo.c.Founded <= func.current_timestamp(),
                             Zoo.c.Founded >= datetime.date(1990,
                                                            1,
@@ -316,8 +316,8 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
             # Edit
 
-            SDZ = self.session.query(Zoo).filter(Zoo.Name == 'San Diego Zoo'
-                                            ).one()
+            SDZ = self.session.query(Zoo).filter(Zoo.Name == 'San Diego Zoo') \
+                  .one()
             SDZ.Name = 'The San Diego Zoo'
             SDZ.Founded = datetime.date(1900, 1, 1)
             SDZ.Opens = datetime.time(7, 30, 0)
@@ -325,8 +325,8 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
             # Test edits
 
-            SDZ = self.session.query(Zoo).filter(Zoo.Name
-                                            == 'The San Diego Zoo').one()
+            SDZ = self.session.query(Zoo) \
+                .filter(Zoo.Name == 'The San Diego Zoo').one()
             assert SDZ.Founded == datetime.date(1900, 1, 1), SDZ.Founded
 
             # Change it back
@@ -338,8 +338,8 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
             # Test re-edits
 
-            SDZ = self.session.query(Zoo).filter(Zoo.Name == 'San Diego Zoo'
-                                            ).one()
+            SDZ = self.session.query(Zoo).filter(Zoo.Name == 'San Diego Zoo') \
+                .one()
             assert SDZ.Founded == datetime.date(1835, 9, 13), \
                 SDZ.Founded
 

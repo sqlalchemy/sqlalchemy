@@ -94,8 +94,8 @@ class DialectImportTest(fixtures.TestBase):
                 'sqlite',
                 'oracle',
                 'mssql'):
-            exec ('from sqlalchemy.dialects import %s\ndialect = '
-                  '%s.dialect()' % (name, name), globals())
+            exec('from sqlalchemy.dialects import %s\ndialect = '
+                 '%s.dialect()' % (name, name), globals())
             eq_(dialect.name, name)
 
 
@@ -439,6 +439,7 @@ def MockDBAPI(**assert_kwargs):
         paramstyle='named',
         connect=Mock(side_effect=connect)
     )
+
 
 mock_dbapi = MockDBAPI()
 mock_sqlite_dbapi = msd = MockDBAPI()

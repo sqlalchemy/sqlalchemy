@@ -1,9 +1,9 @@
 import gevent.monkey
-gevent.monkey.patch_all()
+gevent.monkey.patch_all()  # noqa
 
 import logging
-logging.basicConfig()
-#logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)
+logging.basicConfig()  # noqa
+# logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)
 from sqlalchemy import event
 import random
 import sys
@@ -13,9 +13,11 @@ import traceback
 engine = create_engine('mysql+pymysql://scott:tiger@localhost/test',
                        pool_size=50, max_overflow=0)
 
+
 @event.listens_for(engine, "connect")
 def conn(*arg):
     print "new connection!"
+
 
 def worker():
     while True:
@@ -26,8 +28,8 @@ def worker():
                 conn.execute("SELECT 1+1")
                 gevent.sleep(random.random() * 1.01)
 
-        except:
-            #traceback.print_exc()
+        except Exception:
+            # traceback.print_exc()
             sys.stderr.write('X')
         else:
             conn.close()

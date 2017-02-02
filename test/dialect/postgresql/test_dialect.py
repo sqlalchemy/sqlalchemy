@@ -236,8 +236,8 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             r = t.insert().execute(user_name='user',
                                    user_password='lala')
             assert r.inserted_primary_key == [1]
-            l = t.select().execute().fetchall()
-            assert l == [(1, 'user', 'lala')]
+            result = t.select().execute().fetchall()
+            assert result == [(1, 'user', 'lala')]
         finally:
             testing.db.execute('drop table speedy_users')
 

@@ -511,4 +511,3 @@ class OnConflictTest(fixtures.TablesTest):
                 conn.scalar(sql.select([bind_targets.c.data])),
                 "new updated data processed"
             )
-

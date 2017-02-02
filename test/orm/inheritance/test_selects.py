@@ -6,6 +6,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import fixtures, eq_
 from sqlalchemy.testing.schema import Table, Column
 
+
 class InheritingSelectablesTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -26,30 +27,33 @@ class InheritingSelectablesTest(fixtures.MappedTest):
 
         class Foo(fixtures.ComparableEntity):
             pass
+
         class Bar(Foo):
             pass
+
         class Baz(Foo):
             pass
 
         mapper(Foo, foo, polymorphic_on=foo.c.b)
 
         mapper(Baz, baz,
-                    with_polymorphic=('*', foo.join(baz, foo.c.b == 'baz').alias('baz')),
-                    inherits=Foo,
-                    inherit_condition=(foo.c.a == baz.c.a),
-                    inherit_foreign_keys=[baz.c.a],
-                    polymorphic_identity='baz')
+               with_polymorphic=('*',
+                                 foo.join(baz, foo.c.b == 'baz').alias('baz')),
+               inherits=Foo, inherit_condition=(foo.c.a == baz.c.a),
+               inherit_foreign_keys=[baz.c.a],
+               polymorphic_identity='baz')
 
         mapper(Bar, bar,
-                    with_polymorphic=('*', foo.join(bar, foo.c.b == 'bar').alias('bar')),
-                    inherits=Foo,
-                    inherit_condition=(foo.c.a == bar.c.a),
-                    inherit_foreign_keys=[bar.c.a],
-                    polymorphic_identity='bar')
+               with_polymorphic=('*',
+                                 foo.join(bar, foo.c.b == 'bar').alias('bar')),
+               inherits=Foo, inherit_condition=(foo.c.a == bar.c.a),
+               inherit_foreign_keys=[bar.c.a],
+               polymorphic_identity='bar')
 
         s = Session()
 
-        assert [Baz(), Baz(), Bar(), Bar()] == s.query(Foo).order_by(Foo.b.desc()).all()
+        assert [Baz(), Baz(), Bar(), Bar()] == s.query(
+            Foo).order_by(Foo.b.desc()).all()
         assert [Bar(), Bar()] == s.query(Bar).all()
 
 
@@ -59,21 +63,21 @@ class JoinFromSelectPersistenceTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('base', metadata,
-                Column('id', Integer, primary_key=True,
-                        test_needs_autoincrement=True),
-                Column('type', String(50))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('type', String(50)))
         Table('child', metadata,
-                # 1. name of column must be different, so that we rely on
-                # mapper._table_to_equated to link the two cols
-                Column('child_id', Integer, ForeignKey('base.id'), primary_key=True),
-                Column('name', String(50))
-            )
+              # 1. name of column must be different, so that we rely on
+              # mapper._table_to_equated to link the two cols
+              Column('child_id', Integer, ForeignKey(
+                  'base.id'), primary_key=True),
+              Column('name', String(50)))
 
     @classmethod
     def setup_classes(cls):
         class Base(cls.Comparable):
             pass
+
         class Child(Base):
             pass
 
@@ -83,9 +87,9 @@ class JoinFromSelectPersistenceTest(fixtures.MappedTest):
 
         base_select = select([base]).alias()
         mapper(Base, base_select, polymorphic_on=base_select.c.type,
-                        polymorphic_identity='base')
+               polymorphic_identity='base')
         mapper(Child, child, inherits=Base,
-                        polymorphic_identity='child')
+               polymorphic_identity='child')
 
         sess = Session()
 

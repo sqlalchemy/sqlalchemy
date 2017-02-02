@@ -490,14 +490,14 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         #    """id""" integer NOT NULL PRIMARY KEY,
         #    """aid""" integer NULL
         #           REFERENCES """a""" ("""id""")
-        #)
-        #''')
+        # )
+        # ''')
 
         table1 = Table(r'"a"', metadata, autoload=True)
         assert '"id"' in table1.c
 
-        #table2 = Table(r'"b"', metadata, autoload=True)
-        #j = table1.join(table2)
+        # table2 = Table(r'"b"', metadata, autoload=True)
+        # j = table1.join(table2)
         # assert j.onclause.compare(table1.c['"id"']
         #        == table2.c['"aid"'])
 
@@ -751,8 +751,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         # test quoting and all that
 
         idx2 = Index('test_idx2', tbl.c.data,
-                     sqlite_where=and_(tbl.c.data > 'a', tbl.c.data
-                                           < "b's"))
+                     sqlite_where=and_(tbl.c.data > 'a', tbl.c.data < "b's"))
         self.assert_compile(schema.CreateIndex(idx),
                             'CREATE INDEX test_idx1 ON testtbl (data) '
                             'WHERE data > 5 AND data < 10',
@@ -898,8 +897,9 @@ def full_text_search_missing():
         testing.db.execute('CREATE VIRTUAL TABLE t using FTS3;')
         testing.db.execute('DROP TABLE t;')
         return False
-    except:
+    except Exception:
         return True
+
 
 metadata = cattable = matchtable = None
 
@@ -952,7 +952,8 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_expression(self):
         self.assert_compile(matchtable.c.title.match('somstr'),
-                            'matchtable.title MATCH ?', dialect=sqlite.dialect())
+                            'matchtable.title MATCH ?',
+                            dialect=sqlite.dialect())
 
     def test_simple_match(self):
         results = \
@@ -1198,7 +1199,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "d", "d1", "d2", "c", "b", "a1", "a2"]:
                 try:
                     conn.execute("drop table %s" % name)
-                except:
+                except Exception:
                     pass
 
     def test_legacy_quoted_identifiers_unit(self):

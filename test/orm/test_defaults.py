@@ -13,7 +13,8 @@ class TriggerDefaultsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         dt = Table('dt', metadata,
-                   Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                   Column('id', Integer, primary_key=True,
+                          test_needs_autoincrement=True),
                    Column('col1', String(20)),
                    Column('col2', String(20),
                           server_default=sa.schema.FetchedValue()),
@@ -33,18 +34,18 @@ class TriggerDefaultsTest(fixtures.MappedTest):
                    "WHERE dt.id IN (SELECT id FROM inserted);",
                    on='mssql'),
             sa.DDL("CREATE TRIGGER dt_ins BEFORE INSERT "
-                     "ON dt "
-                     "FOR EACH ROW "
-                     "BEGIN "
-                     ":NEW.col2 := 'ins'; :NEW.col4 := 'ins'; END;",
-                     on='oracle'),
+                   "ON dt "
+                   "FOR EACH ROW "
+                   "BEGIN "
+                   ":NEW.col2 := 'ins'; :NEW.col4 := 'ins'; END;",
+                   on='oracle'),
             sa.DDL("CREATE TRIGGER dt_ins BEFORE INSERT ON dt "
-                         "FOR EACH ROW BEGIN "
-                         "SET NEW.col2='ins'; SET NEW.col4='ins'; END",
-                         on=lambda ddl, event, target, bind, **kw:
-                                bind.engine.name not in ('oracle', 'mssql', 'sqlite')
-                ),
-            ):
+                   "FOR EACH ROW BEGIN "
+                   "SET NEW.col2='ins'; SET NEW.col4='ins'; END",
+                   on=lambda ddl, event, target, bind, **kw:
+                   bind.engine.name not in ('oracle', 'mssql', 'sqlite')
+                   ),
+        ):
             event.listen(dt, 'after_create', ins)
 
         event.listen(dt, 'before_drop', sa.DDL("DROP TRIGGER dt_ins"))
@@ -60,20 +61,19 @@ class TriggerDefaultsTest(fixtures.MappedTest):
                    "WHERE dt.id IN (SELECT id FROM deleted);",
                    on='mssql'),
             sa.DDL("CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
-                  "FOR EACH ROW BEGIN "
-                  ":NEW.col3 := 'up'; :NEW.col4 := 'up'; END;",
-                  on='oracle'),
+                   "FOR EACH ROW BEGIN "
+                   ":NEW.col3 := 'up'; :NEW.col4 := 'up'; END;",
+                   on='oracle'),
             sa.DDL("CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
-                        "FOR EACH ROW BEGIN "
-                        "SET NEW.col3='up'; SET NEW.col4='up'; END",
-                        on=lambda ddl, event, target, bind, **kw:
-                                bind.engine.name not in ('oracle', 'mssql', 'sqlite')
-                    ),
-            ):
+                   "FOR EACH ROW BEGIN "
+                   "SET NEW.col3='up'; SET NEW.col4='up'; END",
+                   on=lambda ddl, event, target, bind, **kw:
+                   bind.engine.name not in ('oracle', 'mssql', 'sqlite')
+                   ),
+        ):
             event.listen(dt, 'after_create', up)
 
         event.listen(dt, 'before_drop', sa.DDL("DROP TRIGGER dt_up"))
-
 
     @classmethod
     def setup_classes(cls):
@@ -88,7 +88,6 @@ class TriggerDefaultsTest(fixtures.MappedTest):
 
     def test_insert(self):
         Default = self.classes.Default
-
 
         d1 = Default(id=1)
 
@@ -123,13 +122,14 @@ class TriggerDefaultsTest(fixtures.MappedTest):
         eq_(d1.col3, 'up')
         eq_(d1.col4, 'up')
 
+
 class ExcludedDefaultsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         dt = Table('dt', metadata,
-                   Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-                   Column('col1', String(20), default="hello"),
-        )
+                   Column('id', Integer, primary_key=True,
+                          test_needs_autoincrement=True),
+                   Column('col1', String(20), default="hello"))
 
     def test_exclude(self):
         dt = self.tables.dt
@@ -143,4 +143,3 @@ class ExcludedDefaultsTest(fixtures.MappedTest):
         sess.add(f1)
         sess.flush()
         eq_(dt.select().execute().fetchall(), [(1, "hello")])
-

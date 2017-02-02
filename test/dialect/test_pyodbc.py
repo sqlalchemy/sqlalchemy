@@ -2,6 +2,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.connectors import pyodbc
 from sqlalchemy.testing import fixtures
 
+
 class PyODBCTest(fixtures.TestBase):
     def test_pyodbc_version(self):
         connector = pyodbc.PyODBCConnector()

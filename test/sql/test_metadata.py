@@ -185,7 +185,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             eq_(getattr(fk2c, k), kw[k])
 
     def test_check_constraint_copy(self):
-        r = lambda x: x
+        def r(x): return x
         c = CheckConstraint("foo bar",
                             name='name',
                             initially=True,
@@ -2183,7 +2183,6 @@ class ConstraintTest(fixtures.TestBase):
         else:
             eq_(list(i.columns), [])
         assert i.table is t
-
 
     def test_separate_decl_columns(self):
         m = MetaData()

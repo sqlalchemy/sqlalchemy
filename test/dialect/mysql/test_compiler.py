@@ -17,6 +17,7 @@ from sqlalchemy import testing
 from sqlalchemy.sql import table, column
 import re
 
+
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = mysql.dialect()
@@ -43,10 +44,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_create_index_with_prefix(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String(255)))
-        idx = Index('test_idx1', tbl.c.data, mysql_length=10, mysql_prefix='FULLTEXT')
+        idx = Index('test_idx1', tbl.c.data, mysql_length=10,
+                    mysql_prefix='FULLTEXT')
 
         self.assert_compile(schema.CreateIndex(idx),
-                            'CREATE FULLTEXT INDEX test_idx1 ON testtbl (data(10))')
+                            'CREATE FULLTEXT INDEX test_idx1 '
+                            'ON testtbl (data(10))')
 
     def test_create_index_with_length(self):
         m = MetaData()

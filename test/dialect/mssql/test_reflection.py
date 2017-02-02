@@ -3,11 +3,14 @@ from sqlalchemy.testing import eq_, is_, in_
 from sqlalchemy import *
 from sqlalchemy import types, schema, event
 from sqlalchemy.databases import mssql
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, \
-        ComparesTables
+from sqlalchemy.testing import (fixtures,
+                                AssertsCompiledSQL,
+                                ComparesTables)
 from sqlalchemy import testing
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import util
+from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode, tables
+from sqlalchemy.dialects.mssql import base
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables):
@@ -37,7 +40,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
                    server_default='5'),
             Column('test9', types.BINARY(100)),
             Column('test_numeric', types.Numeric()),
-            )
+        )
 
         addresses = Table(
             'engine_email_addresses',
@@ -54,7 +57,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
                                 autoload=True,
                                 autoload_with=testing.db)
         reflected_addresses = Table('engine_email_addresses',
-                meta2, autoload=True, autoload_with=testing.db)
+                                    meta2,
+                                    autoload=True,
+                                    autoload_with=testing.db)
         self.assert_tables_equal(users, reflected_users)
         self.assert_tables_equal(addresses, reflected_addresses)
 
@@ -70,7 +75,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta2 = MetaData(testing.db)
         table2 = Table('identity_test', meta2, autoload=True)
         sequence = isinstance(table2.c['col1'].default, schema.Sequence) \
-                                and table2.c['col1'].default
+            and table2.c['col1'].default
         assert sequence.start == 2
         assert sequence.increment == 3
 
@@ -85,15 +90,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert isinstance(t1.c.id.type, Integer)
         assert isinstance(t1.c.data.type, types.NullType)
 
-
     @testing.provide_metadata
     def test_db_qualified_items(self):
         metadata = self.metadata
         Table('foo', metadata, Column('id', Integer, primary_key=True))
-        Table('bar', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('foo_id', Integer, ForeignKey('foo.id', name="fkfoo"))
-            )
+        Table('bar',
+              metadata,
+              Column('id', Integer, primary_key=True),
+              Column('foo_id', Integer, ForeignKey('foo.id', name="fkfoo")))
         metadata.create_all()
 
         dbname = testing.db.scalar("select db_name()")
@@ -101,7 +105,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         inspector = inspect(testing.db)
         bar_via_db = inspector.get_foreign_keys(
-                            "bar", schema="%s.%s" % (dbname, owner))
+            "bar", schema="%s.%s" % (dbname, owner))
         eq_(
             bar_via_db,
             [{
@@ -118,7 +122,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         Table('bar', m2, schema="test.dbo", autoload=True,
                                 autoload_with=testing.db)
         eq_(m2.tables["test.dbo.foo"].schema, "test.dbo")
-
 
     @testing.provide_metadata
     def test_indexes_cols(self):
@@ -140,10 +143,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_indexes_cols_with_commas(self):
         metadata = self.metadata
 
-        t1 = Table('t', metadata,
-                        Column('x, col', Integer, key='x'),
-                        Column('y', Integer)
-                    )
+        t1 = Table('t',
+                   metadata,
+                   Column('x, col', Integer, key='x'),
+                   Column('y', Integer))
         Index('foo', t1.c.x, t1.c.y)
         metadata.create_all()
 
@@ -159,8 +162,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_indexes_cols_with_spaces(self):
         metadata = self.metadata
 
-        t1 = Table('t', metadata, Column('x col', Integer, key='x'),
-                                    Column('y', Integer))
+        t1 = Table('t',
+                   metadata,
+                   Column('x col', Integer, key='x'),
+                   Column('y', Integer))
         Index('foo', t1.c.x, t1.c.y)
         metadata.create_all()
 
@@ -198,9 +203,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             in_('max', str(col['type'].compile(dialect=testing.db.dialect)))
 
 
-from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode, tables
-from sqlalchemy.dialects.mssql import base
-
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_info_unicode_coercion(self):
 
@@ -224,9 +226,11 @@ class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt = tables.c.table_name == 'somename'
         self.assert_compile(
             stmt,
-            "[INFORMATION_SCHEMA].[TABLES].[TABLE_NAME] = CAST(:table_name_1 AS NVARCHAR(max))",
+            "[INFORMATION_SCHEMA].[TABLES].[TABLE_NAME] = "
+            "CAST(:table_name_1 AS NVARCHAR(max))",
             dialect=dialect
         )
+
 
 class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'
@@ -242,20 +246,19 @@ class ReflectHugeViewTest(fixtures.TestBase):
 
         self.metadata = MetaData(testing.db)
         t = Table('base_table', self.metadata,
-                *[
-                    Column("long_named_column_number_%d" % i, Integer)
+                  *[Column("long_named_column_number_%d" % i, Integer)
                     for i in range(self.col_num)
-                ]
-        )
+                    ]
+                  )
         self.view_str = view_str = \
             "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
-            ",".join("long_named_column_number_%d" % i
-                        for i in range(self.col_num))
+                ",".join("long_named_column_number_%d" % i
+                         for i in range(self.col_num))
             )
         assert len(view_str) > 4000
 
-        event.listen(t, 'after_create', DDL(view_str) )
-        event.listen(t, 'before_drop', DDL("DROP VIEW huge_named_view") )
+        event.listen(t, 'after_create', DDL(view_str))
+        event.listen(t, 'before_drop', DDL("DROP VIEW huge_named_view"))
 
         self.metadata.create_all()
 
@@ -266,4 +269,3 @@ class ReflectHugeViewTest(fixtures.TestBase):
         inspector = Inspector.from_engine(testing.db)
         view_def = inspector.get_view_definition("huge_named_view")
         eq_(view_def, self.view_str)
-

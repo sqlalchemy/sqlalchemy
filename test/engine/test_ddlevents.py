@@ -297,15 +297,15 @@ class DDLEventTest(fixtures.TestBase):
     def test_append_listener(self):
         metadata, table, bind = self.metadata, self.table, self.bind
 
-        fn = lambda *a: None
+        def fn(*a): return None
 
         table.append_ddl_listener('before-create', fn)
         assert_raises(exc.InvalidRequestError, table.append_ddl_listener,
-                                        'blah', fn)
+                      'blah', fn)
 
         metadata.append_ddl_listener('before-create', fn)
         assert_raises(exc.InvalidRequestError, metadata.append_ddl_listener,
-                                        'blah', fn)
+                      'blah', fn)
 
 
 class DDLExecutionTest(fixtures.TestBase):
@@ -386,17 +386,13 @@ class DDLExecutionTest(fixtures.TestBase):
         metadata, users, engine = self.metadata, self.users, self.engine
         canary = []
         users.append_ddl_listener('before-create',
-                            lambda e, t, b: canary.append('mxyzptlk')
-                        )
+                                  lambda e, t, b: canary.append('mxyzptlk'))
         users.append_ddl_listener('after-create',
-                            lambda e, t, b: canary.append('klptzyxm')
-                        )
+                                  lambda e, t, b: canary.append('klptzyxm'))
         users.append_ddl_listener('before-drop',
-                            lambda e, t, b: canary.append('xyzzy')
-                        )
+                                  lambda e, t, b: canary.append('xyzzy'))
         users.append_ddl_listener('after-drop',
-                            lambda e, t, b: canary.append('fnord')
-                        )
+                                  lambda e, t, b: canary.append('fnord'))
 
         metadata.create_all()
         assert 'mxyzptlk' in canary
@@ -414,18 +410,22 @@ class DDLExecutionTest(fixtures.TestBase):
     def test_deprecated_append_ddl_listener_metadata(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         canary = []
-        metadata.append_ddl_listener('before-create',
-                            lambda e, t, b, tables=None: canary.append('mxyzptlk')
-                        )
-        metadata.append_ddl_listener('after-create',
-                            lambda e, t, b, tables=None: canary.append('klptzyxm')
-                        )
-        metadata.append_ddl_listener('before-drop',
-                            lambda e, t, b, tables=None: canary.append('xyzzy')
-                        )
-        metadata.append_ddl_listener('after-drop',
-                            lambda e, t, b, tables=None: canary.append('fnord')
-                        )
+        metadata.append_ddl_listener(
+            'before-create',
+            lambda e, t, b, tables=None: canary.append('mxyzptlk')
+        )
+        metadata.append_ddl_listener(
+            'after-create',
+            lambda e, t, b, tables=None: canary.append('klptzyxm')
+        )
+        metadata.append_ddl_listener(
+            'before-drop',
+            lambda e, t, b, tables=None: canary.append('xyzzy')
+        )
+        metadata.append_ddl_listener(
+            'after-drop',
+            lambda e, t, b, tables=None: canary.append('fnord')
+        )
 
         metadata.create_all()
         assert 'mxyzptlk' in canary
@@ -490,7 +490,7 @@ class DDLExecutionTest(fixtures.TestBase):
         nonpg_mock = engines.mock_engine(dialect_name='sqlite')
         pg_mock = engines.mock_engine(dialect_name='postgresql')
         constraint = CheckConstraint('a < b', name='my_test_constraint',
-                                    table=users)
+                                     table=users)
 
         # by placing the constraint in an Add/Drop construct, the
         # 'inline_ddl' flag is set to False
@@ -526,7 +526,7 @@ class DDLExecutionTest(fixtures.TestBase):
         nonpg_mock = engines.mock_engine(dialect_name='sqlite')
         pg_mock = engines.mock_engine(dialect_name='postgresql')
         constraint = CheckConstraint('a < b', name='my_test_constraint',
-                                    table=users)
+                                     table=users)
 
         # by placing the constraint in an Add/Drop construct, the
         # 'inline_ddl' flag is set to False
@@ -611,11 +611,11 @@ class DDLExecutionTest(fixtures.TestBase):
 
 class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
     def mock_engine(self):
-        executor = lambda *a, **kw: None
+        def executor(*a, **kw): return None
         engine = create_engine(testing.db.name + '://',
                                strategy='mock', executor=executor)
         engine.dialect.identifier_preparer = \
-           tsa.sql.compiler.IdentifierPreparer(engine.dialect)
+            tsa.sql.compiler.IdentifierPreparer(engine.dialect)
         return engine
 
     def test_tokens(self):
@@ -639,8 +639,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         # overrides are used piece-meal and verbatim.
 
         ddl = DDL('%(schema)s-%(table)s-%(fullname)s-%(bonus)s',
-                  context={'schema': 'S S', 'table': 'T T', 'bonus': 'b'
-                  })
+                  context={'schema': 'S S', 'table': 'T T', 'bonus': 'b'})
         self.assert_compile(ddl.against(sane_alone), 'S S-T T-t-b',
                             dialect=dialect)
         self.assert_compile(ddl.against(sane_schema), 'S S-T T-s.t-b',
@@ -659,9 +658,9 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         assert DDL('')._should_execute(tbl, cx)
         assert DDL('').execute_if(dialect=target)._should_execute(tbl, cx)
         assert not DDL('').execute_if(dialect='bogus').\
-                        _should_execute(tbl, cx)
+            _should_execute(tbl, cx)
         assert DDL('').execute_if(callable_=lambda d, y, z, **kw: True).\
-                        _should_execute(tbl, cx)
+            _should_execute(tbl, cx)
         assert(DDL('').execute_if(
                         callable_=lambda d, y, z, **kw: z.engine.name
                         != 'bogus').
@@ -677,9 +676,9 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         assert DDL('')._should_execute_deprecated('x', tbl, cx)
         assert DDL('', on=target)._should_execute_deprecated('x', tbl, cx)
         assert not DDL('', on='bogus').\
-                        _should_execute_deprecated('x', tbl, cx)
+            _should_execute_deprecated('x', tbl, cx)
         assert DDL('', on=lambda d, x, y, z: True).\
-                        _should_execute_deprecated('x', tbl, cx)
+            _should_execute_deprecated('x', tbl, cx)
         assert(DDL('', on=lambda d, x, y, z: z.engine.name != 'bogus').
                _should_execute_deprecated('x', tbl, cx))
 

@@ -368,8 +368,8 @@ class MemUsageTest(EnsureZeroed):
             # execute with a non-unicode object. a warning is emitted,
             # this warning shouldn't clog up memory.
 
-            self.engine.execute(table1.select().where(table1.c.col2
-                                                     == 'foo%d' % i[0]))
+            self.engine.execute(table1.select().where(
+                table1.c.col2 == 'foo%d' % i[0]))
             i[0] += 1
         try:
             go()

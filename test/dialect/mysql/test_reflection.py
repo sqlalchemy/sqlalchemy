@@ -184,7 +184,7 @@ class TypeReflectionTest(fixtures.TestBase):
     def test_legacy_enum_types(self):
 
         specs = [
-            (mysql.ENUM("''","'fleem'"), mysql.ENUM("''","'fleem'")),  # noqa
+            (mysql.ENUM("''", "'fleem'"), mysql.ENUM("''", "'fleem'")),
         ]
 
         self._run_test(specs, ['enums'])
@@ -399,7 +399,10 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.provide_metadata
     def test_view_reflection(self):
-        Table('x', self.metadata, Column('a', Integer), Column('b', String(50)))
+        Table('x',
+              self.metadata,
+              Column('a', Integer),
+              Column('b', String(50)))
         self.metadata.create_all()
 
         with testing.db.connect() as conn:
@@ -426,7 +429,6 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 ],
                 [('a', mysql.INTEGER), ('b', mysql.VARCHAR)]
             )
-
 
     @testing.exclude('mysql', '<', (5, 0, 0), 'no information_schema support')
     def test_system_views(self):
@@ -573,14 +575,11 @@ class RawReflectionTest(fixtures.TestBase):
                         'REFERENCES `users` (`id`) '
                         'ON DELETE CASCADE ON UPDATE CASCADE')
         eq_(m.groups(), ('addresses_user_id_fkey', '`user_id`',
-                            '`users`', '`id`', None, 'CASCADE', 'CASCADE'))
-
+                         '`users`', '`id`', None, 'CASCADE', 'CASCADE'))
 
         m = regex.match('  CONSTRAINT `addresses_user_id_fkey` '
                         'FOREIGN KEY (`user_id`) '
                         'REFERENCES `users` (`id`) '
                         'ON DELETE CASCADE ON UPDATE SET NULL')
         eq_(m.groups(), ('addresses_user_id_fkey', '`user_id`',
-                            '`users`', '`id`', None, 'CASCADE', 'SET NULL'))
-
-
+                         '`users`', '`id`', None, 'CASCADE', 'SET NULL'))

@@ -67,27 +67,33 @@ class FixtureTest(fixtures.MappedTest):
         # use OrderedDict on this one to support some tests that
         # assert the order of attributes (e.g. orm/test_inspect)
         mapper(User, users, properties=util.OrderedDict(
-            [('addresses', relationship(Address, backref='user', order_by=addresses.c.id)),
-            ('orders', relationship(Order, backref='user', order_by=orders.c.id)), # o2m, m2o
-            ]
+            [('addresses', relationship(Address, backref='user',
+                                        order_by=addresses.c.id)),
+             ('orders', relationship(Order, backref='user',
+                                     order_by=orders.c.id)),  # o2m, m2o
+             ]
         ))
         mapper(Address, addresses, properties={
-            'dingaling':relationship(Dingaling, uselist=False, backref="address")  #o2o
+            # o2o
+            'dingaling': relationship(Dingaling, uselist=False,
+                                      backref="address")
         })
         mapper(Dingaling, dingalings)
         mapper(Order, orders, properties={
-            'items':relationship(Item, secondary=order_items, order_by=items.c.id),  #m2m
-            'address':relationship(Address),  # m2o
+            # m2m
+            'items': relationship(Item, secondary=order_items,
+                                  order_by=items.c.id),
+            'address': relationship(Address),  # m2o
         })
         mapper(Item, items, properties={
-            'keywords':relationship(Keyword, secondary=item_keywords) #m2m
+            'keywords': relationship(Keyword, secondary=item_keywords)  # m2m
         })
         mapper(Keyword, keywords)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node,
-                backref=backref('parent', remote_side=[nodes.c.id])
-            )
+            'children': relationship(Node,
+                                     backref=backref('parent',
+                                                     remote_side=[nodes.c.id]))
         })
 
         mapper(CompositePk, composite_pk_table)
@@ -97,84 +103,80 @@ class FixtureTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('name', String(30), nullable=False),
               test_needs_acid=True,
-              test_needs_fk=True
-        )
+              test_needs_fk=True)
 
         Table('addresses', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('email_address', String(50), nullable=False),
               test_needs_acid=True,
-              test_needs_fk=True
-        )
+              test_needs_fk=True)
 
         Table('email_bounces', metadata,
               Column('id', Integer, ForeignKey('addresses.id')),
-              Column('bounces', Integer)
-        )
+              Column('bounces', Integer))
 
         Table('orders', metadata,
-                  Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-                  Column('user_id', None, ForeignKey('users.id')),
-                  Column('address_id', None, ForeignKey('addresses.id')),
-                  Column('description', String(30)),
-                  Column('isopen', Integer),
-                  test_needs_acid=True,
-                  test_needs_fk=True
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('address_id', None, ForeignKey('addresses.id')),
+              Column('description', String(30)),
+              Column('isopen', Integer),
+              test_needs_acid=True,
+              test_needs_fk=True)
 
         Table("dingalings", metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('address_id', None, ForeignKey('addresses.id')),
               Column('data', String(30)),
               test_needs_acid=True,
-              test_needs_fk=True
-        )
+              test_needs_fk=True)
 
         Table('items', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('description', String(30), nullable=False),
               test_needs_acid=True,
-              test_needs_fk=True
-        )
+              test_needs_fk=True)
 
         Table('order_items', metadata,
               Column('item_id', None, ForeignKey('items.id')),
               Column('order_id', None, ForeignKey('orders.id')),
               test_needs_acid=True,
-              test_needs_fk=True
-        )
+              test_needs_fk=True)
 
         Table('keywords', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('name', String(30), nullable=False),
               test_needs_acid=True,
-              test_needs_fk=True
-        )
+              test_needs_fk=True)
 
         Table('item_keywords', metadata,
               Column('item_id', None, ForeignKey('items.id')),
               Column('keyword_id', None, ForeignKey('keywords.id')),
               test_needs_acid=True,
-              test_needs_fk=True
-        )
+              test_needs_fk=True)
 
         Table('nodes', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('parent_id', Integer, ForeignKey('nodes.id')),
-            Column('data', String(30)),
-            test_needs_acid=True,
-            test_needs_fk=True
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('parent_id', Integer, ForeignKey('nodes.id')),
+              Column('data', String(30)),
+              test_needs_acid=True,
+              test_needs_fk=True)
 
         Table('composite_pk_table', metadata,
-            Column('i', Integer, primary_key=True),
-            Column('j', Integer, primary_key=True),
-            Column('k', Integer, nullable=False),
-        )
+              Column('i', Integer, primary_key=True),
+              Column('j', Integer, primary_key=True),
+              Column('k', Integer, nullable=False))
 
     @classmethod
     def setup_mappers(cls):
@@ -183,7 +185,7 @@ class FixtureTest(fixtures.MappedTest):
     @classmethod
     def fixtures(cls):
         return dict(
-            users = (
+            users=(
                 ('id', 'name'),
                 (7, 'jack'),
                 (8, 'ed'),
@@ -191,7 +193,7 @@ class FixtureTest(fixtures.MappedTest):
                 (10, 'chuck')
             ),
 
-            addresses = (
+            addresses=(
                 ('id', 'user_id', 'email_address'),
                 (1, 7, "jack@bean.com"),
                 (2, 8, "ed@wood.com"),
@@ -200,7 +202,7 @@ class FixtureTest(fixtures.MappedTest):
                 (5, 9, "fred@fred.com")
             ),
 
-            email_bounces = (
+            email_bounces=(
                 ('id', 'bounces'),
                 (1, 1),
                 (2, 0),
@@ -209,7 +211,7 @@ class FixtureTest(fixtures.MappedTest):
                 (5, 0)
             ),
 
-            orders = (
+            orders=(
                 ('id', 'user_id', 'description', 'isopen', 'address_id'),
                 (1, 7, 'order 1', 0, 1),
                 (2, 9, 'order 2', 0, 4),
@@ -218,13 +220,13 @@ class FixtureTest(fixtures.MappedTest):
                 (5, 7, 'order 5', 0, None)
             ),
 
-            dingalings = (
+            dingalings=(
                 ('id', 'address_id', 'data'),
                 (1, 2, 'ding 1/2'),
                 (2, 5, 'ding 2/5')
             ),
 
-            items = (
+            items=(
                 ('id', 'description'),
                 (1, 'item 1'),
                 (2, 'item 2'),
@@ -233,7 +235,7 @@ class FixtureTest(fixtures.MappedTest):
                 (5, 'item 5')
             ),
 
-            order_items = (
+            order_items=(
                 ('item_id', 'order_id'),
                 (1, 1),
                 (2, 1),
@@ -253,7 +255,7 @@ class FixtureTest(fixtures.MappedTest):
                 (5, 5)
             ),
 
-            keywords = (
+            keywords=(
                 ('id', 'name'),
                 (1, 'blue'),
                 (2, 'red'),
@@ -264,7 +266,7 @@ class FixtureTest(fixtures.MappedTest):
                 (7, 'square')
             ),
 
-            item_keywords = (
+            item_keywords=(
                 ('keyword_id', 'item_id'),
                 (2, 1),
                 (2, 2),
@@ -277,16 +279,16 @@ class FixtureTest(fixtures.MappedTest):
                 (6, 3)
             ),
 
-            nodes = (
+            nodes=(
                 ('id', 'parent_id', 'data'),
             ),
 
-            composite_pk_table = (
+            composite_pk_table=(
                 ('i', 'j', 'k'),
                 (1, 2, 3),
                 (2, 1, 4),
                 (1, 1, 5),
-                (2, 2,6)
+                (2, 2, 6)
             )
         )
 
@@ -351,34 +353,30 @@ class CannedResults(object):
 
         return [
             User(id=7,
-                 addresses=[
-                   Address(id=1)],
+                 addresses=[Address(id=1)],
                  orders=[
-                   Order(description='order 1',
-                         items=[
-                           Item(description='item 1'),
-                           Item(description='item 2'),
-                           Item(description='item 3')]),
-                   Order(description='order 3'),
-                   Order(description='order 5')]),
+                     Order(description='order 1',
+                           items=[
+                               Item(description='item 1'),
+                               Item(description='item 2'),
+                               Item(description='item 3')]),
+                     Order(description='order 3'),
+                     Order(description='order 5')]),
             User(id=8,
-                 addresses=[
-                   Address(id=2),
-                   Address(id=3),
-                   Address(id=4)]),
+                 addresses=[Address(id=2), Address(id=3), Address(id=4)]),
             User(id=9,
                  addresses=[
-                   Address(id=5)],
+                     Address(id=5)],
                  orders=[
-                   Order(description='order 2',
-                         items=[
-                           Item(description='item 1'),
-                           Item(description='item 2'),
-                           Item(description='item 3')]),
-                   Order(description='order 4',
-                         items=[
-                           Item(description='item 1'),
-                           Item(description='item 5')])]),
+                     Order(description='order 2',
+                           items=[
+                               Item(description='item 1'),
+                               Item(description='item 2'),
+                               Item(description='item 3')]),
+                     Order(description='order 4',
+                           items=[
+                               Item(description='item 1'),
+                               Item(description='item 5')])]),
             User(id=10, addresses=[])]
 
     @property
@@ -388,32 +386,20 @@ class CannedResults(object):
         return [
             User(id=7,
                  orders=[
-                   Order(id=1,
-                         items=[
-                           Item(id=1),
-                           Item(id=2),
-                           Item(id=3)]),
-                   Order(id=3,
-                         items=[
-                           Item(id=3),
-                           Item(id=4),
-                           Item(id=5)]),
-                   Order(id=5,
-                         items=[
-                           Item(id=5)])]),
+                     Order(id=1,
+                           items=[Item(id=1), Item(id=2), Item(id=3)]),
+                     Order(id=3,
+                           items=[Item(id=3), Item(id=4), Item(id=5)]),
+                     Order(id=5,
+                           items=[Item(id=5)])]),
             User(id=8,
                  orders=[]),
             User(id=9,
                  orders=[
-                   Order(id=2,
-                         items=[
-                           Item(id=1),
-                           Item(id=2),
-                           Item(id=3)]),
-                   Order(id=4,
-                         items=[
-                           Item(id=1),
-                           Item(id=5)])]),
+                     Order(id=2,
+                           items=[Item(id=1), Item(id=2), Item(id=3)]),
+                     Order(id=4,
+                           items=[Item(id=1), Item(id=5)])]),
             User(id=10)]
 
     @property
@@ -422,19 +408,19 @@ class CannedResults(object):
         return [
             Item(id=1,
                  keywords=[
-                   Keyword(name='red'),
-                   Keyword(name='big'),
-                   Keyword(name='round')]),
+                     Keyword(name='red'),
+                     Keyword(name='big'),
+                     Keyword(name='round')]),
             Item(id=2,
                  keywords=[
-                   Keyword(name='red'),
-                   Keyword(name='small'),
-                   Keyword(name='square')]),
+                     Keyword(name='red'),
+                     Keyword(name='small'),
+                     Keyword(name='square')]),
             Item(id=3,
                  keywords=[
-                   Keyword(name='green'),
-                   Keyword(name='big'),
-                   Keyword(name='round')]),
+                     Keyword(name='green'),
+                     Keyword(name='big'),
+                     Keyword(name='round')]),
             Item(id=4,
                  keywords=[]),
             Item(id=5,
@@ -446,43 +432,39 @@ class CannedResults(object):
         User, Order = self.test.classes.User, self.test.classes.Order
 
         item1, item2, item3, item4, item5 = \
-             Item(id=1,
-                  keywords=[
-                    Keyword(name='red'),
-                    Keyword(name='big'),
-                    Keyword(name='round')]),\
-             Item(id=2,
-                  keywords=[
-                    Keyword(name='red'),
-                    Keyword(name='small'),
-                    Keyword(name='square')]),\
-             Item(id=3,
-                  keywords=[
-                    Keyword(name='green'),
-                    Keyword(name='big'),
-                    Keyword(name='round')]),\
-             Item(id=4,
-                  keywords=[]),\
-             Item(id=5,
-                  keywords=[])
+            Item(id=1,
+                 keywords=[
+                     Keyword(name='red'),
+                     Keyword(name='big'),
+                     Keyword(name='round')]),\
+            Item(id=2,
+                 keywords=[
+                     Keyword(name='red'),
+                     Keyword(name='small'),
+                     Keyword(name='square')]),\
+            Item(id=3,
+                 keywords=[
+                     Keyword(name='green'),
+                     Keyword(name='big'),
+                     Keyword(name='round')]),\
+            Item(id=4, keywords=[]),\
+            Item(id=5, keywords=[])
 
         user_result = [
-                User(id=7,
-                   orders=[
+            User(id=7,
+                 orders=[
                      Order(id=1,
                            items=[item1, item2, item3]),
                      Order(id=3,
                            items=[item3, item4, item5]),
                      Order(id=5,
                            items=[item5])]),
-                User(id=8, orders=[]),
-                User(id=9,
-                   orders=[
+            User(id=8, orders=[]),
+            User(id=9,
+                 orders=[
                      Order(id=2,
                            items=[item1, item2, item3]),
                      Order(id=4,
                            items=[item1, item5])]),
-                User(id=10, orders=[])]
+            User(id=10, orders=[])]
         return user_result
-
-

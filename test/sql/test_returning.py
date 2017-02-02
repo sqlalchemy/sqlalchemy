@@ -414,7 +414,6 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         )
 
 
-
 class ImplicitReturningFlag(fixtures.TestBase):
     __backend__ = True
 

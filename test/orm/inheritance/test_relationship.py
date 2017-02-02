@@ -10,20 +10,34 @@ from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import assert_raises, eq_, is_
 
+
 class Company(fixtures.ComparableEntity):
     pass
+
+
 class Person(fixtures.ComparableEntity):
     pass
+
+
 class Engineer(Person):
     pass
+
+
 class Manager(Person):
     pass
+
+
 class Boss(Manager):
     pass
+
+
 class Machine(fixtures.ComparableEntity):
     pass
+
+
 class Paperwork(fixtures.ComparableEntity):
     pass
+
 
 class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
 
@@ -32,37 +46,37 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('people', metadata,
-            Column('person_id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('name', String(50)),
-            Column('type', String(30)))
+              Column('person_id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(50)),
+              Column('type', String(30)))
 
         Table('engineers', metadata,
-            Column('person_id', Integer,
-                ForeignKey('people.person_id'),
-                primary_key=True),
-            Column('primary_language', String(50)),
-            Column('reports_to_id', Integer,
-                ForeignKey('people.person_id')))
+              Column('person_id', Integer,
+                     ForeignKey('people.person_id'),
+                     primary_key=True),
+              Column('primary_language', String(50)),
+              Column('reports_to_id', Integer,
+                     ForeignKey('people.person_id')))
 
     @classmethod
     def setup_mappers(cls):
         engineers, people = cls.tables.engineers, cls.tables.people
 
         mapper(Person, people,
-            polymorphic_on=people.c.type,
-            polymorphic_identity='person')
+               polymorphic_on=people.c.type,
+               polymorphic_identity='person')
 
         mapper(Engineer, engineers,
-            inherits=Person,
-            inherit_condition=engineers.c.person_id == people.c.person_id,
-            polymorphic_identity='engineer',
-            properties={
-                'reports_to':relationship(
-                    Person,
-                    primaryjoin=
-                        people.c.person_id == engineers.c.reports_to_id)})
+               inherits=Person,
+               inherit_condition=engineers.c.person_id == people.c.person_id,
+               polymorphic_identity='engineer',
+               properties={
+                   'reports_to': relationship(
+                       Person,
+                       primaryjoin=(
+                           people.c.person_id == engineers.c.reports_to_id))})
 
     def test_has(self):
         p1 = Person(name='dogbert')
@@ -85,8 +99,8 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
         sess.flush()
         eq_(sess.query(Engineer)
                 .filter(Engineer.reports_to
-                    .of_type(Engineer)
-                    .has(Engineer.name == 'dilbert'))
+                        .of_type(Engineer)
+                        .has(Engineer.name == 'dilbert'))
                 .first(),
             e2)
 
@@ -103,6 +117,7 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
                 .filter(Person.name == 'dogbert').first(),
             Engineer(name='dilbert'))
 
+
 class SelfReferentialJ2JTest(fixtures.MappedTest):
 
     run_setup_mappers = 'once'
@@ -110,25 +125,24 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         people = Table('people', metadata,
-            Column('person_id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('name', String(50)),
-            Column('type', String(30)))
+                       Column('person_id', Integer,
+                              primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('name', String(50)),
+                       Column('type', String(30)))
 
         engineers = Table('engineers', metadata,
-            Column('person_id', Integer,
-                ForeignKey('people.person_id'),
-                primary_key=True),
-            Column('primary_language', String(50)),
-            Column('reports_to_id', Integer,
-                ForeignKey('managers.person_id'))
-          )
+                          Column('person_id', Integer,
+                                 ForeignKey('people.person_id'),
+                                 primary_key=True),
+                          Column('primary_language', String(50)),
+                          Column('reports_to_id', Integer,
+                                 ForeignKey('managers.person_id')))
 
         managers = Table('managers', metadata,
-            Column('person_id', Integer, ForeignKey('people.person_id'),
-                primary_key=True),
-        )
+                         Column('person_id', Integer,
+                                ForeignKey('people.person_id'),
+                                primary_key=True),)
 
     @classmethod
     def setup_mappers(cls):
@@ -137,23 +151,22 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         people = cls.tables.people
 
         mapper(Person, people,
-            polymorphic_on=people.c.type,
-            polymorphic_identity='person')
+               polymorphic_on=people.c.type,
+               polymorphic_identity='person')
 
         mapper(Manager, managers,
-            inherits=Person,
-            polymorphic_identity='manager')
+               inherits=Person,
+               polymorphic_identity='manager')
 
         mapper(Engineer, engineers,
-            inherits=Person,
-            polymorphic_identity='engineer',
-            properties={
-                'reports_to':relationship(
-                    Manager,
-                    primaryjoin=
-                        managers.c.person_id == engineers.c.reports_to_id,
-                    backref='engineers')})
-
+               inherits=Person,
+               polymorphic_identity='engineer',
+               properties={
+                   'reports_to': relationship(
+                       Manager,
+                       primaryjoin=(
+                           managers.c.person_id == engineers.c.reports_to_id),
+                       backref='engineers')})
 
     def test_has(self):
         m1 = Manager(name='dogbert')
@@ -229,13 +242,14 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
         eq_(sess.query(Manager)
                 .join(Manager.engineers)
-                .filter(Engineer.reports_to == None).all(),
+                .filter(Engineer.reports_to == None).all(),  # noqa
             [])
 
         eq_(sess.query(Manager)
                 .join(Manager.engineers)
                 .filter(Engineer.reports_to == m1).all(),
             [m1])
+
 
 class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
@@ -244,18 +258,18 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         people = Table('people', metadata,
-            Column('person_id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('name', String(50)),
-            Column('type', String(30)))
+                       Column('person_id', Integer,
+                              primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('name', String(50)),
+                       Column('type', String(30)))
 
         engineers = Table('engineers', metadata,
-            Column('person_id', Integer,
-                ForeignKey('people.person_id'),
-                primary_key=True),
-            Column('reports_to_id', Integer,
-                ForeignKey('engineers.person_id')))
+                          Column('person_id', Integer,
+                                 ForeignKey('people.person_id'),
+                                 primary_key=True),
+                          Column('reports_to_id', Integer,
+                                 ForeignKey('engineers.person_id')))
 
     @classmethod
     def setup_mappers(cls):
@@ -263,19 +277,19 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
         people = cls.tables.people
 
         mapper(Person, people,
-            polymorphic_on=people.c.type,
-            polymorphic_identity='person')
+               polymorphic_on=people.c.type,
+               polymorphic_identity='person')
 
         mapper(Engineer, engineers,
-            inherits=Person,
-            polymorphic_identity='engineer',
-            properties={
-                'reports_to':relationship(
-                    Engineer,
-                    primaryjoin=
-                        engineers.c.person_id == engineers.c.reports_to_id,
-                    backref='engineers',
-                    remote_side=engineers.c.person_id)})
+               inherits=Person,
+               polymorphic_identity='engineer',
+               properties={
+                   'reports_to': relationship(
+                       Engineer,
+                       primaryjoin=(
+                           engineers.c.person_id == engineers.c.reports_to_id),
+                       backref='engineers',
+                       remote_side=engineers.c.person_id)})
 
     def _two_obj_fixture(self):
         e1 = Engineer(name='wally')
@@ -332,7 +346,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
         eq_(sess.query(Engineer)
                 .join(Engineer.engineers, aliased=True)
-                .filter(Engineer.reports_to == None).all(),
+                .filter(Engineer.reports_to == None).all(),  # noqa
             [])
 
         eq_(sess.query(Engineer)
@@ -342,8 +356,9 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
         eq_(sess.query(Engineer)
                 .join(Engineer.engineers, aliased=True)
-                .filter(Engineer.reports_to != None).all(),
+                .filter(Engineer.reports_to != None).all(),  # noqa
             [e1, e2])
+
 
 class M2MFilterTest(fixtures.MappedTest):
 
@@ -354,29 +369,29 @@ class M2MFilterTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         organizations = Table('organizations', metadata,
-            Column('id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('name', String(50)))
+                              Column('id', Integer,
+                                     primary_key=True,
+                                     test_needs_autoincrement=True),
+                              Column('name', String(50)))
 
         engineers_to_org = Table('engineers_to_org', metadata,
-            Column('org_id', Integer,
-                ForeignKey('organizations.id')),
-            Column('engineer_id', Integer,
-                ForeignKey('engineers.person_id')))
+                                 Column('org_id', Integer,
+                                        ForeignKey('organizations.id')),
+                                 Column('engineer_id', Integer,
+                                        ForeignKey('engineers.person_id')))
 
         people = Table('people', metadata,
-            Column('person_id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('name', String(50)),
-            Column('type', String(30)))
+                       Column('person_id', Integer,
+                              primary_key=True,
+                              test_needs_autoincrement=True),
+                       Column('name', String(50)),
+                       Column('type', String(30)))
 
         engineers = Table('engineers', metadata,
-            Column('person_id', Integer,
-                ForeignKey('people.person_id'),
-                primary_key=True),
-            Column('primary_language', String(50)))
+                          Column('person_id', Integer,
+                                 ForeignKey('people.person_id'),
+                                 primary_key=True),
+                          Column('primary_language', String(50)))
 
     @classmethod
     def setup_mappers(cls):
@@ -389,19 +404,19 @@ class M2MFilterTest(fixtures.MappedTest):
             pass
 
         mapper(Organization, organizations,
-            properties={
-                'engineers':relationship(
-                    Engineer,
-                    secondary=engineers_to_org,
-                    backref='organizations')})
+               properties={
+                   'engineers': relationship(
+                       Engineer,
+                       secondary=engineers_to_org,
+                       backref='organizations')})
 
         mapper(Person, people,
-            polymorphic_on=people.c.type,
-            polymorphic_identity='person')
+               polymorphic_on=people.c.type,
+               polymorphic_identity='person')
 
         mapper(Engineer, engineers,
-            inherits=Person,
-            polymorphic_identity='engineer')
+               inherits=Person,
+               polymorphic_identity='engineer')
 
     @classmethod
     def insert_data(cls):
@@ -424,16 +439,16 @@ class M2MFilterTest(fixtures.MappedTest):
 
         eq_(sess.query(Organization)
                 .filter(~Organization.engineers
-                    .of_type(Engineer)
-                    .contains(e1))
+                        .of_type(Engineer)
+                        .contains(e1))
                 .all(),
             [Organization(name='org2')])
 
         # this had a bug
         eq_(sess.query(Organization)
                 .filter(~Organization.engineers
-                    .contains(e1))
-                 .all(),
+                        .contains(e1))
+            .all(),
             [Organization(name='org2')])
 
     def test_any(self):
@@ -442,16 +457,17 @@ class M2MFilterTest(fixtures.MappedTest):
 
         eq_(sess.query(Organization)
                 .filter(Organization.engineers
-                    .of_type(Engineer)
-                    .any(Engineer.name == 'e1'))
+                        .of_type(Engineer)
+                        .any(Engineer.name == 'e1'))
                 .all(),
             [Organization(name='org1')])
 
         eq_(sess.query(Organization)
                 .filter(Organization.engineers
-                    .any(Engineer.name == 'e1'))
+                        .any(Engineer.name == 'e1'))
                 .all(),
             [Organization(name='org1')])
+
 
 class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -459,35 +475,37 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
         Table('secondary', metadata,
-            Column('left_id', Integer,
-                ForeignKey('parent.id'),
-                nullable=False),
-            Column('right_id', Integer,
-                ForeignKey('parent.id'),
-                nullable=False))
+              Column('left_id', Integer,
+                     ForeignKey('parent.id'),
+                     nullable=False),
+              Column('right_id', Integer,
+                     ForeignKey('parent.id'),
+                     nullable=False))
 
         Table('parent', metadata,
-            Column('id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('cls', String(50)))
+              Column('id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('cls', String(50)))
 
         Table('child1', metadata,
-            Column('id', Integer,
-                ForeignKey('parent.id'),
-                primary_key=True))
+              Column('id', Integer,
+                     ForeignKey('parent.id'),
+                     primary_key=True))
 
         Table('child2', metadata,
-            Column('id', Integer,
-                ForeignKey('parent.id'),
-                primary_key=True))
+              Column('id', Integer,
+                     ForeignKey('parent.id'),
+                     primary_key=True))
 
     @classmethod
     def setup_classes(cls):
         class Parent(cls.Basic):
             pass
+
         class Child1(Parent):
             pass
+
         class Child2(Parent):
             pass
 
@@ -502,23 +520,23 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         secondary = cls.tables.secondary
 
         mapper(Parent, parent,
-            polymorphic_on=parent.c.cls)
+               polymorphic_on=parent.c.cls)
 
         mapper(Child1, child1,
-            inherits=Parent,
-            polymorphic_identity='child1',
-            properties={
-                'left_child2':relationship(
-                    Child2,
-                    secondary=secondary,
-                    primaryjoin=parent.c.id == secondary.c.right_id,
-                    secondaryjoin=parent.c.id == secondary.c.left_id,
-                    uselist=False,
-                    backref="right_children")})
+               inherits=Parent,
+               polymorphic_identity='child1',
+               properties={
+                   'left_child2': relationship(
+                       Child2,
+                       secondary=secondary,
+                       primaryjoin=parent.c.id == secondary.c.right_id,
+                       secondaryjoin=parent.c.id == secondary.c.left_id,
+                       uselist=False,
+                       backref="right_children")})
 
         mapper(Child2, child2,
-            inherits=Parent,
-            polymorphic_identity='child2')
+               inherits=Parent,
+               polymorphic_identity='child2')
 
     def test_query_crit(self):
         Child1, Child2 = self.classes.Child1, self.classes.Child2
@@ -546,19 +564,17 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         # test the same again
         self.assert_compile(
-            sess.query(Child2)
-                .join(Child2.right_children)
-                .filter(Child1.left_child2 == c22)
-                .with_labels().statement,
+            sess.query(Child2).join(Child2.right_children).
+            filter(Child1.left_child2 == c22).with_labels().statement,
             "SELECT child2.id AS child2_id, parent.id AS parent_id, "
             "parent.cls AS parent_cls FROM secondary AS secondary_1, "
             "parent JOIN child2 ON parent.id = child2.id JOIN secondary AS "
             "secondary_2 ON parent.id = secondary_2.left_id JOIN "
-            "(parent AS parent_1 JOIN child1 AS child1_1 ON parent_1.id = child1_1.id) "
+            "(parent AS parent_1 JOIN child1 AS child1_1 "
+            "ON parent_1.id = child1_1.id) "
             "ON parent_1.id = secondary_2.right_id WHERE "
             "parent_1.id = secondary_1.right_id AND :param_1 = "
-            "secondary_1.left_id"
-        )
+            "secondary_1.left_id")
 
     def test_eager_join(self):
         Child1, Child2 = self.classes.Child1, self.classes.Child2
@@ -608,6 +624,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         for row in query_.all():
             assert row.left_child2
 
+
 class EagerToSubclassTest(fixtures.MappedTest):
     """Test eager loads to subclass mappers"""
 
@@ -619,42 +636,45 @@ class EagerToSubclassTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-            Column('id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('data', String(10)))
+              Column('id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', String(10)))
 
         Table('base', metadata,
-            Column('id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('type', String(10)),
-            Column('related_id', Integer,
-                ForeignKey('related.id')))
+              Column('id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('type', String(10)),
+              Column('related_id', Integer,
+                     ForeignKey('related.id')))
 
         Table('sub', metadata,
-            Column('id', Integer,
-                ForeignKey('base.id'),
-                primary_key=True),
-            Column('data', String(10)),
-            Column('parent_id', Integer,
-                ForeignKey('parent.id'),
-                nullable=False))
+              Column('id', Integer,
+                     ForeignKey('base.id'),
+                     primary_key=True),
+              Column('data', String(10)),
+              Column('parent_id', Integer,
+                     ForeignKey('parent.id'),
+                     nullable=False))
 
         Table('related', metadata,
-            Column('id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('data', String(10)))
+              Column('id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', String(10)))
 
     @classmethod
     def setup_classes(cls):
         class Parent(cls.Comparable):
             pass
+
         class Base(cls.Comparable):
             pass
+
         class Sub(Base):
             pass
+
         class Related(cls.Comparable):
             pass
 
@@ -670,16 +690,16 @@ class EagerToSubclassTest(fixtures.MappedTest):
         Related = cls.classes.Related
 
         mapper(Parent, parent,
-            properties={'children':relationship(Sub, order_by=sub.c.data)})
+               properties={'children': relationship(Sub, order_by=sub.c.data)})
 
         mapper(Base, base,
-            polymorphic_on=base.c.type,
-            polymorphic_identity='b',
-            properties={'related':relationship(Related)})
+               polymorphic_on=base.c.type,
+               polymorphic_identity='b',
+               properties={'related': relationship(Related)})
 
         mapper(Sub, sub,
-            inherits=Base,
-            polymorphic_identity='s')
+               inherits=Base,
+               polymorphic_identity='s')
 
         mapper(Related, related)
 
@@ -706,6 +726,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
     def test_joinedload(self):
         Parent = self.classes.Parent
         sess = Session()
+
         def go():
             eq_(sess.query(Parent)
                     .options(joinedload(Parent.children)).all(),
@@ -716,6 +737,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
         Parent = self.classes.Parent
         Sub = self.classes.Sub
         sess = Session()
+
         def go():
             eq_(sess.query(Parent)
                     .join(Parent.children)
@@ -749,6 +771,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
                 [p1, p2])
         self.assert_sql_count(testing.db, go, 3)
 
+
 class SubClassEagerToSubClassTest(fixtures.MappedTest):
     """Test joinedloads from subclass to subclass mappers"""
 
@@ -760,44 +783,43 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-            Column('id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('type', String(10)),
-        )
+              Column('id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('type', String(10)))
 
         Table('subparent', metadata,
-            Column('id', Integer,
-                ForeignKey('parent.id'),
-                primary_key=True),
-            Column('data', String(10)),
-        )
+              Column('id', Integer,
+                     ForeignKey('parent.id'),
+                     primary_key=True),
+              Column('data', String(10)))
 
         Table('base', metadata,
-            Column('id', Integer,
-                primary_key=True,
-                test_needs_autoincrement=True),
-            Column('type', String(10)),
-        )
+              Column('id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('type', String(10)))
 
         Table('sub', metadata,
-            Column('id', Integer,
-                ForeignKey('base.id'),
-                primary_key=True),
-            Column('data', String(10)),
-            Column('subparent_id', Integer,
-                ForeignKey('subparent.id'),
-                nullable=False)
-        )
+              Column('id', Integer,
+                     ForeignKey('base.id'),
+                     primary_key=True),
+              Column('data', String(10)),
+              Column('subparent_id', Integer,
+                     ForeignKey('subparent.id'),
+                     nullable=False))
 
     @classmethod
     def setup_classes(cls):
         class Parent(cls.Comparable):
             pass
+
         class Subparent(Parent):
             pass
+
         class Base(cls.Comparable):
             pass
+
         class Sub(Base):
             pass
 
@@ -813,22 +835,22 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         Subparent = cls.classes.Subparent
 
         mapper(Parent, parent,
-            polymorphic_on=parent.c.type,
-            polymorphic_identity='b')
+               polymorphic_on=parent.c.type,
+               polymorphic_identity='b')
 
         mapper(Subparent, subparent,
-            inherits=Parent,
-            polymorphic_identity='s',
-            properties={
-                'children':relationship(Sub, order_by=base.c.id)})
+               inherits=Parent,
+               polymorphic_identity='s',
+               properties={
+                   'children': relationship(Sub, order_by=base.c.id)})
 
         mapper(Base, base,
-            polymorphic_on=base.c.type,
-            polymorphic_identity='b')
+               polymorphic_on=base.c.type,
+               polymorphic_identity='b')
 
         mapper(Sub, sub,
-            inherits=Base,
-            polymorphic_identity='s')
+               inherits=Base,
+               polymorphic_identity='s')
 
     @classmethod
     def insert_data(cls):
@@ -850,6 +872,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         Subparent = self.classes.Subparent
 
         sess = create_session()
+
         def go():
             eq_(sess.query(Subparent)
                     .options(joinedload(Subparent.children)).all(),
@@ -857,6 +880,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
+
         def go():
             eq_(sess.query(Subparent)
                     .options(joinedload("children")).all(),
@@ -867,6 +891,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         Subparent = self.classes.Subparent
 
         sess = create_session()
+
         def go():
             eq_(sess.query(Subparent)
                     .join(Subparent.children)
@@ -875,6 +900,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
+
         def go():
             eq_(sess.query(Subparent)
                     .join(Subparent.children)
@@ -886,6 +912,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         Subparent = self.classes.Subparent
 
         sess = create_session()
+
         def go():
             eq_(sess.query(Subparent)
                     .options(subqueryload(Subparent.children)).all(),
@@ -893,11 +920,13 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 2)
 
         sess.expunge_all()
+
         def go():
             eq_(sess.query(Subparent)
                     .options(subqueryload("children")).all(),
                 [p1, p2])
         self.assert_sql_count(testing.db, go, 2)
+
 
 class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
     """test pathing when two subclasses contain a different property
@@ -914,37 +943,35 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-            Column('id', Integer, primary_key=True,
-                    test_needs_autoincrement=True),
-            Column('type', String(10))
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('type', String(10)))
         Table('b', metadata,
-            Column('id', Integer, ForeignKey('a.id'), primary_key=True)
-        )
+              Column('id', Integer, ForeignKey('a.id'), primary_key=True))
         Table('btod', metadata,
-            Column('bid', Integer, ForeignKey('b.id'), nullable=False),
-            Column('did', Integer, ForeignKey('d.id'), nullable=False)
-        )
+              Column('bid', Integer, ForeignKey('b.id'), nullable=False),
+              Column('did', Integer, ForeignKey('d.id'), nullable=False)
+              )
         Table('c', metadata,
-            Column('id', Integer, ForeignKey('a.id'), primary_key=True)
-        )
+              Column('id', Integer, ForeignKey('a.id'), primary_key=True))
         Table('ctod', metadata,
-            Column('cid', Integer, ForeignKey('c.id'), nullable=False),
-            Column('did', Integer, ForeignKey('d.id'), nullable=False)
-        )
+              Column('cid', Integer, ForeignKey('c.id'), nullable=False),
+              Column('did', Integer, ForeignKey('d.id'), nullable=False))
         Table('d', metadata,
-            Column('id', Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True))
 
     @classmethod
     def setup_classes(cls):
         class A(cls.Comparable):
             pass
+
         class B(A):
             pass
+
         class C(A):
             pass
+
         class D(cls.Comparable):
             pass
 
@@ -957,15 +984,14 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
 
         mapper(A, cls.tables.a, polymorphic_on=cls.tables.a.c.type)
         mapper(B, cls.tables.b, inherits=A, polymorphic_identity='b',
-                    properties={
-                        'related': relationship(D, secondary=cls.tables.btod)
-                    })
+               properties={
+                   'related': relationship(D, secondary=cls.tables.btod)
+               })
         mapper(C, cls.tables.c, inherits=A, polymorphic_identity='c',
-                    properties={
-                        'related': relationship(D, secondary=cls.tables.ctod)
-                    })
+               properties={
+                   'related': relationship(D, secondary=cls.tables.ctod)
+               })
         mapper(D, cls.tables.d)
-
 
     @classmethod
     def insert_data(cls):
@@ -991,11 +1017,12 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         session = Session()
         d = session.query(D).one()
         a_poly = with_polymorphic(A, [B, C])
+
         def go():
             for a in session.query(a_poly).\
-                options(
-                        subqueryload(a_poly.B.related),
-                        subqueryload(a_poly.C.related)):
+                    options(
+                    subqueryload(a_poly.B.related),
+                    subqueryload(a_poly.C.related)):
                 eq_(a.related, [d])
         self.assert_sql_count(testing.db, go, 3)
 
@@ -1007,9 +1034,10 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
 
         session = Session()
         d = session.query(D).one()
+
         def go():
             for a in session.query(A).with_polymorphic([B, C]).\
-                options(subqueryload(B.related), subqueryload(C.related)):
+                    options(subqueryload(B.related), subqueryload(C.related)):
                 eq_(a.related, [d])
         self.assert_sql_count(testing.db, go, 3)
 
@@ -1022,11 +1050,12 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         session = Session()
         d = session.query(D).one()
         a_poly = with_polymorphic(A, [B, C])
+
         def go():
             for a in session.query(a_poly).\
-                options(
-                        joinedload(a_poly.B.related),
-                        joinedload(a_poly.C.related)):
+                    options(
+                    joinedload(a_poly.B.related),
+                    joinedload(a_poly.C.related)):
                 eq_(a.related, [d])
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1038,9 +1067,10 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
 
         session = Session()
         d = session.query(D).one()
+
         def go():
             for a in session.query(A).with_polymorphic([B, C]).\
-                options(joinedload(B.related), joinedload(C.related)):
+                    options(joinedload(B.related), joinedload(C.related)):
                 eq_(a.related, [d])
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1057,31 +1087,30 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('z', metadata,
-            Column('id', Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True))
         Table('a', metadata,
-            Column('id', Integer, primary_key=True,
-                    test_needs_autoincrement=True),
-            Column('type', String(10)),
-            Column('z_id', Integer, ForeignKey('z.id'))
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('type', String(10)),
+              Column('z_id', Integer, ForeignKey('z.id')))
         Table('b', metadata,
-            Column('id', Integer, ForeignKey('a.id'), primary_key=True)
-        )
+              Column('id', Integer, ForeignKey('a.id'), primary_key=True))
         Table('d', metadata,
-            Column('id', Integer, ForeignKey('a.id'), primary_key=True),
-            Column('b_id', Integer, ForeignKey('b.id'))
-        )
+              Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+              Column('b_id', Integer, ForeignKey('b.id')))
 
     @classmethod
     def setup_classes(cls):
         class Z(cls.Comparable):
             pass
+
         class A(cls.Comparable):
             pass
+
         class B(A):
             pass
+
         class D(A):
             pass
 
@@ -1094,18 +1123,17 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
 
         mapper(Z, cls.tables.z)
         mapper(A, cls.tables.a, polymorphic_on=cls.tables.a.c.type,
-                    with_polymorphic='*',
-                    properties={
-                        'zs': relationship(Z, lazy="subquery")
-                    })
+               with_polymorphic='*',
+               properties={
+                   'zs': relationship(Z, lazy="subquery")
+               })
         mapper(B, cls.tables.b, inherits=A, polymorphic_identity='b',
-                    properties={
-                        'related': relationship(D, lazy="subquery",
-                            primaryjoin=cls.tables.d.c.b_id ==
-                                                cls.tables.b.c.id)
-                    })
+               properties={
+                   'related': relationship(D, lazy="subquery",
+                                           primaryjoin=cls.tables.d.c.b_id ==
+                                           cls.tables.b.c.id)
+               })
         mapper(D, cls.tables.d, inherits=A, polymorphic_identity='d')
-
 
     @classmethod
     def insert_data(cls):
@@ -1118,6 +1146,7 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
     def test_2617(self):
         A = self.classes.A
         session = Session()
+
         def go():
             a1 = session.query(A).first()
             eq_(a1.related, [])
@@ -1143,58 +1172,57 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-            Column('id', Integer, primary_key=True,
-                    test_needs_autoincrement=True),
-            Column('data', String(30))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', String(30)))
         Table('base1', metadata,
-            Column('id', Integer, primary_key=True,
-                    test_needs_autoincrement=True),
-            Column('data', String(30))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', String(30)))
         Table('sub1', metadata,
-            Column('id', Integer, ForeignKey('base1.id'), primary_key=True),
-            Column('parent_id', ForeignKey('parent.id')),
-            Column('subdata', String(30))
-            )
+              Column('id', Integer, ForeignKey('base1.id'), primary_key=True),
+              Column('parent_id', ForeignKey('parent.id')),
+              Column('subdata', String(30)))
 
         Table('base2', metadata,
-            Column('id', Integer, primary_key=True,
-                    test_needs_autoincrement=True),
-            Column('base1_id', ForeignKey('base1.id')),
-            Column('data', String(30))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('base1_id', ForeignKey('base1.id')),
+              Column('data', String(30)))
         Table('sub2', metadata,
-            Column('id', Integer, ForeignKey('base2.id'), primary_key=True),
-            Column('subdata', String(30))
-            )
+              Column('id', Integer, ForeignKey('base2.id'), primary_key=True),
+              Column('subdata', String(30)))
         Table('ep1', metadata,
-            Column('id', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            Column('base2_id', Integer, ForeignKey('base2.id')),
-            Column('data', String(30))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('base2_id', Integer, ForeignKey('base2.id')),
+              Column('data', String(30)))
         Table('ep2', metadata,
-            Column('id', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            Column('base2_id', Integer, ForeignKey('base2.id')),
-            Column('data', String(30))
-            )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('base2_id', Integer, ForeignKey('base2.id')),
+              Column('data', String(30)))
 
     @classmethod
     def setup_classes(cls):
         class Parent(cls.Comparable):
             pass
+
         class Base1(cls.Comparable):
             pass
+
         class Sub1(Base1):
             pass
+
         class Base2(cls.Comparable):
             pass
+
         class Sub2(Base2):
             pass
+
         class EP1(cls.Comparable):
             pass
+
         class EP2(cls.Comparable):
             pass
 
@@ -1210,16 +1238,16 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = cls._classes()
 
         mapper(Parent, cls.tables.parent, properties={
-                'sub1': relationship(Sub1)
-            })
+            'sub1': relationship(Sub1)
+        })
         mapper(Base1, cls.tables.base1, properties={
-                'sub2': relationship(Sub2)
-            })
+            'sub2': relationship(Sub2)
+        })
         mapper(Sub1, cls.tables.sub1, inherits=Base1)
         mapper(Base2, cls.tables.base2, properties={
-                'ep1': relationship(EP1),
-                'ep2': relationship(EP2)
-            })
+            'ep1': relationship(EP1),
+            'ep2': relationship(EP2)
+        })
         mapper(Sub2, cls.tables.sub2, inherits=Base2)
         mapper(EP1, cls.tables.ep1)
         mapper(EP2, cls.tables.ep2)
@@ -1230,8 +1258,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = Session()
         self.assert_compile(
             s.query(Parent).join(Parent.sub1, Sub1.sub2).
-                join(Sub2.ep1).
-                join(Sub2.ep2),
+            join(Sub2.ep1).
+            join(Sub2.ep2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "
             "FROM parent JOIN (base1 JOIN sub1 ON base1.id = sub1.id) "
             "ON parent.id = sub1.parent_id JOIN "
@@ -1250,7 +1278,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = Session()
         self.assert_compile(
             s.query(Parent).join(Parent.sub1).
-                join(s2a, Sub1.sub2),
+            join(s2a, Sub1.sub2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "
             "FROM parent JOIN (base1 JOIN sub1 ON base1.id = sub1.id) "
             "ON parent.id = sub1.parent_id JOIN "
@@ -1265,8 +1293,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = Session()
         self.assert_compile(
             s.query(Base1).join(Base1.sub2).
-                join(Sub2.ep1).\
-                join(Sub2.ep2),
+            join(Sub2.ep1).
+            join(Sub2.ep2),
             "SELECT base1.id AS base1_id, base1.data AS base1_data "
             "FROM base1 JOIN (base2 JOIN sub2 "
             "ON base2.id = sub2.id) ON base1.id = "
@@ -1281,8 +1309,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = Session()
         self.assert_compile(
             s.query(Sub2).join(Base1, Base1.id == Sub2.base1_id).
-                join(Sub2.ep1).\
-                join(Sub2.ep2),
+            join(Sub2.ep1).
+            join(Sub2.ep2),
             "SELECT sub2.id AS sub2_id, base2.id AS base2_id, "
             "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
             "sub2.subdata AS sub2_subdata "
@@ -1298,8 +1326,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = Session()
         self.assert_compile(
             s.query(Sub2).join(Sub1, Sub1.id == Sub2.base1_id).
-                join(Sub2.ep1).\
-                join(Sub2.ep2),
+            join(Sub2.ep1).
+            join(Sub2.ep2),
             "SELECT sub2.id AS sub2_id, base2.id AS base2_id, "
             "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
             "sub2.subdata AS sub2_subdata "
@@ -1316,9 +1344,9 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
 
         s = Session()
         self.assert_compile(
-            s.query(Sub2).from_self().\
-                join(Sub2.ep1).
-                join(Sub2.ep2),
+            s.query(Sub2).from_self().
+            join(Sub2.ep1).
+            join(Sub2.ep2),
             "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
             "anon_1.base2_id AS anon_1_base2_id, "
             "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
@@ -1341,9 +1369,9 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             # otherwise the joins for Sub2.ep1/ep2 don't have columns
             # to latch onto.   Can't really make it better than this
             s.query(Parent, Sub2).join(Parent.sub1).\
-                join(Sub1.sub2).from_self().\
-                join(Sub2.ep1).
-                join(Sub2.ep2),
+            join(Sub1.sub2).from_self().\
+            join(Sub2.ep1).
+            join(Sub2.ep2),
             "SELECT anon_1.parent_id AS anon_1_parent_id, "
             "anon_1.parent_data AS anon_1_parent_data, "
             "anon_1.sub2_id AS anon_1_sub2_id, "
@@ -1602,7 +1630,7 @@ class JoinedloadOverWPolyAliased(
             "parent_1.owner_id AS parent_1_owner_id, "
             "owner_1.id AS owner_1_id, owner_1.type AS owner_1_type "
             "FROM link LEFT OUTER JOIN parent AS parent_1 "
-            "ON link.child_id = parent_1.id "  + extra +
+            "ON link.child_id = parent_1.id " + extra +
             "LEFT OUTER JOIN owner AS owner_1 "
             "ON owner_1.id = parent_1.owner_id"
         )
@@ -1636,12 +1664,11 @@ class JoinedloadOverWPolyAliased(
 
 
 class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
-                                        testing.AssertsCompiledSQL):
+                                   testing.AssertsCompiledSQL):
     """test long join paths with a joined-inh in the middle, where we go multiple
     times across the same joined-inh to the same target but with other classes
     in the middle.    E.g. test [ticket:2908]
     """
-
 
     run_setup_mappers = 'once'
     __dialect__ = 'default'
@@ -1686,8 +1713,8 @@ class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
 
     def test_join(self):
         Root, Intermediate, Sub1, Target = \
-                    self.classes.Root, self.classes.Intermediate, \
-                    self.classes.Sub1, self.classes.Target
+            self.classes.Root, self.classes.Intermediate, \
+            self.classes.Sub1, self.classes.Target
         s1_alias = aliased(Sub1)
         s2_alias = aliased(Sub1)
         t1_alias = aliased(Target)
@@ -1695,26 +1722,27 @@ class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
 
         sess = Session()
         q = sess.query(Root).\
-                join(s1_alias, Root.sub1).join(t1_alias, s1_alias.target).\
-                join(Root.intermediate).join(s2_alias, Intermediate.sub1).\
-                join(t2_alias, s2_alias.target)
-        self.assert_compile(q,
+            join(s1_alias, Root.sub1).join(t1_alias, s1_alias.target).\
+            join(Root.intermediate).join(s2_alias, Intermediate.sub1).\
+            join(t2_alias, s2_alias.target)
+        self.assert_compile(
+            q,
             "SELECT root.id AS root_id, root.sub1_id AS root_sub1_id "
             "FROM root "
             "JOIN (SELECT parent.id AS parent_id, sub1.id AS sub1_id "
-                "FROM parent JOIN sub1 ON parent.id = sub1.id) AS anon_1 "
-                "ON anon_1.sub1_id = root.sub1_id "
+            "FROM parent JOIN sub1 ON parent.id = sub1.id) AS anon_1 "
+            "ON anon_1.sub1_id = root.sub1_id "
             "JOIN target AS target_1 ON anon_1.sub1_id = target_1.sub1_id "
             "JOIN intermediate ON root.id = intermediate.root_id "
             "JOIN (SELECT parent.id AS parent_id, sub1.id AS sub1_id "
-                "FROM parent JOIN sub1 ON parent.id = sub1.id) AS anon_2 "
-                "ON anon_2.sub1_id = intermediate.sub1_id "
+            "FROM parent JOIN sub1 ON parent.id = sub1.id) AS anon_2 "
+            "ON anon_2.sub1_id = intermediate.sub1_id "
             "JOIN target AS target_2 ON anon_2.sub1_id = target_2.sub1_id")
 
     def test_join_flat(self):
         Root, Intermediate, Sub1, Target = \
-                    self.classes.Root, self.classes.Intermediate, \
-                    self.classes.Sub1, self.classes.Target
+            self.classes.Root, self.classes.Intermediate, \
+            self.classes.Sub1, self.classes.Target
         s1_alias = aliased(Sub1, flat=True)
         s2_alias = aliased(Sub1, flat=True)
         t1_alias = aliased(Target)
@@ -1722,54 +1750,62 @@ class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
 
         sess = Session()
         q = sess.query(Root).\
-                join(s1_alias, Root.sub1).join(t1_alias, s1_alias.target).\
-                join(Root.intermediate).join(s2_alias, Intermediate.sub1).\
-                join(t2_alias, s2_alias.target)
-        self.assert_compile(q,
+            join(s1_alias, Root.sub1).join(t1_alias, s1_alias.target).\
+            join(Root.intermediate).join(s2_alias, Intermediate.sub1).\
+            join(t2_alias, s2_alias.target)
+        self.assert_compile(
+            q,
             "SELECT root.id AS root_id, root.sub1_id AS root_sub1_id "
             "FROM root "
-            "JOIN (parent AS parent_1 JOIN sub1 AS sub1_1 ON parent_1.id = sub1_1.id) "
-                "ON sub1_1.id = root.sub1_id "
+            "JOIN (parent AS parent_1 JOIN sub1 AS sub1_1 "
+            "ON parent_1.id = sub1_1.id) "
+            "ON sub1_1.id = root.sub1_id "
             "JOIN target AS target_1 ON sub1_1.id = target_1.sub1_id "
             "JOIN intermediate ON root.id = intermediate.root_id "
-            "JOIN (parent AS parent_2 JOIN sub1 AS sub1_2 ON parent_2.id = sub1_2.id) "
-                "ON sub1_2.id = intermediate.sub1_id "
-            "JOIN target AS target_2 ON sub1_2.id = target_2.sub1_id"
-        )
+            "JOIN (parent AS parent_2 JOIN sub1 AS sub1_2 "
+            "ON parent_2.id = sub1_2.id) "
+            "ON sub1_2.id = intermediate.sub1_id "
+            "JOIN target AS target_2 ON sub1_2.id = target_2.sub1_id")
 
     def test_joinedload(self):
         Root, Intermediate, Sub1, Target = \
-                    self.classes.Root, self.classes.Intermediate, \
-                    self.classes.Sub1, self.classes.Target
+            self.classes.Root, self.classes.Intermediate, \
+            self.classes.Sub1, self.classes.Target
 
         sess = Session()
         q = sess.query(Root).\
-                options(
-                    joinedload(Root.sub1).joinedload(Sub1.target),
-                    joinedload(Root.intermediate).joinedload(Intermediate.sub1).\
-                        joinedload(Sub1.target),
-                )
-        self.assert_compile(q,
+            options(
+            joinedload(Root.sub1).joinedload(Sub1.target),
+            joinedload(Root.intermediate).joinedload(Intermediate.sub1).
+            joinedload(Sub1.target))
+        self.assert_compile(
+            q,
             "SELECT root.id AS root_id, root.sub1_id AS root_sub1_id, "
-            "target_1.id AS target_1_id, target_1.sub1_id AS target_1_sub1_id, "
+            "target_1.id AS target_1_id, "
+            "target_1.sub1_id AS target_1_sub1_id, "
             "sub1_1.id AS sub1_1_id, parent_1.id AS parent_1_id, "
             "intermediate_1.id AS intermediate_1_id, "
             "intermediate_1.sub1_id AS intermediate_1_sub1_id, "
             "intermediate_1.root_id AS intermediate_1_root_id, "
-            "target_2.id AS target_2_id, target_2.sub1_id AS target_2_sub1_id, "
+            "target_2.id AS target_2_id, "
+            "target_2.sub1_id AS target_2_sub1_id, "
             "sub1_2.id AS sub1_2_id, parent_2.id AS parent_2_id "
             "FROM root "
             "LEFT OUTER JOIN intermediate AS intermediate_1 "
-                    "ON root.id = intermediate_1.root_id "
+            "ON root.id = intermediate_1.root_id "
             "LEFT OUTER JOIN (parent AS parent_1 JOIN sub1 AS sub1_1 "
-                    "ON parent_1.id = sub1_1.id) ON sub1_1.id = intermediate_1.sub1_id "
-            "LEFT OUTER JOIN target AS target_1 ON sub1_1.id = target_1.sub1_id "
+            "ON parent_1.id = sub1_1.id) "
+            "ON sub1_1.id = intermediate_1.sub1_id "
+            "LEFT OUTER JOIN target AS target_1 "
+            "ON sub1_1.id = target_1.sub1_id "
             "LEFT OUTER JOIN (parent AS parent_2 JOIN sub1 AS sub1_2 "
-                    "ON parent_2.id = sub1_2.id) ON sub1_2.id = root.sub1_id "
-            "LEFT OUTER JOIN target AS target_2 ON sub1_2.id = target_2.sub1_id")
+            "ON parent_2.id = sub1_2.id) ON sub1_2.id = root.sub1_id "
+            "LEFT OUTER JOIN target AS target_2 "
+            "ON sub1_2.id = target_2.sub1_id")
 
 
-class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTest):
+class MultipleAdaptUsesEntityOverTableTest(
+        AssertsCompiledSQL, fixtures.MappedTest):
     __dialect__ = 'default'
     run_create_tables = None
     run_deletes = None
@@ -1777,29 +1813,28 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('name', String)
-        )
+              Column('id', Integer, primary_key=True),
+              Column('name', String))
         Table('b', metadata,
-                Column('id', Integer, ForeignKey('a.id'), primary_key=True)
-        )
+              Column('id', Integer, ForeignKey('a.id'), primary_key=True))
         Table('c', metadata,
-                Column('id', Integer, ForeignKey('a.id'), primary_key=True),
-                Column('bid', Integer, ForeignKey('b.id'))
-        )
+              Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+              Column('bid', Integer, ForeignKey('b.id')))
         Table('d', metadata,
-                Column('id', Integer, ForeignKey('a.id'), primary_key=True),
-                Column('cid', Integer, ForeignKey('c.id'))
-        )
+              Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+              Column('cid', Integer, ForeignKey('c.id')))
 
     @classmethod
     def setup_classes(cls):
         class A(cls.Comparable):
             pass
+
         class B(A):
             pass
+
         class C(A):
             pass
+
         class D(A):
             pass
 
@@ -1813,11 +1848,12 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
         mapper(D, d, inherits=A)
 
     def _two_join_fixture(self):
-        A, B, C, D = self.classes.A, self.classes.B, self.classes.C, self.classes.D
+        A, B, C, D = (self.classes.A, self.classes.B, self.classes.C,
+                      self.classes.D)
         s = Session()
         return s.query(B.name, C.name, D.name).select_from(B).\
-                        join(C, C.bid == B.id).\
-                        join(D, D.cid == C.id)
+            join(C, C.bid == B.id).\
+            join(D, D.cid == C.id)
 
     def test_two_joins_adaption(self):
         a, b, c, d = self.tables.a, self.tables.b, self.tables.c, self.tables.d
@@ -1849,14 +1885,14 @@ class MultipleAdaptUsesEntityOverTableTest(AssertsCompiledSQL, fixtures.MappedTe
 
     def test_two_joins_sql(self):
         q = self._two_join_fixture()
-        self.assert_compile(q,
+        self.assert_compile(
+            q,
             "SELECT a.name AS a_name, a_1.name AS a_1_name, "
             "a_2.name AS a_2_name "
             "FROM a JOIN b ON a.id = b.id JOIN "
             "(a AS a_1 JOIN c AS c_1 ON a_1.id = c_1.id) ON c_1.bid = b.id "
             "JOIN (a AS a_2 JOIN d AS d_1 ON a_2.id = d_1.id) "
-            "ON d_1.cid = c_1.id"
-        )
+            "ON d_1.cid = c_1.id")
 
 
 class SameNameOnJoined(fixtures.MappedTest):
@@ -2003,4 +2039,3 @@ class BetweenSubclassJoinWExtraJoinedLoad(
             "seen AS seen_1 ON people.id = seen_1.id LEFT OUTER JOIN "
             "seen AS seen_2 ON people_1.id = seen_2.id"
         )
-

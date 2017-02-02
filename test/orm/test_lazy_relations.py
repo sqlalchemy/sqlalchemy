@@ -104,7 +104,7 @@ class LazyTest(_fixtures.FixtureTest):
             addresses=relationship(Address, lazy='select'),
         ))
         q = create_session().query(User)
-        l = q.filter(users.c.id == addresses.c.user_id).\
+        result = q.filter(users.c.id == addresses.c.user_id).\
             order_by(addresses.c.email_address).all()
         assert [
             User(id=8, addresses=[
@@ -118,7 +118,7 @@ class LazyTest(_fixtures.FixtureTest):
             User(id=7, addresses=[
                 Address(id=1)
             ]),
-        ] == l
+        ] == result
 
     def test_orderby_desc(self):
         Address, addresses, users, User = (
@@ -201,11 +201,11 @@ class LazyTest(_fixtures.FixtureTest):
         q = sess.query(User)
 
         if testing.against('mssql'):
-            l = q.limit(2).all()
-            assert self.static.user_all_result[:2] == l
+            result = q.limit(2).all()
+            assert self.static.user_all_result[:2] == result
         else:
-            l = q.limit(2).offset(1).all()
-            assert self.static.user_all_result[1:3] == l
+            result = q.limit(2).offset(1).all()
+            assert self.static.user_all_result[1:3] == result
 
     def test_distinct(self):
         users, items, order_items, orders, \
@@ -238,8 +238,9 @@ class LazyTest(_fixtures.FixtureTest):
         s = sa.union_all(
             u2.select(use_labels=True),
             u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
-        l = q.filter(s.c.u2_id == User.id).order_by(User.id).distinct().all()
-        eq_(self.static.user_all_result, l)
+        result = q.filter(s.c.u2_id == User.id).order_by(User.id).distinct() \
+            .all()
+        eq_(self.static.user_all_result, result)
 
     def test_uselist_false_warning(self):
         """test that multiple rows received by a
@@ -300,8 +301,8 @@ class LazyTest(_fixtures.FixtureTest):
                 mapper(Address, addresses), lazy='select', uselist=False)
         ))
         q = create_session().query(User)
-        l = q.filter(users.c.id == 7).all()
-        assert [User(id=7, address=Address(id=1))] == l
+        result = q.filter(users.c.id == 7).all()
+        assert [User(id=7, address=Address(id=1))] == result
 
     def test_many_to_one_binds(self):
         Address, addresses, users, User = (
@@ -945,9 +946,8 @@ class O2MWOSideFixedTest(fixtures.MappedTest):
             'city': relationship(City,
                                  primaryjoin=and_(
                                      person.c.city_id == city.c.id,
-                                     city.c.deleted == False),
-                                 backref='people'
-                                 )
+                                     city.c.deleted == False),  # noqa
+                                 backref='people')
         })
         mapper(City, city)
 

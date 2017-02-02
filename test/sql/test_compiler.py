@@ -3092,7 +3092,6 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                 'x2': 1,
                 'y': 2})
 
-
     def test_labels_no_collision(self):
 
         t = table('foo', column('id'), column('foo_id'))
@@ -3856,7 +3855,7 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_val_is_null_coerced(self):
         t = self._fixture()
-        self.assert_compile(and_(t.c.id == None),
+        self.assert_compile(and_(t.c.id == None),  # noqa
                             "foo.id IS NULL")
 
     def test_val_and_None(self):

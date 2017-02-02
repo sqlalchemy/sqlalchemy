@@ -1,10 +1,10 @@
 """
-a series of tests which assert the behavior of moving objects between collections
-and scalar attributes resulting in the expected state w.r.t. backrefs, add/remove
-events, etc.
+a series of tests which assert the behavior of moving objects between
+collections and scalar attributes resulting in the expected state w.r.t.
+backrefs, add/remove events, etc.
 
-there's a particular focus on collections that have "uselist=False", since in these
-cases the re-assignment of an attribute means the previous owner needs an
+there's a particular focus on collections that have "uselist=False", since in
+these cases the re-assignment of an attribute means the previous owner needs an
 UPDATE in the database.
 
 """
@@ -21,19 +21,20 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
+
 class O2MCollectionTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
     def setup_mappers(cls):
         Address, addresses, users, User = (cls.classes.Address,
-                                cls.tables.addresses,
-                                cls.tables.users,
-                                cls.classes.User)
+                                           cls.tables.addresses,
+                                           cls.tables.users,
+                                           cls.classes.User)
 
         mapper(Address, addresses)
-        mapper(User, users, properties = dict(
-            addresses = relationship(Address, backref="user"),
+        mapper(User, users, properties=dict(
+            addresses=relationship(Address, backref="user"),
         ))
 
     def test_collection_move_hitslazy(self):
@@ -43,12 +44,12 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
         a3 = Address(email_address="address3")
-        u1= User(name='jack', addresses=[a1, a2, a3])
-        u2= User(name='ed')
+        u1 = User(name='jack', addresses=[a1, a2, a3])
+        u2 = User(name='ed')
         sess.add_all([u1, a1, a2, a3])
         sess.commit()
 
-        #u1.addresses
+        # u1.addresses
 
         def go():
             u2.addresses.append(a1)
@@ -65,7 +66,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         u2 = User(name='ed')
         sess.add_all([u1, u2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load u1.addresses collection
         u1.addresses
@@ -88,7 +89,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         u2 = User(name='ed')
         sess.add_all([u1, u2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         u2.addresses.append(a1)
 
@@ -109,7 +110,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         u2 = User(name='ed')
         sess.add_all([u1, u2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load u1.addresses collection
         u1.addresses
@@ -155,7 +156,6 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-
         sess = sessionmaker()()
         u1 = User(name='jack')
         u2 = User(name='ed')
@@ -190,8 +190,6 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
         assert a1 not in u1.addresses
-
-
 
     def test_scalar_move_notloaded(self):
         User, Address = self.classes.User, self.classes.Address
@@ -244,13 +242,14 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
         Address, addresses, users, User = (cls.classes.Address,
-                                cls.tables.addresses,
-                                cls.tables.users,
-                                cls.classes.User)
+                                           cls.tables.addresses,
+                                           cls.tables.users,
+                                           cls.classes.User)
 
         mapper(Address, addresses)
-        mapper(User, users, properties = {
-            'address':relationship(Address, backref=backref("user"), uselist=False)
+        mapper(User, users, properties={
+            'address': relationship(Address, backref=backref("user"),
+                                    uselist=False)
         })
 
     def test_collection_move_preloaded(self):
@@ -262,7 +261,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
 
         u2 = User(name='ed')
         sess.add_all([u1, u2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load u1.address
         u1.address
@@ -288,7 +287,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         u1 = User(name='jack', address=a1)
 
         sess.add_all([u1, a1, a2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load a1.user
         a1.user
@@ -312,7 +311,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
 
         u2 = User(name='ed')
         sess.add_all([u1, u2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # reassign
         u2.address = a1
@@ -334,7 +333,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         u1 = User(name='jack', address=a1)
 
         sess.add_all([u1, a1, a2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # reassign
         a2.user = u1
@@ -355,7 +354,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
 
         u2 = User(name='ed')
         sess.add_all([u1, u2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load u1.address
         u1.address
@@ -382,7 +381,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         u1 = User(name='jack', address=a1)
 
         sess.add_all([u1, a1, a2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load
         assert a1.user is u1
@@ -402,19 +401,20 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         assert a1.user is None
         assert a2.user is u1
 
+
 class O2OScalarMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
     def setup_mappers(cls):
         Address, addresses, users, User = (cls.classes.Address,
-                                cls.tables.addresses,
-                                cls.tables.users,
-                                cls.classes.User)
+                                           cls.tables.addresses,
+                                           cls.tables.users,
+                                           cls.classes.User)
 
         mapper(Address, addresses)
-        mapper(User, users, properties = {
-            'address':relationship(Address, uselist=False)
+        mapper(User, users, properties={
+            'address': relationship(Address, uselist=False)
         })
 
     def test_collection_move_commitfirst(self):
@@ -426,7 +426,7 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
 
         u2 = User(name='ed')
         sess.add_all([u1, u2])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load u1.address
         u1.address
@@ -441,21 +441,23 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
         assert u1.address is None
         assert u2.address is a1
 
+
 class O2OScalarOrphanTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
     def setup_mappers(cls):
         Address, addresses, users, User = (cls.classes.Address,
-                                cls.tables.addresses,
-                                cls.tables.users,
-                                cls.classes.User)
+                                           cls.tables.addresses,
+                                           cls.tables.users,
+                                           cls.classes.User)
 
         mapper(Address, addresses)
-        mapper(User, users, properties = {
-            'address':relationship(Address, uselist=False,
+        mapper(User, users, properties={
+            'address': relationship(
+                Address, uselist=False,
                 backref=backref('user', single_parent=True,
-                                    cascade="all, delete-orphan"))
+                                cascade="all, delete-orphan"))
         })
 
     def test_m2o_event(self):
@@ -469,7 +471,7 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
         sess.commit()
         sess.expunge(u1)
 
-        u2= User(name='ed')
+        u2 = User(name='ed')
         # the _SingleParent extension sets the backref get to "active" !
         # u1 gets loaded and deleted
         u2.address = a1
@@ -482,15 +484,16 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        keywords, items, item_keywords, Keyword, Item = (cls.tables.keywords,
-                                cls.tables.items,
-                                cls.tables.item_keywords,
-                                cls.classes.Keyword,
-                                cls.classes.Item)
+        keywords, items, item_keywords, \
+            Keyword, Item = (cls.tables.keywords,
+                             cls.tables.items,
+                             cls.tables.item_keywords,
+                             cls.classes.Keyword,
+                             cls.classes.Item)
 
         mapper(Item, items, properties={
-            'keywords':relationship(Keyword, secondary=item_keywords,
-                                    backref='items')
+            'keywords': relationship(Keyword, secondary=item_keywords,
+                                     backref='items')
         })
         mapper(Keyword, keywords)
 
@@ -507,7 +510,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         session.expire(i1, ['keywords'])
 
-        k1= Keyword(name='k1')
+        k1 = Keyword(name='k1')
         k1.items.append(i1)
         k1.items.remove(i1)
         eq_(i1.keywords, [])
@@ -519,7 +522,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         session = Session(autoflush=False)
 
-        k1= Keyword(name='k1')
+        k1 = Keyword(name='k1')
         i1 = Item(description='i1', keywords=[k1])
         session.add(i1)
         session.commit()
@@ -561,8 +564,8 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         # the pending collection was removed
         assert 'keywords' not in attributes.\
-                                instance_state(i1).\
-                                _pending_mutations
+            instance_state(i1).\
+            _pending_mutations
 
     def test_duplicate_adds(self):
         Item, Keyword = (self.classes.Item, self.classes.Keyword)
@@ -589,19 +592,21 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
         session.commit()
         eq_(k1.items, [i1])
 
+
 class M2MScalarMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
     def setup_mappers(cls):
-        keywords, items, item_keywords, Keyword, Item = (cls.tables.keywords,
-                                cls.tables.items,
-                                cls.tables.item_keywords,
-                                cls.classes.Keyword,
-                                cls.classes.Item)
+        keywords, items, item_keywords, \
+            Keyword, Item = (cls.tables.keywords,
+                             cls.tables.items,
+                             cls.tables.item_keywords,
+                             cls.classes.Keyword,
+                             cls.classes.Item)
 
         mapper(Item, items, properties={
-            'keyword':relationship(Keyword, secondary=item_keywords,
+            'keyword': relationship(Keyword, secondary=item_keywords,
                                     uselist=False,
                                     backref=backref("item", uselist=False))
         })
@@ -617,7 +622,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
         i2 = Item(description='i2')
 
         sess.add_all([i1, i2, k1])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load i1.keyword
         assert i1.keyword is k1
@@ -640,7 +645,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
         i2 = Item(description='i2')
 
         sess.add_all([i1, i2, k1])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         i2.keyword = k1
 
@@ -659,7 +664,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
         i2 = Item(description='i2')
 
         sess.add_all([i1, i2, k1])
-        sess.commit() # everything is expired
+        sess.commit()  # everything is expired
 
         # load i1.keyword
         assert i1.keyword is k1
@@ -672,21 +677,21 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
         assert i1.keyword is None
         assert i2.keyword is k1
 
+
 class O2MStaleBackrefTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
     def setup_mappers(cls):
         Address, addresses, users, User = (cls.classes.Address,
-                                cls.tables.addresses,
-                                cls.tables.users,
-                                cls.classes.User)
+                                           cls.tables.addresses,
+                                           cls.tables.users,
+                                           cls.classes.User)
 
         mapper(Address, addresses)
-        mapper(User, users, properties = dict(
-            addresses = relationship(Address, backref="user"),
+        mapper(User, users, properties=dict(
+            addresses=relationship(Address, backref="user"),
         ))
-
 
     def test_backref_pop_m2o(self):
         User, Address = self.classes.User, self.classes.Address
@@ -703,20 +708,22 @@ class O2MStaleBackrefTest(_fixtures.FixtureTest):
         assert a1.user is u2
         assert a1 in u2.addresses
 
+
 class M2MStaleBackrefTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
     def setup_mappers(cls):
-        keywords, items, item_keywords, Keyword, Item = (cls.tables.keywords,
-                                cls.tables.items,
-                                cls.tables.item_keywords,
-                                cls.classes.Keyword,
-                                cls.classes.Item)
+        keywords, items, item_keywords, \
+            Keyword, Item = (cls.tables.keywords,
+                             cls.tables.items,
+                             cls.tables.item_keywords,
+                             cls.classes.Keyword,
+                             cls.classes.Item)
 
         mapper(Item, items, properties={
-            'keywords':relationship(Keyword, secondary=item_keywords,
-                                    backref='items')
+            'keywords': relationship(Keyword, secondary=item_keywords,
+                                     backref='items')
         })
         mapper(Keyword, keywords)
 

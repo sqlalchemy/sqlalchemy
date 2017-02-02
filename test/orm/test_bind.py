@@ -481,5 +481,3 @@ class GetBindTest(fixtures.MappedTest):
             session.get_bind(self.classes.ConcreteSubClass),
             concrete_sub_bind
         )
-
-

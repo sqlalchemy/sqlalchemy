@@ -978,7 +978,7 @@ class JoinTest(fixtures.TestBase):
         # if _JoinedListener fixes .listeners
         # at construction time, then we don't get
         # the new listeners.
-        #eq_(l1.mock_calls, [])
+        # eq_(l1.mock_calls, [])
 
         # alternatively, if _JoinedListener shares the list
         # using a @property, then we get them, at the arguable

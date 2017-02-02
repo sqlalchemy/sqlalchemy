@@ -1818,6 +1818,7 @@ def _produce_test(inline, stringbased):
         stringbased and 'String' or 'Literal')
     return ExplicitJoinTest
 
+
 for inline in True, False:
     for stringbased in True, False:
         testclass = _produce_test(inline, stringbased)

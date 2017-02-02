@@ -51,7 +51,7 @@ class _UpdateFromTestBase(object):
                 (9, 'fred'),
                 (10, 'chuck')
             ),
-            addresses = (
+            addresses=(
                 ('id', 'user_id', 'name', 'email_address'),
                 (1, 7, 'x', 'jack@bean.com'),
                 (2, 8, 'x', 'ed@wood.com'),
@@ -59,7 +59,7 @@ class _UpdateFromTestBase(object):
                 (4, 8, 'x', 'ed@lala.com'),
                 (5, 9, 'x', 'fred@fred.com')
             ),
-            dingalings = (
+            dingalings=(
                 ('id', 'address_id', 'data'),
                 (1, 2, 'ding 1/2'),
                 (2, 5, 'ding 2/5')
@@ -340,13 +340,14 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_where_empty(self):
         table1 = self.tables.mytable
         self.assert_compile(
-            table1.update().where(
-                and_()),
-            "UPDATE mytable SET myid=:myid, name=:name, description=:description")
+            table1.update().where(and_()),
+            "UPDATE mytable SET myid=:myid, name=:name, "
+            "description=:description")
         self.assert_compile(
             table1.update().where(
                 or_()),
-            "UPDATE mytable SET myid=:myid, name=:name, description=:description")
+            "UPDATE mytable SET myid=:myid, name=:name, "
+            "description=:description")
 
     def test_prefix_with(self):
         table1 = self.tables.mytable

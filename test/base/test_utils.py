@@ -212,8 +212,8 @@ class OrderedDictTest(fixtures.TestBase):
         eq_(list(o.values()), [1, 2, 3, 4, 5, 6])
 
     def test_odict_constructor(self):
-        o = util.OrderedDict([('name', 'jbe'), ('fullname', 'jonathan'
-                             ), ('password', '')])
+        o = util.OrderedDict([('name', 'jbe'),
+                              ('fullname', 'jonathan'), ('password', '')])
         eq_(list(o.keys()), ['name', 'fullname', 'password'])
 
     def test_odict_copy(self):
@@ -472,7 +472,10 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_dupes_add(self):
         cc = sql.ColumnCollection()
 
-        c1, c2a, c3, c2b = column('c1'), column('c2'), column('c3'), column('c2')
+        c1, c2a, c3, c2b = (column('c1'),
+                            column('c2'),
+                            column('c3'),
+                            column('c2'))
 
         cc.add(c1)
         cc.add(c2a)
@@ -496,7 +499,10 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_replace(self):
         cc = sql.ColumnCollection()
 
-        c1, c2a, c3, c2b = column('c1'), column('c2'), column('c3'), column('c2')
+        c1, c2a, c3, c2b = (column('c1'),
+                            column('c2'),
+                            column('c3'),
+                            column('c2'))
 
         cc.add(c1)
         cc.add(c2a)
@@ -517,7 +523,10 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_replace_key_matches(self):
         cc = sql.ColumnCollection()
 
-        c1, c2a, c3, c2b = column('c1'), column('c2'), column('c3'), column('X')
+        c1, c2a, c3, c2b = (column('c1'),
+                            column('c2'),
+                            column('c3'),
+                            column('X'))
         c2b.key = 'c2'
 
         cc.add(c1)
@@ -539,7 +548,10 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_replace_name_matches(self):
         cc = sql.ColumnCollection()
 
-        c1, c2a, c3, c2b = column('c1'), column('c2'), column('c3'), column('c2')
+        c1, c2a, c3, c2b = (column('c1'),
+                            column('c2'),
+                            column('c3'),
+                            column('c2'))
         c2b.key = 'X'
 
         cc.add(c1)
@@ -583,7 +595,10 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_dupes_extend(self):
         cc = sql.ColumnCollection()
 
-        c1, c2a, c3, c2b = column('c1'), column('c2'), column('c3'), column('c2')
+        c1, c2a, c3, c2b = (column('c1'),
+                            column('c2'),
+                            column('c3'),
+                            column('c2'))
 
         cc.add(c1)
         cc.add(c2a)
@@ -607,7 +622,10 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_dupes_update(self):
         cc = sql.ColumnCollection()
 
-        c1, c2a, c3, c2b = column('c1'), column('c2'), column('c3'), column('c2')
+        c1, c2a, c3, c2b = (column('c1'),
+                            column('c2'),
+                            column('c3'),
+                            column('c2'))
 
         cc.add(c1)
         cc.add(c2a)
@@ -627,7 +645,11 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_extend_existing(self):
         cc = sql.ColumnCollection()
 
-        c1, c2, c3, c4, c5 = column('c1'), column('c2'), column('c3'), column('c4'), column('c5')
+        c1, c2, c3, c4, c5 = (column('c1'),
+                              column('c2'),
+                              column('c3'),
+                              column('c4'),
+                              column('c5'))
 
         cc.extend([c1, c2])
         eq_(cc._all_columns, [c1, c2])
@@ -641,7 +663,11 @@ class ColumnCollectionTest(fixtures.TestBase):
     def test_update_existing(self):
         cc = sql.ColumnCollection()
 
-        c1, c2, c3, c4, c5 = column('c1'), column('c2'), column('c3'), column('c4'), column('c5')
+        c1, c2, c3, c4, c5 = (column('c1'),
+                              column('c2'),
+                              column('c3'),
+                              column('c4'),
+                              column('c5'))
 
         cc.update([('c1', c1), ('c2', c2)])
         eq_(cc._all_columns, [c1, c2])
@@ -651,7 +677,6 @@ class ColumnCollectionTest(fixtures.TestBase):
         cc.update([('c4', c4), ('c2', c2), ('c5', c5)])
 
         eq_(cc._all_columns, [c1, c2, c3, c4, c5])
-
 
 
 class LRUTest(fixtures.TestBase):
@@ -664,38 +689,38 @@ class LRUTest(fixtures.TestBase):
             def __str__(self):
                 return "item id %d" % self.id
 
-        l = util.LRUCache(10, threshold=.2)
+        lru = util.LRUCache(10, threshold=.2)
 
         for id in range(1, 20):
-            l[id] = item(id)
+            lru[id] = item(id)
 
         # first couple of items should be gone
-        assert 1 not in l
-        assert 2 not in l
+        assert 1 not in lru
+        assert 2 not in lru
 
         # next batch over the threshold of 10 should be present
         for id_ in range(11, 20):
-            assert id_ in l
+            assert id_ in lru
 
-        l[12]
-        l[15]
-        l[23] = item(23)
-        l[24] = item(24)
-        l[25] = item(25)
-        l[26] = item(26)
-        l[27] = item(27)
+        lru[12]
+        lru[15]
+        lru[23] = item(23)
+        lru[24] = item(24)
+        lru[25] = item(25)
+        lru[26] = item(26)
+        lru[27] = item(27)
 
-        assert 11 not in l
-        assert 13 not in l
+        assert 11 not in lru
+        assert 13 not in lru
 
         for id_ in (25, 24, 23, 14, 12, 19, 18, 17, 16, 15):
-            assert id_ in l
+            assert id_ in lru
 
-        i1 = l[25]
+        i1 = lru[25]
         i2 = item(25)
-        l[25] = i2
-        assert 25 in l
-        assert l[25] is i2
+        lru[25] = i2
+        assert 25 in lru
+        assert lru[25] is i2
 
 
 class ImmutableSubclass(str):
@@ -718,9 +743,9 @@ class FlattenIteratorTest(fixtures.TestBase):
             def __iter__(self):
                 return iter(self + '')
 
-        assert list(util.flatten_iterator([IterString('asdf'),
-                    [IterString('x'), IterString('y')]])) == ['asdf',
-                'x', 'y']
+        iter_list = [IterString('asdf'), [IterString('x'), IterString('y')]]
+
+        assert list(util.flatten_iterator(iter_list)) == ['asdf', 'x', 'y']
 
 
 class HashOverride(object):
@@ -1252,8 +1277,8 @@ class IdentitySetTest(fixtures.TestBase):
         eq_(ids.copy(), ids)
 
         # explicit __eq__ and __ne__ tests
-        assert ids != None
-        assert not(ids == None)
+        assert ids != None  # noqa
+        assert not(ids == None)  # noqa
 
         ne_(ids, IdentitySet([o1, o2, o3]))
         ids.clear()
@@ -1324,7 +1349,7 @@ class OrderedIdentitySetTest(fixtures.TestBase):
         eq_ = self.assert_eq
 
         a, b, c, d, e, f, g = \
-                elem(), elem(), elem(), elem(), elem(), elem(), elem()
+            elem(), elem(), elem(), elem(), elem(), elem(), elem()
 
         s1 = util.OrderedIdentitySet([a, b, c])
         s2 = util.OrderedIdentitySet([d, e, f])
@@ -1343,8 +1368,8 @@ class DictlikeIteritemsTest(fixtures.TestBase):
 
     def _notok(self, instance):
         assert_raises(TypeError,
-                          util.dictlike_iteritems,
-                          instance)
+                      util.dictlike_iteritems,
+                      instance)
 
     def test_dict(self):
         d = dict(a=1, b=2, c=3)
@@ -1686,6 +1711,7 @@ class ArgInspectionTest(fixtures.TestBase):
     @fails_if(lambda: util.pypy,  "pypy returns plain *arg, **kw")
     def test_callable_argspec_partial(self):
         from functools import partial
+
         def foo(x, y, z, **kw):
             pass
         bar = partial(foo, 5)
@@ -1694,6 +1720,7 @@ class ArgInspectionTest(fixtures.TestBase):
             TypeError,
             get_callable_argspec, bar
         )
+
 
 class SymbolTest(fixtures.TestBase):
 
@@ -1758,62 +1785,62 @@ class TestFormatArgspec(fixtures.TestBase):
             eq_(parsed, wanted)
 
         test(lambda: None,
-           {'args': '()', 'self_arg': None,
-            'apply_kw': '()', 'apply_pos': '()'})
+             {'args': '()', 'self_arg': None,
+              'apply_kw': '()', 'apply_pos': '()'})
 
         test(lambda: None,
-           {'args': '', 'self_arg': None,
-            'apply_kw': '', 'apply_pos': ''},
-           grouped=False)
+             {'args': '', 'self_arg': None,
+              'apply_kw': '', 'apply_pos': ''},
+             grouped=False)
 
         test(lambda self: None,
-           {'args': '(self)', 'self_arg': 'self',
-            'apply_kw': '(self)', 'apply_pos': '(self)'})
+             {'args': '(self)', 'self_arg': 'self',
+              'apply_kw': '(self)', 'apply_pos': '(self)'})
 
         test(lambda self: None,
-           {'args': 'self', 'self_arg': 'self',
-            'apply_kw': 'self', 'apply_pos': 'self'},
-           grouped=False)
+             {'args': 'self', 'self_arg': 'self',
+              'apply_kw': 'self', 'apply_pos': 'self'},
+             grouped=False)
 
         test(lambda *a: None,
-           {'args': '(*a)', 'self_arg': 'a[0]',
-            'apply_kw': '(*a)', 'apply_pos': '(*a)'})
+             {'args': '(*a)', 'self_arg': 'a[0]',
+              'apply_kw': '(*a)', 'apply_pos': '(*a)'})
 
         test(lambda **kw: None,
-           {'args': '(**kw)', 'self_arg': None,
-            'apply_kw': '(**kw)', 'apply_pos': '(**kw)'})
+             {'args': '(**kw)', 'self_arg': None,
+              'apply_kw': '(**kw)', 'apply_pos': '(**kw)'})
 
         test(lambda *a, **kw: None,
-           {'args': '(*a, **kw)', 'self_arg': 'a[0]',
-            'apply_kw': '(*a, **kw)', 'apply_pos': '(*a, **kw)'})
+             {'args': '(*a, **kw)', 'self_arg': 'a[0]',
+              'apply_kw': '(*a, **kw)', 'apply_pos': '(*a, **kw)'})
 
         test(lambda a, *b: None,
-           {'args': '(a, *b)', 'self_arg': 'a',
-            'apply_kw': '(a, *b)', 'apply_pos': '(a, *b)'})
+             {'args': '(a, *b)', 'self_arg': 'a',
+              'apply_kw': '(a, *b)', 'apply_pos': '(a, *b)'})
 
         test(lambda a, **b: None,
-           {'args': '(a, **b)', 'self_arg': 'a',
-            'apply_kw': '(a, **b)', 'apply_pos': '(a, **b)'})
+             {'args': '(a, **b)', 'self_arg': 'a',
+              'apply_kw': '(a, **b)', 'apply_pos': '(a, **b)'})
 
         test(lambda a, *b, **c: None,
-           {'args': '(a, *b, **c)', 'self_arg': 'a',
-            'apply_kw': '(a, *b, **c)', 'apply_pos': '(a, *b, **c)'})
+             {'args': '(a, *b, **c)', 'self_arg': 'a',
+              'apply_kw': '(a, *b, **c)', 'apply_pos': '(a, *b, **c)'})
 
         test(lambda a, b=1, **c: None,
-           {'args': '(a, b=1, **c)', 'self_arg': 'a',
-            'apply_kw': '(a, b=b, **c)', 'apply_pos': '(a, b, **c)'})
+             {'args': '(a, b=1, **c)', 'self_arg': 'a',
+              'apply_kw': '(a, b=b, **c)', 'apply_pos': '(a, b, **c)'})
 
         test(lambda a=1, b=2: None,
-           {'args': '(a=1, b=2)', 'self_arg': 'a',
-            'apply_kw': '(a=a, b=b)', 'apply_pos': '(a, b)'})
+             {'args': '(a=1, b=2)', 'self_arg': 'a',
+              'apply_kw': '(a=a, b=b)', 'apply_pos': '(a, b)'})
 
         test(lambda a=1, b=2: None,
-           {'args': 'a=1, b=2', 'self_arg': 'a',
-            'apply_kw': 'a=a, b=b', 'apply_pos': 'a, b'},
-           grouped=False)
+             {'args': 'a=1, b=2', 'self_arg': 'a',
+              'apply_kw': 'a=a, b=b', 'apply_pos': 'a, b'},
+             grouped=False)
 
     @testing.fails_if(lambda: util.pypy,
-                "pypy doesn't report O.__init__ as object.__init__")
+                      "pypy doesn't report Obj.__init__ as object.__init__")
     def test_init_grouped(self):
         object_spec = {
             'args': '(self)', 'self_arg': 'self',
@@ -1830,7 +1857,7 @@ class TestFormatArgspec(fixtures.TestBase):
         self._test_init(True, object_spec, wrapper_spec, custom_spec)
 
     @testing.fails_if(lambda: util.pypy,
-                "pypy doesn't report O.__init__ as object.__init__")
+                      "pypy doesn't report Obj.__init__ as object.__init__")
     def test_init_bare(self):
         object_spec = {
             'args': 'self', 'self_arg': 'self',
@@ -1853,45 +1880,45 @@ class TestFormatArgspec(fixtures.TestBase):
                 parsed = util.format_argspec_init(fn, grouped=grouped)
             eq_(parsed, wanted)
 
-        class O(object):
+        class Obj(object):
             pass
 
-        test(O.__init__, object_spec)
+        test(Obj.__init__, object_spec)
 
-        class O(object):
+        class Obj(object):
             def __init__(self):
                 pass
 
-        test(O.__init__, object_spec)
+        test(Obj.__init__, object_spec)
 
-        class O(object):
+        class Obj(object):
             def __init__(slef, a=123):
                 pass
 
-        test(O.__init__, custom_spec)
+        test(Obj.__init__, custom_spec)
 
-        class O(list):
+        class Obj(list):
             pass
 
-        test(O.__init__, wrapper_spec)
+        test(Obj.__init__, wrapper_spec)
 
-        class O(list):
+        class Obj(list):
             def __init__(self, *args, **kwargs):
                 pass
 
-        test(O.__init__, wrapper_spec)
+        test(Obj.__init__, wrapper_spec)
 
-        class O(list):
+        class Obj(list):
             def __init__(self):
                 pass
 
-        test(O.__init__, object_spec)
+        test(Obj.__init__, object_spec)
 
-        class O(list):
+        class Obj(list):
             def __init__(slef, a=123):
                 pass
 
-        test(O.__init__, custom_spec)
+        test(Obj.__init__, custom_spec)
 
 
 class GenericReprTest(fixtures.TestBase):
@@ -1938,6 +1965,7 @@ class GenericReprTest(fixtures.TestBase):
                 self.b = b
                 self.c = c
                 self.d = d
+
         class Bar(Foo):
             def __init__(self, e, f, g=5, **kw):
                 self.e = e
@@ -1966,6 +1994,7 @@ class GenericReprTest(fixtures.TestBase):
             def __init__(self, a=1, b=2):
                 self.a = a
                 self.b = b
+
         class Bar(Foo):
             def __init__(self, b=3, c=4, **kw):
                 self.c = c
@@ -1978,7 +2007,6 @@ class GenericReprTest(fixtures.TestBase):
             ),
             "Bar(b='b', c='c', a='a')"
         )
-
 
     def test_discard_vargs(self):
         class Foo(object):
@@ -2055,13 +2083,13 @@ class AsInterfaceTest(fixtures.TestBase):
     def test_instance(self):
         obj = object()
         assert_raises(TypeError, util.as_interface, obj,
-                          cls=self.Something)
+                      cls=self.Something)
 
         assert_raises(TypeError, util.as_interface, obj,
-                          methods=('foo'))
+                      methods=('foo'))
 
         assert_raises(TypeError, util.as_interface, obj,
-                          cls=self.Something, required=('foo'))
+                      cls=self.Something, required=('foo'))
 
         obj = self.Something()
         eq_(obj, util.as_interface(obj, cls=self.Something))
@@ -2077,15 +2105,15 @@ class AsInterfaceTest(fixtures.TestBase):
         for obj in partial, slotted:
             eq_(obj, util.as_interface(obj, cls=self.Something))
             assert_raises(TypeError, util.as_interface, obj,
-                              methods=('foo'))
+                          methods=('foo'))
             eq_(obj, util.as_interface(obj, methods=('bar',)))
             eq_(obj, util.as_interface(obj, cls=self.Something,
                                        required=('bar',)))
             assert_raises(TypeError, util.as_interface, obj,
-                              cls=self.Something, required=('foo',))
+                          cls=self.Something, required=('foo',))
 
             assert_raises(TypeError, util.as_interface, obj,
-                              cls=self.Something, required=self.Something)
+                          cls=self.Something, required=self.Something)
 
     def test_dict(self):
         obj = {}
@@ -2103,7 +2131,7 @@ class AsInterfaceTest(fixtures.TestBase):
                 found.remove(method)
             assert not found
 
-        fn = lambda self: 123
+        def fn(self): return 123
         obj = {'foo': fn, 'bar': fn}
         res = util.as_interface(obj, cls=self.Something)
         assertAdapted(res, 'foo', 'bar')
@@ -2236,7 +2264,7 @@ class ReraiseTest(fixtures.TestBase):
         def go():
             try:
                 raise m1
-            except:
+            except Exception:
                 with util.safe_reraise():
                     go2()
 

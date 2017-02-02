@@ -15,6 +15,7 @@ from test.orm import _fixtures
 from sqlalchemy import event, and_, case
 from sqlalchemy.testing.schema import Table, Column
 
+
 class MergeTest(_fixtures.FixtureTest):
     """Session.merge() functionality"""
 
@@ -56,19 +57,20 @@ class MergeTest(_fixtures.FixtureTest):
         mapper(User, users)
         sess = create_session()
         u = User(name='fred')
+
         def go():
             sess.merge(u)
         self.assert_sql_count(testing.db, go, 0)
 
     def test_transient_to_pending_collection(self):
         User, Address, addresses, users = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users)
 
         mapper(User, users, properties={
             'addresses': relationship(Address, backref='user',
-                                  collection_class=OrderedSet)})
+                                      collection_class=OrderedSet)})
         mapper(Address, addresses)
         load = self.load_tracker(User)
         self.load_tracker(Address, load)
@@ -76,7 +78,7 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(id=7, name='fred', addresses=OrderedSet([
             Address(id=1, email_address='fred1'),
             Address(id=2, email_address='fred2'),
-            ]))
+        ]))
         eq_(load.called, 0)
 
         sess = create_session()
@@ -94,8 +96,7 @@ class MergeTest(_fixtures.FixtureTest):
             User(id=7, name='fred', addresses=OrderedSet([
                 Address(id=1, email_address='fred1'),
                 Address(id=2, email_address='fred2'),
-            ]))
-        )
+            ])))
 
     def test_transient_to_persistent(self):
         User, users = self.classes.User, self.tables.users
@@ -123,16 +124,16 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_transient_to_persistent_collection(self):
         User, Address, addresses, users = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address,
-                        backref='user',
-                        collection_class=OrderedSet,
-                                order_by=addresses.c.id,
-                                 cascade="all, delete-orphan")
+            'addresses': relationship(Address,
+                                      backref='user',
+                                      collection_class=OrderedSet,
+                                      order_by=addresses.c.id,
+                                      cascade="all, delete-orphan")
         })
         mapper(Address, addresses)
 
@@ -167,28 +168,26 @@ class MergeTest(_fixtures.FixtureTest):
             User(id=7, name='fred', addresses=OrderedSet([
                 Address(id=3, email_address='fred3'),
                 Address(id=4, email_address='fred4'),
-            ]))
-        )
+            ])))
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(User).one(),
             User(id=7, name='fred', addresses=OrderedSet([
                 Address(id=3, email_address='fred3'),
                 Address(id=4, email_address='fred4'),
-            ]))
-        )
+            ])))
 
     def test_detached_to_persistent_collection(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address,
-                                 backref='user',
-                                 order_by=addresses.c.id,
-                                 collection_class=OrderedSet)})
+            'addresses': relationship(Address,
+                                      backref='user',
+                                      order_by=addresses.c.id,
+                                      collection_class=OrderedSet)})
         mapper(Address, addresses)
         load = self.load_tracker(User)
         self.load_tracker(Address, load)
@@ -203,7 +202,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expunge_all()
 
-        u.name='fred jones'
+        u.name = 'fred jones'
         u.addresses.add(Address(id=3, email_address='fred3'))
         u.addresses.remove(a)
 
@@ -223,14 +222,13 @@ class MergeTest(_fixtures.FixtureTest):
         entities, with a bidirectional relationship."""
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses),
-                                 cascade="all", backref="user")
+            'addresses': relationship(mapper(Address, addresses),
+                                      cascade="all", backref="user")
         })
         load = self.load_tracker(User)
         self.load_tracker(Address, load)
@@ -247,12 +245,12 @@ class MergeTest(_fixtures.FixtureTest):
 
         eq_(u,
             User(id=7, name='fred', addresses=[
-              Address(email_address='foo@bar.com'),
-              Address(email_address='hoho@bar.com')]))
+                Address(email_address='foo@bar.com'),
+                Address(email_address='hoho@bar.com')]))
         eq_(u2,
             User(id=7, name='fred', addresses=[
-              Address(email_address='foo@bar.com'),
-              Address(email_address='hoho@bar.com')]))
+                Address(email_address='foo@bar.com'),
+                Address(email_address='hoho@bar.com')]))
 
         sess.flush()
         sess.expunge_all()
@@ -327,20 +325,18 @@ class MergeTest(_fixtures.FixtureTest):
         u7 = sess.merge(User(id=3))
         assert u6.__dict__['data'] is None
 
-
     def test_merge_irregular_collection(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
             'addresses': relationship(
                 mapper(Address, addresses),
                 backref='user',
-                collection_class=
-                    attribute_mapped_collection('email_address')),
-            })
+                collection_class=attribute_mapped_collection('email_address')),
+        })
         u1 = User(id=7, name='fred')
         u1.addresses['foo@bar.com'] = Address(email_address='foo@bar.com')
         sess = create_session()
@@ -353,14 +349,13 @@ class MergeTest(_fixtures.FixtureTest):
         persistent entities."""
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses),
-                        backref='user')
+            'addresses': relationship(mapper(Address, addresses),
+                                      backref='user')
         })
         load = self.load_tracker(User)
         self.load_tracker(Address, load)
@@ -370,7 +365,7 @@ class MergeTest(_fixtures.FixtureTest):
         # set up data and save
         u = User(id=7, name='fred', addresses=[
             Address(email_address='foo@bar.com'),
-            Address(email_address = 'hoho@la.com')])
+            Address(email_address='hoho@la.com')])
         sess.add(u)
         sess.flush()
 
@@ -379,8 +374,8 @@ class MergeTest(_fixtures.FixtureTest):
         u2 = sess2.query(User).get(7)
         eq_(u2,
             User(id=7, name='fred', addresses=[
-              Address(email_address='foo@bar.com'),
-              Address(email_address='hoho@la.com')]))
+                Address(email_address='foo@bar.com'),
+                Address(email_address='hoho@la.com')]))
 
         # make local changes to data
         u.name = 'fred2'
@@ -415,6 +410,7 @@ class MergeTest(_fixtures.FixtureTest):
         assert len(u.addresses)
         for a in u.addresses:
             assert a.user is u
+
         def go():
             sess4.flush()
         # no changes; therefore flush should do nothing
@@ -427,6 +423,7 @@ class MergeTest(_fixtures.FixtureTest):
         assert len(u.addresses)
         for a in u.addresses:
             assert a.user is u
+
         def go():
             sess5.flush()
         # no changes; therefore flush should do nothing
@@ -438,7 +435,8 @@ class MergeTest(_fixtures.FixtureTest):
         sess4 = create_session()
         u = sess4.merge(u, load=False)
         # post merge change
-        u.addresses[1].email_address='afafds'
+        u.addresses[1].email_address = 'afafds'
+
         def go():
             sess4.flush()
         # afafds change flushes
@@ -506,12 +504,12 @@ class MergeTest(_fixtures.FixtureTest):
         """
 
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         mapper(Address, addresses, properties={
-            'user':relationship(User, cascade="save-update")
+            'user': relationship(User, cascade="save-update")
         })
         mapper(User, users)
         sess = create_session()
@@ -542,13 +540,12 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_one_to_many_cascade(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses))})
+            'addresses': relationship(mapper(Address, addresses))})
 
         load = self.load_tracker(User)
         self.load_tracker(Address, load)
@@ -584,17 +581,17 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_many_to_one_cascade(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         mapper(Address, addresses, properties={
-            'user':relationship(User)
+            'user': relationship(User)
         })
         mapper(User, users)
 
         u1 = User(id=1, name="u1")
-        a1 =Address(id=1, email_address="a1", user=u1)
+        a1 = Address(id=1, email_address="a1", user=u1)
         u2 = User(id=2, name="u2")
 
         sess = create_session()
@@ -623,15 +620,14 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_many_to_many_cascade(self):
         items, Order, orders, order_items, Item = (self.tables.items,
-                                self.classes.Order,
-                                self.tables.orders,
-                                self.tables.order_items,
-                                self.classes.Item)
-
+                                                   self.classes.Order,
+                                                   self.tables.orders,
+                                                   self.tables.order_items,
+                                                   self.classes.Item)
 
         mapper(Order, orders, properties={
-            'items':relationship(mapper(Item, items),
-                        secondary=order_items)})
+            'items': relationship(mapper(Item, items),
+                                  secondary=order_items)})
 
         load = self.load_tracker(Order)
         self.load_tracker(Item, load)
@@ -639,7 +635,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess = create_session()
 
         i1 = Item()
-        i1.description='item 1'
+        i1.description = 'item 1'
 
         i2 = Item()
         i2.description = 'item 2'
@@ -665,7 +661,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         sess3 = create_session()
         o3 = sess3.query(Order).get(o.id)
-        eq_( load.called, 4)
+        eq_(load.called, 4)
 
         o.description = 'desc modified'
         sess3.merge(o)
@@ -674,14 +670,13 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_one_to_one_cascade(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'address':relationship(mapper(Address, addresses),
-                                    uselist = False)
+            'address': relationship(mapper(Address, addresses),
+                                    uselist=False)
         })
         load = self.load_tracker(User)
         self.load_tracker(Address, load)
@@ -691,7 +686,7 @@ class MergeTest(_fixtures.FixtureTest):
         u.id = 7
         u.name = "fred"
         a1 = Address()
-        a1.email_address='foo@bar.com'
+        a1.email_address = 'foo@bar.com'
         u.address = a1
 
         sess.add(u)
@@ -712,17 +707,17 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_value_to_none(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'address':relationship(mapper(Address, addresses),
-                                uselist = False, backref='user')
+            'address': relationship(mapper(Address, addresses),
+                                    uselist=False, backref='user')
         })
         sess = sessionmaker()()
         u = User(id=7, name="fred",
-                    address=Address(id=1, email_address='foo@bar.com'))
+                 address=Address(id=1, email_address='foo@bar.com'))
         sess.add(u)
         sess.commit()
         sess.close()
@@ -746,21 +741,21 @@ class MergeTest(_fixtures.FixtureTest):
         sess = create_session()
         u = User()
         assert_raises_message(sa.exc.InvalidRequestError,
-                "load=False option does not support",
-                sess.merge, u, load=False)
+                              "load=False option does not support",
+                              sess.merge, u, load=False)
 
     def test_no_load_with_backrefs(self):
         """load=False populates relationships in both
         directions without requiring a load"""
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses),
-                                backref='user')
+            'addresses': relationship(mapper(Address, addresses),
+                                      backref='user')
         })
 
         u = User(id=7, name='fred', addresses=[
@@ -786,7 +781,6 @@ class MergeTest(_fixtures.FixtureTest):
         assert 'user' not in u.addresses[1].__dict__
         eq_(u.addresses[1].user, User(id=7, name='fred'))
 
-
     def test_dontload_with_eager(self):
         """
 
@@ -802,19 +796,19 @@ class MergeTest(_fixtures.FixtureTest):
         """
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses))
+            'addresses': relationship(mapper(Address, addresses))
         })
         sess = create_session()
         u = User()
         u.id = 7
         u.name = "fred"
         a1 = Address()
-        a1.email_address='foo@bar.com'
+        a1.email_address = 'foo@bar.com'
         u.addresses.append(a1)
 
         sess.add(u)
@@ -822,10 +816,11 @@ class MergeTest(_fixtures.FixtureTest):
 
         sess2 = create_session()
         u2 = sess2.query(User).\
-                options(sa.orm.joinedload('addresses')).get(7)
+            options(sa.orm.joinedload('addresses')).get(7)
 
         sess3 = create_session()
         u3 = sess3.merge(u2, load=False)
+
         def go():
             sess3.flush()
         self.assert_sql_count(testing.db, go, 0)
@@ -863,27 +858,27 @@ class MergeTest(_fixtures.FixtureTest):
         sess3 = create_session()
         u3 = sess3.merge(u2, load=False)
         assert not sess3.dirty
+
         def go():
             sess3.flush()
         self.assert_sql_count(testing.db, go, 0)
 
-
     def test_no_load_sets_backrefs(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses),
-                            backref='user')})
+            'addresses': relationship(mapper(Address, addresses),
+                                      backref='user')})
 
         sess = create_session()
         u = User()
         u.id = 7
         u.name = "fred"
         a1 = Address()
-        a1.email_address='foo@bar.com'
+        a1.email_address = 'foo@bar.com'
         u.addresses.append(a1)
 
         sess.add(u)
@@ -894,6 +889,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess2 = create_session()
         u2 = sess2.merge(u, load=False)
         assert not sess2.dirty
+
         def go():
             assert u2.addresses[0].user is u2
         self.assert_sql_count(testing.db, go, 0)
@@ -914,20 +910,20 @@ class MergeTest(_fixtures.FixtureTest):
         """
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses),
-                                 backref='user',
-                                 cascade="all, delete-orphan")})
+            'addresses': relationship(mapper(Address, addresses),
+                                      backref='user',
+                                      cascade="all, delete-orphan")})
         sess = create_session()
         u = User()
         u.id = 7
         u.name = "fred"
         a1 = Address()
-        a1.email_address='foo@bar.com'
+        a1.email_address = 'foo@bar.com'
         u.addresses.append(a1)
         sess.add(u)
         sess.flush()
@@ -938,7 +934,7 @@ class MergeTest(_fixtures.FixtureTest):
         u2 = sess2.merge(u, load=False)
         assert not sess2.dirty
         a2 = u2.addresses[0]
-        a2.email_address='somenewaddress'
+        a2.email_address = 'somenewaddress'
         assert not sa.orm.object_mapper(a2)._is_orphan(
             sa.orm.attributes.instance_state(a2))
         sess2.flush()
@@ -966,7 +962,7 @@ class MergeTest(_fixtures.FixtureTest):
             # if load=False is changed to support dirty objects, this code
             # needs to pass
             a2 = u2.addresses[0]
-            a2.email_address='somenewaddress'
+            a2.email_address = 'somenewaddress'
             assert not sa.orm.object_mapper(a2)._is_orphan(
                 sa.orm.attributes.instance_state(a2))
             sess2.flush()
@@ -981,20 +977,20 @@ class MergeTest(_fixtures.FixtureTest):
 
         class User(object):
 
-           class Comparator(PropComparator):
-               pass
+            class Comparator(PropComparator):
+                pass
 
-           def _getValue(self):
-               return self._value
+            def _getValue(self):
+                return self._value
 
-           def _setValue(self, value):
-               setattr(self, '_value', value)
+            def _setValue(self, value):
+                setattr(self, '_value', value)
 
-           value = property(_getValue, _setValue)
+            value = property(_getValue, _setValue)
 
         mapper(User, users, properties={
-            'uid':synonym('id'),
-            'foobar':comparable_property(User.Comparator,User.value),
+            'uid': synonym('id'),
+            'foobar': comparable_property(User.Comparator, User.value),
         })
 
         sess = create_session()
@@ -1009,20 +1005,19 @@ class MergeTest(_fixtures.FixtureTest):
         """a merge test that was fixed by [ticket:1202]"""
 
         User, Address, addresses, users = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users)
-
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users)
 
         s = create_session(autoflush=True, autocommit=False)
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses),
-                            backref='user')})
+            'addresses': relationship(mapper(Address, addresses),
+                                      backref='user')})
 
         a1 = Address(user=s.merge(User(id=1, name='ed')), email_address='x')
         before_id = id(a1.user)
         a2 = Address(user=s.merge(User(id=1, name='jack')),
-                            email_address='x')
+                     email_address='x')
         after_id = id(a1.user)
         other_id = id(a2.user)
         eq_(before_id, other_id)
@@ -1032,16 +1027,16 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_cascades_dont_autoflush(self):
         User, Address, addresses, users = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users)
 
         sess = create_session(autoflush=True, autocommit=False)
         m = mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses),
-                                backref='user')})
+            'addresses': relationship(mapper(Address, addresses),
+                                      backref='user')})
         user = User(id=8, name='fred',
-                        addresses=[Address(email_address='user')])
+                    addresses=[Address(email_address='user')])
         merged_user = sess.merge(user)
         assert merged_user in sess.new
         sess.flush()
@@ -1049,14 +1044,14 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_cascades_dont_autoflush_2(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address,
-                        backref='user',
-                                 cascade="all, delete-orphan")
+            'addresses': relationship(Address,
+                                      backref='user',
+                                      cascade="all, delete-orphan")
         })
         mapper(Address, addresses)
 
@@ -1082,12 +1077,12 @@ class MergeTest(_fixtures.FixtureTest):
 
         users, User = self.tables.users, self.classes.User
 
-
         mapper(User, users)
         u = User(id=7)
         sess = create_session(autoflush=True, autocommit=False)
         u = sess.merge(u)
         assert not bool(attributes.instance_state(u).expired_attributes)
+
         def go():
             eq_(u.name, None)
         self.assert_sql_count(testing.db, go, 0)
@@ -1257,21 +1252,20 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('user', metadata,
-            Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-            Column('name', String(50)),
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(50)))
         Table('address', metadata,
-            Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-            Column('user_id', Integer, ForeignKey('user.id')),
-            Column('email', String(50)),
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('user_id', Integer, ForeignKey('user.id')),
+              Column('email', String(50)))
 
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
             pass
+
         class Address(cls.Comparable):
             pass
 
@@ -1280,16 +1274,15 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         User, Address = cls.classes.User, cls.classes.Address
         user, address = cls.tables.user, cls.tables.address
         mapper(User, user, properties={
-            'addresses':relationship(Address, backref=
-                    backref('user',
-                        # needlessly complex primaryjoin so that the
-                        # use_get flag is False
-                        primaryjoin=and_(
-                                user.c.id==address.c.user_id,
-                                user.c.id==user.c.id
-                           )
-                    )
-                )
+            'addresses': relationship(Address,
+                                      backref=backref(
+                                          'user',
+                                          # needlessly complex primaryjoin so
+                                          # that the use_get flag is False
+                                          primaryjoin=and_(
+                                              user.c.id == address.c.user_id,
+                                              user.c.id == user.c.id
+                                          )))
         })
         mapper(Address, address)
         configure_mappers()
@@ -1301,7 +1294,7 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         s = Session()
         s.add_all([
             User(id=1, name='u1', addresses=[Address(id=1, email='a1'),
-                                        Address(id=2, email='a2')])
+                                             Address(id=2, email='a2')])
         ])
         s.commit()
 
@@ -1312,20 +1305,18 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
     def test_persistent_access_none(self):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
+
         def go():
-            u1 = User(id=1,
-                addresses =[Address(id=1), Address(id=2)]
-            )
+            u1 = User(id=1, addresses=[Address(id=1), Address(id=2)])
             u2 = s.merge(u1)
         self.assert_sql_count(testing.db, go, 2)
 
     def test_persistent_access_one(self):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
+
         def go():
-            u1 = User(id=1,
-                addresses =[Address(id=1), Address(id=2)]
-            )
+            u1 = User(id=1, addresses=[Address(id=1), Address(id=2)])
             u2 = s.merge(u1)
             a1 = u2.addresses[0]
             assert a1.user is u2
@@ -1334,10 +1325,9 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
     def test_persistent_access_two(self):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
+
         def go():
-            u1 = User(id=1,
-                addresses =[Address(id=1), Address(id=2)]
-            )
+            u1 = User(id=1, addresses=[Address(id=1), Address(id=2)])
             u2 = s.merge(u1)
             a1 = u2.addresses[0]
             assert a1.user is u2
@@ -1353,11 +1343,11 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
     def test_pending_access_one(self):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
+
         def go():
             u1 = User(id=1,
-                addresses =[Address(id=1), Address(id=2),
-                                Address(id=3, email='a3')]
-            )
+                      addresses=[Address(id=1), Address(id=2),
+                                 Address(id=3, email='a3')])
             u2 = s.merge(u1)
             a3 = u2.addresses[2]
             assert a3.user is u2
@@ -1366,11 +1356,11 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
     def test_pending_access_two(self):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
+
         def go():
             u1 = User(id=1,
-                addresses =[Address(id=1), Address(id=2),
-                                Address(id=3, email='a3')]
-            )
+                      addresses=[Address(id=1), Address(id=2),
+                                 Address(id=3, email='a3')])
             u2 = s.merge(u1)
             a3 = u2.addresses[2]
             assert a3.user is u2
@@ -1478,10 +1468,9 @@ class MutableMergeTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("data", metadata,
-            Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-            Column('data', PickleType(comparator=operator.eq))
-        )
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('data', PickleType(comparator=operator.eq)))
 
     @classmethod
     def setup_classes(cls):
@@ -1502,13 +1491,13 @@ class MutableMergeTest(fixtures.MappedTest):
         d3 = sess.merge(d2)
         eq_(d3.data, ["this", "is", "another", "list"])
 
+
 class CompositeNullPksTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("data", metadata,
-            Column('pk1', String(10), primary_key=True),
-            Column('pk2', String(10), primary_key=True),
-        )
+              Column('pk1', String(10), primary_key=True),
+              Column('pk2', String(10), primary_key=True))
 
     @classmethod
     def setup_classes(cls):
@@ -1539,33 +1528,33 @@ class CompositeNullPksTest(fixtures.MappedTest):
             return sess.merge(d1)
         self.assert_sql_count(testing.db, go, 0)
 
+
 class LoadOnPendingTest(fixtures.MappedTest):
     """Test interaction of merge() with load_on_pending relationships"""
     @classmethod
     def define_tables(cls, metadata):
         rocks_table = Table("rocks", metadata,
-            Column("id", Integer, primary_key=True),
-            Column("description", String(10)),
-        )
+                            Column("id", Integer, primary_key=True),
+                            Column("description", String(10)))
         bugs_table = Table("bugs", metadata,
-            Column("id", Integer, primary_key=True),
-            Column("rockid", Integer, ForeignKey('rocks.id')),
-        )
+                           Column("id", Integer, primary_key=True),
+                           Column("rockid", Integer, ForeignKey('rocks.id')))
 
     @classmethod
     def setup_classes(cls):
         class Rock(cls.Basic, fixtures.ComparableEntity):
             pass
+
         class Bug(cls.Basic, fixtures.ComparableEntity):
             pass
 
     def _setup_delete_orphan_o2o(self):
         mapper(self.classes.Rock, self.tables.rocks,
-            properties={'bug': relationship(self.classes.Bug,
-                            cascade='all,delete-orphan',
-                            load_on_pending=True,
-                            uselist=False)
-                        })
+               properties={'bug': relationship(self.classes.Bug,
+                                               cascade='all,delete-orphan',
+                                               load_on_pending=True,
+                                               uselist=False)
+                           })
         mapper(self.classes.Bug, self.tables.bugs)
         self.sess = sessionmaker()()
 
@@ -1577,7 +1566,7 @@ class LoadOnPendingTest(fixtures.MappedTest):
         # we've already passed ticket #2374 problem since merge() returned,
         # but for good measure:
         assert m is not r
-        eq_(m,r)
+        eq_(m, r)
 
     def test_merge_delete_orphan_o2o_none(self):
         """one to one delete_orphan relationships marked load_on_pending
@@ -1593,6 +1582,7 @@ class LoadOnPendingTest(fixtures.MappedTest):
         self._setup_delete_orphan_o2o()
         self._merge_delete_orphan_o2o_with(self.classes.Bug(id=1))
 
+
 class PolymorphicOnTest(fixtures.MappedTest):
     """Test merge() of polymorphic object when polymorphic_on
     isn't a Column"""
@@ -1600,36 +1590,38 @@ class PolymorphicOnTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
-            Column('employee_id', Integer, primary_key=True,
-                            test_needs_autoincrement=True),
-            Column('type', String(1), nullable=False),
-            Column('data', String(50)),
-        )
+              Column('employee_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('type', String(1), nullable=False),
+              Column('data', String(50)))
 
     @classmethod
     def setup_classes(cls):
         class Employee(cls.Basic, fixtures.ComparableEntity):
             pass
+
         class Manager(Employee):
             pass
+
         class Engineer(Employee):
             pass
 
     def _setup_polymorphic_on_mappers(self):
         employee_mapper = mapper(self.classes.Employee,
-            self.tables.employees,
-            polymorphic_on=case(value=self.tables.employees.c.type,
-                whens={
-                    'E': 'employee',
-                    'M': 'manager',
-                    'G': 'engineer',
-                    'R': 'engineer',
-                    }),
-            polymorphic_identity='employee')
+                                 self.tables.employees,
+                                 polymorphic_on=case(
+                                     value=self.tables.employees.c.type,
+                                     whens={
+                                         'E': 'employee',
+                                         'M': 'manager',
+                                         'G': 'engineer',
+                                         'R': 'engineer',
+                                     }),
+                                 polymorphic_identity='employee')
         mapper(self.classes.Manager, inherits=employee_mapper,
-            polymorphic_identity='manager')
+               polymorphic_identity='manager')
         mapper(self.classes.Engineer, inherits=employee_mapper,
-            polymorphic_identity='engineer')
+               polymorphic_identity='engineer')
         self.sess = sessionmaker()()
 
     def test_merge_polymorphic_on(self):
@@ -1639,7 +1631,7 @@ class PolymorphicOnTest(fixtures.MappedTest):
         self._setup_polymorphic_on_mappers()
 
         m = self.classes.Manager(employee_id=55, type='M',
-                                data='original data')
+                                 data='original data')
         self.sess.add(m)
         self.sess.commit()
         self.sess.expunge_all()
@@ -1650,4 +1642,4 @@ class PolymorphicOnTest(fixtures.MappedTest):
         # we've already passed ticket #2449 problem since
         # merge() returned, but for good measure:
         assert m is not merged
-        eq_(m,merged)
+        eq_(m, merged)

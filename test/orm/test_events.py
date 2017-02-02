@@ -216,7 +216,8 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         event.listen(m, "before_insert", canary.listen1, )
         event.listen(m, "before_insert", canary.listen2, insert=True)
-        event.listen(m, "before_insert", canary.listen3, propagate=True, insert=True)
+        event.listen(m, "before_insert", canary.listen3,
+                     propagate=True, insert=True)
         event.listen(m, "load", canary.listen4)
         event.listen(m, "load", canary.listen5, insert=True)
         event.listen(m, "load", canary.listen6, propagate=True, insert=True)
@@ -1390,7 +1391,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         u.name = 'ed'
         sess.commit()
         eq_(canary, ['before_commit', 'before_flush',
-            'after_transaction_create', 'after_flush',
+                     'after_transaction_create', 'after_flush',
                      'after_flush_postexec',
                      'after_transaction_end',
                      'after_commit',
@@ -1822,10 +1823,8 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             [
                 call.persistent_to_deleted(sess, u1_inst_state.obj()),
                 call.flag_checked(u1_inst_state.obj())
-             ]
-         )
-
-
+            ]
+        )
 
     def test_detached_to_persistent(self):
         sess, User, start_events = self._fixture()

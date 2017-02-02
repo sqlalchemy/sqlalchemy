@@ -63,9 +63,9 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         self._loop_test(operator, right)
 
     def _loop_test(self, operator, *arg):
-        l = LoopOperate()
+        loop = LoopOperate()
         is_(
-            operator(l, *arg),
+            operator(loop, *arg),
             operator
         )
 
@@ -764,7 +764,7 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         col = Column('x', self.MyType())
 
         self.assert_compile(
-            col[8] != None,
+            col[8] != None,  # noqa
             "(x -> :x_1) IS NOT NULL"
         )
 
@@ -774,7 +774,7 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         col2 = Column('y', Integer())
 
         self.assert_compile(
-            col[col2 + 8] != None,
+            col[col2 + 8] != None,  # noqa
             "(x -> (y + :y_1)) IS NOT NULL",
             checkparams={'y_1': 8}
         )
@@ -1306,7 +1306,7 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_operator_precedence_1(self):
         self.assert_compile(
-            self.table2.select((self.table2.c.field == 5) == None),
+            self.table2.select((self.table2.c.field == 5) == None),  # noqa
             "SELECT op.field FROM op WHERE (op.field = :field_1) IS NULL")
 
     def test_operator_precedence_2(self):
@@ -1565,11 +1565,11 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_associativity_22(self):
         f = column('f')
-        self.assert_compile((f==f) == f, '(f = f) = f')
+        self.assert_compile((f == f) == f, '(f = f) = f')
 
     def test_associativity_23(self):
         f = column('f')
-        self.assert_compile((f!=f) != f, '(f != f) != f')
+        self.assert_compile((f != f) != f, '(f != f) != f')
 
 
 class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -1738,8 +1738,9 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_in_21(self):
         self.assert_compile(~self.table1.c.myid.in_(
-                            select([self.table2.c.otherid])),
-                            "mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
+            select([self.table2.c.otherid])),
+            "mytable.myid NOT IN "
+            "(SELECT myothertable.otherid FROM myothertable)")
 
     def test_in_22(self):
         self.assert_compile(
@@ -1778,7 +1779,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             )
         ), "mytable.myid IN ("
             "SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "
-            "UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
+            "UNION SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid = :myid_2)")
 
     def test_in_27(self):
         # test that putting a select in an IN clause does not
@@ -1790,8 +1792,9 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                        order_by=[self.table2.c.othername],
                        limit=10, correlate=False)
             ),
-                from_obj=[self.table1.join(self.table2,
-                                           self.table1.c.myid == self.table2.c.otherid)],
+                from_obj=[self.table1.join(
+                    self.table2,
+                    self.table1.c.myid == self.table2.c.otherid)],
                 order_by=[self.table1.c.myid]
             ),
             "SELECT mytable.myid, "
@@ -2641,4 +2644,3 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "FROM tab1 WHERE tab1.data < :data_1)",
             checkparams={'data_1': 10, 'param_1': 5}
         )
-

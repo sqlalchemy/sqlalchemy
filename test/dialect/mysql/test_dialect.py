@@ -26,7 +26,7 @@ class DialectTest(fixtures.TestBase):
     def _test_ssl_arguments(self, dialect):
         kwarg = dialect.create_connect_args(
             make_url("mysql://scott:tiger@localhost:3306/test"
-                "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem")
+                     "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem")
         )[1]
         # args that differ among mysqldb and oursql
         for k in ('use_unicode', 'found_rows', 'client_flag'):
@@ -64,15 +64,18 @@ class DialectTest(fixtures.TestBase):
         from sqlalchemy.dialects.mysql import mysqlconnector
         dialect = mysqlconnector.dialect()
         kw = dialect.create_connect_args(
-                make_url("mysql+mysqlconnector://u:p@host/db?raise_on_warnings=true")
-            )[1]
+            make_url(
+                "mysql+mysqlconnector://u:p@host/db?raise_on_warnings=true"
+            )
+        )[1]
         eq_(kw['raise_on_warnings'], True)
 
         kw = dialect.create_connect_args(
-                make_url("mysql+mysqlconnector://u:p@host/db?raise_on_warnings=false")
-            )[1]
+            make_url(
+                "mysql+mysqlconnector://u:p@host/db?raise_on_warnings=false"
+            )
+        )[1]
         eq_(kw['raise_on_warnings'], False)
-
 
         kw = dialect.create_connect_args(
                 make_url("mysql+mysqlconnector://u:p@host/db")
@@ -121,6 +124,7 @@ class DialectTest(fixtures.TestBase):
             )
             assert c.execute('SELECT @@tx_isolation;').scalar() == mysql_value
 
+
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
     __backend__ = True
@@ -130,7 +134,7 @@ class SQLModeDetectionTest(fixtures.TestBase):
             cursor = con.cursor()
             cursor.execute("set sql_mode='%s'" % (",".join(modes)))
         e = engines.testing_engine(options={
-            'pool_events':[
+            'pool_events': [
                 (connect, 'first_connect'),
                 (connect, 'connect')
             ]
@@ -186,4 +190,3 @@ class ExecutionTest(fixtures.TestBase):
     def test_sysdate(self):
         d = testing.db.scalar(func.sysdate())
         assert isinstance(d, datetime.datetime)
-

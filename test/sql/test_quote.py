@@ -3,7 +3,9 @@ from sqlalchemy import sql, schema
 from sqlalchemy.sql import compiler
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
 from sqlalchemy import testing
-from sqlalchemy.sql.elements import quoted_name, _truncated_label, _anonymous_label
+from sqlalchemy.sql.elements import (quoted_name,
+                                     _truncated_label,
+                                     _anonymous_label)
 from sqlalchemy.testing.util import picklers
 
 

@@ -706,8 +706,8 @@ class ReflectionTest(fixtures.TestBase):
             tmp.sort()
             r1, r2 = [idx[1] for idx in tmp]
             assert r1.name == 'idx2'
-            assert r1.unique == True
-            assert r2.unique == False
+            assert r1.unique is True
+            assert r2.unique is False
             assert [t2.c.id] == r1.columns
             assert [t2.c.name] == r2.columns
 

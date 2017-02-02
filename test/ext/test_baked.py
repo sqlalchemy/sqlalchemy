@@ -10,6 +10,7 @@ from sqlalchemy import bindparam, func, literal_column
 from sqlalchemy.orm import exc as orm_exc
 import itertools
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertsql import CompiledSQL
 
 
 class BakedTest(_fixtures.FixtureTest):
@@ -37,7 +38,8 @@ class StateChangeTest(BakedTest):
     def test_initial_key(self):
         User = self.classes.User
         session = Session()
-        l1 = lambda: session.query(User)
+
+        def l1(): return session.query(User)
         q1 = self.bakery(l1)
         self._assert_cache_key(
             q1._cache_key,
@@ -48,8 +50,10 @@ class StateChangeTest(BakedTest):
     def test_inplace_add(self):
         User = self.classes.User
         session = Session()
-        l1 = lambda: session.query(User)
-        l2 = lambda q: q.filter(User.name == bindparam('name'))
+
+        def l1(): return session.query(User)
+
+        def l2(q): return q.filter(User.name == bindparam('name'))
         q1 = self.bakery(l1)
         self._assert_cache_key(
             q1._cache_key,
@@ -69,8 +73,10 @@ class StateChangeTest(BakedTest):
     def test_inplace_add_operator(self):
         User = self.classes.User
         session = Session()
-        l1 = lambda: session.query(User)
-        l2 = lambda q: q.filter(User.name == bindparam('name'))
+
+        def l1(): return session.query(User)
+
+        def l2(q): return q.filter(User.name == bindparam('name'))
         q1 = self.bakery(l1)
         self._assert_cache_key(
             q1._cache_key,
@@ -87,8 +93,10 @@ class StateChangeTest(BakedTest):
     def test_chained_add(self):
         User = self.classes.User
         session = Session()
-        l1 = lambda: session.query(User)
-        l2 = lambda q: q.filter(User.name == bindparam('name'))
+
+        def l1(): return session.query(User)
+
+        def l2(q): return q.filter(User.name == bindparam('name'))
         q1 = self.bakery(l1)
 
         q2 = q1.with_criteria(l2)
@@ -106,8 +114,10 @@ class StateChangeTest(BakedTest):
     def test_chained_add_operator(self):
         User = self.classes.User
         session = Session()
-        l1 = lambda: session.query(User)
-        l2 = lambda q: q.filter(User.name == bindparam('name'))
+
+        def l1(): return session.query(User)
+
+        def l2(q): return q.filter(User.name == bindparam('name'))
         q1 = self.bakery(l1)
 
         q2 = q1 + l2
@@ -357,7 +367,8 @@ class ResultTest(BakedTest):
         User = self.classes.User
 
         queue = [7, 8]
-        fn = lambda s: s.query(User.id).filter_by(id=queue.pop(0))
+
+        def fn(s): return s.query(User.id).filter_by(id=queue.pop(0))
         bq1 = self.bakery(fn, 7)
         bq2 = self.bakery(fn, 8)
 
@@ -605,16 +616,16 @@ class ResultTest(BakedTest):
 
         assert_result = [
             User(id=7,
-                addresses=[Address(id=1, email_address='jack@bean.com')],
-                orders=[Order(id=1), Order(id=3), Order(id=5)]),
+                 addresses=[Address(id=1, email_address='jack@bean.com')],
+                 orders=[Order(id=1), Order(id=3), Order(id=5)]),
             User(id=8, addresses=[
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
                 Address(id=4, email_address='ed@lala.com'),
             ]),
             User(id=9,
-                addresses=[Address(id=5)],
-                orders=[Order(id=2), Order(id=4)]),
+                 addresses=[Address(id=5)],
+                 orders=[Order(id=2), Order(id=4)]),
             User(id=10, addresses=[])
         ]
 
@@ -664,8 +675,6 @@ class ResultTest(BakedTest):
 
                 sess.close()
 
-
-from sqlalchemy.testing.assertsql import CompiledSQL
 
 class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
     run_setup_mappers = 'each'
@@ -1011,7 +1020,8 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
             propagate_to_loaders = True
 
         sess = Session()
-        u1 = sess.query(User).options(MyBogusOption()).filter(User.id == 8).one()
+        u1 = sess.query(User).options(MyBogusOption()).filter(User.id == 8) \
+            .one()
 
         def go():
             eq_(u1.addresses[0].user, u1)
@@ -1030,4 +1040,3 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
     # 2. o2m lazyload where m2o backrefs have an eager load, test
     # that eager load is canceled out
     # 3. uselist = False, uselist=False assertion
-

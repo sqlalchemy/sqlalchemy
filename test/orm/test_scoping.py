@@ -9,7 +9,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 
-
 class _ScopedTest(fixtures.MappedTest):
     """Adds another lookup bucket to emulate Session globals."""
 
@@ -31,10 +30,12 @@ class ScopedSessionTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table1', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('data', String(30)))
         Table('table2', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
               Column('someid', None, ForeignKey('table1.id')))
 
     def test_basic(self):
@@ -47,12 +48,13 @@ class ScopedSessionTest(fixtures.MappedTest):
 
         class SomeObject(fixtures.ComparableEntity):
             query = Session.query_property()
+
         class SomeOtherObject(fixtures.ComparableEntity):
             query = Session.query_property()
             custom_query = Session.query_property(query_cls=CustomQuery)
 
         mapper(SomeObject, table1, properties={
-            'options':relationship(SomeOtherObject)})
+            'options': relationship(SomeOtherObject)})
         mapper(SomeOtherObject, table2)
 
         s = SomeObject(id=1, data="hello")
@@ -63,9 +65,11 @@ class ScopedSessionTest(fixtures.MappedTest):
         Session.refresh(sso)
         Session.remove()
 
-        eq_(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]),
+        eq_(SomeObject(id=1, data="hello",
+                       options=[SomeOtherObject(someid=1)]),
             Session.query(SomeObject).one())
-        eq_(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]),
+        eq_(SomeObject(id=1, data="hello",
+                       options=[SomeOtherObject(someid=1)]),
             SomeObject.query.one())
         eq_(SomeOtherObject(someid=1),
             SomeOtherObject.query.filter(
@@ -89,6 +93,3 @@ class ScopedSessionTest(fixtures.MappedTest):
             "At least one scoped session is already present. ",
             Session.configure, bind=testing.db
         )
-
-
-

@@ -163,14 +163,14 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users, "
             "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
-            )
+        )
 
         self.assert_compile(
             sess.query(users, exists([1], from_obj=addresses)).
             with_labels().statement,
             "SELECT users.id AS users_id, users.name AS users_name, EXISTS "
             "(SELECT 1 FROM addresses) AS anon_1 FROM users",
-            )
+        )
 
         # a little tedious here, adding labels to work around Query's
         # auto-labelling.
@@ -193,11 +193,11 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         x = func.lala(users.c.id).label('foo')
         self.assert_compile(sess.query(x).filter(x == 5).statement,
-            "SELECT lala(users.id) AS foo FROM users WHERE "
-            "lala(users.id) = :param_1")
+                            "SELECT lala(users.id) AS foo FROM users WHERE "
+                            "lala(users.id) = :param_1")
 
         self.assert_compile(sess.query(func.sum(x).label('bar')).statement,
-            "SELECT sum(lala(users.id)) AS bar FROM users")
+                            "SELECT sum(lala(users.id)) AS bar FROM users")
 
 
 class FromSelfTest(QueryTest, AssertsCompiledSQL):
@@ -638,8 +638,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
     def test_from_alias_one(self):
         User, addresses, users = (self.classes.User,
-                                self.tables.addresses,
-                                self.tables.users)
+                                  self.tables.addresses,
+                                  self.tables.users)
 
         query = users.select(users.c.id == 7).\
             union(users.select(users.c.id > 7)).alias('ulist').\
@@ -651,17 +651,17 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         def go():
-            l = list(
+            result = list(
                 q.options(
                     contains_alias('ulist'), contains_eager('addresses')).
                 instances(query.execute()))
-            assert self.static.user_address_result == l
+            assert self.static.user_address_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_from_alias_two(self):
         User, addresses, users = (self.classes.User,
-                                self.tables.addresses,
-                                self.tables.users)
+                                  self.tables.addresses,
+                                  self.tables.users)
 
         query = users.select(users.c.id == 7).\
             union(users.select(users.c.id > 7)).alias('ulist').\
@@ -673,16 +673,16 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         def go():
-            l = q.options(
+            result = q.options(
                 contains_alias('ulist'), contains_eager('addresses')).\
                 from_statement(query).all()
-            assert self.static.user_address_result == l
+            assert self.static.user_address_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_from_alias_three(self):
         User, addresses, users = (self.classes.User,
-                                self.tables.addresses,
-                                self.tables.users)
+                                  self.tables.addresses,
+                                  self.tables.users)
 
         query = users.select(users.c.id == 7).\
             union(users.select(users.c.id > 7)).alias('ulist').\
@@ -694,15 +694,15 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         # better way.  use select_entity_from()
         def go():
-            l = sess.query(User).select_entity_from(query).\
+            result = sess.query(User).select_entity_from(query).\
                 options(contains_eager('addresses')).all()
-            assert self.static.user_address_result == l
+            assert self.static.user_address_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_from_alias_four(self):
         User, addresses, users = (self.classes.User,
-                                self.tables.addresses,
-                                self.tables.users)
+                                  self.tables.addresses,
+                                  self.tables.users)
 
         sess = create_session()
 
@@ -716,15 +716,15 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             select(use_labels=True, order_by=[text('ulist.id'), adalias.c.id])
 
         def go():
-            l = sess.query(User).select_entity_from(query).\
+            result = sess.query(User).select_entity_from(query).\
                 options(contains_eager('addresses', alias=adalias)).all()
-            assert self.static.user_address_result == l
+            assert self.static.user_address_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager(self):
         users, addresses, User = (self.tables.users,
-                                self.tables.addresses,
-                                self.classes.User)
+                                  self.tables.addresses,
+                                  self.classes.User)
 
         sess = create_session()
 
@@ -766,32 +766,32 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         def go():
-            l = list(
+            result = list(
                 q.options(contains_eager('addresses')).
                 instances(selectquery.execute()))
-            assert self.static.user_address_result[0:3] == l
+            assert self.static.user_address_result[0:3] == result
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
 
         def go():
-            l = list(
+            result = list(
                 q.options(contains_eager(User.addresses)).
                 instances(selectquery.execute()))
-            assert self.static.user_address_result[0:3] == l
+            assert self.static.user_address_result[0:3] == result
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
         def go():
-            l = q.options(
+            result = q.options(
                 contains_eager('addresses')).from_statement(selectquery).all()
-            assert self.static.user_address_result[0:3] == l
+            assert self.static.user_address_result[0:3] == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_string_alias(self):
         addresses, users, User = (self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                  self.tables.users,
+                                  self.classes.User)
 
         sess = create_session()
         q = sess.query(User)
@@ -802,17 +802,17 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         # string alias name
         def go():
-            l = list(
+            result = list(
                 q.options(
                     contains_eager('addresses', alias="adalias")).
                 instances(selectquery.execute()))
-            assert self.static.user_address_result == l
+            assert self.static.user_address_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_aliased_instances(self):
         addresses, users, User = (self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                  self.tables.users,
+                                  self.classes.User)
 
         sess = create_session()
         q = sess.query(User)
@@ -823,11 +823,11 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         # expression.Alias object
         def go():
-            l = list(
+            result = list(
                 q.options(
                     contains_eager('addresses', alias=adalias)).
                 instances(selectquery.execute()))
-            assert self.static.user_address_result == l
+            assert self.static.user_address_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_aliased(self):
@@ -840,19 +840,19 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         adalias = aliased(Address)
 
         def go():
-            l = q.options(
+            result = q.options(
                 contains_eager('addresses', alias=adalias)
-                ).outerjoin(adalias, User.addresses).\
+            ).outerjoin(adalias, User.addresses).\
                 order_by(User.id, adalias.id)
-            assert self.static.user_address_result == l.all()
+            assert self.static.user_address_result == result.all()
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_multi_string_alias(self):
         orders, items, users, order_items, User = (self.tables.orders,
-                                self.tables.items,
-                                self.tables.users,
-                                self.tables.order_items,
-                                self.classes.User)
+                                                   self.tables.items,
+                                                   self.tables.users,
+                                                   self.tables.order_items,
+                                                   self.classes.User)
 
         sess = create_session()
         q = sess.query(User)
@@ -865,20 +865,20 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         # test using string alias with more than one level deep
         def go():
-            l = list(
+            result = list(
                 q.options(
                     contains_eager('orders', alias='o1'),
                     contains_eager('orders.items', alias='i1')
                 ).instances(query.execute()))
-            assert self.static.user_order_result == l
+            assert self.static.user_order_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_multi_alias(self):
         orders, items, users, order_items, User = (self.tables.orders,
-                                self.tables.items,
-                                self.tables.users,
-                                self.tables.order_items,
-                                self.classes.User)
+                                                   self.tables.items,
+                                                   self.tables.users,
+                                                   self.tables.order_items,
+                                                   self.classes.User)
 
         sess = create_session()
         q = sess.query(User)
@@ -897,12 +897,12 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         #     contains_eager('items', alias=ialias)
 
         def go():
-            l = list(
+            result = list(
                 q.options(
                     contains_eager('orders', alias=oalias),
                     contains_eager('orders.items', alias=ialias)).
                 instances(query.execute()))
-            assert self.static.user_order_result == l
+            assert self.static.user_order_result == result
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_multi_aliased(self):
@@ -917,21 +917,21 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         ialias = aliased(Item)
 
         def go():
-            l = q.options(
+            result = q.options(
                 contains_eager(User.orders, alias=oalias),
                 contains_eager(User.orders, Order.items, alias=ialias)).\
                 outerjoin(oalias, User.orders).\
                 outerjoin(ialias, oalias.items).\
                 order_by(User.id, oalias.id, ialias.id)
-            assert self.static.user_order_result == l.all()
+            assert self.static.user_order_result == result.all()
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_chaining(self):
         """test that contains_eager() 'chains' by default."""
 
         Dingaling, User, Address = (self.classes.Dingaling,
-                                self.classes.User,
-                                self.classes.Address)
+                                    self.classes.User,
+                                    self.classes.Address)
 
         sess = create_session()
         q = sess.query(User).join(User.addresses).join(Address.dingaling).\
@@ -961,8 +961,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         an alias at the end."""
 
         Dingaling, User, Address = (self.classes.Dingaling,
-                                self.classes.User,
-                                self.classes.Address)
+                                    self.classes.User,
+                                    self.classes.Address)
 
         sess = create_session()
         da = aliased(Dingaling, name="foob")
@@ -1007,11 +1007,11 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             # applies context.adapter to result rows.  This was
             # [ticket:1180].
 
-            l = q.outerjoin(User.orders).options(
+            result = q.outerjoin(User.orders).options(
                 joinedload(User.addresses), contains_eager(User.orders)). \
                 order_by(User.id, Order.id).offset(1).limit(2).all()
             eq_(
-                l, [
+                result, [
                     User(
                         id=7,
                         addresses=[
@@ -1036,13 +1036,13 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             # are applied by the eager loader
 
             oalias = aliased(Order)
-            l = q.outerjoin(oalias, User.orders).options(
+            result = q.outerjoin(oalias, User.orders).options(
                 joinedload(User.addresses),
                 contains_eager(User.orders, alias=oalias)). \
                 order_by(User.id, oalias.id).\
                 offset(1).limit(2).all()
             eq_(
-                l,
+                result,
                 [
                     User(
                         id=7,
@@ -1486,9 +1486,9 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
     def test_multi_mappers(self):
         Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
 
         test_session = create_session()
 
@@ -1497,11 +1497,11 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             test_session.query(Address).all()
 
         expected = [(user7, address1),
-            (user8, address2),
-            (user8, address3),
-            (user8, address4),
-            (user9, address5),
-            (user10, None)]
+                    (user8, address2),
+                    (user8, address3),
+                    (user8, address4),
+                    (user9, address5),
+                    (user10, None)]
 
         sess = create_session()
 
@@ -1540,9 +1540,9 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
     def test_aliased_multi_mappers(self):
         User, addresses, users, Address = (self.classes.User,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.Address)
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.Address)
 
         sess = create_session()
 
@@ -1551,25 +1551,25 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             sess.query(Address).all()
 
         expected = [(user7, address1),
-            (user8, address2),
-            (user8, address3),
-            (user8, address4),
-            (user9, address5),
-            (user10, None)]
+                    (user8, address2),
+                    (user8, address3),
+                    (user8, address4),
+                    (user9, address5),
+                    (user10, None)]
 
         q = sess.query(User)
         adalias = addresses.alias('adalias')
         q = q.add_entity(Address, alias=adalias). \
             select_entity_from(users.outerjoin(adalias))
-        l = q.order_by(User.id, adalias.c.id).all()
-        assert l == expected
+        result = q.order_by(User.id, adalias.c.id).all()
+        assert result == expected
 
         sess.expunge_all()
 
         q = sess.query(User).add_entity(Address, alias=adalias)
-        l = q.select_entity_from(users.outerjoin(adalias)). \
+        result = q.select_entity_from(users.outerjoin(adalias)). \
             filter(adalias.c.email_address == 'ed@bettyboop.com').all()
-        assert l == [(user8, address3)]
+        assert result == [(user8, address3)]
 
     def test_with_entities(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1619,18 +1619,18 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         """test aliased/nonalised joins with the usage of add_column()"""
 
         User, Address, addresses, users = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users)
 
         sess = create_session()
 
         (user7, user8, user9, user10) = sess.query(User).all()
         expected = [(user7, 1),
-            (user8, 3),
-            (user9, 1),
-            (user10, 0)
-            ]
+                    (user8, 3),
+                    (user9, 1),
+                    (user10, 0)
+                    ]
 
         q = sess.query(User)
         q = q.group_by(users).order_by(User.id).outerjoin('addresses').\
@@ -1651,13 +1651,13 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             select_from(users.outerjoin(addresses)). \
             group_by(*[c for c in users.c]).order_by(User.id)
         q = sess.query(User)
-        l = q.add_column("count").from_statement(s).all()
-        assert l == expected
+        result = q.add_column("count").from_statement(s).all()
+        assert result == expected
 
     def test_raw_columns(self):
         addresses, users, User = (self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+                                  self.tables.users,
+                                  self.classes.User)
 
         sess = create_session()
         (user7, user8, user9, user10) = sess.query(User).all()
@@ -1669,7 +1669,8 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
         adalias = addresses.alias()
         q = create_session().query(User).add_column(func.count(adalias.c.id))\
-            .add_column(("Name:" + users.c.name)).outerjoin(adalias, 'addresses')\
+            .add_column(("Name:" + users.c.name))\
+            .outerjoin(adalias, 'addresses')\
             .group_by(users).order_by(users.c.id)
 
         assert q.all() == expected
@@ -1682,28 +1683,33 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             from_obj=[users.outerjoin(addresses)],
             group_by=[c for c in users.c], order_by=[users.c.id])
         q = create_session().query(User)
-        l = q.add_column("count").add_column("concat").from_statement(s).all()
-        assert l == expected
+        result = q.add_column("count").add_column("concat") \
+            .from_statement(s).all()
+        assert result == expected
 
         sess.expunge_all()
 
         # test with select_entity_from()
-        q = create_session().query(User).add_column(func.count(addresses.c.id))\
-            .add_column(("Name:" + users.c.name)).select_entity_from(users.outerjoin(addresses))\
+        q = create_session().query(User) \
+            .add_column(func.count(addresses.c.id)) \
+            .add_column(("Name:" + users.c.name)) \
+            .select_entity_from(users.outerjoin(addresses)) \
             .group_by(users).order_by(users.c.id)
 
         assert q.all() == expected
         sess.expunge_all()
 
-        q = create_session().query(User).add_column(func.count(addresses.c.id))\
+        q = create_session().query(User) \
+            .add_column(func.count(addresses.c.id)) \
             .add_column(("Name:" + users.c.name)).outerjoin('addresses')\
             .group_by(users).order_by(users.c.id)
 
         assert q.all() == expected
         sess.expunge_all()
 
-        q = create_session().query(User).add_column(func.count(adalias.c.id))\
-            .add_column(("Name:" + users.c.name)).outerjoin(adalias, 'addresses')\
+        q = create_session().query(User).add_column(func.count(adalias.c.id)) \
+            .add_column(("Name:" + users.c.name)) \
+            .outerjoin(adalias, 'addresses') \
             .group_by(users).order_by(users.c.id)
 
         assert q.all() == expected
@@ -1987,9 +1993,8 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_join_relname_from_selected_from(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
-        mapper(User, users, properties=
-            {'addresses': relationship(mapper(Address, addresses),
-                backref='user')})
+        mapper(User, users, properties={'addresses': relationship(
+            mapper(Address, addresses), backref='user')})
 
         sess = create_session()
 
@@ -2002,8 +2007,8 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_filter_by_selected_from(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
-        mapper(User, users, properties=
-            {'addresses': relationship(mapper(Address, addresses))})
+        mapper(User, users, properties={
+               'addresses': relationship(mapper(Address, addresses))})
 
         sess = create_session()
 
@@ -2018,8 +2023,8 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_join_ent_selected_from(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
-        mapper(User, users, properties=
-            {'addresses': relationship(mapper(Address, addresses))})
+        mapper(User, users, properties={
+               'addresses': relationship(mapper(Address, addresses))})
 
         sess = create_session()
 
@@ -2028,7 +2033,6 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM addresses JOIN users ON users.id = addresses.user_id"
         )
-
 
     def test_join(self):
         users, Address, addresses, User = (
@@ -2208,9 +2212,9 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
     def test_replace_with_eager(self):
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(
             User, users, properties={
@@ -2228,7 +2232,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                     User(id=7, addresses=[Address(id=1)]),
                     User(
                         id=8, addresses=[Address(id=2), Address(id=3),
-                        Address(id=4)])])
+                                         Address(id=4)])])
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
@@ -2240,7 +2244,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 [
                     User(
                         id=8, addresses=[Address(id=2), Address(id=3),
-                        Address(id=4)])])
+                                         Address(id=4)])])
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
@@ -2250,7 +2254,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 select_entity_from(sel).order_by(User.id)[1],
                 User(
                     id=8, addresses=[Address(id=2), Address(id=3),
-                    Address(id=4)]))
+                                     Address(id=4)]))
         self.assert_sql_count(testing.db, go, 1)
 
 
@@ -2320,9 +2324,9 @@ class ExternalColumnsTest(QueryTest):
         selectables."""
 
         users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
 
         mapper(
             User, users, properties={
@@ -2432,12 +2436,13 @@ class ExternalColumnsTest(QueryTest):
                 (5, 9, 18, 1)])
 
     def test_external_columns_joinedload(self):
-        users, orders, User, Address, Order, addresses = (self.tables.users,
-                                self.tables.orders,
-                                self.classes.User,
-                                self.classes.Address,
-                                self.classes.Order,
-                                self.tables.addresses)
+        users, orders, User, Address, Order, addresses = \
+            (self.tables.users,
+             self.tables.orders,
+             self.classes.User,
+             self.classes.Address,
+             self.classes.Order,
+             self.tables.addresses)
 
         # in this test, we have a subquery on User that accesses "addresses",
         # underneath an joinedload for "addresses".  So the "addresses" alias

@@ -32,5 +32,3 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "Sybase ASE does not support OFFSET",
             stmt.compile, dialect=self.__dialect__
         )
-
-

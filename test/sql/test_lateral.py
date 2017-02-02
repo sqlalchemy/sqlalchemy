@@ -129,6 +129,3 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             "LATERAL generate_series(:generate_series_1, "
             "bookcases.bookcase_shelves) AS anon_1 ON true"
         )
-
-
-

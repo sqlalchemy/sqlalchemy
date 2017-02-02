@@ -156,6 +156,7 @@ class DeferredReflectBase(DeclarativeReflectionBase):
         super(DeferredReflectBase, self).teardown()
         _DeferredMapperConfig._configs.clear()
 
+
 Base = None
 
 

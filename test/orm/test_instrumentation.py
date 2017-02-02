@@ -24,6 +24,7 @@ class InitTest(fixtures.ORMTest):
         instrumentation.register_class(cls)
         ne_(cls.__init__, original_init)
         manager = instrumentation.manager_of_class(cls)
+
         def init(state, args, kwargs):
             canary.append((cls, 'init', state.class_))
         event.listen(manager, 'init', init, raw=True)
@@ -193,7 +194,7 @@ class InitTest(fixtures.ORMTest):
         del inits[:]
         obj = C()
         eq_(inits, [(C, 'init', C), (C, '__init__'), (B, '__init__'),
-                   (A, '__init__')])
+                    (A, '__init__')])
 
     def test_Ai_bi_Ci(self):
         inits = []
@@ -225,7 +226,7 @@ class InitTest(fixtures.ORMTest):
         del inits[:]
         obj = C()
         eq_(inits, [(C, 'init', C), (C, '__init__'),  (B, '__init__'),
-                   (A, '__init__')])
+                    (A, '__init__')])
 
     def test_Ai_b_Ci(self):
         inits = []
@@ -474,6 +475,7 @@ class MapperInitTest(fixtures.ORMTest):
             mapper, A, self.fixture()
         )
 
+
 class OnLoadTest(fixtures.ORMTest):
     """Check that Events.load is not hit in regular attributes operations."""
 
@@ -481,6 +483,7 @@ class OnLoadTest(fixtures.ORMTest):
         import pickle
 
         global A
+
         class A(object):
             pass
 
@@ -510,7 +513,7 @@ class NativeInstrumentationTest(fixtures.ORMTest):
         sa = instrumentation.ClassManager.STATE_ATTR
         ma = instrumentation.ClassManager.MANAGER_ATTR
 
-        fails = lambda method, attr: assert_raises(
+        def fails(method, attr): return assert_raises(
             KeyError, getattr(manager, method), attr, property())
 
         fails('install_member', sa)
@@ -537,13 +540,14 @@ class NativeInstrumentationTest(fixtures.ORMTest):
             pass
         assert_raises(KeyError, mapper, T, t)
 
+
 class Py3KFunctionInstTest(fixtures.ORMTest):
     __requires__ = ("python3", )
-
 
     def _instrument(self, cls):
         manager = instrumentation.register_class(cls)
         canary = []
+
         def check(target, args, kwargs):
             canary.append((args, kwargs))
         event.listen(manager, "init", check)
@@ -590,6 +594,7 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
             cls, "a", "b", c="c"
         )
 
+
 if util.py3k:
     _locals = {}
     exec("""
@@ -620,6 +625,7 @@ def _kw_opt_fixture(self):
     for k in _locals:
         setattr(Py3KFunctionInstTest, k, _locals[k])
 
+
 class MiscTest(fixtures.ORMTest):
     """Seems basic, but not directly covered elsewhere!"""
 
@@ -627,6 +633,7 @@ class MiscTest(fixtures.ORMTest):
         t = Table('t', MetaData(),
                   Column('id', Integer, primary_key=True),
                   Column('x', Integer))
+
         class A(object):
             pass
         mapper(A, t)
@@ -642,8 +649,10 @@ class MiscTest(fixtures.ORMTest):
         t2 = Table('t2', m,
                    Column('id', Integer, primary_key=True),
                    Column('t1_id', Integer, ForeignKey('t1.id')))
+
         class A(object):
             pass
+
         class B(object):
             pass
         mapper(A, t1, properties=dict(bs=relationship(B)))
@@ -684,6 +693,7 @@ class MiscTest(fixtures.ORMTest):
         for base in object, Base:
             class A(base):
                 pass
+
             class B(base):
                 pass
             mapper(A, t1, properties=dict(bs=relationship(B, backref='a')))
@@ -710,6 +720,7 @@ class MiscTest(fixtures.ORMTest):
         class Base(object):
             def __init__(self):
                 pass
+
         class Base_AKW(object):
             def __init__(self, *args, **kwargs):
                 pass
@@ -717,6 +728,7 @@ class MiscTest(fixtures.ORMTest):
         for base in object, Base, Base_AKW:
             class A(base):
                 pass
+
             class B(base):
                 pass
             mapper(A, t1)
@@ -729,5 +741,3 @@ class MiscTest(fixtures.ORMTest):
             session = create_session()
             session.add(a)
             assert b in session, 'base: %s' % base
-
-

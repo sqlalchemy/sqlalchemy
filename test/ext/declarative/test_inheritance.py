@@ -12,6 +12,7 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
     ConcreteBase, has_inherited_table
 from sqlalchemy.testing import fixtures, mock
+from test.orm.test_events import _RemoveListeners
 
 Base = None
 
@@ -1046,9 +1047,6 @@ class OverlapColPrecedenceTest(DeclarativeTestBase):
                         primary_key=True)
 
         self._run_test(Engineer, "eid", "pid")
-
-
-from test.orm.test_events import _RemoveListeners
 
 
 class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):

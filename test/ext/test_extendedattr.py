@@ -526,7 +526,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
             pass
         register_class(A)
 
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        def mgr_factory(cls): return instrumentation.ClassManager(cls)
 
         class B(object):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
@@ -541,7 +541,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
             pass
         register_class(A)
 
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        def mgr_factory(cls): return instrumentation.ClassManager(cls)
 
         class B(A):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
@@ -556,7 +556,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
             pass
         # delay registration
 
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        def mgr_factory(cls): return instrumentation.ClassManager(cls)
 
         class B(A):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
@@ -567,7 +567,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
             register_class, A)
 
     def test_diamond_b1(self):
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        def mgr_factory(cls): return instrumentation.ClassManager(cls)
 
         class A(object):
             pass
@@ -586,7 +586,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
             register_class, B1)
 
     def test_diamond_b2(self):
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        def mgr_factory(cls): return instrumentation.ClassManager(cls)
 
         class A(object):
             pass
@@ -606,7 +606,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
             register_class, B1)
 
     def test_diamond_c_b(self):
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        def mgr_factory(cls): return instrumentation.ClassManager(cls)
 
         class A(object):
             pass

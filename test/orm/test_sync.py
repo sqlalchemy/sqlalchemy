@@ -5,8 +5,8 @@ from test.orm import _fixtures
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.orm import mapper, relationship, backref, \
-                            create_session, unitofwork, attributes,\
-                            Session, class_mapper, sync, exc as orm_exc
+    create_session, unitofwork, attributes,\
+    Session, class_mapper, sync, exc as orm_exc
 
 
 class AssertsUOW(object):
@@ -21,24 +21,24 @@ class AssertsUOW(object):
             uow.register_object(d, isdelete=True)
         return uow
 
+
 class SyncTest(fixtures.MappedTest,
-                    testing.AssertsExecutionResults, AssertsUOW):
+               testing.AssertsExecutionResults, AssertsUOW):
 
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('foo', Integer)
-        )
+              Column('id', Integer, primary_key=True),
+              Column('foo', Integer))
         Table('t2', metadata,
-            Column('id', Integer, ForeignKey('t1.id'), primary_key=True),
-            Column('t1id', Integer, ForeignKey('t1.id')),
-        )
+              Column('id', Integer, ForeignKey('t1.id'), primary_key=True),
+              Column('t1id', Integer, ForeignKey('t1.id')))
 
     @classmethod
     def setup_classes(cls):
         class A(cls.Basic):
             pass
+
         class B(cls.Basic):
             pass
 
@@ -52,7 +52,7 @@ class SyncTest(fixtures.MappedTest,
         session = create_session()
         uowcommit = self._get_test_uow(session)
         a_mapper = class_mapper(A)
-        b_mapper= class_mapper(B)
+        b_mapper = class_mapper(B)
         self.a1 = a1 = A()
         self.b1 = b1 = B()
         uowcommit = self._get_test_uow(session)
@@ -89,12 +89,12 @@ class SyncTest(fixtures.MappedTest,
             "Can't execute sync rule for source column 't2.id'; "
             r"mapper 'Mapper\|A\|t1' does not map this column.",
             sync.populate,
-                a1,
-                a_mapper,
-                b1,
-                b_mapper,
-                pairs,
-                uowcommit, False
+            a1,
+            a_mapper,
+            b1,
+            b_mapper,
+            pairs,
+            uowcommit, False
         )
 
     def test_populate_unmapped_dest(self):
@@ -102,15 +102,16 @@ class SyncTest(fixtures.MappedTest,
         pairs = [(a_mapper.c.id, a_mapper.c.id,)]
         assert_raises_message(
             orm_exc.UnmappedColumnError,
-            "Can't execute sync rule for destination "
-            r"column 't1.id'; mapper 'Mapper\|B\|t2' does not map this column.",
+            r"Can't execute sync rule for destination "
+            r"column 't1.id'; "
+            r"mapper 'Mapper\|B\|t2' does not map this column.",
             sync.populate,
-                a1,
-                a_mapper,
-                b1,
-                b_mapper,
-                pairs,
-                uowcommit, False
+            a1,
+            a_mapper,
+            b1,
+            b_mapper,
+            pairs,
+            uowcommit, False
         )
 
     def test_clear(self):
@@ -171,7 +172,7 @@ class SyncTest(fixtures.MappedTest,
         pairs = [(a_mapper.c.id, b_mapper.c.id,)]
         dest = {}
         sync.populate_dict(a1, a_mapper, dest, pairs)
-        eq_(dest, {'id':10})
+        eq_(dest, {'id': 10})
 
     def test_populate_dict_unmapped(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
@@ -218,7 +219,7 @@ class SyncTest(fixtures.MappedTest,
         a1._commit_all(a1.dict)
         a1.obj().foo = 12
         pairs = [(a_mapper.c.id, b_mapper.c.id,),
-                (a_mapper.c.foo, b_mapper.c.id)]
+                 (a_mapper.c.foo, b_mapper.c.id)]
         eq_(
             sync.source_modified(uowcommit, a1, a_mapper, pairs),
             True
@@ -229,7 +230,7 @@ class SyncTest(fixtures.MappedTest,
         a1.obj().foo = 10
         a1._commit_all(a1.dict)
         pairs = [(a_mapper.c.id, b_mapper.c.id,),
-                (a_mapper.c.foo, b_mapper.c.id)]
+                 (a_mapper.c.foo, b_mapper.c.id)]
         eq_(
             sync.source_modified(uowcommit, a1, a_mapper, pairs),
             False

@@ -16,6 +16,7 @@ from ._poly_fixtures import Company, Person, Engineer, Manager, Boss, \
     _PolymorphicPolymorphic, _PolymorphicUnions, _PolymorphicJoins,\
     _PolymorphicAliasedJoins
 
+
 class _WithPolymorphicBase(_PolymorphicFixtureBase):
     def test_join_base_to_sub(self):
         sess = create_session()
@@ -31,17 +32,15 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
         sess = create_session()
         pa = with_polymorphic(Person, [Engineer, Manager])
 
-        eq_(
-            sess.query(pa.name, pa.Engineer.primary_language, pa.Manager.manager_name).\
-                filter(or_(pa.Engineer.primary_language=='java',
-                                pa.Manager.manager_name=='dogbert')).\
-                order_by(pa.Engineer.type).all(),
-            [
-                ('dilbert', 'java', None),
-                ('dogbert', None, 'dogbert'),
-            ]
-        )
-
+        eq_(sess.query(
+            pa.name, pa.Engineer.primary_language,
+            pa.Manager.manager_name).filter(
+            or_(
+                pa.Engineer.primary_language == 'java', pa.Manager.
+                manager_name
+                == 'dogbert')).order_by(pa.Engineer.type).all(),
+            [('dilbert', 'java', None),
+             ('dogbert', None, 'dogbert'), ])
 
     def test_join_to_join_entities(self):
         sess = create_session()
@@ -52,16 +51,15 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
             [(p1.name, type(p1), p2.name, type(p2)) for (p1, p2) in sess.query(
                 pa, pa_alias
             ).join(pa_alias,
-                    or_(
-                        pa.Engineer.primary_language==\
-                        pa_alias.Engineer.primary_language,
-                        and_(
-                            pa.Engineer.primary_language == None,
-                            pa_alias.Engineer.primary_language == None,
-                            pa.person_id > pa_alias.person_id
-                        )
-                    )
-                ).order_by(pa.name, pa_alias.name)],
+                   or_(
+                       pa.Engineer.primary_language ==
+                       pa_alias.Engineer.primary_language,
+                       and_(
+                           pa.Engineer.primary_language == None,  # noqa
+                           pa_alias.Engineer.primary_language == None,
+                           pa.person_id > pa_alias.person_id
+                       ))
+                   ).order_by(pa.name, pa_alias.name)],
             [
                 ('dilbert', Engineer, 'dilbert', Engineer),
                 ('dogbert', Manager, 'pointy haired boss', Boss),
@@ -80,16 +78,15 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
                 pa.name, pa.Engineer.primary_language,
                 pa_alias.name, pa_alias.Engineer.primary_language
             ).join(pa_alias,
-                    or_(
-                        pa.Engineer.primary_language==\
-                        pa_alias.Engineer.primary_language,
-                        and_(
-                            pa.Engineer.primary_language == None,
-                            pa_alias.Engineer.primary_language == None,
-                            pa.person_id > pa_alias.person_id
-                        )
-                    )
-                ).order_by(pa.name, pa_alias.name)],
+                   or_(
+                       pa.Engineer.primary_language ==
+                       pa_alias.Engineer.primary_language,
+                       and_(
+                           pa.Engineer.primary_language == None,  # noqa
+                           pa_alias.Engineer.primary_language == None,
+                           pa.person_id > pa_alias.person_id
+                       ))
+                   ).order_by(pa.name, pa_alias.name)],
             [
                 ('dilbert', 'java', 'dilbert', 'java'),
                 ('dogbert', None, 'pointy haired boss', None),
@@ -98,17 +95,24 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
             ]
         )
 
+
 class PolymorphicTest(_WithPolymorphicBase, _Polymorphic):
     pass
 
-class PolymorphicPolymorphicTest(_WithPolymorphicBase, _PolymorphicPolymorphic):
+
+class PolymorphicPolymorphicTest(_WithPolymorphicBase,
+                                 _PolymorphicPolymorphic):
     pass
+
 
 class PolymorphicUnionsTest(_WithPolymorphicBase, _PolymorphicUnions):
     pass
 
-class PolymorphicAliasedJoinsTest(_WithPolymorphicBase, _PolymorphicAliasedJoins):
+
+class PolymorphicAliasedJoinsTest(_WithPolymorphicBase,
+                                  _PolymorphicAliasedJoins):
     pass
+
 
 class PolymorphicJoinsTest(_WithPolymorphicBase, _PolymorphicJoins):
     pass

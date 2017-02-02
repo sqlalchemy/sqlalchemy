@@ -65,7 +65,7 @@ class MergeResultTest(_fixtures.FixtureTest):
 
         s = Session()
         u1, u2, u3, u4 = User(id=1, name='u1'), User(id=2, name='u2'), \
-                            User(id=7, name='u3'), User(id=8, name='u4')
+            User(id=7, name='u3'), User(id=8, name='u4')
         s.query(User).filter(User.id.in_([7, 8])).all()
         s.close()
         return s, [u1, u2, u3, u4]
@@ -123,7 +123,10 @@ class MergeResultTest(_fixtures.FixtureTest):
         User = self.classes.User
 
         q = s.query(User, User.id)
-        kt = lambda *x: KeyedTuple(x, ['User', 'id'])
+
+        def kt(*x):
+            return KeyedTuple(x, ['User', 'id'])
+
         collection = [kt(u1, 1), kt(u2, 2), kt(u3, 7), kt(u4, 8)]
         it = loading.merge_result(
             q,
@@ -142,7 +145,10 @@ class MergeResultTest(_fixtures.FixtureTest):
 
         ua = aliased(User)
         q = s.query(User, ua)
-        kt = lambda *x: KeyedTuple(x, ['User', 'useralias'])
+
+        def kt(*x):
+            return KeyedTuple(x, ['User', 'useralias'])
+
         collection = [kt(u1, u2), kt(u1, None), kt(u2, u3)]
         it = loading.merge_result(
             q,
@@ -155,5 +161,3 @@ class MergeResultTest(_fixtures.FixtureTest):
             ],
             [(u1.id, u2.id), (u1.id, None), (u2.id, u3.id)]
         )
-
-
