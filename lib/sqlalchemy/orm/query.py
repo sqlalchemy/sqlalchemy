@@ -59,8 +59,12 @@ class Query(object):
     criteria and options associated with it.
 
     :class:`.Query` objects are normally initially generated using the
-    :meth:`~.Session.query` method of :class:`.Session`.  For a full
-    walkthrough of :class:`.Query` usage, see the
+    :meth:`~.Session.query` method of :class:`.Session`, and in
+    less common cases by instantiating the :class:`.Query` directly and
+    associating with a :class:`.Session` using the :meth:`.Query.with_session`
+    method.
+
+    For a full walkthrough of :class:`.Query` usage, see the
     :ref:`ormtutorial_toplevel`.
 
     """
@@ -106,6 +110,30 @@ class Query(object):
     _has_mapper_entities = False
 
     def __init__(self, entities, session=None):
+        """Construct a :class:`.Query` directly.
+
+        E.g.::
+
+            q = Query([User, Address], session=some_session)
+
+        The above is equivalent to::
+
+            q = some_session.query(User, Address)
+
+        :param entities: a sequence of entities and/or SQL expressions.
+
+        :param session: a :class:`.Session` with which the :class:`.Query`
+         will be associated.   Optional; a :class:`.Query` can be associated
+         with a :class:`.Session` generatively via the
+         :meth:`.Query.with_session` method as well.
+
+        .. seealso::
+
+            :meth:`.Session.query`
+
+            :meth:`.Query.with_session`
+
+        """
         self.session = session
         self._polymorphic_adapters = {}
         self._set_entities(entities)
@@ -980,6 +1008,19 @@ class Query(object):
     @_generative()
     def with_session(self, session):
         """Return a :class:`.Query` that will use the given :class:`.Session`.
+
+        While the :class:`.Query` object is normally instantiated using the
+        :meth:`.Session.query` method, it is legal to build the :class:`.Query`
+        directly without necessarily using a :class:`.Session`.  Such a
+        :class:`.Query` object, or any :class:`.Query` already associated
+        with a different :class:`.Session`, can produce a new :class:`.Query`
+        object associated with a target session using this method::
+
+            from sqlalchemy.orm import Query
+
+            query = Query([MyClass]).filter(MyClass.id == 5)
+
+            result = query.with_session(my_session).one()
 
         """
 
