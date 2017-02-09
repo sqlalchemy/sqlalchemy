@@ -21,6 +21,19 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change:: 3909
+        :tags: bug, orm
+        :tickets: 3909
+
+        Fixed a major inefficiency in the "eager_defaults" feature whereby
+        an unnecessary SELECT would be emitted for column values where the
+        ORM had explicitly inserted NULL, corresponding to attributes that
+        were unset on the object but did not have any server default
+        specified, as well as expired attributes on update that nevertheless
+        had no server onupdate set up.   As these columns are not part of the
+        RETURNING that eager_defaults tries to use, they should not be
+        post-SELECTed either.
+
     .. change:: 3905
         :tags: bug, sql
         :tickets: 3905

@@ -994,8 +994,12 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
         toload_now = []
 
         if base_mapper.eager_defaults:
-            toload_now.extend(state._unloaded_non_object)
-        elif mapper.version_id_col is not None and \
+            toload_now.extend(
+                state._unloaded_non_object.intersection(
+                    mapper._server_default_plus_onupdate_propkeys)
+            )
+
+        if mapper.version_id_col is not None and \
                 mapper.version_id_generator is False:
             if mapper._version_id_prop.key in state.unloaded:
                 toload_now.extend([mapper._version_id_prop.key])

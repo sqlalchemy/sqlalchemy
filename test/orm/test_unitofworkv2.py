@@ -2322,6 +2322,46 @@ class EagerDefaultsTest(fixtures.MappedTest):
             )
         )
 
+    def test_insert_dont_fetch_nondefaults(self):
+        Thing2 = self.classes.Thing2
+        s = Session()
+
+        t1 = Thing2(id=1, bar=2)
+
+        s.add(t1)
+
+        self.assert_sql_execution(
+            testing.db,
+            s.flush,
+            CompiledSQL(
+                "INSERT INTO test2 (id, foo, bar) "
+                "VALUES (:id, :foo, :bar)",
+                [{'id': 1, 'foo': None, 'bar': 2}]
+            )
+        )
+
+    def test_update_dont_fetch_nondefaults(self):
+        Thing2 = self.classes.Thing2
+        s = Session()
+
+        t1 = Thing2(id=1, bar=2)
+
+        s.add(t1)
+        s.flush()
+
+        s.expire(t1, ['foo'])
+
+        t1.bar = 3
+
+        self.assert_sql_execution(
+            testing.db,
+            s.flush,
+            CompiledSQL(
+                "UPDATE test2 SET bar=:bar WHERE test2.id = :test2_id",
+                [{'bar': 3, 'test2_id': 1}]
+            )
+        )
+
 
 class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     """test support for custom datatypes that return a non-__bool__ value

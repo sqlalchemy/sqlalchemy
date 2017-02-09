@@ -2042,6 +2042,22 @@ class Mapper(InspectionAttr):
         )
 
     @_memoized_configured_property
+    def _server_default_plus_onupdate_propkeys(self):
+        result = set()
+
+        for table, columns in self._cols_by_table.items():
+            for col in columns:
+                if (
+                        (
+                            col.server_default is not None or
+                            col.server_onupdate is not None
+                        ) and col in self._columntoproperty
+                ):
+                    result.add(self._columntoproperty[col].key)
+
+        return result
+
+    @_memoized_configured_property
     def _server_onupdate_default_cols(self):
         return dict(
             (
