@@ -34,6 +34,19 @@
         RETURNING that eager_defaults tries to use, they should not be
         post-SELECTed either.
 
+    .. change:: 3908
+        :tags: bug, orm
+        :tickets: 3908
+
+        Fixed two closely related bugs involving the mapper eager_defaults
+        flag in conjunction with single-table inheritance; one where the
+        eager defaults logic would inadvertently try to access a column
+        that's part of the mapper's "exclude_properties" list (used by
+        Declarative with single table inheritance) during the eager defaults
+        fetch, and the other where the full load of the row in order to
+        fetch the defaults would fail to use the correct inheriting mapper.
+
+
     .. change:: 3905
         :tags: bug, sql
         :tickets: 3905

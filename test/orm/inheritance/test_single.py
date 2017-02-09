@@ -6,7 +6,7 @@ from sqlalchemy import testing
 from test.orm import _fixtures
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy.testing.schema import Table, Column
-
+from sqlalchemy import inspect
 
 class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     __dialect__ = 'default'
@@ -1086,3 +1086,75 @@ class SingleOnJoinedTest(fixtures.MappedTest):
                  Manager(
                      name='m1', employee_data='ed2', manager_data='md1')])
         self.assert_sql_count(testing.db, go, 1)
+
+
+class EagerDefaultEvalTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls, with_polymorphic=None, include_sub_defaults=False):
+        Base = cls.DeclarativeBasic
+
+        class Foo(Base):
+            __tablename__ = "foo"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True)
+            type = Column(String(50))
+            created_at = Column(Integer, server_default="5")
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "foo",
+                "eager_defaults": True,
+                "with_polymorphic": with_polymorphic
+            }
+
+        class Bar(Foo):
+            bar = Column(String(50))
+            if include_sub_defaults:
+                bat = Column(Integer, server_default="10")
+
+            __mapper_args__ = {
+                "polymorphic_identity": "bar",
+            }
+
+    def test_persist_foo(self):
+        Foo = self.classes.Foo
+
+        foo = Foo()
+
+        session = Session()
+        session.add(foo)
+        session.flush()
+
+        eq_(foo.__dict__['created_at'], 5)
+
+        assert 'bat' not in foo.__dict__
+
+        session.close()
+
+    def test_persist_bar(self):
+        Bar = self.classes.Bar
+        bar = Bar()
+        session = Session()
+        session.add(bar)
+        session.flush()
+
+        eq_(bar.__dict__['created_at'], 5)
+
+        if 'bat' in inspect(Bar).attrs:
+            eq_(bar.__dict__['bat'], 10)
+
+        session.close()
+
+
+class EagerDefaultEvalTestSubDefaults(EagerDefaultEvalTest):
+    @classmethod
+    def setup_classes(cls):
+        super(EagerDefaultEvalTestSubDefaults, cls).setup_classes(
+            include_sub_defaults=True)
+
+
+class EagerDefaultEvalTestPolymorphic(EagerDefaultEvalTest):
+    @classmethod
+    def setup_classes(cls):
+        super(EagerDefaultEvalTestPolymorphic, cls).setup_classes(
+            with_polymorphic="*")
