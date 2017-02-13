@@ -2635,3 +2635,59 @@ class DialectEventTest(fixtures.TestBase):
         conn.connection.invalidate()
         conn = e.connect()
         eq_(conn.info['boom'], "one")
+
+
+class AutocommitTextTest(fixtures.TestBase):
+    __backend__ = True
+
+    def _test_keyword(self, keyword, expected=True):
+        dbapi = Mock(
+            connect=Mock(
+                return_value=Mock(
+                    cursor=Mock(
+                        return_value=Mock(
+                            description=()
+                        )
+                    )
+                )
+            )
+        )
+        engine = engines.testing_engine(
+            options={
+                "_initialize": False,
+                "pool_reset_on_return": None
+            })
+        engine.dialect.dbapi = dbapi
+        engine.execute("%s something table something" % keyword)
+        if expected:
+            eq_(
+                dbapi.connect().mock_calls,
+                [call.cursor(), call.commit()]
+            )
+        else:
+            eq_(
+                dbapi.connect().mock_calls,
+                [call.cursor()]
+            )
+
+    def test_update(self):
+        self._test_keyword("UPDATE")
+
+    def test_insert(self):
+        self._test_keyword("INSERT")
+
+    def test_delete(self):
+        self._test_keyword("DELETE")
+
+    def test_alter(self):
+        self._test_keyword("ALTER TABLE")
+
+    def test_create(self):
+        self._test_keyword("CREATE TABLE foobar")
+
+    def test_drop(self):
+        self._test_keyword("DROP TABLE foobar")
+
+    def test_select(self):
+        self._test_keyword("SELECT foo FROM table", False)
+
