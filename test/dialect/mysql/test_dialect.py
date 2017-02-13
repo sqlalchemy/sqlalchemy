@@ -194,6 +194,8 @@ class ExecutionTest(fixtures.TestBase):
 
 
 class AutocommitTextTest(test_execute.AutocommitTextTest):
+    __only_on__ = 'mysql'
+
     def test_load_data(self):
         self._test_keyword("LOAD DATA STUFF")
 
