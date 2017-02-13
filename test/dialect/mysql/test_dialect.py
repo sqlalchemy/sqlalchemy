@@ -6,6 +6,7 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
+from ...engine import test_execute
 import datetime
 
 
@@ -190,3 +191,11 @@ class ExecutionTest(fixtures.TestBase):
     def test_sysdate(self):
         d = testing.db.scalar(func.sysdate())
         assert isinstance(d, datetime.datetime)
+
+
+class AutocommitTextTest(test_execute.AutocommitTextTest):
+    def test_load_data(self):
+        self._test_keyword("LOAD DATA STUFF")
+
+    def test_replace(self):
+        self._test_keyword("REPLACE THING")
