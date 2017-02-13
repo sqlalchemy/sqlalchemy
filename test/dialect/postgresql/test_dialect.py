@@ -18,6 +18,7 @@ from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import expect_deprecated
+from ...engine import test_execute
 
 
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
@@ -295,3 +296,13 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 ddl_compiler.get_column_specification(t.c.c),
                 "c %s NOT NULL" % expected
             )
+
+
+class AutocommitTextTest(test_execute.AutocommitTextTest):
+    __only_on__ = 'postgresql'
+
+    def test_import_foreign_schema(self):
+        self._test_keyword("IMPORT FOREIGN SCHEMA foob")
+
+    def test_refresh_view(self):
+        self._test_keyword("REFRESH MATERIALIZED VIEW fooview")

@@ -21,6 +21,16 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change:: 3804
+        :tags: bug, postgresql
+        :tickets: 3804
+
+        Added regular expressions for the "IMPORT FOREIGN SCHEMA",
+        "REFRESH MATERIALIZED VIEW" Postgresql statements so that they
+        autocommit when invoked via a connection or engine without
+        an explicit transaction.  Pull requests courtesy Frazer McLean
+        and Paweł Stiasny.
+
     .. change:: 3909
         :tags: bug, orm
         :tickets: 3909
