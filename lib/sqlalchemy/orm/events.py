@@ -2124,8 +2124,12 @@ class AttributeEvents(event.Events):
 
             u1.addresses = [a2, a3]  # <- old collection is disposed
 
-        The mechanics of the event will typically include that the given
-        collection is empty, even if it stored objects while being replaced.
+        The old collection received will contain its previous contents.
+
+        .. versionchanged:: 1.2 The collection passed to
+           :meth:`.AttributeEvents.dispose_collection` will now have its
+           contents before the dispose intact; previously, the collection
+           would be empty.
 
         .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
            and :meth:`.AttributeEvents.dispose_collection` events supersede

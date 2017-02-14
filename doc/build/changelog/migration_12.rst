@@ -139,6 +139,33 @@ WHERE clause manually may need to be adjusted.
 
 :ticket:`3891`
 
+.. _change_3913:
+
+Previous collection is no longer mutated upon replacement
+---------------------------------------------------------
+
+The ORM emits events whenever the members of a mapped collection change.
+In the case of assigning a collection to an attribute that would replace
+the previous collection, a side effect of this was that the collection
+being replaced would also be mutated, which is misleading and unnecessary::
+
+    >>> a1, a2, a3 = Address('a1'), Address('a2'), Address('a3')
+    >>> user.addresses = [a1, a2]
+
+    >>> previous_collection = user.addresses
+
+    # replace the collection with a new one
+    >>> user.addresses = [a2, a3]
+
+    >>> previous_collection
+    [Address('a1'), Address('a2')]
+
+Above, prior to the change, the ``previous_collection`` would have had the
+"a1" member removed, corresponding to the member that's no longer in the
+new collection.
+
+:ticket:`3913`
+
 Key Behavioral Changes - Core
 =============================
 

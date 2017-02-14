@@ -46,6 +46,20 @@
 
             :ref:`change_3891`
 
+    .. change:: 3913
+        :tags: bug, orm
+        :tickets: 3913
+
+        When assigning a collection to an attribute mapped by a relationship,
+        the previous collection is no longer mutated.  Previously, the old
+        collection would be emptied out in conjunction with the "item remove"
+        events that fire off; the events now fire off without affecting
+        the old collection.
+
+        .. seealso::
+
+            :ref:`change_3913`
+
     .. change:: 3932
         :tags: bug, oracle
         :tickets: 3932

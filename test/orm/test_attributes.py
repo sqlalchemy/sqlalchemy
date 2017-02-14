@@ -2687,13 +2687,15 @@ class ListenerTest(fixtures.ORMTest):
         f1.barlist = [b2]
         adapter_two = f1.barlist._sa_adapter
         eq_(canary.init.mock_calls, [
-            call(f1, [], adapter_one),
+            call(f1, [b1], adapter_one),  # note the f1.barlist that
+                                          # we saved earlier has been mutated
+                                          # in place, new as of [ticket:3913]
             call(f1, [b2], adapter_two),
         ])
         eq_(
             canary.dispose.mock_calls,
             [
-                call(f1, [], adapter_one)
+                call(f1, [b1], adapter_one)
             ]
         )
 
@@ -2903,10 +2905,11 @@ class TestUnlink(fixtures.TestBase):
         coll = a1.bs
         a1.bs.append(B())
         a1.bs = []
-        # a bulk replace empties the old collection
-        assert len(coll) == 0
-        coll.append(B())
+        # a bulk replace no longer empties the old collection
+        # as of [ticket:3913]
         assert len(coll) == 1
+        coll.append(B())
+        assert len(coll) == 2
 
     def test_pop_existing(self):
         A, B = self.A, self.B

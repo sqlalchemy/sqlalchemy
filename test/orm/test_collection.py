@@ -1551,7 +1551,11 @@ class CollectionsTest(fixtures.ORMTest):
         bulk1 = [e2]
         # empty & sever col1 from obj
         obj.attr = bulk1
-        self.assert_(len(col1) == 0)
+
+        # as of [ticket:3913] the old collection
+        # remains unchanged
+        self.assert_(len(col1) == 1)
+
         self.assert_(len(canary.data) == 1)
         self.assert_(obj.attr is not col1)
         self.assert_(obj.attr is not bulk1)

@@ -764,9 +764,8 @@ def bulk_replace(values, existing_adapter, new_adapter):
             appender(member, _sa_initiator=False)
 
     if existing_adapter:
-        remover = existing_adapter.bulk_remover()
         for member in removals:
-            remover(member)
+            existing_adapter.fire_remove_event(member)
 
 
 def prepare_instrumentation(factory):
