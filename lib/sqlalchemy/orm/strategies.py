@@ -1140,11 +1140,12 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     """
 
-    __slots__ = 'join_depth',
+    __slots__ = 'join_depth', '_aliased_class_pool'
 
     def __init__(self, parent, strategy_key):
         super(JoinedLoader, self).__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
+        self._aliased_class_pool = []
 
     def init_class_attribute(self, mapper):
         self.parent_property.\
@@ -1292,6 +1293,27 @@ class JoinedLoader(AbstractRelationshipLoader):
         add_to_collection = context.primary_columns
         return user_defined_adapter, adapter, add_to_collection
 
+    def _gen_pooled_aliased_class(self, context):
+        # keep a local pool of AliasedClass objects that get re-used.
+        # we need one unique AliasedClass per query per appearance of our
+        # entity in the query.
+
+        key = ('joinedloader_ac', self)
+        if key not in context.attributes:
+            context.attributes[key] = idx = 0
+        else:
+            context.attributes[key] = idx = context.attributes[key] + 1
+
+        if idx >= len(self._aliased_class_pool):
+            to_adapt = orm_util.AliasedClass(
+                self.mapper,
+                flat=True,
+                use_mapper_path=True)
+
+            self._aliased_class_pool.append(to_adapt)
+
+        return self._aliased_class_pool[idx]
+
     def _generate_row_adapter(
             self,
             context, entity, path, loadopt, adapter,
@@ -1304,15 +1326,17 @@ class JoinedLoader(AbstractRelationshipLoader):
         if with_poly_info:
             to_adapt = with_poly_info.entity
         else:
-            to_adapt = orm_util.AliasedClass(
-                self.mapper,
-                flat=True,
-                use_mapper_path=True)
-        clauses = orm_util.ORMAdapter(
+            to_adapt = self._gen_pooled_aliased_class(context)
+
+        clauses = inspect(to_adapt)._memo(
+            ("joinedloader_ormadapter", self),
+            orm_util.ORMAdapter,
             to_adapt,
             equivalents=self.mapper._equivalent_columns,
             adapt_required=True, allow_label_resolve=False,
-            anonymize_labels=True)
+            anonymize_labels=True
+        )
+
         assert clauses.aliased_class is not None
 
         if self.parent_property.uselist:

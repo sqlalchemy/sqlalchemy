@@ -1,6 +1,6 @@
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import mapper, relationship, \
-    sessionmaker, Session, defer
+    sessionmaker, Session, defer, joinedload, defaultload
 from sqlalchemy import testing
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing import fixtures
@@ -514,3 +514,144 @@ class QueryTest(fixtures.MappedTest):
                 q.all()
 
         go()
+
+
+class JoinedEagerLoadTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        def make_some_columns():
+            return [
+                Column('c%d' % i, Integer)
+                for i in range(10)
+            ]
+
+        Table(
+            'a',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            *make_some_columns()
+        )
+        Table(
+            'b',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('a_id', ForeignKey('a.id')),
+            *make_some_columns()
+        )
+        Table(
+            'c',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('b_id', ForeignKey('b.id')),
+            *make_some_columns()
+        )
+        Table(
+            'd',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('c_id', ForeignKey('c.id')),
+            *make_some_columns()
+        )
+        Table(
+            'e',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('a_id', ForeignKey('a.id')),
+            *make_some_columns()
+        )
+        Table(
+            'f',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('e_id', ForeignKey('e.id')),
+            *make_some_columns()
+        )
+        Table(
+            'g',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('e_id', ForeignKey('e.id')),
+            *make_some_columns()
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(cls.Basic):
+            pass
+
+        class C(cls.Basic):
+            pass
+
+        class D(cls.Basic):
+            pass
+
+        class E(cls.Basic):
+            pass
+
+        class F(cls.Basic):
+            pass
+
+        class G(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C, D, E, F, G = cls.classes('A', 'B', 'C', 'D', 'E', 'F', 'G')
+        a, b, c, d, e, f, g = cls.tables('a', 'b', 'c', 'd', 'e', 'f', 'g')
+
+        mapper(A, a, properties={
+            'bs': relationship(B),
+            'es': relationship(E)
+        })
+        mapper(B, b, properties={
+            'cs': relationship(C)
+        })
+        mapper(C, c, properties={
+            'ds': relationship(D)
+        })
+        mapper(D, d)
+        mapper(E, e, properties={
+            'fs': relationship(F),
+            'gs': relationship(G)
+        })
+        mapper(F, f)
+        mapper(G, g)
+
+    @classmethod
+    def insert_data(cls):
+        A, B, C, D, E, F, G = cls.classes('A', 'B', 'C', 'D', 'E', 'F', 'G')
+        s = Session()
+        s.add(
+            A(
+                bs=[B(cs=[C(ds=[D()])]), B(cs=[C()])],
+                es=[E(fs=[F()], gs=[G()])]
+            )
+        )
+        s.commit()
+
+    def test_build_query(self):
+        A, B, C, D, E, F, G = self.classes('A', 'B', 'C', 'D', 'E', 'F', 'G')
+
+        sess = Session()
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q = sess.query(A).options(
+                    joinedload(A.bs).joinedload(B.cs).joinedload(C.ds),
+                    joinedload(A.es).joinedload(E.fs),
+                    defaultload(A.es).joinedload(E.gs),
+                )
+                q._compile_context()
+        go()
+
