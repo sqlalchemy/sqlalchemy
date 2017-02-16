@@ -1064,6 +1064,15 @@ class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
         eq_(results[0]['intarr'], [1, 2, 3])
         eq_(results[0]['strarr'], [util.u('abc'), util.u('def')])
 
+    def test_insert_array_w_null(self):
+        arrtable = self.tables.arrtable
+        arrtable.insert().execute(intarr=[1, None, 3], strarr=[util.u('abc'),
+                                                            None])
+        results = arrtable.select().execute().fetchall()
+        eq_(len(results), 1)
+        eq_(results[0]['intarr'], [1, None, 3])
+        eq_(results[0]['strarr'], [util.u('abc'), None])
+
     def test_array_where(self):
         arrtable = self.tables.arrtable
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[util.u('abc'),
