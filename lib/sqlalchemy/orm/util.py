@@ -548,6 +548,17 @@ class AliasedInsp(InspectionAttr):
             assert False, "mapper %s doesn't correspond to %s" % (
                 mapper, self)
 
+    @util.memoized_property
+    def _memoized_values(self):
+        return {}
+
+    def _memo(self, key, callable_, *args, **kw):
+        if key in self._memoized_values:
+            return self._memoized_values[key]
+        else:
+            self._memoized_values[key] = value = callable_(*args, **kw)
+            return value
+
     def __repr__(self):
         if self.with_polymorphic_mappers:
             with_poly = "(%s)" % ", ".join(
