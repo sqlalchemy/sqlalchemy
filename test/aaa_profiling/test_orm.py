@@ -655,3 +655,23 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
                 q._compile_context()
         go()
 
+    def test_fetch_results(self):
+        A, B, C, D, E, F, G = self.classes('A', 'B', 'C', 'D', 'E', 'F', 'G')
+
+        sess = Session()
+
+        q = sess.query(A).options(
+            joinedload(A.bs).joinedload(B.cs).joinedload(C.ds),
+            joinedload(A.es).joinedload(E.fs),
+            defaultload(A.es).joinedload(E.gs),
+        )
+
+        context = q._compile_context()
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                obj = q._execute_and_instances(context)
+                list(obj)
+                sess.close()
+        go()

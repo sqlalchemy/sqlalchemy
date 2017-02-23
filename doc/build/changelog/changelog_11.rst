@@ -25,15 +25,17 @@
         :tags: bug, orm
         :tickets: 3915
 
-        Addressed some long unattended performance concerns within the
-        joined eager loader query construction system.  The use of ad-hoc
-        :class:`.AliasedClass` objects per query, which produces lots of column
-        lookup overhead each time, has been replaced with a cached approach
-        that makes use of a small pool of :class:`.AliasedClass` objects
-        that are reused between invocations of joined eager loading.
-        Callcount reduction of SQL query generation for worst-case joined
-        loader scenarios (lots of joins, lots of columns) is reduced by
-        approximately 270%.
+        Addressed some long unattended performance concerns within the joined
+        eager loader query construction system that have accumulated since
+        earlier versions as a result of increased abstraction. The use of ad-
+        hoc :class:`.AliasedClass` objects per query, which produces lots of
+        column lookup overhead each time, has been replaced with a cached
+        approach that makes use of a small pool of :class:`.AliasedClass`
+        objects that are reused between invocations of joined eager loading.
+        Some mechanics involving eager join path construction have also been
+        optimized.   Callcounts for an end-to-end query construction + single
+        row fetch test with a worst-case joined loader scenario have been
+        reduced by about 60% vs. 1.1.5 and 42% vs. that of 0.8.6.
 
     .. change:: 3804
         :tags: bug, postgresql

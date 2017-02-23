@@ -28,6 +28,7 @@ from .base import (InspectionAttr, InspectionAttr,
     InspectionAttrInfo, _MappedAttribute)
 import collections
 from .. import inspect
+from . import path_registry
 
 # imported later
 MapperExtension = SessionExtension = AttributeExtension = None
@@ -459,9 +460,23 @@ class StrategizedProperty(MapperProperty):
 
     """
 
-    __slots__ = '_strategies', 'strategy'
+    __slots__ = (
+        '_strategies', 'strategy',
+        '_wildcard_token', '_default_path_loader_key'
+    )
 
     strategy_wildcard_key = None
+
+    def _memoized_attr__wildcard_token(self):
+        return ("%s:%s" % (
+            self.strategy_wildcard_key, path_registry._WILDCARD_TOKEN), )
+
+    def _memoized_attr__default_path_loader_key(self):
+        return (
+            "loader",
+            ("%s:%s" % (
+                self.strategy_wildcard_key, path_registry._DEFAULT_TOKEN), )
+        )
 
     def _get_context_loader(self, context, path):
         load = None

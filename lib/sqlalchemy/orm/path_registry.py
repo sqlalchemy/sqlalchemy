@@ -203,6 +203,13 @@ class PropRegistry(PathRegistry):
         self.parent = parent
         self.path = parent.path + (prop,)
 
+        self._wildcard_path_loader_key = (
+            "loader",
+            self.parent.path + self.prop._wildcard_token
+        )
+        self._default_path_loader_key = self.prop._default_path_loader_key
+        self._loader_key = ("loader", self.path)
+
     def __str__(self):
         return " -> ".join(
             str(elem) for elem in self.path
@@ -215,33 +222,6 @@ class PropRegistry(PathRegistry):
     @util.memoized_property
     def entity(self):
         return self.prop.mapper
-
-    @util.memoized_property
-    def _wildcard_path_loader_key(self):
-        """Given a path (mapper A, prop X), replace the prop with the wildcard,
-        e.g. (mapper A, 'relationship:.*') or (mapper A, 'column:.*'), then
-        return within the ("loader", path) structure.
-
-        """
-        return ("loader",
-                self.parent.token(
-                    "%s:%s" % (
-                        self.prop.strategy_wildcard_key, _WILDCARD_TOKEN)
-                ).path
-                )
-
-    @util.memoized_property
-    def _default_path_loader_key(self):
-        return ("loader",
-                self.parent.token(
-                    "%s:%s" % (self.prop.strategy_wildcard_key,
-                               _DEFAULT_TOKEN)
-                ).path
-                )
-
-    @util.memoized_property
-    def _loader_key(self):
-        return ("loader", self.path)
 
     @property
     def mapper(self):
