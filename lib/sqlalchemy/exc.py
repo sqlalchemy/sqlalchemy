@@ -118,7 +118,24 @@ class DisconnectionError(SQLAlchemyError):
     regarding the connection attempt.
 
     """
+    invalidate_pool = False
 
+
+class InvalidatePoolError(DisconnectionError):
+    """Raised when the connection pool should invalidate all stale connections.
+
+    A subclass of :class:`.DisconnectionError` that indicates that the
+    disconnect situation encountered on the connection probably means the
+    entire pool should be invalidated, as the database has been restarted.
+
+    This exception will be handled otherwise the same way as
+    :class:`.DisconnectionError`, allowing three attempts to reconnect
+    before giving up.
+
+    .. versionadded:: 1.2
+
+    """
+    invalidate_pool = True
 
 class TimeoutError(SQLAlchemyError):
     """Raised when a connection pool times out on getting a connection."""

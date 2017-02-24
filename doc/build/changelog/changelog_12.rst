@@ -30,6 +30,26 @@
 
             :ref:`change_1546`
 
+    .. change:: 3919
+        :tags: feature, engine
+        :tickets: 3919
+
+        Added native "pessimistic disconnection" handling to the :class:`.Pool`
+        object.  The new parameter :paramref:`.Pool.pre_ping`, available from
+        the engine as :paramref:`.create_engine.pool_pre_ping`, applies an
+        efficient form of the "pre-ping" recipe featured in the pooling
+        documentation, which upon each connection check out, emits a simple
+        statement, typically "SELECT 1", to test the connection for liveness.
+        If the existing connection is no longer able to respond to commands,
+        the connection is transparently recycled, and all other connections
+        made prior to the current timestamp are invalidated.
+
+        .. seealso::
+
+            :ref:`pool_disconnects_pessimistic`
+
+            :ref:`change_3919`
+
     .. change:: 3366
         :tags: bug, orm
         :tickets: 3366

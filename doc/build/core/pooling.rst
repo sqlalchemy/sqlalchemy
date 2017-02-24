@@ -170,75 +170,71 @@ its entire set of connections, setting the previously pooled connections as
 when the database server has been restarted, and all previously established connections
 are no longer functional.   There are two approaches to this.
 
-Disconnect Handling - Optimistic
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The most common approach is to let SQLAlchemy handle disconnects as they
-occur, at which point the pool is refreshed.   This assumes the :class:`.Pool`
-is used in conjunction with a :class:`.Engine`.  The :class:`.Engine` has
-logic which can detect disconnection events and refresh the pool automatically.
-
-When the :class:`.Connection` attempts to use a DBAPI connection, and an
-exception is raised that corresponds to a "disconnect" event, the connection
-is invalidated. The :class:`.Connection` then calls the :meth:`.Pool.recreate`
-method, effectively invalidating all connections not currently checked out so
-that they are replaced with new ones upon next checkout::
-
-    from sqlalchemy import create_engine, exc
-    e = create_engine(...)
-    c = e.connect()
-
-    try:
-        # suppose the database has been restarted.
-        c.execute("SELECT * FROM table")
-        c.close()
-    except exc.DBAPIError, e:
-        # an exception is raised, Connection is invalidated.
-        if e.connection_invalidated:
-            print("Connection was invalidated!")
-
-    # after the invalidate event, a new connection
-    # starts with a new Pool
-    c = e.connect()
-    c.execute("SELECT * FROM table")
-
-The above example illustrates that no special intervention is needed, the pool
-continues normally after a disconnection event is detected.   However, an exception is
-raised.   In a typical web application using an ORM Session, the above condition would
-correspond to a single request failing with a 500 error, then the web application
-continuing normally beyond that.   Hence the approach is "optimistic" in that frequent
-database restarts are not anticipated.
-
-.. _pool_setting_recycle:
-
-Setting Pool Recycle
-~~~~~~~~~~~~~~~~~~~~~~~
-
-An additional setting that can augment the "optimistic" approach is to set the
-pool recycle parameter.   This parameter prevents the pool from using a particular
-connection that has passed a certain age, and is appropriate for database backends
-such as MySQL that automatically close connections that have been stale after a particular
-period of time::
-
-    from sqlalchemy import create_engine
-    e = create_engine("mysql://scott:tiger@localhost/test", pool_recycle=3600)
-
-Above, any DBAPI connection that has been open for more than one hour will be invalidated and replaced,
-upon next checkout.   Note that the invalidation **only** occurs during checkout - not on
-any connections that are held in a checked out state.     ``pool_recycle`` is a function
-of the :class:`.Pool` itself, independent of whether or not an :class:`.Engine` is in use.
-
 .. _pool_disconnects_pessimistic:
 
 Disconnect Handling - Pessimistic
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-At the expense of some extra SQL emitted for each connection checked out from
-the pool, a "ping" operation established by a checkout event handler can
-detect an invalid connection before it is used.  In modern SQLAlchemy, the
-best way to do this is to make use of the
-:meth:`.ConnectionEvents.engine_connect` event, assuming the use of a
-:class:`.Engine` and not just a raw :class:`.Pool` object::
+The pessimistic approach refers to emitting a test statement on the SQL
+connection at the start of each connection pool checkout, to test
+that the database connection is still viable.   Typically, this
+is a simple statement like "SELECT 1", but may also make use of some
+DBAPI-specific method to test the connection for liveness.
+
+The approach adds a small bit of overhead to the connection checkout process,
+however is otherwise the most simple and reliable approach to completely
+eliminating database errors due to stale pooled connections.   The calling
+application does not need to be concerned about organizing operations
+to be able to recover from stale connections checked out from the pool.
+
+It is critical to note that the pre-ping approach **does not accommodate for
+connections dropped in the middle of transactions or other SQL operations**.
+If the database becomes unavailable while a transaction is in progress, the
+transaction will be lost and the database error will be raised.   While
+the :class:`.Connection` object will detect a "disconnect" situation and
+recycle the connection as well as invalidate the rest of the connection pool
+when this condition occurs,
+the individual operation where the exception was raised will be lost, and it's
+up to the application to either abandon
+the operation, or retry the whole transaction again.
+
+Pessimistic testing of connections upon checkout is achievable by
+using the :paramref:`.Pool.pre_ping` argument, available from :func:`.create_engine`
+via the :paramref:`.create_engine.pool_pre_ping` argument::
+
+    engine = create_engine("mysql+pymysql://user:pw@host/db", pool_pre_ping=True)
+
+The "pre ping" feature will normally emit SQL equivalent to "SELECT 1" each time a
+connection is checked out from the pool; if an error is raised that is detected
+as a "disconnect" situation, the connection will be immediately recycled, and
+all other pooled connections older than the current time are invalidated, so
+that the next time they are checked out, they will also be recycled before use.
+
+If the database is still not available when "pre ping" runs, then the initial
+connect will fail and the error for failure to connect will be propagated
+normally.  In the uncommon situation that the database is available for
+connections, but is not able to respond to a "ping", the "pre_ping" will try up
+to three times before giving up, propagating the database error last received.
+
+.. note::
+
+    the "SELECT 1" emitted by "pre-ping" is invoked within the scope
+    of the connection pool / dialect, using a very short codepath for minimal
+    Python latency.   As such, this statement is **not logged in the SQL
+    echo output**, and will not show up in SQLAlchemy's engine logging.
+
+.. versionadded:: 1.2 Added "pre-ping" capability to the :class:`.Pool`
+   class.
+
+Custom / Legacy Pessimistic Ping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before :paramref:`.create_engine.pool_pre_ping` was added, the "pre-ping"
+approach historically has been performed manually using
+the :meth:`.ConnectionEvents.engine_connect` engine event.
+The most common recipe for this is below, for reference
+purposes in case an application is already using such a recipe, or special
+behaviors are needed::
 
     from sqlalchemy import exc
     from sqlalchemy import event
@@ -288,32 +284,73 @@ to correctly invalidate the current connection pool when this condition
 occurs and allowing the current :class:`.Connection` to re-validate onto
 a new DBAPI connection.
 
-For the much less common case of where a :class:`.Pool` is being used without
-an :class:`.Engine`, an older approach may be used as below::
 
-    from sqlalchemy import exc
-    from sqlalchemy import event
-    from sqlalchemy.pool import Pool
+Disconnect Handling - Optimistic
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    @event.listens_for(Pool, "checkout")
-    def ping_connection(dbapi_connection, connection_record, connection_proxy):
-        cursor = dbapi_connection.cursor()
-        try:
-            cursor.execute("SELECT 1")
-        except:
-            # raise DisconnectionError - pool will try
-            # connecting again up to three times before raising.
-            raise exc.DisconnectionError()
-        cursor.close()
+When pessimistic handling is not employed, as well as when the database is
+shutdown and/or restarted in the middle of a connection's period of use within
+a transaction, the other approach to dealing with stale / closed connections is
+to let SQLAlchemy handle disconnects as  they occur, at which point all
+connections in the pool are invalidated, meaning they are assumed to be
+stale and will be refreshed upon next checkout.  This behavior assumes the
+:class:`.Pool` is used in conjunction with a :class:`.Engine`.
+The :class:`.Engine` has logic which can detect
+disconnection events and refresh the pool automatically.
 
-Above, the :class:`.Pool` object specifically catches
-:class:`~sqlalchemy.exc.DisconnectionError` and attempts to create a new DBAPI
-connection, up to three times, before giving up and then raising
-:class:`~sqlalchemy.exc.InvalidRequestError`, failing the connection.  The
-disadvantage of the above approach is that we don't have any easy way of
-determining if the exception raised is in fact a "disconnect" situation, since
-there is no :class:`.Engine` or :class:`.Dialect` in play, and also the above
-error would occur individually for all stale connections still in the pool.
+When the :class:`.Connection` attempts to use a DBAPI connection, and an
+exception is raised that corresponds to a "disconnect" event, the connection
+is invalidated. The :class:`.Connection` then calls the :meth:`.Pool.recreate`
+method, effectively invalidating all connections not currently checked out so
+that they are replaced with new ones upon next checkout.  This flow is
+illustrated by the code example below::
+
+    from sqlalchemy import create_engine, exc
+    e = create_engine(...)
+    c = e.connect()
+
+    try:
+        # suppose the database has been restarted.
+        c.execute("SELECT * FROM table")
+        c.close()
+    except exc.DBAPIError, e:
+        # an exception is raised, Connection is invalidated.
+        if e.connection_invalidated:
+            print("Connection was invalidated!")
+
+    # after the invalidate event, a new connection
+    # starts with a new Pool
+    c = e.connect()
+    c.execute("SELECT * FROM table")
+
+The above example illustrates that no special intervention is needed to
+refresh the pool, which continues normally after a disconnection event is
+detected.   However, one database exception is raised, per each connection
+that is in use while the database unavailability event occurred.
+In a typical web application using an ORM Session, the above condition would
+correspond to a single request failing with a 500 error, then the web application
+continuing normally beyond that.   Hence the approach is "optimistic" in that frequent
+database restarts are not anticipated.
+
+.. _pool_setting_recycle:
+
+Setting Pool Recycle
+~~~~~~~~~~~~~~~~~~~~~~~
+
+An additional setting that can augment the "optimistic" approach is to set the
+pool recycle parameter.   This parameter prevents the pool from using a particular
+connection that has passed a certain age, and is appropriate for database backends
+such as MySQL that automatically close connections that have been stale after a particular
+period of time::
+
+    from sqlalchemy import create_engine
+    e = create_engine("mysql://scott:tiger@localhost/test", pool_recycle=3600)
+
+Above, any DBAPI connection that has been open for more than one hour will be invalidated and replaced,
+upon next checkout.   Note that the invalidation **only** occurs during checkout - not on
+any connections that are held in a checked out state.     ``pool_recycle`` is a function
+of the :class:`.Pool` itself, independent of whether or not an :class:`.Engine` is in use.
+
 
 .. _pool_connection_invalidation:
 

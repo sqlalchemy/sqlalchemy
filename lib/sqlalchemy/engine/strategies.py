@@ -121,7 +121,8 @@ class DefaultEngineStrategy(EngineStrategy):
                          'recycle': 'pool_recycle',
                          'events': 'pool_events',
                          'use_threadlocal': 'pool_threadlocal',
-                         'reset_on_return': 'pool_reset_on_return'}
+                         'reset_on_return': 'pool_reset_on_return',
+                         'pre_ping': 'pool_pre_ping'}
             for k in util.get_cls_kwargs(poolclass):
                 tk = translate.get(k, k)
                 if tk in kwargs:

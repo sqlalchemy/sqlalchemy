@@ -161,14 +161,24 @@ class ReconnectFixture(object):
     def __init__(self, dbapi):
         self.dbapi = dbapi
         self.connections = []
+        self.is_stopped = False
 
     def __getattr__(self, key):
         return getattr(self.dbapi, key)
 
     def connect(self, *args, **kwargs):
+
         conn = self.dbapi.connect(*args, **kwargs)
-        self.connections.append(conn)
-        return conn
+        if self.is_stopped:
+            self._safe(conn.close)
+            curs = conn.cursor()  # should fail on Oracle etc.
+            # should fail for everything that didn't fail
+            # above, connection is closed
+            curs.execute("select 1")
+            assert False, "simulated connect failure didn't work"
+        else:
+            self.connections.append(conn)
+            return conn
 
     def _safe(self, fn):
         try:
@@ -178,15 +188,19 @@ class ReconnectFixture(object):
                 "ReconnectFixture couldn't "
                 "close connection: %s" % e)
 
-    def shutdown(self):
+    def shutdown(self, stop=False):
         # TODO: this doesn't cover all cases
         # as nicely as we'd like, namely MySQLdb.
         # would need to implement R. Brewer's
         # proxy server idea to get better
         # coverage.
+        self.is_stopped = stop
         for c in list(self.connections):
             self._safe(c.close)
         self.connections = []
+
+    def restart(self):
+        self.is_stopped = False
 
 
 def reconnecting_engine(url=None, options=None):
@@ -200,9 +214,11 @@ def reconnecting_engine(url=None, options=None):
 
     def dispose():
         engine.dialect.dbapi.shutdown()
+        engine.dialect.dbapi.is_stopped = False
         _dispose()
 
     engine.test_shutdown = engine.dialect.dbapi.shutdown
+    engine.test_restart = engine.dialect.dbapi.restart
     engine.dispose = dispose
     return engine
 

@@ -355,6 +355,16 @@ def create_engine(*args, **kwargs):
        "sqlalchemy.pool" logger. Defaults to a hexstring of the object's
        id.
 
+    :param pool_pre_ping: boolean, if True will enable the connection pool
+        "pre-ping" feature that tests connections for liveness upon
+        each checkout.
+
+        .. versionadded:: 1.2
+
+        .. seealso::
+
+            :ref:`pool_disconnects_pessimistic`
+
     :param pool_size=5: the number of connections to keep open
         inside the connection pool. This used with
         :class:`~sqlalchemy.pool.QueuePool` as

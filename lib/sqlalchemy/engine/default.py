@@ -459,6 +459,26 @@ class DefaultDialect(interfaces.Dialect):
     def do_close(self, dbapi_connection):
         dbapi_connection.close()
 
+    @util.memoized_property
+    def _dialect_specific_select_one(self):
+        return str(expression.select([1]).compile(dialect=self))
+
+    def do_ping(self, dbapi_connection):
+        cursor = None
+        try:
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute(self._dialect_specific_select_one)
+            finally:
+                cursor.close()
+        except self.dbapi.Error as err:
+            if self.is_disconnect(err, dbapi_connection, cursor):
+                return False
+            else:
+                raise
+        else:
+            return True
+
     def create_xid(self):
         """Create a random two-phase transaction ID.
 

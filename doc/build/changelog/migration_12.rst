@@ -181,6 +181,40 @@ Current backend support includes MySQL, Postgresql, and Oracle.
 
 :ticket:`1546`
 
+.. _change_3919:
+
+Pessimistic disconnection detection added to the connection pool
+----------------------------------------------------------------
+
+The connection pool documentation has long featured a recipe for using
+the :meth:`.ConnectionEvents.engine_connect` engine event to emit a simple
+statement on a checked-out connection to test it for liveness.   The
+functionality of this recipe has now been added into the connection pool
+itself, when used in conjunction with an appropriate dialect.   Using
+the new parameter :paramref:`.create_engine.pool_pre_ping`, each connection
+checked out will be tested for freshness before being returned::
+
+    engine = create_engine("mysql+pymysql://", pool_pre_ping=True)
+
+While the "pre-ping" approach adds a small amount of latency to the connection
+pool checkout, for a typical application that is transactionally-oriented
+(which includes most ORM applications), this overhead is minimal, and
+eliminates the problem of acquiring a stale connection that will raise
+an error, requiring that the application either abandon or retry the operation.
+
+The feature does **not** accommodate for connections dropped within
+an ongoing transaction or SQL operation.  If an application must recover
+from these as well, it would need to employ its own operation retry logic
+to anticipate these errors.
+
+
+.. seealso::
+
+    :ref:`pool_disconnects_pessimistic`
+
+
+:ticket:`3919`
+
 .. _change_2694:
 
 New "autoescape" option for startswith(), endswith()
