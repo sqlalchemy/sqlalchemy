@@ -13,6 +13,16 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3923
+        :tags: bug, sql
+        :tickets: 3923
+
+        Fixed bug where a SQL-oriented Python-side column default could fail to
+        be executed properly upon INSERT in the "pre-execute" codepath, if the
+        SQL itself were an untyped expression, such as plain text.  The "pre-
+        execute" codepath is fairly uncommon however can apply to non-integer
+        primary key columns with SQL defaults when RETURNING is not used.
+
     .. change:: 3785
         :tags: bug, sql
         :tickets: 3785

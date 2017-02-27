@@ -1073,7 +1073,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             # TODO: expensive branching here should be
             # pulled into _exec_scalar()
             conn = self.connection
-            c = expression.select([default.arg]).compile(bind=conn)
+            if not default._arg_is_typed:
+                default_arg = expression.type_coerce(default.arg, type_)
+            else:
+                default_arg = default.arg
+            c = expression.select([default_arg]).compile(bind=conn)
             return conn._execute_compiled(c, (), {}).scalar()
         else:
             return default.arg

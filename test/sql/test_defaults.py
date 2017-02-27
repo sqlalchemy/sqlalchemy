@@ -8,7 +8,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy import (
     MetaData, Integer, String, ForeignKey, Boolean, exc, Sequence, func,
-    literal, Unicode, cast)
+    literal, Unicode, cast, DateTime)
 from sqlalchemy.types import TypeDecorator, TypeEngine
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.dialects import sqlite
@@ -670,6 +670,13 @@ class PKDefaultTest(fixtures.TablesTest):
                 default=sa.select([func.max(t2.c.nextid)]).as_scalar()),
             Column('data', String(30)))
 
+        Table(
+            'date_table', metadata,
+            Column(
+                'date_id',
+                DateTime, default=text("current_timestamp"), primary_key=True)
+        )
+
     @testing.requires.returning
     def test_with_implicit_returning(self):
         self._test(True)
@@ -678,20 +685,26 @@ class PKDefaultTest(fixtures.TablesTest):
         self._test(False)
 
     def _test(self, returning):
-        t2, t1 = self.tables.t2, self.tables.t1
+        t2, t1, date_table = (
+            self.tables.t2, self.tables.t1, self.tables.date_table
+        )
 
         if not returning and not testing.db.dialect.implicit_returning:
             engine = testing.db
         else:
             engine = engines.testing_engine(
                 options={'implicit_returning': returning})
-        engine.execute(t2.insert(), nextid=1)
-        r = engine.execute(t1.insert(), data='hi')
-        eq_([1], r.inserted_primary_key)
+        with engine.begin() as conn:
+            conn.execute(t2.insert(), nextid=1)
+            r = conn.execute(t1.insert(), data='hi')
+            eq_([1], r.inserted_primary_key)
 
-        engine.execute(t2.insert(), nextid=2)
-        r = engine.execute(t1.insert(), data='there')
-        eq_([2], r.inserted_primary_key)
+            conn.execute(t2.insert(), nextid=2)
+            r = conn.execute(t1.insert(), data='there')
+            eq_([2], r.inserted_primary_key)
+
+            r = conn.execute(date_table.insert())
+            assert isinstance(r.inserted_primary_key[0], datetime.datetime)
 
 
 class PKIncrementTest(fixtures.TablesTest):
@@ -1353,8 +1366,14 @@ class SpecialTypePKTest(fixtures.TestBase):
     def test_literal_default_no_label(self):
         self._run_test(default=literal("INT_1", type_=self.MyInteger))
 
+    def test_literal_column_default_no_label(self):
+        self._run_test(default=literal_column("1", type_=self.MyInteger))
+
     def test_sequence(self):
         self._run_test(Sequence('foo_seq'))
+
+    def test_text_clause_default_no_type(self):
+        self._run_test(default=text('1'))
 
     def test_server_default(self):
         self._run_test(server_default='1',)

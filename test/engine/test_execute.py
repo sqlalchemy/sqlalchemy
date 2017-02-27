@@ -1350,34 +1350,19 @@ class EngineEventsTest(fixtures.TestBase):
                         ('select * from t1', {}, None),
                         ('DROP TABLE t1', {}, None)]
 
-            # or engine.dialect.preexecute_pk_sequences:
-            if not testing.against('oracle+zxjdbc'):
-                cursor = [
-                    ('CREATE TABLE t1', {}, ()),
-                    ('INSERT INTO t1 (c1, c2)', {
-                        'c2': 'some data', 'c1': 5},
-                        (5, 'some data')),
-                    ('SELECT lower', {'lower_2': 'Foo'},
-                        ('Foo', )),
-                    ('INSERT INTO t1 (c1, c2)',
-                     {'c2': 'foo', 'c1': 6},
-                     (6, 'foo')),
-                    ('select * from t1', {}, ()),
-                    ('DROP TABLE t1', {}, ()),
-                ]
-            else:
-                insert2_params = 6, 'Foo'
-                if testing.against('oracle+zxjdbc'):
-                    insert2_params += (ReturningParam(12), )
-                cursor = [('CREATE TABLE t1', {}, ()),
-                          ('INSERT INTO t1 (c1, c2)',
-                           {'c2': 'some data', 'c1': 5}, (5, 'some data')),
-                          ('INSERT INTO t1 (c1, c2)',
-                           {'c1': 6, 'lower_2': 'Foo'}, insert2_params),
-                          ('select * from t1', {}, ()),
-                          ('DROP TABLE t1', {}, ())]
-                # bind param name 'lower_2' might
-                # be incorrect
+            cursor = [
+                ('CREATE TABLE t1', {}, ()),
+                ('INSERT INTO t1 (c1, c2)', {
+                    'c2': 'some data', 'c1': 5},
+                    (5, 'some data')),
+                ('SELECT lower', {'lower_1': 'Foo'},
+                    ('Foo', )),
+                ('INSERT INTO t1 (c1, c2)',
+                 {'c2': 'foo', 'c1': 6},
+                 (6, 'foo')),
+                ('select * from t1', {}, ()),
+                ('DROP TABLE t1', {}, ()),
+            ]
             self._assert_stmts(compiled, stmts)
             self._assert_stmts(cursor, cursor_stmts)
 
@@ -2363,31 +2348,19 @@ class ProxyConnectionTest(fixtures.TestBase):
                         ('INSERT INTO t1 (c1, c2)', {'c1': 6}, None),
                         ('select * from t1', {}, None),
                         ('DROP TABLE t1', {}, None)]
-            # or engine.dialect.pr eexecute_pk_sequence s:
-            # original comment above moved here for pep8 fix
-            if not testing.against('oracle+zxjdbc'):
-                cursor = [
-                    ('CREATE TABLE t1', {}, ()),
-                    ('INSERT INTO t1 (c1, c2)', {
-                     'c2': 'some data', 'c1': 5}, (5, 'some data')),
-                    ('SELECT lower', {'lower_2': 'Foo'},
-                        ('Foo', )),
-                    ('INSERT INTO t1 (c1, c2)', {'c2': 'foo', 'c1': 6},
-                     (6, 'foo')),
-                    ('select * from t1', {}, ()),
-                    ('DROP TABLE t1', {}, ()),
-                ]
-            else:
-                insert2_params = 6, 'Foo'
-                if testing.against('oracle+zxjdbc'):
-                    insert2_params += (ReturningParam(12), )
-                cursor = [('CREATE TABLE t1', {}, ()),
-                          ('INSERT INTO t1 (c1, c2)', {
-                           'c2': 'some data', 'c1': 5}, (5, 'some data')),
-                          ('INSERT INTO t1 (c1, c2)',
-                           {'c1': 6, 'lower_2': 'Foo'}, insert2_params),
-                          ('select * from t1', {}, ()),
-                          ('DROP TABLE t1', {}, ())]
+
+            cursor = [
+                ('CREATE TABLE t1', {}, ()),
+                ('INSERT INTO t1 (c1, c2)', {
+                 'c2': 'some data', 'c1': 5}, (5, 'some data')),
+                ('SELECT lower', {'lower_1': 'Foo'},
+                    ('Foo', )),
+                ('INSERT INTO t1 (c1, c2)', {'c2': 'foo', 'c1': 6},
+                 (6, 'foo')),
+                ('select * from t1', {}, ()),
+                ('DROP TABLE t1', {}, ()),
+            ]
+
             assert_stmts(compiled, stmts)
             assert_stmts(cursor, cursor_stmts)
 

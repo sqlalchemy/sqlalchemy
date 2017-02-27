@@ -2067,6 +2067,14 @@ class ColumnDefault(DefaultGenerator):
             not self.is_clause_element and \
             not self.is_sequence
 
+    @util.memoized_property
+    @util.dependencies("sqlalchemy.sql.sqltypes")
+    def _arg_is_typed(self, sqltypes):
+        if self.is_clause_element:
+            return not isinstance(self.arg.type, sqltypes.NullType)
+        else:
+            return False
+
     def _maybe_wrap_callable(self, fn):
         """Wrap callables that don't accept a context.
 
