@@ -3374,6 +3374,12 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
                             )
 
     def test_schema_translate_select(self):
+        m = MetaData()
+        table1 = Table(
+            'mytable', m, Column('myid', Integer),
+            Column('name', String),
+            Column('description', String)
+        )
         schema_translate_map = {"remote_owner": "foob", None: 'bar'}
 
         self.assert_compile(
@@ -3402,12 +3408,50 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description, "
             "foob.remotetable.rem_id, foob.remotetable.datatype_id, "
             "foob.remotetable.value FROM mytable JOIN foob.remotetable "
-            "ON foob.remotetable.rem_id = mytable.myid",
+            "ON mytable.myid = foob.remotetable.rem_id",
+            schema_translate_map=schema_translate_map
+        )
+
+    def test_schema_translate_aliases(self):
+        schema_translate_map = {None: 'bar'}
+
+        m = MetaData()
+        table1 = Table(
+            'mytable', m, Column('myid', Integer),
+            Column('name', String),
+            Column('description', String)
+        )
+        table2 = Table(
+            'myothertable', m, Column('otherid', Integer),
+            Column('othername', String),
+        )
+
+        alias = table1.alias()
+
+        stmt = select([
+            table2, alias
+        ]).select_from(table2.join(alias, table2.c.otherid == alias.c.myid)).\
+            where(alias.c.name == 'foo')
+
+        self.assert_compile(
+            stmt,
+            "SELECT bar.myothertable.otherid, bar.myothertable.othername, "
+            "mytable_1.myid, mytable_1.name, mytable_1.description "
+            "FROM bar.myothertable JOIN bar.mytable AS mytable_1 "
+            "ON bar.myothertable.otherid = mytable_1.myid "
+            "WHERE mytable_1.name = :name_1",
             schema_translate_map=schema_translate_map
         )
 
     def test_schema_translate_crud(self):
         schema_translate_map = {"remote_owner": "foob", None: 'bar'}
+
+        m = MetaData()
+        table1 = Table(
+            'mytable', m,
+            Column('myid', Integer), Column('name', String),
+            Column('description', String)
+        )
 
         self.assert_compile(
             table1.insert().values(description='foo'),

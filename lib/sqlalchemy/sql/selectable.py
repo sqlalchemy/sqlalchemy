@@ -351,6 +351,9 @@ class FromClause(Selectable):
 
     """
 
+    def _translate_schema(self, effective_schema, map_):
+        return effective_schema
+
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
     @util.deprecated(

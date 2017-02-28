@@ -997,6 +997,9 @@ class SchemaType(SchemaEventTarget):
                 util.portable_instancemethod(self._on_metadata_drop)
             )
 
+    def _translate_schema(self, effective_schema, map_):
+        return map_.get(effective_schema, effective_schema)
+
     def _set_parent(self, column):
         column._on_table_attach(util.portable_instancemethod(self._set_table))
 

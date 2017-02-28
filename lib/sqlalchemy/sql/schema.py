@@ -114,6 +114,9 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         schema_item.dispatch._update(self.dispatch)
         return schema_item
 
+    def _translate_schema(self, effective_schema, map_):
+        return map_.get(effective_schema, effective_schema)
+
 
 class Table(DialectKWArgs, SchemaItem, TableClause):
     r"""Represent a table in a database.
@@ -3974,7 +3977,8 @@ class _SchemaTranslateMap(object):
         if map_ is not None:
             def schema_for_object(obj):
                 effective_schema = self._default_schema_getter(obj)
-                effective_schema = map_.get(effective_schema, effective_schema)
+                effective_schema = obj._translate_schema(
+                    effective_schema, map_)
                 return effective_schema
             self.__call__ = schema_for_object
             self.hash_key = ";".join(

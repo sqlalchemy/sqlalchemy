@@ -21,6 +21,18 @@
 .. changelog::
     :version: 1.1.7
 
+    .. change::
+        :tags: bug, sql
+        :tickets: 3924
+
+        Fixed bug in new "schema translate" feature where the translated schema
+        name would be invoked in terms of an alias name when rendered along
+        with a column expression; occurred only when the source translate
+        name was "None".   The "schema translate" feature now only takes
+        effect for :class:`.SchemaItem` and :class:`.SchemaType` subclasses,
+        that is, objects that correspond to a DDL-creatable structure in
+        a database.
+
 .. changelog::
     :version: 1.1.6
     :released: February 28, 2017
