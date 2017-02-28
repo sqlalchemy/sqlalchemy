@@ -21,6 +21,12 @@
 .. changelog::
     :version: 1.1.6
 
+    .. change::
+        :tags: bug, mysql
+
+        Added new MySQL 8.0 reserved words to the MySQL dialect for proper
+        quoting.  Pull request courtesy Hanno Schlichting.
+
     .. change:: 3915
         :tags: bug, orm
         :tickets: 3915

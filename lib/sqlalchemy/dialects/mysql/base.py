@@ -676,6 +676,9 @@ RESERVED_WORDS = set(
 
      'generated', 'optimizer_costs', 'stored', 'virtual',  # 5.7
 
+     'admin', 'except', 'grouping', 'of', 'persist', 'recursive',
+        'role',  # 8.0
+
      ])
 
 AUTOCOMMIT_RE = re.compile(
