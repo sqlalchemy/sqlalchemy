@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.6
+    :released: February 28, 2017
 
     .. change::
         :tags: bug, mysql
