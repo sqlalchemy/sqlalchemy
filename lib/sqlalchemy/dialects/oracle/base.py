@@ -74,7 +74,7 @@ LIMIT/OFFSET Support
 Oracle has no support for the LIMIT or OFFSET keywords.  SQLAlchemy uses
 a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology
 is taken from
-http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html .
+http://www.oracle.com/technetwork/issue-archive/2006/06-sep/o56asktom-086197.html .
 
 There are two options which affect its behavior:
 
