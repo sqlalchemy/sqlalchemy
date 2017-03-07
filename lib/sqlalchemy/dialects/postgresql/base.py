@@ -1245,24 +1245,24 @@ class ENUM(sqltypes.Enum):
         else:
             return False
 
-    def _on_table_create(self, target, bind, checkfirst, **kw):
+    def _on_table_create(self, target, bind, checkfirst=False, **kw):
         if checkfirst or (
                 not self.metadata and
                 not kw.get('_is_metadata_operation', False)) and \
                 not self._check_for_name_in_memos(checkfirst, kw):
             self.create(bind=bind, checkfirst=checkfirst)
 
-    def _on_table_drop(self, target, bind, checkfirst, **kw):
+    def _on_table_drop(self, target, bind, checkfirst=False, **kw):
         if not self.metadata and \
             not kw.get('_is_metadata_operation', False) and \
                 not self._check_for_name_in_memos(checkfirst, kw):
             self.drop(bind=bind, checkfirst=checkfirst)
 
-    def _on_metadata_create(self, target, bind, checkfirst, **kw):
+    def _on_metadata_create(self, target, bind, checkfirst=False, **kw):
         if not self._check_for_name_in_memos(checkfirst, kw):
             self.create(bind=bind, checkfirst=checkfirst)
 
-    def _on_metadata_drop(self, target, bind, checkfirst, **kw):
+    def _on_metadata_drop(self, target, bind, checkfirst=False, **kw):
         if not self._check_for_name_in_memos(checkfirst, kw):
             self.drop(bind=bind, checkfirst=checkfirst)
 

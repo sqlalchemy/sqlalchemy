@@ -1532,6 +1532,7 @@ class PKAutoIncrementTest(fixtures.TestBase):
 
 
 class SchemaTypeTest(fixtures.TestBase):
+    __backend__ = True
 
     class TrackEvents(object):
         column = None
