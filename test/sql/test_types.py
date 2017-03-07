@@ -1315,17 +1315,69 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 non_native_enum_table.insert(), {"id": 1, "someenum": None})
             eq_(conn.scalar(select([non_native_enum_table.c.someenum])), None)
 
-    @testing.fails_on(
-        'mysql',
-        "The CHECK clause is parsed but ignored by all storage engines.")
-    @testing.fails_on(
-        'mssql', "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")
+    @testing.requires.enforces_check_constraints
     def test_check_constraint(self):
         assert_raises(
             (exc.IntegrityError, exc.ProgrammingError),
             testing.db.execute,
             "insert into non_native_enum_table "
             "(id, someenum) values(1, 'four')")
+
+    @testing.requires.enforces_check_constraints
+    @testing.provide_metadata
+    def test_variant_we_are_default(self):
+        # test that the "variant" does not create a constraint
+        t = Table(
+            'my_table', self.metadata,
+            Column(
+                'data', Enum("one", "two", "three", name="e1").with_variant(
+                    Enum("four", "five", "six", name="e2"), "some_other_db"
+                )
+            )
+        )
+
+        eq_(
+            len([c for c in t.constraints if isinstance(c, CheckConstraint)]),
+            2
+        )
+
+        with testing.db.connect() as conn:
+            self.metadata.create_all(conn)
+            assert_raises(
+                (exc.IntegrityError, exc.ProgrammingError, exc.DataError),
+                conn.execute,
+                "insert into my_table "
+                "(data) values('four')")
+            conn.execute("insert into my_table (data) values ('two')")
+
+    @testing.requires.enforces_check_constraints
+    @testing.provide_metadata
+    def test_variant_we_are_not_default(self):
+        # test that the "variant" does not create a constraint
+        t = Table(
+            'my_table', self.metadata,
+            Column(
+                'data', Enum("one", "two", "three", name="e1").with_variant(
+                    Enum("four", "five", "six", name="e2"),
+                    testing.db.dialect.name
+                )
+            )
+        )
+
+        # ensure Variant isn't exploding the constraints
+        eq_(
+            len([c for c in t.constraints if isinstance(c, CheckConstraint)]),
+            2
+        )
+
+        with testing.db.connect() as conn:
+            self.metadata.create_all(conn)
+            assert_raises(
+                (exc.IntegrityError, exc.ProgrammingError, exc.DataError),
+                conn.execute,
+                "insert into my_table "
+                "(data) values('two')")
+            conn.execute("insert into my_table (data) values ('four')")
 
     def test_skip_check_constraint(self):
         with testing.db.connect() as conn:

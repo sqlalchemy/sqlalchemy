@@ -22,6 +22,16 @@
     :version: 1.1.7
 
     .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 2892
+
+        Added support for the :class:`.Variant` and the :class:`.SchemaType`
+        objects to be compatible with each other.  That is, a variant
+        can be created against a type like :class:`.Enum`, and the instructions
+        to create constraints and/or database-specific type objects will
+        propagate correctly as per the variant's dialect mapping.
+
+    .. change::
         :tags: bug, sql
         :tickets: 3931
 

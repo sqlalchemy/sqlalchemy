@@ -523,6 +523,77 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                 "twoHITHERE"
             )
 
+    @testing.provide_metadata
+    def test_generic_w_pg_variant(self):
+        some_table = Table(
+            'some_table', self.metadata,
+            Column(
+                'data',
+                Enum(
+                    "one", "two", "three",
+                    native_enum=True   # make sure this is True because
+                                       # it should *not* take effect due to
+                                       # the variant
+                ).with_variant(
+                    postgresql.ENUM("four", "five", "six", name="my_enum"),
+                    "postgresql"
+                )
+            )
+        )
+
+        with testing.db.begin() as conn:
+            assert 'my_enum' not in [
+                e['name'] for e in inspect(conn).get_enums()]
+
+            self.metadata.create_all(conn)
+
+            assert 'my_enum' in [
+                e['name'] for e in inspect(conn).get_enums()]
+
+            conn.execute(
+                some_table.insert(), {"data": "five"}
+            )
+
+            self.metadata.drop_all(conn)
+
+            assert 'my_enum' not in [
+                e['name'] for e in inspect(conn).get_enums()]
+
+    @testing.provide_metadata
+    def test_generic_w_some_other_variant(self):
+        some_table = Table(
+            'some_table', self.metadata,
+            Column(
+                'data',
+                Enum(
+                    "one", "two", "three",
+                    name="my_enum",
+                    native_enum=True
+                ).with_variant(
+                    Enum("four", "five", "six"),
+                    "mysql"
+                )
+            )
+        )
+
+        with testing.db.begin() as conn:
+            assert 'my_enum' not in [
+                e['name'] for e in inspect(conn).get_enums()]
+
+            self.metadata.create_all(conn)
+
+            assert 'my_enum' in [
+                e['name'] for e in inspect(conn).get_enums()]
+
+            conn.execute(
+                some_table.insert(), {"data": "two"}
+            )
+
+            self.metadata.drop_all(conn)
+
+            assert 'my_enum' not in [
+                e['name'] for e in inspect(conn).get_enums()]
+
 
 class OIDTest(fixtures.TestBase):
     __only_on__ = 'postgresql'

@@ -529,20 +529,24 @@ class portable_instancemethod(object):
 
     """
 
-    __slots__ = 'target', 'name', '__weakref__'
+    __slots__ = 'target', 'name', 'kwargs', '__weakref__'
 
     def __getstate__(self):
-        return {'target': self.target, 'name': self.name}
+        return {'target': self.target, 'name': self.name,
+                'kwargs': self.kwargs}
 
     def __setstate__(self, state):
         self.target = state['target']
         self.name = state['name']
+        self.kwargs = state.get('kwargs', ())
 
-    def __init__(self, meth):
+    def __init__(self, meth, kwargs=()):
         self.target = meth.__self__
         self.name = meth.__name__
+        self.kwargs = kwargs
 
     def __call__(self, *arg, **kw):
+        kw.update(self.kwargs)
         return getattr(self.target, self.name)(*arg, **kw)
 
 

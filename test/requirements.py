@@ -48,6 +48,14 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
+    def enforces_check_constraints(self):
+        """Target database must also enforce check constraints."""
+
+        return self.check_constraints + fails_on(
+            ['mysql'], "check constraints don't enforce"
+        )
+
+    @property
     def named_constraints(self):
         """target database must support names for constraints."""
 
