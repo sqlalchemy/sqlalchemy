@@ -2602,6 +2602,12 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         Constraint.__init__(self, **kw)
         ColumnCollectionMixin.__init__(self, *columns, _autoattach=_autoattach)
 
+    columns = None
+    """A :class:`.ColumnCollection` representing the set of columns
+    for this constraint.
+
+    """
+
     def _set_parent(self, table):
         Constraint._set_parent(self, table)
         ColumnCollectionMixin._set_parent(self, table)
@@ -2842,6 +2848,22 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     def _append_element(self, column, fk):
         self.columns.add(column)
         self.elements.append(fk)
+
+    columns = None
+    """A :class:`.ColumnCollection` representing the set of columns
+    for this constraint.
+
+    """
+
+    elements = None
+    """A sequence of :class:`.ForeignKey` objects.
+
+    Each :class:`.ForeignKey` represents a single referring column/referred
+    column pair.
+
+    This collection is intended to be read-only.
+
+    """
 
     @property
     def _elements(self):
