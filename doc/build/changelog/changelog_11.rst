@@ -23,6 +23,21 @@
 
     .. change::
         :tags: bug, sql
+        :tickets: 3931
+
+        Fixed bug in compiler where the string identifier of a savepoint would
+        be cached in the identifier quoting dictionary; as these identifiers
+        are arbitrary, a small memory leak could occur if a single
+        :class:`.Connection` had an unbounded number of savepoints used,
+        as well as if the savepoint clause constructs were used directly
+        with an unbounded umber of savepoint names.   The memory leak does
+        **not** impact the vast majority of cases as normally the
+        :class:`.Connection`, which renders savepoint names with a simple
+        counter starting at "1", is used on a per-transaction or
+        per-fixed-number-of-transactions basis before being discarded.
+
+    .. change::
+        :tags: bug, sql
         :tickets: 3924
 
         Fixed bug in new "schema translate" feature where the translated schema

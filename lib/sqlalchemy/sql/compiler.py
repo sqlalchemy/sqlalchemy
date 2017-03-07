@@ -2933,7 +2933,13 @@ class IdentifierPreparer(object):
         return self.quote(name or alias.name)
 
     def format_savepoint(self, savepoint, name=None):
-        return self.quote(name or savepoint.ident)
+        # Running the savepoint name through quoting is unnecessary
+        # for all known dialects.  This is here to support potential
+        # third party use cases
+        ident = name or savepoint.ident
+        if self._requires_quotes(ident):
+            ident = self.quote_identifier(ident)
+        return ident
 
     @util.dependencies("sqlalchemy.sql.naming")
     def format_constraint(self, naming, constraint):
