@@ -146,7 +146,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
     return unpickler
 
 
-def dumps(obj, protocol=0):
+def dumps(obj, protocol=pickle.HIGHEST_PROTOCOL):
     buf = byte_buffer()
     pickler = Serializer(buf, protocol)
     pickler.dump(obj)

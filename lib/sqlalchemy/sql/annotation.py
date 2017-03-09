@@ -94,6 +94,9 @@ class Annotated(object):
             clone.__dict__.update(self.__dict__)
             return self.__class__(clone, self._annotations)
 
+    def __reduce__(self):
+        return self.__class__, (self.__element, self._annotations)
+
     def __hash__(self):
         return self._hash
 

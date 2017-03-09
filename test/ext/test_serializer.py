@@ -3,15 +3,19 @@
 from sqlalchemy.ext import serializer
 from sqlalchemy import testing
 from sqlalchemy import Integer, String, ForeignKey, select, \
-    desc, func, util, MetaData, literal_column
+    desc, func, util, MetaData, literal_column, join
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.orm import relationship, sessionmaker, scoped_session, \
     class_mapper, mapper, joinedload, configure_mappers, aliased
 from sqlalchemy.testing import eq_, AssertsCompiledSQL
 from sqlalchemy.util import u, ue
-
 from sqlalchemy.testing import fixtures
+
+
+def pickle_protocols():
+    return iter([-1, 1, 2])
+    #return iter([-1, 0, 1, 2])
 
 
 class User(fixtures.ComparableEntity):
@@ -127,20 +131,32 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
         eq_(q2.all(), [User(name='fred')])
         eq_(list(q2.values(User.id, User.name)), [(9, 'fred')])
 
-    # fails too often/randomly
-    # @testing.requires.non_broken_pickle
-    # def test_query_three(self):
-    #    ua = aliased(User)
-    #    q = \
-    #        Session.query(ua).join(ua.addresses).\
-    #           filter(Address.email.like('%fred%'))
-    #    q2 = serializer.loads(serializer.dumps(q, -1), users.metadata,
-    #                          Session)
-    #    eq_(q2.all(), [User(name='fred')])
-    #
-        # try to pull out the aliased entity here...
-    #    ua_2 = q2._entities[0].entity_zero.entity
-    #    eq_(list(q2.values(ua_2.id, ua_2.name)), [(9, 'fred')])
+    @testing.requires.non_broken_pickle
+    def test_query_three(self):
+        ua = aliased(User)
+        q = \
+            Session.query(ua).join(ua.addresses).\
+               filter(Address.email.like('%fred%'))
+        for prot in pickle_protocols():
+            q2 = serializer.loads(serializer.dumps(q, prot), users.metadata,
+                                  Session)
+            eq_(q2.all(), [User(name='fred')])
+
+           # try to pull out the aliased entity here...
+            ua_2 = q2._entities[0].entity_zero.entity
+            eq_(list(q2.values(ua_2.id, ua_2.name)), [(9, 'fred')])
+
+    def test_annotated_one(self):
+        j = join(users, addresses)._annotate({"foo": "bar"})
+        query = select([addresses]).select_from(
+            j
+        )
+
+        str(query)
+        for prot in pickle_protocols():
+            pickled_failing = serializer.dumps(
+                j, prot)
+            serializer.loads(pickled_failing, users.metadata, None)
 
     @testing.requires.non_broken_pickle
     def test_orm_join(self):
