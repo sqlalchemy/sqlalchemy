@@ -12,8 +12,8 @@ from setuptools import find_packages
 from setuptools.command.test import test as TestCommand
 
 cmdclass = {}
-if sys.version_info < (2, 6):
-    raise Exception("SQLAlchemy requires Python 2.6 or higher.")
+if sys.version_info < (2, 7):
+    raise Exception("SQLAlchemy requires Python 2.7 or higher.")
 
 cpython = platform.python_implementation() == 'CPython'
 
@@ -148,7 +148,6 @@ def run_setup(with_cext):
             "Programming Language :: Python",
             "Programming Language :: Python :: 3",
             "Programming Language :: Python :: Implementation :: CPython",
-            "Programming Language :: Python :: Implementation :: Jython",
             "Programming Language :: Python :: Implementation :: PyPy",
             "Topic :: Database :: Front-Ends",
             "Operating System :: OS Independent",

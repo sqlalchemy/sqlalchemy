@@ -40,11 +40,11 @@ following text represents the expected return value.
 Version Check
 =============
 
-A quick check to verify that we are on at least **version 1.1** of SQLAlchemy::
+A quick check to verify that we are on at least **version 1.2** of SQLAlchemy::
 
     >>> import sqlalchemy
     >>> sqlalchemy.__version__ # doctest:+SKIP
-    1.1.0
+    1.2.0
 
 Connecting
 ==========
