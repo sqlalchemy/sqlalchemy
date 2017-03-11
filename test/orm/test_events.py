@@ -1617,6 +1617,50 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         ]
         )
 
+    def test_snapshot_still_present_after_commit(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+
+        u1 = User(name='u1')
+
+        sess.add(u1)
+        sess.commit()
+
+        u1 = sess.query(User).first()
+
+        @event.listens_for(sess, "after_commit")
+        def assert_state(session):
+            assert 'name' in u1.__dict__
+            eq_(u1.name, 'u1')
+
+        sess.commit()
+        assert 'name' not in u1.__dict__
+
+    def test_snapshot_still_present_after_rollback(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+
+        u1 = User(name='u1')
+
+        sess.add(u1)
+        sess.commit()
+
+        u1 = sess.query(User).first()
+
+        @event.listens_for(sess, "after_rollback")
+        def assert_state(session):
+            assert 'name' in u1.__dict__
+            eq_(u1.name, 'u1')
+
+        sess.rollback()
+        assert 'name' not in u1.__dict__
+
 
 class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     run_inserts = None

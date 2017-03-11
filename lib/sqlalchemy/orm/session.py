@@ -277,9 +277,9 @@ class SessionTransaction(object):
                     )
                 elif not deactive_ok:
                     raise sa_exc.InvalidRequestError(
-                        "This Session's transaction has been rolled back "
-                        "by a nested rollback() call.  To begin a new "
-                        "transaction, issue Session.rollback() first."
+                        "This session is in 'inactive' state, due to the "
+                        "SQL transaction being rolled back; no further "
+                        "SQL can be emitted within this transaction."
                     )
         elif self._state is CLOSED:
             raise sa_exc.ResourceClosedError(closed_msg)
@@ -487,10 +487,17 @@ class SessionTransaction(object):
             for transaction in self._iterate_self_and_parents():
                 if transaction._parent is None or transaction.nested:
                     try:
-                        transaction._rollback_impl()
+                        for t in set(transaction._connections.values()):
+                            t[1].rollback()
+
+                        transaction._state = DEACTIVE
+                        self.session.dispatch.after_rollback(self.session)
                     except:
                         rollback_err = sys.exc_info()
-                    transaction._state = DEACTIVE
+                    finally:
+                        if self.session._enable_transaction_accounting:
+                            transaction._restore_snapshot(
+                                dirty_only=transaction.nested)
                     boundary = transaction
                     break
                 else:
@@ -521,15 +528,6 @@ class SessionTransaction(object):
 
         return self._parent
 
-    def _rollback_impl(self):
-        try:
-            for t in set(self._connections.values()):
-                t[1].rollback()
-        finally:
-            if self.session._enable_transaction_accounting:
-                self._restore_snapshot(dirty_only=self.nested)
-
-        self.session.dispatch.after_rollback(self.session)
 
     def close(self, invalidate=False):
         self.session.transaction = self._parent

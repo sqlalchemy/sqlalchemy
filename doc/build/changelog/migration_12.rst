@@ -64,6 +64,44 @@ Where the value of the parameter "x_1" is ``'total/%score'``.
 Key Behavioral Changes - ORM
 ============================
 
+The after_rollback() Session event now emits before the expiration of objects
+-----------------------------------------------------------------------------
+
+The :meth:`.Session.after_rollback` event now has access to the attribute
+state of objects before their state has been expired (e.g. the "snapshot
+removal").  This allows the event to be consistent with the behavior
+of the :meth:`.Session.after_commit` event which also emits before the
+"snapshot" has been removed::
+
+    sess = Session()
+
+    user = sess.query(User).filter_by(name='x').first()
+
+    @event.listens_for(sess, "after_rollback")
+    def after_rollback(session):
+        # 'user.name' is now present, assuming it was already
+        # loaded.  previously this would raise upon trying
+        # to emit a lazy load.
+        print("user name: %s" % user.name)
+
+    @event.listens_for(sess, "after_commit")
+    def after_commit(session):
+        # 'user.name' is present, assuming it was already
+        # loaded.  this is the existing behavior.
+        print("user name: %s" % user.name)
+
+    if should_rollback:
+        sess.rollback()
+    else:
+        sess.commit()
+
+Note that the :class:`.Session` will still disallow SQL from being emitted
+within this event; meaning that unloaded attributes will still not be
+able to load within the scope of the event.
+
+
+:ticket:`3934`
+
 Key Behavioral Changes - Core
 =============================
 
@@ -90,23 +128,23 @@ within the :meth:`.Inspector.get_foreign_keys` method will now be
 "name normalized", that is, expressed as lower case for a case insensitive
 name, rather than the raw UPPERCASE format that Oracle uses::
 
-	>>> insp.get_indexes("addresses")
-	[{'unique': False, 'column_names': [u'user_id'],
-	  'name': u'address_idx', 'dialect_options': {}}]
+    >>> insp.get_indexes("addresses")
+    [{'unique': False, 'column_names': [u'user_id'],
+      'name': u'address_idx', 'dialect_options': {}}]
 
-	>>> insp.get_pk_constraint("addresses")
-	{'name': u'pk_cons', 'constrained_columns': [u'id']}
+    >>> insp.get_pk_constraint("addresses")
+    {'name': u'pk_cons', 'constrained_columns': [u'id']}
 
-	>>> insp.get_foreign_keys("addresses")
-	[{'referred_table': u'users', 'referred_columns': [u'id'],
-	  'referred_schema': None, 'name': u'user_id_fk',
-	  'constrained_columns': [u'user_id']}]
+    >>> insp.get_foreign_keys("addresses")
+    [{'referred_table': u'users', 'referred_columns': [u'id'],
+      'referred_schema': None, 'name': u'user_id_fk',
+      'constrained_columns': [u'user_id']}]
 
 Previously, the foreign keys result would look like::
 
-	[{'referred_table': u'users', 'referred_columns': [u'id'],
-	  'referred_schema': None, 'name': 'USER_ID_FK',
-	  'constrained_columns': [u'user_id']}]
+    [{'referred_table': u'users', 'referred_columns': [u'id'],
+      'referred_schema': None, 'name': 'USER_ID_FK',
+      'constrained_columns': [u'user_id']}]
 
 Where the above could create problems particularly with Alembic autogenerate.
 

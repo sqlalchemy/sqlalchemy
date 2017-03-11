@@ -56,3 +56,18 @@
         .. seealso::
 
             :ref:`change_2694`
+
+    .. change:: 3934
+        :tags: bug, orm
+        :tickets: 3934
+
+        The state of the :class:`.Session` is now present when the
+        :meth:`.SessionEvents.after_rollback` event is emitted, that is,  the
+        attribute state of objects prior to their being expired.   This is now
+        consistent with the  behavior of the
+        :meth:`.SessionEvents.after_commit` event which  also emits before the
+        attribute state of objects is expired.
+
+        .. seealso::
+
+            :ref:`change_3934`

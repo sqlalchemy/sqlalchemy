@@ -434,12 +434,12 @@ class SessionTransactionTest(FixtureTest):
         sess.add(User(name='u1'))
         sess.flush()
         sess.rollback()
-        assert_raises_message(sa_exc.InvalidRequestError,
-                              "This Session's transaction has been "
-                              r"rolled back by a nested rollback\(\) "
-                              "call.  To begin a new transaction, "
-                              r"issue Session.rollback\(\) first.",
-                              sess.begin, subtransactions=True)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This session is in 'inactive' state, due to the SQL transaction "
+            "being rolled back; no further SQL can be emitted within this "
+            "transaction.",
+            sess.begin, subtransactions=True)
         sess.close()
 
     def test_no_sql_during_commit(self):
@@ -464,6 +464,19 @@ class SessionTransactionTest(FixtureTest):
             "This session is in 'prepared' state; no further "
             "SQL can be emitted within this transaction.",
             sess.execute, "select 1")
+
+    def test_no_sql_during_rollback(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        @event.listens_for(sess, "after_rollback")
+        def go(session):
+            session.execute("select 1")
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This session is in 'inactive' state, due to the SQL transaction "
+            "being rolled back; no further SQL can be emitted within this "
+            "transaction.",
+            sess.rollback)
 
     def test_no_prepare_wo_twophase(self):
         sess = create_session(bind=testing.db, autocommit=False)
@@ -491,9 +504,9 @@ class SessionTransactionTest(FixtureTest):
         trans2.rollback()
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            r"This Session's transaction has been rolled back by a nested "
-            r"rollback\(\) call.  To begin a new transaction, issue "
-            r"Session.rollback\(\) first.",
+            "This session is in 'inactive' state, due to the SQL transaction "
+            "being rolled back; no further SQL can be emitted within this "
+            "transaction.",
             trans.commit
         )
 
@@ -622,11 +635,6 @@ class SessionTransactionTest(FixtureTest):
                 orm_exc.FlushError, sess.flush
             )
 
-        assert_warnings(go,
-                        ["Session's state has been changed on a "
-                         "non-active transaction - this state "
-                         "will be discarded."],
-                        )
         assert u3 not in sess
 
     def test_preserve_flush_error(self):
