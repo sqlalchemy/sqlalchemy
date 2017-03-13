@@ -298,6 +298,7 @@ import random
 import collections
 import decimal
 import re
+import time
 
 
 class _OracleNumeric(sqltypes.Numeric):
@@ -621,9 +622,9 @@ class OracleExecutionContext_cx_oracle_with_unicode(
         OracleExecutionContext_cx_oracle.__init__(self, *arg, **kw)
         self.statement = util.text_type(self.statement)
 
-    def _execute_scalar(self, stmt):
+    def _execute_scalar(self, stmt, type_):
         return super(OracleExecutionContext_cx_oracle_with_unicode, self).\
-            _execute_scalar(util.text_type(stmt))
+            _execute_scalar(util.text_type(stmt), type_)
 
 
 class ReturningResultProxy(_result.FullyBufferedResultProxy):
@@ -692,7 +693,8 @@ class OracleDialect_cx_oracle(OracleDialect):
                  allow_twophase=True,
                  coerce_to_decimal=True,
                  coerce_to_unicode=False,
-                 arraysize=50, **kwargs):
+                 arraysize=50, _retry_on_12516=False,
+                 **kwargs):
         OracleDialect.__init__(self, **kwargs)
         self.threaded = threaded
         self.arraysize = arraysize
@@ -701,6 +703,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             hasattr(self.dbapi, 'TIMESTAMP')
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
+        self._retry_on_12516 = _retry_on_12516
 
         if hasattr(self.dbapi, 'version'):
             self.cx_oracle_ver = tuple([int(x) for x in
@@ -748,18 +751,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
             if util.py2k:
                 # There's really no reason to run with WITH_UNICODE under
-                # Python 2.x.  Give the user a hint.
-                util.warn(
-                    "cx_Oracle is compiled under Python 2.xx using the "
-                    "WITH_UNICODE flag.  Consider recompiling cx_Oracle "
-                    "without this flag, which is in no way necessary for "
-                    "full support of Unicode. Otherwise, all string-holding "
-                    "bind parameters must be explicitly typed using "
-                    "SQLAlchemy's String type or one of its subtypes,"
-                    "or otherwise be passed as Python unicode.  "
-                    "Plain Python strings passed as bind parameters will be "
-                    "silently corrupted by cx_Oracle."
-                )
+                # Python 2.x.  However as of cx_oracle 5.3 it seems to be
+                # set to ON for default builds
                 self.execution_ctx_cls = \
                     OracleExecutionContext_cx_oracle_with_unicode
         else:
@@ -784,6 +777,22 @@ class OracleDialect_cx_oracle(OracleDialect):
     def dbapi(cls):
         import cx_Oracle
         return cx_Oracle
+
+    def connect(self, *cargs, **cparams):
+        if self._retry_on_12516:
+            # emergency flag for the SQLAlchemy test suite, which has
+            # decreased in stability since cx_oracle 5.3; generalized
+            # "retry on connect" functionality is part of an upcoming
+            # SQLAlchemy feature
+            try:
+                return self.dbapi.connect(*cargs, **cparams)
+            except self.dbapi.DatabaseError as err:
+                if "ORA-12516" in str(err):
+                    time.sleep(2)
+                    return self.dbapi.connect(*cargs, **cparams)
+        else:
+            return super(OracleDialect_cx_oracle, self).connect(
+                *cargs, **cparams)
 
     def initialize(self, connection):
         super(OracleDialect_cx_oracle, self).initialize(connection)
