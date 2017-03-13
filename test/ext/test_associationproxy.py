@@ -1,4 +1,4 @@
-from sqlalchemy.testing import eq_, assert_raises
+from sqlalchemy.testing import eq_, assert_raises, is_
 import copy
 import pickle
 
@@ -501,6 +501,30 @@ class SetTest(_CollectionOperations):
             self.assert_((p1.children <= other) == (control <= other))
             self.assert_((p1.children > other) == (control > other))
             self.assert_((p1.children >= other) == (control >= other))
+
+    def test_set_comparison_empty_to_empty(self):
+        # test issue #3265 which appears to be python 2.6 specific
+        Parent = self.Parent
+
+        p1 = Parent('P1')
+        p1.children = []
+
+        p2 = Parent('P2')
+        p2.children = []
+
+        set_0 = set()
+        set_a = p1.children
+        set_b = p2.children
+
+        is_(set_a == set_a, True)
+        is_(set_a == set_b, True)
+        is_(set_a == set_0, True)
+        is_(set_0 == set_a, True)
+
+        is_(set_a != set_a, False)
+        is_(set_a != set_b, False)
+        is_(set_a != set_0, False)
+        is_(set_0 != set_a, False)
 
     def test_set_mutation(self):
         Parent, Child = self.Parent, self.Child
