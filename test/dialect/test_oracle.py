@@ -1685,12 +1685,10 @@ class TypesTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_reflect_nvarchar(self):
         metadata = self.metadata
-        Table('t', metadata,
-            Column('data', sqltypes.NVARCHAR(255))
-        )
+        Table('tnv', metadata, Column('data', sqltypes.NVARCHAR(255)))
         metadata.create_all()
         m2 = MetaData(testing.db)
-        t2 = Table('t', m2, autoload=True)
+        t2 = Table('tnv', m2, autoload=True)
         assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
 
         if testing.against('oracle+cx_oracle'):

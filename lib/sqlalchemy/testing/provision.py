@@ -126,6 +126,7 @@ def _mssql_update_db_opts(db_url, db_opts):
     db_opts['legacy_schema_aliasing'] = False
 
 
+
 @_follower_url_from_main.for_db("sqlite")
 def _sqlite_follower_url_from_main(url, ident):
     url = sa_url.make_url(url)
@@ -268,6 +269,11 @@ def _oracle_drop_db(cfg, eng, ident):
         _ora_drop_ignore(conn, ident)
         _ora_drop_ignore(conn, "%s_ts1" % ident)
         _ora_drop_ignore(conn, "%s_ts2" % ident)
+
+
+@_update_db_opts.for_db("oracle")
+def _oracle_update_db_opts(db_url, db_opts):
+    db_opts['_retry_on_12516'] = True
 
 
 def reap_oracle_dbs(eng, idents_file):
