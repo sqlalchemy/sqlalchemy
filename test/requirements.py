@@ -847,6 +847,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def ad_hoc_engines(self):
+        return exclusions.skip_if(["oracle"])
+
+    @property
     def no_mssql_freetds(self):
         return self.mssql_freetds.not_()
 
