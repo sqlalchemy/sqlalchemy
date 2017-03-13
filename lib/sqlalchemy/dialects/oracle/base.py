@@ -1530,6 +1530,8 @@ class OracleDialect(default.DefaultDialect):
             (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \
                 row[0:2] + tuple([self.normalize_name(x) for x in row[2:6]])
 
+            cons_name = self.normalize_name(cons_name)
+
             if cons_type == 'R':
                 if remote_table is None:
                     # ticket 363

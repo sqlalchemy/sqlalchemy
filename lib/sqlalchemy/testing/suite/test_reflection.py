@@ -70,7 +70,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
                           Column('test2', sa.Float(5), nullable=False),
                           Column('parent_user_id', sa.Integer,
                                  sa.ForeignKey('%susers.user_id' %
-                                               schema_prefix)),
+                                               schema_prefix,
+                                               name='user_id_fk')),
                           schema=schema,
                           test_needs_fk=True,
                           )
@@ -444,7 +445,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             fkey1 = users_fkeys[0]
 
             with testing.requires.named_constraints.fail_if():
-                self.assert_(fkey1['name'] is not None)
+                eq_(fkey1['name'], "user_id_fk")
 
             eq_(fkey1['referred_schema'], expected_schema)
             eq_(fkey1['referred_table'], users.name)
@@ -457,7 +458,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                                            schema=schema)
         fkey1 = addr_fkeys[0]
 
-        with testing.requires.named_constraints.fail_if():
+        with testing.requires.implicitly_named_constraints.fail_if():
             self.assert_(fkey1['name'] is not None)
 
         eq_(fkey1['referred_schema'], expected_schema)

@@ -59,6 +59,12 @@ class DefaultRequirements(SuiteRequirements):
     def named_constraints(self):
         """target database must support names for constraints."""
 
+        return exclusions.open()
+
+    @property
+    def implicitly_named_constraints(self):
+        """target database must apply names to unnamed constraints."""
+
         return skip_if([
             no_support('sqlite', 'not supported by database'),
             ])
