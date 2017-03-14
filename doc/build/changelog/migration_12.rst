@@ -64,6 +64,8 @@ Where the value of the parameter "x_1" is ``'total/%score'``.
 Key Behavioral Changes - ORM
 ============================
 
+.. _change_3934:
+
 The after_rollback() Session event now emits before the expiration of objects
 -----------------------------------------------------------------------------
 
@@ -98,7 +100,6 @@ of the :meth:`.Session.after_commit` event which also emits before the
 Note that the :class:`.Session` will still disallow SQL from being emitted
 within this event; meaning that unloaded attributes will still not be
 able to load within the scope of the event.
-
 
 :ticket:`3934`
 
