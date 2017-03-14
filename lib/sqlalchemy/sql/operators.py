@@ -458,6 +458,17 @@ class ColumnOperators(Operators):
         "other" may be a tuple/list of column expressions,
         or a :func:`~.expression.select` construct.
 
+        In the case that ``other`` is an empty sequence, the compiler
+        produces an "empty in" expression.   This defaults to the
+        expression "1 != 1" to produce false in all cases.  The
+        :paramref:`.create_engine.empty_in_strategy` may be used to
+        alter this behavior.
+
+        .. versionchanged:: 1.2  The :meth:`.ColumnOperators.in_` and
+           :meth:`.ColumnOperators.notin_` operators
+           now produce a "static" expression for an empty IN sequence
+           by default.
+
         """
         return self.operate(in_op, other)
 
@@ -467,7 +478,16 @@ class ColumnOperators(Operators):
         This is equivalent to using negation with
         :meth:`.ColumnOperators.in_`, i.e. ``~x.in_(y)``.
 
-        .. versionadded:: 0.8
+        In the case that ``other`` is an empty sequence, the compiler
+        produces an "empty not in" expression.   This defaults to the
+        expression "1 = 1" to produce true in all cases.  The
+        :paramref:`.create_engine.empty_in_strategy` may be used to
+        alter this behavior.
+
+        .. versionchanged:: 1.2  The :meth:`.ColumnOperators.in_` and
+           :meth:`.ColumnOperators.notin_` operators
+           now produce a "static" expression for an empty IN sequence
+           by default.
 
         .. seealso::
 
@@ -957,6 +977,14 @@ def comma_op(a, b):
     raise NotImplementedError()
 
 
+def empty_in_op(a, b):
+    raise NotImplementedError()
+
+
+def empty_notin_op(a, b):
+    raise NotImplementedError()
+
+
 def concat_op(a, b):
     return a.concat(b)
 
@@ -1073,6 +1101,8 @@ _PRECEDENCE = {
     ne: 5,
     is_distinct_from: 5,
     isnot_distinct_from: 5,
+    empty_in_op: 5,
+    empty_notin_op: 5,
     gt: 5,
     lt: 5,
     ge: 5,

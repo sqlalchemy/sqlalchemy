@@ -1003,6 +1003,30 @@ class SQLCompiler(Compiled):
         return "NOT %s" % self.visit_binary(
             binary, override_operator=operators.match_op)
 
+    def _emit_empty_in_warning(self):
+        util.warn(
+            'The IN-predicate was invoked with an '
+            'empty sequence. This results in a '
+            'contradiction, which nonetheless can be '
+            'expensive to evaluate.  Consider alternative '
+            'strategies for improved performance.')
+
+    def visit_empty_in_op_binary(self, binary, operator, **kw):
+        if self.dialect._use_static_in:
+            return "1 != 1"
+        else:
+            if self.dialect._warn_on_empty_in:
+                self._emit_empty_in_warning()
+            return self.process(binary.left != binary.left)
+
+    def visit_empty_notin_op_binary(self, binary, operator, **kw):
+        if self.dialect._use_static_in:
+            return "1 = 1"
+        else:
+            if self.dialect._warn_on_empty_in:
+                self._emit_empty_in_warning()
+            return self.process(binary.left == binary.left)
+
     def visit_binary(self, binary, override_operator=None,
                      eager_grouping=False, **kw):
 
