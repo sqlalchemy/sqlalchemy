@@ -554,7 +554,7 @@ def _assert_invalidated(fn, *args):
 
 class RealReconnectTest(fixtures.TestBase):
     __backend__ = True
-    __requires__ = 'graceful_disconnects',
+    __requires__ = 'graceful_disconnects', 'ad_hoc_engines'
 
     def setup(self):
         self.engine = engines.reconnecting_engine()
