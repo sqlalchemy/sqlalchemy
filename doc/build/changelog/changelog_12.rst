@@ -13,6 +13,15 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3918
+        :tags: bug, ext
+        :tickets: 3918
+
+        Fixed a bug in the ``sqlalchemy.ext.serializer`` extension whereby
+        an "annotated" SQL element (as produced by the ORM for many types
+        of SQL expressions) could not be reliably serialized.  Also bumped
+        the default pickle level for the serializer to "HIGHEST_PROTOCOL".
+
     .. change:: 3932
         :tags: bug, oracle
         :tickets: 3932
