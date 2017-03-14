@@ -26,6 +26,13 @@
         and the UPDATE now sets the version_id value to itself, so that
         concurrency checks still take place.
 
+    .. change:: 3673
+        :tags: bug, orm
+        :tickets: 3673
+
+        The versioning feature does not support NULL for the version counter.
+        An exception is now raised if the version id is programmatic and
+        was set to NULL for an UPDATE.  Pull request courtesy Diana Clarke.
 
     .. change:: 3796
         :tags: bug, orm

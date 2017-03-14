@@ -20,6 +20,79 @@ def make_uuid():
     return uuid.uuid4().hex
 
 
+class NullVersionIdTest(fixtures.MappedTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('version_table', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('version_id', Integer),
+              Column('value', String(40), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+
+    def _fixture(self):
+        Foo, version_table = self.classes.Foo, self.tables.version_table
+
+        mapper(
+            Foo, version_table,
+            version_id_col=version_table.c.version_id,
+            version_id_generator=False,
+        )
+
+        s1 = Session()
+        return s1
+
+    def test_null_version_id_insert(self):
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1 = Foo(value='f1')
+        s1.add(f1)
+
+        # Prior to the fix for #3673, you would have been allowed to insert
+        # the above record with a NULL version_id and you would have gotten
+        # the following error when you tried to update it. Now you should
+        # get a FlushError on the initial insert.
+        #
+        # A value is required for bind parameter 'version_table_version_id'
+        # UPDATE version_table SET value=?
+        #    WHERE version_table.id = ?
+        #    AND version_table.version_id = ?
+        # parameters: [{'version_table_id': 1, 'value': 'f1rev2'}]]
+
+        assert_raises_message(
+            sa.orm.exc.FlushError,
+            "Instance does not contain a non-NULL version value",
+            s1.commit)
+
+    def test_null_version_id_update(self):
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1 = Foo(value='f1', version_id=1)
+        s1.add(f1)
+        s1.commit()
+
+        # Prior to the fix for #3673, you would have been allowed to update
+        # the above record with a NULL version_id, and it would look like
+        # this, post commit: Foo(id=1, value='f1rev2', version_id=None). Now
+        # you should get a FlushError on update.
+
+        f1.value = 'f1rev2'
+        f1.version_id = None
+
+        assert_raises_message(
+            sa.orm.exc.FlushError,
+            "Instance does not contain a non-NULL version value",
+            s1.commit)
+
+
 class VersioningTest(fixtures.MappedTest):
     __backend__ = True
 
