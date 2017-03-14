@@ -37,6 +37,25 @@
         flag is enabled for cx_Oracle assuming at least version 5.0, which
         is now commonplace.
 
+    .. change:: 3907
+        :tags: feature, sql
+        :tickets: 3907
+
+        The longstanding behavior of the :meth:`.ColumnOperators.in_` and
+        :meth:`.ColumnOperators.notin_` operators emitting a warning when
+        the right-hand condition is an empty sequence has been revised;
+        a simple "static" expression of "1 != 1" or "1 = 1" is now rendered
+        by default, rather than pulling in the original left-hand
+        expression.  This causes the result for a NULL column comparison
+        against an empty set to change from NULL to true/false.  The
+        behavior is configurable, and the old behavior can be enabled
+        using the :paramref:`.create_engine.empty_in_strategy` parameter
+        to :func:`.create_engine`.
+
+        .. seealso::
+
+            :ref:`change_3907`
+
     .. change:: 3276
         :tags: bug, oracle
         :tickets: 3276

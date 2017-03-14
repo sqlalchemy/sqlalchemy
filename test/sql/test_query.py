@@ -420,8 +420,7 @@ class QueryTest(fixtures.TestBase):
 
         s = users.select(not_(users.c.user_name.in_([])))
         r = s.execute().fetchall()
-        # All usernames with a value are outside an empty set
-        assert len(r) == 2
+        assert len(r) == 3
 
         s = users.select(users.c.user_name.in_(['jack', 'fred']))
         r = s.execute().fetchall()
@@ -432,7 +431,6 @@ class QueryTest(fixtures.TestBase):
         # Null values are not outside any set
         assert len(r) == 0
 
-    @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', "uses sql-92 rules")
     @testing.fails_on('sybase', "uses sql-92 rules")
     @testing.fails_if(
@@ -456,7 +454,7 @@ class QueryTest(fixtures.TestBase):
         r = s.execute(search_key='john').fetchall()
         assert len(r) == 3
         r = s.execute(search_key=None).fetchall()
-        assert len(r) == 0
+        assert len(r) == 3
 
     @testing.emits_warning('.*empty sequence.*')
     def test_literal_in(self):
@@ -470,28 +468,66 @@ class QueryTest(fixtures.TestBase):
         r = s.execute().fetchall()
         assert len(r) == 3
 
-    @testing.emits_warning('.*empty sequence.*')
     @testing.requires.boolean_col_expressions
-    def test_in_filtering_advanced(self):
+    def test_empty_in_filtering_static(self):
         """test the behavior of the in_() function when
         comparing against an empty collection, specifically
         that a proper boolean value is generated.
 
         """
 
-        users.insert().execute(user_id=7, user_name='jack')
-        users.insert().execute(user_id=8, user_name='fred')
-        users.insert().execute(user_id=9, user_name=None)
+        with testing.db.connect() as conn:
+            conn.execute(
+                users.insert(),
+                [
+                    {'user_id': 7, 'user_name': 'jack'},
+                    {'user_id': 8, 'user_name': 'ed'},
+                    {'user_id': 9, 'user_name': None}
+                ]
+            )
 
-        s = users.select(users.c.user_name.in_([]) == True)  # noqa
-        r = s.execute().fetchall()
-        assert len(r) == 0
-        s = users.select(users.c.user_name.in_([]) == False)  # noqa
-        r = s.execute().fetchall()
-        assert len(r) == 2
-        s = users.select(users.c.user_name.in_([]) == None)  # noqa
-        r = s.execute().fetchall()
-        assert len(r) == 1
+            s = users.select(users.c.user_name.in_([]) == True)  # noqa
+            r = conn.execute(s).fetchall()
+            assert len(r) == 0
+            s = users.select(users.c.user_name.in_([]) == False)  # noqa
+            r = conn.execute(s).fetchall()
+            assert len(r) == 3
+            s = users.select(users.c.user_name.in_([]) == None)  # noqa
+            r = conn.execute(s).fetchall()
+            assert len(r) == 0
+
+    @testing.requires.boolean_col_expressions
+    def test_empty_in_filtering_dynamic(self):
+        """test the behavior of the in_() function when
+        comparing against an empty collection, specifically
+        that a proper boolean value is generated.
+
+        """
+
+        engine = engines.testing_engine(
+            options={"empty_in_strategy": "dynamic"})
+
+        with engine.connect() as conn:
+            users.create(engine, checkfirst=True)
+
+            conn.execute(
+                users.insert(),
+                [
+                    {'user_id': 7, 'user_name': 'jack'},
+                    {'user_id': 8, 'user_name': 'ed'},
+                    {'user_id': 9, 'user_name': None}
+                ]
+            )
+
+            s = users.select(users.c.user_name.in_([]) == True)  # noqa
+            r = conn.execute(s).fetchall()
+            assert len(r) == 0
+            s = users.select(users.c.user_name.in_([]) == False)  # noqa
+            r = conn.execute(s).fetchall()
+            assert len(r) == 2
+            s = users.select(users.c.user_name.in_([]) == None)  # noqa
+            r = conn.execute(s).fetchall()
+            assert len(r) == 1
 
 
 class RequiredBindTest(fixtures.TablesTest):

@@ -178,6 +178,7 @@ class DefaultDialect(interfaces.Dialect):
                  supports_right_nested_joins=None,
                  case_sensitive=True,
                  supports_native_boolean=None,
+                 empty_in_strategy='static',
                  label_length=None, **kwargs):
 
         if not getattr(self, 'ported_sqla_06', True):
@@ -206,6 +207,17 @@ class DefaultDialect(interfaces.Dialect):
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
         self.case_sensitive = case_sensitive
+
+        self.empty_in_strategy = empty_in_strategy
+        if empty_in_strategy == 'static':
+            self._use_static_in = True
+        elif empty_in_strategy in ('dynamic', 'dynamic_warn'):
+            self._use_static_in = False
+            self._warn_on_empty_in = empty_in_strategy == 'dynamic_warn'
+        else:
+            raise exc.ArgumentError(
+                "empty_in_strategy may be 'static', "
+                "'dynamic', or 'dynamic_warn'")
 
         if label_length and label_length > self.max_identifier_length:
             raise exc.ArgumentError(

@@ -146,23 +146,14 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
         else:
             o = expr._bind_param(op, o)
         args.append(o)
+
     if len(args) == 0:
-
-        # Special case handling for empty IN's, behave like
-        # comparison against zero row selectable.  We use != to
-        # build the contradiction as it handles NULL values
-        # appropriately, i.e. "not (x IN ())" should not return NULL
-        # values for x.
-
-        util.warn('The IN-predicate on "%s" was invoked with an '
-                  'empty sequence. This results in a '
-                  'contradiction, which nonetheless can be '
-                  'expensive to evaluate.  Consider alternative '
-                  'strategies for improved performance.' % expr)
-        if op is operators.in_op:
-            return expr != expr
-        else:
-            return expr == expr
+        op, negate_op = (
+            operators.empty_in_op,
+            operators.empty_notin_op) if op is operators.in_op \
+            else (
+                operators.empty_notin_op,
+                operators.empty_in_op)
 
     return _boolean_compare(expr, op,
                             ClauseList(*args).self_group(against=op),

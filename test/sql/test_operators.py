@@ -1638,6 +1638,11 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         column('othername', String)
     )
 
+    def _dialect(self, empty_in_strategy="static"):
+        return default.DefaultDialect(
+            empty_in_strategy=empty_in_strategy
+        )
+
     def test_in_1(self):
         self.assert_compile(self.table1.c.myid.in_(['a']),
                             "mytable.myid IN (:myid_1)")
@@ -1751,11 +1756,6 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "FROM myothertable)"
         )
 
-    @testing.emits_warning('.*empty sequence.*')
-    def test_in_23(self):
-        self.assert_compile(self.table1.c.myid.in_([]),
-                            "mytable.myid != mytable.myid")
-
     def test_in_24(self):
         self.assert_compile(
             select([self.table1.c.myid.in_(select([self.table2.c.otherid]))]),
@@ -1812,15 +1812,53 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "mytable.myid IN (NULL)"
         )
 
-    @testing.emits_warning('.*empty sequence.*')
-    def test_in_29(self):
-        self.assert_compile(self.table1.c.myid.notin_([]),
-                            "mytable.myid = mytable.myid")
+    def test_empty_in_dynamic_1(self):
+        self.assert_compile(self.table1.c.myid.in_([]),
+                            "mytable.myid != mytable.myid",
+                            dialect=self._dialect("dynamic"))
 
-    @testing.emits_warning('.*empty sequence.*')
-    def test_in_30(self):
+    def test_empty_in_dynamic_2(self):
+        self.assert_compile(self.table1.c.myid.notin_([]),
+                            "mytable.myid = mytable.myid",
+                            dialect=self._dialect("dynamic"))
+
+    def test_empty_in_dynamic_3(self):
         self.assert_compile(~self.table1.c.myid.in_([]),
-                            "mytable.myid = mytable.myid")
+                            "mytable.myid = mytable.myid",
+                            dialect=self._dialect("dynamic"))
+
+    def test_empty_in_dynamic_warn_1(self):
+        with testing.expect_warnings(
+                "The IN-predicate was invoked with an empty sequence."):
+            self.assert_compile(self.table1.c.myid.in_([]),
+                                "mytable.myid != mytable.myid",
+                                dialect=self._dialect("dynamic_warn"))
+
+    def test_empty_in_dynamic_warn_2(self):
+        with testing.expect_warnings(
+                "The IN-predicate was invoked with an empty sequence."):
+            self.assert_compile(self.table1.c.myid.notin_([]),
+                                "mytable.myid = mytable.myid",
+                                dialect=self._dialect("dynamic_warn"))
+
+    def test_empty_in_dynamic_warn_3(self):
+        with testing.expect_warnings(
+                "The IN-predicate was invoked with an empty sequence."):
+            self.assert_compile(~self.table1.c.myid.in_([]),
+                                "mytable.myid = mytable.myid",
+                                dialect=self._dialect("dynamic_warn"))
+
+    def test_empty_in_static_1(self):
+        self.assert_compile(self.table1.c.myid.in_([]),
+                            "1 != 1")
+
+    def test_empty_in_static_2(self):
+        self.assert_compile(self.table1.c.myid.notin_([]),
+                            "1 = 1")
+
+    def test_empty_in_static_3(self):
+        self.assert_compile(~self.table1.c.myid.in_([]),
+                            "1 = 1")
 
 
 class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):

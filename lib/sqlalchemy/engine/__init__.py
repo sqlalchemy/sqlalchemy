@@ -192,6 +192,24 @@ def create_engine(*args, **kwargs):
         :ref:`dbengine_logging` for information on how to configure logging
         directly.
 
+    :param empty_in_strategy:  The SQL compilation strategy to use when
+        rendering an IN or NOT IN expression for :meth:`.ColumnOperators.in_`
+        where the right-hand side
+        is an empty set.   This is a string value that may be one of
+        ``static``, ``dynamic``, or ``dynamic_warn``.   The ``static``
+        strategy is the default, and an IN comparison to an empty set
+        will generate a simple false expression "1 != 1".   The ``dynamic``
+        strategy behaves like that of SQLAlchemy 1.1 and earlier, emitting
+        a false expression of the form "expr != expr", which has the effect
+        of evaluting to NULL in the case of a null expression.
+        ``dynamic_warn`` is the same as ``dynamic``, however also emits a
+        warning when an empty set is encountered; this because the "dynamic"
+        comparison is typically poorly performing on most databases.
+
+        .. versionadded:: 1.2  Added the ``empty_in_strategy`` setting and
+           additionally defaulted the behavior for empty-set IN comparisons
+           to a static boolean expression.
+
     :param encoding: Defaults to ``utf-8``.  This is the string
         encoding used by SQLAlchemy for string encode/decode
         operations which occur within SQLAlchemy, **outside of
