@@ -13,6 +13,20 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3932
+        :tags: bug, oracle
+        :tickets: 3932
+
+        The cx_Oracle dialect now supports "sane multi rowcount", that is,
+        when a series of parameter sets are executed via DBAPI
+        ``cursor.executemany()``, we can make use of ``cursor.rowcount`` to
+        verify the number of rows matched.  This has an impact within the
+        ORM when detecting concurrent modification scenarios, in that
+        some simple conditions can now be detected even when the ORM
+        is batching statements, as well as when the more strict versioning
+        feature is used, the ORM can still use statement batching.  The
+        flag is enabled for cx_Oracle assuming at least version 5.0, which
+        is now commonplace.
 
     .. change:: 3276
         :tags: bug, oracle

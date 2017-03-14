@@ -653,6 +653,9 @@ class OracleDialect_cx_oracle(OracleDialect):
     execution_ctx_cls = OracleExecutionContext_cx_oracle
     statement_compiler = OracleCompiler_cx_oracle
 
+    supports_sane_rowcount = True
+    supports_sane_multi_rowcount = True
+
     driver = "cx_oracle"
 
     colspecs = colspecs = {
@@ -722,6 +725,8 @@ class OracleDialect_cx_oracle(OracleDialect):
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB")
         self.supports_unicode_binds = self.cx_oracle_ver >= (5, 0)
+
+        self.supports_sane_multi_rowcount = self.cx_oracle_ver >= (5, 0)
 
         self.coerce_to_unicode = (
             self.cx_oracle_ver >= (5, 0) and

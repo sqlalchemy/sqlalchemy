@@ -57,14 +57,12 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
         # WHERE matches 3, 3 rows changed
         department = employees_table.c.department
         r = employees_table.update(department == 'C').execute(department='Z')
-        print("expecting 3, dialect reports %s" % r.rowcount)
         assert r.rowcount == 3
 
     def test_update_rowcount2(self):
         # WHERE matches 3, 0 rows changed
         department = employees_table.c.department
         r = employees_table.update(department == 'C').execute(department='C')
-        print("expecting 3, dialect reports %s" % r.rowcount)
         assert r.rowcount == 3
 
     def test_raw_sql_rowcount(self):
@@ -87,5 +85,35 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
         # WHERE matches 3, 3 rows deleted
         department = employees_table.c.department
         r = employees_table.delete(department == 'C').execute()
-        print("expecting 3, dialect reports %s" % r.rowcount)
         assert r.rowcount == 3
+
+    @testing.requires.sane_multi_rowcount
+    def test_multi_update_rowcount(self):
+        stmt = employees_table.update().\
+            where(employees_table.c.name == bindparam('emp_name')).\
+            values(department="C")
+
+        r = testing.db.execute(
+            stmt,
+            [{"emp_name": "Bob"}, {"emp_name": "Cynthia"},
+             {"emp_name": "nonexistent"}]
+        )
+
+        eq_(
+            r.rowcount, 2
+        )
+
+    @testing.requires.sane_multi_rowcount
+    def test_multi_delete_rowcount(self):
+        stmt = employees_table.delete().\
+            where(employees_table.c.name == bindparam('emp_name'))
+
+        r = testing.db.execute(
+            stmt,
+            [{"emp_name": "Bob"}, {"emp_name": "Cynthia"},
+             {"emp_name": "nonexistent"}]
+        )
+
+        eq_(
+            r.rowcount, 2
+        )

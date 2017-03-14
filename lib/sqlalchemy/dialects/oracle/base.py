@@ -957,8 +957,6 @@ class OracleDialect(default.DefaultDialect):
     supports_unicode_statements = False
     supports_unicode_binds = False
     max_identifier_length = 30
-    supports_sane_rowcount = True
-    supports_sane_multi_rowcount = False
 
     supports_simple_order_by_label = False
 
