@@ -328,7 +328,7 @@ class TableInsertTest(fixtures.TablesTest):
             data)
 
     @testing.requires.sequences
-    def test_expicit_sequence(self):
+    def test_explicit_sequence(self):
         t = self._fixture()
         self._test(
             t.insert().values(
