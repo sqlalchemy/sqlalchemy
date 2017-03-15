@@ -310,11 +310,26 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             use_default_dialect=True
         )
 
-    def test_select_from(self):
-        Manager = self.classes.Manager
-        JuniorEngineer = self.classes.JuniorEngineer
-        employees = self.tables.employees
-        Engineer = self.classes.Engineer
+    def test_select_from_count(self):
+        Manager, Engineer = (self.classes.Manager, self.classes.Engineer)
+
+        sess = create_session()
+        m1 = Manager(name='Tom', manager_data='data1')
+        e1 = Engineer(name='Kurt', engineer_info='knows how to hack')
+        sess.add_all([m1, e1])
+        sess.flush()
+
+        eq_(
+            sess.query(func.count(1)).select_from(Manager).all(),
+            [(1, )]
+        )
+
+    def test_select_from_subquery(self):
+        Manager, JuniorEngineer, employees, Engineer = (
+            self.classes.Manager,
+            self.classes.JuniorEngineer,
+            self.tables.employees,
+            self.classes.Engineer)
 
         sess = create_session()
         m1 = Manager(name='Tom', manager_data='data1')
