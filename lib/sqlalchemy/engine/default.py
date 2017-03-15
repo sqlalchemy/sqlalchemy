@@ -627,7 +627,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # into a dict or list to be sent to the DBAPI's
         # execute() or executemany() method.
         parameters = []
-        if dialect.positional:
+        if compiled.positional:
             for compiled_params in self.compiled_parameters:
                 param = []
                 for key in self.compiled.positiontup:

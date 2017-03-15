@@ -19,6 +19,7 @@ from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock, call, patch
+from sqlalchemy.testing import mock
 from contextlib import contextmanager
 from sqlalchemy.util import nested
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -432,6 +433,35 @@ class ExecuteTest(fixtures.TestBase):
         testing.db.execute(users_autoinc.insert().
                            values(user_name=bindparam('name', None)), [])
         eq_(testing.db.execute(users_autoinc.select()).fetchall(), [(1, None)])
+
+    @testing.only_on("sqlite")
+    def test_execute_compiled_favors_compiled_paramstyle(self):
+        with patch.object(testing.db.dialect, "do_execute") as do_exec:
+            stmt = users.update().values(user_id=1, user_name='foo')
+
+            d1 = default.DefaultDialect(paramstyle="format")
+            d2 = default.DefaultDialect(paramstyle="pyformat")
+
+            testing.db.execute(stmt.compile(dialect=d1))
+            testing.db.execute(stmt.compile(dialect=d2))
+
+            eq_(
+                do_exec.mock_calls, [
+                    call(
+                        mock.ANY,
+                        "UPDATE users SET user_id=%s, user_name=%s",
+                        (1, 'foo'),
+                        mock.ANY
+                    ),
+                    call(
+                        mock.ANY,
+                        "UPDATE users SET user_id=%(user_id)s, "
+                        "user_name=%(user_name)s",
+                       {'user_name': 'foo', 'user_id': 1},
+                        mock.ANY
+                    )
+                ]
+            )
 
     @testing.requires.ad_hoc_engines
     def test_engine_level_options(self):

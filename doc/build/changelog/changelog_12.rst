@@ -13,6 +13,17 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3938
+        :tags: bug, engine
+        :tickets: 3938
+
+        Fixed bug where in the unusual case of passing a
+        :class:`.Compiled` object directly to :meth:`.Connection.execute`,
+        the dialect with which the :class:`.Compiled` object were generated
+        was not consulted for the paramstyle of the string statement, instead
+        assuming it would match the dialect-level paramstyle, causing
+        mismatches to occur.
+
     .. change:: 3918
         :tags: bug, ext
         :tickets: 3918
