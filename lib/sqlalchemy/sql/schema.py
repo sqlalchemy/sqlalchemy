@@ -176,7 +176,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         is set in which case it defaults to True; :class:`.Column` objects
         for this table should be reflected from the database, possibly
         augmenting or replacing existing :class:`.Column` objects that were
-        expicitly specified.
+        explicitly specified.
 
         .. versionchanged:: 1.0.0 setting the :paramref:`.Table.autoload_with`
            parameter implies that :paramref:`.Table.autoload` will default
@@ -3452,7 +3452,7 @@ class MetaData(SchemaItem):
               present, the :class:`.Constraint` object's existing name will be
               replaced with one that is composed from template string that
               uses this token. When this token is present, it is required that
-              the :class:`.Constraint` is given an expicit name ahead of time.
+              the :class:`.Constraint` is given an explicit name ahead of time.
 
             * user-defined: any additional token may be implemented by passing
               it along with a ``fn(constraint, table)`` callable to the

@@ -415,7 +415,7 @@ produced inline with the table definition, the database usually has a system
 in place in which names are automatically assigned to these constraints, if
 a name is not otherwise specified.  When an existing database table is altered
 in a database using a command such as ``ALTER TABLE``, this command typically
-needs to specify expicit names for new constraints as well as be able to
+needs to specify explicit names for new constraints as well as be able to
 specify the name of an existing constraint that is to be dropped or modified.
 
 Constraints can be named explicitly using the :paramref:`.Constraint.name` parameter,
