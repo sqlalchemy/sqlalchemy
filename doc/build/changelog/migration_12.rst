@@ -153,6 +153,67 @@ if this "append" event is the second part of a bulk replace::
 :ticket:`3896`
 
 
+.. _change_3911_3912:
+
+Hybrid attributes support reuse among subclasses, redefinition of @getter
+-------------------------------------------------------------------------
+
+The :class:`sqlalchemy.ext.hybrid.hybrid_property` class now supports
+calling mutators like ``@setter``, ``@expression`` etc. multiple times
+across subclasses, and now provides a ``@getter`` mutator, so that
+a particular hybrid can be repurposed across subclasses or other
+classes.  This now is similar to the behavior of ``@property`` in standard
+Python::
+
+    class FirstNameOnly(Base):
+        # ...
+
+        first_name = Column(String)
+
+        @hybrid_property
+        def name(self):
+            return self.first_name
+
+        @name.setter
+        def name(self, value):
+            self.first_name = value
+
+    class FirstNameLastName(FirstNameOnly):
+        # ...
+
+        last_name = Column(String)
+
+        @FirstNameOnly.name.getter
+        def name(self):
+            return self.first_name + ' ' + self.last_name
+
+        @name.setter
+        def name(self, value):
+            self.first_name, self.last_name = value.split(' ', maxsplit=1)
+
+        @name.expression
+        def name(cls):
+            return func.concat(cls.first_name, ' ', cls.last_name)
+
+Above, the ``FirstNameOnly.name`` hybrid is referenced by the
+``FirstNameLastName`` subclass in order to repurpose it specifically to the
+new subclass.   This is achieved by copying the hybrid object to a new one
+within each call to ``@getter``, ``@setter``, as well as in all other
+mutator methods like ``@expression``, leaving the previous hybrid's definition
+intact.  Previously, methods like ``@setter`` would modify the existing
+hybrid in-place, interfering with the definition on the superclass.
+
+.. note:: Be sure to read the documentation at :ref:`hybrid_reuse_subclass`
+   for important notes regarding how to override
+   :meth:`.hybrid_property.expression`
+   and :meth:`.hybrid_property.comparator`, as a special qualifier
+   :attr:`.hybrid_property.overrides` may be necessary to avoid name
+   conflicts with :class:`.QueryableAttribute` in some cases.
+
+:ticket:`3911`
+
+:ticket:`3912`
+
 New Features and Improvements - Core
 ====================================
 

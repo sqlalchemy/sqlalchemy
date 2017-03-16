@@ -13,6 +13,23 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3911_3912
+        :tags: bug, ext
+        :tickets: 3911, 3912
+
+        The :class:`sqlalchemy.ext.hybrid.hybrid_property` class now supports
+        calling mutators like ``@setter``, ``@expression`` etc. multiple times
+        across subclasses, and now provides a ``@getter`` mutator, so that
+        a particular hybrid can be repurposed across subclasses or other
+        classes.  This now matches the behavior of ``@property`` in standard
+        Python.
+
+        .. seealso::
+
+            :ref:`change_3911_3912`
+
+
+
     .. change:: 1546
         :tags: feature, sql, postgresql, mysql, oracle
         :tickets: 1546

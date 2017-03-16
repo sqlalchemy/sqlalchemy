@@ -120,6 +120,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return A
 
+
     def _relationship_fixture(self):
         Base = declarative_base()
 
@@ -263,6 +264,118 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
         a1 = A(value=5)
         eq_(a1.value, 5)
         eq_(a1._value, 10)
+
+
+class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _fixture(self):
+        Base = declarative_base()
+
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            _name = Column(String)
+
+            @hybrid.hybrid_property
+            def name(self):
+                return self._name
+
+            @name.setter
+            def name(self, value):
+                self._name = value.title()
+
+        class OverrideSetter(Person):
+            __tablename__ = 'override_setter'
+            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            other = Column(String)
+
+            @Person.name.setter
+            def name(self, value):
+                self._name = value.upper()
+
+        class OverrideGetter(Person):
+            __tablename__ = 'override_getter'
+            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            other = Column(String)
+
+            @Person.name.getter
+            def name(self):
+                return "Hello " + self._name
+
+        class OverrideExpr(Person):
+            __tablename__ = 'override_expr'
+            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            other = Column(String)
+
+            @Person.name.overrides.expression
+            def name(self):
+                return func.concat("Hello", self._name)
+
+        class FooComparator(hybrid.Comparator):
+            def __clause_element__(self):
+                return func.concat("Hello", self.expression._name)
+
+        class OverrideComparator(Person):
+            __tablename__ = 'override_comp'
+            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            other = Column(String)
+
+            @Person.name.overrides.comparator
+            def name(self):
+                return FooComparator(self)
+
+        return (
+            Person, OverrideSetter, OverrideGetter,
+            OverrideExpr, OverrideComparator
+        )
+
+    def test_property(self):
+        Person, _, _, _, _ = self._fixture()
+        p1 = Person()
+        p1.name = 'mike'
+        eq_(p1._name, 'Mike')
+        eq_(p1.name, 'Mike')
+
+    def test_override_setter(self):
+        _, OverrideSetter, _, _, _ = self._fixture()
+        p1 = OverrideSetter()
+        p1.name = 'mike'
+        eq_(p1._name, 'MIKE')
+        eq_(p1.name, 'MIKE')
+
+    def test_override_getter(self):
+        _, _, OverrideGetter, _, _ = self._fixture()
+        p1 = OverrideGetter()
+        p1.name = 'mike'
+        eq_(p1._name, 'Mike')
+        eq_(p1.name, 'Hello Mike')
+
+    def test_override_expr(self):
+        Person, _, _, OverrideExpr, _ = self._fixture()
+
+        self.assert_compile(
+            Person.name.__clause_element__(),
+            "person._name"
+        )
+
+        self.assert_compile(
+            OverrideExpr.name.__clause_element__(),
+            "concat(:concat_1, person._name)"
+        )
+
+    def test_override_comparator(self):
+        Person, _, _, _, OverrideComparator = self._fixture()
+
+        self.assert_compile(
+            Person.name.__clause_element__(),
+            "person._name"
+        )
+
+        self.assert_compile(
+            OverrideComparator.name.__clause_element__(),
+            "concat(:concat_1, person._name)"
+        )
 
 
 class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
