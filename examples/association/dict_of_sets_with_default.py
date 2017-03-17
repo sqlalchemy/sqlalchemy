@@ -21,19 +21,24 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 import operator
 
+
 class Base(object):
     id = Column(Integer, primary_key=True)
 
+
 Base = declarative_base(cls=Base)
+
 
 class GenDefaultCollection(MappedCollection):
     def __missing__(self, key):
         self[key] = b = B(key)
         return b
 
+
 class A(Base):
     __tablename__ = "a"
-    associations = relationship("B",
+    associations = relationship(
+        "B",
         collection_class=lambda: GenDefaultCollection(operator.attrgetter("key"))
     )
 
@@ -41,6 +46,7 @@ class A(Base):
     """Bridge the association from 'associations' over to the 'values'
     association proxy of B.
     """
+
 
 class B(Base):
     __tablename__ = "b"
@@ -57,12 +63,15 @@ class B(Base):
         if values:
             self.values = values
 
+
 class C(Base):
     __tablename__ = "c"
     b_id = Column(Integer, ForeignKey("b.id"), nullable=False)
     value = Column(Integer)
+
     def __init__(self, value):
         self.value = value
+
 
 if __name__ == '__main__':
     engine = create_engine('sqlite://', echo=True)
@@ -88,5 +97,3 @@ if __name__ == '__main__':
     session.commit()
 
     print(a1.collections["2"])
-
-
