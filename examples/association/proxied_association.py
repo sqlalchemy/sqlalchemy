@@ -9,13 +9,14 @@ to ``OrderItem`` optional.
 
 from datetime import datetime
 
-from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
-    String, DateTime, Float, ForeignKey, and_)
-from sqlalchemy.orm import mapper, relationship, Session
+from sqlalchemy import (create_engine, Column, Integer, String, DateTime,
+                        Float, ForeignKey)
+from sqlalchemy.orm import relationship, Session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 
 Base = declarative_base()
+
 
 class Order(Base):
     __tablename__ = 'order'
@@ -24,11 +25,12 @@ class Order(Base):
     customer_name = Column(String(30), nullable=False)
     order_date = Column(DateTime, nullable=False, default=datetime.now())
     order_items = relationship("OrderItem", cascade="all, delete-orphan",
-                            backref='order')
+                               backref='order')
     items = association_proxy("order_items", "item")
 
     def __init__(self, customer_name):
         self.customer_name = customer_name
+
 
 class Item(Base):
     __tablename__ = 'item'
@@ -41,9 +43,8 @@ class Item(Base):
         self.price = price
 
     def __repr__(self):
-        return 'Item(%r, %r)' % (
-                    self.description, self.price
-                )
+        return 'Item(%r, %r)' % (self.description, self.price)
+
 
 class OrderItem(Base):
     __tablename__ = 'orderitem'
@@ -55,6 +56,7 @@ class OrderItem(Base):
         self.item = item
         self.price = price or item.price
     item = relationship(Item, lazy='joined')
+
 
 if __name__ == '__main__':
     engine = create_engine('sqlite://')
@@ -99,7 +101,7 @@ if __name__ == '__main__':
 
     # print customers who bought 'MySQL Crowbar' on sale
     orders = session.query(Order).\
-                    join('order_items', 'item').\
-                    filter(Item.description == 'MySQL Crowbar').\
-                    filter(Item.price > OrderItem.price)
+        join('order_items', 'item').\
+        filter(Item.description == 'MySQL Crowbar').\
+        filter(Item.price > OrderItem.price)
     print([o.customer_name for o in orders])
