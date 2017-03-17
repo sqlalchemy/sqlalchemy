@@ -1013,9 +1013,9 @@ def json_path_getitem_op(a, b):
     raise NotImplementedError()
 
 
-_commutative = set([eq, ne, add, mul])
+_commutative = {eq, ne, add, mul}
 
-_comparison = set([eq, ne, lt, gt, ge, le, between_op, like_op])
+_comparison = {eq, ne, lt, gt, ge, le, between_op, like_op}
 
 
 def is_comparison(op):

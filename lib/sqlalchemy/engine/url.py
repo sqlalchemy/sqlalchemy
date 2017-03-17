@@ -222,7 +222,7 @@ def _parse_rfc1738_args(name):
             query = (
                 len(tokens) > 1 and dict(util.parse_qsl(tokens[1]))) or None
             if util.py2k and query is not None:
-                query = dict((k.encode('ascii'), query[k]) for k in query)
+                query = {k.encode('ascii'): query[k] for k in query}
         else:
             query = None
         components['query'] = query

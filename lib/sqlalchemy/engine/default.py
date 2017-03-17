@@ -338,12 +338,12 @@ class DefaultDialect(interfaces.Dialect):
         if additional_tests:
             tests += additional_tests
 
-        results = set([check_unicode(test) for test in tests])
+        results = {check_unicode(test) for test in tests}
 
         if results.issuperset([True, False]):
             return "conditional"
         else:
-            return results == set([True])
+            return results == {True}
 
     def _check_unicode_description(self, connection):
         # all DBAPIs on Py2K return cursor.description as encoded,
@@ -694,7 +694,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 self.parameters = parameters
             else:
                 self.parameters = [
-                    dict((dialect._encoder(k)[0], d[k]) for k in d)
+                    {dialect._encoder(k)[0]: d[k] for k in d}
                     for d in parameters
                 ] or [{}]
         else:

@@ -421,7 +421,7 @@ class MutableBase(object):
         .. versionadded:: 1.0.5
 
         """
-        return set([attribute.key])
+        return {attribute.key}
 
     @classmethod
     def _listen_on_attribute(cls, attribute, coerce, parent_cls):
@@ -605,7 +605,7 @@ class MutableComposite(MutableBase):
 
     @classmethod
     def _get_listen_keys(cls, attribute):
-        return set([attribute.key]).union(attribute.property._attribute_keys)
+        return {attribute.key}.union(attribute.property._attribute_keys)
 
     def changed(self):
         """Subclasses should call this method whenever change events occur."""

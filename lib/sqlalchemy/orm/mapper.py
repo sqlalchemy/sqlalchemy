@@ -2312,9 +2312,9 @@ class Mapper(InspectionAttr):
 
         {
             tablea.col1:
-                set([tableb.col1, tablec.col1]),
+                {tableb.col1, tablec.col1},
             tablea.col2:
-                set([tabled.col2])
+                {tabled.col2}
         }
 
         """
@@ -2555,7 +2555,7 @@ class Mapper(InspectionAttr):
 
     @_memoized_configured_property
     def _primary_key_propkeys(self):
-        return set([prop.key for prop in self._all_pk_props])
+        return {prop.key for prop in self._all_pk_props}
 
     def _get_state_attr_by_column(
             self, state, dict_, column,

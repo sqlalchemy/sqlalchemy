@@ -384,8 +384,8 @@ class ComparesTables(object):
                 eq_(c.type.length, reflected_c.type.length)
 
             eq_(
-                set([f.column.name for f in c.foreign_keys]),
-                set([f.column.name for f in reflected_c.foreign_keys])
+                {f.column.name for f in c.foreign_keys},
+                {f.column.name for f in reflected_c.foreign_keys}
             )
             if c.server_default:
                 assert isinstance(reflected_c.server_default,
@@ -440,7 +440,7 @@ class AssertsExecutionResults(object):
                 return id(self)
 
         found = util.IdentitySet(result)
-        expected = set([immutabledict(e) for e in expected])
+        expected = {immutabledict(e) for e in expected}
 
         for wrong in util.itertools_filterfalse(lambda o:
                                                 isinstance(o, cls), found):

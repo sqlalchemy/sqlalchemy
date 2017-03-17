@@ -2731,7 +2731,7 @@ class JoinCondition(object):
                 self._gather_columns_with_annotation(
                     self.secondaryjoin, annotation)
             )
-        return set([x._deannotate() for x in s])
+        return {x._deannotate() for x in s}
 
     def _gather_columns_with_annotation(self, clause, *annotation):
         annotation = set(annotation)
@@ -2857,7 +2857,7 @@ class JoinCondition(object):
                     secondaryjoin, {}, col_to_bind)
             lazywhere = sql.and_(lazywhere, secondaryjoin)
 
-        bind_to_col = dict((binds[col].key, col) for col in binds)
+        bind_to_col = {binds[col].key: col for col in binds}
 
         return lazywhere, bind_to_col, equated_columns
 

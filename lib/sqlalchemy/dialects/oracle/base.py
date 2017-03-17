@@ -925,9 +925,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
-    reserved_words = set([x.lower() for x in RESERVED_WORDS])
-    illegal_initial_characters = set(
-        (str(dig) for dig in range(0, 10))).union(["_", "$"])
+    reserved_words = {x.lower() for x in RESERVED_WORDS}
+    illegal_initial_characters = {str(dig) for dig in range(0, 10)} \
+        .union(["_", "$"])
 
     def _bindparam_requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""
@@ -1424,7 +1424,7 @@ class OracleDialect(default.DefaultDialect):
         oracle_sys_col = re.compile(r'SYS_NC\d+\$', re.IGNORECASE)
 
         def upper_name_set(names):
-            return set([i.upper() for i in names])
+            return {i.upper() for i in names}
 
         pk_names = upper_name_set(pkeys)
 

@@ -906,7 +906,7 @@ def _relationships_for_fks(automap_base, map_config, table_to_map_config,
             )
 
             o2m_kws = {}
-            nullable = False not in set([fk.parent.nullable for fk in fks])
+            nullable = False not in {fk.parent.nullable for fk in fks}
             if not nullable:
                 o2m_kws['cascade'] = "all, delete-orphan"
 

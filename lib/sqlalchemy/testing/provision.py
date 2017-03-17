@@ -288,7 +288,7 @@ def reap_oracle_dbs(eng, idents_file):
             "select u.username from all_users u where username "
             "like 'TEST_%' and not exists (select username "
             "from v$session where username=u.username)")
-        all_names = set([username.lower() for (username, ) in to_reap])
+        all_names = {username.lower() for (username, ) in to_reap}
         to_drop = set()
         for name in all_names:
             if name.endswith("_ts1") or name.endswith("_ts2"):

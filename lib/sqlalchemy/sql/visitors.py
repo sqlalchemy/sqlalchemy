@@ -306,7 +306,7 @@ def replacement_traverse(obj, opts, replace):
     replacement by a given replacement function."""
 
     cloned = {}
-    stop_on = set([id(x) for x in opts.get('stop_on', [])])
+    stop_on = {id(x) for x in opts.get('stop_on', [])}
 
     def clone(elem, **kw):
         if id(elem) in stop_on or \

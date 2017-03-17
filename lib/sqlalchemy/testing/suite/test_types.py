@@ -340,7 +340,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         t.create()
         t.insert().execute([{'x': x} for x in input_])
 
-        result = set([row[0] for row in t.select().execute()])
+        result = {row[0] for row in t.select().execute()}
         output = set(output)
         if filter_:
             result = set(filter_(x) for x in result)

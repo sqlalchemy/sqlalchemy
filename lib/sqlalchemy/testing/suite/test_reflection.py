@@ -746,7 +746,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             ('dingalings', 'dingaling_id'),
         ]:
             cols = insp.get_columns(tname)
-            id_ = dict((c['name'], c) for c in cols)[cname]
+            id_ = {c['name']: c for c in cols}[cname]
             assert id_.get('autoincrement', True)
 
 

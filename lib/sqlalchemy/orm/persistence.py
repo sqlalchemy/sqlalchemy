@@ -86,7 +86,7 @@ def _bulk_update(mapper, mappings, session_transaction,
 
     search_keys = mapper._primary_key_propkeys
     if mapper._version_id_prop:
-        search_keys = set([mapper._version_id_prop.key]).union(search_keys)
+        search_keys = {mapper._version_id_prop.key}.union(search_keys)
 
     def _changed_dict(mapper, state):
         return dict(

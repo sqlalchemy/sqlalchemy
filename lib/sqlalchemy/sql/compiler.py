@@ -50,7 +50,7 @@ RESERVED_WORDS = set([
     'using', 'verbose', 'when', 'where'])
 
 LEGAL_CHARACTERS = re.compile(r'^[A-Z0-9_$]+$', re.I)
-ILLEGAL_INITIAL_CHARACTERS = set([str(x) for x in range(0, 10)]).union(['$'])
+ILLEGAL_INITIAL_CHARACTERS = {str(x) for x in range(0, 10)}.union(['$'])
 
 BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]*)(?![:\w\$])', re.UNICODE)
@@ -2113,8 +2113,8 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
 
         self.stack.append(
-            {'correlate_froms': set([update_stmt.table]),
-             "asfrom_froms": set([update_stmt.table]),
+            {'correlate_froms': {update_stmt.table},
+             "asfrom_froms": {update_stmt.table},
              "selectable": update_stmt})
 
         extra_froms = update_stmt._extra_froms
@@ -2193,8 +2193,8 @@ class SQLCompiler(Compiled):
     def visit_delete(self, delete_stmt, asfrom=False, **kw):
         toplevel = not self.stack
 
-        self.stack.append({'correlate_froms': set([delete_stmt.table]),
-                           "asfrom_froms": set([delete_stmt.table]),
+        self.stack.append({'correlate_froms': {delete_stmt.table},
+                           "asfrom_froms": {delete_stmt.table},
                            "selectable": delete_stmt})
 
         crud._setup_crud_params(self, delete_stmt, crud.ISDELETE, **kw)

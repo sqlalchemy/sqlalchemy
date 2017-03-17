@@ -567,7 +567,7 @@ def class_hierarchy(cls):
         if isinstance(cls, types.ClassType):
             return list()
 
-    hier = set([cls])
+    hier = {cls}
     process = list(cls.__mro__)
     while process:
         c = process.pop()

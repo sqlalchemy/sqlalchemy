@@ -2603,7 +2603,7 @@ class ColumnCollectionMixin(object):
 
         columns = cols_w_table
 
-        tables = set([c.table for c in columns])
+        tables = {c.table for c in columns}
         if len(tables) == 1:
             self._set_parent_with_dispatch(tables.pop())
         elif len(tables) > 1 and not self._allow_multiple_tables:

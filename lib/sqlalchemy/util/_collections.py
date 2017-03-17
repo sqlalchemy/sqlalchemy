@@ -107,7 +107,7 @@ class KeyedTuple(AbstractKeyedTuple):
         .. versionadded:: 0.8
 
         """
-        return dict((key, self.__dict__[key]) for key in self.keys())
+        return {key: self.__dict__[key] for key in self.keys()}
 
 
 class _LW(AbstractKeyedTuple):
