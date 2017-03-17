@@ -422,6 +422,25 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def get_table_comment(
+            self, connection, table_name, schema=None, **kw):
+        r"""Return the "comment" for the table identified by `table_name`.
+
+        Given a string `table_name` and an optional string `schema`, return
+        table comment information as a dictionary with this key:
+
+        text
+           text of the comment
+
+        Raises ``NotImplementedError`` for dialects that don't support
+        comments.
+
+        .. versionadded:: 1.2
+
+        """
+
+        raise NotImplementedError()
+
     def normalize_name(self, name):
         """convert the given name to lowercase if it is detected as
         case insensitive.

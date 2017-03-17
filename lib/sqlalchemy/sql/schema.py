@@ -371,6 +371,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     :param useexisting: Deprecated.  Use :paramref:`.Table.extend_existing`.
 
+    :param comment: Optional string that will render an SQL comment on table
+         creation.
+
+         .. versionadded:: 1.2 Added the :paramref:`.Table.comment` parameter
+            to :class:`.Table`.
+
     :param \**kw: Additional keyword arguments not mentioned above are
         dialect specific, and passed in the form ``<dialectname>_<argname>``.
         See the documentation regarding an individual dialect at
@@ -494,6 +500,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         self.implicit_returning = kwargs.pop('implicit_returning', True)
 
+        self.comment = kwargs.pop('comment', None)
+
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
         if 'listeners' in kwargs:
@@ -587,6 +595,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
+
+        self.comment = kwargs.pop('comment', None)
 
         if autoload:
             if not autoload_replace:
@@ -1044,8 +1054,9 @@ class Column(SchemaItem, ColumnClause):
                 :ref:`metadata_defaults_toplevel`
 
         :param doc: optional String that can be used by the ORM or similar
-            to document attributes.   This attribute does not render SQL
-            comments (a future attribute 'comment' will achieve that).
+            to document attributes on the Python side.   This attribute does
+            **not** render SQL comments; use the :paramref:`.Column.comment`
+            parameter for this purpose.
 
         :param key: An optional string identifier which will identify this
             ``Column`` object on the :class:`.Table`. When a key is provided,
@@ -1159,6 +1170,13 @@ class Column(SchemaItem, ColumnClause):
              .. versionadded:: 0.8.3 Added the ``system=True`` parameter to
                 :class:`.Column`.
 
+        :param comment: Optional string that will render an SQL comment on
+             table creation.
+
+             .. versionadded:: 1.2 Added the :paramref:`.Column.comment`
+                parameter to :class:`.Column`.
+
+
         """
 
         name = kwargs.pop('name', None)
@@ -1205,6 +1223,7 @@ class Column(SchemaItem, ColumnClause):
         self.autoincrement = kwargs.pop('autoincrement', "auto")
         self.constraints = set()
         self.foreign_keys = set()
+        self.comment = kwargs.pop('comment', None)
 
         # check if this Column is proxying another column
         if '_proxies' in kwargs:
@@ -2307,6 +2326,7 @@ class Sequence(DefaultGenerator):
             "to produce a 'next value' function that's usable "
             "as a column element."
             % self.__class__.__name__)
+
 
 
 @inspection._self_inspects

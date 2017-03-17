@@ -220,7 +220,13 @@ class MySQLTableDefinitionParser(object):
             # eliminates the need to deal with this later.
             default = None
 
-        col_d = dict(name=name, type=type_instance, default=default)
+        comment = spec.get('comment', None)
+
+        if comment is not None:
+            comment = comment.replace("\\\\", "\\").replace("''", "'")
+
+        col_d = dict(name=name, type=type_instance, default=default,
+                     comment=comment)
         col_d.update(col_kw)
         state.columns.append(col_d)
 
@@ -314,26 +320,26 @@ class MySQLTableDefinitionParser(object):
         #  COLUMN_FORMAT (FIXED|DYNAMIC|DEFAULT)
         #  STORAGE (DISK|MEMORY)
         self._re_column = _re_compile(
-            r'  '
-            r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
-            r'(?P<coltype>\w+)'
-            r'(?:\((?P<arg>(?:\d+|\d+,\d+|'
-            r'(?:\x27(?:\x27\x27|[^\x27])*\x27,?)+))\))?'
-            r'(?: +(?P<unsigned>UNSIGNED))?'
-            r'(?: +(?P<zerofill>ZEROFILL))?'
-            r'(?: +CHARACTER SET +(?P<charset>[\w_]+))?'
-            r'(?: +COLLATE +(?P<collate>[\w_]+))?'
-            r'(?: +(?P<notnull>(?:NOT )?NULL))?'
-            r'(?: +DEFAULT +(?P<default>'
-            r'(?:NULL|\x27(?:\x27\x27|[^\x27])*\x27|\w+'
-            r'(?: +ON UPDATE \w+)?)'
-            r'))?'
-            r'(?: +(?P<autoincr>AUTO_INCREMENT))?'
-            r'(?: +COMMENT +(P<comment>(?:\x27\x27|[^\x27])+))?'
-            r'(?: +COLUMN_FORMAT +(?P<colfmt>\w+))?'
-            r'(?: +STORAGE +(?P<storage>\w+))?'
-            r'(?: +(?P<extra>.*))?'
-            r',?$'
+            r"  "
+            r"%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +"
+            r"(?P<coltype>\w+)"
+            r"(?:\((?P<arg>(?:\d+|\d+,\d+|"
+            r"(?:'(?:''|[^'])*',?)+))\))?"
+            r"(?: +(?P<unsigned>UNSIGNED))?"
+            r"(?: +(?P<zerofill>ZEROFILL))?"
+            r"(?: +CHARACTER SET +(?P<charset>[\w_]+))?"
+            r"(?: +COLLATE +(?P<collate>[\w_]+))?"
+            r"(?: +(?P<notnull>(?:NOT )?NULL))?"
+            r"(?: +DEFAULT +(?P<default>"
+            r"(?:NULL|'(?:''|[^'])*'|\w+"
+            r"(?: +ON UPDATE \w+)?)"
+            r"))?"
+            r"(?: +(?P<autoincr>AUTO_INCREMENT))?"
+            r"(?: +COMMENT +'(?P<comment>(?:''|[^'])*)')?"
+            r"(?: +COLUMN_FORMAT +(?P<colfmt>\w+))?"
+            r"(?: +STORAGE +(?P<storage>\w+))?"
+            r"(?: +(?P<extra>.*))?"
+            r",?$"
             % quotes
         )
 

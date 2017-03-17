@@ -1010,6 +1010,20 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert set([t2.c.name, t2.c.id]) == set(r2.columns)
         assert set([t2.c.name]) == set(r3.columns)
 
+    @testing.requires.comment_reflection
+    @testing.provide_metadata
+    def test_comment_reflection(self):
+        m1 = self.metadata
+        Table('sometable', m1,
+                   Column('id', sa.Integer, comment='c1 comment'),
+                   comment='t1 comment')
+        m1.create_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('sometable', m2, autoload=True)
+
+        eq_(t2.comment, 't1 comment')
+        eq_(t2.c.id.comment, 'c1 comment')
+
     @testing.requires.check_constraint_reflection
     @testing.provide_metadata
     def test_check_constraint_reflection(self):

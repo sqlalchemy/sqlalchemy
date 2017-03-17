@@ -2492,6 +2492,29 @@ class DDLCompiler(Compiled):
             self.process(create.element)
         )
 
+    def visit_set_table_comment(self, create):
+        return "COMMENT ON TABLE %s IS %s" % (
+            self.preparer.format_table(create.element),
+            self.sql_compiler.render_literal_value(
+                create.element.comment, sqltypes.String())
+        )
+
+    def visit_drop_table_comment(self, drop):
+        return "COMMENT ON TABLE %s IS NULL" % \
+            self.preparer.format_table(drop.element)
+
+    def visit_set_column_comment(self, create):
+        return "COMMENT ON COLUMN %s IS %s" % (
+            self.preparer.format_column(
+                create.element, use_table=True, use_schema=True),
+            self.sql_compiler.render_literal_value(
+                create.element.comment, sqltypes.String())
+        )
+
+    def visit_drop_column_comment(self, drop):
+        return "COMMENT ON COLUMN %s IS NULL" % \
+            self.preparer.format_column(drop.element, use_table=True)
+
     def visit_create_sequence(self, create):
         text = "CREATE SEQUENCE %s" % \
             self.preparer.format_sequence(create.element)
@@ -2996,7 +3019,7 @@ class IdentifierPreparer(object):
         return self.quote(name, quote)
 
     def format_column(self, column, use_table=False,
-                      name=None, table_name=None):
+                      name=None, table_name=None, use_schema=False):
         """Prepare a quoted column name."""
 
         if name is None:
@@ -3004,7 +3027,7 @@ class IdentifierPreparer(object):
         if not getattr(column, 'is_literal', False):
             if use_table:
                 return self.format_table(
-                    column.table, use_schema=False,
+                    column.table, use_schema=use_schema,
                     name=table_name) + "." + self.quote(name)
             else:
                 return self.quote(name)
@@ -3014,7 +3037,7 @@ class IdentifierPreparer(object):
 
             if use_table:
                 return self.format_table(
-                    column.table, use_schema=False,
+                    column.table, use_schema=use_schema,
                     name=table_name) + '.' + name
             else:
                 return name

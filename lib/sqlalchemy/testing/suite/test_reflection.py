@@ -102,6 +102,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
               schema=schema,
               test_needs_fk=True,
               )
+        Table('comment_test', metadata,
+              Column('id', sa.Integer, primary_key=True, comment='id comment'),
+              Column('data', sa.String(20), comment='data comment'),
+              schema=schema,
+              comment='the test table comment')
 
         if testing.requires.index_reflection.enabled:
             cls.define_index(metadata, users)
@@ -203,8 +208,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
             answer = ['email_addresses_v', 'users_v']
             eq_(sorted(table_names), answer)
         else:
-            table_names = insp.get_table_names(schema,
-                                               order_by=order_by)
+            table_names = [
+                t for t in insp.get_table_names(
+                    schema,
+                    order_by=order_by) if t not in ('comment_test', )]
+
             if order_by == 'foreign_key':
                 answer = ['users', 'email_addresses', 'dingalings']
                 eq_(table_names, answer)
@@ -234,6 +242,40 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.foreign_key_constraint_reflection
     def test_get_table_names_fks(self):
         self._test_get_table_names(order_by='foreign_key')
+
+    @testing.requires.comment_reflection
+    def test_get_comments(self):
+        self._test_get_comments()
+
+    @testing.requires.comment_reflection
+    @testing.requires.schemas
+    def test_get_comments_with_schema(self):
+        self._test_get_comments(testing.config.test_schema)
+
+    def _test_get_comments(self, schema=None):
+        insp = inspect(testing.db)
+
+        eq_(
+            insp.get_table_comment("comment_test", schema=schema),
+            {"text": "the test table comment"}
+        )
+
+        eq_(
+            insp.get_table_comment("users", schema=schema),
+            {"text": None}
+        )
+
+        eq_(
+            [
+                {"name": rec['name'], "comment": rec['comment']}
+                for rec in
+                insp.get_columns("comment_test", schema=schema)
+            ],
+            [
+                {'comment': 'id comment', 'name': 'id'},
+                {'comment': 'data comment', 'name': 'data'}
+            ]
+        )
 
     @testing.requires.table_reflection
     @testing.requires.schemas
