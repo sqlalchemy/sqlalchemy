@@ -15,4 +15,3 @@ E.g.::
 .. autosource::
 
 """
-

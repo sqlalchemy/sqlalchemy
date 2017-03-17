@@ -1,11 +1,11 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
-from sqlalchemy.orm import Session, relationship, backref,\
-                                joinedload_all
+from sqlalchemy.orm import Session, relationship, backref, joinedload_all
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 
 Base = declarative_base()
+
 
 class TreeNode(Base):
     __tablename__ = 'tree'
@@ -13,20 +13,20 @@ class TreeNode(Base):
     parent_id = Column(Integer, ForeignKey(id))
     name = Column(String(50), nullable=False)
 
-    children = relationship("TreeNode",
+    children = relationship(
+        "TreeNode",
+        # cascade deletions
+        cascade="all, delete-orphan",
 
-                        # cascade deletions
-                        cascade="all, delete-orphan",
+        # many to one + adjacency list - remote_side
+        # is required to reference the 'remote'
+        # column in the join condition.
+        backref=backref("parent", remote_side=id),
 
-                        # many to one + adjacency list - remote_side
-                        # is required to reference the 'remote'
-                        # column in the join condition.
-                        backref=backref("parent", remote_side=id),
-
-                        # children will be represented as a dictionary
-                        # on the "name" attribute.
-                        collection_class=attribute_mapped_collection('name'),
-                    )
+        # children will be represented as a dictionary
+        # on the "name" attribute.
+        collection_class=attribute_mapped_collection('name'),
+    )
 
     def __init__(self, name, parent=None):
         self.name = name
@@ -34,18 +34,19 @@ class TreeNode(Base):
 
     def __repr__(self):
         return "TreeNode(name=%r, id=%r, parent_id=%r)" % (
-                    self.name,
-                    self.id,
-                    self.parent_id
-                )
+            self.name,
+            self.id,
+            self.parent_id
+        )
 
     def dump(self, _indent=0):
         return "   " * _indent + repr(self) + \
-                    "\n" + \
-                    "".join([
-                        c.dump(_indent + 1)
-                        for c in self.children.values()]
-                    )
+            "\n" + \
+            "".join([
+                c.dump(_indent + 1)
+                for c in self.children.values()
+            ])
+
 
 if __name__ == '__main__':
     engine = create_engine('sqlite://', echo=True)
@@ -94,14 +95,14 @@ if __name__ == '__main__':
 
     msg("Tree after save:\n %s", node.dump())
 
-    msg("Emptying out the session entirely, "
-        "selecting tree on root, using eager loading to join four levels deep.")
+    msg("Emptying out the session entirely, selecting tree on root, using "
+        "eager loading to join four levels deep.")
     session.expunge_all()
     node = session.query(TreeNode).\
-                        options(joinedload_all("children", "children",
-                                                "children", "children")).\
-                        filter(TreeNode.name == "rootnode").\
-                        first()
+        options(joinedload_all("children", "children",
+                               "children", "children")).\
+        filter(TreeNode.name == "rootnode").\
+        first()
 
     msg("Full Tree:\n%s", node.dump())
 
