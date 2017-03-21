@@ -404,6 +404,38 @@ new collection.
 
 :ticket:`3913`
 
+.. _change_3753:
+
+Use flag_dirty() to mark an object as "dirty" without any attribute changing
+----------------------------------------------------------------------------
+
+An exception is now raised if the :func:`.attributes.flag_modified` function
+is used to mark an attribute as modified that isn't actually loaded::
+
+    a1 = A(data='adf')
+    s.add(a1)
+
+    s.flush()
+
+    # expire, similarly as though we said s.commit()
+    s.expire(a1, 'data')
+
+    # will raise InvalidRequestError
+    attributes.flag_modified(a1, 'data')
+
+This because the flush process will most likely fail in any case if the
+attribute remains un-present by the time flush occurs.    To mark an object
+as "modified" without referring to any attribute specifically, so that it
+is considered within the flush process for the purpose of custom event handlers
+such as :meth:`.SessionEvents.before_flush`, use the new
+:func:`.attributes.flag_dirty` function::
+
+    from sqlalchemy.orm import attributes
+
+    attributes.flag_dirty(a1)
+
+:ticket:`3753`
+
 Key Behavioral Changes - Core
 =============================
 

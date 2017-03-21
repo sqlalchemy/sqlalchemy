@@ -13,6 +13,21 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3753
+        :tags: bug, orm
+        :tickets: 3753
+
+        The :func:`.attributes.flag_modified` function now raises
+        :class:`.InvalidRequestError` if the named attribute key is not
+        present within the object, as this is assumed to be present
+        in the flush process.  To mark an object "dirty" for a flush
+        without referring to any specific attribute, the
+        :func:`.attributes.flag_dirty` function may be used.
+
+        .. seealso::
+
+            :ref:`change_3753`
+
     .. change:: 3911_3912
         :tags: bug, ext
         :tickets: 3911, 3912

@@ -1617,8 +1617,42 @@ def flag_modified(instance, key):
 
     This sets the 'modified' flag on the instance and
     establishes an unconditional change event for the given attribute.
+    The attribute must have a value present, else an
+    :class:`.InvalidRequestError` is raised.
+
+    To mark an object "dirty" without referring to any specific attribute
+    so that it is considered within a flush, use the
+    :func:`.attributes.flag_dirty` call.
+
+    .. seealso::
+
+        :func:`.attributes.flag_dirty`
 
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     impl = state.manager[key].impl
-    state._modified_event(dict_, impl, NO_VALUE, force=True)
+    state._modified_event(dict_, impl, NO_VALUE, is_userland=True)
+
+
+def flag_dirty(instance):
+    """Mark an instance as 'dirty' without any specific attribute mentioned.
+
+    This is a special operation that will allow the object to travel through
+    the flush process for interception by events such as
+    :meth:`.SessionEvents.before_flush`.   Note that no SQL will be emitted in
+    the flush process for an object that has no changes, even if marked dirty
+    via this method.  However, a :meth:`.SessionEvents.before_flush` handler
+    will be able to see the object in the :attr:`.Session.dirty` collection and
+    may establish changes on it, which will then be included in the SQL
+    emitted.
+
+    .. versionadded:: 1.2
+
+    .. seealso::
+
+        :func:`.attributes.flag_modified`
+
+    """
+
+    state, dict_ = instance_state(instance), instance_dict(instance)
+    state._modified_event(dict_, None, NO_VALUE, is_userland=True)

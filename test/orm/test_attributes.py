@@ -4,7 +4,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.testing import eq_, ne_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, is_true, is_false
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import jython
@@ -1962,6 +1962,43 @@ class HistoryTest(fixtures.TestBase):
 
         attributes.flag_modified(f, 'someattr')
         eq_(self._someattr_history(f), ([{'a': 'b'}], (), ()))
+
+    def test_flag_modified_but_no_value_raises(self):
+        Foo = self._fixture(uselist=False, useobject=False,
+                            active_history=False)
+        f = Foo()
+        f.someattr = 'foo'
+        self._commit_someattr(f)
+        eq_(self._someattr_history(f), ((), ['foo'], ()))
+
+        attributes.instance_state(f)._expire_attributes(
+            attributes.instance_dict(f),
+            ['someattr'])
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "Can't flag attribute 'someattr' modified; it's "
+            "not present in the object state",
+            attributes.flag_modified, f, 'someattr'
+        )
+
+    def test_mark_dirty_no_attr(self):
+        Foo = self._fixture(uselist=False, useobject=False,
+                            active_history=False)
+        f = Foo()
+        f.someattr = 'foo'
+        attributes.instance_state(f)._commit_all(f.__dict__)
+        eq_(self._someattr_history(f), ((), ['foo'], ()))
+
+        attributes.instance_state(f)._expire_attributes(
+            attributes.instance_dict(f),
+            ['someattr'])
+
+        is_false(attributes.instance_state(f).modified)
+
+        attributes.flag_dirty(f)
+
+        is_true(attributes.instance_state(f).modified)
 
     def test_use_object_init(self):
         Foo, Bar = self._two_obj_fixture(uselist=False)

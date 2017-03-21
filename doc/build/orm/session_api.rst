@@ -53,6 +53,8 @@ those described in :doc:`/orm/events`.
 
 .. autofunction:: flag_modified
 
+.. autofunction:: flag_dirty
+
 .. function:: instance_state
 
     Return the :class:`.InstanceState` for a given

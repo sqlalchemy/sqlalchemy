@@ -15,6 +15,7 @@ defines a large part of the ORM's interactivity.
 import weakref
 from .. import util
 from .. import inspection
+from .. import exc as sa_exc
 from . import exc as orm_exc, interfaces
 from .path_registry import PathRegistry
 from .base import PASSIVE_NO_RESULT, SQL_OK, NEVER_SET, ATTR_WAS_SET, \
@@ -634,19 +635,23 @@ class InstanceState(interfaces.InspectionAttr):
         return None
 
     def _modified_event(
-            self, dict_, attr, previous, collection=False, force=False):
-        if not attr.send_modified_events:
-            return
-        if attr.key not in self.committed_state or force:
-            if collection:
-                if previous is NEVER_SET:
-                    if attr.key in dict_:
-                        previous = dict_[attr.key]
+            self, dict_, attr, previous, collection=False, is_userland=False):
+        if attr:
+            if not attr.send_modified_events:
+                return
+            if is_userland and attr.key not in dict_:
+                raise sa_exc.InvalidRequestError(
+                    "Can't flag attribute '%s' modified; it's not present in "
+                    "the object state" % attr.key)
+            if attr.key not in self.committed_state or is_userland:
+                if collection:
+                    if previous is NEVER_SET:
+                        if attr.key in dict_:
+                            previous = dict_[attr.key]
 
-                if previous not in (None, NO_VALUE, NEVER_SET):
-                    previous = attr.copy(previous)
-
-            self.committed_state[attr.key] = previous
+                    if previous not in (None, NO_VALUE, NEVER_SET):
+                        previous = attr.copy(previous)
+                self.committed_state[attr.key] = previous
 
         # assert self._strong_obj is None or self.modified
 
@@ -664,7 +669,7 @@ class InstanceState(interfaces.InspectionAttr):
             if self.session_id:
                 self._strong_obj = inst
 
-            if inst is None:
+            if inst is None and attr:
                 raise orm_exc.ObjectDereferencedError(
                     "Can't emit change event for attribute '%s' - "
                     "parent object of type %s has been garbage "
