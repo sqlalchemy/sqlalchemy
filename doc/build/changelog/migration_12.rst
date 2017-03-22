@@ -34,6 +34,53 @@ SQLAlchemy is currnetly tested on versions 3.5 and 3.6.
 New Features and Improvements - ORM
 ===================================
 
+.. _change_3229:
+
+Support for bulk updates of hybrids, composites
+-----------------------------------------------
+
+Both hybrid attributes (e.g. :mod:`sqlalchemy.ext.hybrid`) as well as composite
+attributes (:ref:`mapper_composite`) now support being used in the
+SET clause of an UPDATE statement when using :meth:`.Query.update`.
+
+For hybrids, simple expressions can be used directly, or the new decorator
+:meth:`.hybrid_property.update_expression` can be used to break a value
+into multiple columns/expressions::
+
+    class Person(Base):
+        # ...
+
+        first_name = Column(String(10))
+        last_name = Column(String(10))
+
+        @hybrid.hybrid_property
+        def name(self):
+            return self.first_name + ' ' + self.last_name
+
+        @name.expression
+        def name(cls):
+            return func.concat(cls.first_name, ' ', cls.last_name)
+
+        @name.update_expression
+        def name(cls, value):
+            f, l = value.split(' ', 1)
+            return [(cls.first_name, f), (cls.last_name, l)]
+
+Above, an UPDATE can be rendered using::
+
+    session.query(Person).filter(Person.id == 5).update(
+        {Person.name: "Dr. No"})
+
+Similar functionality is available for composites, where composite values
+will be broken out into their individual columns for bulk UPDATE::
+
+    session.query(Vertex).update({Edge.start: Point(3, 4)})
+
+
+.. seealso::
+
+    :ref:`hybrid_bulk_update`
+
 .. _change_3896_validates:
 
 A @validates method receives all values on bulk-collection set before comparison

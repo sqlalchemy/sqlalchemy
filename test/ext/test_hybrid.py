@@ -1,5 +1,5 @@
 from sqlalchemy import func, Integer, Numeric, String, ForeignKey
-from sqlalchemy.orm import relationship, Session, aliased
+from sqlalchemy.orm import relationship, Session, aliased, persistence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import hybrid
@@ -536,6 +536,164 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(a1.value.__doc__, "This is an instance-level docstring")
 
         eq_(a1.other_value.__doc__, "This is an instance-level docstring")
+
+
+class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Person(Base):
+            __tablename__ = 'person'
+
+            id = Column(Integer, primary_key=True)
+            first_name = Column(String(10))
+            last_name = Column(String(10))
+
+            @hybrid.hybrid_property
+            def name(self):
+                return self.first_name + ' ' + self.last_name
+
+            @name.setter
+            def name(self, value):
+                self.first_name, self.last_name = value.split(' ', 1)
+
+            @name.expression
+            def name(cls):
+                return func.concat(cls.first_name, ' ', cls.last_name)
+
+            @name.update_expression
+            def name(cls, value):
+                f, l = value.split(' ', 1)
+                return [(cls.first_name, f), (cls.last_name, l)]
+
+            @hybrid.hybrid_property
+            def uname(self):
+                return self.name
+
+            @hybrid.hybrid_property
+            def fname(self):
+                return self.first_name
+
+            @hybrid.hybrid_property
+            def fname2(self):
+                return self.fname
+
+    @classmethod
+    def insert_data(cls):
+        s = Session()
+        jill = cls.classes.Person(id=3, first_name='jill')
+        s.add(jill)
+        s.commit()
+
+    def test_update_plain(self):
+        Person = self.classes.Person
+
+        s = Session()
+        q = s.query(Person)
+
+        bulk_ud = persistence.BulkUpdate.factory(
+            q, False, {Person.fname: "Dr."}, {})
+
+        self.assert_compile(
+            bulk_ud,
+            "UPDATE person SET first_name=:first_name",
+            params={'first_name': 'Dr.'}
+        )
+
+    def test_update_expr(self):
+        Person = self.classes.Person
+
+        s = Session()
+        q = s.query(Person)
+
+        bulk_ud = persistence.BulkUpdate.factory(
+            q, False, {Person.name: "Dr. No"}, {})
+
+        self.assert_compile(
+            bulk_ud,
+            "UPDATE person SET first_name=:first_name, last_name=:last_name",
+            params={'first_name': 'Dr.', 'last_name': 'No'}
+        )
+
+    def test_evaluate_hybrid_attr_indirect(self):
+        Person = self.classes.Person
+
+        s = Session()
+        jill = s.query(Person).get(3)
+
+        s.query(Person).update(
+            {Person.fname2: 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.fname2, 'moonbeam')
+
+    def test_evaluate_hybrid_attr_plain(self):
+        Person = self.classes.Person
+
+        s = Session()
+        jill = s.query(Person).get(3)
+
+        s.query(Person).update(
+            {Person.fname: 'moonbeam'},
+            synchronize_session='evaluate')
+        eq_(jill.fname, 'moonbeam')
+
+    def test_fetch_hybrid_attr_indirect(self):
+        Person = self.classes.Person
+
+        s = Session()
+        jill = s.query(Person).get(3)
+
+        s.query(Person).update(
+            {Person.fname2: 'moonbeam'},
+            synchronize_session='fetch')
+        eq_(jill.fname2, 'moonbeam')
+
+    def test_fetch_hybrid_attr_plain(self):
+        Person = self.classes.Person
+
+        s = Session()
+        jill = s.query(Person).get(3)
+
+        s.query(Person).update(
+            {Person.fname: 'moonbeam'},
+            synchronize_session='fetch')
+        eq_(jill.fname, 'moonbeam')
+
+    def test_evaluate_hybrid_attr_w_update_expr(self):
+        Person = self.classes.Person
+
+        s = Session()
+        jill = s.query(Person).get(3)
+
+        s.query(Person).update(
+            {Person.name: 'moonbeam sunshine'},
+            synchronize_session='evaluate')
+        eq_(jill.name, 'moonbeam sunshine')
+
+    def test_fetch_hybrid_attr_w_update_expr(self):
+        Person = self.classes.Person
+
+        s = Session()
+        jill = s.query(Person).get(3)
+
+        s.query(Person).update(
+            {Person.name: 'moonbeam sunshine'},
+            synchronize_session='fetch')
+        eq_(jill.name, 'moonbeam sunshine')
+
+    def test_evaluate_hybrid_attr_indirect_w_update_expr(self):
+        Person = self.classes.Person
+
+        s = Session()
+        jill = s.query(Person).get(3)
+
+        s.query(Person).update(
+            {Person.uname: 'moonbeam sunshine'},
+            synchronize_session='evaluate')
+        eq_(jill.uname, 'moonbeam sunshine')
 
 
 class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):

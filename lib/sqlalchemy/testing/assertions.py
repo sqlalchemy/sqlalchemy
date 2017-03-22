@@ -330,6 +330,10 @@ class AssertsCompiledSQL(object):
             context = clause._compile_context()
             context.statement.use_labels = True
             clause = context.statement
+        elif isinstance(clause, orm.persistence.BulkUD):
+            with mock.patch.object(clause, "_execute_stmt") as stmt_mock:
+                clause.exec_()
+                clause = stmt_mock.mock_calls[0][1][0]
 
         if compile_kwargs:
             kw['compile_kwargs'] = compile_kwargs

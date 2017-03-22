@@ -183,6 +183,62 @@ The ``length(self, value)`` method is now called upon set::
     >>> i1.end
     17
 
+.. _hybrid_bulk_update:
+
+Allowing Bulk ORM Update
+------------------------
+
+A hybrid can define a custom "UPDATE" handler for when using the
+:meth:`.Query.update` method, allowing the hybrid to be used in the
+SET clause of the update.
+
+Normally, when using a hybrid with :meth:`.Query.update`, the SQL
+expression is used as the column that's the target of the SET.  If our
+``Interval`` class had a hybrid ``start_point`` that linked to
+``Interval.start``, this could be substituted directly::
+
+    session.query(Interval).update({Interval.start_point: 10})
+
+However, when using a composite hybrid like ``Interval.length``, this
+hybrid represents more than one column.   We can set up a handler that will
+accommodate a value passed to :meth:`.Query.update` which can affect
+this, using the :meth:`.hybrid_propery.update_expression` decorator.
+A handler that works similarly to our setter would be::
+
+    class Interval(object):
+        # ...
+
+        @hybrid_property
+        def length(self):
+            return self.end - self.start
+
+        @length.setter
+        def length(self, value):
+            self.end = self.start + value
+
+        @length.update_expression
+        def length(cls, value):
+            return [
+                (cls.end, cls.start + value)
+            ]
+
+Above, if we use ``Interval.length`` in an UPDATE expression as::
+
+    session.query(Interval).update(
+        {Interval.length: 25}, synchronize_session='fetch')
+
+We'll get an UPDATE statement along the lines of::
+
+    UPDATE interval SET end=start + :value
+
+In some cases, the default "evaluate" strategy can't perform the SET
+expression in Python; while the addition operator we're using above
+is supported, for more complex SET expressions it will usually be necessary
+to use either the "fetch" or False synchronization strategy as illustrated
+above.
+
+.. versionadded:: 1.2 added support for bulk updates to hybrid properties.
+
 Working with Relationships
 --------------------------
 
@@ -777,7 +833,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
     def __init__(
             self, fget, fset=None, fdel=None,
-            expr=None, custom_comparator=None):
+            expr=None, custom_comparator=None, update_expr=None):
         """Create a new :class:`.hybrid_property`.
 
         Usage is typically via decorator::
@@ -799,7 +855,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         self.fdel = fdel
         self.expr = expr
         self.custom_comparator = custom_comparator
-
+        self.update_expr = update_expr
         util.update_wrapper(self, fget)
 
     def __get__(self, instance, owner):
@@ -940,6 +996,42 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         """
         return self._copy(custom_comparator=comparator)
 
+    def update_expression(self, meth):
+        """Provide a modifying decorator that defines an UPDATE tuple
+        producing method.
+
+        The method accepts a single value, which is the value to be
+        rendered into the SET clause of an UPDATE statement.  The method
+        should then process this value into individual column expressions
+        that fit into the ultimate SET clause, and return them as a
+        sequence of 2-tuples.  Each tuple
+        contains a column expression as the key and a value to be rendered.
+
+        E.g.::
+
+            class Person(Base):
+                # ...
+
+                first_name = Column(String)
+                last_name = Column(String)
+
+                @hybrid_property
+                def fullname(self):
+                    return first_name + " " + last_name
+
+                @fullname.update_expression
+                def fullname(cls, value):
+                    fname, lname = value.split(" ", 1)
+                    return [
+                        (cls.first_name, fname),
+                        (cls.last_name, lname)
+                    ]
+
+        .. versionadded:: 1.2
+
+        """
+        return self._copy(update_expr=meth)
+
     @util.memoized_property
     def _expr_comparator(self):
         if self.custom_comparator is not None:
@@ -952,7 +1044,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
     def _get_expr(self, expr):
 
         def _expr(cls):
-            return ExprComparator(expr(cls), self)
+            return ExprComparator(cls, expr(cls), self)
         util.update_wrapper(_expr, expr)
 
         return self._get_comparator(_expr)
@@ -990,7 +1082,8 @@ class Comparator(interfaces.PropComparator):
 
 
 class ExprComparator(Comparator):
-    def __init__(self, expression, hybrid):
+    def __init__(self, cls, expression, hybrid):
+        self.cls = cls
         self.expression = expression
         self.hybrid = hybrid
 
@@ -1000,6 +1093,14 @@ class ExprComparator(Comparator):
     @property
     def info(self):
         return self.hybrid.info
+
+    def _bulk_update_tuples(self, value):
+        if isinstance(self.expression, attributes.QueryableAttribute):
+            return self.expression._bulk_update_tuples(value)
+        elif self.hybrid.update_expr is not None:
+            return self.hybrid.update_expr(self.cls, value)
+        else:
+            return [(self.expression, value)]
 
     @property
     def property(self):

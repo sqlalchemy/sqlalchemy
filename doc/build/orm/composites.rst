@@ -9,16 +9,6 @@ Sets of columns can be associated with a single user-defined datatype. The ORM
 provides a single attribute which represents the group of columns using the
 class you provide.
 
-.. versionchanged:: 0.7
-    Composites have been simplified such that
-    they no longer "conceal" the underlying column based attributes.  Additionally,
-    in-place mutation is no longer automatic; see the section below on
-    enabling mutability to support tracking of in-place changes.
-
-.. versionchanged:: 0.9
-    Composites will return their object-form, rather than as individual columns,
-    when used in a column-oriented :class:`.Query` construct.  See :ref:`migration_2824`.
-
 A simple example represents pairs of columns as a ``Point`` object.
 ``Point`` represents such a pair as ``.x`` and ``.y``::
 

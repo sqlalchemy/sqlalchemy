@@ -151,6 +151,11 @@ class QueryableAttribute(interfaces._MappedAttribute,
 
         return self.comparator._query_clause_element()
 
+    def _bulk_update_tuples(self, value):
+        """Return setter tuples for a bulk UPDATE."""
+
+        return self.comparator._bulk_update_tuples(value)
+
     def adapt_to_entity(self, adapt_to_entity):
         assert not self._of_type
         return self.__class__(adapt_to_entity.entity,

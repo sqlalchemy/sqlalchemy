@@ -278,9 +278,15 @@ class CompositeProperty(DescriptorProperty):
         """Establish events that populate/expire the composite attribute."""
 
         def load_handler(state, *args):
+            _load_refresh_handler(state, args, is_refresh=False)
+
+        def refresh_handler(state, *args):
+            _load_refresh_handler(state, args, is_refresh=True)
+
+        def _load_refresh_handler(state, args, is_refresh):
             dict_ = state.dict
 
-            if self.key in dict_:
+            if not is_refresh and self.key in dict_:
                 return
 
             # if column elements aren't loaded, skip.
@@ -290,7 +296,6 @@ class CompositeProperty(DescriptorProperty):
                 if k not in dict_:
                     return
 
-            # assert self.key not in dict_
             dict_[self.key] = self.composite_class(
                 *[state.dict[key] for key in
                   self._attribute_keys]
@@ -317,7 +322,7 @@ class CompositeProperty(DescriptorProperty):
         event.listen(self.parent, 'load',
                      load_handler, raw=True, propagate=True)
         event.listen(self.parent, 'refresh',
-                     load_handler, raw=True, propagate=True)
+                     refresh_handler, raw=True, propagate=True)
         event.listen(self.parent, 'expire',
                      expire_handler, raw=True, propagate=True)
 
@@ -410,6 +415,21 @@ class CompositeProperty(DescriptorProperty):
         def _query_clause_element(self):
             return CompositeProperty.CompositeBundle(
                 self.prop, self.__clause_element__())
+
+        def _bulk_update_tuples(self, value):
+            if value is None:
+                values = [None for key in self.prop._attribute_keys]
+            elif isinstance(value, self.prop.composite_class):
+                values = value.__composite_values__()
+            else:
+                raise sa_exc.ArgumentError(
+                    "Can't UPDATE composite attribute %s to %r" %
+                    (self.prop, value))
+
+            return zip(
+                self._comparable_elements,
+                values
+            )
 
         @util.memoized_property
         def _comparable_elements(self):

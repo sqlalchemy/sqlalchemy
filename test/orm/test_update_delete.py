@@ -190,23 +190,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
             synchronize_session='evaluate')
         eq_(jill.ufoo, 'moonbeam')
 
-    def test_evaluate_hybrid_attr(self):
-        from sqlalchemy.ext.hybrid import hybrid_property
-
-        class Foo(object):
-            @hybrid_property
-            def uname(self):
-                return self.name
-
-        mapper(Foo, self.tables.users)
-
-        s = Session()
-        jill = s.query(Foo).get(3)
-        s.query(Foo).update(
-            {Foo.uname: 'moonbeam'},
-            synchronize_session='evaluate')
-        eq_(jill.uname, 'moonbeam')
-
     def test_delete(self):
         User = self.classes.User
 

@@ -5,13 +5,13 @@ from sqlalchemy import Integer, String, ForeignKey, \
     select
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, \
-    CompositeProperty, aliased
+    CompositeProperty, aliased, persistence
 from sqlalchemy.orm import composite, Session, configure_mappers
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 
-class PointTest(fixtures.MappedTest):
+class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
@@ -200,6 +200,58 @@ class PointTest(fixtures.MappedTest):
         assert sess.query(ea).\
             filter(ea.start != Point(3, 4)).first() is \
             g.edges[1]
+
+    def test_bulk_update_sql(self):
+        Edge, Point = (self.classes.Edge,
+                       self.classes.Point)
+
+        sess = self._fixture()
+
+        e1 = sess.query(Edge).filter(Edge.start == Point(14, 5)).one()
+
+        eq_(e1.end, Point(2, 7))
+
+        q = sess.query(Edge).filter(Edge.start == Point(14, 5))
+        bulk_ud = persistence.BulkUpdate.factory(
+            q, False, {Edge.end: Point(16, 10)}, {})
+
+        self.assert_compile(
+            bulk_ud,
+            "UPDATE edges SET x2=:x2, y2=:y2 WHERE edges.x1 = :x1_1 "
+            "AND edges.y1 = :y1_1",
+            params={'x2': 16, 'x1_1': 14, 'y2': 10, 'y1_1': 5},
+            dialect="default"
+        )
+
+    def test_bulk_update_evaluate(self):
+        Edge, Point = (self.classes.Edge,
+                       self.classes.Point)
+
+        sess = self._fixture()
+
+        e1 = sess.query(Edge).filter(Edge.start == Point(14, 5)).one()
+
+        eq_(e1.end, Point(2, 7))
+
+        q = sess.query(Edge).filter(Edge.start == Point(14, 5))
+        q.update({Edge.end: Point(16, 10)})
+
+        eq_(e1.end, Point(16, 10))
+
+    def test_bulk_update_fetch(self):
+        Edge, Point = (self.classes.Edge,
+                       self.classes.Point)
+
+        sess = self._fixture()
+
+        e1 = sess.query(Edge).filter(Edge.start == Point(14, 5)).one()
+
+        eq_(e1.end, Point(2, 7))
+
+        q = sess.query(Edge).filter(Edge.start == Point(14, 5))
+        q.update({Edge.end: Point(16, 10)}, synchronize_session="fetch")
+
+        eq_(e1.end, Point(16, 10))
 
     def test_get_history(self):
         Edge = self.classes.Edge

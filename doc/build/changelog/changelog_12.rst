@@ -13,6 +13,20 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3229
+        :tags: feature, orm, ext
+        :tickets: 3229
+
+        The :meth:`.Query.update` method can now accommodate both
+        hybrid attributes as well as composite attributes as a source
+        of the key to be placed in the SET clause.   For hybrids, an
+        additional decorator :meth:`.hybrid_property.update_expression`
+        is supplied for which the user supplies a tuple-returning function.
+
+        .. seealso::
+
+            :ref:`change_3229`
+
     .. change:: 3753
         :tags: bug, orm
         :tickets: 3753
