@@ -226,6 +226,9 @@ def testing_engine(url=None, options=None):
             options = config.db_opts
         else:
             options = {}
+    elif config.db is not None and url.drivername == config.db.url.drivername:
+        default_opt = config.db_opts.copy()
+        default_opt.update(options)
 
     engine = create_engine(url, **options)
     engine._has_events = True   # enable event blocks, helps with profiling
