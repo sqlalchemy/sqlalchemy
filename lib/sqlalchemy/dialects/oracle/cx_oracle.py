@@ -795,6 +795,8 @@ class OracleDialect_cx_oracle(OracleDialect):
                 if "ORA-12516" in str(err):
                     time.sleep(2)
                     return self.dbapi.connect(*cargs, **cparams)
+                else:
+                    raise
         else:
             return super(OracleDialect_cx_oracle, self).connect(
                 *cargs, **cparams)
