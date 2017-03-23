@@ -41,12 +41,18 @@ def collate(expression, collation):
 
         mycolumn COLLATE utf8_bin
 
+    The collation expression is also quoted if it is a case sensitive
+    identifer, e.g. contains uppercase characters.
+
+    .. versionchanged:: 1.2 quoting is automatically applied to COLLATE
+       expressions if they are case sensitive.
+
     """
 
     expr = _literal_as_binds(expression)
     return BinaryExpression(
         expr,
-        _literal_as_text(collation),
+        ColumnClause(collation),
         operators.collate, type_=expr.type)
 
 

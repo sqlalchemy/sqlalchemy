@@ -578,6 +578,32 @@ warning.   However, it is anticipated that most users will appreciate the
 
 :ticket:`3907`
 
+.. _change_3785:
+
+The column-level COLLATE keyword now quotes the collation name
+--------------------------------------------------------------
+
+A bug in the :func:`.expression.collate` and :meth:`.ColumnOperators.collate`
+functions, used to supply ad-hoc column collations at the statement level,
+is fixed, where a case sensitive name would not be quoted::
+
+    stmt = select([mytable.c.x, mytable.c.y]).\
+        order_by(mytable.c.somecolumn.collate("fr_FR"))
+
+now renders::
+
+    SELECT mytable.x, mytable.y,
+    FROM mytable ORDER BY mytable.somecolumn COLLATE "fr_FR"
+
+Previously, the case sensitive name `"fr_FR"` would not be quoted.   Currently,
+manual quoting of the "fr_FR" name is **not** detected, so applications that
+are manually quoting the identifier should be adjusted.   Note that this change
+does not impact the use of collations at the type level (e.g. specified
+on the datatype like :class:`.String` at the table level), where quoting
+is already applied.
+
+:ticket:`3785`
+
 Dialect Improvements and Changes - PostgreSQL
 =============================================
 

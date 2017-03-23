@@ -13,6 +13,20 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3785
+        :tags: bug, sql
+        :tickets: 3785
+
+        The expression used for COLLATE as rendered by the column-level
+        :func:`.expression.collate` and :meth:`.ColumnOperators.collate` is now
+        quoted as an identifier when the name is case sensitive, e.g. has
+        uppercase characters.  Note that this does not impact type-level
+        collation, which is already quoted.
+
+        .. seealso::
+
+            :ref:`change_3785`
+
     .. change:: 3229
         :tags: feature, orm, ext
         :tickets: 3229

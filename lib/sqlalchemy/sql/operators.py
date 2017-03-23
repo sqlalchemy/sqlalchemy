@@ -695,7 +695,13 @@ class ColumnOperators(Operators):
 
     def collate(self, collation):
         """Produce a :func:`~.expression.collate` clause against
-        the parent object, given the collation string."""
+        the parent object, given the collation string.
+
+        .. seealso::
+
+            :func:`~.expression.collate`
+
+        """
         return self.operate(collate, collation)
 
     def __radd__(self, other):

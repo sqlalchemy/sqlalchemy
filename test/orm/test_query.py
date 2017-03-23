@@ -1396,9 +1396,9 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_collate(self):
         User = self.classes.User
 
-        self._test(collate(User.id, 'binary'), "users.id COLLATE binary")
+        self._test(collate(User.id, 'utf8_bin'), "users.id COLLATE utf8_bin")
 
-        self._test(User.id.collate('binary'), "users.id COLLATE binary")
+        self._test(User.id.collate('utf8_bin'), "users.id COLLATE utf8_bin")
 
     def test_selfref_between(self):
         User = self.classes.User
