@@ -527,6 +527,13 @@ class RelationshipProperty(StrategizedProperty):
             a subquery of the original statement, for each collection
             requested.
 
+          * ``selectin`` - items should be loaded "eagerly" as the parents
+            are loaded, using one or more additional SQL statements, which
+            issues a JOIN to the immediate parent object, specifying primary
+            key identifiers using an IN clause.
+
+            .. versionadded:: 1.2
+
           * ``noload`` - no loading should occur at any time.  This is to
             support "write-only" attributes, or attributes which are
             populated in some manner specific to the application.

@@ -900,11 +900,13 @@ def subqueryload(loadopt, attr):
         query(User).options(subqueryload(User.orders))
 
         # subquery-load Order.items and then Item.keywords
-        query(Order).options(subqueryload(Order.items).subqueryload(Item.keywords))
+        query(Order).options(
+            subqueryload(Order.items).subqueryload(Item.keywords))
 
         # lazily load Order.items, but when Items are loaded,
         # subquery-load the keywords collection
-        query(Order).options(lazyload(Order.items).subqueryload(Item.keywords))
+        query(Order).options(
+            lazyload(Order.items).subqueryload(Item.keywords))
 
 
     .. seealso::
@@ -925,6 +927,50 @@ def subqueryload(*keys):
 @subqueryload._add_unbound_all_fn
 def subqueryload_all(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.subqueryload, keys, True, {})
+
+
+@loader_option()
+def selectinload(loadopt, attr):
+    """Indicate that the given attribute should be loaded using
+    SELECT IN eager loading.
+
+    This function is part of the :class:`.Load` interface and supports
+    both method-chained and standalone operation.
+
+    examples::
+
+        # selectin-load the "orders" collection on "User"
+        query(User).options(selectinload(User.orders))
+
+        # selectin-load Order.items and then Item.keywords
+        query(Order).options(
+            selectinload(Order.items).selectinload(Item.keywords))
+
+        # lazily load Order.items, but when Items are loaded,
+        # selectin-load the keywords collection
+        query(Order).options(
+            lazyload(Order.items).selectinload(Item.keywords))
+
+    .. versionadded:: 1.2
+
+    .. seealso::
+
+        :ref:`loading_toplevel`
+
+        :ref:`selectin_eager_loading`
+
+    """
+    return loadopt.set_relationship_strategy(attr, {"lazy": "selectin"})
+
+
+@selectinload._add_unbound_fn
+def selectinload(*keys):
+    return _UnboundLoad._from_keys(_UnboundLoad.selectinload, keys, False, {})
+
+
+@selectinload._add_unbound_all_fn
+def selectinload_all(*keys):
+    return _UnboundLoad._from_keys(_UnboundLoad.selectinload, keys, True, {})
 
 
 @loader_option()
@@ -960,12 +1006,18 @@ def immediateload(loadopt, attr):
     """Indicate that the given attribute should be loaded using
     an immediate load with a per-attribute SELECT statement.
 
+    The :func:`.immediateload` option is superseded in general
+    by the :func:`.selectinload` option, which performs the same task
+    more efficiently by emitting a SELECT for all loaded objects.
+
     This function is part of the :class:`.Load` interface and supports
     both method-chained and standalone operation.
 
     .. seealso::
 
         :ref:`loading_toplevel`
+
+        :ref:`selectin_eager_loading`
 
     """
     loader = loadopt.set_relationship_strategy(attr, {"lazy": "immediate"})

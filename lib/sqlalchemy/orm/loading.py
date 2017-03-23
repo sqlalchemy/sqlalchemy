@@ -18,6 +18,7 @@ from .. import util
 from . import attributes, exc as orm_exc
 from ..sql import util as sql_util
 from . import strategy_options
+from . import path_registry
 
 from .util import _none_set, state_str
 from .base import _SET_DEFERRED_EXPIRED, _DEFER_FOR_STATE
@@ -31,6 +32,7 @@ def instances(query, cursor, context):
     """Return an ORM result as an iterator."""
 
     context.runid = _new_runid()
+    context.post_load_paths = {}
 
     filtered = query._has_mapper_entities
 
@@ -76,6 +78,10 @@ def instances(query, cursor, context):
             else:
                 rows = [keyed_tuple([proc(row) for proc in process])
                         for row in fetch]
+
+            for path, post_load in \
+                    context.post_load_paths.items():
+                post_load.invoke(context, path)
 
             if filtered:
                 rows = util.unique_list(rows, filter_fn)
@@ -346,6 +352,7 @@ def _instance_processor(
     session_id = context.session.hash_key
     version_check = context.version_check
     runid = context.runid
+    post_load = PostLoad.for_context(context, load_path, only_load_props)
 
     if refresh_state:
         refresh_identity_key = refresh_state.key
@@ -452,6 +459,9 @@ def _instance_processor(
                     else:
                         state._commit_all(dict_, session_identity_map)
 
+            if post_load:
+                post_load.add_state(state, True)
+
         else:
             # partial population routines, for objects that were already
             # in the Session, but a row matches them; apply eager loaders
@@ -474,6 +484,9 @@ def _instance_processor(
                             state, context, to_load)
 
                     state._commit(dict_, to_load)
+
+            if post_load and context.invoke_all_eagers:
+                post_load.add_state(state, False)
 
         return instance
 
@@ -630,6 +643,52 @@ def _decorate_polymorphic_switch(
                 return _instance(row)
         return instance_fn(row)
     return polymorphic_instance
+
+
+class PostLoad(object):
+    """Track loaders and states for "post load" operations.
+
+    """
+    __slots__ = 'loaders', 'states', 'load_keys'
+
+    def __init__(self):
+        self.loaders = {}
+        self.states = util.OrderedDict()
+        self.load_keys = None
+
+    def add_state(self, state, overwrite):
+        self.states[state] = overwrite
+
+    def invoke(self, context, path):
+        if not self.states:
+            return
+        path = path_registry.PathRegistry.coerce(path)
+        for key, loader, arg, kw in self.loaders.values():
+            loader(
+                context, path, self.states.items(),
+                self.load_keys, *arg, **kw)
+        self.states.clear()
+
+    @classmethod
+    def for_context(cls, context, path, only_load_props):
+        pl = context.post_load_paths.get(path.path)
+        if pl is not None and only_load_props:
+            pl.load_keys = only_load_props
+        return pl
+
+    @classmethod
+    def path_exists(self, context, path, key):
+        return path.path in context.post_load_paths and \
+            key in context.post_load_paths[path.path].loaders
+
+    @classmethod
+    def callable_for_path(
+            cls, context, path, attr_key, loader_callable, *arg, **kw):
+        if path.path in context.post_load_paths:
+            pl = context.post_load_paths[path.path]
+        else:
+            pl = context.post_load_paths[path.path] = PostLoad()
+        pl.loaders[attr_key] = (attr_key, loader_callable, arg, kw)
 
 
 def load_scalar_attributes(mapper, state, attribute_names):

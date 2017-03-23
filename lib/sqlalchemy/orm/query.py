@@ -753,9 +753,14 @@ class Query(object):
         (e.g. approximately 1000) is used, even with DBAPIs that buffer
         rows (which are most).
 
-        The :meth:`.Query.yield_per` method **is not compatible with most
-        eager loading schemes, including subqueryload and joinedload with
-        collections**.  For this reason, it may be helpful to disable
+        The :meth:`.Query.yield_per` method **is not compatible
+        subqueryload eager loading or joinedload eager loading when
+        using collections**.  It is potentially compatible with "select in"
+        eager loading, **provided the databse driver supports multiple,
+        independent cursors** (pysqlite and psycopg2 are known to work,
+        MySQL and SQL Server ODBC drivers do not).
+
+        Therefore in some cases, it may be helpful to disable
         eager loads, either unconditionally with
         :meth:`.Query.enable_eagerloads`::
 
@@ -4103,7 +4108,8 @@ class QueryContext(object):
         'primary_columns', 'secondary_columns', 'eager_order_by',
         'eager_joins', 'create_eager_joins', 'propagate_options',
         'attributes', 'statement', 'from_clause', 'whereclause',
-        'order_by', 'labels', '_for_update_arg', 'runid', 'partials'
+        'order_by', 'labels', '_for_update_arg', 'runid', 'partials',
+        'post_load_paths'
     )
 
     def __init__(self, query):

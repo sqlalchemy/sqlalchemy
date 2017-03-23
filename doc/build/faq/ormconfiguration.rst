@@ -328,7 +328,9 @@ The primary key is a good choice for this::
 
 Note that the :func:`.joinedload` eager loader strategy does not suffer from
 the same problem because only one query is ever issued, so the load query
-cannot be different from the main query.
+cannot be different from the main query.  Similarly, the :func:`.selectinload`
+eager loader strategy also does not have this issue as it links its collection
+loads directly to primary key values just loaded.
 
 .. seealso::
 

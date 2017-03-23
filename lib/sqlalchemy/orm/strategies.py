@@ -14,10 +14,10 @@ from ..sql import util as sql_util, visitors
 from .. import sql
 from . import (
     attributes, interfaces, exc as orm_exc, loading,
-    unitofwork, util as orm_util
+    unitofwork, util as orm_util, query
 )
 from .state import InstanceState
-from .util import _none_set
+from .util import _none_set, aliased
 from . import properties
 from .interfaces import (
     LoaderStrategy, StrategizedProperty
@@ -1742,6 +1742,178 @@ class JoinedLoader(AbstractRelationshipLoader):
             (self.key, load_scalar_from_joined_existing_row))
         if context.invoke_all_eagers:
             populators["eager"].append((self.key, load_scalar_from_joined_exec))
+
+
+@log.class_logger
+@properties.RelationshipProperty.strategy_for(lazy="selectin")
+class SelectInLoader(AbstractRelationshipLoader):
+    __slots__ = (
+        'join_depth', '_parent_alias', '_in_expr', '_parent_pk_cols',
+        '_zero_idx'
+    )
+
+    _chunksize = 500
+
+    def __init__(self, parent, strategy_key):
+        super(SelectInLoader, self).__init__(parent, strategy_key)
+        self.join_depth = self.parent_property.join_depth
+        self._parent_alias = aliased(self.parent.class_)
+        pa_insp = inspect(self._parent_alias)
+        self._parent_pk_cols = pk_cols = [
+            pa_insp._adapt_element(col) for col in self.parent.primary_key]
+        if len(pk_cols) > 1:
+            self._in_expr = sql.tuple_(*pk_cols)
+            self._zero_idx = False
+        else:
+            self._in_expr = pk_cols[0]
+            self._zero_idx = True
+
+    def init_class_attribute(self, mapper):
+        self.parent_property.\
+            _get_strategy((("lazy", "select"),)).\
+            init_class_attribute(mapper)
+
+    def create_row_processor(
+            self, context, path, loadopt, mapper,
+            result, adapter, populators):
+        if not self.parent.class_manager[self.key].impl.supports_population:
+            raise sa_exc.InvalidRequestError(
+                "'%s' does not support object "
+                "population - eager loading cannot be applied." %
+                self
+            )
+
+        selectin_path = (
+            context.query._current_path or orm_util.PathRegistry.root) + path
+
+        if loading.PostLoad.path_exists(context, selectin_path, self.key):
+            return
+
+        path_w_prop = path[self.parent_property]
+        selectin_path_w_prop = selectin_path[self.parent_property]
+
+        # build up a path indicating the path from the leftmost
+        # entity to the thing we're subquery loading.
+        with_poly_info = path_w_prop.get(
+            context.attributes,
+            "path_with_polymorphic", None)
+
+        if with_poly_info is not None:
+            effective_entity = with_poly_info.entity
+        else:
+            effective_entity = self.mapper
+
+        if not path_w_prop.contains(context.attributes, "loader"):
+            if self.join_depth:
+                if selectin_path_w_prop.length / 2 > self.join_depth:
+                    return
+            elif selectin_path_w_prop.contains_mapper(self.mapper):
+                return
+
+        loading.PostLoad.callable_for_path(
+            context, selectin_path, self.key,
+            self._load_for_path, effective_entity)
+
+    @util.dependencies("sqlalchemy.ext.baked")
+    def _load_for_path(
+            self, baked, context, path, states, load_only, effective_entity):
+
+        if load_only and self.key not in load_only:
+            return
+
+        our_states = [
+            (state.key[1], state, overwrite)
+            for state, overwrite in states
+        ]
+
+        pk_cols = self._parent_pk_cols
+        pa = self._parent_alias
+
+        q = baked.BakedQuery(
+            # TODO: use strategy-local cache
+            self.mapper._compiled_cache,
+            lambda session: session.query(
+                query.Bundle("pk", *pk_cols), effective_entity
+            )
+        )
+
+        q.add_criteria(
+            lambda q: q.select_from(pa).join(
+                getattr(pa,
+                        self.parent_property.key).of_type(effective_entity)).
+            filter(
+                self._in_expr.in_(
+                    sql.bindparam('primary_keys', expanding=True))
+            ).order_by(*pk_cols)
+        )
+
+        orig_query = context.query
+
+        q._add_lazyload_options(
+            orig_query._with_options, path[self.parent_property]
+        )
+
+        if orig_query._populate_existing:
+            q.add_criteria(
+                lambda q: q.populate_existing()
+            )
+
+        if self.parent_property.order_by:
+            def _setup_outermost_orderby(q):
+                # imitate the same method that
+                # subquery eager loading does it, looking for the
+                # adapted "secondary" table
+                eagerjoin = q._from_obj[0]
+                eager_order_by = \
+                    eagerjoin._target_adapter.\
+                    copy_and_process(
+                        util.to_list(
+                            self.parent_property.order_by
+                        )
+                    )
+                return q.order_by(*eager_order_by)
+
+            q.add_criteria(
+                _setup_outermost_orderby
+            )
+
+        uselist = self.uselist
+        _empty_result = () if uselist else None
+
+        while our_states:
+            chunk = our_states[0:self._chunksize]
+            our_states = our_states[self._chunksize:]
+
+            data = {
+                k: [vv[1] for vv in v]
+                for k, v in itertools.groupby(
+                    q(context.session).params(
+                        primary_keys=[
+                            key[0] if self._zero_idx else key
+                            for key, state, overwrite in chunk]
+                    ),
+                    lambda x: x[0]
+                )
+            }
+
+            for key, state, overwrite in chunk:
+                if not overwrite and self.key in state.dict:
+                    continue
+
+                collection = data.get(key, _empty_result)
+
+                if not uselist and collection:
+                    if len(collection) > 1:
+                        util.warn(
+                            "Multiple rows returned with "
+                            "uselist=False for eagerly-loaded "
+                            "attribute '%s' "
+                            % self)
+                    state.get_impl(self.key).set_committed_value(
+                        state, state.dict, collection[0])
+                else:
+                    state.get_impl(self.key).set_committed_value(
+                        state, state.dict, collection)
 
 
 def single_parent_validator(desc, prop):

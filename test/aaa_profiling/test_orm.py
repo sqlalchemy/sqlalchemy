@@ -1,6 +1,6 @@
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import mapper, relationship, \
-    sessionmaker, Session, defer, joinedload, defaultload
+    sessionmaker, Session, defer, joinedload, defaultload, selectinload
 from sqlalchemy import testing
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing import fixtures
@@ -515,6 +515,96 @@ class QueryTest(fixtures.MappedTest):
 
         go()
 
+
+class SelectInEagerLoadTest(fixtures.MappedTest):
+    """basic test for selectin() loading, which uses a baked query.
+
+    if the baked query starts spoiling due to some bug in cache keys,
+    this callcount blows up.
+
+    """
+
+    @classmethod
+    def define_tables(cls, metadata):
+
+        Table(
+            'a',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('x', Integer),
+            Column('y', Integer)
+        )
+        Table(
+            'b',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('a_id', ForeignKey('a.id')),
+            Column('x', Integer),
+            Column('y', Integer)
+        )
+        Table(
+            'c',
+            metadata,
+            Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+            Column('b_id', ForeignKey('b.id')),
+            Column('x', Integer),
+            Column('y', Integer)
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(cls.Basic):
+            pass
+
+        class C(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C = cls.classes('A', 'B', 'C')
+        a, b, c = cls.tables('a', 'b', 'c')
+
+        mapper(A, a, properties={
+            'bs': relationship(B),
+        })
+        mapper(B, b, properties={
+            'cs': relationship(C)
+        })
+        mapper(C, c)
+
+    @classmethod
+    def insert_data(cls):
+        A, B, C = cls.classes('A', 'B', 'C')
+        s = Session()
+        s.add(
+            A(
+                bs=[B(cs=[C()]), B(cs=[C()])]
+            )
+        )
+        s.commit()
+
+    def test_round_trip_results(self):
+        A, B, C = self.classes('A', 'B', 'C')
+
+        sess = Session()
+
+        q = sess.query(A).options(
+            selectinload(A.bs).selectinload(B.cs)
+        )
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                obj = q.all()
+                list(obj)
+                sess.close()
+        go()
 
 class JoinedEagerLoadTest(fixtures.MappedTest):
     @classmethod

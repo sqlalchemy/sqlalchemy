@@ -21,6 +21,22 @@
         inner element is negated correctly, when the :func:`.not_` modifier
         is applied to the labeled expression.
 
+    .. change:: 3944
+        :tags: feature, orm
+        :tickets: 3944
+
+        Added a new kind of eager loading called "selectin" loading.  This
+        style of loading is very similar to "subquery" eager loading,
+        except that it uses an IN expression given a list of primary key
+        values from the loaded parent objects, rather than re-stating the
+        original query.   This produces a more efficient query that is
+        "baked" (e.g. the SQL string is cached) and also works in the
+        context of :meth:`.Query.yield_per`.
+
+        .. seealso::
+
+            :ref:`change_3944`
+
     .. change::
         :tags: bug, orm
         :tickets: 3967

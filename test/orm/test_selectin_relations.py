@@ -1,16 +1,16 @@
 from sqlalchemy.testing import eq_, is_, is_not_, is_true
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy import Integer, String, ForeignKey, bindparam, inspect
-from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
-    mapper, relationship, clear_mappers, create_session, lazyload, \
-    aliased, joinedload, deferred, undefer, eagerload_all,\
-    Session
-from sqlalchemy.testing import eq_, assert_raises, \
+from sqlalchemy import Integer, String, ForeignKey, bindparam
+from sqlalchemy.orm import selectinload, selectinload_all, \
+    mapper, relationship, clear_mappers, create_session, \
+    aliased, joinedload, deferred, undefer,\
+    Session, subqueryload
+from sqlalchemy.testing import assert_raises, \
     assert_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.entities import ComparableEntity
+from sqlalchemy.testing import mock
 from test.orm import _fixtures
 import sqlalchemy as sa
 
@@ -37,7 +37,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         })
         sess = create_session()
 
-        q = sess.query(User).options(subqueryload(User.addresses))
+        q = sess.query(User).options(selectinload(User.addresses))
 
         def go():
             eq_(
@@ -77,7 +77,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         u = aliased(User)
 
-        q = sess.query(u).options(subqueryload(u.addresses))
+        q = sess.query(u).options(selectinload(u.addresses))
 
         def go():
             eq_(
@@ -96,7 +96,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 2)
 
         q = sess.query(u).\
-            options(subqueryload_all(u.addresses, Address.dingalings))
+            options(selectinload_all(u.addresses, Address.dingalings))
 
         def go():
             eq_(
@@ -128,7 +128,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         })
         sess = create_session()
 
-        q = sess.query(User).options(subqueryload(User.addresses))
+        q = sess.query(User).options(selectinload(User.addresses))
 
         def go():
             eq_(
@@ -152,7 +152,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         })
         sess = create_session()
 
-        q = sess.query(User).options(subqueryload(User.addresses))
+        q = sess.query(User).options(selectinload(User.addresses))
 
         def go():
             eq_(
@@ -164,7 +164,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 2)
 
     def test_disable_dynamic(self):
-        """test no subquery option on a dynamic."""
+        """test no selectin option on a dynamic."""
 
         users, Address, addresses, User = (self.tables.users,
                                            self.classes.Address,
@@ -183,7 +183,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             sa.exc.InvalidRequestError,
             "User.addresses' does not support object population - eager "
             "loading cannot be applied.",
-            sess.query(User).options(subqueryload(User.addresses)).first,
+            sess.query(User).options(selectinload(User.addresses)).first,
         )
 
     def test_many_to_many_plain(self):
@@ -197,7 +197,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword, secondary=item_keywords,
-                                  lazy='subquery', order_by=keywords.c.id)))
+                                  lazy='selectin', order_by=keywords.c.id)))
 
         q = create_session().query(Item).order_by(Item.id)
 
@@ -216,7 +216,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword, secondary=item_keywords,
-                                  lazy='subquery', order_by=keywords.c.id)))
+                                  lazy='selectin', order_by=keywords.c.id)))
 
         q = create_session().query(Item).order_by(Item.id)
 
@@ -236,7 +236,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword, secondary=item_keywords,
-                                  lazy='subquery', order_by=keywords.c.id)))
+                                  lazy='selectin', order_by=keywords.c.id)))
 
         q = create_session().query(Item).order_by(Item.id)
 
@@ -254,7 +254,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(User, users, properties={
             'addresses': relationship(mapper(Address, addresses),
-                                      lazy='subquery',
+                                      lazy='selectin',
                                       order_by=addresses.c.email_address),
         })
         q = create_session().query(User)
@@ -281,7 +281,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(User, users, properties={
             'addresses': relationship(mapper(Address, addresses),
-                                      lazy='subquery',
+                                      lazy='selectin',
                                       order_by=[
                 addresses.c.email_address,
                 addresses.c.id]),
@@ -314,7 +314,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
             addresses=relationship(Address,
-                                   lazy='subquery',
+                                   lazy='selectin',
                                    order_by=addresses.c.id),
         ))
 
@@ -344,7 +344,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
-            addresses=relationship(Address, lazy='subquery',
+            addresses=relationship(Address, lazy='selectin',
                                    order_by=[
                                        sa.desc(addresses.c.email_address)
                                    ]),
@@ -367,12 +367,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     _pathing_runs = [
         ("lazyload", "lazyload", "lazyload", 15),
-        ("subqueryload", "lazyload", "lazyload", 12),
-        ("subqueryload", "subqueryload", "lazyload", 8),
-        ("joinedload", "subqueryload", "lazyload", 7),
-        ("lazyload", "lazyload", "subqueryload", 12),
-        ("subqueryload", "subqueryload", "subqueryload", 4),
-        ("subqueryload", "subqueryload", "joinedload", 3),
+        ("selectinload", "lazyload", "lazyload", 12),
+        ("selectinload", "selectinload", "lazyload", 8),
+        ("joinedload", "selectinload", "lazyload", 7),
+        ("lazyload", "lazyload", "selectinload", 12),
+        ("selectinload", "selectinload", "selectinload", 4),
+        ("selectinload", "selectinload", "joinedload", 3),
     ]
 
     def test_options_pathing(self):
@@ -411,6 +411,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         callables = {
             'joinedload': joinedload,
+            'selectinload': selectinload,
             'subqueryload': subqueryload
         }
 
@@ -442,7 +443,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         opts = {
             'lazyload': 'select',
             'joinedload': 'joined',
-            'subqueryload': 'subquery',
+            'selectinload': 'selectin',
         }
 
         for o, i, k, count in configs:
@@ -504,14 +505,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
-            addresses=relationship(Address, lazy='subquery',
+            addresses=relationship(Address, lazy='selectin',
                                    backref=sa.orm.backref(
-                                       'user', lazy='subquery',),
+                                       'user', lazy='selectin'),
                                    order_by=Address.id)
         ))
         is_(sa.orm.class_mapper(User).get_property('addresses').lazy,
-            'subquery')
-        is_(sa.orm.class_mapper(Address).get_property('user').lazy, 'subquery')
+            'selectin')
+        is_(sa.orm.class_mapper(Address).get_property('user').lazy, 'selectin')
 
         sess = create_session()
         eq_(self.static.user_address_result,
@@ -527,14 +528,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
-            addresses=relationship(Address, lazy='subquery', join_depth=1,
+            addresses=relationship(Address, lazy='selectin', join_depth=1,
                                    backref=sa.orm.backref(
-                                       'user', lazy='subquery', join_depth=1),
+                                       'user', lazy='selectin', join_depth=1),
                                    order_by=Address.id)
         ))
         is_(sa.orm.class_mapper(User).get_property('addresses').lazy,
-            'subquery')
-        is_(sa.orm.class_mapper(Address).get_property('user').lazy, 'subquery')
+            'selectin')
+        is_(sa.orm.class_mapper(Address).get_property('user').lazy, 'selectin')
 
         sess = create_session()
         eq_(self.static.user_address_result,
@@ -562,18 +563,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         closed_mapper = mapper(Order, closedorders, non_primary=True)
 
         mapper(User, users, properties=dict(
-            addresses=relationship(Address, lazy='subquery',
+            addresses=relationship(Address, lazy='selectin',
                                    order_by=addresses.c.id),
             open_orders=relationship(
                 open_mapper,
                 primaryjoin=sa.and_(openorders.c.isopen == 1,
                                     users.c.id == openorders.c.user_id),
-                lazy='subquery', order_by=openorders.c.id),
+                lazy='selectin', order_by=openorders.c.id),
             closed_orders=relationship(
                 closed_mapper,
                 primaryjoin=sa.and_(closedorders.c.isopen == 0,
                                     users.c.id == closedorders.c.user_id),
-                lazy='subquery', order_by=closedorders.c.id)))
+                lazy='selectin', order_by=closedorders.c.id)))
 
         q = create_session().query(User).order_by(User.id)
 
@@ -619,22 +620,22 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items': relationship(Item, secondary=order_items, lazy='subquery',
+            'items': relationship(Item, secondary=order_items, lazy='selectin',
                                   order_by=items.c.id)})
         mapper(Item, items)
         mapper(User, users, properties=dict(
             addresses=relationship(
-                Address, lazy='subquery', order_by=addresses.c.id),
+                Address, lazy='selectin', order_by=addresses.c.id),
             open_orders=relationship(
                 Order,
                 primaryjoin=sa.and_(orders.c.isopen == 1,
                                     users.c.id == orders.c.user_id),
-                lazy='subquery', order_by=orders.c.id),
+                lazy='selectin', order_by=orders.c.id),
             closed_orders=relationship(
                 Order,
                 primaryjoin=sa.and_(orders.c.isopen == 0,
                                     users.c.id == orders.c.user_id),
-                lazy='subquery', order_by=orders.c.id)))
+                lazy='selectin', order_by=orders.c.id)))
         q = create_session().query(User).order_by(User.id)
 
         def go():
@@ -696,12 +697,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Item, items)
         mapper(Order, orders, properties={
-            'items': relationship(Item, secondary=order_items, lazy='subquery',
+            'items': relationship(Item, secondary=order_items, lazy='selectin',
                                   order_by=items.c.id)
         })
         mapper(User, users, properties={
             'addresses': relationship(mapper(Address, addresses),
-                                      lazy='subquery',
+                                      lazy='selectin',
                                       order_by=addresses.c.id),
             'orders': relationship(Order, lazy='select', order_by=orders.c.id)
         })
@@ -725,7 +726,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses': relationship(Address,
-                                      lazy='subquery',
+                                      lazy='selectin',
                                       order_by=addresses.c.id),
         }, order_by=users.c.id.desc())
 
@@ -743,7 +744,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(User, users, properties=dict(
             address=relationship(mapper(Address, addresses),
-                                 lazy='subquery', uselist=False)
+                                 lazy='selectin', uselist=False)
         ))
         q = create_session().query(User)
 
@@ -759,7 +760,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                            self.classes.User)
 
         mapper(Address, addresses, properties=dict(
-            user=relationship(mapper(User, users), lazy='subquery')
+            user=relationship(mapper(User, users), lazy='selectin')
         ))
         sess = create_session()
         q = sess.query(Address)
@@ -788,11 +789,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Order, orders)
         mapper(User, users, properties={
-               'orders': relationship(Order, backref='user', lazy='subquery',
+               'orders': relationship(Order, backref='user', lazy='selectin',
                                       order_by=orders.c.id),
                'max_order': relationship(
                    mapper(Order, max_orders, non_primary=True),
-                   lazy='subquery', uselist=False)
+                   lazy='selectin', uselist=False)
                })
 
         q = create_session().query(User)
@@ -828,7 +829,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Order, orders)
         s = create_session()
         assert_raises(sa.exc.SAWarning,
-                      s.query(User).options(subqueryload(User.order)).all)
+                      s.query(User).options(selectinload(User.order)).all)
 
 
 class LoadOnExistingTest(_fixtures.FixtureTest):
@@ -868,7 +869,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def _eager_config_fixture(self):
         User, Address = self.classes.User, self.classes.Address
         mapper(User, self.tables.users, properties={
-            'addresses': relationship(Address, lazy="subquery"),
+            'addresses': relationship(Address, lazy="selectin"),
         })
         mapper(Address, self.tables.addresses)
         sess = Session(autoflush=False)
@@ -878,7 +879,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
         mapper(User, self.tables.users, properties={
             'name': deferred(self.tables.users.c.name),
-            'addresses': relationship(Address, lazy="subquery"),
+            'addresses': relationship(Address, lazy="selectin"),
         })
         mapper(Address, self.tables.addresses)
         sess = Session(autoflush=False)
@@ -927,7 +928,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1.addresses.append(a1)
         a2 = u1.addresses[0]
         a2.email_address = 'foo'
-        sess.query(User).options(subqueryload_all("addresses.dingaling")).\
+        sess.query(User).options(selectinload_all("addresses.dingaling")).\
             filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -945,7 +946,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1.orders
         o1 = Order()
         u1.orders.append(o1)
-        sess.query(User).options(subqueryload_all("orders.items")).\
+        sess.query(User).options(selectinload_all("orders.items")).\
             filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
@@ -957,18 +958,18 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
 
         u1 = sess.query(User).filter_by(id=8).options(
-            subqueryload("addresses")).one()
+            selectinload("addresses")).one()
         sess.query(User).filter_by(id=8).options(
-            subqueryload_all("addresses.dingaling")).first()
+            selectinload_all("addresses.dingaling")).first()
         assert 'dingaling' in u1.addresses[0].__dict__
 
     def test_load_two_levels_collection_to_collection(self):
         User, Order, Item, sess = self._collection_to_collection_fixture()
 
         u1 = sess.query(User).filter_by(id=7).options(
-            subqueryload("orders")).one()
+            selectinload("orders")).one()
         sess.query(User).filter_by(id=7).options(
-            subqueryload_all("orders.items")).first()
+            selectinload_all("orders.items")).first()
         assert 'items' in u1.orders[0].__dict__
 
 
@@ -1023,7 +1024,7 @@ class OrderBySecondaryTest(fixtures.MappedTest):
             pass
 
         mapper(A, a, properties={
-            'bs': relationship(B, secondary=m2m, lazy='subquery',
+            'bs': relationship(B, secondary=m2m, lazy='selectin',
                                order_by=m2m.c.id)
         })
         mapper(B, b)
@@ -1039,30 +1040,41 @@ class OrderBySecondaryTest(fixtures.MappedTest):
 
 
 class BaseRelationFromJoinedSubclassTest(_Polymorphic):
+    """Like most tests here, this is adapted from subquery_relations
+    as part of general inheritance testing.
+
+    The subquery test exercised the issue that the subquery load must
+    imitate the original query very closely so that filter criteria, ordering
+    etc. can be maintained with the original query embedded.   However,
+    for selectin loading, none of that is really needed, so here the secondary
+    queries are all just a simple "people JOIN paperwork".
+
+    """
+
     @classmethod
     def define_tables(cls, metadata):
-        people = Table('people', metadata,
-                       Column('person_id', Integer,
-                              primary_key=True,
-                              test_needs_autoincrement=True),
-                       Column('name', String(50)),
-                       Column('type', String(30)))
+        Table('people', metadata,
+              Column('person_id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(50)),
+              Column('type', String(30)))
 
         # to test fully, PK of engineers table must be
         # named differently from that of people
-        engineers = Table('engineers', metadata,
-                          Column('engineer_id', Integer,
-                                 ForeignKey('people.person_id'),
-                                 primary_key=True),
-                          Column('primary_language', String(50)))
+        Table('engineers', metadata,
+              Column('engineer_id', Integer,
+                     ForeignKey('people.person_id'),
+                     primary_key=True),
+              Column('primary_language', String(50)))
 
-        paperwork = Table('paperwork', metadata,
-                          Column('paperwork_id', Integer,
-                                 primary_key=True,
-                                 test_needs_autoincrement=True),
-                          Column('description', String(50)),
-                          Column('person_id', Integer,
-                                 ForeignKey('people.person_id')))
+        Table('paperwork', metadata,
+              Column('paperwork_id', Integer,
+                     primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('description', String(50)),
+              Column('person_id', Integer,
+                     ForeignKey('people.person_id')))
 
     @classmethod
     def setup_mappers(cls):
@@ -1095,13 +1107,13 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
         sess.add_all([e1, e2])
         sess.flush()
 
-    def test_correct_subquery_nofrom(self):
+    def test_correct_select_nofrom(self):
         sess = create_session()
         # use Person.paperwork here just to give the least
         # amount of context
         q = sess.query(Engineer).\
             filter(Engineer.primary_language == 'java').\
-            options(subqueryload(Person.paperwork))
+            options(selectinload(Person.paperwork))
 
         def go():
             eq_(q.all()[0].paperwork,
@@ -1122,28 +1134,20 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "WHERE engineers.primary_language = :primary_language_1",
                 {"primary_language_1": "java"}
             ),
-            # ensure we get "people JOIN engineer" here, even though
-            # primary key "people.person_id" is against "Person"
-            # *and* the path comes out as "Person.paperwork", still
-            # want to select from "Engineer" entity
             CompiledSQL(
-                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description, "
-                "paperwork.person_id AS paperwork_person_id, "
-                "anon_1.people_person_id AS anon_1_people_person_id "
-                "FROM (SELECT people.person_id AS people_person_id "
-                "FROM people JOIN engineers "
-                "ON people.person_id = engineers.engineer_id "
-                "WHERE engineers.primary_language = "
-                ":primary_language_1) AS anon_1 "
-                "JOIN paperwork "
-                "ON anon_1.people_person_id = paperwork.person_id "
-                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
-                {"primary_language_1": "java"}
+                "paperwork.person_id AS paperwork_person_id "
+                "FROM people AS people_1 JOIN paperwork "
+                "ON people_1.person_id = paperwork.person_id "
+                "WHERE people_1.person_id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY people_1.person_id, paperwork.paperwork_id",
+                [{'primary_keys': [1]}]
             )
         )
 
-    def test_correct_subquery_existingfrom(self):
+    def test_correct_select_existingfrom(self):
         sess = create_session()
         # use Person.paperwork here just to give the least
         # amount of context
@@ -1151,7 +1155,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
             filter(Engineer.primary_language == 'java').\
             join(Engineer.paperwork).\
             filter(Paperwork.description == "tps report #2").\
-            options(subqueryload(Person.paperwork))
+            options(selectinload(Person.paperwork))
 
         def go():
             eq_(q.one().paperwork,
@@ -1176,31 +1180,26 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                     "description_1": "tps report #2"}
             ),
             CompiledSQL(
-                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description, "
-                "paperwork.person_id AS paperwork_person_id, "
-                "anon_1.people_person_id AS anon_1_people_person_id "
-                "FROM (SELECT people.person_id AS people_person_id "
-                "FROM people JOIN engineers ON people.person_id = "
-                "engineers.engineer_id JOIN paperwork "
-                "ON people.person_id = paperwork.person_id "
-                "WHERE engineers.primary_language = :primary_language_1 AND "
-                "paperwork.description = :description_1) AS anon_1 "
-                "JOIN paperwork ON anon_1.people_person_id = "
-                "paperwork.person_id "
-                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
-                {"primary_language_1": "java",
-                    "description_1": "tps report #2"}
+                "paperwork.person_id AS paperwork_person_id "
+                "FROM people AS people_1 JOIN paperwork "
+                "ON people_1.person_id = paperwork.person_id "
+                "WHERE people_1.person_id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY people_1.person_id, paperwork.paperwork_id",
+                [{'primary_keys': [1]}]
             )
         )
 
-    def test_correct_subquery_with_polymorphic_no_alias(self):
+    def test_correct_select_with_polymorphic_no_alias(self):
         # test #3106
         sess = create_session()
 
         wp = with_polymorphic(Person, [Engineer])
         q = sess.query(wp).\
-            options(subqueryload(wp.paperwork)).\
+            options(selectinload(wp.paperwork)).\
             order_by(Engineer.primary_language.desc())
 
         def go():
@@ -1225,25 +1224,25 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "engineers.engineer_id ORDER BY engineers.primary_language "
                 "DESC LIMIT :param_1"),
             CompiledSQL(
-                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description, "
-                "paperwork.person_id AS paperwork_person_id, "
-                "anon_1.people_person_id AS anon_1_people_person_id FROM "
-                "(SELECT people.person_id AS people_person_id FROM people "
-                "LEFT OUTER JOIN engineers ON people.person_id = "
-                "engineers.engineer_id ORDER BY engineers.primary_language "
-                "DESC LIMIT :param_1) AS anon_1 JOIN paperwork "
-                "ON anon_1.people_person_id = paperwork.person_id "
-                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id")
+                "paperwork.person_id AS paperwork_person_id "
+                "FROM people AS people_1 "
+                "JOIN paperwork ON people_1.person_id = paperwork.person_id "
+                "WHERE people_1.person_id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY people_1.person_id, paperwork.paperwork_id",
+                [{'primary_keys': [1]}]
+            )
         )
 
-    def test_correct_subquery_with_polymorphic_alias(self):
+    def test_correct_select_with_polymorphic_alias(self):
         # test #3106
         sess = create_session()
 
         wp = with_polymorphic(Person, [Engineer], aliased=True)
         q = sess.query(wp).\
-            options(subqueryload(wp.paperwork)).\
+            options(selectinload(wp.paperwork)).\
             order_by(wp.Engineer.primary_language.desc())
 
         def go():
@@ -1276,36 +1275,25 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "ORDER BY anon_1.engineers_primary_language DESC "
                 "LIMIT :param_1"),
             CompiledSQL(
-                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description, "
-                "paperwork.person_id AS paperwork_person_id, "
-                "anon_1.anon_2_people_person_id AS "
-                "anon_1_anon_2_people_person_id FROM "
-                "(SELECT DISTINCT anon_2.people_person_id AS "
-                "anon_2_people_person_id, "
-                "anon_2.engineers_primary_language AS "
-                "anon_2_engineers_primary_language FROM "
-                "(SELECT people.person_id AS people_person_id, "
-                "people.name AS people_name, people.type AS people_type, "
-                "engineers.engineer_id AS engineers_engineer_id, "
-                "engineers.primary_language AS engineers_primary_language "
-                "FROM people LEFT OUTER JOIN engineers ON people.person_id = "
-                "engineers.engineer_id) AS anon_2 "
-                "ORDER BY anon_2.engineers_primary_language "
-                "DESC LIMIT :param_1) AS anon_1 "
-                "JOIN paperwork "
-                "ON anon_1.anon_2_people_person_id = paperwork.person_id "
-                "ORDER BY anon_1.anon_2_people_person_id, "
-                "paperwork.paperwork_id")
+                "paperwork.person_id AS paperwork_person_id "
+                "FROM people AS people_1 JOIN paperwork "
+                "ON people_1.person_id = paperwork.person_id "
+                "WHERE people_1.person_id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY people_1.person_id, paperwork.paperwork_id",
+                [{'primary_keys': [1]}]
+            )
         )
 
-    def test_correct_subquery_with_polymorphic_flat_alias(self):
+    def test_correct_select_with_polymorphic_flat_alias(self):
         # test #3106
         sess = create_session()
 
         wp = with_polymorphic(Person, [Engineer], aliased=True, flat=True)
         q = sess.query(wp).\
-            options(subqueryload(wp.paperwork)).\
+            options(selectinload(wp.paperwork)).\
             order_by(wp.Engineer.primary_language.desc())
 
         def go():
@@ -1332,20 +1320,130 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "ON people_1.person_id = engineers_1.engineer_id "
                 "ORDER BY engineers_1.primary_language DESC LIMIT :param_1"),
             CompiledSQL(
-                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description, "
-                "paperwork.person_id AS paperwork_person_id, "
-                "anon_1.people_1_person_id AS anon_1_people_1_person_id "
-                "FROM (SELECT people_1.person_id AS people_1_person_id "
-                "FROM people AS people_1 "
-                "LEFT OUTER JOIN engineers AS engineers_1 "
-                "ON people_1.person_id = engineers_1.engineer_id "
-                "ORDER BY engineers_1.primary_language DESC LIMIT :param_1) "
-                "AS anon_1 JOIN paperwork ON anon_1.people_1_person_id = "
-                "paperwork.person_id ORDER BY anon_1.people_1_person_id, "
-                "paperwork.paperwork_id"
+                "paperwork.person_id AS paperwork_person_id "
+                "FROM people AS people_1 JOIN paperwork "
+                "ON people_1.person_id = paperwork.person_id "
+                "WHERE people_1.person_id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY people_1.person_id, paperwork.paperwork_id",
+                [{'primary_keys': [1]}]
+
             )
         )
+
+
+class ChunkingTest(fixtures.DeclarativeMappedTest):
+    """test IN chunking.
+
+    the length of IN has a limit on at least some databases.
+    On Oracle it's 1000.  In any case, you don't want a SQL statement with
+    500K entries in an IN, so larger results need to chunk.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", order_by="B.id")
+
+        class B(fixtures.ComparableEntity, Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey('a.id'))
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes('A', 'B')
+
+        session = Session()
+        session.add_all([
+            A(id=i, bs=[B(id=(i * 6) + j) for j in range(1, 6)])
+            for i in range(1, 101)
+        ])
+        session.commit()
+
+    def test_odd_number_chunks(self):
+        A, B = self.classes('A', 'B')
+
+        session = Session()
+
+        def go():
+            with mock.patch(
+                    "sqlalchemy.orm.strategies.SelectInLoader._chunksize", 47):
+                q = session.query(A).options(selectinload(A.bs)).order_by(A.id)
+
+                for a in q:
+                    a.bs
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id AS a_id FROM a ORDER BY a.id",
+                {}
+            ),
+            CompiledSQL(
+                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.a_id AS b_a_id "
+                "FROM a AS a_1 JOIN b ON a_1.id = b.a_id "
+                "WHERE a_1.id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY a_1.id, b.id",
+                {"primary_keys": list(range(1, 48))}
+            ),
+            CompiledSQL(
+                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.a_id AS b_a_id "
+                "FROM a AS a_1 JOIN b ON a_1.id = b.a_id "
+                "WHERE a_1.id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY a_1.id, b.id",
+                {"primary_keys": list(range(48, 95))}
+            ),
+            CompiledSQL(
+                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.a_id AS b_a_id "
+                "FROM a AS a_1 JOIN b ON a_1.id = b.a_id "
+                "WHERE a_1.id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY a_1.id, b.id",
+                {"primary_keys": list(range(95, 101))}
+            )
+        )
+
+    @testing.requires.independent_cursors
+    def test_yield_per(self):
+        # the docs make a lot of guarantees about yield_per
+        # so test that it works
+        A, B = self.classes('A', 'B')
+
+        import random
+
+        session = Session()
+
+        yield_per = random.randint(8, 105)
+        offset = random.randint(0, 19)
+        total_rows = 100 - offset
+        total_expected_statements = 1 + int(total_rows / yield_per) + \
+            (1 if total_rows % yield_per else 0)
+
+        def go():
+            for a in session.query(A).\
+                    yield_per(yield_per).\
+                    offset(offset).\
+                    options(selectinload(A.bs)):
+
+                # this part fails with joined eager loading
+                # (if you enable joined eager w/ yield_per)
+                eq_(
+                    a.bs, [
+                        B(id=(a.id * 6) + j) for j in range(1, 6)
+                    ]
+                )
+
+        # this part fails with subquery eager loading
+        # (if you enable subquery eager w/ yield_per)
+        self.assert_sql_count(testing.db, go, total_expected_statements)
 
 
 class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
@@ -1442,12 +1540,12 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
                 )
             ])
 
-    def test_chained_subq_subclass(self):
+    def test_chained_selectin_subclass(self):
         s = Session()
         q = s.query(Company).options(
-            subqueryload(Company.employees.of_type(Engineer)).
-            subqueryload(Engineer.machines).
-            subqueryload(Machine.type)
+            selectinload(Company.employees.of_type(Engineer)).
+            selectinload(Engineer.machines).
+            selectinload(Machine.type)
         )
 
         def go():
@@ -1476,7 +1574,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         mapper(Node, nodes, properties={
             'children': relationship(Node,
-                                     lazy='subquery',
+                                     lazy='selectin',
                                      join_depth=3, order_by=nodes.c.id)
         })
         sess = create_session()
@@ -1526,7 +1624,7 @@ class SelfReferentialTest(fixtures.MappedTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children': relationship(Node, lazy='subquery', join_depth=1,
+            'children': relationship(Node, lazy='selectin', join_depth=1,
                                      order_by=nodes.c.id)
         })
         sess = create_session()
@@ -1570,7 +1668,7 @@ class SelfReferentialTest(fixtures.MappedTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children': relationship(Node, lazy='subquery', join_depth=3,
+            'children': relationship(Node, lazy='selectin', join_depth=3,
                                      order_by=nodes.c.id),
             'data': deferred(nodes.c.data)
         })
@@ -1629,7 +1727,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         def go():
             d = sess.query(Node).filter_by(data='n1').order_by(Node.id).\
-                options(subqueryload_all('children.children')).first()
+                options(selectinload_all('children.children')).first()
             eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[
@@ -1651,7 +1749,7 @@ class SelfReferentialTest(fixtures.MappedTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children': relationship(Node, lazy='subquery')
+            'children': relationship(Node, lazy='selectin')
         })
         sess = create_session()
         n1 = Node(data='n1')
@@ -1686,480 +1784,6 @@ class SelfReferentialTest(fixtures.MappedTest):
                 ])
             ], d)
         self.assert_sql_count(testing.db, go, 4)
-
-
-class InheritanceToRelatedTest(fixtures.MappedTest):
-    @classmethod
-    def define_tables(cls, metadata):
-        Table('foo', metadata,
-              Column("id", Integer, primary_key=True),
-              Column("type", String(50)),
-              Column("related_id", Integer, ForeignKey("related.id")))
-        Table("bar", metadata,
-              Column("id", Integer, ForeignKey('foo.id'), primary_key=True))
-        Table("baz", metadata,
-              Column("id", Integer, ForeignKey('foo.id'), primary_key=True))
-        Table("related", metadata,
-              Column("id", Integer, primary_key=True))
-
-    @classmethod
-    def setup_classes(cls):
-        class Foo(cls.Comparable):
-            pass
-
-        class Bar(Foo):
-            pass
-
-        class Baz(Foo):
-            pass
-
-        class Related(cls.Comparable):
-            pass
-
-    @classmethod
-    def fixtures(cls):
-        return dict(
-            foo=[
-                ('id', 'type', 'related_id'),
-                (1, 'bar', 1),
-                (2, 'bar', 2),
-                (3, 'baz', 1),
-                (4, 'baz', 2),
-            ],
-            bar=[
-                ('id', ),
-                (1,),
-                (2,)
-            ],
-            baz=[
-                ('id', ),
-                (3,),
-                (4,)
-            ],
-            related=[
-                ('id', ),
-                (1,),
-                (2,)
-            ]
-        )
-
-    @classmethod
-    def setup_mappers(cls):
-        mapper(cls.classes.Foo, cls.tables.foo, properties={
-            'related': relationship(cls.classes.Related)
-        }, polymorphic_on=cls.tables.foo.c.type)
-        mapper(cls.classes.Bar, cls.tables.bar, polymorphic_identity='bar',
-               inherits=cls.classes.Foo)
-        mapper(cls.classes.Baz, cls.tables.baz, polymorphic_identity='baz',
-               inherits=cls.classes.Foo)
-        mapper(cls.classes.Related, cls.tables.related)
-
-    def test_caches_query_per_base_subq(self):
-        Foo, Bar, Baz, Related = self.classes.Foo, self.classes.Bar, \
-            self.classes.Baz, self.classes.Related
-        s = Session(testing.db)
-
-        def go():
-            eq_(
-                s.query(Foo).with_polymorphic([Bar, Baz]).
-                order_by(Foo.id).
-                options(subqueryload(Foo.related)).all(),
-                [
-                    Bar(id=1, related=Related(id=1)),
-                    Bar(id=2, related=Related(id=2)),
-                    Baz(id=3, related=Related(id=1)),
-                    Baz(id=4, related=Related(id=2))
-                ]
-            )
-        self.assert_sql_count(testing.db, go, 2)
-
-    def test_caches_query_per_base_joined(self):
-        # technically this should be in test_eager_relations
-        Foo, Bar, Baz, Related = self.classes.Foo, self.classes.Bar, \
-            self.classes.Baz, self.classes.Related
-        s = Session(testing.db)
-
-        def go():
-            eq_(
-                s.query(Foo).with_polymorphic([Bar, Baz]).
-                order_by(Foo.id).
-                options(joinedload(Foo.related)).all(),
-                [
-                    Bar(id=1, related=Related(id=1)),
-                    Bar(id=2, related=Related(id=2)),
-                    Baz(id=3, related=Related(id=1)),
-                    Baz(id=4, related=Related(id=2))
-                ]
-            )
-        self.assert_sql_count(testing.db, go, 1)
-
-
-class CyclicalInheritingEagerTestOne(fixtures.MappedTest):
-
-    @classmethod
-    def define_tables(cls, metadata):
-        Table('t1', metadata,
-              Column('c1', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('c2', String(30)),
-              Column('type', String(30)))
-
-        Table('t2', metadata,
-              Column('c1', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('c2', String(30)),
-              Column('type', String(30)),
-              Column('t1.id', Integer, ForeignKey('t1.c1')))
-
-    def test_basic(self):
-        t2, t1 = self.tables.t2, self.tables.t1
-
-        class T(object):
-            pass
-
-        class SubT(T):
-            pass
-
-        class T2(object):
-            pass
-
-        class SubT2(T2):
-            pass
-
-        mapper(T, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1')
-        mapper(SubT, None, inherits=T, polymorphic_identity='subt1',
-               properties={'t2s': relationship(
-                   SubT2, lazy='subquery',
-                   backref=sa.orm.backref('subt', lazy='subquery'))})
-        mapper(T2, t2, polymorphic_on=t2.c.type, polymorphic_identity='t2')
-        mapper(SubT2, None, inherits=T2, polymorphic_identity='subt2')
-
-        # testing a particular endless loop condition in eager load setup
-        create_session().query(SubT).all()
-
-
-class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
-                                     testing.AssertsCompiledSQL):
-    __dialect__ = 'default'
-
-    @classmethod
-    def setup_classes(cls):
-        Base = cls.DeclarativeBasic
-
-        class PersistentObject(Base):
-            __tablename__ = 'persistent'
-            id = Column(Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-
-        class Movie(PersistentObject):
-            __tablename__ = 'movie'
-            id = Column(Integer, ForeignKey('persistent.id'), primary_key=True)
-            director_id = Column(Integer, ForeignKey('director.id'))
-            title = Column(String(50))
-
-        class Director(PersistentObject):
-            __tablename__ = 'director'
-            id = Column(Integer, ForeignKey('persistent.id'), primary_key=True)
-            movies = relationship("Movie", foreign_keys=Movie.director_id)
-            name = Column(String(50))
-
-    def test_from_subclass(self):
-        Director = self.classes.Director
-
-        s = create_session()
-
-        ctx = s.query(Director).options(subqueryload('*'))._compile_context()
-
-        q = ctx.attributes[('subquery',
-                            (inspect(Director),
-                             inspect(Director).attrs.movies))]
-        self.assert_compile(q,
-                            "SELECT movie.id AS movie_id, "
-                            "persistent.id AS persistent_id, "
-                            "movie.director_id AS movie_director_id, "
-                            "movie.title AS movie_title, "
-                            "anon_1.director_id AS anon_1_director_id "
-                            "FROM (SELECT director.id AS director_id "
-                            "FROM persistent JOIN director "
-                            "ON persistent.id = director.id) AS anon_1 "
-                            "JOIN (persistent JOIN movie "
-                            "ON persistent.id = movie.id) "
-                            "ON anon_1.director_id = movie.director_id "
-                            "ORDER BY anon_1.director_id",
-                            dialect="default"
-                            )
-
-    def test_integrate(self):
-        Director = self.classes.Director
-        Movie = self.classes.Movie
-
-        session = Session(testing.db)
-        rscott = Director(name="Ridley Scott")
-        alien = Movie(title="Alien")
-        brunner = Movie(title="Blade Runner")
-        rscott.movies.append(brunner)
-        rscott.movies.append(alien)
-        session.add_all([rscott, alien, brunner])
-        session.commit()
-
-        session.close_all()
-        d = session.query(Director).options(subqueryload('*')).first()
-        assert len(list(session)) == 3
-
-
-class SubqueryloadDistinctTest(fixtures.DeclarativeMappedTest,
-                               testing.AssertsCompiledSQL):
-    __dialect__ = 'default'
-
-    run_inserts = 'once'
-    run_deletes = None
-
-    @classmethod
-    def setup_classes(cls):
-        Base = cls.DeclarativeBasic
-
-        class Director(Base):
-            __tablename__ = 'director'
-            id = Column(Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-            name = Column(String(50))
-
-        class DirectorPhoto(Base):
-            __tablename__ = 'director_photo'
-            id = Column(Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-            path = Column(String(255))
-            director_id = Column(Integer, ForeignKey('director.id'))
-            director = relationship(Director, backref="photos")
-
-        class Movie(Base):
-            __tablename__ = 'movie'
-            id = Column(Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-            director_id = Column(Integer, ForeignKey('director.id'))
-            director = relationship(Director, backref="movies")
-            title = Column(String(50))
-            credits = relationship("Credit", backref="movie")
-
-        class Credit(Base):
-            __tablename__ = 'credit'
-            id = Column(Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-            movie_id = Column(Integer, ForeignKey('movie.id'))
-
-    @classmethod
-    def insert_data(cls):
-        Movie = cls.classes.Movie
-        Director = cls.classes.Director
-        DirectorPhoto = cls.classes.DirectorPhoto
-        Credit = cls.classes.Credit
-
-        d = Director(name='Woody Allen')
-        d.photos = [DirectorPhoto(path='/1.jpg'),
-                    DirectorPhoto(path='/2.jpg')]
-        d.movies = [Movie(title='Manhattan', credits=[Credit(), Credit()]),
-                    Movie(title='Sweet and Lowdown', credits=[Credit()])]
-        sess = create_session()
-        sess.add_all([d])
-        sess.flush()
-
-    def test_distinct_strategy_opt_m2o(self):
-        self._run_test_m2o(True, None)
-        self._run_test_m2o(False, None)
-
-    def test_distinct_unrelated_opt_m2o(self):
-        self._run_test_m2o(None, True)
-        self._run_test_m2o(None, False)
-
-    def _run_test_m2o(self,
-                      director_strategy_level,
-                      photo_strategy_level):
-
-        # test where the innermost is m2o, e.g.
-        # Movie->director
-
-        Movie = self.classes.Movie
-        Director = self.classes.Director
-
-        Movie.director.property.distinct_target_key = director_strategy_level
-        Director.photos.property.distinct_target_key = photo_strategy_level
-
-        # the DISTINCT is controlled by
-        # only the Movie->director relationship, *not* the
-        # Director.photos
-        expect_distinct = director_strategy_level in (True, None)
-
-        s = create_session()
-
-        q = (
-            s.query(Movie)
-            .options(
-                subqueryload(Movie.director)
-                .subqueryload(Director.photos)
-            )
-        )
-        ctx = q._compile_context()
-
-        q2 = ctx.attributes[
-            ('subquery', (inspect(Movie), inspect(Movie).attrs.director))
-        ]
-        self.assert_compile(
-            q2,
-            'SELECT director.id AS director_id, '
-            'director.name AS director_name, '
-            'anon_1.movie_director_id AS anon_1_movie_director_id '
-            'FROM (SELECT%s movie.director_id AS movie_director_id '
-            'FROM movie) AS anon_1 '
-            'JOIN director ON director.id = anon_1.movie_director_id '
-            'ORDER BY anon_1.movie_director_id' % (
-                " DISTINCT" if expect_distinct else "")
-        )
-
-        ctx2 = q2._compile_context()
-        result = s.execute(q2)
-        rows = result.fetchall()
-
-        if expect_distinct:
-            eq_(rows, [
-                (1, 'Woody Allen', 1),
-            ])
-        else:
-            eq_(rows, [
-                (1, 'Woody Allen', 1), (1, 'Woody Allen', 1),
-            ])
-
-        q3 = ctx2.attributes[
-            ('subquery', (inspect(Director), inspect(Director).attrs.photos))
-        ]
-
-        self.assert_compile(
-            q3,
-            'SELECT director_photo.id AS director_photo_id, '
-            'director_photo.path AS director_photo_path, '
-            'director_photo.director_id AS director_photo_director_id, '
-            'director_1.id AS director_1_id '
-            'FROM (SELECT%s movie.director_id AS movie_director_id '
-            'FROM movie) AS anon_1 '
-            'JOIN director AS director_1 '
-            'ON director_1.id = anon_1.movie_director_id '
-            'JOIN director_photo '
-            'ON director_1.id = director_photo.director_id '
-            'ORDER BY director_1.id' % (
-                " DISTINCT" if expect_distinct else "")
-        )
-        result = s.execute(q3)
-        rows = result.fetchall()
-        if expect_distinct:
-            eq_(set(tuple(t) for t in rows), set([
-                (1, '/1.jpg', 1, 1),
-                (2, '/2.jpg', 1, 1),
-            ]))
-        else:
-            # oracle might not order the way we expect here
-            eq_(set(tuple(t) for t in rows), set([
-                (1, '/1.jpg', 1, 1),
-                (2, '/2.jpg', 1, 1),
-                (1, '/1.jpg', 1, 1),
-                (2, '/2.jpg', 1, 1),
-            ]))
-
-        movies = q.all()
-
-        # check number of persistent objects in session
-        eq_(len(list(s)), 5)
-
-    def test_cant_do_distinct_in_joins(self):
-        """the DISTINCT feature here works when the m2o is in the innermost
-        mapper, but when we are just joining along relationships outside
-        of that, we can still have dupes, and there's no solution to that.
-
-        """
-        Movie = self.classes.Movie
-        Credit = self.classes.Credit
-
-        s = create_session()
-
-        q = (
-            s.query(Credit)
-            .options(
-                subqueryload(Credit.movie)
-                .subqueryload(Movie.director)
-            )
-        )
-
-        ctx = q._compile_context()
-
-        q2 = ctx.attributes[
-            ('subquery', (inspect(Credit), Credit.movie.property))
-        ]
-        ctx2 = q2._compile_context()
-        q3 = ctx2.attributes[
-            ('subquery', (inspect(Movie), Movie.director.property))
-        ]
-
-        result = s.execute(q3)
-        eq_(
-            result.fetchall(),
-            [
-                (1, 'Woody Allen', 1), (1, 'Woody Allen', 1),
-            ]
-        )
-
-
-class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
-    """test for [ticket:2887]"""
-
-    @classmethod
-    def setup_classes(cls):
-        Base = cls.DeclarativeBasic
-
-        class Parent(ComparableEntity, Base):
-            __tablename__ = 'parent'
-
-            id = Column(Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-            name = Column(String(20))
-
-            children = relationship('Child',
-                                    back_populates='parent',
-                                    lazy='noload'
-                                    )
-
-        class Child(ComparableEntity, Base):
-            __tablename__ = 'child'
-
-            id = Column(Integer, primary_key=True,
-                        test_needs_autoincrement=True)
-            name = Column(String(20))
-            parent_id = Column(Integer, ForeignKey('parent.id'))
-
-            parent = relationship(
-                'Parent', back_populates='children', lazy='joined')
-
-    @classmethod
-    def insert_data(cls):
-        Parent = cls.classes.Parent
-        Child = cls.classes.Child
-
-        s = Session()
-        s.add(Parent(name='parent', children=[Child(name='c1')]))
-        s.commit()
-
-    def test_subqueryload_on_joined_noload(self):
-        Parent = self.classes.Parent
-        Child = self.classes.Child
-
-        s = Session()
-
-        # here we have
-        # Parent->subqueryload->Child->joinedload->parent->noload->children.
-        # the actual subqueryload has to emit *after* we've started populating
-        # Parent->subqueryload->child.
-        parent = s.query(Parent).options([subqueryload('children')]).first()
-        eq_(
-            parent.children,
-            [Child(name='c1')]
-        )
 
 
 class SelfRefInheritanceAliasedTest(
@@ -2200,7 +1824,7 @@ class SelfRefInheritanceAliasedTest(
         session.add(b1)
         session.commit()
 
-    def test_twolevel_subquery_w_polymorphic(self):
+    def test_twolevel_selectin_w_polymorphic(self):
         Foo, Bar = self.classes('Foo', 'Bar')
 
         r = with_polymorphic(Foo, "*", aliased=True)
@@ -2209,8 +1833,8 @@ class SelfRefInheritanceAliasedTest(
 
         s = Session()
         q = s.query(Foo).filter(Foo.id == 2).options(
-            subqueryload(attr1).subqueryload(attr2))
-
+            selectinload(attr1).selectinload(attr2),
+        )
         self.assert_sql_execution(
             testing.db,
             q.all,
@@ -2220,23 +1844,23 @@ class SelfRefInheritanceAliasedTest(
                 [{'id_1': 2}]
             ),
             CompiledSQL(
-                "SELECT foo_1.id AS foo_1_id, foo_1.type AS foo_1_type, "
-                "foo_1.foo_id AS foo_1_foo_id, "
-                "anon_1.foo_foo_id AS anon_1_foo_foo_id "
-                "FROM (SELECT DISTINCT foo.foo_id AS foo_foo_id "
-                "FROM foo WHERE foo.id = :id_1) AS anon_1 "
-                "JOIN foo AS foo_1 ON foo_1.id = anon_1.foo_foo_id "
-                "ORDER BY anon_1.foo_foo_id",
-                {'id_1': 2}
+                "SELECT foo_1.id AS foo_1_id, foo_2.id AS foo_2_id, "
+                "foo_2.type AS foo_2_type, foo_2.foo_id AS foo_2_foo_id "
+                "FROM foo AS foo_1 JOIN foo AS foo_2 "
+                "ON foo_2.id = foo_1.foo_id "
+                "WHERE foo_1.id "
+                "IN ([EXPANDING_primary_keys]) ORDER BY foo_1.id",
+                {'primary_keys': [2]}
             ),
             CompiledSQL(
-                "SELECT foo.id AS foo_id_1, foo.type AS foo_type, "
-                "foo.foo_id AS foo_foo_id, foo_1.foo_id AS foo_1_foo_id "
-                "FROM (SELECT DISTINCT foo.foo_id AS foo_foo_id FROM foo "
-                "WHERE foo.id = :id_1) AS anon_1 "
-                "JOIN foo AS foo_1 ON foo_1.id = anon_1.foo_foo_id "
-                "JOIN foo ON foo.id = foo_1.foo_id ORDER BY foo_1.foo_id",
-                {'id_1': 2}
+
+                "SELECT foo_1.id AS foo_1_id, foo_2.id AS foo_2_id, "
+                "foo_2.type AS foo_2_type, foo_2.foo_id AS foo_2_foo_id "
+                "FROM foo AS foo_1 JOIN foo AS foo_2 "
+                "ON foo_2.id = foo_1.foo_id "
+                "WHERE foo_1.id IN ([EXPANDING_primary_keys]) "
+                "ORDER BY foo_1.id",
+                {'primary_keys': [3]}
             ),
         )
 
@@ -2329,8 +1953,8 @@ class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
         # A -J-> A2 -J-> B -L-> C2
 
         q = s.query(A).options(
-            joinedload(A.b).subqueryload(B.c2_o2m),
-            joinedload(A.a2).joinedload(A2.b).subqueryload(B.c1_o2m)
+            joinedload(A.b).selectinload(B.c2_o2m),
+            joinedload(A.a2).joinedload(A2.b).selectinload(B.c1_o2m)
         )
 
         a1 = q.all()[0]
@@ -2352,8 +1976,8 @@ class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
         # A -J-> A2 -J-> B -L-> C2
 
         q = s.query(A).options(
-            joinedload(A.b).subqueryload(B.c2_m2o),
-            joinedload(A.a2).joinedload(A2.b).subqueryload(B.c1_m2o)
+            joinedload(A.b).selectinload(B.c2_m2o),
+            joinedload(A.a2).joinedload(A2.b).selectinload(B.c1_m2o)
         )
 
         a1 = q.all()[0]

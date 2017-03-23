@@ -70,6 +70,97 @@ very unusual cases, such as a relationship that uses a custom
 
 :ticket:`3954`
 
+.. _change_3944:
+
+New "selectin" eager loading, loads all collections at once using IN
+--------------------------------------------------------------------
+
+A new eager loader called "selectin" loading is added, which in many ways
+is similar to "subquery" loading, however produces a simpler SQL statement
+that is cacheable as well as more efficient.
+
+Given a query as below::
+
+    q = session.query(User).\
+        filter(User.name.like('%ed%')).\
+        options(subqueryload(User.addresses))
+
+The SQL produced would be the query against ``User`` followed by the
+subqueryload for ``User.addresses`` (note the parameters are also listed)::
+
+    SELECT users.id AS users_id, users.name AS users_name
+    FROM users
+    WHERE users.name LIKE ?
+    ('%ed%',)
+
+    SELECT addresses.id AS addresses_id,
+           addresses.user_id AS addresses_user_id,
+           addresses.email_address AS addresses_email_address,
+           anon_1.users_id AS anon_1_users_id
+    FROM (SELECT users.id AS users_id
+    FROM users
+    WHERE users.name LIKE ?) AS anon_1
+    JOIN addresses ON anon_1.users_id = addresses.user_id
+    ORDER BY anon_1.users_id
+    ('%ed%',)
+
+With "selectin" loading, we instead get a SELECT that refers to the
+actual primary key values loaded in the parent query::
+
+    q = session.query(User).\
+        filter(User.name.like('%ed%')).\
+        options(selectinload(User.addresses))
+
+Produces::
+
+    SELECT users.id AS users_id, users.name AS users_name
+    FROM users
+    WHERE users.name LIKE ?
+    ('%ed%',)
+
+    SELECT users_1.id AS users_1_id,
+           addresses.id AS addresses_id,
+           addresses.user_id AS addresses_user_id,
+           addresses.email_address AS addresses_email_address
+    FROM users AS users_1
+    JOIN addresses ON users_1.id = addresses.user_id
+    WHERE users_1.id IN (?, ?)
+    ORDER BY users_1.id
+    (1, 3)
+
+The above SELECT statement includes these advantages:
+
+* It doesn't use a subquery, just an INNER JOIN, meaning it will perform
+  much better on a database like MySQL that doesn't like subqueries
+
+* Its structure is independent of the original query; in conjunction with the
+  new :ref:`expanding IN parameter system <change_3953>_` we can in most cases
+  use the "baked" query to cache the string SQL, reducing per-query overhead
+  significantly
+
+* Because the query only fetches for a given list of primary key identifiers,
+  "selectin" loading is potentially compatible with :meth:`.Query.yield_per` to
+  operate on chunks of a SELECT result at a time, provided that the
+  database driver allows for multiple, simultaneous cursors (SQlite, Postgresql;
+  **not** MySQL drivers or SQL Server ODBC drivers).   Neither joined eager
+  loading nor subquery eager loading are compatible with :meth:`.Query.yield_per`.
+
+The disadvanages of selectin eager loading are potentially large SQL
+queries, with large lists of IN parameters.  The list of IN parameters themselves
+are chunked in groups of 500, so a result set of more than 500 lead objects
+will have more additional "SELECT IN" queries following.  Also, support
+for composite primary keys depends on the database's ability to use
+tuples with IN, e.g.
+``(table.column_one, table_column_two) IN ((?, ?), (?, ?) (?, ?))``.
+Currently, Postgresql and MySQL are known to be compatible with this syntax,
+SQLite is not.
+
+..seealso::
+
+    :ref:`selectin_eager_loading`
+
+:ticket:`3944`
+
 .. _change_3229:
 
 Support for bulk updates of hybrids, composites

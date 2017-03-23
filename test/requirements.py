@@ -218,7 +218,13 @@ class DefaultRequirements(SuiteRequirements):
         """Target must support simultaneous, independent database cursors
         on a single connection."""
 
-        return skip_if(["mssql+pyodbc", "mssql+mxodbc"], "no driver support")
+        return skip_if(
+            [
+                "mssql+pyodbc",
+                "mssql+mxodbc",
+                "mysql+mysqldb",
+                "mysql+pymysql"], "no driver support"
+        )
 
     @property
     def independent_connections(self):
