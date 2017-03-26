@@ -22,6 +22,19 @@
     :version: 1.1.7
 
     .. change::
+        :tags: bug, orm
+        :tickets: 3947
+        :versions: 1.2.0b1
+
+        Fixed a race condition which could occur under threaded environments
+        as a result of the caching added via :ticket:`3915`.   An internal
+        collection of ``Column`` objects could be regenerated on an alias
+        object inappropriately, confusing a joined eager loader when it
+        attempts to render SQL and collect results and resulting in an
+        attribute error.   The collection is now generated up front before
+        the alias object is cached and shared among threads.
+
+    .. change::
         :tags: bug, sql, postgresql
         :tickets: 2892
 
