@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, \
-    config, is_, is_not_, le_
+    config, is_, is_not_, le_, expect_warnings
 import re
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.interfaces import ConnectionProxy
@@ -1803,6 +1803,26 @@ class HandleErrorTest(fixtures.TestBase):
                 conn.execute, "SELECT 'ERROR FOUR' FROM I_DONT_EXIST"
             )
             eq_(patched.call_count, 1)
+
+    def test_exception_autorollback_fails(self):
+        engine = engines.testing_engine()
+        conn = engine.connect()
+
+        def boom(connection):
+            raise engine.dialect.dbapi.OperationalError("rollback failed")
+
+        with expect_warnings(
+            r"An exception has occurred during handling of a previous "
+            r"exception.  The previous exception is.*i_dont_exist",
+            py2konly=True
+        ):
+            with patch.object(conn.dialect, "do_rollback", boom) as patched:
+                assert_raises_message(
+                    tsa.exc.OperationalError,
+                    "rollback failed",
+                    conn.execute,
+                    "insert into i_dont_exist (x) values ('y')"
+                )
 
     def test_exception_event_ad_hoc_context(self):
         """test that handle_error is called with a context in
