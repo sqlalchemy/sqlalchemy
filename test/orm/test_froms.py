@@ -1852,6 +1852,31 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             options(joinedload('addresses')).first(),
             User(name='jack', addresses=[Address(id=1)]))
 
+    def test_select_from_aliased(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        sess = create_session()
+
+        not_users = table('users', column('id'), column('name'))
+        ua = aliased(
+            User,
+            select([not_users]).alias(),
+            adapt_on_names=True
+        )
+
+        q = sess.query(User.name).select_entity_from(ua).order_by(User.name)
+        self.assert_compile(
+            q,
+            "SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users) AS anon_1 ORDER BY anon_1.name"
+        )
+        eq_(
+            q.all(),
+            [('chuck',), ('ed',), ('fred',), ('jack',)]
+        )
+
     @testing.uses_deprecated("Mapper.order_by")
     def test_join_mapper_order_by(self):
         """test that mapper-level order_by is adapted to a selectable."""

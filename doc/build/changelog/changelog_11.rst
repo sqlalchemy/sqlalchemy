@@ -22,6 +22,18 @@
     :version: 1.1.7
 
     .. change::
+        :tags: feature, orm
+        :tickets: 3933
+        :versions: 1.2.0b1
+
+        An :func:`.aliased()` construct can now be passed to the
+        :meth:`.Query.select_entity_from` method.   Entities will be pulled
+        from the selectable represented by the :func:`.aliased` construct.
+        This allows special options for :func:`.aliased` such as
+        :paramref:`.aliased.adapt_on_names` to be used in conjunction with
+        :meth:`.Query.select_entity_from`.
+
+    .. change::
         :tags: bug, engine
         :tickets: 3946
         :versions: 1.2.0b1

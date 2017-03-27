@@ -194,7 +194,7 @@ class Query(object):
             if hasattr(info, 'mapper') and \
                     (info.is_mapper or info.is_aliased_class):
                 self._select_from_entity = info
-                if set_base_alias:
+                if set_base_alias and not info.is_aliased_class:
                     raise sa_exc.ArgumentError(
                         "A selectable (FromClause) instance is "
                         "expected when the base alias is being set.")
@@ -218,6 +218,11 @@ class Query(object):
             equivs = self.__all_equivs()
             self._from_obj_alias = sql_util.ColumnAdapter(
                 self._from_obj[0], equivs)
+        elif set_base_alias and \
+                len(self._from_obj) == 1 and \
+                hasattr(info, "mapper") and \
+                info.is_aliased_class:
+            self._from_obj_alias = info._adapter
 
     def _reset_polymorphic_adapter(self, mapper):
         for m2 in mapper._with_polymorphic_mappers:
@@ -2422,29 +2427,35 @@ class Query(object):
         core selectable, applying it as a replacement FROM clause
         for corresponding mapped entities.
 
-        This method is similar to the :meth:`.Query.select_from`
-        method, in that it sets the FROM clause of the query.  However,
-        where :meth:`.Query.select_from` only affects what is placed
-        in the FROM, this method also applies the given selectable
-        to replace the FROM which the selected entities would normally
-        select from.
+        The :meth:`.Query.select_entity_from` method supplies an alternative
+        approach to the use case of applying an :func:`.aliased` construct
+        explicitly throughout a query.  Instead of referring to the
+        :func:`.aliased` construct explicitly,
+        :meth:`.Query.select_entity_from` automatically *adapts* all occurences
+        of the entity to the target selectable.
 
-        The given ``from_obj`` must be an instance of a :class:`.FromClause`,
-        e.g. a :func:`.select` or :class:`.Alias` construct.
-
-        An example would be a :class:`.Query` that selects ``User`` entities,
-        but uses :meth:`.Query.select_entity_from` to have the entities
-        selected from a :func:`.select` construct instead of the
-        base ``user`` table::
+        Given a case for :func:`.aliased` such as selecting ``User``
+        objects from a SELECT statement::
 
             select_stmt = select([User]).where(User.id == 7)
+            user_alias = aliased(User, select_stmt)
+
+            q = session.query(user_alias).\
+                filter(user_alias.name == 'ed')
+
+        Above, we apply the ``user_alias`` object explicitly throughout the
+        query.  When it's not feasible for ``user_alias`` to be referenced
+        explicitly in many places, :meth:`.Query.select_entity_from` may be
+        used at the start of the query to adapt the existing ``User`` entity::
 
             q = session.query(User).\
-                    select_entity_from(select_stmt).\
-                    filter(User.name == 'ed')
+                select_entity_from(select_stmt).\
+                filter(User.name == 'ed')
 
-        The query generated will select ``User`` entities directly
-        from the given :func:`.select` construct, and will be::
+        Above, the generated SQL will show that the ``User`` entity is
+        adapted to our statement, even in the case of the WHERE clause:
+
+        .. sourcecode:: sql
 
             SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name
             FROM (SELECT "user".id AS id, "user".name AS name
@@ -2452,50 +2463,63 @@ class Query(object):
             WHERE "user".id = :id_1) AS anon_1
             WHERE anon_1.name = :name_1
 
-        Notice above that even the WHERE criterion was "adapted" such that
-        the ``anon_1`` subquery effectively replaces all references to the
-        ``user`` table, except for the one that it refers to internally.
+        The :meth:`.Query.select_entity_from` method is similar to the
+        :meth:`.Query.select_from` method, in that it sets the FROM clause
+        of the query.  The difference is that it additionally applies
+        adaptation to the other parts of the query that refer to the
+        primary entity.  If above we had used :meth:`.Query.select_from`
+        instead, the SQL generated would have been:
 
-        Compare this to :meth:`.Query.select_from`, which as of
-        version 0.9, does not affect existing entities.  The
-        statement below::
+        .. sourcecode:: sql
 
-            q = session.query(User).\
-                    select_from(select_stmt).\
-                    filter(User.name == 'ed')
-
-        Produces SQL where both the ``user`` table as well as the
-        ``select_stmt`` construct are present as separate elements
-        in the FROM clause.  No "adaptation" of the ``user`` table
-        is applied::
-
+            -- uses plain select_from(), not select_entity_from()
             SELECT "user".id AS user_id, "user".name AS user_name
             FROM "user", (SELECT "user".id AS id, "user".name AS name
             FROM "user"
             WHERE "user".id = :id_1) AS anon_1
             WHERE "user".name = :name_1
 
-        :meth:`.Query.select_entity_from` maintains an older
-        behavior of :meth:`.Query.select_from`.  In modern usage,
-        similar results can also be achieved using :func:`.aliased`::
+        To supply textual SQL to the :meth:`.Query.select_entity_from` method,
+        we can make use of the :func:`.text` construct.  However, the
+        :func:`.text` construct needs to be aligned with the columns of our
+        entity, which is achieved by making use of the
+        :meth:`.TextClause.columns` method::
 
-            select_stmt = select([User]).where(User.id == 7)
-            user_from_select = aliased(User, select_stmt.alias())
+            text_stmt = text("select id, name from user").columns(
+                User.id, User.name)
+            q = session.query(User).select_entity_from(text_stmt)
 
-            q = session.query(user_from_select)
+        :meth:`.Query.select_entity_from` itself accepts an :func:`.aliased`
+        object, so that the special options of :func:`.aliased` such as
+        :paramref:`.aliased.adapt_on_names` may be used within the
+        scope of the :meth:`.Query.select_entity_from` method's adaptation
+        services.  Suppose
+        a view ``user_view`` also returns rows from ``user``.    If
+        we reflect this view into a :class:`.Table`, this view has no
+        relationship to the :class:`.Table` to which we are mapped, however
+        we can use name matching to select from it::
+
+            user_view = Table('user_view', metadata,
+                              autoload_with=engine)
+            user_view_alias = aliased(
+                User, user_view, adapt_on_names=True)
+            q = session.query(User).\
+                select_entity_from(user_view_alias).\
+                order_by(User.name)
+
+        .. versionchanged:: 1.1.7 The :meth:`.Query.select_entity_from`
+           method now accepts an :func:`.aliased` object as an alternative
+           to a :class:`.FromClause` object.
 
         :param from_obj: a :class:`.FromClause` object that will replace
-         the FROM clause of this :class:`.Query`.
+         the FROM clause of this :class:`.Query`.  It also may be an instance
+         of :func:`.aliased`.
+
+
 
         .. seealso::
 
             :meth:`.Query.select_from`
-
-        .. versionadded:: 0.8
-            :meth:`.Query.select_entity_from` was added to specify
-            the specific behavior of entity replacement, however
-            the :meth:`.Query.select_from` maintains this behavior
-            as well until 0.9.
 
         """
 
