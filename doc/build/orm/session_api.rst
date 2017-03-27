@@ -17,8 +17,8 @@ Session and sessionmaker()
 .. autoclass:: sqlalchemy.orm.session.SessionTransaction
    :members:
 
-Session Utilites
-----------------
+Session Utilities
+-----------------
 
 .. autofunction:: make_transient
 
