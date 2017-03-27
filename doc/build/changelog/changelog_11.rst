@@ -22,6 +22,18 @@
     :version: 1.1.7
 
     .. change::
+        :tags: bug, engine
+        :tickets: 3946
+        :versions: 1.2.0b1
+
+        Added an exception handler that will warn for the "cause" exception on
+        Py2K when the "autorollback" feature of :class:`.Connection` itself
+        raises an exception. In Py3K, the two exceptions are naturally reported
+        by the interpreter as one occurring during the handling of the other.
+        This is continuing with the series of changes for rollback failure
+        handling that were last visited as part of :ticket:`2696` in 1.0.12.
+
+    .. change::
         :tags: bug, orm
         :tickets: 3947
         :versions: 1.2.0b1
