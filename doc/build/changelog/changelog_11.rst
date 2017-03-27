@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.7
+    :released: March 27, 2017
 
     .. change::
         :tags: feature, orm
