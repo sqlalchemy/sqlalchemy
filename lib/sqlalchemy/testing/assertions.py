@@ -10,11 +10,11 @@ from __future__ import absolute_import
 from . import util as testutil
 from sqlalchemy import pool, orm, util
 from sqlalchemy.engine import default, url
-from sqlalchemy.util import decorator
+from sqlalchemy.util import decorator, compat
 from sqlalchemy import types as sqltypes, schema, exc as sa_exc
 import warnings
 import re
-from .exclusions import db_spec, _is_excluded
+from .exclusions import db_spec
 from . import assertsql
 from . import config
 from .util import fail
@@ -118,7 +118,8 @@ def uses_deprecated(*messages):
 
 
 @contextlib.contextmanager
-def _expect_warnings(exc_cls, messages, regex=True, assert_=True):
+def _expect_warnings(exc_cls, messages, regex=True, assert_=True,
+                     py2konly=False):
 
     if regex:
         filters = [re.compile(msg, re.I | re.S) for msg in messages]
@@ -147,7 +148,7 @@ def _expect_warnings(exc_cls, messages, regex=True, assert_=True):
     with mock.patch("warnings.warn", our_warn):
         yield
 
-    if assert_:
+    if assert_ and (not py2konly or not compat.py3k):
         assert not seen, "Warnings were not seen: %s" % \
             ", ".join("%r" % (s.pattern if regex else s) for s in seen)
 

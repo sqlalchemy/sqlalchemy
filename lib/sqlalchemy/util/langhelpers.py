@@ -49,6 +49,11 @@ class safe_reraise(object):
 
     """
 
+    __slots__ = ('warn_only', '_exc_info')
+
+    def __init__(self, warn_only=False):
+        self.warn_only = warn_only
+
     def __enter__(self):
         self._exc_info = sys.exc_info()
 
@@ -57,7 +62,8 @@ class safe_reraise(object):
         if type_ is None:
             exc_type, exc_value, exc_tb = self._exc_info
             self._exc_info = None   # remove potential circular references
-            compat.reraise(exc_type, exc_value, exc_tb)
+            if not self.warn_only:
+                compat.reraise(exc_type, exc_value, exc_tb)
         else:
             if not compat.py3k and self._exc_info and self._exc_info[1]:
                 # emulate Py3K's behavior of telling us when an exception

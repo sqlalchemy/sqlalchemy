@@ -1383,7 +1383,8 @@ class Connection(Connectable):
             if not self._is_disconnect:
                 if cursor:
                     self._safe_close_cursor(cursor)
-                self._autorollback()
+                with util.safe_reraise(warn_only=True):
+                    self._autorollback()
 
             if newraise:
                 util.raise_from_cause(newraise, exc_info)
