@@ -196,6 +196,7 @@ class ColumnLoader(LoaderStrategy):
 
 @log.class_logger
 @properties.ColumnProperty.strategy_for(deferred=True, instrument=True)
+@properties.ColumnProperty.strategy_for(do_nothing=True)
 class DeferredColumnLoader(LoaderStrategy):
     """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
 
@@ -333,6 +334,18 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.mapper = self.parent_property.mapper
         self.target = self.parent_property.target
         self.uselist = self.parent_property.uselist
+
+
+@log.class_logger
+@properties.RelationshipProperty.strategy_for(do_nothing=True)
+class DoNothingLoader(LoaderStrategy):
+    """Relationship loader that makes no change to the object's state.
+
+    Compared to NoLoader, this loader does not initialize the
+    collection/attribute to empty/none; the usual default LazyLoader will
+    take effect.
+
+    """
 
 
 @log.class_logger
@@ -711,6 +724,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             self, context, path, loadopt,
             mapper, result, adapter, populators):
         key = self.key
+
         if not self.is_class_level:
             # we are not the primary manager for this attribute
             # on this class - set up a
@@ -1804,6 +1818,9 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         selectin_path = (
             context.query._current_path or orm_util.PathRegistry.root) + path
 
+        if not orm_util._entity_isa(path[-1], self.parent):
+            return
+
         if loading.PostLoad.path_exists(context, selectin_path, self.key):
             return
 
@@ -1914,6 +1931,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             }
 
             for key, state, overwrite in chunk:
+
                 if not overwrite and self.key in state.dict:
                     continue
 

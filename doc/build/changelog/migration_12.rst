@@ -161,6 +161,58 @@ SQLite is not.
 
 :ticket:`3944`
 
+.. _change_3948:
+
+"selectin" polymorphic loading, loads subclasses using separate IN queries
+--------------------------------------------------------------------------
+
+Along similar lines as the "selectin" relationship loading feature just
+described at :ref:`change_3944` is "selectin" polymorphic loading.  This
+is a polymorphic loading feature tailored primarily towards joined eager
+loading that allows the loading of the base entity to proceed with a simple
+SELECT statement, but then the attributes of the additional subclasses
+are loaded with additional SELECT statements:
+
+.. sourcecode:: python+sql
+
+    from sqlalchemy.orm import selectin_polymorphic
+
+    query = session.query(Employee).options(
+        selectin_polymorphic(Employee, [Manager, Engineer])
+    )
+
+    {opensql}query.all()
+    SELECT
+        employee.id AS employee_id,
+        employee.name AS employee_name,
+        employee.type AS employee_type
+    FROM employee
+    ()
+
+    SELECT
+        engineer.id AS engineer_id,
+        employee.id AS employee_id,
+        employee.type AS employee_type,
+        engineer.engineer_name AS engineer_engineer_name
+    FROM employee JOIN engineer ON employee.id = engineer.id
+    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    (1, 2)
+
+    SELECT
+        manager.id AS manager_id,
+        employee.id AS employee_id,
+        employee.type AS employee_type,
+        manager.manager_name AS manager_manager_name
+    FROM employee JOIN manager ON employee.id = manager.id
+    WHERE employee.id IN (?) ORDER BY employee.id
+    (3,)
+
+.. seealso::
+
+    :ref:`polymorphic_selectin`
+
+:ticket:`3948`
+
 .. _change_3229:
 
 Support for bulk updates of hybrids, composites

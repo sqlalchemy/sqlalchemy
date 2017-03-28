@@ -21,7 +21,8 @@ something to filter on, and it also will be loaded when we get our objects
 back.   If it's not queried up front, it gets loaded later when we first need
 to access it.   Basic control of this behavior is provided using the
 :func:`.orm.with_polymorphic` function, as well as two variants, the mapper
-configuration :paramref:`.mapper.with_polymorphic` and the :class:`.Query`
+configuration :paramref:`.mapper.with_polymorphic` in conjunction with
+the :paramref:`.mapper.polymorphic_load` option, and the :class:`.Query`
 -level :meth:`.Query.with_polymorphic` method.    The "with_polymorphic" family
 each provide a means of specifying which specific subclasses of a particular
 base class should be included within a query, which implies what columns and
@@ -242,6 +243,7 @@ specific to ``Engineer`` as well as ``Manager`` in terms of ``eng_plus_manager``
                     )
                 )
 
+.. _with_polymorphic_mapper_config:
 
 Setting with_polymorphic at mapper configuration time
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -268,7 +270,7 @@ first introduced at :ref:`joined_inheritance`::
             'with_polymorphic': '*'
         }
 
-Above is the most common setting for :paramref:`.mapper.with_polymorphic`,
+Above is a common setting for :paramref:`.mapper.with_polymorphic`,
 which is to indicate an asterisk to load all subclass columns.   In the
 case of joined table inheritance, this option
 should be used sparingly, as it implies that the mapping will always emit
@@ -282,16 +284,35 @@ will override the mapper-level :paramref:`.mapper.with_polymorphic` setting.
 
 The :paramref:`.mapper.with_polymorphic` option also accepts a list of
 classes just like :func:`.orm.with_polymorphic` to polymorphically load among
-a subset of classes, however this API was first designed with classical
-mapping in mind; when using Declarative, the subclasses aren't
-available yet.   The current workaround is to set the
-:paramref:`.mapper.with_polymorphic`
-setting after all classes have been declared, using the semi-private
-method :meth:`.mapper._set_with_polymorphic`.  A future release
-of SQLAlchemy will allow finer control over mapper-level polymorphic
-loading with declarative, using new options specified on individual
-subclasses.   When using concrete inheritance, special helpers are provided
-to help with these patterns which are described at :ref:`concrete_polymorphic`.
+a subset of classes.  However, when using Declarative, providing classes
+to this list is not directly possible as the subclasses we'd like to add
+are not available yet.   Instead, we can specify on each subclass
+that they should individually participate in polymorphic loading by
+default using the :paramref:`.mapper.polymorphic_load` parameter::
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        engineer_info = Column(String(50))
+        __mapper_args__ = {
+            'polymorphic_identity':'engineer',
+            'polymorphic_load': 'inline'
+        }
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_data = Column(String(50))
+        __mapper_args__ = {
+            'polymorphic_identity':'manager',
+            'polymorphic_load': 'inline'
+        }
+
+Setting the :paramref:`.mapper.polymorphic_load` parameter to the value
+``"inline"`` means that the ``Engineer`` and ``Manager`` classes above
+are part of the "polymorphic load" of the base ``Employee`` class by default,
+exactly as though they had been appended to the
+:paramref:`.mapper.with_polymorphic` list of classes.
 
 Setting with_polymorphic against a query
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -319,6 +340,141 @@ than the :func:`.orm.with_polymorphic` function, as it needs to correctly
 transform entities like ``Engineer`` and ``Manager`` appropriately, but
 not interfere with other entities.  If its flexibility is lacking, switch
 to using :func:`.orm.with_polymorphic`.
+
+.. _polymorphic_selectin:
+
+Polymorphic Selectin Loading
+----------------------------
+
+An alternative to using the :func:`.orm.with_polymorphic` family of
+functions to "eagerly" load the additional subclasses on an inheritance
+mapping, primarily when using joined table inheritance, is to use polymorphic
+"selectin" loading.   This is an eager loading
+feature which works similarly to the :ref:`selectin_eager_loading` feature
+of relationship loading.   Given our example mapping, we can instruct
+a load of ``Employee`` to emit an extra SELECT per subclass by using
+the :func:`.orm.selectin_polymorphic` loader option::
+
+    from sqlalchemy.orm import selectin_polymorphic
+
+    query = session.query(Employee).options(
+        selectin_polymorphic(Employee, [Manager, Engineer])
+    )
+
+When the above query is run, two additional SELECT statements will
+be emitted::
+
+.. sourcecode:: python+sql
+
+    {opensql}query.all()
+    SELECT
+        employee.id AS employee_id,
+        employee.name AS employee_name,
+        employee.type AS employee_type
+    FROM employee
+    ()
+
+    SELECT
+        engineer.id AS engineer_id,
+        employee.id AS employee_id,
+        employee.type AS employee_type,
+        engineer.engineer_name AS engineer_engineer_name
+    FROM employee JOIN engineer ON employee.id = engineer.id
+    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    (1, 2)
+
+    SELECT
+        manager.id AS manager_id,
+        employee.id AS employee_id,
+        employee.type AS employee_type,
+        manager.manager_name AS manager_manager_name
+    FROM employee JOIN manager ON employee.id = manager.id
+    WHERE employee.id IN (?) ORDER BY employee.id
+    (3,)
+
+We can similarly establish the above style of loading to take place
+by default by specifying the :paramref:`.mapper.polymorphic_load` parameter,
+using the value ``"selectin"`` on a per-subclass basis::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        type = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee',
+            'polymorphic_on':type
+        }
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        engineer_name = Column(String(30))
+
+        __mapper_args__ = {
+            'polymorphic_load': 'selectin',
+            'polymorphic_identity':'engineer',
+        }
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_name = Column(String(30))
+
+        __mapper_args__ = {
+            'polymorphic_load': 'selectin',
+            'polymorphic_identity':'manager',
+        }
+
+
+Unlike when using :func:`.orm.with_polymorphic`, when using the
+:func:`.orm.selectin_polymorphic` style of loading, we do **not** have the
+ability to refer to the ``Engineer`` or ``Manager`` entities within our main
+query as filter, order by, or other criteria, as these entities are not present
+in the initial query that is used to locate results.   However, we can apply
+loader options that apply towards ``Engineer`` or ``Manager``, which will take
+effect when the secondary SELECT is emitted.  Below we assume ``Manager`` has
+an additional relationship ``Manager.paperwork``, that we'd like to eagerly
+load as well.  We can use any type of eager loading, such as joined eager
+loading via the :func:`.joinedload` function::
+
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy.orm import selectin_polymorphic
+
+    query = session.query(Employee).options(
+        selectin_polymorphic(Employee, [Manager, Engineer]),
+        joinedload(Manager.paperwork)
+    )
+
+Using the query above, we get three SELECT statements emitted, however
+the one against ``Manager`` will be::
+
+.. sourcecode:: sql
+
+    SELECT
+        manager.id AS manager_id,
+        employee.id AS employee_id,
+        employee.type AS employee_type,
+        manager.manager_name AS manager_manager_name,
+        paperwork_1.id AS paperwork_1_id,
+        paperwork_1.manager_id AS paperwork_1_manager_id,
+        paperwork_1.data AS paperwork_1_data
+    FROM employee JOIN manager ON employee.id = manager.id
+    LEFT OUTER JOIN paperwork AS paperwork_1
+    ON manager.id = paperwork_1.manager_id
+    WHERE employee.id IN (?) ORDER BY employee.id
+    (3,)
+
+Note that selectin polymorphic loading has similar caveats as that of
+selectin relationship loading; for entities that make use of a composite
+primary key, the database in use must support tuples with "IN", currently
+known to work with MySQL and Postgresql.
+
+.. versionadded:: 1.2
+
+.. warning::  The selectin polymorphic loading feature should be considered
+   as **experimental** within early releases of the 1.2 series.
 
 Referring to specific subtypes on relationships
 -----------------------------------------------
@@ -658,3 +814,5 @@ Inheritance Loading API
 -----------------------
 
 .. autofunction:: sqlalchemy.orm.with_polymorphic
+
+.. autofunction:: sqlalchemy.orm.selectin_polymorphic

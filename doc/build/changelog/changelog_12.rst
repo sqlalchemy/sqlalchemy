@@ -28,6 +28,20 @@
 
             :ref:`change_4003`
 
+    .. change:: 3948
+        :tags: feature, orm
+        :tickets: 3948
+
+        Added a new style of mapper-level inheritance loading
+        "polymorphic selectin".  This style of loading
+        emits queries for each subclass in an inheritance
+        hierarchy subsequent to the load of the base
+        object type, using IN to specify the desired
+        primary key values.
+
+        .. seealso::
+
+            :ref:`change_3948`
 
     .. change:: 3996
         :tags: bug, orm

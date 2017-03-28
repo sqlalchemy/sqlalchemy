@@ -497,8 +497,9 @@ class AssertsExecutionResults(object):
 
     def assert_sql_execution(self, db, callable_, *rules):
         with self.sql_execution_asserter(db) as asserter:
-            callable_()
+            result = callable_()
         asserter.assert_(*rules)
+        return result
 
     def assert_sql(self, db, callable_, rules):
 
@@ -512,7 +513,7 @@ class AssertsExecutionResults(object):
                 newrule = assertsql.CompiledSQL(*rule)
             newrules.append(newrule)
 
-        self.assert_sql_execution(db, callable_, *newrules)
+        return self.assert_sql_execution(db, callable_, *newrules)
 
     def assert_sql_count(self, db, callable_, count):
         self.assert_sql_execution(

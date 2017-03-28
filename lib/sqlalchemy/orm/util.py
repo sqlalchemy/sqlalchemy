@@ -1043,7 +1043,13 @@ def was_deleted(object):
     state = attributes.instance_state(object)
     return state.was_deleted
 
+
 def _entity_corresponds_to(given, entity):
+    """determine if 'given' corresponds to 'entity', in terms
+    of an entity passed to Query that would match the same entity
+    being referred to elsewhere in the query.
+
+    """
     if entity.is_aliased_class:
         if given.is_aliased_class:
             if entity._base_alias is given._base_alias:
@@ -1056,6 +1062,21 @@ def _entity_corresponds_to(given, entity):
             return entity is given
 
     return entity.common_parent(given)
+
+
+def _entity_isa(given, mapper):
+    """determine if 'given' "is a" mapper, in terms of the given
+    would load rows of type 'mapper'.
+
+    """
+    if given.is_aliased_class:
+        return mapper in given.with_polymorphic_mappers or \
+            given.mapper.isa(mapper)
+    elif given.with_polymorphic_mappers:
+        return mapper in given.with_polymorphic_mappers
+    else:
+        return given.isa(mapper)
+
 
 def randomize_unitofwork():
     """Use random-ordering sets within the unit of work in order

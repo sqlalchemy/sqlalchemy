@@ -246,6 +246,7 @@ immediateload = strategy_options.immediateload._unbound_fn
 noload = strategy_options.noload._unbound_fn
 raiseload = strategy_options.raiseload._unbound_fn
 defaultload = strategy_options.defaultload._unbound_fn
+selectin_polymorphic = strategy_options.selectin_polymorphic._unbound_fn
 
 from .strategy_options import Load
 
@@ -268,6 +269,7 @@ def __go(lcls):
     from .. import util as sa_util
     from . import dynamic
     from . import events
+    from . import loading
     import inspect as _inspect
 
     __all__ = sorted(name for name, obj in lcls.items()

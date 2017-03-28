@@ -154,7 +154,7 @@ class BakedQuery(object):
         self._spoiled = True
         return self
 
-    def _add_lazyload_options(self, options, effective_path):
+    def _add_lazyload_options(self, options, effective_path, cache_path=None):
         """Used by per-state lazy loaders to add options to the
         "lazy load" query from a parent query.
 
@@ -166,13 +166,16 @@ class BakedQuery(object):
 
         key = ()
 
-        if effective_path.path[0].is_aliased_class:
+        if not cache_path:
+            cache_path = effective_path
+
+        if cache_path.path[0].is_aliased_class:
             # paths that are against an AliasedClass are unsafe to cache
             # with since the AliasedClass is an ad-hoc object.
             self.spoil()
         else:
             for opt in options:
-                cache_key = opt._generate_cache_key(effective_path)
+                cache_key = opt._generate_cache_key(cache_path)
                 if cache_key is False:
                     self.spoil()
                 elif cache_key is not None:
@@ -181,7 +184,7 @@ class BakedQuery(object):
         self.add_criteria(
             lambda q: q._with_current_path(effective_path).
             _conditional_options(*options),
-            effective_path.path, key
+            cache_path.path, key
         )
 
     def _retrieve_baked_query(self, session):

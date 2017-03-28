@@ -106,6 +106,7 @@ class Mapper(InspectionAttr):
                  polymorphic_identity=None,
                  concrete=False,
                  with_polymorphic=None,
+                 polymorphic_load=None,
                  allow_partial_pks=True,
                  batch=True,
                  column_prefix=None,
@@ -381,6 +382,27 @@ class Mapper(InspectionAttr):
                :paramref:`.mapper.passive_deletes` - supporting ON DELETE
                CASCADE for joined-table inheritance mappers
 
+        :param polymorphic_load: Specifies "polymorphic loading" behavior
+          for a subclass in an inheritance hierarchy (joined and single
+          table inheritance only).   Valid values are:
+
+            * "'inline'" - specifies this class should be part of the
+              "with_polymorphic" mappers, e.g. its columns will be included
+              in a SELECT query against the base.
+
+            * "'selectin'" - specifies that when instances of this class
+              are loaded, an additional SELECT will be emitted to retrieve
+              the columns specific to this subclass.  The SELECT uses
+              IN to fetch multiple subclasses at once.
+
+         .. versionadded:: 1.2
+
+         .. seealso::
+
+            :ref:`with_polymorphic_mapper_config`
+
+            :ref:`polymorphic_selectin`
+
         :param polymorphic_on: Specifies the column, attribute, or
           SQL expression used to determine the target class for an
           incoming row, when inheriting classes are present.
@@ -622,8 +644,6 @@ class Mapper(InspectionAttr):
         else:
             self.confirm_deleted_rows = confirm_deleted_rows
 
-        self._set_with_polymorphic(with_polymorphic)
-
         if isinstance(self.local_table, expression.SelectBase):
             raise sa_exc.InvalidRequestError(
                 "When mapping against a select() construct, map against "
@@ -632,11 +652,8 @@ class Mapper(InspectionAttr):
                 "SELECT from a subquery that does not have an alias."
             )
 
-        if self.with_polymorphic and \
-            isinstance(self.with_polymorphic[1],
-                       expression.SelectBase):
-            self.with_polymorphic = (self.with_polymorphic[0],
-                                     self.with_polymorphic[1].alias())
+        self._set_with_polymorphic(with_polymorphic)
+        self.polymorphic_load = polymorphic_load
 
         # our 'polymorphic identity', a string name that when located in a
         #  result set row indicates this Mapper should be used to construct
@@ -1037,6 +1054,19 @@ class Mapper(InspectionAttr):
                     )
                 self.polymorphic_map[self.polymorphic_identity] = self
 
+            if self.polymorphic_load and self.concrete:
+                raise exc.ArgumentError(
+                    "polymorphic_load is not currently supported "
+                    "with concrete table inheritance")
+            if self.polymorphic_load == 'inline':
+                self.inherits._add_with_polymorphic_subclass(self)
+            elif self.polymorphic_load == 'selectin':
+                pass
+            elif self.polymorphic_load is not None:
+                raise sa_exc.ArgumentError(
+                    "unknown argument for polymorphic_load: %r" %
+                    self.polymorphic_load)
+
         else:
             self._all_tables = set()
             self.base_mapper = self
@@ -1077,8 +1107,21 @@ class Mapper(InspectionAttr):
                        expression.SelectBase):
             self.with_polymorphic = (self.with_polymorphic[0],
                                      self.with_polymorphic[1].alias())
+
         if self.configured:
             self._expire_memoizations()
+
+    def _add_with_polymorphic_subclass(self, mapper):
+        subcl = mapper.class_
+        if self.with_polymorphic is None:
+            self._set_with_polymorphic((subcl,))
+        elif self.with_polymorphic[0] != '*':
+            self._set_with_polymorphic(
+                (
+                    self.with_polymorphic[0] + (subcl, ),
+                    self.with_polymorphic[1]
+                )
+            )
 
     def _set_concrete_base(self, mapper):
         """Set the given :class:`.Mapper` as the 'inherits' for this
@@ -2662,6 +2705,60 @@ class Mapper(InspectionAttr):
         for key in attribute_names:
             cols.extend(props[key].columns)
         return sql.select(cols, cond, use_labels=True)
+
+    @_memoized_configured_property
+    @util.dependencies(
+        "sqlalchemy.ext.baked",
+        "sqlalchemy.orm.strategy_options")
+    def _subclass_load_via_in(self, baked, strategy_options):
+        """Assemble a BakedQuery that can load the columns local to
+        this subclass as a SELECT with IN.
+
+        """
+        assert self.inherits
+
+        polymorphic_prop = self._columntoproperty[
+            self.polymorphic_on]
+        keep_props = set(
+            [polymorphic_prop] + self._identity_key_props)
+
+        disable_opt = strategy_options.Load(self)
+        enable_opt = strategy_options.Load(self)
+
+        for prop in self.attrs:
+            if prop.parent is self or prop in keep_props:
+                # "enable" options, to turn on the properties that we want to
+                # load by default (subject to options from the query)
+                enable_opt.set_generic_strategy(
+                    (prop.key, ),
+                    dict(prop.strategy_key)
+                )
+            else:
+                # "disable" options, to turn off the properties from the
+                # superclass that we *don't* want to load, applied after
+                # the options from the query to override them
+                disable_opt.set_generic_strategy(
+                    (prop.key, ),
+                    {"do_nothing": True}
+                )
+
+        if len(self.primary_key) > 1:
+            in_expr = sql.tuple_(*self.primary_key)
+        else:
+            in_expr = self.primary_key[0]
+
+        q = baked.BakedQuery(
+            self._compiled_cache,
+            lambda session: session.query(self),
+            (self, )
+        )
+        q += lambda q: q.filter(
+            in_expr.in_(
+                sql.bindparam('primary_keys', expanding=True)
+            )
+        ).order_by(*self.primary_key)
+
+        return q, enable_opt, disable_opt
 
     def cascade_iterator(self, type_, state, halt_on=None):
         """Iterate each element and its mapper in an object graph,
