@@ -2280,7 +2280,7 @@ class PGDialect(default.DefaultDialect):
         v = connection.execute("select version()").scalar()
         m = re.match(
             r'.*(?:PostgreSQL|EnterpriseDB) '
-            r'(\d+)\.(\d+)(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
+            r'(\d+)\.?(\d+)?(?:\.(\d+))?(?:\.\d+)?(?:devel)?',
             v)
         if not m:
             raise AssertionError(
