@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.8
 
+    .. change::
+        :tags: bug, postgresql
+        :versions: 1.2.0b1
+
+        Added support for parsing the Postgresql version string for
+        a development version like "PostgreSQL 10devel".  Pull request
+        courtesy Sean McCully.
+
 .. changelog::
     :version: 1.1.7
     :released: March 27, 2017

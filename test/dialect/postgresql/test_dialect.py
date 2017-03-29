@@ -60,7 +60,10 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                     '64-bit', (9, 1, 2)),
                 (
                     '[PostgreSQL 9.2.4 ] VMware vFabric Postgres 9.2.4.0 '
-                    'release build 1080137', (9, 2, 4))]:
+                    'release build 1080137', (9, 2, 4)),
+                (
+                    'PostgreSQL 10devel on x86_64-pc-linux-gnu'
+                    'compiled by gcc (GCC) 6.3.1 20170306, 64-bit', (10,))]:
             eq_(testing.db.dialect._get_server_version_info(mock_conn(string)),
                 version)
 
