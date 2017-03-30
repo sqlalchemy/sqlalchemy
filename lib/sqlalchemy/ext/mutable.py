@@ -352,6 +352,7 @@ from ..orm.attributes import flag_modified
 from .. import event, types
 from ..orm import mapper, object_mapper, Mapper
 from ..util import memoized_property
+from ..sql.base import SchemaEventTarget
 import weakref
 
 
@@ -584,9 +585,26 @@ class Mutable(MutableBase):
         """
         sqltype = types.to_instance(sqltype)
 
+        # a SchemaType will be copied when the Column is copied,
+        # and we'll lose our ability to link that type back to the original.
+        # so track our original type w/ columns
+        if isinstance(sqltype, SchemaEventTarget):
+            @event.listens_for(sqltype, "before_parent_attach")
+            def _add_column_memo(sqltyp, parent):
+                parent.info['_ext_mutable_orig_type'] = sqltyp
+            schema_event_check = True
+        else:
+            schema_event_check = False
+
         def listen_for_type(mapper, class_):
             for prop in mapper.column_attrs:
-                if prop.columns[0].type is sqltype:
+                if (
+                        schema_event_check and
+                        prop.columns[0].info.get('_ext_mutable_orig_type')
+                        is sqltype
+                ) or (
+                    prop.columns[0].type is sqltype
+                ):
                     cls.associate_with_attribute(getattr(class_, prop.key))
 
         event.listen(mapper, 'mapper_configured', listen_for_type)

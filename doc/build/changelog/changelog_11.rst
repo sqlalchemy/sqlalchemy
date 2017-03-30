@@ -21,6 +21,20 @@
 .. changelog::
     :version: 1.1.8
 
+    .. change:: 3950
+        :tags: bug, ext
+        :versions: 1.2.0b1
+        :tickets: 3950
+
+        Fixed bug in :mod:`sqlalchemy.ext.mutable` where the
+        :meth:`.Mutable.as_mutable` method would not track a type that had
+        been copied using :meth:`.TypeEngine.copy`.  This became more of
+        a regression in 1.1 compared to 1.0 because the :class:`.TypeDecorator`
+        class is now a subclass of :class:`.SchemaEventTarget`, which among
+        other things indicates to the parent :class:`.Column` that the type
+        should be copied when the :class:`.Column` is.  These copies are
+        common when using declarative with mixins or abstract classes.
+
     .. change::
         :tags: bug, ext
         :versions: 1.2.0b1
