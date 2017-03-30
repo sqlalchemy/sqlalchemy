@@ -307,20 +307,21 @@ The example below illustrates time-based tests for several different
 methods of inserting rows, going from the most automated to the least.
 With cPython 2.7, runtimes observed::
 
-    classics-MacBook-Pro:sqlalchemy classic$ python test.py
-    SQLAlchemy ORM: Total time for 100000 records 12.0471920967 secs
-    SQLAlchemy ORM pk given: Total time for 100000 records 7.06283402443 secs
-    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 0.856323003769 secs
-    SQLAlchemy Core: Total time for 100000 records 0.485800027847 secs
-    sqlite3: Total time for 100000 records 0.487842082977 sec
+    SQLAlchemy ORM: Total time for 100000 records 7.2070479393 secs
+    SQLAlchemy ORM pk given: Total time for 100000 records 4.28471207619 secs
+    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 1.58296084404 secs
+    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.453973054886 secs
+    SQLAlchemy Core: Total time for 100000 records 0.210998058319 secs
+    sqlite3: Total time for 100000 records 0.136252880096 sec
 
 We can reduce the time by a factor of three using recent versions of `Pypy <http://pypy.org/>`_::
 
-    classics-MacBook-Pro:sqlalchemy classic$ /usr/local/src/pypy-2.1-beta2-osx64/bin/pypy test.py
-    SQLAlchemy ORM: Total time for 100000 records 5.88369488716 secs
-    SQLAlchemy ORM pk given: Total time for 100000 records 3.52294301987 secs
-    SQLAlchemy Core: Total time for 100000 records 0.613556146622 secs
-    sqlite3: Total time for 100000 records 0.442467927933 sec
+    SQLAlchemy ORM: Total time for 100000 records 2.192882061 secs
+    SQLAlchemy ORM pk given: Total time for 100000 records 1.41679310799 secs
+    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 0.494568824768 secs
+    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.325763940811 secs
+    SQLAlchemy Core: Total time for 100000 records 0.239127874374 secs
+    sqlite3: Total time for 100000 records 0.124729156494 sec
 
 Script::
 
@@ -380,6 +381,23 @@ Script::
             " records " + str(time.time() - t0) + " secs")
 
 
+    def test_sqlalchemy_orm_bulk_save_objects(n=100000):
+        init_sqlalchemy()
+        t0 = time.time()
+        n1 = n
+        while n1 > 0:
+            n1 = n1 - 10000
+            DBSession.bulk_save_objects(
+                [
+                    Customer(name="NAME " + str(i))
+                    for i in xrange(min(10000, n1))
+                ]
+            )
+        DBSession.commit()
+        print(
+            "SQLAlchemy ORM bulk_save_objects(): Total time for " + str(n) +
+            " records " + str(time.time() - t0) + " secs")
+
     def test_sqlalchemy_orm_bulk_insert(n=100000):
         init_sqlalchemy()
         t0 = time.time()
@@ -395,9 +413,8 @@ Script::
             )
         DBSession.commit()
         print(
-            "SQLAlchemy ORM bulk_save_objects(): Total time for " + str(n) +
+            "SQLAlchemy ORM bulk_insert_mappings(): Total time for " + str(n) +
             " records " + str(time.time() - t0) + " secs")
-
 
     def test_sqlalchemy_core(n=100000):
         init_sqlalchemy()
@@ -437,6 +454,7 @@ Script::
     if __name__ == '__main__':
         test_sqlalchemy_orm(100000)
         test_sqlalchemy_orm_pk_given(100000)
+        test_sqlalchemy_orm_bulk_save_objects(100000)
         test_sqlalchemy_orm_bulk_insert(100000)
         test_sqlalchemy_core(100000)
         test_sqlite3(100000)
