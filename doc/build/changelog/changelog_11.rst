@@ -22,6 +22,15 @@
     :version: 1.1.8
 
     .. change::
+        :tags: bug, ext
+        :versions: 1.2.0b1
+
+        Added support for bound parameters, e.g. those normally set up
+        via :meth:`.Query.params`, to the :meth:`.baked.Result.count`
+        method.  Previously, support for parameters were omitted. Pull request
+        courtesy Pat Deegan.
+
+    .. change::
         :tags: bug, postgresql
         :versions: 1.2.0b1
 
