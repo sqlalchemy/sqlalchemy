@@ -288,6 +288,34 @@ class LikeQueryTest(BakedTest):
             set([(8, 'ed'), (9, 'fred')])
         )
 
+    def test_count_with_bindparams(self):
+        User = self.classes.User
+
+        bq = self.bakery(lambda s: s.query(User))
+
+        sess = Session()
+
+        eq_(
+            bq(sess).count(),
+            4
+        )
+
+        bq += lambda q: q.filter(User.name == bindparam("uname"))
+        # calling with *args
+        eq_(
+            bq(sess).params(uname='fred').count(), 1
+        )
+        # with multiple params, the **kwargs will be used
+        bq += lambda q: q.filter(User.id == bindparam("anid"))
+        eq_(
+            bq(sess).params(uname='fred', anid=9).count(), 1
+        )
+        eq_(
+            # wrong id, so 0 results:
+            bq(sess).params(uname='fred', anid=8).count(), 0
+        )
+
+
     def test_get_pk_w_null(self):
         """test the re-implementation of logic to do get with IS NULL."""
 

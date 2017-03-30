@@ -268,7 +268,7 @@ class Result(object):
 
         col = func.count(literal_column('*'))
         bq = self.bq.with_criteria(lambda q: q.from_self(col))
-        return bq.for_session(self.session).scalar()
+        return bq.for_session(self.session).params(self._params).scalar()
 
     def scalar(self):
         """Return the first element of the first result or None
