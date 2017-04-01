@@ -1,5 +1,5 @@
 # coding: utf-8
-from sqlalchemy.testing import eq_, is_, assert_raises, \
+from sqlalchemy.testing import eq_, is_, is_not_, assert_raises, \
     assert_raises_message, expect_warnings
 import decimal
 import datetime
@@ -1006,6 +1006,55 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
             'fooUTWO'
         )
 
+    def test_comparator_variant(self):
+        expr = column('x', self.variant) == "bar"
+        is_(
+            expr.right.type, self.variant
+        )
+
+    @testing.only_on("sqlite")
+    @testing.provide_metadata
+    def test_round_trip(self):
+        variant = self.UTypeOne().with_variant(
+            self.UTypeTwo(), 'sqlite')
+
+        t = Table('t', self.metadata,
+                Column('x', variant)
+        )
+        with testing.db.connect() as conn:
+            t.create(conn)
+
+            conn.execute(
+                t.insert(),
+                x='foo'
+            )
+
+            eq_(
+                conn.scalar(select([t.c.x]).where(t.c.x == 'foo')),
+                'fooUTWO'
+            )
+
+    @testing.only_on("sqlite")
+    @testing.provide_metadata
+    def test_round_trip_sqlite_datetime(self):
+        variant = DateTime().with_variant(
+            dialects.sqlite.DATETIME(truncate_microseconds=True), 'sqlite')
+
+        t = Table('t', self.metadata,
+                Column('x', variant)
+        )
+        with testing.db.connect() as conn:
+            t.create(conn)
+
+            conn.execute(
+                t.insert(),
+                x=datetime.datetime(2015, 4, 18, 10, 15, 17, 4839)
+            )
+
+            eq_(
+                conn.scalar(select([t.c.x]).where(t.c.x == datetime.datetime(2015, 4, 18, 10, 15, 17, 1059))),
+                datetime.datetime(2015, 4, 18, 10, 15, 17)
+            )
 
 class UnicodeTest(fixtures.TestBase):
 
@@ -2051,7 +2100,7 @@ class ExpressionTest(
             "BIND_INfooBIND_IN6BIND_OUT"
         )
 
-    def test_variant_righthand_coercion(self):
+    def test_variant_righthand_coercion_honors_wrapped(self):
         my_json_normal = JSON()
         my_json_variant = JSON().with_variant(String(), "sqlite")
 
@@ -2063,10 +2112,31 @@ class ExpressionTest(
         expr = tab.c.avalue['foo'] == 'bar'
 
         is_(expr.right.type._type_affinity, String)
+        is_not_(expr.right.type, my_json_normal)
 
         expr = tab.c.bvalue['foo'] == 'bar'
 
         is_(expr.right.type._type_affinity, String)
+        is_not_(expr.right.type, my_json_variant)
+
+    def test_variant_righthand_coercion_returns_self(self):
+        my_datetime_normal = DateTime()
+        my_datetime_variant = DateTime().with_variant(
+            dialects.sqlite.DATETIME(truncate_microseconds=False), "sqlite")
+
+        tab = table(
+            'test',
+            column('avalue', my_datetime_normal),
+            column('bvalue', my_datetime_variant)
+        )
+        expr = tab.c.avalue == datetime.datetime(2015, 10, 14, 15, 17, 18)
+
+        is_(expr.right.type._type_affinity, DateTime)
+        is_(expr.right.type, my_datetime_normal)
+
+        expr = tab.c.bvalue == datetime.datetime(2015, 10, 14, 15, 17, 18)
+
+        is_(expr.right.type, my_datetime_variant)
 
     def test_bind_typing(self):
         from sqlalchemy.sql import column

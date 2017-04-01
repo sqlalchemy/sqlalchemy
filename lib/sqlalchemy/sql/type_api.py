@@ -1214,7 +1214,11 @@ class Variant(TypeDecorator):
         self.mapping = mapping
 
     def coerce_compared_value(self, operator, value):
-        return self.impl.coerce_compared_value(operator, value)
+        result = self.impl.coerce_compared_value(operator, value)
+        if result is self.impl:
+            return self
+        else:
+            return result
 
     def load_dialect_impl(self, dialect):
         if dialect.name in self.mapping:
