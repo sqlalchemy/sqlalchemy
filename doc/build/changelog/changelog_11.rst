@@ -21,6 +21,20 @@
 .. changelog::
     :version: 1.1.9
 
+    .. change:: 3952
+        :tags: bug, sql
+        :versions: 1.2.0.b1
+        :tickets: 3952
+
+        Fixed regression released in 1.1.5 due to :ticket:`3859` where
+        adjustments to the "right-hand-side" evaluation of an expression
+        based on :class:`.Variant` to honor the underlying type's
+        "right-hand-side" rules caused the :class:`.Variant` type
+        to be inappropriately lost, in those cases when we *do* want the
+        left-hand side type to be transferred directly to the right hand side
+        so that bind-level rules can be applied to the expression's argument.
+
+
 .. changelog::
     :version: 1.1.8
     :released: March 31, 2017
