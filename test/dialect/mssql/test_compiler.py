@@ -1,8 +1,8 @@
 # -*- encoding: utf-8
 from sqlalchemy.testing import eq_, is_
 from sqlalchemy import schema
-from sqlalchemy.sql import table, column
-from sqlalchemy.databases import mssql
+from sqlalchemy.sql import table, column, quoted_name
+from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import mxodbc
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import sql
@@ -10,6 +10,7 @@ from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
     update, delete, insert, extract, union, func, PrimaryKeyConstraint, \
     UniqueConstraint, Index, Sequence, literal
 from sqlalchemy import testing
+from sqlalchemy.dialects.mssql import base
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -270,6 +271,93 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "myid FROM mytable) AS foo, mytable WHERE "
                             "foo.myid = mytable.myid")
 
+    def test_force_schema_quoted_name_w_dot_case_insensitive(self):
+        metadata = MetaData()
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            schema=quoted_name("foo.dbo", True)
+        )
+        self.assert_compile(
+            select([tbl]),
+            "SELECT [foo.dbo].test.id FROM [foo.dbo].test"
+        )
+
+    def test_force_schema_quoted_w_dot_case_insensitive(self):
+        metadata = MetaData()
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            schema=quoted_name("foo.dbo", True)
+        )
+        self.assert_compile(
+            select([tbl]),
+            "SELECT [foo.dbo].test.id FROM [foo.dbo].test"
+        )
+
+    def test_force_schema_quoted_name_w_dot_case_sensitive(self):
+        metadata = MetaData()
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            schema=quoted_name("Foo.dbo", True)
+        )
+        self.assert_compile(
+            select([tbl]),
+            "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test"
+        )
+
+    def test_force_schema_quoted_w_dot_case_sensitive(self):
+        metadata = MetaData()
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            schema="[Foo.dbo]"
+        )
+        self.assert_compile(
+            select([tbl]),
+            "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test"
+        )
+
+    def test_schema_autosplit_w_dot_case_insensitive(self):
+        metadata = MetaData()
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            schema="foo.dbo"
+        )
+        self.assert_compile(
+            select([tbl]),
+            "SELECT foo.dbo.test.id FROM foo.dbo.test"
+        )
+
+    def test_schema_autosplit_w_dot_case_sensitive(self):
+        metadata = MetaData()
+        tbl = Table(
+            'test', metadata,
+            Column('id', Integer, primary_key=True),
+            schema="Foo.dbo"
+        )
+        self.assert_compile(
+            select([tbl]),
+            "SELECT [Foo].dbo.test.id FROM [Foo].dbo.test"
+        )
+
+    def test_owner_database_pairs(self):
+        dialect = mssql.dialect()
+
+        for identifier, expected_schema, expected_owner in [
+            ("foo", None, "foo"),
+            ("foo.bar", "foo", "bar"),
+            ("Foo.Bar", "Foo", "Bar"),
+            ("[Foo.Bar]", None, "Foo.Bar"),
+            ("[Foo.Bar].[bat]", "Foo.Bar", "bat"),
+        ]:
+            schema, owner = base._owner_plus_db(dialect, identifier)
+
+            eq_(owner, expected_owner)
+            eq_(schema, expected_schema)
+
     def test_delete_schema(self):
         metadata = MetaData()
         tbl = Table('test', metadata, Column('id', Integer,
@@ -478,7 +566,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT TOP 0 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
             checkparams={'x_1': 5}
         )
-        c = s.compile(dialect=mssql.MSDialect())
+        c = s.compile(dialect=mssql.dialect())
         eq_(len(c._result_columns), 2)
         assert t.c.x in set(c._create_result_map()['x'][1])
 
@@ -499,7 +587,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 checkparams={'param_1': 20, 'x_1': 5}
             )
 
-            c = s.compile(dialect=mssql.MSDialect())
+            c = s.compile(dialect=mssql.dialect())
             eq_(len(c._result_columns), 2)
             assert t.c.x in set(c._create_result_map()['x'][1])
 
@@ -518,7 +606,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
             checkparams={'param_1': 20, 'param_2': 10, 'x_1': 5}
         )
-        c = s.compile(dialect=mssql.MSDialect())
+        c = s.compile(dialect=mssql.dialect())
         eq_(len(c._result_columns), 2)
         assert t.c.x in set(c._create_result_map()['x'][1])
         assert t.c.y in set(c._create_result_map()['y'][1])
@@ -539,7 +627,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
             checkparams={'param_1': 20, 'param_2': 10, 'x_1': 5}
         )
-        c = s.compile(dialect=mssql.MSDialect())
+        c = s.compile(dialect=mssql.dialect())
         eq_(len(c._result_columns), 4)
 
         result_map = c._create_result_map()
@@ -568,7 +656,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={'param_1': 20, 'param_2': 10, 'x_1': 5}
         )
 
-        c = s.compile(dialect=mssql.MSDialect())
+        c = s.compile(dialect=mssql.dialect())
         eq_(len(c._result_columns), 2)
         assert t1.c.x in set(c._create_result_map()['x'][1])
         assert t1.c.y in set(c._create_result_map()['y'][1])

@@ -652,3 +652,47 @@ Where the above could create problems particularly with Alembic autogenerate.
 
 :ticket:`3276`
 
+
+Dialect Improvements and Changes - SQL Server
+=============================================
+
+.. _change_2626:
+
+SQL Server schema names with embedded dots supported
+-----------------------------------------------------
+
+The SQL Server dialect has a behavior such that a schema name with a dot inside
+of it is assumed to be a "database"."owner" identifier pair, which is
+necessarily split up into these separate components during table and component
+reflection operations, as well as when rendering quoting for the schema name so
+that the two symbols are quoted separately.  The schema argument can
+now be passed using brackets to manually specify where this split
+occurs, allowing database and/or owner names that themselves contain one
+or more dots::
+
+    Table(
+        "some_table", metadata,
+        Column("q", String(50)),
+        schema="[MyDataBase.dbo]"
+    )
+
+The above table will consider the "owner" to be ``MyDataBase.dbo``, which
+will also be quoted upon render, and the "database" as None.  To individually
+refer to database name and owner, use two pairs of brackets::
+
+    Table(
+        "some_table", metadata,
+        Column("q", String(50)),
+        schema="[MyDataBase.SomeDB].[MyDB.owner]"
+    )
+
+Additionally, the :class:`.quoted_name` construct is now honored when
+passed to "schema" by the SQL Server dialect; the given symbol will
+not be split on the dot if the quote flag is True and will be interpreted
+as the "owner".
+
+.. seealso::
+
+    :ref:`multipart_schema_names`
+
+:ticket:`2626`

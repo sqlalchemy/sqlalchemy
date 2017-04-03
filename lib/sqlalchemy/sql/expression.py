@@ -26,7 +26,8 @@ __all__ = [
     'nullslast',
     'or_', 'outparam', 'outerjoin', 'over', 'select', 'subquery',
     'table', 'text',
-    'tuple_', 'type_coerce', 'union', 'union_all', 'update', 'within_group',
+    'tuple_', 'type_coerce', 'quoted_name', 'union', 'union_all', 'update',
+    'within_group',
     'TableSample', 'tablesample']
 
 
@@ -37,7 +38,7 @@ from .elements import ClauseElement, ColumnElement,\
     BindParameter, CollectionAggregate, UnaryExpression, BooleanClauseList, \
     Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
     True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
-    Grouping, WithinGroup, not_, \
+    Grouping, WithinGroup, not_, quoted_name, \
     collate, literal_column, between,\
     literal, outparam, TypeCoerce, ClauseList, FunctionFilter
 

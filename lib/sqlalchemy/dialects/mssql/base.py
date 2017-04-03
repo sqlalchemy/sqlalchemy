@@ -333,6 +333,65 @@ behavior of this flag is as follows:
 
 .. versionadded:: 1.0.0
 
+.. _multipart_schema_names:
+
+Multipart Schema Names
+----------------------
+
+SQL Server schemas sometimes require multiple parts to their "schema"
+qualifier, that is, including the database name and owner name as separate
+tokens, such as ``mydatabase.dbo.some_table``. These multipart names can be set
+at once using the :paramref:`.Table.schema` argument of :class:`.Table`::
+
+    Table(
+        "some_table", metadata,
+        Column("q", String(50)),
+        schema="mydatabase.dbo"
+    )
+
+When performing operations such as table or component reflection, a schema
+argument that contains a dot will be split into separate
+"database" and "owner"  components in order to correctly query the SQL
+Server information schema tables, as these two values are stored separately.
+Additionally, when rendering the schema name for DDL or SQL, the two
+components will be quoted separately for case sensitive names and other
+special characters.   Given an argument as below::
+
+    Table(
+        "some_table", metadata,
+        Column("q", String(50)),
+        schema="MyDataBase.dbo"
+    )
+
+The above schema would be rendered as ``[MyDataBase].dbo``, and also in
+reflection, would be reflected using "dbo" as the owner and "MyDataBase"
+as the database name.
+
+To control how the schema name is broken into database / owner,
+specify brackets (which in SQL Server are quoting characters) in the name.
+Below, the "owner" will be considered as ``MyDataBase.dbo`` and the
+"database" will be None::
+
+    Table(
+        "some_table", metadata,
+        Column("q", String(50)),
+        schema="[MyDataBase.dbo]"
+    )
+
+To individually specify both database and owner name with special characters
+or embedded dots, use two sets of brackets::
+
+    Table(
+        "some_table", metadata,
+        Column("q", String(50)),
+        schema="[MyDataBase.Period].[MyOwner.Dot]"
+    )
+
+
+.. versionchanged:: 1.2 the SQL Server dialect now treats brackets as
+   identifier delimeters splitting the schema into separate database
+   and owner tokens, to allow dots within either name itself.
+
 .. _legacy_schema_rendering:
 
 Legacy Schema Mode
@@ -558,7 +617,7 @@ import operator
 import re
 
 from ... import sql, schema as sa_schema, exc, util
-from ...sql import compiler, expression, util as sql_util
+from ...sql import compiler, expression, util as sql_util, quoted_name
 from ... import engine
 from ...engine import reflection, default
 from ... import types as sqltypes
@@ -1550,9 +1609,18 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
     def _escape_identifier(self, value):
         return value
 
+
     def quote_schema(self, schema, force=None):
         """Prepare a quoted table and schema name."""
-        result = '.'.join([self.quote(x, force) for x in schema.split('.')])
+
+        dbname, owner = _schema_elements(schema)
+        if dbname:
+            result = "%s.%s" % (
+                self.quote(dbname, force), self.quote(owner, force))
+        elif owner:
+            result = self.quote(owner, force)
+        else:
+            result = ""
         return result
 
 
@@ -1587,9 +1655,38 @@ def _owner_plus_db(dialect, schema):
     if not schema:
         return None, dialect.default_schema_name
     elif "." in schema:
-        return schema.split(".", 1)
+        return _schema_elements(schema)
     else:
         return None, schema
+
+
+def _schema_elements(schema):
+    if isinstance(schema, quoted_name) and schema.quote:
+        return None, schema
+
+    push = []
+    symbol = ""
+    bracket = False
+    for token in re.split(r"(\[|\]|\.)", schema):
+        if not token:
+            continue
+        if token == '[':
+            bracket = True
+        elif token == ']':
+            bracket = False
+        elif not bracket and token == ".":
+            push.append(symbol)
+            symbol = ""
+        else:
+            symbol += token
+    if symbol:
+        push.append(symbol)
+    if len(push) > 1:
+        return push[0], "".join(push[1:])
+    elif len(push):
+        return None, push[0]
+    else:
+        return None, None
 
 
 class MSDialect(default.DefaultDialect):
