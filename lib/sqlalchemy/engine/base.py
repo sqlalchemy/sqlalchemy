@@ -1203,14 +1203,22 @@ class Connection(Connectable):
         else:
             result = context.get_result_proxy()
             if result._metadata is None:
-                result._soft_close(_autoclose_connection=False)
+                result._soft_close()
 
         if context.should_autocommit and self._root.__transaction is None:
             self._root._commit_impl(autocommit=True)
 
-        if result._soft_closed and self.should_close_with_result:
-            self.close()
-
+        # for "connectionless" execution, we have to close this
+        # Connection after the statement is complete.
+        if self.should_close_with_result:
+            # ResultProxy already exhausted rows / has no rows.
+            # close us now
+            if result._soft_closed:
+                self.close()
+            else:
+                # ResultProxy will close this Connection when no more
+                # rows to fetch.
+                result._autoclose_connection = True
         return result
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):

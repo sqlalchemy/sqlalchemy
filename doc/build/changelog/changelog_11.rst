@@ -34,6 +34,17 @@
         left-hand side type to be transferred directly to the right hand side
         so that bind-level rules can be applied to the expression's argument.
 
+    .. change:: 3955
+        :tags: bug, sql, postgresql
+        :versions: 1.2.0b1
+        :tickets: 3955
+
+        Changed the mechanics of :class:`.ResultProxy` to unconditionally
+        delay the "autoclose" step until the :class:`.Connection` is done
+        with the object; in the case where Postgresql ON CONFLICT with
+        RETURNING returns no rows, autoclose was occurring in this previously
+        non-existent use case, causing the usual autocommit behavior that
+        occurs unconditionally upon INSERT/UPDATE/DELETE to fail.
 
 .. changelog::
     :version: 1.1.8

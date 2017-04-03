@@ -905,15 +905,15 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 row = result.fetchone()
                 self.returned_defaults = row
                 self._setup_ins_pk_from_implicit_returning(row)
-                result._soft_close(_autoclose_connection=False)
+                result._soft_close()
                 result._metadata = None
             elif not self._is_explicit_returning:
-                result._soft_close(_autoclose_connection=False)
+                result._soft_close()
                 result._metadata = None
         elif self.isupdate and self._is_implicit_returning:
             row = result.fetchone()
             self.returned_defaults = row
-            result._soft_close(_autoclose_connection=False)
+            result._soft_close()
             result._metadata = None
 
         elif result._metadata is None:
@@ -921,7 +921,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             # (which requires open cursor on some drivers
             # such as kintersbasdb, mxodbc)
             result.rowcount
-            result._soft_close(_autoclose_connection=False)
+            result._soft_close()
         return result
 
     def _setup_ins_pk_from_lastrowid(self):
