@@ -489,6 +489,50 @@ class ResultProxyTest(fixtures.TablesTest):
             result.fetchone
         )
 
+    def test_connectionless_autoclose_rows_exhausted(self):
+        users = self.tables.users
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+        )
+
+        result = testing.db.execute("select * from users")
+        connection = result.connection
+        assert not connection.closed
+        eq_(result.fetchone(), (1, 'john'))
+        assert not connection.closed
+        eq_(result.fetchone(), None)
+        assert connection.closed
+
+    @testing.requires.returning
+    def test_connectionless_autoclose_crud_rows_exhausted(self):
+        users = self.tables.users
+        stmt = users.insert().values(user_id=1, user_name='john').\
+            returning(users.c.user_id)
+        result = testing.db.execute(stmt)
+        connection = result.connection
+        assert not connection.closed
+        eq_(result.fetchone(), (1, ))
+        assert not connection.closed
+        eq_(result.fetchone(), None)
+        assert connection.closed
+
+    def test_connectionless_autoclose_no_rows(self):
+        result = testing.db.execute("select * from users")
+        connection = result.connection
+        assert not connection.closed
+        eq_(result.fetchone(), None)
+        assert connection.closed
+
+    def test_connectionless_autoclose_no_metadata(self):
+        result = testing.db.execute("update users set user_id=5")
+        connection = result.connection
+        assert connection.closed
+        assert_raises_message(
+            exc.ResourceClosedError,
+            "This result object does not return rows.",
+            result.fetchone
+        )
+
     def test_row_case_sensitive(self):
         row = testing.db.execute(
             select([

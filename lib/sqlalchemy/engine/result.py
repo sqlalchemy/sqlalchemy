@@ -638,7 +638,7 @@ class ResultProxy(object):
 
     _process_row = RowProxy
     out_parameters = None
-    _can_close_connection = False
+    _autoclose_connection = False
     _metadata = None
     _soft_closed = False
     closed = False
@@ -792,7 +792,7 @@ class ResultProxy(object):
 
         return self._saved_cursor.description
 
-    def _soft_close(self, _autoclose_connection=True):
+    def _soft_close(self):
         """Soft close this :class:`.ResultProxy`.
 
         This releases all DBAPI cursor resources, but leaves the
@@ -820,8 +820,7 @@ class ResultProxy(object):
         self._soft_closed = True
         cursor = self.cursor
         self.connection._safe_close_cursor(cursor)
-        if _autoclose_connection and \
-                self.connection.should_close_with_result:
+        if self._autoclose_connection:
             self.connection.close()
         self.cursor = None
 

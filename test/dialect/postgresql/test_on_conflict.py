@@ -12,6 +12,7 @@ class OnConflictTest(fixtures.TablesTest):
 
     __only_on__ = 'postgresql >= 9.5',
     __backend__ = True
+    run_define_tables = 'each'
 
     @classmethod
     def define_tables(cls, metadata):
@@ -79,6 +80,7 @@ class OnConflictTest(fixtures.TablesTest):
         with testing.db.connect() as conn:
             result = conn.execute(
                 insert(users).on_conflict_do_nothing(),
+
                 dict(id=1, name='name1')
             )
             eq_(result.inserted_primary_key, [1])
@@ -95,6 +97,33 @@ class OnConflictTest(fixtures.TablesTest):
                 conn.execute(users.select().where(users.c.id == 1)).fetchall(),
                 [(1, 'name1')]
             )
+
+    def test_on_conflict_do_nothing_connectionless(self):
+        users = self.tables.users_xtra
+
+        with testing.db.connect() as conn:
+            result = conn.execute(
+                insert(users).on_conflict_do_nothing(
+                    constraint='uq_login_email'),
+
+                dict(name='name1', login_email='email1')
+            )
+            eq_(result.inserted_primary_key, [1])
+            eq_(result.returned_defaults, (1,))
+
+        result = testing.db.execute(
+            insert(users).on_conflict_do_nothing(
+                constraint='uq_login_email'
+            ),
+            dict(name='name2', login_email='email1')
+        )
+        eq_(result.inserted_primary_key, None)
+        eq_(result.returned_defaults, None)
+
+        eq_(
+            testing.db.execute(users.select().where(users.c.id == 1)).fetchall(),
+            [(1, 'name1', 'email1', None)]
+        )
 
     @testing.provide_metadata
     def test_on_conflict_do_nothing_target(self):
