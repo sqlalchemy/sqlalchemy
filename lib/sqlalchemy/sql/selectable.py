@@ -1241,13 +1241,13 @@ class Alias(FromClause):
                                                     or 'anon'))
         self.name = name
 
-    def self_group(self, target=None):
-        if isinstance(target, CompoundSelect) and \
+    def self_group(self, against=None):
+        if isinstance(against, CompoundSelect) and \
             isinstance(self.original, Select) and \
                 self.original._needs_parens_for_grouping():
             return FromGrouping(self)
 
-        return super(Alias, self).self_group(target)
+        return super(Alias, self).self_group(against=against)
 
     @property
     def description(self):
@@ -2269,7 +2269,7 @@ class CompoundSelect(GenerativeSelect):
                      n + 1, len(s.c._all_columns))
                 )
 
-            self.selects.append(s.self_group(self))
+            self.selects.append(s.self_group(against=self))
 
         GenerativeSelect.__init__(self, **kwargs)
 

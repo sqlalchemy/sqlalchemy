@@ -333,6 +333,20 @@ class SelectableTest(
         criterion = a.c.col1 == table2.c.col2
         self.assert_(criterion.compare(j.onclause))
 
+    def test_alias_handles_column_context(self):
+        # not quite a use case yet but this is expected to become
+        # prominent w/ Postgresql's tuple functions
+
+        stmt = select([table1.c.col1, table1.c.col2])
+        a = stmt.alias('a')
+        self.assert_compile(
+            select([func.foo(a)]),
+            "SELECT foo(SELECT table1.col1, table1.col2 FROM table1) "
+            "AS foo_1 FROM "
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2 FROM table1) "
+            "AS a"
+        )
+
     def test_union(self):
 
         # tests that we can correspond a column in a Select statement

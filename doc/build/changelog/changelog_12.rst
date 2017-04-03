@@ -120,6 +120,17 @@
 
             :ref:`change_3919`
 
+    .. change:: 3939
+        :tags: bug, sql
+        :tickets: 3939
+
+        Fixed bug where the use of an :class:`.Alias` object in a column
+        context would raise an argument error when it tried to group itself
+        into a parenthesized expression.   Using :class:`.Alias` in this way
+        is not yet a fully supported API, however it applies to some end-user
+        recipes and may have a more prominent role in support of some
+        future Postgresql features.
+
     .. change:: 3366
         :tags: bug, orm
         :tickets: 3366
