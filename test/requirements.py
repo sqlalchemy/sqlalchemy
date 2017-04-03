@@ -210,6 +210,10 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["oracle", "mssql"], "not supported by database/driver")
 
     @property
+    def tuple_in(self):
+        return only_on(["mysql", "postgresql"])
+
+    @property
     def independent_cursors(self):
         """Target must support simultaneous, independent database cursors
         on a single connection."""

@@ -552,6 +552,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     # result column names
     _translate_colname = None
 
+    _expanded_parameters = util.immutabledict()
+
     @classmethod
     def _init_ddl(cls, dialect, connection, dbapi_connection, compiled_ddl):
         """Initialize execution context for a DDLElement construct."""
@@ -645,6 +647,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         processors = compiled._bind_processors
 
+        if compiled.contains_expanding_parameters:
+            positiontup = self._expand_in_parameters(compiled, processors)
+        elif compiled.positional:
+            positiontup = self.compiled.positiontup
+
         # Convert the dictionary of bind parameter values
         # into a dict or list to be sent to the DBAPI's
         # execute() or executemany() method.
@@ -652,7 +659,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if compiled.positional:
             for compiled_params in self.compiled_parameters:
                 param = []
-                for key in self.compiled.positiontup:
+                for key in positiontup:
                     if key in processors:
                         param.append(processors[key](compiled_params[key]))
                     else:
@@ -684,9 +691,96 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     )
 
                 parameters.append(param)
+
         self.parameters = dialect.execute_sequence_format(parameters)
 
         return self
+
+    def _expand_in_parameters(self, compiled, processors):
+        """handle special 'expanding' parameters, IN tuples that are rendered
+        on a per-parameter basis for an otherwise fixed SQL statement string.
+
+        """
+        if self.executemany:
+            raise exc.InvalidRequestError(
+                "'expanding' parameters can't be used with "
+                "executemany()")
+
+        if self.compiled.positional and self.compiled._numeric_binds:
+            # I'm not familiar with any DBAPI that uses 'numeric'
+            raise NotImplementedError(
+                "'expanding' bind parameters not supported with "
+                "'numeric' paramstyle at this time.")
+
+        self._expanded_parameters = {}
+
+        compiled_params = self.compiled_parameters[0]
+        if compiled.positional:
+            positiontup = []
+        else:
+            positiontup = None
+
+        replacement_expressions = {}
+        for name in (
+            self.compiled.positiontup if compiled.positional
+            else self.compiled.binds
+        ):
+            parameter = self.compiled.binds[name]
+            if parameter.expanding:
+                values = compiled_params.pop(name)
+                if not values:
+                    raise exc.InvalidRequestError(
+                        "'expanding' parameters can't be used with an "
+                        "empty list"
+                    )
+                elif isinstance(values[0], (tuple, list)):
+                    to_update = [
+                        ("%s_%s_%s" % (name, i, j), value)
+                        for i, tuple_element in enumerate(values, 1)
+                        for j, value in enumerate(tuple_element, 1)
+                    ]
+                    replacement_expressions[name] = ", ".join(
+                        "(%s)" % ", ".join(
+                            self.compiled.bindtemplate % {
+                                "name":
+                                to_update[i * len(tuple_element) + j][0]
+                            }
+                            for j, value in enumerate(tuple_element)
+                        )
+                        for i, tuple_element in enumerate(values)
+
+                    )
+                else:
+                    to_update = [
+                        ("%s_%s" % (name, i), value)
+                        for i, value in enumerate(values, 1)
+                    ]
+                    replacement_expressions[name] = ", ".join(
+                        self.compiled.bindtemplate % {
+                            "name": key}
+                        for key, value in to_update
+                    )
+                compiled_params.update(to_update)
+                processors.update(
+                    (key, processors[name])
+                    for key in to_update if name in processors
+                )
+                if compiled.positional:
+                    positiontup.extend(name for name, value in to_update)
+                self._expanded_parameters[name] = [
+                    expand_key for expand_key, value in to_update]
+            elif compiled.positional:
+                positiontup.append(name)
+
+        def process_expanding(m):
+            return replacement_expressions.pop(m.group(1))
+
+        self.statement = re.sub(
+            r"\[EXPANDING_(.+)\]",
+            process_expanding,
+            self.statement
+        )
+        return positiontup
 
     @classmethod
     def _init_statement(cls, dialect, connection, dbapi_connection,
@@ -1039,7 +1133,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     get_dbapi_type(self.dialect.dbapi)
                 if dbtype is not None and \
                         (not exclude_types or dbtype not in exclude_types):
-                    inputsizes.append(dbtype)
+                    if key in self._expanded_parameters:
+                        inputsizes.extend(
+                            [dbtype] * len(self._expanded_parameters[key]))
+                    else:
+                        inputsizes.append(dbtype)
             try:
                 self.cursor.setinputsizes(*inputsizes)
             except BaseException as e:
@@ -1054,10 +1152,19 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 if dbtype is not None and \
                         (not exclude_types or dbtype not in exclude_types):
                     if translate:
+                        # TODO: this part won't work w/ the
+                        # expanded_parameters feature, e.g. for cx_oracle
+                        # quoted bound names
                         key = translate.get(key, key)
                     if not self.dialect.supports_unicode_binds:
                         key = self.dialect._encoder(key)[0]
-                    inputsizes[key] = dbtype
+                    if key in self._expanded_parameters:
+                        inputsizes.update(
+                            (expand_key, dbtype) for expand_key
+                            in self._expanded_parameters[key]
+                        )
+                    else:
+                        inputsizes[key] = dbtype
             try:
                 self.cursor.setinputsizes(**inputsizes)
             except BaseException as e:

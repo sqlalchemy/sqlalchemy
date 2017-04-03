@@ -2,7 +2,7 @@ from .. import fixtures, config
 from ..assertions import eq_
 
 from sqlalchemy import util
-from sqlalchemy import Integer, String, select, func, bindparam, union
+from sqlalchemy import Integer, String, select, func, bindparam, union, tuple_
 from sqlalchemy import testing
 
 from ..schema import Table, Column
@@ -309,4 +309,58 @@ class CompoundSelectTest(fixtures.TablesTest):
         self._assert_result(
             u1.order_by(u1.c.id),
             [(2, 2, 3), (3, 3, 4)]
+        )
+
+
+class ExpandingBoundInTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("some_table", metadata,
+              Column('id', Integer, primary_key=True),
+              Column('x', Integer),
+              Column('y', Integer))
+
+    @classmethod
+    def insert_data(cls):
+        config.db.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2},
+                {"id": 2, "x": 2, "y": 3},
+                {"id": 3, "x": 3, "y": 4},
+                {"id": 4, "x": 4, "y": 5},
+            ]
+        )
+
+    def _assert_result(self, select, result, params=()):
+        eq_(
+            config.db.execute(select, params).fetchall(),
+            result
+        )
+
+    def test_bound_in_scalar(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x.in_(bindparam('q', expanding=True)))
+
+        self._assert_result(
+            stmt,
+            [(2, ), (3, ), (4, )],
+            params={"q": [2, 3, 4]},
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_two_tuple(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            tuple_(table.c.x, table.c.y).in_(bindparam('q', expanding=True)))
+
+        self._assert_result(
+            stmt,
+            [(2, ), (3, ), (4, )],
+            params={"q": [(2, 3), (3, 4), (4, 5)]},
         )

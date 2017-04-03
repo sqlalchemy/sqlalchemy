@@ -867,6 +867,7 @@ class BindParameter(ColumnElement):
     def __init__(self, key, value=NO_ARG, type_=None,
                  unique=False, required=NO_ARG,
                  quote=None, callable_=None,
+                 expanding=False,
                  isoutparam=False,
                  _compared_to_operator=None,
                  _compared_to_type=None):
@@ -1052,6 +1053,23 @@ class BindParameter(ColumnElement):
           "OUT" parameter.  This applies to backends such as Oracle which
           support OUT parameters.
 
+        :param expanding:
+          if True, this parameter will be treated as an "expanding" parameter
+          at execution time; the parameter value is expected to be a sequence,
+          rather than a scalar value, and the string SQL statement will
+          be transformed on a per-execution basis to accomodate the sequence
+          with a variable number of parameter slots passed to the DBAPI.
+          This is to allow statement caching to be used in conjunction with
+          an IN clause.
+
+          .. note:: The "expanding" feature does not support "executemany"-
+             style parameter sets, nor does it support empty IN expressions.
+
+          .. note:: The "expanding" feature should be considered as
+             **experimental** within the 1.2 series.
+
+          .. versionadded:: 1.2
+
         .. seealso::
 
             :ref:`coretutorial_bind_param`
@@ -1093,6 +1111,8 @@ class BindParameter(ColumnElement):
         self.callable = callable_
         self.isoutparam = isoutparam
         self.required = required
+        self.expanding = expanding
+
         if type_ is None:
             if _compared_to_type is not None:
                 self.type = \

@@ -309,6 +309,30 @@ warning.   However, it is anticipated that most users will appreciate the
 
 :ticket:`3907`
 
+.. _change_3953:
+
+Late-expanded IN parameter sets allow IN expressions with cached statements
+---------------------------------------------------------------------------
+
+Added a new kind of :func:`.bindparam` called "expanding".  This is
+for use in ``IN`` expressions where the list of elements is rendered
+into individual bound parameters at statement execution time, rather
+than at statement compilation time.  This allows both a single bound
+parameter name to be linked to an IN expression of multiple elements,
+as well as allows query caching to be used with IN expressions.  The
+new feature allows the related features of "select in" loading and
+"polymorphic in" loading to make use of the baked query extension
+to reduce call overhead::
+
+    stmt = select([table]).where(
+        table.c.col.in_(bindparam('foo', expanding=True))
+    conn.execute(stmt, {"foo": [1, 2, 3]})
+
+The feature should be regarded as **experimental** within the 1.2 series.
+
+
+:ticket:`3953`
+
 .. _change_1546:
 
 Support for SQL Comments on Table, Column, includes DDL, reflection

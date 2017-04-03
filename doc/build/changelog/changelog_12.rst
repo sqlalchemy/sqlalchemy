@@ -75,6 +75,25 @@
 
             :ref:`change_2626`
 
+    .. change:: 3953
+        :tags: feature, sql
+        :tickets: 3953
+
+        Added a new kind of :func:`.bindparam` called "expanding".  This is
+        for use in ``IN`` expressions where the list of elements is rendered
+        into individual bound parameters at statement execution time, rather
+        than at statement compilation time.  This allows both a single bound
+        parameter name to be linked to an IN expression of multiple elements,
+        as well as allows query caching to be used with IN expressions.  The
+        new feature allows the related features of "select in" loading and
+        "polymorphic in" loading to make use of the baked query extension
+        to reduce call overhead.   This feature should be considered to be
+        **experimental** for 1.2.
+
+        .. seealso::
+
+            :ref:`change_3953`
+
     .. change:: 3923
         :tags: bug, sql
         :tickets: 3923

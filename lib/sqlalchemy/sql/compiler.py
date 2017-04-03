@@ -350,6 +350,14 @@ class SQLCompiler(Compiled):
     columns with the table name (i.e. MySQL only)
     """
 
+    contains_expanding_parameters = False
+    """True if we've encountered bindparam(..., expanding=True).
+
+    These need to be converted before execution time against the
+    string statement.
+
+    """
+
     ansi_bind_rules = False
     """SQL 92 doesn't allow bind parameters to be used
     in the columns clause of a SELECT, nor does it allow
@@ -370,8 +378,14 @@ class SQLCompiler(Compiled):
     True unless using an unordered TextAsFrom.
     """
 
-    insert_prefetch = update_prefetch = ()
+    _numeric_binds = False
+    """
+    True if paramstyle is "numeric".  This paramstyle is trickier than
+    all the others.
 
+    """
+
+    insert_prefetch = update_prefetch = ()
 
     def __init__(self, dialect, statement, column_keys=None,
                  inline=False, **kwargs):
@@ -418,6 +432,7 @@ class SQLCompiler(Compiled):
         self.positional = dialect.positional
         if self.positional:
             self.positiontup = []
+            self._numeric_binds = dialect.paramstyle == "numeric"
         self.bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
 
         self.ctes = None
@@ -439,7 +454,7 @@ class SQLCompiler(Compiled):
         ) and statement._returning:
             self.returning = statement._returning
 
-        if self.positional and dialect.paramstyle == 'numeric':
+        if self.positional and self._numeric_binds:
             self._apply_numbered_params()
 
     @property
@@ -492,7 +507,8 @@ class SQLCompiler(Compiled):
         return dict(
             (key, value) for key, value in
             ((self.bind_names[bindparam],
-              bindparam.type._cached_bind_processor(self.dialect))
+              bindparam.type._cached_bind_processor(self.dialect)
+              )
              for bindparam in self.bind_names)
             if value is not None
         )
@@ -1238,7 +1254,8 @@ class SQLCompiler(Compiled):
 
         self.binds[bindparam.key] = self.binds[name] = bindparam
 
-        return self.bindparam_string(name, **kwargs)
+        return self.bindparam_string(
+            name, expanding=bindparam.expanding, **kwargs)
 
     def render_literal_bindparam(self, bindparam, **kw):
         value = bindparam.effective_value
@@ -1300,13 +1317,18 @@ class SQLCompiler(Compiled):
         self.anon_map[derived] = anonymous_counter + 1
         return derived + "_" + str(anonymous_counter)
 
-    def bindparam_string(self, name, positional_names=None, **kw):
+    def bindparam_string(
+            self, name, positional_names=None, expanding=False, **kw):
         if self.positional:
             if positional_names is not None:
                 positional_names.append(name)
             else:
                 self.positiontup.append(name)
-        return self.bindtemplate % {'name': name}
+        if expanding:
+            self.contains_expanding_parameters = True
+            return "([EXPANDING_%s])" % name
+        else:
+            return self.bindtemplate % {'name': name}
 
     def visit_cte(self, cte, asfrom=False, ashint=False,
                   fromhints=None,

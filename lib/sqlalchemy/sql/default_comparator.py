@@ -127,10 +127,18 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
         return _boolean_compare(expr, op, seq_or_selectable,
                                 negate=negate_op, **kw)
     elif isinstance(seq_or_selectable, ClauseElement):
-        raise exc.InvalidRequestError(
-            'in_() accepts'
-            ' either a list of expressions '
-            'or a selectable: %r' % seq_or_selectable)
+        if isinstance(seq_or_selectable, BindParameter) and \
+                seq_or_selectable.expanding:
+            return _boolean_compare(
+                expr, op,
+                seq_or_selectable,
+                negate=negate_op)
+        else:
+            raise exc.InvalidRequestError(
+                'in_() accepts'
+                ' either a list of expressions, '
+                'a selectable, or an "expanding" bound parameter: %r'
+                % seq_or_selectable)
 
     # Handle non selectable arguments as sequences
     args = []
@@ -139,8 +147,8 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
             if not isinstance(o, operators.ColumnOperators):
                 raise exc.InvalidRequestError(
                     'in_() accepts'
-                    ' either a list of expressions '
-                    'or a selectable: %r' % o)
+                    ' either a list of expressions, '
+                    'a selectable, or an "expanding" bound parameter: %r' % o)
         elif o is None:
             o = Null()
         else:

@@ -6,7 +6,7 @@ from sqlalchemy import (
     exc, sql, func, select, String, Integer, MetaData, and_, ForeignKey,
     union, intersect, except_, union_all, VARCHAR, INT, text,
     bindparam, literal, not_, literal_column, desc, asc,
-    TypeDecorator, or_, cast)
+    TypeDecorator, or_, cast, tuple_)
 from sqlalchemy.engine import default
 from sqlalchemy.testing.schema import Table, Column
 
@@ -405,7 +405,6 @@ class QueryTest(fixtures.TestBase):
                     use_labels=labels),
                 [(3, 'a'), (2, 'b'), (1, None)])
 
-    @testing.emits_warning('.*empty sequence.*')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
 
@@ -430,6 +429,77 @@ class QueryTest(fixtures.TestBase):
         r = s.execute().fetchall()
         # Null values are not outside any set
         assert len(r) == 0
+
+    def test_expanding_in(self):
+        testing.db.execute(
+            users.insert(),
+            [
+                dict(user_id=7, user_name='jack'),
+                dict(user_id=8, user_name='fred'),
+                dict(user_id=9, user_name=None)
+            ]
+        )
+
+        with testing.db.connect() as conn:
+            stmt = select([users]).where(
+                users.c.user_name.in_(bindparam('uname', expanding=True))
+            ).order_by(users.c.user_id)
+
+            eq_(
+                conn.execute(stmt, {"uname": ['jack']}).fetchall(),
+                [(7, 'jack')]
+            )
+
+            eq_(
+                conn.execute(stmt, {"uname": ['jack', 'fred']}).fetchall(),
+                [(7, 'jack'), (8, 'fred')]
+            )
+
+            assert_raises_message(
+                exc.StatementError,
+                "'expanding' parameters can't be used with an empty list",
+                conn.execute,
+                stmt, {"uname": []}
+            )
+
+            assert_raises_message(
+                exc.StatementError,
+                "'expanding' parameters can't be used with executemany()",
+                conn.execute,
+                users.update().where(
+                    users.c.user_name.in_(bindparam('uname', expanding=True))
+                ), [{"uname": ['fred']}, {"uname": ['ed']}]
+            )
+
+    @testing.requires.tuple_in
+    def test_expanding_in_composite(self):
+        testing.db.execute(
+            users.insert(),
+            [
+                dict(user_id=7, user_name='jack'),
+                dict(user_id=8, user_name='fred'),
+                dict(user_id=9, user_name=None)
+            ]
+        )
+
+        with testing.db.connect() as conn:
+            stmt = select([users]).where(
+                tuple_(
+                    users.c.user_id,
+                    users.c.user_name
+                ).in_(bindparam('uname', expanding=True))
+            ).order_by(users.c.user_id)
+
+            eq_(
+                conn.execute(stmt, {"uname": [(7, 'jack')]}).fetchall(),
+                [(7, 'jack')]
+            )
+
+            eq_(
+                conn.execute(stmt, {"uname": [(7, 'jack'), (8, 'fred')]}).fetchall(),
+                [(7, 'jack'), (8, 'fred')]
+            )
+
 
     @testing.fails_on('firebird', "uses sql-92 rules")
     @testing.fails_on('sybase', "uses sql-92 rules")

@@ -2174,6 +2174,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable.otherid, myothertable.othername FROM myothertable)"
         )
 
+    def test_expanding_parameter(self):
+        self.assert_compile(
+            tuple_(table1.c.myid, table1.c.name).in_(
+                bindparam('foo', expanding=True)),
+            "(mytable.myid, mytable.name) IN ([EXPANDING_foo])"
+        )
+
+        self.assert_compile(
+            table1.c.myid.in_(bindparam('foo', expanding=True)),
+            "mytable.myid IN ([EXPANDING_foo])"
+        )
+
     def test_cast(self):
         tbl = table('casttest',
                     column('id', Integer),

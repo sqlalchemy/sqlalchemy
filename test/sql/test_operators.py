@@ -184,7 +184,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         foo = ClauseList()
         assert_raises_message(
             exc.InvalidRequestError,
-            r"in_\(\) accepts either a list of expressions or a selectable:",
+            r"in_\(\) accepts either a list of expressions, a selectable",
             left.in_, [foo]
         )
 
@@ -193,7 +193,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         right = column('right')
         assert_raises_message(
             exc.InvalidRequestError,
-            r"in_\(\) accepts either a list of expressions or a selectable:",
+            r"in_\(\) accepts either a list of expressions, a selectable",
             left.in_, right
         )
 
@@ -210,7 +210,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         right = column('right', HasGetitem)
         assert_raises_message(
             exc.InvalidRequestError,
-            r"in_\(\) accepts either a list of expressions or a selectable:",
+            r"in_\(\) accepts either a list of expressions, a selectable",
             left.in_, right
         )
 
