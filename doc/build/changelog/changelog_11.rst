@@ -23,7 +23,7 @@
 
     .. change:: 3952
         :tags: bug, sql
-        :versions: 1.2.0.b1
+        :versions: 1.2.0b1
         :tickets: 3952
 
         Fixed regression released in 1.1.5 due to :ticket:`3859` where
