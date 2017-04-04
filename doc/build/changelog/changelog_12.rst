@@ -25,6 +25,22 @@
         check constraints in 0.9 as part of :ticket:`2742`, which more commonly
         feature Core SQL expressions as opposed to plain string expressions.
 
+    .. change:: 2626
+        :tags: bug, mssql
+        :tickets: 2626
+
+        The SQL Server dialect now allows for a database and/or owner name
+        with a dot inside of it, using brackets explicitly in the string around
+        the owner and optionally the database name as well.  In addition,
+        sending the :class:`.quoted_name` construct for the schema name will
+        not split on the dot and will deliver the full string as the "owner".
+        :class:`.quoted_name` is also now available from the ``sqlalchemy.sql``
+        import space.
+
+        .. seealso::
+
+            :ref:`change_2626`
+
     .. change:: 3923
         :tags: bug, sql
         :tickets: 3923

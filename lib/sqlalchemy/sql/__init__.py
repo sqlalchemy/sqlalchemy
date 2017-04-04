@@ -57,6 +57,7 @@ from .expression import (
     outerjoin,
     outparam,
     over,
+    quoted_name,
     select,
     subquery,
     table,

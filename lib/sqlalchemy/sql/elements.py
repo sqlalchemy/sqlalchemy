@@ -3905,8 +3905,8 @@ class quoted_name(util.MemoizedSlots, util.text_type):
     can be quoted.  Such as to use the :meth:`.Engine.has_table` method with
     an unconditionally quoted name::
 
-        from sqlaclchemy import create_engine
-        from sqlalchemy.sql.elements import quoted_name
+        from sqlalchemy import create_engine
+        from sqlalchemy.sql import quoted_name
 
         engine = create_engine("oracle+cx_oracle://some_dsn")
         engine.has_table(quoted_name("some_table", True))
@@ -3916,6 +3916,10 @@ class quoted_name(util.MemoizedSlots, util.text_type):
     upper case.
 
     .. versionadded:: 0.9.0
+
+    .. versionchanged:: 1.2 The :class:`.quoted_name` construct is now
+       importable from ``sqlalchemy.sql``, in addition to the previous
+       location of ``sqlalchemy.sql.elements``.
 
     """
 
