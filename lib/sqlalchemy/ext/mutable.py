@@ -600,7 +600,8 @@ class Mutable(MutableBase):
             for prop in mapper.column_attrs:
                 if (
                         schema_event_check and
-                        prop.columns[0].info.get('_ext_mutable_orig_type')
+                        hasattr(prop.expression, 'info') and
+                        prop.expression.info.get('_ext_mutable_orig_type')
                         is sqltype
                 ) or (
                     prop.columns[0].type is sqltype
