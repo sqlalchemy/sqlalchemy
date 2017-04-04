@@ -21,6 +21,15 @@
 .. changelog::
     :version: 1.1.9
 
+    .. change:: 3956
+        :tags: bug, ext
+        :tickets: 3956
+
+        Fixed regression released in 1.1.8 due to :ticket:`3950` where the
+        deeper search for information about column types in the case of a
+        "schema type" or a :class:`.TypeDecorator` would produce an attribute
+        error if the mapping also contained a :obj:`.column_property`.
+
     .. change:: 3952
         :tags: bug, sql
         :versions: 1.2.0b1

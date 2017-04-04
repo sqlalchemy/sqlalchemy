@@ -1,6 +1,6 @@
-from sqlalchemy import Integer, ForeignKey, String
+from sqlalchemy import Integer, ForeignKey, String, func
 from sqlalchemy.types import PickleType, TypeDecorator, VARCHAR
-from sqlalchemy.orm import mapper, Session, composite
+from sqlalchemy.orm import mapper, Session, composite, column_property
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.testing.schema import Table, Column
@@ -761,6 +761,8 @@ class MutableColumnCopyJSONTest(_MutableDictTestBase, fixtures.MappedTest):
 
         class Foo(AbstractFoo):
             __tablename__ = "foo"
+            column_prop = column_property(
+                func.lower(AbstractFoo.unrelated_data))
 
         assert Foo.data.property.columns[0].type is not AbstractFoo.data.type
 
