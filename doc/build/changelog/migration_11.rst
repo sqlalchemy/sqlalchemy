@@ -170,8 +170,8 @@ can instead be::
 
 .. _change_3499:
 
-Changes regarding "unhashable" types
-------------------------------------
+Changes regarding "unhashable" types, impacts deduping of ORM rows
+------------------------------------------------------------------
 
 The :class:`.Query` object has a well-known behavior of "deduping"
 returned rows that contain at least one ORM-mapped entity (e.g., a
@@ -197,6 +197,39 @@ flag is now set consistently for all of PostgreSQL's "structural" types.
 The "unhashable" flag is also set on the :class:`.NullType` type,
 as :class:`.NullType` is used to refer to any expression of unknown
 type.
+
+Since :class:`.NullType` is applied to most
+usages of :attr:`.func`, as :attr:`.func` doesn't actually know anything
+about the function names given in most cases, **using func() will
+often disable row deduping unless explicit typing is applied**.
+The following examples illustrate ``func.substr()`` applied to a string
+expression, and ``func.date()`` applied to a datetime expression; both
+examples will return duplicate rows due to the joined eager load unless
+explicit typing is applied::
+
+    result = session.query(
+        func.substr(A.some_thing, 0, 4), A
+    ).options(joinedload(A.bs)).all()
+
+    users = session.query(
+        func.date(
+            User.date_created, 'start of month'
+        ).label('month'),
+        User,
+    ).options(joinedload(User.orders)).all()
+
+The above examples, in order to retain deduping, should be specified as::
+
+    result = session.query(
+        func.substr(A.some_thing, 0, 4, type_=String), A
+    ).options(joinedload(A.bs)).all()
+
+    users = session.query(
+        func.date(
+            User.date_created, 'start of month', type_=DateTime
+        ).label('month'),
+        User,
+    ).options(joinedload(User.orders)).all()
 
 Additionally, the treatment of a so-called "unhashable" type is slightly
 different than its been in previous releases; internally we are using
