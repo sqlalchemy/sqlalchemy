@@ -1137,6 +1137,19 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALTER TABLE tbl ADD CHECK (a > 5)"
         )
 
+    def test_render_check_constraint_inline_sql_literal(self):
+        t, t2 = self._constraint_create_fixture()
+
+        m = MetaData()
+        t = Table(
+            't', m,
+            Column('a', Integer, CheckConstraint(Column('a', Integer) > 5)))
+
+        self.assert_compile(
+            schema.CreateColumn(t.c.a),
+            "a INTEGER CHECK (a > 5)"
+        )
+
     def test_render_index_sql_literal(self):
         t, t2 = self._constraint_create_fixture()
 

@@ -2602,7 +2602,9 @@ class DDLCompiler(Compiled):
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        text += "CHECK (%s)" % constraint.sqltext
+        text += "CHECK (%s)" % self.sql_compiler.process(constraint.sqltext,
+                                                         include_table=False,
+                                                         literal_binds=True)
         text += self.define_constraint_deferrability(constraint)
         return text
 
