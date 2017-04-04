@@ -13,6 +13,18 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3957
+        :tags: bug, sql
+        :tickets: 3957
+
+        Fixed bug where a column-level :class:`.CheckConstraint` would fail
+        to compile the SQL expression using the underlying dialect compiler
+        as well as apply proper flags to generate literal values as
+        inline, in the case that the sqltext is a Core expression and
+        not just a plain string.   This was long-ago fixed for table-level
+        check constraints in 0.9 as part of :ticket:`2742`, which more commonly
+        feature Core SQL expressions as opposed to plain string expressions.
+
     .. change:: 3923
         :tags: bug, sql
         :tickets: 3923
