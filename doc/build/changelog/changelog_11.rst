@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.9
+    :released: April 4, 2017
 
     .. change:: 3956
         :tags: bug, ext
