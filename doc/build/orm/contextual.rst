@@ -113,7 +113,7 @@ object is entirely designed to be used in a **non-concurrent** fashion, which
 in terms of multithreading means "only in one thread at a time".   So our
 above example of :class:`.scoped_session` usage, where the same :class:`.Session`
 object is maintained across multiple calls, suggests that some process needs
-to be in place such that mutltiple calls across many threads don't actually get
+to be in place such that multiple calls across many threads don't actually get
 a handle to the same session.   We call this notion **thread local storage**,
 which means, a special object is used that will maintain a distinct object
 per each application thread.   Python provides this via the
