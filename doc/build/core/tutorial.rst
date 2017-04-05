@@ -1857,7 +1857,7 @@ is the DISTINCT modifier.  A simple DISTINCT clause can be added using the
     >>> conn.execute(stmt).fetchall()
     {opensql}SELECT DISTINCT users.name
     FROM users, addresses
-    WHERE (addresses.email_address LIKE '%%' || users.name || '%%')
+    WHERE (addresses.email_address LIKE '%' || users.name || '%')
     ()
     {stop}[(u'jack',), (u'wendy',)]
 
@@ -2019,7 +2019,7 @@ The resulting SQL from the above statement would render as::
 
     UPDATE users SET name=:name FROM addresses
     WHERE users.id = addresses.id AND
-    addresses.email_address LIKE :email_address_1 || '%%'
+    addresses.email_address LIKE :email_address_1 || '%'
 
 When using MySQL, columns from each table can be assigned to in the
 SET clause directly, using the dictionary form passed to :meth:`.Update.values`::
@@ -2036,7 +2036,7 @@ The tables are referenced explicitly in the SET clause::
 
     UPDATE users, addresses SET addresses.email_address=%s,
             users.name=%s WHERE users.id = addresses.id
-            AND addresses.email_address LIKE concat(%s, '%%')
+            AND addresses.email_address LIKE concat(%s, '%')
 
 SQLAlchemy doesn't do anything special when these constructs are used on
 a non-supporting database.  The ``UPDATE FROM`` syntax generates by default

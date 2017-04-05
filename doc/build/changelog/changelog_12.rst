@@ -13,6 +13,24 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3740
+        :tags: bug, sql
+        :tickets: 3740
+
+        The system by which percent signs in SQL statements are "doubled"
+        for escaping purposes has been refined.   The "doubling" of percent
+        signs mostly associated with the :obj:`.literal_column` construct
+        as well as operators like :meth:`.ColumnOperators.contains` now
+        occurs based on the stated paramstyle of the DBAPI in use; for
+        percent-sensitive paramstyles as are common with the Postgresql
+        and MySQL drivers the doubling will occur, for others like that
+        of SQLite it will not.   This allows more database-agnostic use
+        of the :obj:`.literal_column` construct to be possible.
+
+        .. seealso::
+
+            :ref:`change_3740`
+
     .. change:: 3957
         :tags: bug, sql
         :tickets: 3957

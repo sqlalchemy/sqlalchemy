@@ -2258,56 +2258,56 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_contains(self):
         self.assert_compile(
             column('x').contains('y'),
-            "x LIKE '%%' || :x_1 || '%%'",
+            "x LIKE '%' || :x_1 || '%'",
             checkparams={'x_1': 'y'}
         )
 
     def test_contains_escape(self):
         self.assert_compile(
             column('x').contains('a%b_c', escape='\\'),
-            "x LIKE '%%' || :x_1 || '%%' ESCAPE '\\'",
+            "x LIKE '%' || :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a%b_c'}
         )
 
     def test_contains_autoescape(self):
         self.assert_compile(
             column('x').contains('a%b_c', autoescape='\\'),
-            "x LIKE '%%' || :x_1 || '%%' ESCAPE '\\'",
+            "x LIKE '%' || :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a\\%b\\_c'}
         )
 
     def test_contains_literal(self):
         self.assert_compile(
             column('x').contains(literal_column('y')),
-            "x LIKE '%%' || y || '%%'",
+            "x LIKE '%' || y || '%'",
             checkparams={}
         )
 
     def test_contains_text(self):
         self.assert_compile(
             column('x').contains(text('y')),
-            "x LIKE '%%' || y || '%%'",
+            "x LIKE '%' || y || '%'",
             checkparams={}
         )
 
     def test_not_contains(self):
         self.assert_compile(
             ~column('x').contains('y'),
-            "x NOT LIKE '%%' || :x_1 || '%%'",
+            "x NOT LIKE '%' || :x_1 || '%'",
             checkparams={'x_1': 'y'}
         )
 
     def test_not_contains_escape(self):
         self.assert_compile(
             ~column('x').contains('a%b_c', escape='\\'),
-            "x NOT LIKE '%%' || :x_1 || '%%' ESCAPE '\\'",
+            "x NOT LIKE '%' || :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a%b_c'}
         )
 
     def test_not_contains_autoescape(self):
         self.assert_compile(
             ~column('x').contains('a%b_c', autoescape='\\'),
-            "x NOT LIKE '%%' || :x_1 || '%%' ESCAPE '\\'",
+            "x NOT LIKE '%' || :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a\\%b\\_c'}
         )
 
@@ -2402,56 +2402,56 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_startswith(self):
         self.assert_compile(
             column('x').startswith('y'),
-            "x LIKE :x_1 || '%%'",
+            "x LIKE :x_1 || '%'",
             checkparams={'x_1': 'y'}
         )
 
     def test_startswith_escape(self):
         self.assert_compile(
             column('x').startswith('a%b_c', escape='\\'),
-            "x LIKE :x_1 || '%%' ESCAPE '\\'",
+            "x LIKE :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a%b_c'}
         )
 
     def test_startswith_autoescape(self):
         self.assert_compile(
             column('x').startswith('a%b_c', autoescape='\\'),
-            "x LIKE :x_1 || '%%' ESCAPE '\\'",
+            "x LIKE :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a\\%b\\_c'}
         )
 
     def test_not_startswith(self):
         self.assert_compile(
             ~column('x').startswith('y'),
-            "x NOT LIKE :x_1 || '%%'",
+            "x NOT LIKE :x_1 || '%'",
             checkparams={'x_1': 'y'}
         )
 
     def test_not_startswith_escape(self):
         self.assert_compile(
             ~column('x').startswith('a%b_c', escape='\\'),
-            "x NOT LIKE :x_1 || '%%' ESCAPE '\\'",
+            "x NOT LIKE :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a%b_c'}
         )
 
     def test_not_startswith_autoescape(self):
         self.assert_compile(
             ~column('x').startswith('a%b_c', autoescape='\\'),
-            "x NOT LIKE :x_1 || '%%' ESCAPE '\\'",
+            "x NOT LIKE :x_1 || '%' ESCAPE '\\'",
             checkparams={'x_1': 'a\\%b\\_c'}
         )
 
     def test_startswith_literal(self):
         self.assert_compile(
             column('x').startswith(literal_column('y')),
-            "x LIKE y || '%%'",
+            "x LIKE y || '%'",
             checkparams={}
         )
 
     def test_startswith_text(self):
         self.assert_compile(
             column('x').startswith(text('y')),
-            "x LIKE y || '%%'",
+            "x LIKE y || '%'",
             checkparams={}
         )
 
@@ -2506,56 +2506,56 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_endswith(self):
         self.assert_compile(
             column('x').endswith('y'),
-            "x LIKE '%%' || :x_1",
+            "x LIKE '%' || :x_1",
             checkparams={'x_1': 'y'}
         )
 
     def test_endswith_escape(self):
         self.assert_compile(
             column('x').endswith('a%b_c', escape='\\'),
-            "x LIKE '%%' || :x_1 ESCAPE '\\'",
+            "x LIKE '%' || :x_1 ESCAPE '\\'",
             checkparams={'x_1': 'a%b_c'}
         )
 
     def test_endswith_autoescape(self):
         self.assert_compile(
             column('x').endswith('a%b_c', autoescape='\\'),
-            "x LIKE '%%' || :x_1 ESCAPE '\\'",
+            "x LIKE '%' || :x_1 ESCAPE '\\'",
             checkparams={'x_1': 'a\\%b\\_c'}
         )
 
     def test_not_endswith(self):
         self.assert_compile(
             ~column('x').endswith('y'),
-            "x NOT LIKE '%%' || :x_1",
+            "x NOT LIKE '%' || :x_1",
             checkparams={'x_1': 'y'}
         )
 
     def test_not_endswith_escape(self):
         self.assert_compile(
             ~column('x').endswith('a%b_c', escape='\\'),
-            "x NOT LIKE '%%' || :x_1 ESCAPE '\\'",
+            "x NOT LIKE '%' || :x_1 ESCAPE '\\'",
             checkparams={'x_1': 'a%b_c'}
         )
 
     def test_not_endswith_autoescape(self):
         self.assert_compile(
             ~column('x').endswith('a%b_c', autoescape='\\'),
-            "x NOT LIKE '%%' || :x_1 ESCAPE '\\'",
+            "x NOT LIKE '%' || :x_1 ESCAPE '\\'",
             checkparams={'x_1': 'a\\%b\\_c'}
         )
 
     def test_endswith_literal(self):
         self.assert_compile(
             column('x').endswith(literal_column('y')),
-            "x LIKE '%%' || y",
+            "x LIKE '%' || y",
             checkparams={}
         )
 
     def test_endswith_text(self):
         self.assert_compile(
             column('x').endswith(text('y')),
-            "x LIKE '%%' || y",
+            "x LIKE '%' || y",
             checkparams={}
         )
 

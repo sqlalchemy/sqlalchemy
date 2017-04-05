@@ -455,18 +455,11 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    def visit_mod_binary(self, binary, operator, **kw):
-        return self.process(binary.left, **kw) + " %% " + \
-            self.process(binary.right, **kw)
-
-    def post_process_text(self, text):
-        return text.replace('%', '%%')
+    pass
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
-    def _escape_identifier(self, value):
-        value = value.replace(self.escape_quote, self.escape_to_quote)
-        return value.replace('%', '%%')
+    pass
 
 
 class PGDialect_psycopg2(PGDialect):
