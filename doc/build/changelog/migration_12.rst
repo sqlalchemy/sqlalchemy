@@ -645,6 +645,35 @@ is already applied.
 Dialect Improvements and Changes - PostgreSQL
 =============================================
 
+.. _change_3959:
+
+Support for fields specification in INTERVAL, including full reflection
+-----------------------------------------------------------------------
+
+The "fields" specifier in Postgresql's INTERVAL datatype allows specification
+of which fields of the interval to store, including such values as "YEAR",
+"MONTH", "YEAR TO MONTH", etc.   The :class:`.postgresql.INTERVAL` datatype
+now allows these values to be specified::
+
+    from sqlalchemy.dialects.postgresql import INTERVAL
+
+    Table(
+        'my_table', metadata,
+        Column("some_interval", INTERVAL(fields="DAY TO SECOND"))
+    )
+
+Additionally, all INTERVAL datatypes can now be reflected independently
+of the "fields" specifier present; the "fields" parameter in the datatype
+itself will also be present::
+
+    >>> inspect(engine).get_columns("my_table")
+    [{'comment': None,
+      'name': u'some_interval', 'nullable': True,
+      'default': None, 'autoincrement': False,
+      'type': INTERVAL(fields=u'day to second')}]
+
+:ticket:`3959`
+
 Dialect Improvements and Changes - MySQL
 =============================================
 

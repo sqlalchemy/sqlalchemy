@@ -31,6 +31,22 @@
 
             :ref:`change_3740`
 
+    .. change:: 3959
+        :tags: bug, postgresql
+        :tickets: 3959
+
+        Added support for all possible "fields" identifiers when reflecting the
+        Postgresql ``INTERVAL`` datatype, e.g. "YEAR", "MONTH", "DAY TO
+        MINUTE", etc..   In addition, the :class:`.postgresql.INTERVAL`
+        datatype itself now includes a new parameter
+        :paramref:`.postgresql.INTERVAL.fields` where these qualifiers can be
+        specified; the qualifier is also reflected back into the resulting
+        datatype upon reflection / inspection.
+
+        .. seealso::
+
+            :ref:`change_3959`
+
     .. change:: 3957
         :tags: bug, sql
         :tickets: 3957

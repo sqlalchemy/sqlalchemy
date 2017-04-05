@@ -13,7 +13,7 @@ from sqlalchemy import Table, Column, MetaData, Integer, String, \
 from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL
 import re
 
 
@@ -1069,3 +1069,61 @@ class CustomTypeReflectionTest(fixtures.TestBase):
         dialect.ischema_names = dialect.ischema_names.copy()
         dialect.ischema_names['my_custom_type'] = self.CustomType
         self._assert_reflected(dialect)
+
+
+class IntervalReflectionTest(fixtures.TestBase):
+    __only_on__ = 'postgresql'
+    __backend__ = True
+
+    def test_interval_types(self):
+        for sym in [
+            "YEAR",
+            "MONTH",
+            "DAY",
+            "HOUR",
+            "MINUTE",
+            "SECOND",
+            "YEAR TO MONTH",
+            "DAY TO HOUR",
+            "DAY TO MINUTE",
+            "DAY TO SECOND",
+            "HOUR TO MINUTE",
+            "HOUR TO SECOND",
+            "MINUTE TO SECOND",
+        ]:
+            self._test_interval_symbol(sym)
+
+    @testing.provide_metadata
+    def _test_interval_symbol(self, sym):
+        t = Table(
+            'i_test', self.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data1', INTERVAL(fields=sym)),
+        )
+        t.create(testing.db)
+
+        columns = {
+            rec['name']: rec
+            for rec in inspect(testing.db).get_columns("i_test")
+        }
+        assert isinstance(columns["data1"]["type"], INTERVAL)
+        eq_(columns["data1"]["type"].fields, sym.lower())
+        eq_(columns["data1"]["type"].precision, None)
+
+    @testing.provide_metadata
+    def test_interval_precision(self):
+        t = Table(
+            'i_test', self.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data1', INTERVAL(precision=6)),
+        )
+        t.create(testing.db)
+
+        columns = {
+            rec['name']: rec
+            for rec in inspect(testing.db).get_columns("i_test")
+        }
+        assert isinstance(columns["data1"]["type"], INTERVAL)
+        eq_(columns["data1"]["type"].fields, None)
+        eq_(columns["data1"]["type"].precision, 6)
+

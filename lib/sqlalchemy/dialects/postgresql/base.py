@@ -962,8 +962,19 @@ class INTERVAL(sqltypes.TypeEngine):
     """
     __visit_name__ = 'INTERVAL'
 
-    def __init__(self, precision=None):
+    def __init__(self, precision=None, fields=None):
+        """Construct an INTERVAL.
+
+        :param precision: optional integer precision value
+        :param fields: string fields specifier.  allows storage of fields
+         to be limited, such as ``"YEAR"``, ``"MONTH"``, ``"DAY TO HOUR"``,
+         etc.
+
+         .. versionadded:: 1.2
+
+        """
         self.precision = precision
+        self.fields = fields
 
     @classmethod
     def _adapt_from_generic_interval(cls, interval):
@@ -1301,8 +1312,6 @@ ischema_names = {
     'bytea': BYTEA,
     'boolean': BOOLEAN,
     'interval': INTERVAL,
-    'interval year to month': INTERVAL,
-    'interval day to second': INTERVAL,
     'tsvector': TSVECTOR
 }
 
@@ -1827,10 +1836,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         )
 
     def visit_INTERVAL(self, type_, **kw):
+        text = "INTERVAL"
+        if type_.fields is not None:
+            text += " " + type_.fields
         if type_.precision is not None:
-            return "INTERVAL(%d)" % type_.precision
-        else:
-            return "INTERVAL"
+            text += " (%d)" % type_.precision
+        return text
 
     def visit_BIT(self, type_, **kw):
         if type_.varying:
@@ -2489,10 +2500,13 @@ class PGDialect(default.DefaultDialect):
                 args = (int(charlen),)
             else:
                 args = ()
-        elif attype in ('interval', 'interval year to month',
-                        'interval day to second'):
+        elif attype.startswith('interval'):
+            field_match = re.match(r'interval (.+)', attype, re.I)
             if charlen:
                 kwargs['precision'] = int(charlen)
+            if field_match:
+                kwargs['fields'] = field_match.group(1)
+            attype = "interval"
             args = ()
         elif charlen:
             args = (int(charlen),)
