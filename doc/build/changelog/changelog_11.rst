@@ -21,6 +21,16 @@
 .. changelog::
     :version: 1.1.10
 
+    .. change:: 3961
+        :tags: bug, mysql
+        :tickets: 3961
+
+        Fixed bug in MySQL dialect regarding rendering of table options in
+        conjunction with PARTITION options when rendering CREATE TABLE.
+        The PARTITION related options need to follow the table options,
+        whereas previously this ordering was not enforced.
+
+
 .. changelog::
     :version: 1.1.9
     :released: April 4, 2017
