@@ -128,7 +128,7 @@ from .schema import (
 from .inspection import inspect
 from .engine import create_engine, engine_from_config
 
-__version__ = '1.1.9'
+__version__ = '1.1.10'
 
 
 def __go(lcls):
