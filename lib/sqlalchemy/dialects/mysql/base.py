@@ -1032,11 +1032,18 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if table.comment is not None:
             opts['COMMENT'] = table.comment
 
+        partition_options = [
+            'PARTITION_BY', 'PARTITIONS', 'SUBPARTITIONS',
+            'SUBPARTITION_BY'
+        ]
+
+        nonpart_options = set(opts).difference(partition_options)
+        part_options = set(opts).intersection(partition_options)
+
         for opt in topological.sort([
             ('DEFAULT_CHARSET', 'COLLATE'),
             ('DEFAULT_CHARACTER_SET', 'COLLATE'),
-            ('PARTITION_BY', 'PARTITIONS'),  # only for test consistency
-        ], opts):
+        ], nonpart_options):
             arg = opts[opt]
             if opt in _reflection._options_of_type_string:
                 arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
@@ -1044,16 +1051,33 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
                        'DEFAULT_CHARACTER_SET', 'CHARACTER_SET',
                        'DEFAULT_CHARSET',
-                       'DEFAULT_COLLATE', 'PARTITION_BY'):
+                       'DEFAULT_COLLATE'):
                 opt = opt.replace('_', ' ')
 
             joiner = '='
             if opt in ('TABLESPACE', 'DEFAULT CHARACTER SET',
-                       'CHARACTER SET', 'COLLATE',
-                       'PARTITION BY', 'PARTITIONS'):
+                       'CHARACTER SET', 'COLLATE'):
                 joiner = ' '
 
             table_opts.append(joiner.join((opt, arg)))
+
+        for opt in topological.sort([
+            ('PARTITION_BY', 'PARTITIONS'),
+            ('PARTITION_BY', 'SUBPARTITION_BY'),
+            ('PARTITION_BY', 'SUBPARTITIONS'),
+            ('PARTITIONS', 'SUBPARTITIONS'),
+            ('PARTITIONS', 'SUBPARTITION_BY'),
+            ('SUBPARTITION_BY', 'SUBPARTITIONS')
+        ], part_options):
+            arg = opts[opt]
+            if opt in _reflection._options_of_type_string:
+                arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
+
+            opt = opt.replace('_', ' ')
+            joiner = ' '
+
+            table_opts.append(joiner.join((opt, arg)))
+
         return ' '.join(table_opts)
 
     def visit_create_index(self, create):
