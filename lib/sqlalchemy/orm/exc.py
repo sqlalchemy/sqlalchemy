@@ -71,7 +71,7 @@ class UnmappedInstanceError(UnmappedError):
                 base.class_mapper(type(obj))
                 name = _safe_cls_name(type(obj))
                 msg = ("Class %r is mapped, but this instance lacks "
-                       "instrumentation.  This occurs when the instance"
+                       "instrumentation.  This occurs when the instance "
                        "is created before sqlalchemy.orm.mapper(%s) "
                        "was called." % (name, name))
             except UnmappedClassError:
