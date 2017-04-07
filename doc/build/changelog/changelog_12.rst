@@ -42,6 +42,22 @@
         that the loader options will match to an aliased or non-aliased
         entity more specifically if those options include entity information.
 
+    .. change:: 3954
+        :tags: feature, orm
+        :tickets: 3954
+
+        The ``lazy="select"`` loader strategy now makes used of the
+        :class:`.BakedQuery` query caching system in all cases.  This
+        removes most overhead of generating a :class:`.Query` object and
+        running it into a :func:`.select` and then string SQL statement from
+        the process of lazy-loading related collections and objects.  The
+        "baked" lazy loader has also been improved such that it can now
+        cache in most cases where query load options are used.
+
+        .. seealso::
+
+            :ref:`change_3954`
+
     .. change:: 3740
         :tags: bug, sql
         :tickets: 3740

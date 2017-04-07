@@ -2721,7 +2721,7 @@ class Mapper(InspectionAttr):
         return util.LRUCache(self._compiled_cache_size,
                              size_alert=self._alert_lru_cache_limit)
 
-    def _alert_lru_cache_limit(self):
+    def _alert_lru_cache_limit(self, lru_cache):
         util.warn(
             "Compiled statement cache for mapper %s is "
             "reaching its size threshold of %d, based on _compiled_cache_size "
@@ -2730,7 +2730,7 @@ class Mapper(InspectionAttr):
             "#faq_compiled_cache_threshold"
             " for best practices." %
             (self,
-             self._compiled_cache.size_threshold,
+             lru_cache.size_threshold,
              self._compiled_cache_size))
 
     @_memoized_configured_property

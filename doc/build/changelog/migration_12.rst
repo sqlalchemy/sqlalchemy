@@ -34,6 +34,42 @@ SQLAlchemy is currently tested on versions 3.5 and 3.6.
 New Features and Improvements - ORM
 ===================================
 
+.. _change_3954:
+
+"Baked" loading now the default for lazy loads
+----------------------------------------------
+
+The :mod:`sqlalchemy.ext.baked` extension, first introduced in the 1.0 series,
+allows for the construction of a so-called :class:`.BakedQuery` object,
+which is an object that generates a :class:`.Query` object in conjunction
+with a cache key representing the structure of the query; this cache key
+is then linked to the resulting string SQL statement so that subsequent use
+of another :class:`.BakedQuery` with the same structure will bypass all the
+overhead of building the :class:`.Query` object, building the core
+:func:`.select` object within, as well as the compilation of the :func:`.select`
+into a string, cutting out well the majority of function call overhead normally
+associated with constructing and emitting an ORM :class:`.Query` object.
+
+The :class:`.BakedQuery` is now used by default by the ORM when it generates
+a "lazy" query for the lazy load of a :func:`.relationship` construct, e.g.
+that of the default ``lazy="select"`` relationship loader strategy.  This
+will allow for a significant reduction in function calls within the scope
+of an application's use of lazy load queries to load collections and related
+objects.   Previously, this feature was available
+in 1.0 and 1.1 through the use of a global API method or by using the
+``baked_select`` strategy, it's now the only implementation for this behavior.
+The feature has also been improved such that the caching can still take place
+for objects that have additional loader options in effect subsequent
+to the lazy load.
+
+The caching behavior can be disabled on a per-relationship basis using the
+:paramref:`.relationship.bake_queries` flag, which is available for
+very unusual cases, such as a relationship that uses a custom
+:class:`.Query` implementation that's not compatible with caching.
+
+
+:ticket:`3954`
+
 .. _change_3229:
 
 Support for bulk updates of hybrids, composites

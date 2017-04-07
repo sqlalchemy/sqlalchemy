@@ -1039,6 +1039,19 @@ def was_deleted(object):
     state = attributes.instance_state(object)
     return state.was_deleted
 
+def _entity_corresponds_to(given, entity):
+    if entity.is_aliased_class:
+        if given.is_aliased_class:
+            if entity._base_alias is given._base_alias:
+                return True
+        return False
+    elif given.is_aliased_class:
+        if given._use_mapper_path:
+            return entity in given.with_polymorphic_mappers
+        else:
+            return entity is given
+
+    return entity.common_parent(given)
 
 def randomize_unitofwork():
     """Use random-ordering sets within the unit of work in order
