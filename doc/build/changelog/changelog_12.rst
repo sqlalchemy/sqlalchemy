@@ -13,6 +13,15 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3963
+        :tags: bug, orm
+        :tickets: 3963
+
+        Fixed bug to improve upon the specificity of loader options that
+        take effect subsequent to the lazy load of a related entity, so
+        that the loader options will match to an aliased or non-aliased
+        entity more specifically if those options include entity information.
+
     .. change:: 3740
         :tags: bug, sql
         :tickets: 3740

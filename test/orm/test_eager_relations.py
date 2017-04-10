@@ -4362,6 +4362,165 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
         )
 
 
+class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
+    """test for [ticket:3963]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey('a.id'))
+            cs = relationship("C")
+
+        class C(Base):
+            __tablename__ = 'c'
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey('b.id'))
+
+    @classmethod
+    def insert_data(cls):
+        A, B, C = cls.classes("A", "B", "C")
+        s = Session()
+        s.add(A(id=1, bs=[B(cs=[C()])]))
+        s.add(A(id=2))
+        s.commit()
+
+    def _run_tests(self, query, expected):
+        def go():
+            for a, _ in query:
+                for b in a.bs:
+                    b.cs
+        self.assert_sql_count(testing.db, go, expected)
+
+    def test_string_options_aliased_whatever(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(
+            joinedload("bs").joinedload("cs"))
+        self._run_tests(q, 1)
+
+    def test_string_options_unaliased_whatever(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(A, aa).filter(
+            aa.id == 2).filter(A.id == 1).options(
+            joinedload("bs").joinedload("cs"))
+        self._run_tests(q, 1)
+
+    def test_lazyload_aliased_abs_bcs_one(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(
+            joinedload(A.bs).joinedload(B.cs))
+        self._run_tests(q, 3)
+
+    def test_lazyload_aliased_abs_bcs_two(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(
+            defaultload(A.bs).joinedload(B.cs))
+        self._run_tests(q, 3)
+
+    def test_pathed_lazyload_aliased_abs_bcs(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        opt = Load(A).joinedload(A.bs).joinedload(B.cs)
+
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(opt)
+        self._run_tests(q, 3)
+
+    def test_pathed_lazyload_plus_joined_aliased_abs_bcs(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        opt = Load(aa).defaultload(aa.bs).joinedload(B.cs)
+
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(opt)
+        self._run_tests(q, 2)
+
+    def test_pathed_joinedload_aliased_abs_bcs(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        opt = Load(aa).joinedload(aa.bs).joinedload(B.cs)
+
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(opt)
+        self._run_tests(q, 1)
+
+    def test_lazyload_plus_joined_aliased_abs_bcs(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(
+            defaultload(aa.bs).joinedload(B.cs))
+        self._run_tests(q, 2)
+
+    def test_joinedload_aliased_abs_bcs(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(aa, A).filter(
+            aa.id == 1).filter(A.id == 2).options(
+            joinedload(aa.bs).joinedload(B.cs))
+        self._run_tests(q, 1)
+
+    def test_lazyload_unaliased_abs_bcs_one(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(A, aa).filter(
+            aa.id == 2).filter(A.id == 1).options(
+            joinedload(aa.bs).joinedload(B.cs))
+        self._run_tests(q, 3)
+
+    def test_lazyload_unaliased_abs_bcs_two(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(A, aa).filter(
+            aa.id == 2).filter(A.id == 1).options(
+            defaultload(aa.bs).joinedload(B.cs))
+        self._run_tests(q, 3)
+
+    def test_lazyload_plus_joined_unaliased_abs_bcs(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(A, aa).filter(
+            aa.id == 2).filter(A.id == 1).options(
+            defaultload(A.bs).joinedload(B.cs))
+        self._run_tests(q, 2)
+
+    def test_joinedload_unaliased_abs_bcs(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = Session()
+        aa = aliased(A)
+        q = s.query(A, aa).filter(
+            aa.id == 2).filter(A.id == 1).options(
+            joinedload(A.bs).joinedload(B.cs))
+        self._run_tests(q, 1)
+
+
 class EntityViaMultiplePathTestThree(fixtures.DeclarativeMappedTest):
     """test for [ticket:3811] continuing on [ticket:3431]"""
 

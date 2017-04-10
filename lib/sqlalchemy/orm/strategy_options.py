@@ -376,7 +376,8 @@ class _UnboundLoad(Load):
                         _WILDCARD_TOKEN,) and c_token != p_prop.key:
                     return None
             elif isinstance(c_token, PropComparator):
-                if c_token.property is not p_prop:
+                if c_token.property is not p_prop or \
+                        c_token._parententity is not p_mapper:
                     return None
         else:
             i += 1
