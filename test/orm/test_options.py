@@ -306,6 +306,54 @@ class OptionsTest(PathTest, QueryTest):
         opt = self._option_fixture(Order.items, Item.keywords)
         self._assert_path_result(opt, q, [])
 
+    def test_with_current_nonmatching_entity(self):
+        Item, User, Order = (self.classes.Item,
+                             self.classes.User,
+                             self.classes.Order)
+
+        sess = Session()
+        q = sess.query(Item)._with_current_path(
+            self._make_path_registry(
+                [inspect(aliased(User)), 'orders', Order, 'items'])
+        )
+
+        opt = self._option_fixture(User.orders)
+        self._assert_path_result(opt, q, [])
+
+        opt = self._option_fixture(User.orders, Order.items, Item.keywords)
+        self._assert_path_result(opt, q, [])
+
+        q = sess.query(Item)._with_current_path(
+            self._make_path_registry(
+                [User, 'orders', Order, 'items'])
+        )
+
+        ac = aliased(User)
+
+        opt = self._option_fixture(ac.orders)
+        self._assert_path_result(opt, q, [])
+
+        opt = self._option_fixture(ac.orders, Order.items, Item.keywords)
+        self._assert_path_result(opt, q, [])
+
+    def test_with_current_match_aliased_classes(self):
+        Item, User, Order = (self.classes.Item,
+                             self.classes.User,
+                             self.classes.Order)
+
+        ac = aliased(User)
+        sess = Session()
+        q = sess.query(Item)._with_current_path(
+            self._make_path_registry(
+                [inspect(ac), 'orders', Order, 'items'])
+        )
+
+        opt = self._option_fixture(ac.orders, Order.items, Item.keywords)
+        self._assert_path_result(opt, q, [(Item, "keywords")])
+
+        opt = self._option_fixture(ac.orders, Order.items)
+        self._assert_path_result(opt, q, [])
+
     def test_from_base_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
