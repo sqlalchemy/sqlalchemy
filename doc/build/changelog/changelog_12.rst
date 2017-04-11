@@ -13,6 +13,13 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3964
+        :tags: bug, postgresql
+        :tickets: 3964
+
+        Fixed bug where the base :class:`.sqltypes.ARRAY` datatype would not
+        invoke the bind/result processors of :class:`.postgresql.ARRAY`.
+
     .. change:: 3963
         :tags: bug, orm
         :tickets: 3963

@@ -2061,7 +2061,7 @@ class JSON(Indexable, TypeEngine):
         return process
 
 
-class ARRAY(Indexable, Concatenable, TypeEngine):
+class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     """Represent a SQL Array type.
 
     .. note::  This type serves as the basis for all ARRAY operations.
@@ -2199,6 +2199,11 @@ class ARRAY(Indexable, Concatenable, TypeEngine):
 
             return operators.getitem, index, return_type
 
+        def contains(self, *arg, **kw):
+            raise NotImplementedError(
+                "ARRAY.contains() not implemented for the base "
+                "ARRAY type; please use the dialect-specific ARRAY type")
+
         @util.dependencies("sqlalchemy.sql.elements")
         def any(self, elements, other, operator=None):
             """Return ``other operator ANY (array)`` clause.
@@ -2324,6 +2329,18 @@ class ARRAY(Indexable, Concatenable, TypeEngine):
 
     def compare_values(self, x, y):
         return x == y
+
+    def _set_parent(self, column):
+        """Support SchemaEventTarget"""
+
+        if isinstance(self.item_type, SchemaEventTarget):
+            self.item_type._set_parent(column)
+
+    def _set_parent_with_dispatch(self, parent):
+        """Support SchemaEventTarget"""
+
+        if isinstance(self.item_type, SchemaEventTarget):
+            self.item_type._set_parent_with_dispatch(parent)
 
 
 class REAL(Float):

@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .base import ischema_names
+from .base import ischema_names, colspecs
 from ...sql import expression, operators
 from ...sql.base import SchemaEventTarget
 from ... import types as sqltypes
@@ -114,7 +114,7 @@ CONTAINED_BY = operators.custom_op("<@", precedence=5)
 OVERLAP = operators.custom_op("&&", precedence=5)
 
 
-class ARRAY(SchemaEventTarget, sqltypes.ARRAY):
+class ARRAY(sqltypes.ARRAY):
 
     """PostgreSQL ARRAY type.
 
@@ -248,18 +248,6 @@ class ARRAY(SchemaEventTarget, sqltypes.ARRAY):
     def compare_values(self, x, y):
         return x == y
 
-    def _set_parent(self, column):
-        """Support SchemaEventTarget"""
-
-        if isinstance(self.item_type, SchemaEventTarget):
-            self.item_type._set_parent(column)
-
-    def _set_parent_with_dispatch(self, parent):
-        """Support SchemaEventTarget"""
-
-        if isinstance(self.item_type, SchemaEventTarget):
-            self.item_type._set_parent_with_dispatch(parent)
-
     def _proc_array(self, arr, itemproc, dim, collection):
         if dim is None:
             arr = list(arr)
@@ -311,4 +299,5 @@ class ARRAY(SchemaEventTarget, sqltypes.ARRAY):
                     tuple if self.as_tuple else list)
         return process
 
+colspecs[sqltypes.ARRAY] = ARRAY
 ischema_names['_array'] = ARRAY
