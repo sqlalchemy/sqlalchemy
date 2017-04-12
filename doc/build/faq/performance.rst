@@ -483,11 +483,11 @@ is occurring:
   mailing list support is at: http://www.sqlalchemy.org/support.html#mailinglist
 
 The cache works by creating a cache key that can uniquely identify the
-combination of a specific **dialect** and a specific **Core SQL expression**.
+combination of a specific dialect and a specific Core SQL expression.
 A cache key that already exists in the cache will reuse the already-compiled
 SQL expression.  A cache key that doesn't exist will create a *new* entry
 in the dictionary.   When this dictionary reaches the configured threshhold,
-the LRU cache will *trim the size* of the cache back down by a certain percentage.
+the LRU cache will trim the size of the cache back down by a certain percentage.
 
 It is important to understand that from the above, **a compiled cache that
 is reaching its size limit will perform badly.**   This is because not only
@@ -498,7 +498,7 @@ its size back down.
 The primary reason the compiled caches can grow is due to the **antipattern of
 using a new Engine for every operation**.   Because the compiled cache
 must key on the :class:`.Dialect` associated with an :class:`.Engine`,
-calling :func`.create_engine` many times in an application will establish
+calling :func:`.create_engine` many times in an application will establish
 new cache entries for every engine.   Because the cache is self-trimming,
 the application won't grow in size unbounded, however the application should
 be repaired to not rely on an unbounded number of :class:`.Engine`
