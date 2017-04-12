@@ -147,6 +147,36 @@ class MemUsageTest(EnsureZeroed):
             to_unicode_processor_factory('utf8')
         go()
 
+    def test_ad_hoc_types(self):
+        """test storage of bind processors, result processors
+        in dialect-wide registry."""
+
+        from sqlalchemy.dialects import mysql, postgresql, sqlite
+        from sqlalchemy import types
+
+        eng = engines.testing_engine()
+        for args in (
+            (types.Integer, ),
+            (types.String, ),
+            (types.PickleType, ),
+            (types.Enum, 'a', 'b', 'c'),
+            (sqlite.DATETIME, ),
+            (postgresql.ENUM, 'a', 'b', 'c'),
+            (types.Interval, ),
+            (postgresql.INTERVAL, ),
+            (mysql.VARCHAR, ),
+        ):
+            @profile_memory()
+            def go():
+                type_ = args[0](*args[1:])
+                bp = type_._cached_bind_processor(eng.dialect)
+                rp = type_._cached_result_processor(eng.dialect, 0)
+                bp, rp  # strong reference
+            go()
+
+        assert not eng.dialect._type_memos
+
+
 class MemUsageWBackendTest(EnsureZeroed):
 
     __tags__ = 'memory_intensive',
@@ -301,35 +331,6 @@ class MemUsageWBackendTest(EnsureZeroed):
         metadata.drop_all()
         del m1, m2, m3
         assert_no_mappers()
-
-    def test_ad_hoc_types(self):
-        """test storage of bind processors, result processors
-        in dialect-wide registry."""
-
-        from sqlalchemy.dialects import mysql, postgresql, sqlite
-        from sqlalchemy import types
-
-        eng = engines.testing_engine()
-        for args in (
-            (types.Integer, ),
-            (types.String, ),
-            (types.PickleType, ),
-            (types.Enum, 'a', 'b', 'c'),
-            (sqlite.DATETIME, ),
-            (postgresql.ENUM, 'a', 'b', 'c'),
-            (types.Interval, ),
-            (postgresql.INTERVAL, ),
-            (mysql.VARCHAR, ),
-        ):
-            @profile_memory()
-            def go():
-                type_ = args[0](*args[1:])
-                bp = type_._cached_bind_processor(eng.dialect)
-                rp = type_._cached_result_processor(eng.dialect, 0)
-                bp, rp  # strong reference
-            go()
-
-        assert not eng.dialect._type_memos
 
     @testing.emits_warning("Compiled statement cache for.*")
     def test_many_updates(self):
