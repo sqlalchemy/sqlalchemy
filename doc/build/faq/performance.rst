@@ -459,3 +459,54 @@ Script::
         test_sqlalchemy_core(100000)
         test_sqlite3(100000)
 
+
+.. _faq_compiled_cache_threshold:
+
+How do I deal with "compiled statement cache reaching its size threshhold"?
+-----------------------------------------------------------------------------
+
+Some parts of the ORM make use of a least-recently-used (LRU) cache in order
+to cache generated SQL statements for fast reuse.  More generally, these
+areas are making use of the "compiled cache" feature of :class:`.Connection`
+which can be invoked using :meth:`.Connection.execution_options`.
+
+The following two points summarize what should be done if this warning
+is occurring:
+
+* Ensure the application **does not create an arbitrary number of
+  Engine objects**, that is, it does not call :func:`.create_engine` on
+  a per-operation basis.  An application should have only **one Engine per
+  database URL**.
+
+* If the application does not have an unbounded number of engines,
+  **report the warning to the SQLAlchemy developers**.   Guidelines on
+  mailing list support is at: http://www.sqlalchemy.org/support.html#mailinglist
+
+The cache works by creating a cache key that can uniquely identify the
+combination of a specific **dialect** and a specific **Core SQL expression**.
+A cache key that already exists in the cache will reuse the already-compiled
+SQL expression.  A cache key that doesn't exist will create a *new* entry
+in the dictionary.   When this dictionary reaches the configured threshhold,
+the LRU cache will *trim the size* of the cache back down by a certain percentage.
+
+It is important to understand that from the above, **a compiled cache that
+is reaching its size limit will perform badly.**   This is because not only
+are the SQL statements being freshly compiled into strings rather than using
+the cached version, but the LRU cache is also spending lots of time trimming
+its size back down.
+
+The primary reason the compiled caches can grow is due to the **antipattern of
+using a new Engine for every operation**.   Because the compiled cache
+must key on the :class:`.Dialect` associated with an :class:`.Engine`,
+calling :func`.create_engine` many times in an application will establish
+new cache entries for every engine.   Because the cache is self-trimming,
+the application won't grow in size unbounded, however the application should
+be repaired to not rely on an unbounded number of :class:`.Engine`
+objects.
+
+Outside of this pattern, the default size limits set for these caches within
+the ORM should not generally require adjustment, and the LRU boundaries
+should never be reached.  If this warning is occurring and the application
+is not generating hundreds of engines, please report the issue to the
+SQLAlchemy developers on the mailing list; see the guidelines
+at http://www.sqlalchemy.org/support.html#mailinglist.

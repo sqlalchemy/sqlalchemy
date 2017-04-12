@@ -13,6 +13,19 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change::
+        :tags: bug, orm
+
+        Added warnings to the LRU "compiled cache" used by the :class:`.Mapper`
+        (and ultimately will be for other ORM-based LRU caches) such that
+        when the cache starts hitting its size limits, the application will
+        emit a warning that this is a performance-degrading situation that
+        may require attention.   The LRU caches can reach their size limits
+        primarily if an application is making use of an unbounded number
+        of :class:`.Engine` objects, which is an antipattern.  Otherwise,
+        this may suggest an issue that should be brought to the SQLAlchemy
+        developer's attention.
+
     .. change:: 3964
         :tags: bug, postgresql
         :tickets: 3964

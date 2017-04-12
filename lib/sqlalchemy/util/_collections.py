@@ -868,9 +868,12 @@ class LRUCache(dict):
 
     """
 
-    def __init__(self, capacity=100, threshold=.5):
+    __slots__ = 'capacity', 'threshold', 'size_alert', '_counter', '_mutex'
+
+    def __init__(self, capacity=100, threshold=.5, size_alert=None):
         self.capacity = capacity
         self.threshold = threshold
+        self.size_alert = size_alert
         self._counter = 0
         self._mutex = threading.Lock()
 
@@ -910,11 +913,19 @@ class LRUCache(dict):
             item[1] = value
         self._manage_size()
 
+    @property
+    def size_threshold(self):
+        return self.capacity + self.capacity * self.threshold
+
     def _manage_size(self):
         if not self._mutex.acquire(False):
             return
         try:
+            size_alert = bool(self.size_alert)
             while len(self) > self.capacity + self.capacity * self.threshold:
+                if size_alert:
+                    size_alert = False
+                    self.size_alert()
                 by_counter = sorted(dict.values(self),
                                     key=operator.itemgetter(2),
                                     reverse=True)

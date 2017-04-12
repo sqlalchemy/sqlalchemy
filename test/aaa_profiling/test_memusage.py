@@ -34,7 +34,7 @@ class ASub(A):
     pass
 
 
-def profile_memory(maxtimes=50,
+def profile_memory(maxtimes=250,
                    assert_no_sessions=True, get_num_objects=None):
     def decorate(func):
         # run the test N times.  if length of gc.get_objects()
@@ -55,9 +55,10 @@ def profile_memory(maxtimes=50,
         def profile(*args):
             gc_collect()
             samples = []
-
+            max_ = 0
+            max_grew_for = 0
             success = False
-            for y in range(100 // 5):
+            for y in range(maxtimes // 5):
                 for x in range(5):
                     func(*args)
                     gc_collect()
@@ -71,35 +72,28 @@ def profile_memory(maxtimes=50,
                 if assert_no_sessions:
                     assert len(_sessions) == 0
 
-                # check for "flatline" - size is constant for
-                # 5 iterations
-                for x in samples[-4:]:
-                    if x != samples[-5]:
-                        break
+                latest_max = max(samples[-5:])
+                if latest_max > max_:
+                    print(
+                        "Max grew from %s to %s, max has "
+                        "grown for %s samples" % (
+                            max_, latest_max, max_grew_for
+                        )
+                    )
+                    max_ = latest_max
+                    max_grew_for += 1
+                    continue
                 else:
-                    success = True
-
-                if not success:
-                    # object count is bigger than when it started
-                    if samples[-1] > samples[0]:
-                        for x in samples[1:-2]:
-                            # see if a spike bigger than the endpoint exists
-                            if x > samples[-1]:
-                                success = True
-                                break
-                    else:
+                    print("Max remained at %s, %s more attempts left" %
+                          (max_, max_grew_for))
+                    max_grew_for -= 1
+                    if max_grew_for == 0:
                         success = True
-
-                # if we saw count go down or flatline,
-                # we're done
-                if success:
-                    break
-
-                # else keep trying until maxtimes
-
+                        break
             else:
                 assert False, repr(samples)
 
+            assert success
         return profile
     return decorate
 
@@ -204,6 +198,7 @@ class MemUsageTest(EnsureZeroed):
             del sessmaker
         go()
 
+    @testing.emits_warning("Compiled statement cache for.*")
     @testing.crashes('sqlite', ':memory: connection not suitable here')
     def test_orm_many_engines(self):
         metadata = MetaData(self.engine)
@@ -224,10 +219,10 @@ class MemUsageTest(EnsureZeroed):
         m1 = mapper(A, table1, properties={
             "bs": relationship(B, cascade="all, delete",
                                order_by=table2.c.col1)},
-                    _compiled_cache_size=10
+                    _compiled_cache_size=50
                     )
         m2 = mapper(B, table2,
-                    _compiled_cache_size=10
+                    _compiled_cache_size=50
                     )
 
         m3 = mapper(A, table1, non_primary=True)
@@ -301,6 +296,7 @@ class MemUsageTest(EnsureZeroed):
 
         assert not eng.dialect._type_memos
 
+    @testing.emits_warning("Compiled statement cache for.*")
     def test_many_updates(self):
         metadata = MetaData(self.engine)
 
