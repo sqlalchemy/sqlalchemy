@@ -113,6 +113,41 @@ class EnsureZeroed(fixtures.ORMTest):
 
 
 class MemUsageTest(EnsureZeroed):
+    __tags__ = 'memory_intensive',
+    __requires__ = 'cpython',
+
+    def test_type_compile(self):
+        from sqlalchemy.dialects.sqlite.base import dialect as SQLiteDialect
+        cast = sa.cast(column('x'), sa.Integer)
+
+        @profile_memory()
+        def go():
+            dialect = SQLiteDialect()
+            cast.compile(dialect=dialect)
+        go()
+
+    @testing.requires.cextensions
+    def test_DecimalResultProcessor_init(self):
+        @profile_memory()
+        def go():
+            to_decimal_processor_factory({}, 10)
+        go()
+
+    @testing.requires.cextensions
+    def test_DecimalResultProcessor_process(self):
+        @profile_memory()
+        def go():
+            to_decimal_processor_factory(decimal.Decimal, 10)(1.2)
+        go()
+
+    @testing.requires.cextensions
+    def test_UnicodeResultProcessor_init(self):
+        @profile_memory()
+        def go():
+            to_unicode_processor_factory('utf8')
+        go()
+
+class MemUsageWBackendTest(EnsureZeroed):
 
     __tags__ = 'memory_intensive',
     __requires__ = 'cpython',
@@ -769,33 +804,3 @@ class MemUsageTest(EnsureZeroed):
         finally:
             metadata.drop_all()
 
-    def test_type_compile(self):
-        from sqlalchemy.dialects.sqlite.base import dialect as SQLiteDialect
-        cast = sa.cast(column('x'), sa.Integer)
-
-        @profile_memory()
-        def go():
-            dialect = SQLiteDialect()
-            cast.compile(dialect=dialect)
-        go()
-
-    @testing.requires.cextensions
-    def test_DecimalResultProcessor_init(self):
-        @profile_memory()
-        def go():
-            to_decimal_processor_factory({}, 10)
-        go()
-
-    @testing.requires.cextensions
-    def test_DecimalResultProcessor_process(self):
-        @profile_memory()
-        def go():
-            to_decimal_processor_factory(decimal.Decimal, 10)(1.2)
-        go()
-
-    @testing.requires.cextensions
-    def test_UnicodeResultProcessor_init(self):
-        @profile_memory()
-        def go():
-            to_unicode_processor_factory('utf8')
-        go()
