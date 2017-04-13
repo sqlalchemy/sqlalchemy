@@ -21,6 +21,14 @@
 .. changelog::
     :version: 1.1.10
 
+    .. change:: 3966
+        :tags: bug, mysql
+        :tickets: 3966
+
+        Removed an ancient and unnecessary intercept of the UTC_TIMESTAMP
+        MySQL function, which was getting in the way of using it with a
+        parameter.
+
     .. change:: 3961
         :tags: bug, mysql
         :tickets: 3961

@@ -126,6 +126,87 @@ class DialectTest(fixtures.TestBase):
             assert c.execute('SELECT @@tx_isolation;').scalar() == mysql_value
 
 
+class RemoveUTCTimestampTest(fixtures.TablesTest):
+    """This test exists because we removed the MySQL dialect's
+    override of the UTC_TIMESTAMP() function, where the commit message
+    for this feature stated that "it caused problems with executemany()".
+    Since no example was provided, we are trying lots of combinations
+    here.
+
+    [ticket:3966]
+
+    """
+    __only_on__ = 'mysql'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            't', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer),
+            Column('data', DateTime)
+        )
+
+        Table(
+            't_default', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer),
+            Column('idata', DateTime, default=func.utc_timestamp()),
+            Column('udata', DateTime, onupdate=func.utc_timestamp())
+        )
+
+    def test_insert_executemany(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                self.tables.t.insert().values(data=func.utc_timestamp()),
+                [{"x": 5}, {"x": 6}, {"x": 7}]
+            )
+
+    def test_update_executemany(self):
+        with testing.db.connect() as conn:
+            timestamp = datetime.datetime(2015, 4, 17, 18, 5, 2)
+            conn.execute(
+                self.tables.t.insert(),
+                [
+                    {"x": 5, "data": timestamp},
+                    {"x": 6, "data": timestamp},
+                    {"x": 7, "data": timestamp}]
+            )
+
+            conn.execute(
+                self.tables.t.update().
+                values(data=func.utc_timestamp()).
+                where(self.tables.t.c.x == bindparam('xval')),
+                [{"xval": 5}, {"xval": 6}, {"xval": 7}]
+            )
+
+    def test_insert_executemany_w_default(self):
+        with testing.db.connect() as conn:
+            conn.execute(
+                self.tables.t_default.insert(),
+                [{"x": 5}, {"x": 6}, {"x": 7}]
+            )
+
+    def test_update_executemany_w_default(self):
+        with testing.db.connect() as conn:
+            timestamp = datetime.datetime(2015, 4, 17, 18, 5, 2)
+            conn.execute(
+                self.tables.t_default.insert(),
+                [
+                    {"x": 5, "idata": timestamp},
+                    {"x": 6, "idata": timestamp},
+                    {"x": 7, "idata": timestamp}]
+            )
+
+            conn.execute(
+                self.tables.t_default.update().
+                values(idata=func.utc_timestamp()).
+                where(self.tables.t_default.c.x == bindparam('xval')),
+                [{"xval": 5}, {"xval": 6}, {"xval": 7}]
+            )
+
+
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
     __backend__ = True
