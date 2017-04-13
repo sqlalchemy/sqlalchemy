@@ -799,9 +799,6 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_random_func(self, fn, **kw):
         return "rand%s" % self.function_argspec(fn)
 
-    def visit_utc_timestamp_func(self, fn, **kw):
-        return "UTC_TIMESTAMP"
-
     def visit_sysdate_func(self, fn, **kw):
         return "SYSDATE()"
 
