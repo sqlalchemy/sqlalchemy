@@ -29,7 +29,8 @@ from .base import _entity_descriptor, _is_aliased_class, \
     _is_mapped_class, _orm_columns, _generative, InspectionAttr
 from .path_registry import PathRegistry
 from .util import (
-    AliasedClass, ORMAdapter, join as orm_join, with_parent, aliased
+    AliasedClass, ORMAdapter, join as orm_join, with_parent, aliased,
+    _entity_corresponds_to
 )
 from .. import sql, util, log, exc as sa_exc, inspect, inspection
 from ..sql.expression import _interpret_as_from
@@ -3641,18 +3642,7 @@ class _MapperEntity(_QueryEntity):
         return self.entity_zero
 
     def corresponds_to(self, entity):
-        if entity.is_aliased_class:
-            if self.is_aliased_class:
-                if entity._base_alias is self.entity_zero._base_alias:
-                    return True
-            return False
-        elif self.is_aliased_class:
-            if self.entity_zero._use_mapper_path:
-                return entity in self._with_polymorphic
-            else:
-                return entity is self.entity_zero
-
-        return entity.common_parent(self.entity_zero)
+        return _entity_corresponds_to(self.entity_zero, entity)
 
     def adapt_to_selectable(self, query, sel):
         query._entities.append(self)

@@ -371,6 +371,7 @@ class NoLoader(AbstractRelationshipLoader):
 @properties.RelationshipProperty.strategy_for(lazy="select")
 @properties.RelationshipProperty.strategy_for(lazy="raise")
 @properties.RelationshipProperty.strategy_for(lazy="raise_on_sql")
+@properties.RelationshipProperty.strategy_for(lazy="baked_select")
 class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=True", that is loads when first accessed.
@@ -380,7 +381,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     __slots__ = (
         '_lazywhere', '_rev_lazywhere', 'use_get', '_bind_to_col',
         '_equated_columns', '_rev_bind_to_col', '_rev_equated_columns',
-        '_simple_lazy_clause', '_raise_always', '_raise_on_sql')
+        '_simple_lazy_clause', '_raise_always', '_raise_on_sql',
+        '_bakery')
 
     def __init__(self, parent, strategy_key):
         super(LazyLoader, self).__init__(parent, strategy_key)
@@ -575,35 +577,90 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             for pk in self.mapper.primary_key
         ]
 
-    @util.dependencies("sqlalchemy.orm.strategy_options")
+    @util.dependencies("sqlalchemy.ext.baked")
+    def _memoized_attr__bakery(self, baked):
+        return baked.bakery(size=50, _size_alert=self._alert_lru_cache_limit)
+
+    def _alert_lru_cache_limit(self, lru_cache):
+        util.warn(
+            "Compiled statement cache for lazy loader on attribute %s is "
+            "reaching its size threshold of %d.  Consider setting "
+            "bake_queries=False for this relationship.  Please refer to "
+            "http://docs.sqlalchemy.org/en/latest/faq/performance.html"
+            "#faq_compiled_cache_threshold"
+            " for best practices." %
+            (self.parent_property,
+             lru_cache.size_threshold))
+
+    @util.dependencies(
+        "sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
             self, strategy_options, session, state, ident_key, passive):
 
-        q = session.query(self.mapper)._adapt_all_clauses()
-        if self.parent_property.secondary is not None:
-            q = q.select_from(self.mapper, self.parent_property.secondary)
+        # emit lazy load now using BakedQuery, to cut way down on the overhead
+        # of generating queries.
+        # there are two big things we are trying to guard against here:
+        #
+        # 1. two different lazy loads that need to have a different result,
+        #    being cached on the same key.  The results between two lazy loads
+        #    can be different due to the options passed to the query, which
+        #    take effect for descendant objects.  Therefore we have to make
+        #    sure paths and load options generate good cache keys, and if they
+        #    don't, we don't cache.
+        # 2. a lazy load that gets cached on a key that includes some
+        #    "throwaway" object, like a per-query AliasedClass, meaning
+        #    the cache key will never be seen again and the cache itself
+        #    will fill up.   (the cache is an LRU cache, so while we won't
+        #    run out of memory, it will perform terribly when it's full.  A
+        #    warning is emitted if this occurs.)   We must prevent the
+        #    generation of a cache key that is including a throwaway object
+        #    in the key.
 
-        q = q._with_invoke_all_eagers(False)
+        # note that "lazy='select'" and "lazy=True" make two separate
+        # lazy loaders.   Currently the LRU cache is local to the LazyLoader,
+        # however add ourselves to the initial cache key just to future
+        # proof in case it moves
+        q = self._bakery(lambda session: session.query(self.mapper), self)
+
+        q.add_criteria(
+            lambda q: q._adapt_all_clauses()._with_invoke_all_eagers(False),
+            self.parent_property)
+
+        if not self.parent_property.bake_queries:
+            q.spoil(full=True)
+
+        if self.parent_property.secondary is not None:
+            q.add_criteria(
+                lambda q:
+                q.select_from(self.mapper, self.parent_property.secondary))
 
         pending = not state.key
 
         # don't autoflush on pending
         if pending or passive & attributes.NO_AUTOFLUSH:
-            q = q.autoflush(False)
-
-        if state.load_path:
-            q = q._with_current_path(state.load_path[self.parent_property])
+            q.add_criteria(lambda q: q.autoflush(False))
 
         if state.load_options:
-            q = q._conditional_options(*state.load_options)
+            # here, if any of the options cannot return a cache key,
+            # the BakedQuery "spoils" and caching will not occur.  a path
+            # that features Cls.attribute.of_type(some_alias) will cancel
+            # caching, for example, since "some_alias" is user-defined and
+            # is usually a throwaway object.
+            effective_path = state.load_path[self.parent_property]
+            q._add_lazyload_options(
+                state.load_options, effective_path
+            )
 
         if self.use_get:
             if self._raise_on_sql:
                 self._invoke_raise_load(state, passive, "raise_on_sql")
-            return loading.load_on_ident(q, ident_key)
+            return q(session)._load_on_ident(
+                session.query(self.mapper), ident_key)
 
         if self.parent_property.order_by:
-            q = q.order_by(*util.to_list(self.parent_property.order_by))
+            q.add_criteria(
+                lambda q:
+                q.order_by(*util.to_list(self.parent_property.order_by)))
 
         for rev in self.parent_property._reverse_property:
             # reverse props that are MANYTOONE are loading *this*
@@ -611,28 +668,31 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             if rev.direction is interfaces.MANYTOONE and \
                 rev._use_get and \
                     not isinstance(rev.strategy, LazyLoader):
-                q = q.options(
-                    strategy_options.Load.for_existing_path(
-                        q._current_path[rev.parent]
-                    ).lazyload(rev.key)
+
+                q.add_criteria(
+                    lambda q:
+                    q.options(
+                        strategy_options.Load.for_existing_path(
+                            q._current_path[rev.parent]
+                        ).lazyload(rev.key)
+                    )
                 )
 
-        lazy_clause, params = self._generate_lazy_clause(
-            state, passive=passive)
+        lazy_clause, params = self._generate_lazy_clause(state, passive)
 
         if pending:
             if util.has_intersection(
                     orm_util._none_set, params.values()):
                 return None
+
         elif util.has_intersection(orm_util._never_set, params.values()):
             return None
 
         if self._raise_on_sql:
             self._invoke_raise_load(state, passive, "raise_on_sql")
 
-        q = q.filter(lazy_clause).params(params)
-
-        result = q.all()
+        q.add_criteria(lambda q: q.filter(lazy_clause))
+        result = q(session).params(**params).all()
         if self.uselist:
             return result
         else:

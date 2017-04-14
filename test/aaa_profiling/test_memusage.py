@@ -263,7 +263,8 @@ class MemUsageWBackendTest(EnsureZeroed):
             del sessmaker
         go()
 
-    @testing.emits_warning("Compiled statement cache for.*")
+    @testing.emits_warning("Compiled statement cache for mapper.*")
+    @testing.emits_warning("Compiled statement cache for lazy loader.*")
     @testing.crashes('sqlite', ':memory: connection not suitable here')
     def test_orm_many_engines(self):
         metadata = MetaData(self.engine)

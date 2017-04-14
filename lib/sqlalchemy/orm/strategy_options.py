@@ -8,7 +8,8 @@
 
 """
 
-from .interfaces import MapperOption, PropComparator
+from .interfaces import MapperOption, PropComparator, MapperProperty
+from .attributes import QueryableAttribute
 from .. import util
 from ..sql.base import _generative, Generative
 from .. import exc as sa_exc, inspect
@@ -82,8 +83,9 @@ class Load(Generative, MapperOption):
         self.path = insp._path_registry
         # note that this .context is shared among all descendant
         # Load objects
-        self.context = {}
+        self.context = util.OrderedDict()
         self.local_opts = {}
+        self._of_type = None
 
     @classmethod
     def for_existing_path(cls, path):
@@ -91,7 +93,56 @@ class Load(Generative, MapperOption):
         load.path = path
         load.context = {}
         load.local_opts = {}
+        load._of_type = None
         return load
+
+    def _generate_cache_key(self, path):
+        if path.path[0].is_aliased_class:
+            return False
+
+        serialized = []
+        for (key, loader_path), obj in self.context.items():
+            if key != "loader":
+                continue
+
+            endpoint = obj._of_type or obj.path.path[-1]
+            chopped = self._chop_path(loader_path, path)
+            if not chopped and not obj._of_type:
+                continue
+
+            serialized_path = []
+
+            for token in chopped:
+                if isinstance(token, util.string_types):
+                    serialized_path.append(token)
+                elif token.is_aliased_class:
+                    return False
+                elif token.is_property:
+                    serialized_path.append(token.key)
+                else:
+                    assert token.is_mapper
+                    serialized_path.append(token.class_)
+
+            if not serialized_path or endpoint != serialized_path[-1]:
+                if endpoint.is_mapper:
+                    serialized_path.append(endpoint.class_)
+                elif endpoint.is_aliased_class:
+                    return False
+
+            serialized.append(
+                (
+                    tuple(serialized_path) +
+                    obj.strategy +
+                    (tuple([
+                        (key, obj.local_opts[key])
+                        for key in sorted(obj.local_opts)
+                    ]) if obj.local_opts else ())
+                )
+            )
+        if not serialized:
+            return None
+        else:
+            return tuple(serialized)
 
     def _generate(self):
         cloned = super(Load, self)._generate()
@@ -119,6 +170,7 @@ class Load(Generative, MapperOption):
             query._attributes.update(self.context)
 
     def _generate_path(self, path, attr, wildcard_key, raiseerr=True):
+        self._of_type = None
         if raiseerr and not path.has_entity:
             if isinstance(path, TokenRegistry):
                 raise sa_exc.ArgumentError(
@@ -137,7 +189,9 @@ class Load(Generative, MapperOption):
                     self.propagate_to_loaders = False
                 if wildcard_key:
                     attr = "%s:%s" % (wildcard_key, attr)
-                return path.token(attr)
+                path = path.token(attr)
+                self.path = path
+                return path
 
             try:
                 # use getattr on the class to work around
@@ -171,7 +225,6 @@ class Load(Generative, MapperOption):
                 ac = attr._of_type
                 ext_info = inspect(ac)
 
-                path_element = ext_info.mapper
                 existing = path.entity_path[prop].get(
                     self.context, "path_with_polymorphic")
                 if not ext_info.is_aliased_class:
@@ -182,12 +235,25 @@ class Load(Generative, MapperOption):
                         _existing_alias=existing)
                 path.entity_path[prop].set(
                     self.context, "path_with_polymorphic", inspect(ac))
-                path = path[prop][path_element]
+
+                # the path here will go into the context dictionary and
+                # needs to match up to how the class graph is traversed.
+                # so we can't put an AliasedInsp in the path here, needs
+                # to be the base mapper.
+                path = path[prop][ext_info.mapper]
+
+                # but, we need to know what the original of_type()
+                # argument is for cache key purposes.  so....store that too.
+                # it might be better for "path" to really represent,
+                # "the path", but trying to keep the impact of the cache
+                # key feature localized for now
+                self._of_type = ext_info
             else:
                 path = path[prop]
 
         if path.has_entity:
             path = path.entity_path
+        self.path = path
         return path
 
     def __str__(self):
@@ -205,7 +271,7 @@ class Load(Generative, MapperOption):
 
         self.propagate_to_loaders = propagate_to_loaders
         # if the path is a wildcard, this will set propagate_to_loaders=False
-        self.path = self._generate_path(self.path, attr, "relationship")
+        self._generate_path(self.path, attr, "relationship")
         self.strategy = strategy
         if strategy is not None:
             self._set_path_strategy()
@@ -215,10 +281,9 @@ class Load(Generative, MapperOption):
         strategy = self._coerce_strat(strategy)
 
         for attr in attrs:
-            path = self._generate_path(self.path, attr, "column")
             cloned = self._generate()
             cloned.strategy = strategy
-            cloned.path = path
+            cloned._generate_path(self.path, attr, "column")
             cloned.propagate_to_loaders = True
             if opts:
                 cloned.local_opts.update(opts)
@@ -285,7 +350,7 @@ class _UnboundLoad(Load):
     """Represent a loader option that isn't tied to a root entity.
 
     The loader option will produce an entity-linked :class:`.Load`
-    object when it is passed :meth:`.Query.options`.
+    object when it is passed :metfh:`.Query.options`.
 
     This provides compatibility with the traditional system
     of freestanding options, e.g. ``joinedload('x.y.z')``.
@@ -294,13 +359,30 @@ class _UnboundLoad(Load):
 
     def __init__(self):
         self.path = ()
-        self._to_bind = set()
+        self._to_bind = []
         self.local_opts = {}
 
     _is_chain_link = False
 
+    def _generate_cache_key(self, path):
+        serialized = ()
+        for val in self._to_bind:
+            opt = val._bind_loader(
+                [path.path[0]],
+                None, None, False)
+            if opt:
+                c_key = opt._generate_cache_key(path)
+                if c_key is False:
+                    return False
+                elif c_key:
+                    serialized += c_key
+        if not serialized:
+            return None
+        else:
+            return serialized
+
     def _set_path_strategy(self):
-        self._to_bind.add(self)
+        self._to_bind.append(self)
 
     def _generate_path(self, path, attr, wildcard_key):
         if wildcard_key and isinstance(attr, util.string_types) and \
@@ -308,25 +390,28 @@ class _UnboundLoad(Load):
             if attr == _DEFAULT_TOKEN:
                 self.propagate_to_loaders = False
             attr = "%s:%s" % (wildcard_key, attr)
-
-        return path + (attr, )
+        path = path + (attr, )
+        self.path = path
+        return path
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        d['path'] = ret = []
-        for token in util.to_list(self.path):
-            if isinstance(token, PropComparator):
-                ret.append((token._parentmapper.class_, token.key))
-            else:
-                ret.append(token)
+        d['path'] = self._serialize_path(self.path)
         return d
 
     def __setstate__(self, state):
         ret = []
         for key in state['path']:
             if isinstance(key, tuple):
-                cls, propkey = key
-                ret.append(getattr(cls, propkey))
+                if len(key) == 2:
+                    # support legacy
+                    cls, propkey = key
+                else:
+                    cls, propkey, of_type = key
+                prop = getattr(cls, propkey)
+                if of_type:
+                    prop = prop.of_type(prop)
+                ret.append(prop)
             else:
                 ret.append(key)
         state['path'] = tuple(ret)
@@ -334,7 +419,9 @@ class _UnboundLoad(Load):
 
     def _process(self, query, raiseerr):
         for val in self._to_bind:
-            val._bind_loader(query, query._attributes, raiseerr)
+            val._bind_loader(
+                [ent.entity_zero for ent in query._mapper_entities],
+                query._current_path, query._attributes, raiseerr)
 
     @classmethod
     def _from_keys(cls, meth, keys, chained, kw):
@@ -384,26 +471,80 @@ class _UnboundLoad(Load):
 
         return to_chop[i:]
 
-    def _bind_loader(self, query, context, raiseerr):
+    def _serialize_path(self, path, reject_aliased_class=False):
+        ret = []
+        for token in path:
+            if isinstance(token, QueryableAttribute):
+                if reject_aliased_class and (
+                    (token._of_type and
+                        inspect(token._of_type).is_aliased_class)
+                    or
+                    inspect(token.parent).is_aliased_class
+                ):
+                    return False
+                ret.append(
+                    (token._parentmapper.class_, token.key, token._of_type))
+            elif isinstance(token, PropComparator):
+                ret.append((token._parentmapper.class_, token.key, None))
+            else:
+                ret.append(token)
+        return ret
+
+    def _bind_loader(self, entities, current_path, context, raiseerr):
+        """Convert from an _UnboundLoad() object into a Load() object.
+
+        The _UnboundLoad() uses an informal "path" and does not necessarily
+        refer to a lead entity as it may use string tokens.   The Load()
+        OTOH refers to a complete path.   This method reconciles from a
+        given Query into a Load.
+
+        Example::
+
+
+            query = session.query(User).options(
+                joinedload("orders").joinedload("items"))
+
+        The above options will be an _UnboundLoad object along the lines
+        of (note this is not the exact API of _UnboundLoad)::
+
+            _UnboundLoad(
+                _to_bind=[
+                    _UnboundLoad(["orders"], {"lazy": "joined"}),
+                    _UnboundLoad(["orders", "items"], {"lazy": "joined"}),
+                ]
+            )
+
+        After this method, we get something more like this (again this is
+        not exact API)::
+
+            Load(
+                User,
+                (User, User.orders.property))
+            Load(
+                User,
+                (User, User.orders.property, Order, Order.items.property))
+
+        """
         start_path = self.path
         # _current_path implies we're in a
         # secondary load with an existing path
 
-        current_path = query._current_path
         if current_path:
             start_path = self._chop_path(start_path, current_path)
 
         if not start_path:
             return None
 
+        # look at the first token and try to locate within the Query
+        # what entity we are referring towards.
         token = start_path[0]
 
         if isinstance(token, util.string_types):
-            entity = self._find_entity_basestring(query, token, raiseerr)
+            entity = self._find_entity_basestring(entities, token, raiseerr)
         elif isinstance(token, PropComparator):
             prop = token.property
             entity = self._find_entity_prop_comparator(
-                query,
+                entities,
                 prop.key,
                 token._parententity,
                 raiseerr)
@@ -416,20 +557,26 @@ class _UnboundLoad(Load):
         if not entity:
             return
 
-        path_element = entity.entity_zero
+        path_element = entity
 
         # transfer our entity-less state into a Load() object
-        # with a real entity path.
+        # with a real entity path.  Start with the lead entity
+        # we just located, then go through the rest of our path
+        # tokens and populate into the Load().
         loader = Load(path_element)
-        loader.context = context
+
+        if context is not None:
+            loader.context = context
+        else:
+            context = loader.context
+
         loader.strategy = self.strategy
         loader.is_opts_only = self.is_opts_only
 
         path = loader.path
         for token in start_path:
-            loader.path = path = loader._generate_path(
-                loader.path, token, None, raiseerr)
-            if path is None:
+            if not loader._generate_path(
+                    loader.path, token, None, raiseerr):
                 return
 
         loader.local_opts.update(self.local_opts)
@@ -455,17 +602,19 @@ class _UnboundLoad(Load):
                 replace=not self._is_chain_link,
                 merge_opts=self.is_opts_only)
 
-    def _find_entity_prop_comparator(self, query, token, mapper, raiseerr):
+        return loader
+
+    def _find_entity_prop_comparator(self, entities, token, mapper, raiseerr):
         if _is_aliased_class(mapper):
             searchfor = mapper
         else:
             searchfor = _class_to_mapper(mapper)
-        for ent in query._mapper_entities:
-            if ent.corresponds_to(searchfor):
+        for ent in entities:
+            if orm_util._entity_corresponds_to(ent, searchfor):
                 return ent
         else:
             if raiseerr:
-                if not list(query._mapper_entities):
+                if not list(entities):
                     raise sa_exc.ArgumentError(
                         "Query has only expression-based entities - "
                         "can't find property named '%s'."
@@ -477,14 +626,14 @@ class _UnboundLoad(Load):
                         "specified in this Query.  Note the full path "
                         "from root (%s) to target entity must be specified."
                         % (token, ",".join(str(x) for
-                                           x in query._mapper_entities))
+                                           x in entities))
                     )
             else:
                 return None
 
-    def _find_entity_basestring(self, query, token, raiseerr):
+    def _find_entity_basestring(self, entities, token, raiseerr):
         if token.endswith(':' + _WILDCARD_TOKEN):
-            if len(list(query._mapper_entities)) != 1:
+            if len(list(entities)) != 1:
                 if raiseerr:
                     raise sa_exc.ArgumentError(
                         "Wildcard loader can only be used with exactly "
@@ -493,7 +642,7 @@ class _UnboundLoad(Load):
         elif token.endswith(_DEFAULT_TOKEN):
             raiseerr = False
 
-        for ent in query._mapper_entities:
+        for ent in entities:
             # return only the first _MapperEntity when searching
             # based on string prop name.   Ideally object
             # attributes are used to specify more exactly.

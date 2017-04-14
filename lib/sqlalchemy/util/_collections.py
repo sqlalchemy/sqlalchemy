@@ -925,7 +925,7 @@ class LRUCache(dict):
             while len(self) > self.capacity + self.capacity * self.threshold:
                 if size_alert:
                     size_alert = False
-                    self.size_alert()
+                    self.size_alert(self)
                 by_counter = sorted(dict.values(self),
                                     key=operator.itemgetter(2),
                                     reverse=True)

@@ -2,7 +2,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import attributes, mapper, relationship, backref, \
     configure_mappers, create_session, synonym, Session, class_mapper, \
     aliased, column_property, joinedload_all, joinedload, Query,\
-    util as orm_util, Load, defer
+    util as orm_util, Load, defer, defaultload
 from sqlalchemy.orm.query import QueryContext
 from sqlalchemy.orm import strategy_options
 import sqlalchemy as sa
@@ -19,6 +19,11 @@ class QueryTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
         cls._setup_stock_mapping()
+
+        class SubItem(cls.classes.Item):
+            pass
+
+        mapper(SubItem, None, inherits=cls.classes.Item)
 
 
 class PathTest(object):
@@ -42,7 +47,9 @@ class PathTest(object):
         attr = {}
 
         for val in opt._to_bind:
-            val._bind_loader(q, attr, False)
+            val._bind_loader(
+                [ent.entity_zero for ent in q._mapper_entities],
+                q._current_path, attr, False)
 
         assert_paths = [k[1] for k in attr]
         eq_(
@@ -868,7 +875,9 @@ class LocalOptsTest(PathTest, QueryTest):
         for opt in opts:
             if isinstance(opt, strategy_options._UnboundLoad):
                 for tb in opt._to_bind:
-                    tb._bind_loader(query, attr, False)
+                    tb._bind_loader(
+                        [ent.entity_zero for ent in query._mapper_entities],
+                        query._current_path, attr, False)
             else:
                 attr.update(opt.context)
 
@@ -951,3 +960,387 @@ class LocalOptsTest(PathTest, QueryTest):
             ),
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
+
+
+class CacheKeyTest(PathTest, QueryTest):
+
+    run_create_tables = False
+    run_inserts = None
+    run_deletes = None
+
+    def test_unbound_cache_key_included_safe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        opt = joinedload(User.orders).joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                ((Order, 'items', Item, ('lazy', 'joined')),)
+            )
+        )
+
+    def test_bound_cache_key_included_safe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        opt = Load(User).joinedload(User.orders).joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                ((Order, 'items', Item, ('lazy', 'joined')),)
+            )
+        )
+
+    def test_unbound_cache_key_excluded_on_other(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry(
+            [User, "addresses"])
+
+        opt = joinedload(User.orders).joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_bound_cache_key_excluded_on_other(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry(
+            [User, "addresses"])
+
+        opt = Load(User).joinedload(User.orders).joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_unbound_cache_key_excluded_on_aliased(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        # query of:
+        #
+        # query(User).options(
+        #       joinedload(aliased(User).orders).joinedload(Order.items))
+        #
+        # we are lazy loading Order objects from User.orders
+        # the path excludes our option so cache key should
+        # be None
+
+        query_path = self._make_path_registry(
+            [User, "orders"])
+
+        opt = joinedload(aliased(User).orders).joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_unbound_cache_key_included_of_type_safe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        opt = joinedload(User.orders).joinedload(Order.items.of_type(SubItem))
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (Order, 'items', SubItem, ('lazy', 'joined')),
+            )
+        )
+
+    def test_bound_cache_key_included_of_type_safe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        opt = Load(User).joinedload(User.orders).\
+            joinedload(Order.items.of_type(SubItem))
+
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (Order, 'items', SubItem, ('lazy', 'joined')),
+            )
+        )
+
+    def test_unbound_cache_key_included_unsafe_option_one(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        opt = joinedload(User.orders).\
+            joinedload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+    def test_unbound_cache_key_included_unsafe_option_two(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders", Order])
+
+        opt = joinedload(User.orders).\
+            joinedload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+    def test_unbound_cache_key_included_unsafe_option_three(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders", Order, "items"])
+
+        opt = joinedload(User.orders).\
+            joinedload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+    def test_unbound_cache_key_included_unsafe_query(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        au = aliased(User)
+        query_path = self._make_path_registry([inspect(au), "orders"])
+
+        opt = joinedload(au.orders).\
+            joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+    def test_unbound_cache_key_included_safe_w_deferred(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = joinedload(User.addresses).\
+            defer(Address.email_address).defer(Address.user_id)
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (
+                    Address, "email_address",
+                    ('deferred', True),
+                    ('instrument', True)
+                ),
+                (
+                    Address, "user_id",
+                    ('deferred', True),
+                    ('instrument', True)
+                ),
+            )
+        )
+
+    def test_bound_cache_key_included_safe_w_deferred(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = Load(User).joinedload(User.addresses).\
+            defer(Address.email_address).defer(Address.user_id)
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (
+                    Address, "email_address",
+                    ('deferred', True),
+                    ('instrument', True)
+                ),
+                (
+                    Address, "user_id",
+                    ('deferred', True),
+                    ('instrument', True)
+                ),
+            )
+        )
+
+    def test_unbound_cache_key_included_safe_w_option(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        opt = defaultload("orders").joinedload(
+            "items", innerjoin=True).defer("description")
+        query_path = self._make_path_registry([User, "orders"])
+
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (Order, 'items', Item,
+                 ('lazy', 'joined'), ('innerjoin', True)),
+                (Order, 'items', Item, 'description',
+                 ('deferred', True), ('instrument', True))
+            )
+        )
+
+    def test_bound_cache_key_excluded_on_aliased(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry(
+            [User, "orders"])
+
+        au = aliased(User)
+        opt = Load(au).joinedload(au.orders).joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_bound_cache_key_included_unsafe_option_one(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        opt = Load(User).joinedload(User.orders).\
+            joinedload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+    def test_bound_cache_key_included_unsafe_option_two(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders", Order])
+
+        opt = Load(User).joinedload(User.orders).\
+            joinedload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+    def test_bound_cache_key_included_unsafe_option_three(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders", Order, "items"])
+
+        opt = Load(User).joinedload(User.orders).\
+            joinedload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+    def test_bound_cache_key_included_unsafe_query(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        au = aliased(User)
+        query_path = self._make_path_registry([inspect(au), "orders"])
+
+        opt = Load(au).joinedload(au.orders).\
+            joinedload(Order.items)
+        eq_(
+            opt._generate_cache_key(query_path),
+            False
+        )
+
+
+    def test_bound_cache_key_included_safe_w_option(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        opt = Load(User).defaultload("orders").joinedload(
+            "items", innerjoin=True).defer("description")
+        query_path = self._make_path_registry([User, "orders"])
+
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (Order, 'items', Item,
+                 ('lazy', 'joined'), ('innerjoin', True)),
+                (Order, 'items', Item, 'description',
+                 ('deferred', True), ('instrument', True))
+            )
+        )
+
+    def test_unbound_cache_key_included_safe_w_loadonly_strs(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = defaultload(User.addresses).load_only("id", "email_address")
+        eq_(
+            opt._generate_cache_key(query_path),
+
+            (
+                (Address, 'id',
+                 ('deferred', False), ('instrument', True)),
+                (Address, 'email_address',
+                 ('deferred', False), ('instrument', True)),
+                (Address, 'column:*',
+                 ('deferred', True), ('instrument', True),
+                 ('undefer_pks', True))
+            )
+        )
+
+    def test_unbound_cache_key_included_safe_w_loadonly_props(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = defaultload(User.addresses).load_only(
+            Address.id, Address.email_address)
+        eq_(
+            opt._generate_cache_key(query_path),
+
+            (
+                (Address, 'id',
+                 ('deferred', False), ('instrument', True)),
+                (Address, 'email_address',
+                 ('deferred', False), ('instrument', True)),
+                (Address, 'column:*',
+                 ('deferred', True), ('instrument', True),
+                 ('undefer_pks', True))
+            )
+        )
+
+    def test_bound_cache_key_included_safe_w_loadonly(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = Load(User).defaultload(User.addresses).\
+            load_only("id", "email_address")
+        eq_(
+            opt._generate_cache_key(query_path),
+
+            (
+                (Address, 'id',
+                 ('deferred', False), ('instrument', True)),
+                (Address, 'email_address',
+                 ('deferred', False), ('instrument', True)),
+                (Address, 'column:*',
+                 ('deferred', True), ('instrument', True),
+                 ('undefer_pks', True))
+            )
+        )
+

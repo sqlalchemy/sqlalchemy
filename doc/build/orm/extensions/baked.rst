@@ -335,37 +335,22 @@ with conditionals needed to be addressed, leading to the final approach.
 Lazy Loading Integration
 ------------------------
 
-The baked query can be integrated with SQLAlchemy's lazy loader feature
-transparently.   A future release of SQLAlchemy may enable this by default,
-as its use within lazy loading is completely transparent.    For now,
-to enable baked lazyloading for all lazyloaders systemwide, call upon
-the :func:`.bake_lazy_loaders` function.   This will impact all relationships
-that use the ``lazy='select'`` strategy as well as all use of the :func:`.lazyload`
-per-query strategy.
+The baked query system is integrated into SQLAlchemy's lazy loader feature
+as used by :func:`.relationship`, and will cache queries for most lazy
+load conditions.   A small subset of
+"lazy loads" may not be cached; these involve query options in conjunction with ad-hoc
+:obj:`.aliased` structures that cannot produce a repeatable cache
+key.
 
-"Baked" lazy loading may be enabled on a per-:func:`.relationship` basis
-using the ``baked_select`` loader strategy::
-
-    class MyClass(Base):
-        # ...
-
-        widgets = relationship("Widget", lazy="baked_select")
-
-The ``baked_select`` strategy is available once any part of the application
-has imported the ``sqlalchemy.ext.baked`` module.   The "bakery" used by
-this feature is local to the mapper for ``MyClass``.
-
-For per-query use, the :func:`.baked_lazyload` strategy may be used,
-which works like any other loader option.
+.. versionchanged:: 1.2  "baked" queries are now the foundation of the
+   lazy-loader feature of :func:`.relationship`.
 
 Opting out with the bake_queries flag
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :func:`.relationship` construct includes a flag
 :paramref:`.relationship.bake_queries` which when set to False will cause
-that relationship to opt out of the baked query system, when the
-application-wide :func:`.bake_lazy_loaders` function has been called to enable
-baked query loaders by default.
+that relationship to opt out of caching queries.
 
 API Documentation
 -----------------
@@ -378,10 +363,3 @@ API Documentation
 .. autoclass:: Result
     :members:
 
-.. autofunction:: bake_lazy_loaders
-
-.. autofunction:: unbake_lazy_loaders
-
-.. autofunction:: baked_lazyload
-
-.. autofunction:: baked_lazyload_all

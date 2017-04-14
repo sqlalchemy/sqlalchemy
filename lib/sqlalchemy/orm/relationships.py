@@ -102,7 +102,7 @@ class RelationshipProperty(StrategizedProperty):
                  back_populates=None,
                  post_update=False,
                  cascade=False, extension=None,
-                 viewonly=False, lazy=True,
+                 viewonly=False, lazy="select",
                  collection_class=None, passive_deletes=False,
                  passive_updates=True, remote_side=None,
                  enable_typechecks=True, join_depth=None,
@@ -277,22 +277,13 @@ class RelationshipProperty(StrategizedProperty):
 
         :param bake_queries=True:
           Use the :class:`.BakedQuery` cache to cache the construction of SQL
-          used in lazy loads, when the :func:`.bake_lazy_loaders` function has
-          first been called.  Defaults to True and is intended to provide an
-          "opt out" flag per-relationship when the baked query cache system is
-          in use.
+          used in lazy loads.  True by default.   Set to False if the
+          join condition of the relationship has unusual features that
+          might not respond well to statement caching.
 
-          .. warning::
-
-              This flag **only** has an effect when the application-wide
-              :func:`.bake_lazy_loaders` function has been called.   It
-              defaults to True so is an "opt out" flag.
-
-          Setting this flag to False when baked queries are otherwise in
-          use might be to reduce
-          ORM memory use for this :func:`.relationship`, or to work around
-          unresolved stability issues observed within the baked query
-          cache system.
+          .. versionchanged:: 1.2
+             "Baked" loading is the default implementation for the "select",
+             a.k.a. "lazy" loading strategy for relationships.
 
           .. versionadded:: 1.0.0
 

@@ -1,10 +1,12 @@
 from sqlalchemy.orm import Session, subqueryload, \
-    mapper, relationship, lazyload, clear_mappers, backref
+    mapper, relationship, lazyload, clear_mappers, backref, aliased, \
+    Load, defaultload
 from sqlalchemy.testing import eq_, is_, is_not_
 from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import testing
+from sqlalchemy import inspect
 from test.orm import _fixtures
-from sqlalchemy.ext.baked import BakedQuery, baked_lazyload, BakedLazyLoader
+from sqlalchemy.ext.baked import BakedQuery
 from sqlalchemy.ext import baked
 from sqlalchemy import bindparam, func, literal_column
 from sqlalchemy.orm import exc as orm_exc
@@ -719,6 +721,22 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
         mapper(Address, self.tables.addresses)
         return User, Address
 
+    def _o2m_twolevel_fixture(self, lazy="select", **kw):
+        User = self.classes.User
+        Address = self.classes.Address
+        Dingaling = self.classes.Dingaling
+
+        mapper(User, self.tables.users, properties={
+            'addresses': relationship(
+                Address, order_by=self.tables.addresses.c.id,
+                lazy=lazy, **kw)
+        })
+        mapper(Address, self.tables.addresses, properties={
+            "dingalings": relationship(Dingaling, lazy=lazy)
+        })
+        mapper(Dingaling, self.tables.dingalings)
+        return User, Address, Dingaling
+
     def _m2o_fixture(self):
         User = self.classes.User
         Address = self.classes.Address
@@ -729,124 +747,81 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
         })
         return User, Address
 
-    def test_strategy_lookup(self):
-        """test that the lazy loader strategies aren't getting mixed up
-        with BakedLazyLoader as a subclass.
+    def test_unsafe_unbound_option_cancels_bake(self):
+        User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
 
-        """
-        User, Address = self._o2m_fixture()
+        class SubDingaling(Dingaling):
+            pass
+        mapper(SubDingaling, None, inherits=Dingaling)
 
-        ll = User.addresses.property._get_strategy((('lazy', 'select'),))
-        assert not isinstance(ll, BakedLazyLoader)
-        eq_(ll._strategy_keys, [(('lazy', 'select'),), (('lazy', True),)])
-
-        ll = User.addresses.property._get_strategy((('lazy', True),))
-        assert not isinstance(ll, BakedLazyLoader)
-        eq_(ll._strategy_keys, [(('lazy', 'select'),), (('lazy', True),)])
-
-        bl = User.addresses.property._get_strategy((('lazy', 'baked_select'),))
-        assert isinstance(bl, BakedLazyLoader)
-        eq_(bl._strategy_keys, [(('lazy', 'baked_select'),)])
-
-    def test_invocation_per_state(self):
-        """test that BakedLazyLoader is getting invoked with the
-        baked_lazyload() loader.
-
-        """
-        User, Address = self._o2m_fixture()
-
-        sess = Session()
-        q = sess.query(User)
-
-        with mock.patch.object(BakedLazyLoader, "_emit_lazyload") as el:
-            u1 = q.first()
-            u1.addresses
-            # not invoked
-            eq_(el.mock_calls, [])
-
-        sess = Session()
-        q = sess.query(User).options(baked_lazyload(User.addresses))
-        with mock.patch.object(BakedLazyLoader, "_emit_lazyload") as el:
-            u1 = q.first()
-            u1.addresses
-            # invoked
-            is_(
-                el.mock_calls[0][1][1],
-                u1._sa_instance_state
-            )
-
-    def test_invocation_per_mapper(self):
-        """test that BakedLazyLoader is getting invoked with the
-        "baked_select" lazy setting.
-
-        """
-        User, Address = self._o2m_fixture(lazy="baked_select")
-
-        sess = Session()
-        q = sess.query(User).options(lazyload(User.addresses))
-
-        with mock.patch.object(BakedLazyLoader, "_emit_lazyload") as el:
-            u1 = q.first()
-            u1.addresses
-            # not invoked
-            eq_(el.mock_calls, [])
-
-        sess = Session()
-        q = sess.query(User)
-        with mock.patch.object(BakedLazyLoader, "_emit_lazyload") as el:
-            u1 = q.first()
-            u1.addresses
-            # invoked
-            is_(
-                el.mock_calls[0][1][1],
-                u1._sa_instance_state
-            )
-
-    def test_systemwide_loaders_loadable_via_lazyloader(self):
-        from sqlalchemy.orm import configure_mappers
-
-        baked.bake_lazy_loaders()
-        try:
-            User, Address = self._o2m_fixture(lazy='joined')
-
-            configure_mappers()
-
-            is_(
-                User.addresses.property.
-                _get_strategy((('lazy', 'select'), )).__class__,
-                BakedLazyLoader
-            )
-        finally:
-            baked.unbake_lazy_loaders()
-
-    def test_invocation_systemwide_loaders(self):
-        baked.bake_lazy_loaders()
-        try:
-            User, Address = self._o2m_fixture()
-
+        lru = Address.dingalings.property._lazy_strategy._bakery(
+            lambda q: None)._bakery
+        l1 = len(lru)
+        for i in range(5):
             sess = Session()
-            q = sess.query(User).options(lazyload(User.addresses))
-            with mock.patch.object(BakedLazyLoader, "_emit_lazyload") as el:
-                u1 = q.first()
-                u1.addresses
-                # invoked
-                is_(
-                    el.mock_calls[0][1][1],
-                    u1._sa_instance_state
-                )
-        finally:
-            baked.unbake_lazy_loaders()
+            u1 = sess.query(User).options(
+                defaultload(User.addresses).lazyload(
+                    Address.dingalings.of_type(aliased(SubDingaling)))).first()
+            for ad in u1.addresses:
+                ad.dingalings
+        l2 = len(lru)
+        eq_(l1, 0)
+        eq_(l2, 1)
 
-        clear_mappers()
-        User, Address = self._o2m_fixture()
-        sess = Session()
-        q = sess.query(User).options(lazyload(User.addresses))
+    def test_unsafe_bound_option_cancels_bake(self):
+        User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
 
-        with mock.patch.object(BakedLazyLoader, "_emit_lazyload") as el:
-            u1 = q.first()
-            u1.addresses
-            # not invoked
-            eq_(el.mock_calls, [])
+        class SubDingaling(Dingaling):
+            pass
+        mapper(SubDingaling, None, inherits=Dingaling)
+
+        lru = Address.dingalings.property._lazy_strategy._bakery(
+            lambda q: None)._bakery
+        l1 = len(lru)
+        for i in range(5):
+            sess = Session()
+            u1 = sess.query(User).options(
+                Load(User).defaultload(User.addresses).lazyload(
+                    Address.dingalings.of_type(aliased(SubDingaling)))).first()
+            for ad in u1.addresses:
+                ad.dingalings
+        l2 = len(lru)
+        eq_(l1, 0)
+        eq_(l2, 1)
+
+    def test_safe_unbound_option_allows_bake(self):
+        User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
+
+        lru = Address.dingalings.property._lazy_strategy._bakery(
+            lambda q: None)._bakery
+        l1 = len(lru)
+        for i in range(5):
+            sess = Session()
+            u1 = sess.query(User).options(
+                defaultload(User.addresses).lazyload(
+                    Address.dingalings)).first()
+            for ad in u1.addresses:
+                ad.dingalings
+        l2 = len(lru)
+        eq_(l1, 0)
+        eq_(l2, 2)
+
+    def test_safe_bound_option_allows_bake(self):
+        User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
+
+        lru = Address.dingalings.property._lazy_strategy._bakery(
+            lambda q: None)._bakery
+        l1 = len(lru)
+        for i in range(5):
+            sess = Session()
+            u1 = sess.query(User).options(
+                Load(User).defaultload(User.addresses).lazyload(
+                    Address.dingalings)).first()
+            for ad in u1.addresses:
+                ad.dingalings
+        l2 = len(lru)
+        eq_(l1, 0)
+        eq_(l2, 2)
 
     def test_baked_lazy_loading_relationship_flag_true(self):
         self._test_baked_lazy_loading_relationship_flag(True)
@@ -855,37 +830,33 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
         self._test_baked_lazy_loading_relationship_flag(False)
 
     def _test_baked_lazy_loading_relationship_flag(self, flag):
-        baked.bake_lazy_loaders()
-        try:
-            User, Address = self._o2m_fixture(bake_queries=flag)
+        User, Address = self._o2m_fixture(bake_queries=flag)
 
-            sess = Session()
-            u1 = sess.query(User).first()
+        sess = Session()
+        u1 = sess.query(User).first()
 
-            from sqlalchemy.orm import Query
+        from sqlalchemy.orm import Query
 
-            canary = mock.Mock()
+        canary = mock.Mock()
 
-            # I would think Mock can do this but apparently
-            # it cannot (wrap / autospec don't work together)
-            real_compile_context = Query._compile_context
+        # I would think Mock can do this but apparently
+        # it cannot (wrap / autospec don't work together)
+        real_compile_context = Query._compile_context
 
-            def _my_compile_context(*arg, **kw):
-                if arg[0].column_descriptions[0]['entity'] is Address:
-                    canary()
-                return real_compile_context(*arg, **kw)
+        def _my_compile_context(*arg, **kw):
+            if arg[0].column_descriptions[0]['entity'] is Address:
+                canary()
+            return real_compile_context(*arg, **kw)
 
-            with mock.patch.object(
-                Query,
-                "_compile_context",
-                _my_compile_context
-            ):
-                u1.addresses
+        with mock.patch.object(
+            Query,
+            "_compile_context",
+            _my_compile_context
+        ):
+            u1.addresses
 
-                sess.expire(u1)
-                u1.addresses
-        finally:
-            baked.unbake_lazy_loaders()
+            sess.expire(u1)
+            u1.addresses
 
         if flag:
             eq_(canary.call_count, 1)
@@ -907,7 +878,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
             lambda s: s.query(User))
 
         if set_option:
-            base_bq += lambda q: q.options(baked_lazyload(User.addresses))
+            base_bq += lambda q: q.options(lazyload(User.addresses))
 
         base_bq += lambda q: q.order_by(User.id)
 
@@ -965,7 +936,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
         base_bq = self.bakery(
             lambda s: s.query(Address))
 
-        base_bq += lambda q: q.options(baked_lazyload(Address.user))
+        base_bq += lambda q: q.options(lazyload(Address.user))
         base_bq += lambda q: q.order_by(Address.id)
 
         assert_result = self.static.address_user_result
