@@ -517,6 +517,29 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         eq_(self.static.user_address_result,
             sess.query(User).order_by(User.id).all())
 
+    def test_cyclical_explicit_join_depth(self):
+        """A circular eager relationship breaks the cycle with a lazy loader"""
+
+        Address, addresses, users, User = (self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties=dict(
+            addresses=relationship(Address, lazy='subquery', join_depth=1,
+                                   backref=sa.orm.backref(
+                                       'user', lazy='subquery', join_depth=1),
+                                   order_by=Address.id)
+        ))
+        is_(sa.orm.class_mapper(User).get_property('addresses').lazy,
+            'subquery')
+        is_(sa.orm.class_mapper(Address).get_property('user').lazy, 'subquery')
+
+        sess = create_session()
+        eq_(self.static.user_address_result,
+            sess.query(User).order_by(User.id).all())
+
     def test_double(self):
         """Eager loading with two relationships simultaneously,
             from the same table, using aliases."""
@@ -1512,6 +1535,8 @@ class SelfReferentialTest(fixtures.MappedTest):
         n1.append(Node(data='n11'))
         n1.append(Node(data='n12'))
         n1.append(Node(data='n13'))
+        n1.children[0].append(Node(data='n111'))
+        n1.children[0].append(Node(data='n112'))
         n1.children[1].append(Node(data='n121'))
         n1.children[1].append(Node(data='n122'))
         n1.children[1].append(Node(data='n123'))
@@ -1521,14 +1546,22 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         def go():
             allnodes = sess.query(Node).order_by(Node.data).all()
-            n12 = allnodes[2]
+
+            n11 = allnodes[1]
+            eq_(n11.data, 'n11')
+            eq_([
+                Node(data='n111'),
+                Node(data='n112'),
+            ], list(n11.children))
+
+            n12 = allnodes[4]
             eq_(n12.data, 'n12')
             eq_([
                 Node(data='n121'),
                 Node(data='n122'),
                 Node(data='n123')
             ], list(n12.children))
-        self.assert_sql_count(testing.db, go, 4)
+        self.assert_sql_count(testing.db, go, 2)
 
     def test_with_deferred(self):
         nodes = self.tables.nodes

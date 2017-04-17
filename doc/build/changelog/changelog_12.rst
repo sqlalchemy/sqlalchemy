@@ -15,6 +15,15 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 3967
+
+        Fixed bug in subquery eager loading where the "join_depth" parameter
+        for self-referential relationships would not be correctly honored,
+        loading all available levels deep rather than correctly counting
+        the specified number of levels for eager loading.
+
+    .. change::
+        :tags: bug, orm
 
         Added warnings to the LRU "compiled cache" used by the :class:`.Mapper`
         (and ultimately will be for other ORM-based LRU caches) such that

@@ -828,7 +828,11 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # a cycle
         if not path.contains(context.attributes, "loader"):
             if self.join_depth:
-                if path.length / 2 > self.join_depth:
+                if (
+                    (context.query._current_path.length
+                     if context.query._current_path else 0) +
+                    path.length
+                ) / 2 > self.join_depth:
                     return
             elif subq_path.contains_mapper(self.mapper):
                 return
