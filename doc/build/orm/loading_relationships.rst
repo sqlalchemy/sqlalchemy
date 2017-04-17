@@ -48,7 +48,7 @@ same result set as that of the parent:
 
     {sql}>>> jack = session.query(User).\
     ... options(joinedload('addresses')).\
-    ... filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
+    ... filter_by(name='jack').all()
     SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
@@ -183,7 +183,7 @@ Polymorphic Eager Loading
 
 Specification of polymorpic options on a per-eager-load basis is supported.
 See the section :ref:`eagerloading_polymorphic_subtypes` for examples
-of the :meth:`.PropComparator.of_type` method in conjunction with the 
+of the :meth:`.PropComparator.of_type` method in conjunction with the
 :func:`.orm.with_polymorphic` function.
 
 Default Loading Strategies
