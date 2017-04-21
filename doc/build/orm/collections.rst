@@ -133,6 +133,10 @@ loader option.
 
 .. versionadded:: 1.1 added the "raise" loader strategy.
 
+.. seealso::
+
+    :ref:`prevent_lazy_with_raiseload`
+
 .. _passive_deletes:
 
 Using Passive Deletes
