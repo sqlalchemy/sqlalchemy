@@ -13,6 +13,14 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3969
+        :tags: bug, sql
+        :tickets: 3969
+
+        Fixed the negation of a :class:`.Label` construct so that the
+        inner element is negated correctly, when the :func:`.not_` modifier
+        is applied to the labeled expression.
+
     .. change::
         :tags: bug, orm
         :tickets: 3967

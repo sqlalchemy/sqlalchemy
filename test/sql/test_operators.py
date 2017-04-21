@@ -11,7 +11,7 @@ import operator
 from sqlalchemy import String, Integer, LargeBinary
 from sqlalchemy import exc
 from sqlalchemy.engine import default
-from sqlalchemy.sql.elements import _literal_as_text
+from sqlalchemy.sql.elements import _literal_as_text, Label
 from sqlalchemy.schema import Column, Table, MetaData
 from sqlalchemy.sql import compiler
 from sqlalchemy.types import TypeEngine, TypeDecorator, UserDefinedType, \
@@ -2077,6 +2077,20 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_(
             (-self.table1.c.myid).type,
             self.table1.c.myid.type,
+        )
+
+    def test_negate_operator_label(self):
+        orig_expr = or_(
+            self.table1.c.myid == 1, self.table1.c.myid == 2).label('foo')
+        expr = not_(orig_expr)
+        isinstance(expr, Label)
+        eq_(expr.name, 'foo')
+        is_not_(expr, orig_expr)
+        is_(expr._element.operator, operator.inv)  # e.g. and not false_
+
+        self.assert_compile(
+            expr,
+            "NOT (mytable.myid = :myid_1 OR mytable.myid = :myid_2)"
         )
 
 
