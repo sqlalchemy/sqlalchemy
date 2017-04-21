@@ -3577,7 +3577,13 @@ class Label(ColumnElement):
         return self._element.self_group(against=operators.as_)
 
     def self_group(self, against=None):
-        sub_element = self._element.self_group(against=against)
+        return self._apply_to_inner(self._element.self_group, against=against)
+
+    def _negate(self):
+        return self._apply_to_inner(self._element._negate)
+
+    def _apply_to_inner(self, fn, *arg, **kw):
+        sub_element = fn(*arg, **kw)
         if sub_element is not self._element:
             return Label(self.name,
                          sub_element,
