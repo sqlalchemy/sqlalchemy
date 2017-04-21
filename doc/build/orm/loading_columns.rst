@@ -87,6 +87,8 @@ be loaded while deferring all other columns on a given entity, using :func:`.orm
 
 .. versionadded:: 0.9.0
 
+.. _deferred_loading_w_multiple:
+
 Deferred Loading with Multiple Entities
 ---------------------------------------
 

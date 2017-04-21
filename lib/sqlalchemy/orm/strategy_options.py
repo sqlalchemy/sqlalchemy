@@ -23,57 +23,34 @@ class Load(Generative, MapperOption):
     :class:`.Query` in order to affect how various mapped attributes are
     loaded.
 
-    .. versionadded:: 0.9.0 The :meth:`.Load` system is a new foundation for
-       the existing system of loader options, including options such as
-       :func:`.orm.joinedload`, :func:`.orm.defer`, and others.   In
-       particular, it introduces a new method-chained system that replaces the
-       need for dot-separated paths as well as "_all()" options such as
-       :func:`.orm.joinedload_all`.
+    The :class:`.Load` object is in most cases used implicitly behind the
+    scenes when one makes use of a query option like :func:`.joinedload`,
+    :func:`.defer`, or similar.   However, the :class:`.Load` object
+    can also be used directly, and in some cases can be useful.
 
-    A :class:`.Load` object can be used directly or indirectly.  To use one
-    directly, instantiate given the parent class.  This style of usage is
-    useful when dealing with a :class:`.Query` that has multiple entities,
-    or when producing a loader option that can be applied generically to
-    any style of query::
+    To use :class:`.Load` directly, instantiate it with the target mapped
+    class as the argument.   This style of usage is
+    useful when dealing with a :class:`.Query` that has multiple entities::
 
         myopt = Load(MyClass).joinedload("widgets")
 
-    The above ``myopt`` can now be used with :meth:`.Query.options`::
+    The above ``myopt`` can now be used with :meth:`.Query.options`, where it
+    will only take effect for the ``MyClass`` entity::
 
-        session.query(MyClass).options(myopt)
+        session.query(MyClass, MyOtherClass).options(myopt)
 
-    The :class:`.Load` construct is invoked indirectly whenever one makes use
-    of the various loader options that are present in ``sqlalchemy.orm``,
-    including options such as :func:`.orm.joinedload`, :func:`.orm.defer`,
-    :func:`.orm.subqueryload`, and all the rest.  These constructs produce an
-    "anonymous" form of the :class:`.Load` object which tracks attributes and
-    options, but is not linked to a parent class until it is associated with a
-    parent :class:`.Query`::
+    One case where :class:`.Load` is useful as public API is when specifying
+    "wildcard" options that only take effect for a certain class::
 
-        # produce "unbound" Load object
-        myopt = joinedload("widgets")
+        session.query(Order).options(Load(Order).lazyload('*'))
 
-        # when applied using options(), the option is "bound" to the
-        # class observed in the given query, e.g. MyClass
-        session.query(MyClass).options(myopt)
+    Above, all relationships on ``Order`` will be lazy-loaded, but other
+    attributes on those descendant objects will load using their normal
+    loader strategy.
 
-    Whether the direct or indirect style is used, the :class:`.Load` object
-    returned now represents a specific "path" along the entities of a
-    :class:`.Query`.  This path can be traversed using a standard
-    method-chaining approach.  Supposing a class hierarchy such as ``User``,
-    ``User.addresses -> Address``, ``User.orders -> Order`` and
-    ``Order.items -> Item``, we can specify a variety of loader options along
-    each element in the "path"::
+    .. seealso::
 
-        session.query(User).options(
-                    joinedload("addresses"),
-                    subqueryload("orders").joinedload("items")
-                )
-
-    Where above, the ``addresses`` collection will be joined-loaded, the
-    ``orders`` collection will be subquery-loaded, and within that subquery
-    load the ``items`` collection will be joined-loaded.
-
+        :ref:`loading_toplevel`
 
     """
 
@@ -581,6 +558,8 @@ def contains_eager(loadopt, attr, alias=None):
 
     .. seealso::
 
+        :ref:`loading_toplevel`
+
         :ref:`contains_eager`
 
     """
@@ -667,11 +646,13 @@ def joinedload(loadopt, attr, innerjoin=None):
         query(User).options(joinedload(User.orders))
 
         # joined-load Order.items and then Item.keywords
-        query(Order).options(joinedload(Order.items).joinedload(Item.keywords))
+        query(Order).options(
+            joinedload(Order.items).joinedload(Item.keywords))
 
         # lazily load Order.items, but when Items are loaded,
         # joined-load the keywords collection
-        query(Order).options(lazyload(Order.items).joinedload(Item.keywords))
+        query(Order).options(
+            lazyload(Order.items).joinedload(Item.keywords))
 
     :param innerjoin: if ``True``, indicates that the joined eager load should
      use an inner join instead of the default of left outer join::
@@ -688,31 +669,28 @@ def joinedload(loadopt, attr, innerjoin=None):
 
      The above query, linking A.bs via "outer" join and B.cs via "inner" join
      would render the joins as "a LEFT OUTER JOIN (b JOIN c)".   When using
-     SQLite, this form of JOIN is translated to use full subqueries as this
-     syntax is otherwise not directly supported.
+     older versions of SQLite (< 3.7.16), this form of JOIN is translated to
+     use full subqueries as this syntax is otherwise not directly supported.
 
      The ``innerjoin`` flag can also be stated with the term ``"unnested"``.
-     This will prevent joins from being right-nested, and will instead
-     link an "innerjoin" eagerload to an "outerjoin" eagerload by bypassing
-     the "inner" join.   Using this form as follows::
+     This indicates that an INNER JOIN should be used, *unless* the join
+     is linked to a LEFT OUTER JOIN to the left, in which case it
+     will render as LEFT OUTER JOIN.  For example, supposing ``A.bs``
+     is an outerjoin::
 
         query(A).options(
-            joinedload(A.bs, innerjoin=False).
+            joinedload(A.bs).
                 joinedload(B.cs, innerjoin="unnested")
         )
 
-     Joins will be rendered as "a LEFT OUTER JOIN b LEFT OUTER JOIN c", so that
-     all of "a" is matched rather than being incorrectly limited by a "b" that
-     does not contain a "c".
+     The above join will render as "a LEFT OUTER JOIN b LEFT OUTER JOIN c",
+     rather than as "a LEFT OUTER JOIN (b JOIN c)".
 
      .. note:: The "unnested" flag does **not** affect the JOIN rendered
         from a many-to-many association table, e.g. a table configured
         as :paramref:`.relationship.secondary`, to the target table; for
         correctness of results, these joins are always INNER and are
         therefore right-nested if linked to an OUTER join.
-
-     .. versionadded:: 0.9.4 Added support for "nesting" of eager "inner"
-        joins.  See :ref:`feature_2976`.
 
      .. versionchanged:: 1.0.0 ``innerjoin=True`` now implies
         ``innerjoin="nested"``, whereas in 0.9 it implied
@@ -725,7 +703,8 @@ def joinedload(loadopt, attr, innerjoin=None):
         The joins produced by :func:`.orm.joinedload` are **anonymously
         aliased**.  The criteria by which the join proceeds cannot be
         modified, nor can the :class:`.Query` refer to these joins in any way,
-        including ordering.
+        including ordering.  See :ref:`zen_of_eager_loading` for further
+        detail.
 
         To produce a specific SQL JOIN which is explicitly available, use
         :meth:`.Query.join`.   To combine explicit JOINs with eager loading
@@ -736,16 +715,7 @@ def joinedload(loadopt, attr, innerjoin=None):
 
         :ref:`loading_toplevel`
 
-        :ref:`contains_eager`
-
-        :func:`.orm.subqueryload`
-
-        :func:`.orm.lazyload`
-
-        :paramref:`.relationship.lazy`
-
-        :paramref:`.relationship.innerjoin` - :func:`.relationship`-level
-        version of the :paramref:`.joinedload.innerjoin` option.
+        :ref:`joined_eager_loading`
 
     """
     loader = loadopt.set_relationship_strategy(attr, {"lazy": "joined"})
@@ -791,11 +761,7 @@ def subqueryload(loadopt, attr):
 
         :ref:`loading_toplevel`
 
-        :func:`.orm.joinedload`
-
-        :func:`.orm.lazyload`
-
-        :paramref:`.relationship.lazy`
+        :ref:`subquery_eager_loading`
 
     """
     return loadopt.set_relationship_strategy(attr, {"lazy": "subquery"})
@@ -821,7 +787,9 @@ def lazyload(loadopt, attr):
 
     .. seealso::
 
-        :paramref:`.relationship.lazy`
+        :ref:`loading_toplevel`
+
+        :ref:`lazy_loading`
 
     """
     return loadopt.set_relationship_strategy(attr, {"lazy": "select"})
@@ -849,12 +817,6 @@ def immediateload(loadopt, attr):
 
         :ref:`loading_toplevel`
 
-        :func:`.orm.joinedload`
-
-        :func:`.orm.lazyload`
-
-        :paramref:`.relationship.lazy`
-
     """
     loader = loadopt.set_relationship_strategy(attr, {"lazy": "immediate"})
     return loader
@@ -875,6 +837,10 @@ def noload(loadopt, attr):
 
     :func:`.orm.noload` applies to :func:`.relationship` attributes; for
     column-based attributes, see :func:`.orm.defer`.
+
+    .. seealso::
+
+        :ref:`loading_toplevel`
 
     """
 
@@ -910,6 +876,12 @@ def raiseload(loadopt, attr, sql_only=False):
 
     .. versionadded:: 1.1
 
+    .. seealso::
+
+        :ref:`loading_toplevel`
+
+        :ref:`prevent_lazy_with_raiseload`
+
     """
 
     return loadopt.set_relationship_strategy(
@@ -925,19 +897,30 @@ def raiseload(*keys, **kw):
 def defaultload(loadopt, attr):
     """Indicate an attribute should load using its default loader style.
 
-    This method is used to link to other loader options, such as
-    to set the :func:`.orm.defer` option on a class that is linked to
-    a relationship of the parent class being loaded, :func:`.orm.defaultload`
-    can be used to navigate this path without changing the loading style
-    of the relationship::
+    This method is used to link to other loader options further into
+    a chain of attributes without altering the loader style of the links
+    along the chain.  For example, to set joined eager loading for an
+    element of an element::
 
-        session.query(MyClass).options(defaultload("someattr").defer("some_column"))
+        session.query(MyClass).options(
+            defaultload(MyClass.someattribute).
+            joinedload(MyOtherClass.someotherattribute)
+        )
+
+    :func:`.defaultload` is also useful for setting column-level options
+    on a related class, namely that of :func:`.defer` and :func:`.undefer`::
+
+        session.query(MyClass).options(
+            defaultload(MyClass.someattribute).
+            defer("some_column").
+            undefer("some_other_column")
+        )
 
     .. seealso::
 
-        :func:`.orm.defer`
+        :ref:`relationship_loader_options`
 
-        :func:`.orm.undefer`
+        :ref:`deferred_loading_w_multiple`
 
     """
     return loadopt.set_relationship_strategy(
