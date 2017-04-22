@@ -69,12 +69,11 @@ at mapping time to take place in all cases where an object of the mapped
 type is loaded, in the absense of any query-level options that modify it.
 This is configured using the :paramref:`.relationship.lazy` parameter to
 :func:`.relationship`; common values for this parameter
-include ``select``, ``joined``, and ``subquery``.
+include ``"select"``, ``"joined"``, and ``"subquery"``.
 
 For example, to configure a relationship to use joined eager loading when
 the parent object is queried::
 
-    # load the 'children' collection using LEFT OUTER JOIN
     class Parent(Base):
         __tablename__ = 'parent'
 
@@ -87,7 +86,7 @@ rows fetched by adding a JOIN to the query for ``Parent`` objects.
 See :ref:`joined_eager_loading` for background on this style of loading.
 
 The default value of the :paramref:`.relationship.lazy` argument is
-``select``, which indicates lazy loading.  See :ref:`lazy_loading` for
+``"select"``, which indicates lazy loading.  See :ref:`lazy_loading` for
 further background.
 
 .. _relationship_loader_options:
