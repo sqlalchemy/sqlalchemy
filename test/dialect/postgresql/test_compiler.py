@@ -316,6 +316,32 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             '(data text_pattern_ops, data2 int4_ops)',
                             dialect=postgresql.dialect())
 
+    def test_create_index_with_labeled_ops(self):
+        m = MetaData()
+        tbl = Table('testtbl', m,
+                    Column('data', String),
+                    Column('data2', Integer, key='d2'))
+
+        idx = Index('test_idx1', func.lower(tbl.c.data).label('data_lower'),
+                    postgresql_ops={'data_lower': 'text_pattern_ops'})
+
+        idx2 = Index(
+            'test_idx2',
+            (func.xyz(tbl.c.data) + tbl.c.d2).label('bar'),
+            tbl.c.d2.label('foo'),
+            postgresql_ops={'bar': 'text_pattern_ops',
+                            'foo': 'int4_ops'})
+
+        self.assert_compile(schema.CreateIndex(idx),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(lower(data) text_pattern_ops)',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+                            'CREATE INDEX test_idx2 ON testtbl '
+                            '((xyz(data) + data2) text_pattern_ops, '
+                            'data2 int4_ops)',
+                            dialect=postgresql.dialect())
+
     def test_create_index_with_text_or_composite(self):
         m = MetaData()
         tbl = Table('testtbl', m,
