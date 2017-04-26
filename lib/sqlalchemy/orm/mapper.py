@@ -2812,11 +2812,14 @@ class Mapper(InspectionAttr):
         """
         props = self._props
 
+        col_attribute_names = set(attribute_names).intersection(
+            state.mapper.column_attrs.keys()
+        )
         tables = set(
             chain(
                 *[
                     sql_util.find_tables(c, check_columns=True)
-                    for key in attribute_names
+                    for key in col_attribute_names
                     for c in props[key].columns
                 ]
             )
@@ -2884,7 +2887,7 @@ class Mapper(InspectionAttr):
         cond = sql.and_(*allconds)
 
         cols = []
-        for key in attribute_names:
+        for key in col_attribute_names:
             cols.extend(props[key].columns)
         return sql.select(cols, cond, use_labels=True)
 

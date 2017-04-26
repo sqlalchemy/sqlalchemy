@@ -12,6 +12,7 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import make_transient_to_detached
 from sqlalchemy.orm import mapper
@@ -616,9 +617,9 @@ class ExpireTest(_fixtures.FixtureTest):
             assert u.addresses[0].email_address == "jack@bean.com"
             assert u.name == "jack"
 
-        # two loads, since relationship() + scalar are
-        # separate right now on per-attribute load
-        self.assert_sql_count(testing.db, go, 2)
+        # one load, due to #1763 allows joinedload to
+        # take over
+        self.assert_sql_count(testing.db, go, 1)
         assert "name" in u.__dict__
         assert "addresses" in u.__dict__
 
@@ -663,7 +664,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert "name" in u.__dict__
         assert len(u.addresses) == 2
 
-    def test_joinedload_props_dontload(self):
+    def test_mapper_joinedload_props_load(self):
         users, Address, addresses, User = (
             self.tables.users,
             self.classes.Address,
@@ -671,15 +672,7 @@ class ExpireTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        # relationships currently have to load separately from scalar instances
-        # the use case is: expire "addresses".  then access it.  lazy load
-        # fires off to load "addresses", but needs foreign key or primary key
-        # attributes in order to lazy load; hits those attributes, such as
-        # below it hits "u.id".  "u.id" triggers full unexpire operation,
-        # joinedloads addresses since lazy='joined'. this is all within lazy
-        # load which fires unconditionally; so an unnecessary joinedload (or
-        # lazyload) was issued.  would prefer not to complicate lazyloading to
-        # "figure out" that the operation should be aborted right now.
+        # changed in #1763, eager loaders are run when we unexpire
 
         mapper(
             User,
@@ -695,9 +688,65 @@ class ExpireTest(_fixtures.FixtureTest):
         u = sess.query(User).get(8)
         sess.expire(u)
         u.id
-        assert "addresses" not in u.__dict__
+
+        assert "addresses" in u.__dict__
         u.addresses
         assert "addresses" in u.__dict__
+
+    def test_options_joinedload_props_load(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        # changed in #1763, eager loaders are run when we unexpire
+
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+        sess = create_session()
+        u = sess.query(User).options(joinedload(User.addresses)).get(8)
+        sess.expire(u)
+        u.id
+        assert "addresses" in u.__dict__
+        u.addresses
+        assert "addresses" in u.__dict__
+
+    def test_joinedload_props_load_two(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, backref="user", lazy="joined"
+                )
+            },
+        )
+        mapper(Address, addresses)
+        sess = create_session()
+        u = sess.query(User).get(8)
+        sess.expire(u)
+
+        # here, the lazy loader will encounter the attribute already
+        # loaded when it goes to get the PK, so the loader itself
+        # needs to no longer fire off.
+        def go():
+            u.addresses
+            assert "addresses" in u.__dict__
+            assert "id" in u.__dict__
+
+        self.assert_sql_count(testing.db, go, 1)
 
     def test_expire_synonym(self):
         User, users = self.classes.User, self.tables.users
@@ -1180,17 +1229,14 @@ class ExpireTest(_fixtures.FixtureTest):
             attributes.instance_state(u1).callables["addresses"],
             strategies.LoadLazyAttribute,
         )
-        # expire, it stays
+        # expire, it goes away from callables as of 1.4 and is considered
+        # to be expired
         sess.expire(u1)
-        assert (
-            "addresses" not in attributes.instance_state(u1).expired_attributes
-        )
-        assert isinstance(
-            attributes.instance_state(u1).callables["addresses"],
-            strategies.LoadLazyAttribute,
-        )
 
-        # load over it.  callable goes away.
+        assert "addresses" in attributes.instance_state(u1).expired_attributes
+        assert "addresses" not in attributes.instance_state(u1).callables
+
+        # load it
         sess.query(User).first()
         assert (
             "addresses" not in attributes.instance_state(u1).expired_attributes

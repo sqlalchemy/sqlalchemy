@@ -702,7 +702,8 @@ class AttributeImpl(object):
                 if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
 
-                if key in state.expired_attributes:
+                if self.accepts_scalar_loader and \
+                        key in state.expired_attributes:
                     value = state._load_expired(state, passive)
                 elif key in state.callables:
                     callable_ = state.callables[key]

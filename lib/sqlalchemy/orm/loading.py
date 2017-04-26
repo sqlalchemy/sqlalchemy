@@ -269,6 +269,10 @@ def load_on_pk_identity(
     else:
         version_check = False
 
+    if refresh_state and refresh_state.load_options:
+        q = q._with_current_path(refresh_state.load_path.parent)
+        q = q._conditional_options(refresh_state.load_options)
+
     q._get_options(
         populate_existing=bool(refresh_state),
         version_check=version_check,

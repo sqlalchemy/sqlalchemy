@@ -3466,7 +3466,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         sess = Session(autoflush=False)
         return User, Address, sess
 
-    def test_no_query_on_refresh(self):
+    def test_runs_query_on_refresh(self):
         User, Address, sess = self._eager_config_fixture()
 
         u1 = sess.query(User).get(8)
@@ -3477,7 +3477,8 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             eq_(u1.id, 8)
 
         self.assert_sql_count(testing.db, go, 1)
-        assert "addresses" not in u1.__dict__
+
+        assert 'addresses' in u1.__dict__
 
     def test_populate_existing_propagate(self):
         # both SelectInLoader and SubqueryLoader receive the loaded collection

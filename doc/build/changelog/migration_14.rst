@@ -188,6 +188,67 @@ refined so that it is more compatible with Core.
 Behavioral Changes - ORM
 ========================
 
+.. _change_1763:
+
+Eager loaders emit during unexpire operations
+---------------------------------------------
+
+A long sought behavior was that when an expired object is accessed, configured
+eager loaders will run in order to eagerly load relationships on the expired
+object when the object is refreshed or otherwise unexpired.   This behavior has
+now been added, so that joinedloaders will add inline JOINs as usual, and
+selectin/subquery loaders will run an "immediateload" operation for a given
+relationship, when an expired object is unexpired or an object is refreshed::
+
+    >>> a1 = session.query(A).options(joinedload(A.bs)).first()
+    >>> a1.data = 'new data'
+    >>> session.commit()
+
+Above, the ``A`` object was loaded with a ``joinedload()`` option associated
+with it in order to eagerly load the ``bs`` collection.    After the
+``session.commit()``, the state of the object is expired.  Upon accessing
+the ``.data`` column attribute, the object is refreshed and this will now
+include the joinedload operation as well::
+
+    >>> a1.data
+    SELECT a.id AS a_id, a.data AS a_data, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id
+    FROM a LEFT OUTER JOIN b AS b_1 ON a.id = b_1.a_id
+    WHERE a.id = ?
+
+The behavior applies both to loader strategies applied to the
+:func:`.relationship` directly, as well as with options used with
+:meth:`.Query.options`, provided that the object was originally loaded by that
+query.
+
+For the "secondary" eager loaders "selectinload" and "subqueryload", the SQL
+strategy for these loaders is not necessary in order to eagerly load attributes
+on a single object; so they will instead invoke the "immediateload" strategy in
+a refresh scenario, which resembles the query emitted by "lazyload", emitted as
+an additional query::
+
+    >>> a1 = session.query(A).options(selectinload(A.bs)).first()
+    >>> a1.data = 'new data'
+    >>> session.commit()
+    >>> a1.data
+    SELECT a.id AS a_id, a.data AS a_data
+    FROM a
+    WHERE a.id = ?
+    (1,)
+    SELECT b.id AS b_id, b.a_id AS b_a_id
+    FROM b
+    WHERE ? = b.a_id
+    (1,)
+
+Note that a loader option does not apply to an object that was introduced
+into the :class:`.Session` in a different way.  That is, if the ``a1`` object
+were just persisted in this :class:`.Session`, or was loaded with a different
+query before the eager option had been applied, then the object doesn't have
+an eager load option associated with it.  This is not a new concept, however
+users who are looking for the eagerload on refresh behavior may find this
+to be more noticeable.
+
+:ticket:`1763`
+
 .. _change_4519:
 
 Accessing an uninitialized collection attribute on a transient object no longer mutates __dict__

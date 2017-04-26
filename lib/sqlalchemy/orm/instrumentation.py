@@ -123,6 +123,10 @@ class ClassManager(dict):
             ]
         )
 
+    @_memoized_key_collection
+    def _loader_impls(self):
+        return frozenset([attr.impl for attr in self.values()])
+
     @util.memoized_property
     def mapper(self):
         # raises unless self.mapper has been assigned

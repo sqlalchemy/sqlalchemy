@@ -702,6 +702,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             if _none_set.issuperset(primary_key_identity):
                 return None
 
+            if self.key in state.dict:
+                return attributes.ATTR_WAS_SET
+
             # look for this identity in the identity map.  Delegate to the
             # Query class in use, as it may have special rules for how it
             # does this, including how it decides what the correct
@@ -841,6 +844,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 )
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
+        if self.key in state.dict:
+            return attributes.ATTR_WAS_SET
 
         if pending:
             if util.has_intersection(orm_util._none_set, params.values()):
@@ -934,8 +939,21 @@ class LoadLazyAttribute(object):
         return strategy._load_for_state(state, passive)
 
 
+class PostLoader(AbstractRelationshipLoader):
+    """A relationship loader that emits a second SELECT statement."""
+
+    def _immediateload_create_row_processor(
+        self, context, path, loadopt, mapper, result, adapter, populators
+    ):
+        return self.parent_property._get_strategy(
+            (("lazy", "immediate"),)
+        ).create_row_processor(
+            context, path, loadopt, mapper, result, adapter, populators
+        )
+
+
 @properties.RelationshipProperty.strategy_for(lazy="immediate")
-class ImmediateLoader(AbstractRelationshipLoader):
+class ImmediateLoader(PostLoader):
     __slots__ = ()
 
     def init_class_attribute(self, mapper):
@@ -967,7 +985,7 @@ class ImmediateLoader(AbstractRelationshipLoader):
 
 @log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy="subquery")
-class SubqueryLoader(AbstractRelationshipLoader):
+class SubqueryLoader(PostLoader):
     __slots__ = ("join_depth",)
 
     def __init__(self, parent, strategy_key):
@@ -991,7 +1009,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         **kwargs
     ):
 
-        if not context.query._enable_eagerloads:
+        if not context.query._enable_eagerloads or context.refresh_state:
             return
         elif context.query._yield_per:
             context.query._no_yield_per("subquery")
@@ -1320,6 +1338,11 @@ class SubqueryLoader(AbstractRelationshipLoader):
     def create_row_processor(
         self, context, path, loadopt, mapper, result, adapter, populators
     ):
+        if context.refresh_state:
+            return self._immediateload_create_row_processor(
+                context, path, loadopt, mapper, result, adapter, populators
+            )
+
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
                 "'%s' does not support object "
@@ -2066,7 +2089,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
 @log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy="selectin")
-class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
+class SelectInLoader(PostLoader, util.MemoizedSlots):
     __slots__ = (
         "join_depth",
         "omit_join",
@@ -2182,6 +2205,11 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     def create_row_processor(
         self, context, path, loadopt, mapper, result, adapter, populators
     ):
+        if context.refresh_state:
+            return self._immediateload_create_row_processor(
+                context, path, loadopt, mapper, result, adapter, populators
+            )
+
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
                 "'%s' does not support object "

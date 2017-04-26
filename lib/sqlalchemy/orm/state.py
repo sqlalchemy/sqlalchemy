@@ -595,12 +595,23 @@ class InstanceState(interfaces.InspectionAttrInfo):
         self.expired_attributes.update(
             [
                 impl.key
-                for impl in self.manager._scalar_loader_impls
+                for impl in self.manager._loader_impls
                 if impl.expire_missing or impl.key in dict_
             ]
         )
 
         if self.callables:
+            # the per state loader callables we can remove here are
+            # LoadDeferredColumns, which undefers a column at the instance
+            # level that is mapped with deferred, and LoadLazyAttribute,
+            # which lazy loads a relationship at the instance level that
+            # is mapped with "noload" or perhaps "immediateload".
+            # Before 1.4, only column-based
+            # attributes could be considered to be "expired", so here they
+            # were the only ones "unexpired", which means to make them deferred
+            # again.   For the moment, as of 1.4 we also apply the same
+            # treatment relationships now, that is, an instance level lazy
+            # loader is reset in the same way as a column loader.
             for k in self.expired_attributes.intersection(self.callables):
                 del self.callables[k]
 
