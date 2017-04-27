@@ -274,5 +274,6 @@ def __go(lcls):
                      if not (name.startswith('_') or _inspect.ismodule(obj)))
 
     _sa_util.dependencies.resolve_all("sqlalchemy.orm")
+    _sa_util.dependencies.resolve_all("sqlalchemy.ext")
 
 __go(locals())

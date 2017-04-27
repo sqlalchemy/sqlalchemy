@@ -596,7 +596,6 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         "sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
             self, strategy_options, session, state, ident_key, passive):
-
         # emit lazy load now using BakedQuery, to cut way down on the overhead
         # of generating queries.
         # there are two big things we are trying to guard against here:
