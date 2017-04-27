@@ -20,7 +20,16 @@ def MockDBAPI():  # noqa
         return Mock()
 
     def connect(*arg, **kw):
-        return Mock(cursor=Mock(side_effect=cursor))
+        def close():
+            conn.closed = True
+
+        # mock seems like it might have an issue logging
+        # call_count correctly under threading, not sure.
+        # adding a side_effect for close seems to help.
+        conn = Mock(
+            cursor=Mock(side_effect=cursor),
+            close=Mock(side_effect=close), closed=False)
+        return conn
 
     def shutdown(value):
         if value:
@@ -2016,21 +2025,12 @@ class SingletonThreadPoolTest(PoolTestBase):
                 return dbapi.connect()
         p = pool.SingletonThreadPool(creator=creator, pool_size=3)
 
-        # there's an obvious race in STP which is that one thread
-        # creates a connection, another one calls cleanup and closes
-        # it before it ever gets returned.  This is of course if you're
-        # using more threads than the pool can connect to.
-
         if strong_refs:
             sr = set()
 
             def _conn():
                 c = p.connect()
-                if not c.connection.close.call_count:
-                    sr.add(c.connection)
-                # otherwise the connection is already closed, which
-                # is because you're using 10 threads but only a pool
-                # of size 3 :).
+                sr.add(c.connection)
                 return c
         else:
             def _conn():
