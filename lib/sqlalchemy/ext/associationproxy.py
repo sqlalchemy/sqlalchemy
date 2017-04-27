@@ -606,8 +606,9 @@ class _AssociationList(_AssociationCollection):
         return
 
     def append(self, value):
+        col = self.col
         item = self._create(value)
-        self.col.append(item)
+        col.append(item)
 
     def count(self, value):
         return sum([1 for _ in

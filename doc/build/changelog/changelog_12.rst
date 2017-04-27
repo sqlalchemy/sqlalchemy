@@ -24,6 +24,17 @@
         impact how the expression behaves in larger contexts as well as
         in result-row-handling.
 
+    .. change:: 3941
+        :tags: bug, ext
+        :tickets: 3941
+
+        Improved the association proxy list collection so that premature
+        autoflush against a newly created association object can be prevented
+        in the case where ``list.append()`` is being used, and a lazy load
+        would be invoked when the association proxy accesses the endpoint
+        collection.  The endpoint collection is now accessed first before
+        the creator is invoked to produce the association object.
+
     .. change:: 3969
         :tags: bug, sql
         :tickets: 3969

@@ -50,6 +50,103 @@ class ObjectCollection(object):
         return iter(self.values)
 
 
+class AutoFlushTest(fixtures.TablesTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'parent', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True))
+        Table(
+            'association', metadata,
+            Column('parent_id', ForeignKey('parent.id'), primary_key=True),
+            Column('child_id', ForeignKey('child.id'), primary_key=True),
+            Column('name', String(50))
+        )
+        Table(
+            'child', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('name', String(50))
+        )
+
+    def _fixture(self, collection_class, is_dict=False):
+        class Parent(object):
+            collection = association_proxy("_collection", "child")
+
+        class Child(object):
+            def __init__(self, name):
+                self.name = name
+
+        class Association(object):
+            if is_dict:
+                def __init__(self, key, child):
+                    self.child = child
+            else:
+                def __init__(self, child):
+                    self.child = child
+
+        mapper(Parent, self.tables.parent, properties={
+            "_collection": relationship(Association,
+                                        collection_class=collection_class,
+                                        backref="parent")
+        })
+        mapper(Association, self.tables.association, properties={
+            "child": relationship(Child, backref="association")
+        })
+        mapper(Child, self.tables.child)
+
+        return Parent, Child, Association
+
+    def _test_premature_flush(self, collection_class, fn, is_dict=False):
+        Parent, Child, Association = self._fixture(
+            collection_class, is_dict=is_dict)
+
+        session = Session(testing.db, autoflush=True, expire_on_commit=True)
+
+        p1 = Parent()
+        c1 = Child('c1')
+        c2 = Child('c2')
+        session.add(p1)
+        session.add(c1)
+        session.add(c2)
+
+        fn(p1.collection, c1)
+        session.commit()
+
+        fn(p1.collection, c2)
+        session.commit()
+
+        is_(c1.association[0].parent, p1)
+        is_(c2.association[0].parent, p1)
+
+        session.close()
+
+    def test_list_append(self):
+        self._test_premature_flush(
+            list, lambda collection, obj: collection.append(obj))
+
+    def test_list_extend(self):
+        self._test_premature_flush(
+            list, lambda collection, obj: collection.extend([obj]))
+
+    def test_set_add(self):
+        self._test_premature_flush(
+            set, lambda collection, obj: collection.add(obj))
+
+    def test_set_extend(self):
+        self._test_premature_flush(
+            set, lambda collection, obj: collection.update([obj]))
+
+    def test_dict_set(self):
+        def set_(collection, obj):
+            collection[obj.name] = obj
+
+        self._test_premature_flush(
+            collections.attribute_mapped_collection('name'),
+            set_, is_dict=True)
+
+
 class _CollectionOperations(fixtures.TestBase):
     def setup(self):
         collection_class = self.collection_class
@@ -84,7 +181,7 @@ class _CollectionOperations(fixtures.TestBase):
                     self.name = name
 
         mapper(Parent, parents_table, properties={
-            '_children': relationship(Child, lazy='joined',
+            '_children': relationship(Child, lazy='joined', backref='parent',
                                       collection_class=collection_class)})
         mapper(Child, children_table)
 
@@ -258,6 +355,7 @@ class _CollectionOperations(fixtures.TestBase):
             assert False
         except TypeError:
             assert True
+
 
 
 class DefaultTest(_CollectionOperations):
