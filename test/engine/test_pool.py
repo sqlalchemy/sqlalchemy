@@ -2016,12 +2016,21 @@ class SingletonThreadPoolTest(PoolTestBase):
                 return dbapi.connect()
         p = pool.SingletonThreadPool(creator=creator, pool_size=3)
 
+        # there's an obvious race in STP which is that one thread
+        # creates a connection, another one calls cleanup and closes
+        # it before it ever gets returned.  This is of course if you're
+        # using more threads than the pool can connect to.
+
         if strong_refs:
             sr = set()
 
             def _conn():
                 c = p.connect()
-                sr.add(c.connection)
+                if not c.connection.close.call_count:
+                    sr.add(c.connection)
+                # otherwise the connection is already closed, which
+                # is because you're using 10 threads but only a pool
+                # of size 3 :).
                 return c
         else:
             def _conn():
@@ -2042,7 +2051,7 @@ class SingletonThreadPoolTest(PoolTestBase):
             threads.append(th)
         for th in threads:
             th.join(join_timeout)
-        assert len(p._all_conns) == 3
+        eq_(len(p._all_conns), 3)
 
         if strong_refs:
             still_opened = len([c for c in sr if not c.close.call_count])
