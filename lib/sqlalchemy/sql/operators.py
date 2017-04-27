@@ -1021,7 +1021,8 @@ def json_path_getitem_op(a, b):
 
 _commutative = {eq, ne, add, mul}
 
-_comparison = {eq, ne, lt, gt, ge, le, between_op, like_op}
+_comparison = {eq, ne, lt, gt, ge, le, between_op, like_op, is_,
+               isnot, is_distinct_from, isnot_distinct_from}
 
 
 def is_comparison(op):

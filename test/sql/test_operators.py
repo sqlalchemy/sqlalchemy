@@ -3,6 +3,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.sql import column, desc, asc, literal, collate, null, \
     true, false, any_, all_
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.expression import BinaryExpression, \
     ClauseList, Grouping, \
     UnaryExpression, select, union, func, tuple_
@@ -61,6 +62,12 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
                 operator))
 
         self._loop_test(operator, right)
+
+        if operators.is_comparison(operator):
+            is_(
+                left.comparator.operate(operator, right).type,
+                sqltypes.BOOLEANTYPE
+            )
 
     def _loop_test(self, operator, *arg):
         loop = LoopOperate()
@@ -2616,6 +2623,9 @@ class CustomOpTest(fixtures.TestBase):
 
         assert operators.is_comparison(op1)
         assert not operators.is_comparison(op2)
+
+        expr = c.op('$', is_comparison=True)(None)
+        is_(expr.type, sqltypes.BOOLEANTYPE)
 
 
 class TupleTypingTest(fixtures.TestBase):

@@ -2555,7 +2555,9 @@ class NullType(TypeEngine):
     class Comparator(TypeEngine.Comparator):
 
         def _adapt_expression(self, op, other_comparator):
-            if isinstance(other_comparator, NullType.Comparator) or \
+            if operators.is_comparison(op):
+                return op, BOOLEANTYPE
+            elif isinstance(other_comparator, NullType.Comparator) or \
                     not operators.is_commutative(op):
                 return op, self.expr.type
             else:

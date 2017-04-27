@@ -13,6 +13,17 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3873
+        :tags: bug, sql
+        :tickets: 3873
+
+        Repaired issue where the type of an expression that used
+        :meth:`.ColumnOperators.is_` or similar would not be a "boolean" type,
+        instead the type would be "nulltype", as well as when using custom
+        comparison operators against an untyped expression.   This typing can
+        impact how the expression behaves in larger contexts as well as
+        in result-row-handling.
+
     .. change:: 3969
         :tags: bug, sql
         :tickets: 3969

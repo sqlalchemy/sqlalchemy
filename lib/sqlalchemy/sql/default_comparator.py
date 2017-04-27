@@ -50,11 +50,15 @@ def _boolean_compare(expr, op, obj, negate=None, reverse=False,
             if op in (operators.eq, operators.is_):
                 return BinaryExpression(expr, _const_expr(obj),
                                         operators.is_,
-                                        negate=operators.isnot)
+                                        negate=operators.isnot,
+                                        type_=result_type
+                                        )
             elif op in (operators.ne, operators.isnot):
                 return BinaryExpression(expr, _const_expr(obj),
                                         operators.isnot,
-                                        negate=operators.is_)
+                                        negate=operators.is_,
+                                        type_=result_type
+                                        )
             else:
                 raise exc.ArgumentError(
                     "Only '=', '!=', 'is_()', 'isnot()', "
