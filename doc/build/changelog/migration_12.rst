@@ -155,7 +155,7 @@ tuples with IN, e.g.
 Currently, Postgresql and MySQL are known to be compatible with this syntax,
 SQLite is not.
 
-..seealso::
+.. seealso::
 
     :ref:`selectin_eager_loading`
 
