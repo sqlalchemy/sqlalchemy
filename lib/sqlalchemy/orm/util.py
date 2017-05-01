@@ -675,18 +675,16 @@ def with_polymorphic(base, classes, selectable=False,
     """Produce an :class:`.AliasedClass` construct which specifies
     columns for descendant mappers of the given base.
 
-    .. versionadded:: 0.8
-        :func:`.orm.with_polymorphic` is in addition to the existing
-        :class:`.Query` method :meth:`.Query.with_polymorphic`,
-        which has the same purpose but is not as flexible in its usage.
-
     Using this method will ensure that each descendant mapper's
     tables are included in the FROM clause, and will allow filter()
     criterion to be used against those tables.  The resulting
     instances will also have those columns already loaded so that
     no "post fetch" of those columns will be required.
 
-    See the examples at :ref:`with_polymorphic`.
+    .. seealso::
+
+        :ref:`with_polymorphic` - full discussion of
+        :func:`.orm.with_polymorphic`.
 
     :param base: Base class to be aliased.
 
