@@ -4,11 +4,10 @@ Mapping Class Inheritance Hierarchies
 ======================================
 
 SQLAlchemy supports three forms of inheritance: **single table inheritance**,
-where several types of classes are represented by a single table, **concrete table
-inheritance**, where each type of class is represented by independent tables,
-and **joined
-table inheritance**, where the class hierarchy is broken up
-among dependent tables, each class represented by its own table that only
+where several types of classes are represented by a single table, **concrete
+table inheritance**, where each type of class is represented by independent
+tables, and **joined table inheritance**, where the class hierarchy is broken
+up among dependent tables, each class represented by its own table that only
 includes those attributes local to that class.
 
 The most common forms of inheritance are single and joined table, while
@@ -18,16 +17,26 @@ When mappers are configured in an inheritance relationship, SQLAlchemy has the
 ability to load elements :term:`polymorphically`, meaning that a single query can
 return objects of multiple types.
 
+.. _joined_inheritance:
+
 Joined Table Inheritance
 -------------------------
 
-In joined table inheritance, each class along a particular classes' list of
-parents is represented by a unique table. The total set of attributes for a
-particular instance is represented as a join along all tables in its
-inheritance path. Here, we first define the ``Employee`` class.
-This table will contain a primary key column (or columns), and a column
-for each attribute that's represented by ``Employee``. In this case it's just
-``name``::
+In joined table inheritance, each class along a hierarchy of classes
+is represented by a distinct table.  Querying for a particular subclass
+in the hierarchy will render as a SQL JOIN along all tables in its
+inheritance path - if the class is the base class, the default behavior
+is to include only the base table in the SELECT.   In all cases, the
+ultimate class to instantiate for a given row is determined by a discriminator
+column or expression that works against the base table.    A subclass
+loaded against the base table only will have only base attributes
+populated at first; the additional attributes will :term:`lazy load` when
+they are accessed.  Options also exist to query for all
+columns across multiple tables/subclasses up front.
+
+The base class in a joined inheritance hierarchy is configured with
+additional arguments that will refer to the polymorphic discriminator
+column as well as the identifier for the base class::
 
     class Employee(Base):
         __tablename__ = 'employee'
@@ -40,34 +49,29 @@ for each attribute that's represented by ``Employee``. In this case it's just
             'polymorphic_on':type
         }
 
-The mapped table also has a column called ``type``.   The purpose of
-this column is to act as the **discriminator**, and stores a value
-which indicates the type of object represented within the row. The column may
-be of any datatype, though string and integer are the most common.
+Above, an additional column ``type`` is established to act as the
+**discriminator**, configured as such using the :paramref:`.mapper.polymorphic_on`
+parameter.  This column will store a value which indicates the type of object
+represented within the row. The column may be of any datatype, though string
+and integer are the most common.
 
-.. warning::
+While a polymorphic discriminator expression is not strictly necessary, it is
+required if polymorphic loading is desired.   Establishing a simple column on
+the base table is the easiest way to achieve this, however very sophisticated
+inheritance mappings may even configure a SQL expression such as a CASE
+statement as the polymorphic discriminator.
 
-   Currently, **only one discriminator column may be set**, typically
-   on the base-most class in the hierarchy. "Cascading" polymorphic columns
-   are not yet supported.
+.. note::
 
-The discriminator column is only needed if polymorphic loading is
-desired, as is usually the case.   It is not strictly necessary that
-it be present directly on the base mapped table, and can instead be defined on a
-derived select statement that's used when the class is queried;
-however, this is a much more sophisticated configuration scenario.
-
-The mapping receives additional arguments via the ``__mapper_args__``
-dictionary.   Here the ``type`` column is explicitly stated as the
-discriminator column, and the **polymorphic identity** of ``employee``
-is also given; this is the value that will be
-stored in the polymorphic discriminator column for instances of this
-class.
+   Currently, **only one discriminator column or SQL expression may be
+   configured for the entire inheritance hierarchy**, typically on the base-
+   most class in the hierarchy. "Cascading" polymorphic discriminator
+   expressions are not yet supported.
 
 We next define ``Engineer`` and ``Manager`` subclasses of ``Employee``.
 Each contains columns that represent the attributes unique to the subclass
 they represent. Each table also must contain a primary key column (or
-columns), and in most cases a foreign key reference to the parent table::
+columns), as well as a foreign key reference to the parent table::
 
     class Engineer(Employee):
         __tablename__ = 'engineer'
@@ -87,479 +91,150 @@ columns), and in most cases a foreign key reference to the parent table::
             'polymorphic_identity':'manager',
         }
 
-It is standard practice that the same column is used for both the role
-of primary key as well as foreign key to the parent table,
-and that the column is also named the same as that of the parent table.
-However, both of these practices are optional.  Separate columns may be used for
-primary key and parent-relationship, the column may be named differently than
-that of the parent, and even a custom join condition can be specified between
-parent and child tables instead of using a foreign key.
+It is most common that the foreign key constraint is established on the same
+column or columns as the primary key itself, however this is not required; a
+column distinct from the primary key may also be made to refer to the parent
+via foreign key.  The way that a JOIN is constructed from the base table to
+subclasses is also directly customizable, however this is rarely necessary.
 
 .. topic:: Joined inheritance primary keys
 
-    One natural effect of the joined table inheritance configuration is that the
-    identity of any mapped object can be determined entirely from the base table.
-    This has obvious advantages, so SQLAlchemy always considers the primary key
-    columns of a joined inheritance class to be those of the base table only.
-    In other words, the ``id``
-    columns of both the ``engineer`` and ``manager`` tables are not used to locate
-    ``Engineer`` or ``Manager`` objects - only the value in
-    ``employee.id`` is considered. ``engineer.id`` and ``manager.id`` are
-    still of course critical to the proper operation of the pattern overall as
-    they are used to locate the joined row, once the parent row has been
-    determined within a statement.
+    One natural effect of the joined table inheritance configuration is that
+    the identity of any mapped object can be determined entirely from rows  in
+    the base table alone. This has obvious advantages, so SQLAlchemy always
+    considers the primary key columns of a joined inheritance class to be those
+    of the base table only. In other words, the ``id`` columns of both the
+    ``engineer`` and ``manager`` tables are not used to locate ``Engineer`` or
+    ``Manager`` objects - only the value in ``employee.id`` is considered.
+    ``engineer.id`` and ``manager.id`` are still of course critical to the
+    proper operation of the pattern overall as they are used to locate the
+    joined row, once the parent row has been determined within a statement.
 
-With the joined inheritance mapping complete, querying against ``Employee`` will return a combination of
-``Employee``, ``Engineer`` and ``Manager`` objects. Newly saved ``Engineer``,
-``Manager``, and ``Employee`` objects will automatically populate the
-``employee.type`` column with ``engineer``, ``manager``, or ``employee``, as
-appropriate.
+With the joined inheritance mapping complete, querying against ``Employee``
+will return a combination of ``Employee``, ``Engineer`` and ``Manager``
+objects. Newly saved ``Engineer``, ``Manager``, and ``Employee`` objects will
+automatically populate the ``employee.type`` column with the correct
+"discriminator" value in this case ``"engineer"``,
+``"manager"``, or ``"employee"``, as appropriate.
 
-.. _with_polymorphic:
+Relationships with Joined Inheritance
++++++++++++++++++++++++++++++++++++++
 
-Basic Control of Which Tables are Queried
-++++++++++++++++++++++++++++++++++++++++++
-
-The :func:`.orm.with_polymorphic` function and the
-:func:`~sqlalchemy.orm.query.Query.with_polymorphic` method of
-:class:`~sqlalchemy.orm.query.Query` affects the specific tables
-which the :class:`.Query` selects from.  Normally, a query such as this::
-
-    session.query(Employee).all()
-
-...selects only from the ``employee`` table. When loading fresh from the
-database, our joined-table setup will query from the parent table only, using
-SQL such as this:
-
-.. sourcecode:: python+sql
-
-    {opensql}
-    SELECT employee.id AS employee_id,
-        employee.name AS employee_name, employee.type AS employee_type
-    FROM employee
-    []
-
-As attributes are requested from those ``Employee`` objects which are
-represented in either the ``engineer`` or ``manager`` child tables, a second
-load is issued for the columns in that related row, if the data was not
-already loaded. So above, after accessing the objects you'd see further SQL
-issued along the lines of:
-
-.. sourcecode:: python+sql
-
-    {opensql}
-    SELECT manager.id AS manager_id,
-        manager.manager_data AS manager_manager_data
-    FROM manager
-    WHERE ? = manager.id
-    [5]
-    SELECT engineer.id AS engineer_id,
-        engineer.engineer_info AS engineer_engineer_info
-    FROM engineer
-    WHERE ? = engineer.id
-    [2]
-
-This behavior works well when issuing searches for small numbers of items,
-such as when using :meth:`.Query.get`, since the full range of joined tables are not
-pulled in to the SQL statement unnecessarily. But when querying a larger span
-of rows which are known to be of many types, you may want to actively join to
-some or all of the joined tables. The ``with_polymorphic`` feature
-provides this.
-
-Telling our query to polymorphically load ``Engineer`` and ``Manager``
-objects, we can use the :func:`.orm.with_polymorphic` function
-to create a new aliased class which represents a select of the base
-table combined with outer joins to each of the inheriting tables::
-
-    from sqlalchemy.orm import with_polymorphic
-
-    eng_plus_manager = with_polymorphic(Employee, [Engineer, Manager])
-
-    query = session.query(eng_plus_manager)
-
-The above produces a query which joins the ``employee`` table to both the
-``engineer`` and ``manager`` tables like the following:
-
-.. sourcecode:: python+sql
-
-    query.all()
-    {opensql}
-    SELECT employee.id AS employee_id,
-        engineer.id AS engineer_id,
-        manager.id AS manager_id,
-        employee.name AS employee_name,
-        employee.type AS employee_type,
-        engineer.engineer_info AS engineer_engineer_info,
-        manager.manager_data AS manager_manager_data
-    FROM employee
-        LEFT OUTER JOIN engineer
-        ON employee.id = engineer.id
-        LEFT OUTER JOIN manager
-        ON employee.id = manager.id
-    []
-
-The entity returned by :func:`.orm.with_polymorphic` is an :class:`.AliasedClass`
-object, which can be used in a :class:`.Query` like any other alias, including
-named attributes for those attributes on the ``Employee`` class.   In our
-example, ``eng_plus_manager`` becomes the entity that we use to refer to the
-three-way outer join above.  It also includes namespaces for each class named
-in the list of classes, so that attributes specific to those subclasses can be
-called upon as well.   The following example illustrates calling upon attributes
-specific to ``Engineer`` as well as ``Manager`` in terms of ``eng_plus_manager``::
-
-    eng_plus_manager = with_polymorphic(Employee, [Engineer, Manager])
-    query = session.query(eng_plus_manager).filter(
-                    or_(
-                        eng_plus_manager.Engineer.engineer_info=='x',
-                        eng_plus_manager.Manager.manager_data=='y'
-                    )
-                )
-
-:func:`.orm.with_polymorphic` accepts a single class or
-mapper, a list of classes/mappers, or the string ``'*'`` to indicate all
-subclasses:
-
-.. sourcecode:: python+sql
-
-    # join to the engineer table
-    entity = with_polymorphic(Employee, Engineer)
-
-    # join to the engineer and manager tables
-    entity = with_polymorphic(Employee, [Engineer, Manager])
-
-    # join to all subclass tables
-    entity = with_polymorphic(Employee, '*')
-
-    # use the 'entity' with a Query object
-    session.query(entity).all()
-
-It also accepts a third argument ``selectable`` which replaces the automatic
-join creation and instead selects directly from the selectable given. This
-feature is normally used with "concrete" inheritance, described later, but can
-be used with any kind of inheritance setup in the case that specialized SQL
-should be used to load polymorphically::
-
-    # custom selectable
-    employee = Employee.__table__
-    manager = Manager.__table__
-    engineer = Engineer.__table__
-    entity = with_polymorphic(
-                Employee,
-                [Engineer, Manager],
-                employee.outerjoin(manager).outerjoin(engineer)
-            )
-
-    # use the 'entity' with a Query object
-    session.query(entity).all()
-
-Note that if you only need to load a single subtype, such as just the
-``Engineer`` objects, :func:`.orm.with_polymorphic` is
-not needed since you would query against the ``Engineer`` class directly.
-
-:meth:`.Query.with_polymorphic` has the same purpose
-as :func:`.orm.with_polymorphic`, except is not as
-flexible in its usage patterns in that it only applies to the first full
-mapping, which then impacts all occurrences of that class or the target
-subclasses within the :class:`.Query`.  For simple cases it might be
-considered to be more succinct::
-
-    session.query(Employee).with_polymorphic([Engineer, Manager]).\
-        filter(or_(Engineer.engineer_info=='w', Manager.manager_data=='q'))
-
-.. versionadded:: 0.8
-    :func:`.orm.with_polymorphic`, an improved version of
-    :meth:`.Query.with_polymorphic` method.
-
-The mapper also accepts ``with_polymorphic`` as a configurational argument so
-that the joined-style load will be issued automatically. This argument may be
-the string ``'*'``, a list of classes, or a tuple consisting of either,
-followed by a selectable::
-
-    class Employee(Base):
-        __tablename__ = 'employee'
-        id = Column(Integer, primary_key=True)
-        type = Column(String(20))
-
-        __mapper_args__ = {
-            'polymorphic_on':type,
-            'polymorphic_identity':'employee',
-            'with_polymorphic':'*'
-        }
-
-    class Engineer(Employee):
-        __tablename__ = 'engineer'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        __mapper_args__ = {'polymorphic_identity':'engineer'}
-
-    class Manager(Employee):
-        __tablename__ = 'manager'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        __mapper_args__ = {'polymorphic_identity':'manager'}
-
-The above mapping will produce a query similar to that of
-``with_polymorphic('*')`` for every query of ``Employee`` objects.
-
-Using :func:`.orm.with_polymorphic` or :meth:`.Query.with_polymorphic`
-will override the mapper-level ``with_polymorphic`` setting.
-
-.. autofunction:: sqlalchemy.orm.with_polymorphic
-
-Advanced Control of Which Tables are Queried
-+++++++++++++++++++++++++++++++++++++++++++++
-
-The ``with_polymorphic`` functions work fine for
-simplistic scenarios.   However, direct control of table rendering
-is called for, such as the case when one wants to
-render to only the subclass table and not the parent table.
-
-This use case can be achieved by using the mapped :class:`.Table`
-objects directly.   For example, to
-query the name of employees with particular criterion::
-
-    engineer = Engineer.__table__
-    manager = Manager.__table__
-
-    session.query(Employee.name).\
-        outerjoin((engineer, engineer.c.employee_id==Employee.employee_id)).\
-        outerjoin((manager, manager.c.employee_id==Employee.employee_id)).\
-        filter(or_(Engineer.engineer_info=='w', Manager.manager_data=='q'))
-
-The base table, in this case the "employees" table, isn't always necessary. A
-SQL query is always more efficient with fewer joins. Here, if we wanted to
-just load information specific to manager or engineer, we can instruct
-:class:`.Query` to use only those tables. The ``FROM`` clause is determined by
-what's specified in the :meth:`.Session.query`, :meth:`.Query.filter`, or
-:meth:`.Query.select_from` methods::
-
-    session.query(Manager.manager_data).select_from(manager)
-
-    session.query(engineer.c.id).\
-            filter(engineer.c.engineer_info==manager.c.manager_data)
-
-.. _of_type:
-
-Creating Joins to Specific Subtypes
-+++++++++++++++++++++++++++++++++++
-
-The :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` method is a
-helper which allows the construction of joins along
-:func:`~sqlalchemy.orm.relationship` paths while narrowing the criterion to
-specific subclasses. Suppose the ``employees`` table represents a collection
-of employees which are associated with a ``Company`` object. We'll add a
-``company_id`` column to the ``employees`` table and a new table
-``companies``:
-
-.. sourcecode:: python+sql
+Relationships are fully supported with joined table inheritance.   The
+relationship involving a joined-inheritance class should target the class
+in the hierarchy that also corresponds to the foreign key constraint;
+below, as the ``employee`` table has a foreign key constraint back to
+the ``company`` table, the relationships are set up between ``Company``
+and ``Employee``::
 
     class Company(Base):
         __tablename__ = 'company'
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
-        employees = relationship("Employee",
-                        backref='company',
-                        cascade='all, delete-orphan')
-
-    class Employee(Base):
-        __tablename__ = 'employee'
-        id = Column(Integer, primary_key=True)
-        type = Column(String(20))
-        company_id = Column(Integer, ForeignKey('company.id'))
-        __mapper_args__ = {
-            'polymorphic_on':type,
-            'polymorphic_identity':'employee',
-            'with_polymorphic':'*'
-        }
-
-    class Engineer(Employee):
-        __tablename__ = 'engineer'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        engineer_info = Column(String(50))
-        __mapper_args__ = {'polymorphic_identity':'engineer'}
-
-    class Manager(Employee):
-        __tablename__ = 'manager'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        manager_data = Column(String(50))
-        __mapper_args__ = {'polymorphic_identity':'manager'}
-
-When querying from ``Company`` onto the ``Employee`` relationship, the
-``join()`` method as well as the ``any()`` and ``has()`` operators will create
-a join from ``company`` to ``employee``, without including ``engineer`` or
-``manager`` in the mix. If we wish to have criterion which is specifically
-against the ``Engineer`` class, we can tell those methods to join or subquery
-against the joined table representing the subclass using the
-:meth:`~.orm.interfaces.PropComparator.of_type` operator::
-
-    session.query(Company).\
-        join(Company.employees.of_type(Engineer)).\
-        filter(Engineer.engineer_info=='someinfo')
-
-A longhand version of this would involve spelling out the full target
-selectable within a 2-tuple::
-
-    employee = Employee.__table__
-    engineer = Engineer.__table__
-
-    session.query(Company).\
-        join((employee.join(engineer), Company.employees)).\
-        filter(Engineer.engineer_info=='someinfo')
-
-:func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` accepts a
-single class argument.  More flexibility can be achieved either by
-joining to an explicit join as above, or by using the :func:`.orm.with_polymorphic`
-function to create a polymorphic selectable::
-
-    manager_and_engineer = with_polymorphic(
-                                Employee, [Manager, Engineer],
-                                aliased=True)
-
-    session.query(Company).\
-        join(manager_and_engineer, Company.employees).\
-        filter(
-            or_(manager_and_engineer.Engineer.engineer_info=='someinfo',
-                manager_and_engineer.Manager.manager_data=='somedata')
-        )
-
-Above, we use the ``aliased=True`` argument with :func:`.orm.with_polymorhpic`
-so that the right hand side of the join between ``Company`` and ``manager_and_engineer``
-is converted into an aliased subquery.  Some backends, such as SQLite and older
-versions of MySQL can't handle a FROM clause of the following form::
-
-    FROM x JOIN (y JOIN z ON <onclause>) ON <onclause>
-
-Using ``aliased=True`` instead renders it more like::
-
-    FROM x JOIN (SELECT * FROM y JOIN z ON <onclause>) AS anon_1 ON <onclause>
-
-The above join can also be expressed more succinctly by combining ``of_type()``
-with the polymorphic construct::
-
-    manager_and_engineer = with_polymorphic(
-                                Employee, [Manager, Engineer],
-                                aliased=True)
-
-    session.query(Company).\
-        join(Company.employees.of_type(manager_and_engineer)).\
-        filter(
-            or_(manager_and_engineer.Engineer.engineer_info=='someinfo',
-                manager_and_engineer.Manager.manager_data=='somedata')
-        )
-
-The ``any()`` and ``has()`` operators also can be used with
-:func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` when the embedded
-criterion is in terms of a subclass::
-
-    session.query(Company).\
-            filter(
-                Company.employees.of_type(Engineer).
-                    any(Engineer.engineer_info=='someinfo')
-                ).all()
-
-Note that the ``any()`` and ``has()`` are both shorthand for a correlated
-EXISTS query. To build one by hand looks like::
-
-    session.query(Company).filter(
-        exists([1],
-            and_(Engineer.engineer_info=='someinfo',
-                employees.c.company_id==companies.c.company_id),
-            from_obj=employees.join(engineers)
-        )
-    ).all()
-
-The EXISTS subquery above selects from the join of ``employees`` to
-``engineers``, and also specifies criterion which correlates the EXISTS
-subselect back to the parent ``companies`` table.
-
-.. versionadded:: 0.8
-   :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` accepts
-   :func:`.orm.aliased` and :func:`.orm.with_polymorphic` constructs in conjunction
-   with :meth:`.Query.join`, ``any()`` and ``has()``.
-
-.. _eagerloading_polymorphic_subtypes:
-
-Eager Loading of Specific or Polymorphic Subtypes
-++++++++++++++++++++++++++++++++++++++++++++++++++
-
-The :func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager` and
-other loading-related options also support
-paths which make use of :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
-Below we load ``Company`` rows while eagerly loading related ``Engineer``
-objects, querying the ``employee`` and ``engineer`` tables simultaneously::
-
-    session.query(Company).\
-        options(
-            subqueryload(Company.employees.of_type(Engineer)).
-            subqueryload("machines")
-            )
-        )
-
-As is the case with :meth:`.Query.join`, :meth:`~PropComparator.of_type`
-also can be used with eager loading and :func:`.orm.with_polymorphic`
-at the same time, so that all sub-attributes of all referenced subtypes
-can be loaded::
-
-    manager_and_engineer = with_polymorphic(
-                                Employee, [Manager, Engineer],
-                                flat=True)
-
-    session.query(Company).\
-        options(
-            joinedload(Company.employees.of_type(manager_and_engineer))
-            )
-        )
-
-Note that once :meth:`~PropComparator.of_type` is the target of the eager load,
-that's the entity we would use for subsequent chaining, not the original class
-or derived class.  If we wanted to further eager load a collection on the
-eager-loaded ``Engineer`` class, we access this class from the namespace of the
-:func:`.orm.with_polymorphic` object::
-
-    session.query(Company).\
-        options(
-            joinedload(Company.employees.of_type(manager_and_engineer)).\
-            subqueryload(manager_and_engineer.Engineer.computers)
-            )
-        )
-
-
-Another option for the above query is to state the two subtypes separately;
-the :func:`.joinedload` directive should detect this and create the
-above ``with_polymorphic`` construct automatically::
-
-    session.query(Company).\
-        options(
-            joinedload(Company.employees.of_type(Manager)),
-            joinedload(Company.employees.of_type(Engineer)),
-            )
-        )
-
-.. versionadded:: 1.0
-    Eager loaders such as :func:`.joinedload` will create a polymorphic
-    entity when multiple overlapping :meth:`~PropComparator.of_type`
-    directives are encountered.
-
-
-
-Single Table Inheritance
-------------------------
-
-Single table inheritance is where the attributes of the base class as well as
-all subclasses are represented within a single table. A column is present in
-the table for every attribute mapped to the base class and all subclasses; the
-columns which correspond to a single subclass are nullable. This configuration
-looks much like joined-table inheritance except there's only one table. In
-this case, a ``type`` column is required, as there would be no other way to
-discriminate between classes. The table is specified in the base mapper only;
-for the inheriting classes, leave their ``table`` parameter blank:
-
-.. sourcecode:: python+sql
+        employees = relationship("Employee", back_populates="company")
 
     class Employee(Base):
         __tablename__ = 'employee'
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
-        manager_data = Column(String(50))
-        engineer_info = Column(String(50))
+        type = Column(String(50))
+        company_id = Column(ForeignKey('company.id'))
+        company = relationship("Company", back_populates="employees")
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee',
+            'polymorphic_on':type
+        }
+
+    class Manager(Employee):
+        # ...
+
+    class Engineer(Employee):
+        # ...
+
+If the foreign key constraint is on a table corresponding to a subclass,
+the relationship should target that subclass instead.  In the example
+below, there is a foreign
+key constraint from ``manager`` to ``company``, so the relationships are
+established between the ``Manager`` and ``Company`` classes::
+
+    class Company(Base):
+        __tablename__ = 'company'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        managers = relationship("Manager", back_populates="company")
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        type = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee',
+            'polymorphic_on':type
+        }
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_name = Column(String(30))
+
+        company_id = Column(ForeignKey('company.id'))
+        company = relationship("Company", back_populates="managers")
+
+        __mapper_args__ = {
+            'polymorphic_identity':'manager',
+        }
+
+    class Engineer(Employee):
+        # ...
+
+Above, the ``Manager`` class will have a ``Manager.company`` attribute;
+``Company`` will have a ``Company.managers`` attribute that always
+loads against a join of the ``employee`` and ``manager`` tables together.
+
+Loading Joined Inheritance Mappings
++++++++++++++++++++++++++++++++++++
+
+See the sections :ref:`inheritance_loading_toplevel` and
+:ref:`loading_joined_inheritance` for background on inheritnce
+loading techniques, including configuration of tables
+to be queried both at mapper configuration time as well as query time.
+
+.. _single_inheritance:
+
+Single Table Inheritance
+------------------------
+
+Single table inheritance represents all attributes of all subclasses
+within a single table.  A particular subclass that has attributes unique
+to that class will persist them within columns in the table that are otherwise
+NULL if the row refers to a different kind of object.
+
+Querying for a particular subclass
+in the hierarchy will render as a SELECT against the base table, which
+will include a WHERE clause that limits rows to those with a particular
+value or values present in the discriminator column or expression.
+
+Single table inheritance has the advantage of simplicity compared to
+joined table inheritance; queries are much more efficient as only one table
+needs to be involved in order to load objects of every represented class.
+
+Single-table inheritance configuration looks much like joined-table
+inheritance, except only the base class specifies ``__tablename__``. A
+discriminator column is also required on the base table so that classes can be
+differentiated from each other.
+
+Even though subclasses share the base table for all of their attributes,
+when using Declarative,  :class:`.Column` objects may still be specified on
+subclasses, indicating that the column is to be mapped only to that subclass;
+the :class:`.Column` will be applied to the same base :class:`.Table` object::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
         type = Column(String(20))
 
         __mapper_args__ = {
@@ -568,11 +243,15 @@ for the inheriting classes, leave their ``table`` parameter blank:
         }
 
     class Manager(Employee):
+        manager_data = Column(String(50))
+
         __mapper_args__ = {
             'polymorphic_identity':'manager'
         }
 
     class Engineer(Employee):
+        engineer_info = Column(String(50))
+
         __mapper_args__ = {
             'polymorphic_identity':'engineer'
         }
@@ -581,62 +260,130 @@ Note that the mappers for the derived classes Manager and Engineer omit the
 ``__tablename__``, indicating they do not have a mapped table of
 their own.
 
+Relationships with Single Table Inheritance
++++++++++++++++++++++++++++++++++++++++++++
+
+Relationships are fully supported with single table inheritance.   Configuration
+is done in the same manner as that of joined inheritance; a foreign key
+attribute should be on the same class that's the "foreign" side of the
+relationship::
+
+    class Company(Base):
+        __tablename__ = 'company'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        employees = relationship("Employee", back_populates="company")
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        type = Column(String(50))
+        company_id = Column(ForeignKey('company.id'))
+        company = relationship("Company", back_populates="employees")
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee',
+            'polymorphic_on':type
+        }
+
+
+    class Manager(Employee):
+        manager_data = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'manager'
+        }
+
+    class Engineer(Employee):
+        engineer_info = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'engineer'
+        }
+
+Also, like the case of joined inheritance, we can create relationships
+that involve a specific subclass.   When queried, the SELECT statement will
+include a WHERE clause that limits the class selection to that subclass
+or subclasses::
+
+    class Company(Base):
+        __tablename__ = 'company'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        managers = relationship("Manager", back_populates="company")
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        type = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee',
+            'polymorphic_on':type
+        }
+
+
+    class Manager(Employee):
+        manager_name = Column(String(30))
+
+        company_id = Column(ForeignKey('company.id'))
+        company = relationship("Company", back_populates="managers")
+
+        __mapper_args__ = {
+            'polymorphic_identity':'manager',
+        }
+
+
+    class Engineer(Employee):
+        engineer_info = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity':'engineer'
+        }
+
+Above, the ``Manager`` class will have a ``Manager.company`` attribute;
+``Company`` will have a ``Company.managers`` attribute that always
+loads against the ``employee`` with an additional WHERE clause that
+limits rows to those with ``type = 'manager'``.
+
+Loading Single Inheritance Mappings
++++++++++++++++++++++++++++++++++++
+
+The loading techniques for single-table inheritance are mostly identical to
+those used for joined-table inheritance, and a high degree of abstraction is
+provided between these two mapping types such that it is easy to switch between
+them as well as to intermix them in a single hierarchy (just omit
+``__tablename__`` from whichever subclasses are to be single-inheriting). See
+the sections :ref:`inheritance_loading_toplevel` and
+:ref:`loading_single_inheritance` for documentation on inheritance loading
+techniques, including configuration of classes to be queried both at mapper
+configuration time as well as query time.
+
 .. _concrete_inheritance:
 
 Concrete Table Inheritance
 --------------------------
 
-This form of inheritance maps each class to a distinct table.  As concrete
-inheritance has a bit more conceptual overhead, first we'll illustrate
-what these tables look like as Core table metadata:
+Concrete inheritance maps each subclass to its own distinct table, each
+of which contains all columns necessary to produce an instance of that class.
+A concrete inheritance configuration by default queries non-polymorphically;
+a query for a particular class will only query that class' table
+and only return instances of that class.  Polymorphic loading of concrete
+classes is enabled by configuring within the mapper
+a special SELECT that typically is produced as a UNION of all the tables.
 
-.. sourcecode:: python+sql
+Whereas joined and single table inheritance are fluent in "polymorphic"
+loading, it is a more awkward affair in concrete inheritance.  For this
+reason, concrete inheritance is more appropriate when polymorphic loading
+is not required.   Establishing relationships that involve concrete inheritance
+classes is also more awkward.
 
-    employees_table = Table(
-        'employee', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-    )
-
-    managers_table = Table(
-        'manager', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('manager_data', String(50)),
-    )
-
-    engineers_table = Table(
-        'engineer', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('engineer_info', String(50)),
-    )
-
-Notice in this case there is no ``type`` column; for polymorphic loading,
-additional steps will be needed in order to "manufacture" this information
-during a query.
-
-Using classical mapping, we can map our three classes independently without
-any relationship between them; the fact that ``Engineer`` and ``Manager``
-inherit from ``Employee`` does not have any impact on a classical mapping::
-
-    class Employee(object):
-        pass
-
-    class Manager(Employee):
-        pass
-
-    class Engineer(Employee):
-        pass
-
-    mapper(Employee, employees_table)
-    mapper(Manager, managers_table)
-    mapper(Engineer, engineers_table)
-
-However when using Declarative, Declarative assumes an inheritance mapping
-between the classes because they are already in an inheritance relationship.
-So to map our three classes declaratively, we must include the
-:paramref:`.orm.mapper.concrete` parameter within the ``__mapper_args__``::
+To establish a class as using concrete inheritance, add the
+:paramref:`.mapper.concrete` parameter within the ``__mapper_args__``.
+This indicates to Declarative as well as the mapping that the superclass
+table should not be considered as part of the mapping::
 
     class Employee(Base):
         __tablename__ = 'employee'
@@ -675,44 +422,80 @@ Two critical points should be noted:
 
 * while the ``Engineer`` and ``Manager`` classes are
   mapped in an inheritance relationship with ``Employee``, they still **do not
-  include polymorphic loading**.
+  include polymorphic loading**.  Meaning, if we query for ``Employee``
+  objects, the ``manager`` and ``engineer`` tables are not queried at all.
 
-Concrete Polymorphic Loading
-+++++++++++++++++++++++++++++
+.. _concrete_polymorphic:
 
-To load polymorphically, the :paramref:`.orm.mapper.with_polymorphic` argument is required, along
-with a selectable indicating how rows should be loaded.   Polymorphic loading
-is most inefficient with concrete inheritance, so if we do seek this style of
-loading, while it is possible it's less recommended. In the case of concrete
-inheritance, it means we must construct a UNION of all three tables.
+Concrete Polymorphic Loading Configuration
+++++++++++++++++++++++++++++++++++++++++++
 
-First illustrating this with classical mapping, SQLAlchemy includes a helper
-function to create this UNION called :func:`~sqlalchemy.orm.util.polymorphic_union`, which
-will map all the different columns into a structure of selects with the same
-numbers and names of columns, and also generate a virtual ``type`` column for
-each subselect.  The function is called **after** all three tables are declared,
-and is then combined with the mappers::
+Polymorphic loading with concrete inheritance requires that a specialized
+SELECT is configured against each base class that should have polymorphic
+loading.  This SELECT needs to be capable of accessing all the
+mapped tables individually, and is typically a UNION statement that is
+constructed using a SQLAlchemy helper :func:`.polymorphic_union`.
 
-    from sqlalchemy.orm import polymorphic_union
+As discussed in :ref:`inheritance_loading_toplevel`, mapper inheritance
+configurations of any type can be configured to load from a special selectable
+by default using the :paramref:`.mapper.with_polymorphic` argument.  Current
+public API requires that this argument is set on a :class:`.Mapper` when
+it is first constructed.
 
-    pjoin = polymorphic_union({
-        'employee': employees_table,
-        'manager': managers_table,
-        'engineer': engineers_table
-    }, 'type', 'pjoin')
+However, in the case of Declarative, both the mapper and the :class:`.Table`
+that is mapped are created at once, the moment the mapped class is defined.
+This means that the :paramref:`.mapper.with_polymorphic` argument cannot
+be provided yet, since the :class:`.Table` objects that correspond to the
+subclasses haven't yet been defined.
 
-    employee_mapper = mapper(Employee, employees_table,
-                                        with_polymorphic=('*', pjoin),
-                                        polymorphic_on=pjoin.c.type,
-                                        polymorphic_identity='employee')
-    manager_mapper = mapper(Manager, managers_table,
-                                        inherits=employee_mapper,
-                                        concrete=True,
-                                        polymorphic_identity='manager')
-    engineer_mapper = mapper(Engineer, engineers_table,
-                                        inherits=employee_mapper,
-                                        concrete=True,
-                                        polymorphic_identity='engineer')
+There are a few strategies available to resolve this cycle, however
+Declarative provides helper classes :class:`.ConcreteBase` and
+:class:`.AbstractConcreteBase` which handle this issue behind the scenes.
+
+Using :class:`.ConcreteBase`, we can set up our concrete mapping in
+almost the same way as we do other forms of inheritance mappings::
+
+    from sqlalchemy.ext.declarative import ConcreteBase
+
+    class Employee(ConcreteBase, Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'employee',
+            'concrete': True
+        }
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        manager_data = Column(String(40))
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'manager',
+            'concrete': True
+        }
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        engineer_info = Column(String(40))
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'engineer',
+            'concrete': True
+        }
+
+Above, Declarative sets up the polymorphic selectable for the
+``Employee`` class at mapper "initialization" time; this is the late-configuration
+step for mappers that resolves other dependent mappers.  The :class:`.ConcreteBase`
+helper uses the
+:func:`.polymorphic_union` function to create a UNION of all concrete-mapped
+tables after all the other classes are set up, and then configures this statement
+with the already existing base-class mapper.
 
 Upon select, the polymorphic union produces a query like this:
 
@@ -753,55 +536,25 @@ Upon select, the polymorphic union produces a query like this:
     ) AS pjoin
 
 The above UNION query needs to manufacture "NULL" columns for each subtable
-in order to accommodate for those columns that aren't part of the mapping.
+in order to accommodate for those columns that aren't members of that
+particular subclass.
 
-In order to map with concrete inheritance and polymorphic loading using
-Declarative, the challenge is to have the polymorphic union ready to go
-when the mappings are created.  One way to achieve this is to continue to
-define the table metadata before the actual mapped classes, and specify
-them to each class using ``__table__``::
+Abstract Concrete Classes
++++++++++++++++++++++++++
+
+The concrete mappings illustrated thus far show both the subclasses as well
+as the base class mapped to individual tables.   In the concrete inheritance
+use case, it is common that the base class is not represented within the
+database, only the subclasses.  In other words, the base class is
+"abstract".
+
+Normally, when one would like to map two different subclasses to individual
+tables, and leave the base class unmapped, this can be achieved very easily.
+When using Declarative, just declare the
+base class with the ``__abstract__`` indicator::
 
     class Employee(Base):
-        __table__ = employee_table
-        __mapper_args__ = {
-            'polymorphic_on':pjoin.c.type,
-            'with_polymorphic': ('*', pjoin),
-            'polymorphic_identity':'employee'
-        }
-
-    class Engineer(Employee):
-        __table__ = engineer_table
-        __mapper_args__ = {'polymorphic_identity':'engineer', 'concrete':True}
-
-    class Manager(Employee):
-        __table__ = manager_table
-        __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
-
-.. _inheritance_concrete_helpers:
-
-Using the Declarative Helper Classes
-+++++++++++++++++++++++++++++++++++++
-
-Another way is to use a special helper class that takes on the fairly
-complicated task of deferring the production of :class:`.Mapper` objects
-until all table metadata has been collected, and the polymorphic union to which
-the mappers will be associated will be available.  This is available via
-the :class:`.AbstractConcreteBase` and :class:`.ConcreteBase` classes.  For
-our example here, we're using a "concrete" base, e.g. an ``Employee`` row
-can exist by itself that is not an ``Engineer`` or a ``Manager``.   The
-mapping would look like::
-
-    from sqlalchemy.ext.declarative import ConcreteBase
-
-    class Employee(ConcreteBase, Base):
-        __tablename__ = 'employee'
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-
-        __mapper_args__ = {
-            'polymorphic_identity':'employee',
-            'concrete':True
-        }
+        __abstract__ = True
 
     class Manager(Employee):
         __tablename__ = 'manager'
@@ -810,8 +563,7 @@ mapping would look like::
         manager_data = Column(String(40))
 
         __mapper_args__ = {
-            'polymorphic_identity':'manager',
-            'concrete':True
+            'polymorphic_identity': 'manager',
         }
 
     class Engineer(Employee):
@@ -821,38 +573,34 @@ mapping would look like::
         engineer_info = Column(String(40))
 
         __mapper_args__ = {
-            'polymorphic_identity':'engineer',
-            'concrete':True
+            'polymorphic_identity': 'engineer',
         }
 
-There is also the option to use a so-called "abstract" base; where we wont
-actually have an ``employee`` table at all, and instead will only have
-``manager`` and ``engineer`` tables.  The ``Employee`` class will never be
-instantiated directly.  The change here is that the base mapper is mapped
-directly to the "polymorphic union" selectable, which no longer includes
-the ``employee`` table.  In classical mapping, this is::
+Above, we are not actually making use of SQLAlchemy's inheritance mapping
+facilities; we can load and persist instances of ``Manager`` and ``Engineer``
+normally.   The situation changes however when we need to **query polymorphically**,
+that is, we'd like to emit ``session.query(Employee)`` and get back a collection
+of ``Manager`` and ``Engineer`` instances.    This brings us back into the
+domain of concrete inheritance, and we must build a special mapper against
+``Employee`` in order to achieve this.
 
-    from sqlalchemy.orm import polymorphic_union
+.. topic:: Mappers can always SELECT
 
-    pjoin = polymorphic_union({
-        'manager': managers_table,
-        'engineer': engineers_table
-    }, 'type', 'pjoin')
+    In SQLAlchemy, a mapper for a class always has to refer to some
+    "selectable", which is normally a :class:`.Table` but may also refer to any
+    :func:`.select` object as well.   While it may appear that a "single table
+    inheritance" mapper does not map to a table, these mappers in fact
+    implicitly refer to the table that is mapped by a superclass.
 
-    employee_mapper = mapper(Employee, pjoin,
-                                        with_polymorphic=('*', pjoin),
-                                        polymorphic_on=pjoin.c.type)
-    manager_mapper = mapper(Manager, managers_table,
-                                        inherits=employee_mapper,
-                                        concrete=True,
-                                        polymorphic_identity='manager')
-    engineer_mapper = mapper(Engineer, engineers_table,
-                                        inherits=employee_mapper,
-                                        concrete=True,
-                                        polymorphic_identity='engineer')
+To modify our concrete inheritance example to illustrate an "abstract" base
+that is capable of polymorphic loading,
+we will have only an ``engineer`` and a ``manager`` table and no ``employee``
+table, however the ``Employee`` mapper will be mapped directly to the
+"polymorphic union", rather than specifying it locally to the
+:paramref:`.mapper.with_polymorphic` parameter.
 
-Using the Declarative helpers, the :class:`.AbstractConcreteBase` helper
-can produce this; the mapping would be::
+To help with this, Declarative offers a variant of the :class:`.ConcreteBase`
+class called :class:`.AbstractConcreteBase` which achieves this automatically::
 
     from sqlalchemy.ext.declarative import AbstractConcreteBase
 
@@ -866,8 +614,8 @@ can produce this; the mapping would be::
         manager_data = Column(String(40))
 
         __mapper_args__ = {
-            'polymorphic_identity':'manager',
-            'concrete':True
+            'polymorphic_identity': 'manager',
+            'concrete': True
         }
 
     class Engineer(Employee):
@@ -877,131 +625,299 @@ can produce this; the mapping would be::
         engineer_info = Column(String(40))
 
         __mapper_args__ = {
-            'polymorphic_identity':'engineer',
-            'concrete':True
+            'polymorphic_identity': 'engineer',
+            'concrete': True
         }
+
+The :class:`.AbstractConcreteBase` helper class has a more complex internal
+process than that of :class:`.ConcreteBase`, in that the entire mapping
+of the base class must be delayed until all the subclasses have been declared.
+With a mapping like the above, only instances of ``Manager`` and ``Engineer``
+may be persised; querying against the ``Employee`` class will always produce
+``Manager`` and ``Engineer`` objects.
 
 .. seealso::
 
     :ref:`declarative_concrete_table` - in the Declarative reference documentation
 
+Classical and Semi-Classical Concrete Polymorphic Configuration
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Using Relationships with Inheritance
-------------------------------------
+The Declarative configurations illustrated with :class:`.ConcreteBase`
+and :class:`.AbstractConcreteBase` are equivalent to two other forms
+of configuration that make use of :func:`.polymorphic_union` explicitly.
+These configurational forms make use of the :class:`.Table` object explicitly
+so that the "polymorphic union" can be created first, then applied
+to the mappings.   These are illustrated here to clarify the role
+of the :func:`.polymorphic_union` function in terms of mapping.
 
-Both joined-table and single table inheritance scenarios produce mappings
-which are usable in :func:`~sqlalchemy.orm.relationship` functions; that is,
-it's possible to map a parent object to a child object which is polymorphic.
-Similarly, inheriting mappers can have :func:`~sqlalchemy.orm.relationship`
-objects of their own at any level, which are inherited to each child class.
-The only requirement for relationships is that there is a table relationship
-between parent and child. An example is the following modification to the
-joined table inheritance example, which sets a bi-directional relationship
-between ``Employee`` and ``Company``:
+A **semi-classical mapping** for example makes use of Declarative, but
+establishes the :class:`.Table` objects separately::
 
-.. sourcecode:: python+sql
+    metadata = Base.metadata
 
-    employees_table = Table('employees', metadata,
-        Column('employee_id', Integer, primary_key=True),
+    employees_table = Table(
+        'employee', metadata,
+        Column('id', Integer, primary_key=True),
         Column('name', String(50)),
-        Column('company_id', Integer, ForeignKey('companies.company_id'))
     )
 
-    companies = Table('companies', metadata,
-       Column('company_id', Integer, primary_key=True),
-       Column('name', String(50)))
+    managers_table = Table(
+        'manager', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('manager_data', String(50)),
+    )
 
-    class Company(object):
+    engineers_table = Table(
+        'engineer', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('engineer_info', String(50)),
+    )
+
+Next, the UNION is produced using :func:`.polymorphic_union`::
+
+    from sqlalchemy.orm import polymorphic_union
+
+    pjoin = polymorphic_union({
+        'employee': employees_table,
+        'manager': managers_table,
+        'engineer': engineers_table
+    }, 'type', 'pjoin')
+
+With the above :class:`.Table` objects, the mappings can be produced using "semi-classical" style,
+where we use Declarative in conjunction with the ``__table__`` argument;
+our polymorphic union above is passed via ``__mapper_args__`` to
+the :paramref:`.mapper.with_polymorphic` parameter::
+
+    class Employee(Base):
+        __table__ = employee_table
+        __mapper_args__ = {
+            'polymorphic_on': pjoin.c.type,
+            'with_polymorphic': ('*', pjoin),
+            'polymorphic_identity': 'employee'
+        }
+
+    class Engineer(Employee):
+        __table__ = engineer_table
+        __mapper_args__ = {
+            'polymorphic_identity': 'engineer',
+            'concrete': True}
+
+    class Manager(Employee):
+        __table__ = manager_table
+        __mapper_args__ = {
+            'polymorphic_identity': 'manager',
+            'concrete': True}
+
+Alternatvely, the same :class:`.Table` objects can be used in
+fully "classical" style, without using Declarative at all.
+A constructor similar to that supplied by Declarative is illustrated::
+
+    class Employee(object):
+        def __init__(self, **kw):
+            for k in kw:
+                setattr(self, k, kw[k])
+
+    class Manager(Employee):
         pass
 
-    mapper(Company, companies, properties={
-       'employees': relationship(Employee, backref='company')
-    })
+    class Engineer(Employee):
+        pass
+
+    employee_mapper = mapper(Employee, pjoin,
+                                        with_polymorphic=('*', pjoin),
+                                        polymorphic_on=pjoin.c.type)
+    manager_mapper = mapper(Manager, managers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
+                                        polymorphic_identity='manager')
+    engineer_mapper = mapper(Engineer, engineers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
+                                        polymorphic_identity='engineer')
+
+
+The "abstract" example can also be mapped using "semi-classical" or "classical"
+style.  The difference is that instead of applying the "polymorphic union"
+to the :paramref:`.mapper.with_polymorphic` parameter, we apply it directly
+as the mapped selectable on our basemost mapper.  The semi-classical
+mapping is illustrated below::
+
+    from sqlalchemy.orm import polymorphic_union
+
+    pjoin = polymorphic_union({
+        'manager': managers_table,
+        'engineer': engineers_table
+    }, 'type', 'pjoin')
+
+    class Employee(Base):
+        __table__ = pjoin
+        __mapper_args__ = {
+            'polymorphic_on': pjoin.c.type,
+            'with_polymorphic': '*',
+            'polymorphic_identity': 'employee'
+        }
+
+    class Engineer(Employee):
+        __table__ = engineer_table
+        __mapper_args__ = {
+            'polymorphic_identity': 'engineer',
+            'concrete': True}
+
+    class Manager(Employee):
+        __table__ = manager_table
+        __mapper_args__ = {
+            'polymorphic_identity': 'manager',
+            'concrete': True}
+
+Above, we use :func:`.polymorphic_union` in the same manner as before, except
+that we omit the ``employee`` table.
+
+.. seealso::
+
+    :ref:`classical_mapping` - background information on "classical" mappings
+
+
 
 Relationships with Concrete Inheritance
 +++++++++++++++++++++++++++++++++++++++
 
-In a concrete inheritance scenario, mapping relationships is more challenging
-since the distinct classes do not share a table. In this case, you *can*
-establish a relationship from parent to child if a join condition can be
-constructed from parent to child, if each child table contains a foreign key
-to the parent:
+In a concrete inheritance scenario, mapping relationships is challenging
+since the distinct classes do not share a table.    If the relationships
+only involve specific classes, such as a relationship between ``Company`` in
+our previous examples and ``Manager``, special steps aren't needed as these
+are just two related tables.
 
-.. sourcecode:: python+sql
+However, if ``Company`` is to have a one-to-many relationship
+to ``Employee``, indicating that the collection may include both
+``Engineer`` and ``Manager`` objects, that implies that ``Employee`` must
+have polymorphic loading capabilities and also that each table to be related
+must have a foreign key back to the ``company`` table.  An example of
+such a configuration is as follows::
 
-    companies = Table('companies', metadata,
-       Column('id', Integer, primary_key=True),
-       Column('name', String(50)))
+    from sqlalchemy.ext.declarative import ConcreteBase
 
-    employees_table = Table('employees', metadata,
-        Column('employee_id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('company_id', Integer, ForeignKey('companies.id'))
-    )
 
-    managers_table = Table('managers', metadata,
-        Column('employee_id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('manager_data', String(50)),
-        Column('company_id', Integer, ForeignKey('companies.id'))
-    )
+    class Company(Base):
+        __tablename__ = 'company'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        employees = relationship("Employee")
 
-    engineers_table = Table('engineers', metadata,
-        Column('employee_id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('engineer_info', String(50)),
-        Column('company_id', Integer, ForeignKey('companies.id'))
-    )
 
-    mapper(Employee, employees_table,
-                    with_polymorphic=('*', pjoin),
-                    polymorphic_on=pjoin.c.type,
-                    polymorphic_identity='employee')
+    class Employee(ConcreteBase, Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        company_id = Column(ForeignKey('company.id'))
 
-    mapper(Manager, managers_table,
-                    inherits=employee_mapper,
-                    concrete=True,
-                    polymorphic_identity='manager')
+        __mapper_args__ = {
+            'polymorphic_identity': 'employee',
+            'concrete': True
+        }
 
-    mapper(Engineer, engineers_table,
-                    inherits=employee_mapper,
-                    concrete=True,
-                    polymorphic_identity='engineer')
 
-    mapper(Company, companies, properties={
-        'employees': relationship(Employee)
-    })
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        manager_data = Column(String(40))
+        company_id = Column(ForeignKey('company.id'))
 
-The big limitation with concrete table inheritance is that
-:func:`~sqlalchemy.orm.relationship` objects placed on each concrete mapper do
-**not** propagate to child mappers. If you want to have the same
-:func:`~sqlalchemy.orm.relationship` objects set up on all concrete mappers,
-they must be configured manually on each. To configure back references in such
-a configuration the ``back_populates`` keyword may be used instead of
-``backref``, such as below where both ``A(object)`` and ``B(A)``
-bidirectionally reference ``C``::
+        __mapper_args__ = {
+            'polymorphic_identity': 'manager',
+            'concrete': True
+        }
 
-    ajoin = polymorphic_union({
-            'a':a_table,
-            'b':b_table
-        }, 'type', 'ajoin')
 
-    mapper(A, a_table, with_polymorphic=('*', ajoin),
-        polymorphic_on=ajoin.c.type, polymorphic_identity='a',
-        properties={
-            'some_c':relationship(C, back_populates='many_a')
-    })
-    mapper(B, b_table,inherits=A, concrete=True,
-        polymorphic_identity='b',
-        properties={
-            'some_c':relationship(C, back_populates='many_a')
-    })
-    mapper(C, c_table, properties={
-        'many_a':relationship(A, collection_class=set,
-                                    back_populates='some_c'),
-    })
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        engineer_info = Column(String(40))
+        company_id = Column(ForeignKey('company.id'))
 
-Using Inheritance with Declarative
------------------------------------
+        __mapper_args__ = {
+            'polymorphic_identity': 'engineer',
+            'concrete': True
+        }
 
-Declarative makes inheritance configuration more intuitive.   See the docs at :ref:`declarative_inheritance`.
+The next complexity with concrete inheritance and relationships involves
+when we'd like one or all of ``Employee``, ``Manager`` and ``Engineer`` to
+themselves refer back to ``Company``.   For this case, SQLAlchemy has
+special behavior in that a :func:`.relationship` placed on ``Employee``
+which links to ``Company`` **does not work**
+against the ``Manager`` and ``Engineer`` classes, when exercised at the
+instance level.  Instead, a distinct
+:func:`.relationship` must be applied to each class.   In order to achieve
+bi-directional behavior in terms of three separate relationships which
+serve as the opposite of ``Company.employees``, the
+:paramref:`.relationship.back_populates` parameter is used between
+each of the relationships::
+
+    from sqlalchemy.ext.declarative import ConcreteBase
+
+
+    class Company(Base):
+        __tablename__ = 'company'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        employees = relationship("Employee", back_populates="company")
+
+
+    class Employee(ConcreteBase, Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        company_id = Column(ForeignKey('company.id'))
+        company = relationship("Company", back_populates="employees")
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'employee',
+            'concrete': True
+        }
+
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        manager_data = Column(String(40))
+        company_id = Column(ForeignKey('company.id'))
+        company = relationship("Company", back_populates="employees")
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'manager',
+            'concrete': True
+        }
+
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        engineer_info = Column(String(40))
+        company_id = Column(ForeignKey('company.id'))
+        company = relationship("Company", back_populates="employees")
+
+        __mapper_args__ = {
+            'polymorphic_identity': 'engineer',
+            'concrete': True
+        }
+
+The above limitation is related to the current implementation, including
+that concrete inheriting classes do not share any of the attributes of
+the superclass and therefore need distinct relationships to be set up.
+
+Loading Concrete Inheritance Mappings
++++++++++++++++++++++++++++++++++++++
+
+The options for loading with concrete inheritance are limited; generally,
+if polymorphic loading is configured on the mapper using one of the
+declarative concrete mixins, it can't be modified at query time
+in current SQLAlchemy versions.   Normally, the :func:`.orm.with_polymorphic`
+function would be able to override the style of loading used by concrete,
+however due to current limitations this is not yet supported.
+

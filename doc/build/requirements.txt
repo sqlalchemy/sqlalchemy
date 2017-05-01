@@ -1,3 +1,3 @@
 changelog>=0.3.5
-sphinx-paramlinks>=0.2.2
+sphinx-paramlinks>=0.3.3
 git+https://bitbucket.org/zzzeek/zzzeeksphinx.git@HEAD#egg=zzzeeksphinx
