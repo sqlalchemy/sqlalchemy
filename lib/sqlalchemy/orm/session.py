@@ -1580,7 +1580,7 @@ class Session(_SessionClassMethods):
                         "that the mapped Column object is configured to "
                         "expect these generated values.  Ensure also that "
                         "this flush() is not occurring at an inappropriate "
-                        "time, such aswithin a load() event."
+                        "time, such as within a load() event."
                         % state_str(state)
                     )
 
