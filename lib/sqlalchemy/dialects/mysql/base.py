@@ -205,8 +205,7 @@ Most MySQL DBAPIs offer the option to set the client character set for
 a connection.   This is typically delivered using the ``charset`` parameter
 in the URL, such as::
 
-    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
-test?charset=utf8")
+    e = create_engine("mysql+pymysql://scott:tiger@localhost/test?charset=utf8")
 
 This charset is the **client character set** for the connection.  Some
 MySQL DBAPIs will default this to a value such as ``latin1``, and some
@@ -224,8 +223,7 @@ that includes codepoints more than three bytes in size,
 this new charset is preferred, if supported by both the database as well
 as the client DBAPI, as in::
 
-    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
-test?charset=utf8mb4")
+    e = create_engine("mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4")
 
 At the moment, up-to-date versions of MySQLdb and PyMySQL support the
 ``utf8mb4`` charset.   Other DBAPIs such as MySQL-Connector and OurSQL
@@ -2105,4 +2103,3 @@ class _DecodingRowProxy(object):
             return item.decode(self.charset)
         else:
             return item
-
