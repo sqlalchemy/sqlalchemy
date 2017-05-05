@@ -2179,26 +2179,34 @@ class Sequence(DefaultGenerator):
          reserved words take place.
         :param quote_schema: set the quoting preferences for the ``schema``
          name.
-        :param metadata: optional :class:`.MetaData` object which will be
-         associated with this :class:`.Sequence`.  A :class:`.Sequence`
-         that is associated with a :class:`.MetaData` gains access to the
-         ``bind`` of that :class:`.MetaData`, meaning the
-         :meth:`.Sequence.create` and :meth:`.Sequence.drop` methods will
-         make usage of that engine automatically.
 
-         .. versionchanged:: 0.7
-             Additionally, the appropriate CREATE SEQUENCE/
-             DROP SEQUENCE DDL commands will be emitted corresponding to this
-             :class:`.Sequence` when :meth:`.MetaData.create_all` and
-             :meth:`.MetaData.drop_all` are invoked.
+        :param metadata: optional :class:`.MetaData` object which this
+         :class:`.Sequence` will be associated with.  A :class:`.Sequence`
+         that is associated with a :class:`.MetaData` gains the following
+         capabilities:
 
-         Note that when a :class:`.Sequence` is applied to a :class:`.Column`,
-         the :class:`.Sequence` is automatically associated with the
-         :class:`.MetaData` object of that column's parent :class:`.Table`,
-         when that association is made.   The :class:`.Sequence` will then
-         be subject to automatic CREATE SEQUENCE/DROP SEQUENCE corresponding
-         to when the :class:`.Table` object itself is created or dropped,
-         rather than that of the :class:`.MetaData` object overall.
+         * The :class:`.Sequence` will inherit the :paramref:`.MetaData.schema`
+           parameter specified to the target :class:`.MetaData`, which
+           affects the production of CREATE / DROP DDL, if any.
+
+         * The :meth:`.Sequence.create` and :meth:`.Sequence.drop` methods
+           automatically use the engine bound to the :class:`.MetaData`
+           object, if any.
+
+         * The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all`
+           methods will emit CREATE / DROP for this :class:`.Sequence`,
+           even if the :class:`.Sequence` is not associated with any
+           :class:`.Table` / :class:`.Column` that's a member of this
+           :class:`.MetaData`.
+
+         The above behaviors can only occur if the :class:`.Sequence` is
+         explicitly associated with the :class:`.MetaData` via this parameter.
+
+         .. seealso::
+
+            :ref:`sequence_metadata` - full discussion of the
+            :paramref:`.Sequence.metadata` parameter.
+
         :param for_update: Indicates this :class:`.Sequence`, when associated
          with a :class:`.Column`, should be invoked for UPDATE statements
          on that column's table, rather than for INSERT statements, when
