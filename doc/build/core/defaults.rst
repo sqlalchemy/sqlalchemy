@@ -288,7 +288,10 @@ configured to fire off during UPDATE operations if desired. It is most
 commonly used in conjunction with a single integer primary key column::
 
     table = Table("cartitems", meta,
-        Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
+        Column(
+            "cart_id",
+            Integer,
+            Sequence('cart_id_seq', metadata=meta), primary_key=True),
         Column("description", String(40)),
         Column("createdate", DateTime())
     )
@@ -296,43 +299,143 @@ commonly used in conjunction with a single integer primary key column::
 Where above, the table "cartitems" is associated with a sequence named
 "cart_id_seq". When INSERT statements take place for "cartitems", and no value
 is passed for the "cart_id" column, the "cart_id_seq" sequence will be used to
-generate a value.
+generate a value.   Typically, the sequence function is embedded in the
+INSERT statement, which is combined with RETURNING so that the newly generated
+value can be returned to the Python code::
 
-When the :class:`~sqlalchemy.schema.Sequence` is associated with a table,
-CREATE and DROP statements issued for that table will also issue CREATE/DROP
-for the sequence object as well, thus "bundling" the sequence object with its
-parent table.
+    INSERT INTO cartitems (cart_id, description, createdate)
+    VALUES (next_val(cart_id_seq), 'some description', '2015-10-15 12:00:15')
+    RETURNING cart_id
 
-The :class:`~sqlalchemy.schema.Sequence` object also implements special
-functionality to accommodate PostgreSQL's SERIAL datatype. The SERIAL type in
-PG automatically generates a sequence that is used implicitly during inserts.
-This means that if a :class:`~sqlalchemy.schema.Table` object defines a
-:class:`~sqlalchemy.schema.Sequence` on its primary key column so that it
-works with Oracle and Firebird, the :class:`~sqlalchemy.schema.Sequence` would
-get in the way of the "implicit" sequence that PG would normally use. For this
-use case, add the flag ``optional=True`` to the
-:class:`~sqlalchemy.schema.Sequence` object - this indicates that the
-:class:`~sqlalchemy.schema.Sequence` should only be used if the database
-provides no other option for generating primary key identifiers.
+When the :class:`~sqlalchemy.schema.Sequence` is associated with a
+:class:`.Column` as its **Python-side** default generator, the
+:class:`.Sequence` will also be subject to "CREATE SEQUENCE" and "DROP
+SEQUENCE" DDL when similar DDL is emitted for the owning :class:`.Table`.
+This is a limited scope convenience feature that does not accommodate for
+inheritance of other aspects of the :class:`.MetaData`, such as the default
+schema.  Therefore, it is best practice that for a :class:`.Sequence` which
+is local to a certain :class:`.Column` / :class:`.Table`, that it be
+explicitly associated with the :class:`.MetaData` using the
+:paramref:`.Sequence.metadata` parameter.  See the section
+:ref:`sequence_metadata` for more background on this.
 
-The :class:`~sqlalchemy.schema.Sequence` object also has the ability to be
-executed standalone like a SQL expression, which has the effect of calling its
-"next value" function::
+Associating a Sequence on a SERIAL column
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    seq = Sequence('some_sequence')
-    nextid = connection.execute(seq)
+PostgreSQL's SERIAL datatype is an auto-incrementing type that implies
+the implicit creation of a PostgreSQL sequence when CREATE TABLE is emitted.
+If a :class:`.Column` specifies an explicit :class:`.Sequence` object
+which also specifies a true value for the :paramref:`.Sequence.optional`
+boolean flag, the :class:`.Sequence` will not take effect under PostgreSQL,
+and the SERIAL datatype will proceed normally.   Instead, the :class:`.Sequence`
+will only take effect when used against other sequence-supporting
+databases, currently Oracle and Firebird.
+
+Executing a Sequence Standalone
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A SEQUENCE is a first class schema object in SQL and can be used to generate
+values independently in the database.   If you have a :class:`.Sequence`
+object, it can be invoked with its "next value" instruction by
+passing it directly to a SQL execution method::
+
+    with my_engine.connect() as conn:
+        seq = Sequence('some_sequence')
+        nextid = conn.execute(seq)
+
+In order to embed the "next value" function of a :class:`.Sequence`
+inside of a SQL statement like a SELECT or INSERT, use the :meth:`.Sequence.next_value`
+method, which will render at statement compilation time a SQL function that is
+appropriate for the target backend::
+
+    >>> my_seq = Sequence('some_sequence')
+    >>> stmt = select([my_seq.next_value()])
+    >>> print stmt.compile(dialect=postgresql.dialect())
+    SELECT nextval('some_sequence') AS next_value_1
+
+.. _sequence_metadata:
+
+Associating a Sequence with the MetaData
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For many years, the SQLAlchemy documentation referred to the
+example of associating a :class:`.Sequence` with a table as follows::
+
+    table = Table("cartitems", meta,
+        Column("cart_id", Integer, Sequence('cart_id_seq'),
+               primary_key=True),
+        Column("description", String(40)),
+        Column("createdate", DateTime())
+    )
+
+While the above is a prominent idiomatic pattern, it is recommended that
+the :class:`.Sequence` in most cases be explicitly associated with the
+:class:`.MetaData`, using the :paramref:`.Sequence.metadata` parameter::
+
+    table = Table("cartitems", meta,
+        Column(
+            "cart_id",
+            Integer,
+            Sequence('cart_id_seq', metadata=meta), primary_key=True),
+        Column("description", String(40)),
+        Column("createdate", DateTime())
+    )
+
+The :class:`.Sequence` object is a first class
+schema construct that can exist independently of any table in a database, and
+can also be shared among tables.   Therefore SQLAlchemy does not implicitly
+modify the :class:`.Sequence` when it is associated with a :class:`.Column`
+object as either the Python-side or server-side default  generator.  While the
+CREATE SEQUENCE / DROP SEQUENCE DDL is emitted for a  :class:`.Sequence`
+defined as a Python side generator at the same time the table itself is subject
+to CREATE or DROP, this is a convenience feature that does not imply that the
+:class:`.Sequence` is fully associated with the :class:`.MetaData` object.
+
+Explicitly associating the :class:`.Sequence` with :class:`.MetaData`
+allows for the following behaviors:
+
+* The :class:`.Sequence` will inherit the :paramref:`.MetaData.schema`
+  parameter specified to the target :class:`.MetaData`, which
+  affects the production of CREATE / DROP DDL, if any.
+
+* The :meth:`.Sequence.create` and :meth:`.Sequence.drop` methods
+  automatically use the engine bound to the :class:`.MetaData`
+  object, if any.
+
+* The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all`
+  methods will emit CREATE / DROP for this :class:`.Sequence`,
+  even if the :class:`.Sequence` is not associated with any
+  :class:`.Table` / :class:`.Column` that's a member of this
+  :class:`.MetaData`.
+
+Since the vast majority of cases that deal with :class:`.Sequence` expect
+that :class:`.Sequence` to be fully "owned" by the assocated :class:`.Table`
+and that options like default schema are propagated, setting the
+:paramref:`.Sequence.metadata` parameter should be considered a best practice.
 
 Associating a Sequence as the Server Side Default
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When we associate a :class:`.Sequence` with a :class:`.Column` as above,
-this association is an **in-Python only** association.    The CREATE TABLE
-that would be generated for our :class:`.Table` would not refer to this
-sequence.  If we want the sequence to be used as a server-side default,
+The preceding sections illustrate how to associate a :class:`.Sequence` with a
+:class:`.Column` as the **Python side default generator**::
+
+    Column(
+        "cart_id", Integer, Sequence('cart_id_seq', metadata=meta),
+        primary_key=True)
+
+In the above case, the :class:`.Sequence` will automatically be subject
+to CREATE SEQUENCE / DROP SEQUENCE DDL when the related :class:`.Table`
+is subject to CREATE / DROP.  However, the sequence will **not** be present
+as the server-side default for the column when CREATE TABLE is emitted.
+
+If we want the sequence to be used as a server-side default,
 meaning it takes place even if we emit INSERT commands to the table from
-the SQL commandline, we can use the :paramref:`.Column.server_default`
+the SQL command line, we can use the :paramref:`.Column.server_default`
 parameter in conjunction with the value-generation function of the
-sequence, available from the :meth:`.Sequence.next_value` method::
+sequence, available from the :meth:`.Sequence.next_value` method.  Below
+we illustrate the same :class:`.Sequence` being associated with the
+:class:`.Column` both as the Python-side default generator as well as
+the server-side default generator::
 
     cart_id_seq = Sequence('cart_id_seq', metadata=meta)
     table = Table("cartitems", meta,
@@ -355,18 +458,6 @@ or with the ORM::
         description = Column(String(40))
         createdate = Column(DateTime)
 
-In the above two examples, we set the :paramref:`.Sequence.metadata` parameter
-of the :class:`.Sequence` object to refer to the same :class:`.MetaData` object
-as that of the :class:`.Table`. The purpose of this is so that when we invoke
-:meth:`.MetaData.create_all`, the "CREATE SEQUENCE" statement will be emitted
-for the :class:`.Sequence`::
-
-    CREATE SEQUENCE cart_id_seq
-
-Alternatively, we can emit the "CREATE SEQUENCE" using the :class:`.Sequence`
-object itself as in ``cart_id_seq.create(engine)``, in the same way as
-:meth:`.Table.create`.
-
 When the "CREATE TABLE" statement is emitted, on PostgreSQL it would be
 emitted as::
 
@@ -377,36 +468,23 @@ emitted as::
         PRIMARY KEY (cart_id)
     )
 
-In the definition for the :class:`.Column`, the above examples
-illustrate placement of the :class:`.Sequence` twice in the definition
-in two different contexts;
-as both a client side default generator object as well as a server
-side default::
+Placement of the :class:`.Sequence` in both the Python-side and server-side
+default generation contexts ensures that the "primary key fetch" logic
+works in all cases.  Typically, sequence-enabled databases also support
+RETURNING for INSERT statements, which is used automatically by SQLAlchemy
+when emitting this statement.  However if RETURNING is not used for a particular
+insert, then SQLAlchemy would prefer to "pre-execute" the sequence outside
+of the INSERT statement itself, which only works if the sequence is
+included as the Python-side default generator function.
 
-    Column(
-        "cart_id", Integer, cart_id_seq,
-        server_default=cart_id_seq.next_value(),
-        primary_key=True)
-
-Placing the :class:`.Sequence` as the "client side" default means that when the
-Core or ORM runs a :class:`.Insert` construct, it will either pre-invoke the
-:class:`.Sequence` and use the new value in the subsequent INSERT statement, or
-more commonly will render an invocation of the sequence explicitly within the
-INSERT statement itself, in conjunction with the use of RETURNING to get the
-newly generated value from the statement, assuming that this column is part of
-the table's primary key.   Assuming that RETURNING is available and enabled, it
-doesn't matter whether the :class:`.Sequence` is specified as a "client side"
-default in addition to :paramref:`.Column.server_default`, or only as
-:paramref:`.Column.server_default`.  RETURNING is normally used on the
-PostgreSQL and Oracle backends for single-row INSERT statements in order to
-retrieve newly created primary key values, so in most cases the "client side"
-setting isn't needed, however including :class:`.Sequence` as an explicit
-default generation object will allow the best compatibility, as
-:class:`.Sequence` was originally designed to be used in this way.
+The example also associates the :class:`.Sequence` with the enclosing
+:class:`.MetaData` directly, which again ensures that the :class:`.Sequence`
+is fully associated with the parameters of the :class:`.MetaData` collection
+including the default schema, if any.
 
 .. seealso::
 
-    :ref:`postgresql_sequences` - in the Postgresql dialect documentation
+    :ref:`postgresql_sequences` - in the PostgreSQL dialect documentation
 
     :ref:`oracle_returning` - in the Oracle dialect documentation
 
