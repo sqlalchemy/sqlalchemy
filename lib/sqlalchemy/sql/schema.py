@@ -3482,6 +3482,19 @@ class MetaData(SchemaItem):
            even when this parameter is present, use the :attr:`.BLANK_SCHEMA`
            symbol.
 
+           .. note::
+
+                As refered above, the :paramref:`.MetaData.schema` parameter
+                only refers to the **default value** that will be applied to
+                the :paramref:`.Table.schema` parameter of an incoming
+                :class:`.Table` object.   It does not refer to how the
+                :class:`.Table` is catalogued within the :class:`.MetaData`,
+                which remains consistent vs. a :class:`.MetaData` collection
+                that does not define this parameter.  The :class:`.Table`
+                within the :class:`.MetaData` will still be keyed based on its
+                schema-qualified name, e.g.
+                ``my_metadata.tables["some_schema.my_table"]``.
+
            .. seealso::
 
                 :paramref:`.Table.schema`
