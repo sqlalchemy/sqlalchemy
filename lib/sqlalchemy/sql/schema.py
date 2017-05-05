@@ -3395,6 +3395,18 @@ class MetaData(SchemaItem):
                 schema-qualified name, e.g.
                 ``my_metadata.tables["some_schema.my_table"]``.
 
+                The current behavior of the :class:`.ForeignKey` object is to
+                circumvent this restriction, where it can locate a table given
+                the table name alone, where the schema will be assumed to be
+                present from this value as specified on the owning
+                :class:`.MetaData` collection.  However, this implies  that a
+                table qualified with BLANK_SCHEMA cannot currently be referred
+                to by string name from :class:`.ForeignKey`.    Other parts of
+                SQLAlchemy such as Declarative may not have similar behaviors
+                built in, however may do so in a future release, along with a
+                consistent method of referring to a table in BLANK_SCHEMA.
+
+
            .. seealso::
 
                 :paramref:`.Table.schema`
