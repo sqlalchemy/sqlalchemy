@@ -356,7 +356,7 @@ clause, e.g. windowing.
 The Zen of Joined Eager Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Since joined eager loading seems to have many resemblences to the use of
+Since joined eager loading seems to have many resemblances to the use of
 :meth:`.Query.join`, it often produces confusion as to when and how it should
 be used.   It is critical to understand the distinction that while
 :meth:`.Query.join` is used to alter the results of a query, :func:`.joinedload`
