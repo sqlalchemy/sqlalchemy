@@ -179,8 +179,8 @@ Most MySQL DBAPIs offer the option to set the client character set for
 a connection.   This is typically delivered using the ``charset`` parameter
 in the URL, such as::
 
-    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
-test?charset=utf8")
+    e = create_engine(
+        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8")
 
 This charset is the **client character set** for the connection.  Some
 MySQL DBAPIs will default this to a value such as ``latin1``, and some
@@ -198,8 +198,8 @@ that includes codepoints more than three bytes in size,
 this new charset is preferred, if supported by both the database as well
 as the client DBAPI, as in::
 
-    e = create_engine("mysql+pymysql://scott:tiger@localhost/\
-test?charset=utf8mb4")
+    e = create_engine(
+        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4")
 
 At the moment, up-to-date versions of MySQLdb and PyMySQL support the
 ``utf8mb4`` charset.   Other DBAPIs such as MySQL-Connector and OurSQL
@@ -211,8 +211,8 @@ the MySQL schema and/or server configuration may be required.
 .. seealso::
 
     `The utf8mb4 Character Set \
-<http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_ - \
-in the MySQL documentation
+    <http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_ - \
+    in the MySQL documentation
 
 Unicode Encoding / Decoding
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -233,7 +233,8 @@ DBAPI's handling of unicode, such that it instead will return data of the
 ``str`` type or ``bytes`` type, with data in the configured charset::
 
     # connect while disabling the DBAPI's unicode encoding/decoding
-    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test?charset=utf8&use_unicode=0")
+    e = create_engine(
+        "mysql+mysqldb://scott:tiger@localhost/test?charset=utf8&use_unicode=0")
 
 Current recommendations for modern DBAPIs are as follows:
 
