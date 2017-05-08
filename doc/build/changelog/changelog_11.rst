@@ -32,6 +32,13 @@
         infrequently hitting a weakref that has not been fully acted upon
         after gc.
 
+    .. change::
+        :tags: bug, postgresql
+        :versions: 1.2.0b1
+
+        Added "autocommit" support for GRANT, REVOKE keywords.  Pull request
+        courtesy Jacob Hayes.
+
     .. change:: 3966
         :tags: bug, mysql
         :versions: 1.2.0b1
