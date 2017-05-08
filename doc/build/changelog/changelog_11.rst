@@ -21,6 +21,17 @@
 .. changelog::
     :version: 1.1.10
 
+    .. change:: 3980
+        :tags: bug, ext
+        :versions: 1.2.0b1
+        :tickets: 3980
+
+        Protected against testing "None" as a class in the case where
+        declarative classes are being garbage collected and new
+        automap prepare() operations are taking place concurrently, very
+        infrequently hitting a weakref that has not been fully acted upon
+        after gc.
+
     .. change:: 3966
         :tags: bug, mysql
         :versions: 1.2.0b1

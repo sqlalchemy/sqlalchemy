@@ -568,8 +568,12 @@ class _DeferredMapperConfig(_MapperConfig):
 
     @classmethod
     def classes_for_base(cls, base_cls, sort=True):
-        classes_for_base = [m for m in cls._configs.values()
-                            if issubclass(m.cls, base_cls)]
+        classes_for_base = [
+            m for m, cls_ in
+            [(m, m.cls) for m in cls._configs.values()]
+            if cls_ is not None and issubclass(cls_, base_cls)
+        ]
+
         if not sort:
             return classes_for_base
 
