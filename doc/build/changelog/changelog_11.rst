@@ -23,6 +23,7 @@
 
     .. change:: 3966
         :tags: bug, mysql
+        :versions: 1.2.0b1
         :tickets: 3966
 
         Removed an ancient and unnecessary intercept of the UTC_TIMESTAMP
@@ -31,6 +32,7 @@
 
     .. change:: 3961
         :tags: bug, mysql
+        :versions: 1.2.0b1
         :tickets: 3961
 
         Fixed bug in MySQL dialect regarding rendering of table options in
