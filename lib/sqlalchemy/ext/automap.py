@@ -877,9 +877,9 @@ def _relationships_for_fks(automap_base, map_config, table_to_map_config,
                            name_for_collection_relationship,
                            generate_relationship):
     local_table = map_config.local_table
-    local_cls = map_config.cls
+    local_cls = map_config.cls  # derived from a weakref, may be None
 
-    if local_table is None:
+    if local_table is None or local_cls is None:
         return
     for constraint in local_table.constraints:
         if isinstance(constraint, ForeignKeyConstraint):
