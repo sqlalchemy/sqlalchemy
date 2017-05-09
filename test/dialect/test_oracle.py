@@ -21,6 +21,26 @@ import os
 from sqlalchemy import sql
 from sqlalchemy.testing.mock import Mock
 
+class DialectTest(fixtures.TestBase):
+    def test_cx_oracle_version_parse(self):
+        dialect = cx_oracle.OracleDialect_cx_oracle()
+
+        eq_(
+            dialect._parse_cx_oracle_ver("5.2"),
+            (5, 2)
+        )
+
+        eq_(
+            dialect._parse_cx_oracle_ver("5.0.1"),
+            (5, 0, 1)
+        )
+
+        eq_(
+            dialect._parse_cx_oracle_ver("6.0b1"),
+            (6, 0)
+        )
+
+
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'oracle+cx_oracle'
     __backend__ = True
@@ -991,7 +1011,7 @@ drop synonym %(test_schema)s.local_table;
                             oracle_resolve_synonyms=True)
         self.assert_compile(parent.select(),
                 "SELECT %(test_schema)s_pt.id, "
-                "%(test_schema)s_pt.data FROM %(test_schema)s_pt" 
+                "%(test_schema)s_pt.data FROM %(test_schema)s_pt"
                  % {"test_schema": testing.config.test_schema})
         select([parent]).execute().fetchall()
 
@@ -2217,3 +2237,4 @@ class ServiceNameTest(fixtures.TestBase):
             create_engine, url_string,
             _initialize=False
         )
+
