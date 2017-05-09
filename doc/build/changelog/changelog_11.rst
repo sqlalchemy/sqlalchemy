@@ -21,6 +21,15 @@
 .. changelog::
     :version: 1.1.10
 
+    .. change:: 3975
+        :tags: bug, oracle
+        :versions: 1.2.0b1
+        :tickets: 3975
+
+        Fixed bug in cx_Oracle dialect where version string parsing would
+        fail for cx_Oracle version 6.0b1 due to the "b" character.  Version
+        string parsing is now via a regexp rather than a simple split.
+
     .. change:: 3980
         :tags: bug, ext
         :versions: 1.2.0b1

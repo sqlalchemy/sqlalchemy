@@ -709,8 +709,8 @@ class OracleDialect_cx_oracle(OracleDialect):
         self._retry_on_12516 = _retry_on_12516
 
         if hasattr(self.dbapi, 'version'):
-            self.cx_oracle_ver = tuple([int(x) for x in
-                                        self.dbapi.version.split('.')])
+            self.cx_oracle_ver = self._parse_cx_oracle_ver(self.dbapi.version)
+
         else:
             self.cx_oracle_ver = (0, 0, 0)
 
@@ -777,6 +777,16 @@ class OracleDialect_cx_oracle(OracleDialect):
                 self.dbapi.BLOB: oracle.BLOB(),
                 self.dbapi.BINARY: oracle.RAW(),
             }
+
+    def _parse_cx_oracle_ver(self, version):
+        m = re.match(r'(\d+)\.(\d+)(?:\.(\d+))?', version)
+        if m:
+            return tuple(
+                int(x)
+                for x in m.group(1, 2, 3)
+                if x is not None)
+        else:
+            return (0, 0, 0)
 
     @classmethod
     def dbapi(cls):
