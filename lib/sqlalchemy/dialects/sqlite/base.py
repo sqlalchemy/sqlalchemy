@@ -544,10 +544,9 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
         import re
         from sqlalchemy.dialects.sqlite import DATETIME
 
-        dt = DATETIME(
-            storage_format="%(year)04d/%(month)02d/%(day)02d %(hour)02d:\
-%(min)02d:%(second)02d",
-            regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)"
+        dt = DATETIME(storage_format="%(year)04d/%(month)02d/%(day)02d "
+                                     "%(hour)02d:%(min)02d:%(second)02d",
+                      regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)"
         )
 
     :param storage_format: format string which will be applied to the dict
@@ -698,10 +697,9 @@ class TIME(_DateTimeMixin, sqltypes.Time):
         import re
         from sqlalchemy.dialects.sqlite import TIME
 
-        t = TIME(
-            storage_format="%(hour)02d-%(minute)02d-%(second)02d-\
-%(microsecond)06d",
-            regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?")
+        t = TIME(storage_format="%(hour)02d-%(minute)02d-"
+                                "%(second)02d-%(microsecond)06d",
+                 regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?")
         )
 
     :param storage_format: format string which will be applied to the dict
