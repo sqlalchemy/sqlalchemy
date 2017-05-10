@@ -1078,7 +1078,7 @@ class ColumnPropertyTest(fixtures.MappedTest):
         })
         self._test(True)
 
-    def test_no_refresh(self):
+    def test_no_refresh_ro_column_property_no_expire_on_flush(self):
         Data, data = self.classes.Data, self.tables.data
 
         mapper(Data, data, properties={
@@ -1087,6 +1087,36 @@ class ColumnPropertyTest(fixtures.MappedTest):
                 expire_on_flush=False)
         })
         self._test(False)
+
+    def test_no_refresh_ro_column_property_expire_on_flush(self):
+        Data, data = self.classes.Data, self.tables.data
+
+        mapper(Data, data, properties={
+            'aplusb': column_property(
+                data.c.a + literal_column("' '") + data.c.b,
+                expire_on_flush=True)
+        })
+        self._test(True)
+
+    def test_no_refresh_ro_deferred_no_expire_on_flush(self):
+        Data, data = self.classes.Data, self.tables.data
+
+        mapper(Data, data, properties={
+            'aplusb': column_property(
+                data.c.a + literal_column("' '") + data.c.b,
+                expire_on_flush=False, deferred=True)
+        })
+        self._test(False, expect_deferred_load=True)
+
+    def test_no_refresh_ro_deferred_expire_on_flush(self):
+        Data, data = self.classes.Data, self.tables.data
+
+        mapper(Data, data, properties={
+            'aplusb': column_property(
+                data.c.a + literal_column("' '") + data.c.b,
+                expire_on_flush=True, deferred=True)
+        })
+        self._test(True, expect_deferred_load=True)
 
     def test_refreshes_post_init(self):
         Data, data = self.classes.Data, self.tables.data
@@ -1115,7 +1145,7 @@ class ColumnPropertyTest(fixtures.MappedTest):
         sess.flush()
         eq_(sd1.aplusb, "hello there")
 
-    def _test(self, expect_expiry):
+    def _test(self, expect_expiry, expect_deferred_load=False):
         Data = self.classes.Data
 
         sess = create_session()
@@ -1137,6 +1167,25 @@ class ColumnPropertyTest(fixtures.MappedTest):
         d1.aplusb = 'im setting this explicitly'
         sess.flush()
         eq_(d1.aplusb, "im setting this explicitly")
+
+        # test issue #3984.
+        # NOTE: if we only expire_all() here rather than start with brand new
+        # 'd1', d1.aplusb since it was loaded moves into "expired" and stays
+        # "undeferred".  this is questionable but not as severe as the never-
+        # loaded attribute being loaded during an unexpire.
+
+        sess.close()
+        d1 = sess.query(Data).first()
+
+        d1.b = 'so long'
+        sess.flush()
+        sess.expire_all()
+        eq_(d1.b, 'so long')
+        if expect_deferred_load:
+            eq_('aplusb' in d1.__dict__, False)
+        else:
+            eq_('aplusb' in d1.__dict__, True)
+        eq_(d1.aplusb, "hello so long")
 
 
 class OneToManyTest(_fixtures.FixtureTest):

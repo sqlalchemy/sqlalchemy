@@ -13,6 +13,15 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3984
+        :tags: bug, orm
+        :tickets: 3984
+
+        Fixed bug where a :func:`.column_property` that is also marked as
+        "deferred" would be marked as "expired" during a flush, causing it
+        to be loaded along with the unexpiry of regular attributes even
+        though this attribute was never accessed.
+
     .. change:: 3873
         :tags: bug, sql
         :tickets: 3873

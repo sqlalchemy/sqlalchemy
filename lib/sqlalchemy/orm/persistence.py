@@ -982,8 +982,16 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
         if mapper._readonly_props:
             readonly = state.unmodified_intersection(
-                [p.key for p in mapper._readonly_props
-                    if p.expire_on_flush or p.key not in state.dict]
+                [
+                    p.key for p in mapper._readonly_props
+                    if (
+                        p.expire_on_flush and
+                        (not p.deferred or p.key in state.dict)
+                    ) or (
+                        not p.expire_on_flush and
+                        not p.deferred and p.key not in state.dict
+                    )
+                ]
             )
             if readonly:
                 state._expire_attributes(state.dict, readonly)
