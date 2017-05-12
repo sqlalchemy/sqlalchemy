@@ -3067,3 +3067,142 @@ class PartialFlushTest(fixtures.MappedTest):
         assert p1 in sess.new
         assert c1 not in sess.new
         assert c2 in sess.new
+
+
+class SubclassCascadeTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Company(Base):
+            __tablename__ = 'company'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            employees = relationship("Employee", cascade="all, delete-orphan")
+
+        class Employee(Base):
+            __tablename__ = 'employee'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            type = Column(String(50))
+            company_id = Column(ForeignKey('company.id'))
+
+            __mapper_args__ = {
+                'polymorphic_identity': 'employee',
+                'polymorphic_on': type
+            }
+
+        class Engineer(Employee):
+            __tablename__ = 'engineer'
+            id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+            engineer_name = Column(String(30))
+            languages = relationship("Language", cascade="all, delete-orphan")
+
+            __mapper_args__ = {
+                'polymorphic_identity': 'engineer',
+            }
+
+        class MavenBuild(Base):
+            __tablename__ = 'maven_build'
+            id = Column(Integer, primary_key=True)
+            java_language_id = Column(
+                ForeignKey('java_language.id'), nullable=False)
+
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+            manager_name = Column(String(30))
+
+            __mapper_args__ = {
+                'polymorphic_identity': 'manager',
+            }
+
+        class Language(Base):
+            __tablename__ = 'language'
+            id = Column(Integer, primary_key=True)
+            engineer_id = Column(ForeignKey('engineer.id'), nullable=False)
+            name = Column(String(50))
+            type = Column(String(50))
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "language"
+            }
+
+        class JavaLanguage(Language):
+            __tablename__ = 'java_language'
+            id = Column(ForeignKey('language.id'), primary_key=True)
+            maven_builds = relationship("MavenBuild",
+                                        cascade="all, delete-orphan")
+
+            __mapper_args__ = {
+                "polymorphic_identity": "java_language"
+            }
+
+    def test_cascade_iterator_polymorphic(self):
+        Company, Employee, Engineer, Language, JavaLanguage, MavenBuild = \
+        self.classes(
+            'Company', 'Employee', 'Engineer', 'Language', 'JavaLanguage',
+            'MavenBuild'
+        )
+
+        obj = Company(
+            employees=[
+                Engineer(
+                    languages=[
+                        JavaLanguage(
+                            name="java",
+                            maven_builds=[MavenBuild()]
+                        )
+                    ],
+
+                )
+            ]
+        )
+        eng = obj.employees[0]
+        lang = eng.languages[0]
+        maven_build = lang.maven_builds[0]
+
+        from sqlalchemy import inspect
+        state = inspect(obj)
+        it = inspect(Company).cascade_iterator("save-update", state)
+        eq_(
+            set([rec[0] for rec in it]),
+            set([eng, maven_build, lang])
+        )
+
+        state = inspect(eng)
+        it = inspect(Employee).cascade_iterator("save-update", state)
+        eq_(
+            set([rec[0] for rec in it]),
+            set([maven_build, lang])
+        )
+
+    def test_delete_orphan_round_trip(self):
+        Company, Employee, Engineer, Language, JavaLanguage, \
+            MavenBuild = self.classes(
+                'Company', 'Employee', 'Engineer', 'Language', 'JavaLanguage',
+                'MavenBuild'
+            )
+
+        obj = Company(
+            employees=[
+                Engineer(
+                    languages=[
+                        JavaLanguage(
+                            name="java",
+                            maven_builds=[MavenBuild()]
+                        )
+                    ],
+
+                )
+            ]
+        )
+        s = Session()
+        s.add(obj)
+        s.commit()
+
+        obj.employees = []
+        s.commit()
+
+        eq_(s.query(Language).count(), 0)

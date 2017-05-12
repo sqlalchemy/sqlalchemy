@@ -21,6 +21,16 @@
 .. changelog::
     :version: 1.1.10
 
+    .. change:: 3986
+        :tags: bug, orm
+        :versions: 1.2.0b1
+        :tickets: 3986
+
+        Fixed bug where a cascade such as "delete-orphan" (but others as well)
+        would fail to locate an object linked to a relationship that itself
+        is local to a subclass in an inheritance relationship, thus causing
+        the operation to not take place.
+
     .. change:: 3975
         :tags: bug, oracle
         :versions: 1.2.0b1
