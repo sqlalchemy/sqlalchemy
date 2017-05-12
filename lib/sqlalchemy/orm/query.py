@@ -3729,7 +3729,8 @@ class _MapperEntity(_QueryEntity):
             self.path, adapter, context.primary_columns,
             with_polymorphic=self._with_polymorphic,
             only_load_props=query._only_load_props,
-            polymorphic_discriminator=self._polymorphic_discriminator)
+            polymorphic_discriminator=self._polymorphic_discriminator
+        )
 
     def __str__(self):
         return str(self.mapper)

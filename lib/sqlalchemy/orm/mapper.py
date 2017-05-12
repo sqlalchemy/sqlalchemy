@@ -687,6 +687,8 @@ class Mapper(InspectionAttr):
     is_mapper = True
     """Part of the inspection API."""
 
+    represents_outer_join = False
+
     @property
     def mapper(self):
         """Part of the inspection API.
