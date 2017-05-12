@@ -1662,6 +1662,58 @@ class JoinedloadOverWPolyAliased(
             "LEFT OUTER JOIN link AS link_2 ON parent_1.id = link_2.parent_id"
         )
 
+    def test_local_wpoly_innerjoins(self):
+        # test for issue #3988
+        Sub1 = self._fixture_from_subclass()
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+
+        poly = with_polymorphic(Parent, [Sub1])
+
+        session = Session()
+        q = session.query(poly).options(
+            joinedload(poly.Sub1.links, innerjoin=True).
+            joinedload(Link.child.of_type(Sub1), innerjoin=True).
+            joinedload(poly.Sub1.links, innerjoin=True)
+        )
+        self.assert_compile(
+            q,
+            "SELECT parent.id AS parent_id, parent.type AS parent_type, "
+            "link_1.parent_id AS link_1_parent_id, "
+            "link_1.child_id AS link_1_child_id, "
+            "parent_1.id AS parent_1_id, parent_1.type AS parent_1_type, "
+            "link_2.parent_id AS link_2_parent_id, "
+            "link_2.child_id AS link_2_child_id FROM parent "
+            "LEFT OUTER JOIN link AS link_1 ON parent.id = link_1.parent_id "
+            "LEFT OUTER JOIN parent AS parent_1 "
+            "ON link_1.child_id = parent_1.id "
+            "LEFT OUTER JOIN link AS link_2 ON parent_1.id = link_2.parent_id"
+        )
+
+    def test_local_wpoly_innerjoins_roundtrip(self):
+        # test for issue #3988
+        Sub1 = self._fixture_from_subclass()
+        Parent = self.classes.Parent
+        Link = self.classes.Link
+
+        session = Session()
+        session.add_all([
+            Parent(),
+            Parent()
+        ])
+
+        # represents "Parent" and "Sub1" rows
+        poly = with_polymorphic(Parent, [Sub1])
+
+        # innerjoin for Sub1 only, but this needs
+        # to be cancelled because the Parent rows
+        # would be omitted
+        q = session.query(poly).options(
+            joinedload(poly.Sub1.links, innerjoin=True).
+            joinedload(Link.child.of_type(Sub1), innerjoin=True)
+        )
+        eq_(len(q.all()), 2)
+
 
 class JoinAcrossJoinedInhMultiPath(fixtures.DeclarativeMappedTest,
                                    testing.AssertsCompiledSQL):

@@ -13,6 +13,17 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3988
+        :tags: bug, orm
+        :tickets: 3988
+
+        Fixed bug where combining a "with_polymorphic" load in conjunction
+        with subclass-linked relationships that specify joinedload with
+        innerjoin=True, would fail to demote those "innerjoins" to
+        "outerjoins" to suit the other polymorphic classes that don't
+        support that relationship.   This applies to both a single and a
+        joined inheritance polymorphic load.
+
     .. change:: 3984
         :tags: bug, orm
         :tickets: 3984

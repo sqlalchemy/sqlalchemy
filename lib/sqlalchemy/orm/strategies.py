@@ -1502,7 +1502,9 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         attach_on_outside = (
             not chained_from_outerjoin or
-            not innerjoin or innerjoin == 'unnested')
+            not innerjoin or innerjoin == 'unnested' or
+            entity.entity_zero.represents_outer_join
+        )
 
         if attach_on_outside:
             # this is the "classic" eager join case.
@@ -1510,7 +1512,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                 towrap,
                 clauses.aliased_class,
                 onclause,
-                isouter=not innerjoin or (
+                isouter=not innerjoin or
+                entity.entity_zero.represents_outer_join or
+                (
                     chained_from_outerjoin and isinstance(towrap, sql.Join)
                 ), _left_memo=self.parent, _right_memo=self.mapper
             )

@@ -376,7 +376,8 @@ class AliasedClass(object):
                  with_polymorphic_mappers=(),
                  with_polymorphic_discriminator=None,
                  base_alias=None,
-                 use_mapper_path=False):
+                 use_mapper_path=False,
+                 represents_outer_join=False):
         mapper = _class_to_mapper(cls)
         if alias is None:
             alias = mapper._with_polymorphic_selectable.alias(
@@ -395,7 +396,8 @@ class AliasedClass(object):
             else mapper.polymorphic_on,
             base_alias,
             use_mapper_path,
-            adapt_on_names
+            adapt_on_names,
+            represents_outer_join
         )
 
         self.__name__ = 'AliasedClass_%s' % mapper.class_.__name__
@@ -478,7 +480,8 @@ class AliasedInsp(InspectionAttr):
 
     def __init__(self, entity, mapper, selectable, name,
                  with_polymorphic_mappers, polymorphic_on,
-                 _base_alias, _use_mapper_path, adapt_on_names):
+                 _base_alias, _use_mapper_path, adapt_on_names,
+                 represents_outer_join):
         self.entity = entity
         self.mapper = mapper
         self.selectable = selectable
@@ -487,6 +490,7 @@ class AliasedInsp(InspectionAttr):
         self.polymorphic_on = polymorphic_on
         self._base_alias = _base_alias or self
         self._use_mapper_path = _use_mapper_path
+        self.represents_outer_join = represents_outer_join
 
         self._adapter = sql_util.ColumnAdapter(
             selectable, equivalents=mapper._equivalent_columns,
@@ -530,7 +534,8 @@ class AliasedInsp(InspectionAttr):
             'with_polymorphic_discriminator':
                 self.polymorphic_on,
             'base_alias': self._base_alias,
-            'use_mapper_path': self._use_mapper_path
+            'use_mapper_path': self._use_mapper_path,
+            'represents_outer_join': self.represents_outer_join
         }
 
     def __setstate__(self, state):
@@ -543,7 +548,8 @@ class AliasedInsp(InspectionAttr):
             state['with_polymorphic_discriminator'],
             state['base_alias'],
             state['use_mapper_path'],
-            state['adapt_on_names']
+            state['adapt_on_names'],
+            state['represents_outer_join']
         )
 
     def _adapt_element(self, elem):
@@ -772,7 +778,8 @@ def with_polymorphic(base, classes, selectable=False,
                         selectable,
                         with_polymorphic_mappers=mappers,
                         with_polymorphic_discriminator=polymorphic_on,
-                        use_mapper_path=_use_mapper_path)
+                        use_mapper_path=_use_mapper_path,
+                        represents_outer_join=not innerjoin)
 
 
 def _orm_annotate(element, exclude=None):
