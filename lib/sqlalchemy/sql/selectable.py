@@ -3026,6 +3026,14 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         """return a new select() construct with the given column expression
             added to its columns clause.
 
+            E.g.::
+
+                my_select = my_select.column(table.c.new_column)
+
+            See the documentation for :meth:`.Select.with_only_columns`
+            for guidelines on adding /replacing the columns of a
+            :class:`.Select` object.
+
         """
         self.append_column(column)
 
@@ -3065,25 +3073,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     def with_only_columns(self, columns):
         r"""Return a new :func:`.select` construct with its columns
         clause replaced with the given columns.
-
-        .. versionchanged:: 0.7.3
-            Due to a bug fix, this method has a slight
-            behavioral change as of version 0.7.3.
-            Prior to version 0.7.3, the FROM clause of
-            a :func:`.select` was calculated upfront and as new columns
-            were added; in 0.7.3 and later it's calculated
-            at compile time, fixing an issue regarding late binding
-            of columns to parent tables.  This changes the behavior of
-            :meth:`.Select.with_only_columns` in that FROM clauses no
-            longer represented in the new list are dropped,
-            but this behavior is more consistent in
-            that the FROM clauses are consistently derived from the
-            current columns clause.  The original intent of this method
-            is to allow trimming of the existing columns list to be fewer
-            columns than originally present; the use case of replacing
-            the columns list with an entirely different one hadn't
-            been anticipated until 0.7.3 was released; the usage
-            guidelines below illustrate how this should be done.
 
         This method is exactly equivalent to as if the original
         :func:`.select` had been called with the given columns
@@ -3351,9 +3340,17 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         """append the given column expression to the columns clause of this
         select() construct.
 
+        E.g.::
+
+            my_select.append_column(some_table.c.new_column)
+
         This is an **in-place** mutation method; the
         :meth:`~.Select.column` method is preferred, as it provides standard
         :term:`method chaining`.
+
+        See the documentation for :meth:`.Select.with_only_columns`
+        for guidelines on adding /replacing the columns of a
+        :class:`.Select` object.
 
         """
         self._reset_exported()
