@@ -2689,7 +2689,9 @@ class Mapper(InspectionAttr):
         visited_states = set()
         prp, mpp = object(), object()
 
-        visitables = deque([(deque(self._props.values()), prp,
+        assert state.mapper.isa(self)
+
+        visitables = deque([(deque(state.mapper._props.values()), prp,
                              state, state.dict)])
 
         while visitables:
@@ -2712,9 +2714,13 @@ class Mapper(InspectionAttr):
                     corresponding_dict = iterator.popleft()
                 yield instance, instance_mapper, \
                     corresponding_state, corresponding_dict
-                visitables.append((deque(instance_mapper._props.values()),
-                                   prp, corresponding_state,
-                                   corresponding_dict))
+                visitables.append(
+                    (
+                        deque(instance_mapper._props.values()),
+                        prp, corresponding_state,
+                        corresponding_dict
+                    )
+                )
 
     @_memoized_configured_property
     def _compiled_cache(self):
