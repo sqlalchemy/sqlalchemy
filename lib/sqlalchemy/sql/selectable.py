@@ -1841,6 +1841,19 @@ class ForUpdateArg(ClauseElement):
         else:
             return True
 
+    def __eq__(self, other):
+        return (
+            isinstance(other, ForUpdateArg) and
+            other.nowait == self.nowait and
+            other.read == self.read and
+            other.skip_locked == self.skip_locked and
+            other.key_share == self.key_share and
+            other.of is self.of
+        )
+
+    def __hash__(self):
+        return id(self)
+
     def _copy_internals(self, clone=_clone, **kw):
         if self.of is not None:
             self.of = [clone(col, **kw) for col in self.of]

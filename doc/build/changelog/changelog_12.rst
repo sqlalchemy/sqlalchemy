@@ -75,6 +75,20 @@
         support that relationship.   This applies to both a single and a
         joined inheritance polymorphic load.
 
+    .. change:: 3991
+        :tags: bug, orm
+        :tickets: 3991
+
+        Added new argument :paramref:`.with_for_update` to the
+        :meth:`.Session.refresh` method.  When the :meth:`.Query.with_lockmode`
+        method were deprecated in favor of :meth:`.Query.with_for_update`,
+        the :meth:`.Session.refresh` method was never updated to reflect
+        the new option.
+
+        .. seealso::
+
+            :ref:`change_3991`
+
     .. change:: 3984
         :tags: bug, orm
         :tickets: 3984

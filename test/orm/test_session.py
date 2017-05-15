@@ -18,7 +18,7 @@ from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import event, ForeignKey
 from sqlalchemy.util.compat import inspect_getargspec
-
+from sqlalchemy.testing import mock
 
 class ExecutionTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1644,6 +1644,37 @@ class SessionInterface(fixtures.TestBase):
         self._test_instance_guards(early)
         self._test_class_guards(early, is_class=False)
 
+    def test_refresh_arg_signature(self):
+        class Mapped(object):
+            pass
+        self._map_it(Mapped)
+
+        m1 = Mapped()
+        s = create_session()
+
+        with mock.patch.object(s, "_validate_persistent"):
+            assert_raises_message(
+                sa.exc.ArgumentError,
+                "with_for_update should be the boolean value True, "
+                "or a dictionary with options",
+                s.refresh, m1, with_for_update={}
+            )
+
+            with mock.patch(
+                    "sqlalchemy.orm.session.loading.load_on_ident"
+            ) as load_on_ident:
+                s.refresh(m1, with_for_update={"read": True})
+                s.refresh(m1, with_for_update=True)
+                s.refresh(m1, with_for_update=False)
+                s.refresh(m1)
+
+            from sqlalchemy.orm.query import LockmodeArg
+            eq_(
+                [
+                    call[-1]['with_for_update']
+                    for call in load_on_ident.mock_calls],
+                [LockmodeArg(read=True), LockmodeArg(), None, None]
+            )
 
 class TLTransactionTest(fixtures.MappedTest):
     run_dispose_bind = 'once'

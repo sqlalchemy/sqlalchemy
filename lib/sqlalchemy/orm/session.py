@@ -1421,7 +1421,9 @@ class Session(_SessionClassMethods):
                     "flush is occurring prematurely")
                 util.raise_from_cause(e)
 
-    def refresh(self, instance, attribute_names=None, lockmode=None):
+    def refresh(
+            self, instance, attribute_names=None, with_for_update=None,
+            lockmode=None):
         """Expire and refresh the attributes on the given instance.
 
         A query will be issued to the database and all attributes will be
@@ -1445,8 +1447,17 @@ class Session(_SessionClassMethods):
           string attribute names indicating a subset of attributes to
           be refreshed.
 
+        :param with_for_update: optional boolean ``True`` indicating FOR UPDATE
+          should be used, or may be a dictionary containing flags to
+          indicate a more specific set of FOR UPDATE flags for the SELECT;
+          flags should match the parameters of :meth:`.Query.with_for_update`.
+          Supersedes the :paramref:`.Session.refresh.lockmode` parameter.
+
+          .. versionadded:: 1.2
+
         :param lockmode: Passed to the :class:`~sqlalchemy.orm.query.Query`
           as used by :meth:`~sqlalchemy.orm.query.Query.with_lockmode`.
+          Superseded by :paramref:`.Session.refresh.with_for_update`.
 
         .. seealso::
 
@@ -1464,10 +1475,26 @@ class Session(_SessionClassMethods):
 
         self._expire_state(state, attribute_names)
 
+        if with_for_update == {}:
+            raise sa_exc.ArgumentError(
+                "with_for_update should be the boolean value "
+                "True, or a dictionary with options.  "
+                "A blank dictionary is ambiguous.")
+
+        if lockmode:
+            with_for_update = query.LockmodeArg.parse_legacy_query(lockmode)
+        elif with_for_update is not None:
+            if with_for_update is True:
+                with_for_update = query.LockmodeArg()
+            elif with_for_update:
+                with_for_update = query.LockmodeArg(**with_for_update)
+            else:
+                with_for_update = None
+
         if loading.load_on_ident(
                 self.query(object_mapper(instance)),
                 state.key, refresh_state=state,
-                lockmode=lockmode,
+                with_for_update=with_for_update,
                 only_load_props=attribute_names) is None:
             raise sa_exc.InvalidRequestError(
                 "Could not refresh instance '%s'" %

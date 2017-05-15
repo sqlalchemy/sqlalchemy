@@ -169,7 +169,7 @@ def get_from_identity(session, key, passive):
 
 
 def load_on_ident(query, key,
-                  refresh_state=None, lockmode=None,
+                  refresh_state=None, with_for_update=None,
                   only_load_props=None):
     """Load the given identity key from the database."""
 
@@ -209,9 +209,10 @@ def load_on_ident(query, key,
 
         q._params = params
 
-    if lockmode is not None:
+    # with_for_update needs to be query.LockmodeArg()
+    if with_for_update is not None:
         version_check = True
-        q = q.with_lockmode(lockmode)
+        q._for_update_arg = with_for_update
     elif query._for_update_arg is not None:
         version_check = True
         q._for_update_arg = query._for_update_arg

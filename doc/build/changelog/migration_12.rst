@@ -335,6 +335,30 @@ Above, the event handler will be triggered when an in-place change to the
 
 :ticket:`3303`
 
+.. _change_3991:
+
+Added "for update" arguments to Session.refresh
+------------------------------------------------
+
+Added new argument :paramref:`.with_for_update` to the
+:meth:`.Session.refresh` method.  When the :meth:`.Query.with_lockmode`
+method were deprecated in favor of :meth:`.Query.with_for_update`,
+the :meth:`.Session.refresh` method was never updated to reflect
+the new option::
+
+    session.refresh(some_object, with_for_update=True)
+
+The :paramref:`.Session.refresh.with_for_update` argument accepts a dictionary
+of options that will be passed as the same arguments which are sent to
+:meth:`.Query.with_for_update`::
+
+    session.refresh(some_objects with_for_update={"read": True})
+
+The new parameter supersedes the :paramref:`.Session.refresh.lockmode`
+parameter.
+
+:ticket:`3991`
+
 New Features and Improvements - Core
 ====================================
 

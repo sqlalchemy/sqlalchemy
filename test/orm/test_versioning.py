@@ -297,6 +297,42 @@ class VersioningTest(fixtures.MappedTest):
             sa.orm.exc.StaleDataError,
             r"Instance .* has version id '\d+' which does not "
             r"match database-loaded version id '\d+'",
+            s1.query(Foo).with_for_update(read=True).get, f1s1.id
+        )
+
+        # reload it - this expires the old version first
+        s1.refresh(f1s1, with_for_update={"read": True})
+
+        # now assert version OK
+        s1.query(Foo).with_for_update(read=True).get(f1s1.id)
+
+        # assert brand new load is OK too
+        s1.close()
+        s1.query(Foo).with_for_update(read=True).get(f1s1.id)
+
+    @testing.emits_warning(r'.*does not support updated rowcount')
+    @engines.close_open_connections
+    def test_versioncheck_legacy(self):
+        """query.with_lockmode performs a 'version check' on an already loaded
+        instance"""
+
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1s1 = Foo(value='f1 value')
+        s1.add(f1s1)
+        s1.commit()
+
+        s2 = create_session(autocommit=False)
+        f1s2 = s2.query(Foo).get(f1s1.id)
+        f1s2.value = 'f1 new value'
+        s2.commit()
+
+        # load, version is wrong
+        assert_raises_message(
+            sa.orm.exc.StaleDataError,
+            r"Instance .* has version id '\d+' which does not "
+            r"match database-loaded version id '\d+'",
             s1.query(Foo).with_lockmode('read').get, f1s1.id
         )
 
@@ -328,6 +364,36 @@ class VersioningTest(fixtures.MappedTest):
     @engines.close_open_connections
     @testing.requires.update_nowait
     def test_versioncheck_for_update(self):
+        """query.with_lockmode performs a 'version check' on an already loaded
+        instance"""
+
+        Foo = self.classes.Foo
+
+        s1 = self._fixture()
+        f1s1 = Foo(value='f1 value')
+        s1.add(f1s1)
+        s1.commit()
+
+        s2 = create_session(autocommit=False)
+        f1s2 = s2.query(Foo).get(f1s1.id)
+        # not sure if I like this API
+        s2.refresh(f1s2, with_for_update=True)
+        f1s2.value = 'f1 new value'
+
+        assert_raises(
+            exc.DBAPIError,
+            s1.refresh, f1s1, lockmode='update_nowait'
+        )
+        s1.rollback()
+
+        s2.commit()
+        s1.refresh(f1s1, with_for_update={"nowait": True})
+        assert f1s1.version_id == f1s2.version_id
+
+    @testing.emits_warning(r'.*does not support updated rowcount')
+    @engines.close_open_connections
+    @testing.requires.update_nowait
+    def test_versioncheck_for_update_legacy(self):
         """query.with_lockmode performs a 'version check' on an already loaded
         instance"""
 
