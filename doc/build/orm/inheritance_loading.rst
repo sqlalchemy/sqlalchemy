@@ -106,7 +106,7 @@ subclasses:
     entity = with_polymorphic(Employee, '*')
 
 Using aliasing with with_polymorphic
-------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :func:`.orm.with_polymorphic` function also provides "aliasing" of the
 polymorphic selectable itself, meaning, two different :func:`.orm.with_polymorphic`
@@ -223,7 +223,7 @@ versions of SQLite, may have a problem with this syntax, although virtually all
 modern database versions now support this syntax.
 
 Referring to Specific Subclass Attributes
------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The entity returned by :func:`.orm.with_polymorphic` is an :class:`.AliasedClass`
 object, which can be used in a :class:`.Query` like any other alias, including
