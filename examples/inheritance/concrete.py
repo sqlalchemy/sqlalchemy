@@ -1,74 +1,161 @@
-"""Concrete (table-per-class) inheritance example."""
+"""Concrete-table (table-per-class) inheritance example."""
 
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, \
-    String
-from sqlalchemy.orm import mapper, sessionmaker, polymorphic_union
-
-metadata = MetaData()
-
-managers_table = Table('managers', metadata,
-    Column('employee_id', Integer, primary_key=True),
-    Column('name', String(50)),
-    Column('manager_data', String(40))
-)
-
-engineers_table = Table('engineers', metadata,
-    Column('employee_id', Integer, primary_key=True),
-    Column('name', String(50)),
-    Column('engineer_info', String(40))
-)
-
-engine = create_engine('sqlite:///', echo=True)
-metadata.create_all(engine)
+from sqlalchemy import Column, Integer, String, \
+    ForeignKey, create_engine, inspect, or_
+from sqlalchemy.orm import relationship, Session, with_polymorphic
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import ConcreteBase
 
 
-class Employee(object):
-    def __init__(self, name):
-        self.name = name
+Base = declarative_base()
+
+
+class Company(Base):
+    __tablename__ = 'company'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50))
+
+    employees = relationship(
+        "Person",
+        back_populates='company',
+        cascade='all, delete-orphan')
+
     def __repr__(self):
-        return self.__class__.__name__ + " " + self.name
+        return "Company %s" % self.name
 
-class Manager(Employee):
-    def __init__(self, name, manager_data):
-        self.name = name
-        self.manager_data = manager_data
+
+class Person(ConcreteBase, Base):
+    __tablename__ = 'person'
+    id = Column(Integer, primary_key=True)
+    company_id = Column(ForeignKey('company.id'))
+    name = Column(String(50))
+
+    company = relationship("Company", back_populates="employees")
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'person',
+    }
+
     def __repr__(self):
-        return self.__class__.__name__ + " " + \
-                    self.name + " " +  self.manager_data
+        return "Ordinary person %s" % self.name
 
-class Engineer(Employee):
-    def __init__(self, name, engineer_info):
-        self.name = name
-        self.engineer_info = engineer_info
+
+class Engineer(Person):
+    __tablename__ = 'engineer'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50))
+    company_id = Column(ForeignKey('company.id'))
+    status = Column(String(30))
+    engineer_name = Column(String(30))
+    primary_language = Column(String(30))
+
+    company = relationship("Company", back_populates="employees")
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'engineer',
+        'concrete': True
+    }
+
     def __repr__(self):
-        return self.__class__.__name__ + " " + \
-                    self.name + " " +  self.engineer_info
+        return (
+            "Engineer %s, status %s, engineer_name %s, "
+            "primary_language %s" %
+            (
+                self.name, self.status,
+                self.engineer_name, self.primary_language)
+        )
 
 
-pjoin = polymorphic_union({
-    'manager':managers_table,
-    'engineer':engineers_table
-}, 'type', 'pjoin')
+class Manager(Person):
+    __tablename__ = 'manager'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50))
+    company_id = Column(ForeignKey('company.id'))
+    status = Column(String(30))
+    manager_name = Column(String(30))
 
-employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-manager_mapper = mapper(Manager, managers_table,
-                        inherits=employee_mapper, concrete=True,
-                        polymorphic_identity='manager')
-engineer_mapper = mapper(Engineer, engineers_table,
-                         inherits=employee_mapper, concrete=True,
-                         polymorphic_identity='engineer')
+    company = relationship("Company", back_populates="employees")
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'manager',
+        'concrete': True
+    }
+
+    def __repr__(self):
+        return "Manager %s, status %s, manager_name %s" % (
+            self.name, self.status, self.manager_name)
 
 
-session = sessionmaker(engine)()
+engine = create_engine('sqlite://', echo=True)
+Base.metadata.create_all(engine)
 
-m1 = Manager("pointy haired boss", "manager1")
-e1 = Engineer("wally", "engineer1")
-e2 = Engineer("dilbert", "engineer2")
+session = Session(engine)
 
-session.add(m1)
-session.add(e1)
-session.add(e2)
+c = Company(name='company1', employees=[
+    Manager(
+        name='pointy haired boss',
+        status='AAB',
+        manager_name='manager1'),
+    Engineer(
+        name='dilbert',
+        status='BBA',
+        engineer_name='engineer1',
+        primary_language='java'),
+    Person(name='joesmith'),
+    Engineer(
+        name='wally',
+        status='CGG',
+        engineer_name='engineer2',
+        primary_language='python'),
+    Manager(
+        name='jsmith',
+        status='ABA',
+        manager_name='manager2')
+])
+session.add(c)
+
 session.commit()
 
-print(session.query(Employee).all())
+c = session.query(Company).get(1)
+for e in c.employees:
+    print(e, inspect(e).key, e.company)
+assert set([e.name for e in c.employees]) == set(
+    ['pointy haired boss', 'dilbert', 'joesmith', 'wally', 'jsmith'])
+print("\n")
 
+dilbert = session.query(Person).filter_by(name='dilbert').one()
+dilbert2 = session.query(Engineer).filter_by(name='dilbert').one()
+assert dilbert is dilbert2
+
+dilbert.engineer_name = 'hes dilbert!'
+
+session.commit()
+
+c = session.query(Company).get(1)
+for e in c.employees:
+    print(e)
+
+# query using with_polymorphic.
+eng_manager = with_polymorphic(Person, [Engineer, Manager])
+print(
+    session.query(eng_manager).
+    filter(
+        or_(
+            eng_manager.Engineer.engineer_name == 'engineer1',
+            eng_manager.Manager.manager_name == 'manager2'
+        )
+    ).all()
+)
+
+# illustrate join from Company
+eng_manager = with_polymorphic(Person, [Engineer, Manager])
+print(
+    session.query(Company).
+    join(
+        Company.employees.of_type(eng_manager)
+    ).filter(
+        or_(eng_manager.Engineer.engineer_name == 'engineer1',
+            eng_manager.Manager.manager_name == 'manager2')
+    ).all())
+
+session.commit()
