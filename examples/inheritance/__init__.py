@@ -1,5 +1,5 @@
 """Working examples of single-table, joined-table, and concrete-table
-inheritance as described in :ref:`datamapping_inheritance`.
+inheritance as described in :ref:`inheritance_toplevel`.
 
 .. autosource::
 
