@@ -17,6 +17,11 @@ When mappers are configured in an inheritance relationship, SQLAlchemy has the
 ability to load elements :term:`polymorphically`, meaning that a single query can
 return objects of multiple types.
 
+.. seealso::
+
+    :ref:`examples_inheritance` - complete exampes of joined, single and
+    concrete inheritance
+
 .. _joined_inheritance:
 
 Joined Table Inheritance

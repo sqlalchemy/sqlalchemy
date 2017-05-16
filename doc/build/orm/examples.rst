@@ -106,6 +106,8 @@ Vertical Attribute Mapping
 .. automodule:: examples.vertical
 
 
+.. _examples_inheritance:
+
 Inheritance Mapping Recipes
 ============================
 
