@@ -244,7 +244,7 @@ specific to ``Engineer`` as well as ``Manager`` in terms of ``eng_plus_manager``
 
 
 Setting with_polymorphic at mapper configuration time
------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :func:`.orm.with_polymorphic` function serves the purpose of allowing
 "eager" loading of attributes from subclass tables, as well as the ability
@@ -294,7 +294,7 @@ subclasses.   When using concrete inheritance, special helpers are provided
 to help with these patterns which are described at :ref:`concrete_polymorphic`.
 
 Setting with_polymorphic against a query
-----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :func:`.orm.with_polymorphic` function evolved from a query-level
 method :meth:`.Query.with_polymorphic`.  This method has the same purpose
@@ -411,7 +411,7 @@ such as when the embedded criterion is in terms of a subclass::
 .. _eagerloading_polymorphic_subtypes:
 
 Eager Loading of Specific or Polymorphic Subtypes
-++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager` and
 other eagerloader options support
