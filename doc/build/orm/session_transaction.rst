@@ -114,8 +114,8 @@ reference the full state of the :class:`~sqlalchemy.orm.session.Session` right
 before :meth:`~.Session.begin_nested` was called.
 
 :meth:`~.Session.begin_nested`, in the same manner as the less often
-used :meth:`~.Session.begin` method, returns a transactional object
-which also works as a context manager.
+used :meth:`~.Session.begin` method, returns a :class:`.SessionTransaction` object
+which works as a context manager.
 It can be succinctly used around individual record inserts in order to catch
 things like unique constraint exceptions::
 
