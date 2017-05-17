@@ -776,18 +776,37 @@ class Session(_SessionClassMethods):
     def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this :class:`.Session`.
 
-        If this Session is already within a transaction, either a plain
-        transaction or nested transaction, an error is raised, unless
-        ``subtransactions=True`` or ``nested=True`` is specified.
+        The :meth:`.Session.begin` method is only
+        meaningful if this session is in **autocommit mode** prior to
+        it being called; see :ref:`session_autocommit` for background
+        on this setting.
 
-        The ``subtransactions=True`` flag indicates that this
-        :meth:`~.Session.begin` can create a subtransaction if a transaction
-        is already in progress. For documentation on subtransactions, please
-        see :ref:`session_subtransactions`.
+        The method will raise an error if this :class:`.Session`
+        is already inside of a transaction, unless
+        :paramref:`.Session.begin.subtransactions` or
+        :paramref:`.Session.begin.nested` are specified.
 
-        The ``nested`` flag begins a SAVEPOINT transaction and is equivalent
-        to calling :meth:`~.Session.begin_nested`. For documentation on
-        SAVEPOINT transactions, please see :ref:`session_begin_nested`.
+        :param subtransactions: if True, indicates that this
+         :meth:`~.Session.begin` can create a subtransaction if a transaction
+         is already in progress. For documentation on subtransactions, please
+         see :ref:`session_subtransactions`.
+
+        :param nested: if True, begins a SAVEPOINT transaction and is equivalent
+         to calling :meth:`~.Session.begin_nested`. For documentation on
+         SAVEPOINT transactions, please see :ref:`session_begin_nested`.
+
+        :return: the :class:`.SessionTransaction` object.  Note that
+         :class:`.SessionTransaction`
+         acts as a Python context manager, allowing :meth:`.Session.begin`
+         to be used in a "with" block.  See :ref:`session_autocommit` for
+         an example.
+
+        .. seealso::
+
+            :ref:`session_autocommit`
+
+            :meth:`.Session.begin_nested`
+
 
         """
         if self.transaction is not None:
@@ -804,13 +823,26 @@ class Session(_SessionClassMethods):
         return self.transaction  # needed for __enter__/__exit__ hook
 
     def begin_nested(self):
-        """Begin a `nested` transaction on this Session.
+        """Begin a "nested" transaction on this Session, e.g. SAVEPOINT.
 
-        The target database(s) must support SQL SAVEPOINTs or a
-        SQLAlchemy-supported vendor implementation of the idea.
+        The target database(s) and associated drivers must support SQL
+        SAVEPOINT for this method to function correctly.
 
         For documentation on SAVEPOINT
         transactions, please see :ref:`session_begin_nested`.
+
+        :return: the :class:`.SessionTransaction` object.  Note that
+         :class:`.SessionTransaction` acts as a context manager, allowing
+         :meth:`.Session.begin_nested` to be used in a "with" block.
+         See :ref:`session_begin_nested` for a usage example.
+
+        .. seealso::
+
+            :ref:`session_begin_nested`
+
+            :ref:`pysqlite_serializable` - special workarounds required
+            with the SQLite driver in order for SAVEPOINT to work
+            correctly.
 
         """
         return self.begin(nested=True)
