@@ -588,6 +588,7 @@ class Session(_SessionClassMethods):
                  _enable_transaction_accounting=True,
                  autocommit=False, twophase=False,
                  weak_identity_map=True, binds=None, extension=None,
+                 enable_baked_queries=True,
                  info=None,
                  query_cls=query.Query):
         r"""Construct a new Session.
@@ -660,6 +661,21 @@ class Session(_SessionClassMethods):
            returned class. This is the only argument that is local to the
            :class:`.sessionmaker` function, and is not sent directly to the
            constructor for ``Session``.
+
+        :param enable_baked_queries: defaults to ``True``.  A flag consumed
+           by the :mod:`sqlalchemy.ext.baked` extension to determine if
+           "baked queries" should be cached, as is the normal operation
+           of this extension.  When set to ``False``, all caching is disabled,
+           including baked queries defined by the calling application as
+           well as those used internally.  Setting this flag to ``False``
+           can significantly reduce memory use, however will also degrade
+           performance for those areas that make use of baked queries
+           (such as relationship loaders).   Additionally, baked query
+           logic in the calling application or potentially within the ORM
+           that may be malfunctioning due to cache key collisions or similar
+           can be flagged by observing if this flag resolves the issue.
+
+           .. versionadded:: 1.2
 
         :param _enable_transaction_accounting:  Defaults to ``True``.  A
            legacy-only flag which when ``False`` disables *all* 0.5-style
@@ -735,6 +751,7 @@ class Session(_SessionClassMethods):
         self.autoflush = autoflush
         self.autocommit = autocommit
         self.expire_on_commit = expire_on_commit
+        self.enable_baked_queries = enable_baked_queries
         self._enable_transaction_accounting = _enable_transaction_accounting
         self.twophase = twophase
         self._query_cls = query_cls

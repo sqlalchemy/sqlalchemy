@@ -28,6 +28,27 @@ import logging
 log = logging.getLogger(__name__)
 
 
+class Bakery(object):
+    """Callable which returns a :class:`.BakedQuery`.
+
+    This object is returned by the class method
+    :meth:`.BakedQuery.bakery`.  It exists as an object
+    so that the "cache" can be easily inspected.
+
+    .. versionadded:: 1.2
+
+
+    """
+    __slots__ = 'cls', 'cache'
+
+    def __init__(self, cls_, cache):
+        self.cls = cls_
+        self.cache = cache
+
+    def __call__(self, initial_fn, *args):
+        return self.cls(self.cache, initial_fn, args)
+
+
 class BakedQuery(object):
     """A builder object for :class:`.query.Query` objects."""
 
@@ -42,14 +63,13 @@ class BakedQuery(object):
 
     @classmethod
     def bakery(cls, size=200, _size_alert=None):
-        """Construct a new bakery."""
+        """Construct a new bakery.
 
-        _bakery = util.LRUCache(size, size_alert=_size_alert)
+        :return: an instance of :class:`.Bakery`
 
-        def call(initial_fn, *args):
-            return cls(_bakery, initial_fn, args)
+        """
 
-        return call
+        return Bakery(cls, util.LRUCache(size, size_alert=_size_alert))
 
     def _clone(self):
         b1 = BakedQuery.__new__(BakedQuery)
@@ -265,7 +285,7 @@ class Result(object):
 
     def __iter__(self):
         bq = self.bq
-        if bq._spoiled:
+        if not self.session.enable_baked_queries or bq._spoiled:
             return iter(self._as_query())
 
         baked_context = bq._bakery.get(bq._cache_key, None)

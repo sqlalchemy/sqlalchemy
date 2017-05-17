@@ -332,6 +332,27 @@ to arrive at the current "baked" approach.   Starting from the
 management,  removal of all redundant Python execution, and queries built up
 with conditionals needed to be addressed, leading to the final approach.
 
+Disabling Baked Queries Session-wide
+------------------------------------
+
+The flag :paramref:`.Session.enable_baked_queries` may be set to False,
+causing all baked queries to not use the cache when used against that
+:class:`.Session`::
+
+    session = Session(engine, enable_baked_queries=False)
+
+Like all session flags, it is also accepted by factory objects like
+:class:`.sessionmaker` and methods like :meth:`.sessionmaker.configure`.
+
+The immediate rationale for this flag is to reduce memory use in the case
+that the query baking used by relationship loaders and other loaders
+is not desirable.   It also can be used in the case that an application
+which is seeing issues potentially due to cache key conflicts from user-defined
+baked queries or other baked query issues can turn the behavior off, in
+order to identify or eliminate baked queries as the cause of an issue.
+
+.. versionadded:: 1.2
+
 Lazy Loading Integration
 ------------------------
 
@@ -350,7 +371,11 @@ Opting out with the bake_queries flag
 
 The :func:`.relationship` construct includes a flag
 :paramref:`.relationship.bake_queries` which when set to False will cause
-that relationship to opt out of caching queries.
+that relationship to opt out of caching queries.  Additionally, the
+:paramref:`.Session.enable_baked_queries` setting can be used to disable
+all "baked query" use.   These flags can be useful to conserve memory,
+when memory conservation is more important than performance for a particular
+relationship or for the application overall.
 
 API Documentation
 -----------------
@@ -358,6 +383,9 @@ API Documentation
 .. autofunction:: bakery
 
 .. autoclass:: BakedQuery
+    :members:
+
+.. autoclass:: Bakery
     :members:
 
 .. autoclass:: Result

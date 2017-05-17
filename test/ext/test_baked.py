@@ -447,6 +447,41 @@ class ResultTest(BakedTest):
                     exp
                 )
 
+    def test_disable_on_session(self):
+        User = self.classes.User
+
+        canary = mock.Mock()
+
+        def fn1(s):
+            canary.fn1()
+            return s.query(User.id, User.name).order_by(User.id)
+
+        def fn2(q):
+            canary.fn2()
+            return q.filter(User.id == bindparam('id'))
+
+        def fn3(q):
+            canary.fn3()
+            return q
+
+        for x in range(3):
+            bq = self.bakery(fn1)
+
+            bq += fn2
+
+            sess = Session(autocommit=True, enable_baked_queries=False)
+            eq_(
+                bq.add_criteria(fn3)(sess).params(id=7).all(),
+                [(7, 'jack')]
+            )
+
+        eq_(
+            canary.mock_calls,
+            [mock.call.fn1(), mock.call.fn2(), mock.call.fn3(),
+             mock.call.fn1(), mock.call.fn2(), mock.call.fn3(),
+             mock.call.fn1(), mock.call.fn2(), mock.call.fn3()]
+        )
+
     def test_spoiled_full_w_params(self):
         User = self.classes.User
 

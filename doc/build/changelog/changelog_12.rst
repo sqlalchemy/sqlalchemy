@@ -13,6 +13,15 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: baked_opts
+        :tags: feature, ext
+
+        Added new flag :paramref:`.Session.enable_baked_queries` to the
+        :class:`.Session` to allow baked queries to be disabled
+        session-wide, reducing memory use.   Also added new :class:`.Bakery`
+        wrapper so that the bakery returned by :paramref:`.BakedQuery.bakery`
+        can be inspected.
+
     .. change:: 3988
         :tags: bug, orm
         :tickets: 3988
