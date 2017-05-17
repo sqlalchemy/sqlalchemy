@@ -1749,10 +1749,10 @@ class JoinedLoader(AbstractRelationshipLoader):
 
 @log.class_logger
 @properties.RelationshipProperty.strategy_for(lazy="selectin")
-class SelectInLoader(AbstractRelationshipLoader):
+class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     __slots__ = (
         'join_depth', '_parent_alias', '_in_expr', '_parent_pk_cols',
-        '_zero_idx'
+        '_zero_idx', '_bakery'
     )
 
     _chunksize = 500
@@ -1775,6 +1775,21 @@ class SelectInLoader(AbstractRelationshipLoader):
         self.parent_property.\
             _get_strategy((("lazy", "select"),)).\
             init_class_attribute(mapper)
+
+    @util.dependencies("sqlalchemy.ext.baked")
+    def _memoized_attr__bakery(self, baked):
+        return baked.bakery(size=50, _size_alert=self._alert_lru_cache_limit)
+
+    def _alert_lru_cache_limit(self, lru_cache):
+        util.warn(
+            "Compiled statement cache for selectin loader on attribute %s is "
+            "reaching its size threshold of %d.  Consider setting "
+            "bake_queries=False for this relationship.  Please refer to "
+            "http://docs.sqlalchemy.org/en/latest/faq/performance.html"
+            "#faq_compiled_cache_threshold"
+            " for best practices." %
+            (self.parent_property,
+             lru_cache.size_threshold))
 
     def create_row_processor(
             self, context, path, loadopt, mapper,
@@ -1832,12 +1847,10 @@ class SelectInLoader(AbstractRelationshipLoader):
         pk_cols = self._parent_pk_cols
         pa = self._parent_alias
 
-        q = baked.BakedQuery(
-            # TODO: use strategy-local cache
-            self.mapper._compiled_cache,
+        q = self._bakery(
             lambda session: session.query(
-                query.Bundle("pk", *pk_cols), effective_entity
-            )
+                query.Bundle("pk", *pk_cols), effective_entity,
+            ), self
         )
 
         q.add_criteria(
@@ -1853,7 +1866,8 @@ class SelectInLoader(AbstractRelationshipLoader):
         orig_query = context.query
 
         q._add_lazyload_options(
-            orig_query._with_options, path[self.parent_property]
+            orig_query._with_options,
+            path[self.parent_property]
         )
 
         if orig_query._populate_existing:

@@ -127,7 +127,7 @@ class BakedQuery(object):
          invocation.
 
         """
-        if not full:
+        if not full and not self._spoiled:
             _spoil_point = self._clone()
             _spoil_point._cache_key += ('_query_only', )
             self.steps = [_spoil_point._retrieve_baked_query]
@@ -157,6 +157,7 @@ class BakedQuery(object):
                     self.spoil()
                 elif cache_key is not None:
                     key += cache_key
+
         self.add_criteria(
             lambda q: q._with_current_path(effective_path).
             _conditional_options(*options),
