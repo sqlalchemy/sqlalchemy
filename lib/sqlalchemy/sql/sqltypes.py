@@ -1911,6 +1911,22 @@ class JSON(Indexable, TypeEngine):
         session.add_all([obj1, obj2])
         session.commit()
 
+    In order to set JSON NULL as a default value for a column, the most
+    transparent method is to use :func:`.text`::
+
+        Table(
+            'my_table', metadata,
+            Column('json_data', JSON, default=text("'null'"))
+        )
+
+    While it is possible to use :attr:`.JSON.NULL` in this context, the
+    :attr:`.JSON.NULL` value will be returned as the value of the column,
+    which in the context of the ORM or other repurposing of the default
+    value, may not be desirable.  Using a SQL expression means the value
+    will be re-fetched from the database within the context of retrieving
+    generated defaults.
+
+
     """
 
     def __init__(self, none_as_null=False):
