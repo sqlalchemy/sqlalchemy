@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.10
+    :released: Friday, May 19, 2017
 
     .. change:: 3986
         :tags: bug, orm
