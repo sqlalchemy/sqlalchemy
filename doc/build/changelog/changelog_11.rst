@@ -21,6 +21,17 @@
 .. changelog::
     :version: 1.1.11
 
+    .. change:: 3994
+        :tags: bug, mssql
+        :tickets: 3994
+
+        Fixed bug where SQL Server transaction isolation must be fetched
+        from a different view when using Azure data warehouse, the query
+        is now attempted against both views and then a NotImplemented
+        is raised unconditionally if failure continues to provide the
+        best resiliency against future arbitrary API changes in new
+        SQL Server versions.
+
 .. changelog::
     :version: 1.1.10
     :released: Friday, May 19, 2017
