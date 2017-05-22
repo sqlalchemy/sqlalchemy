@@ -2052,8 +2052,14 @@ class MySQLDialect(default.DefaultDialect):
                 rp = connection.execution_options(
                     skip_user_error_events=True).execute(st)
             except exc.DBAPIError as e:
-                if self._extract_error_code(e.orig) == 1146:
+                code = self._extract_error_code(e.orig)
+                if code == 1146:
                     raise exc.NoSuchTableError(full_name)
+                elif code == 1356:
+                    raise exc.UnreflectableTableError(
+                        "Table or view named %s could not be "
+                        "reflected: %s" % (full_name, e)
+                    )
                 else:
                     raise
             rows = self._compat_fetchall(rp, charset=charset)
@@ -2061,7 +2067,6 @@ class MySQLDialect(default.DefaultDialect):
             if rp:
                 rp.close()
         return rows
-
 
 
 class _DecodingRowProxy(object):

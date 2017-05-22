@@ -25,6 +25,15 @@
 
             :ref:`change_3796`
 
+    .. change:: 3871
+        :tags: bug, mysql
+        :tickets: 3871
+
+        Added support for views that are unreflectable due to stale
+        table definitions, when calling :meth:`.MetaData.reflect`; a warning
+        is emitted for the table that cannot respond to ``DESCRIBE``,
+        but the operation succeeds.
+
     .. change:: baked_opts
         :tags: feature, ext
 

@@ -199,6 +199,14 @@ class NoSuchTableError(InvalidRequestError):
     """Table does not exist or is not visible to a connection."""
 
 
+class UnreflectableTableError(InvalidRequestError):
+    """Table exists but can't be reflectted for some reason.
+
+    .. versionadded:: 1.2
+
+    """
+
+
 class UnboundExecutionError(InvalidRequestError):
     """SQL was attempted without a database connection to execute it on."""
 

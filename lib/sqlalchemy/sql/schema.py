@@ -3903,7 +3903,10 @@ class MetaData(SchemaItem):
                         name not in current]
 
             for name in load:
-                Table(name, self, **reflect_opts)
+                try:
+                    Table(name, self, **reflect_opts)
+                except exc.UnreflectableTableError as uerr:
+                    util.warn("Skipping table %s: %s" % (name, uerr))
 
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``MetaData``.

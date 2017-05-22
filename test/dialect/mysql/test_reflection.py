@@ -7,11 +7,13 @@ from sqlalchemy import Column, Table, DDL, MetaData, TIMESTAMP, \
     BigInteger
 from sqlalchemy import event
 from sqlalchemy import sql
+from sqlalchemy import exc
 from sqlalchemy import inspect
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import reflection as _reflection
 from sqlalchemy.testing import fixtures, AssertsExecutionResults
 from sqlalchemy import testing
+from sqlalchemy.testing import assert_raises_message, expect_warnings
 
 
 class TypeReflectionTest(fixtures.TestBase):
@@ -428,6 +430,35 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     for col in insp.get_columns(v)
                 ],
                 [('a', mysql.INTEGER), ('b', mysql.VARCHAR)]
+            )
+
+    @testing.provide_metadata
+    def test_skip_not_describable(self):
+        @event.listens_for(self.metadata, "before_drop")
+        def cleanup(*arg, **kw):
+            with testing.db.connect() as conn:
+                conn.execute("DROP TABLE IF EXISTS test_t1")
+                conn.execute("DROP TABLE IF EXISTS test_t2")
+                conn.execute("DROP VIEW IF EXISTS test_v")
+
+        with testing.db.connect() as conn:
+            conn.execute("CREATE TABLE test_t1 (id INTEGER)")
+            conn.execute("CREATE TABLE test_t2 (id INTEGER)")
+            conn.execute("CREATE VIEW test_v AS SELECT id FROM test_t1" )
+            conn.execute("DROP TABLE test_t1")
+
+            m = MetaData()
+            with expect_warnings(
+                "Skipping .* Table or view named .?test_v.? could not be "
+                "reflected: .* references invalid table"
+            ):
+                m.reflect(views=True, bind=conn)
+            eq_(m.tables['test_t2'].name, "test_t2")
+
+            assert_raises_message(
+                exc.UnreflectableTableError,
+                "references invalid table",
+                Table, 'test_v', MetaData(), autoload_with=conn
             )
 
     @testing.exclude('mysql', '<', (5, 0, 0), 'no information_schema support')

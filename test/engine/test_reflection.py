@@ -12,6 +12,8 @@ from sqlalchemy.testing import eq_, is_true, assert_raises, \
 from sqlalchemy import testing
 from sqlalchemy.util import ue
 from sqlalchemy.testing import config
+from sqlalchemy.testing import mock
+from sqlalchemy.testing import expect_warnings
 
 metadata, users = None, None
 
@@ -971,6 +973,35 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             m9 = MetaData(testing.db)
             m9.reflect()
             self.assert_(not m9.tables)
+
+    @testing.provide_metadata
+    def test_reflect_all_unreflectable_table(self):
+        names = ['rt_%s' % name for name in ('a', 'b', 'c', 'd', 'e')]
+
+        for name in names:
+            Table(name, self.metadata,
+                  Column('id', sa.Integer, primary_key=True))
+        self.metadata.create_all()
+
+        m = MetaData()
+
+        reflecttable = testing.db.dialect.reflecttable
+
+        def patched(conn, table, *arg, **kw):
+            if table.name == 'rt_c':
+                raise sa.exc.UnreflectableTableError("Can't reflect rt_c")
+            else:
+                return reflecttable(conn, table, *arg, **kw)
+
+        with mock.patch.object(testing.db.dialect, "reflecttable", patched):
+            with expect_warnings("Skipping table rt_c: Can't reflect rt_c"):
+                m.reflect(bind=testing.db)
+
+            assert_raises_message(
+                sa.exc.UnreflectableTableError,
+                "Can't reflect rt_c",
+                Table, 'rt_c', m, autoload_with=testing.db
+            )
 
     def test_reflect_all_conn_closing(self):
         m1 = MetaData()
