@@ -330,6 +330,7 @@ OP_REMOVE = util.symbol("REMOVE")
 OP_APPEND = util.symbol("APPEND")
 OP_REPLACE = util.symbol("REPLACE")
 OP_BULK_REPLACE = util.symbol("BULK_REPLACE")
+OP_MODIFIED = util.symbol("MODIFIED")
 
 
 class Event(object):
@@ -341,9 +342,9 @@ class Event(object):
     operations.
 
     The :class:`.Event` object is sent as the ``initiator`` argument
-    when dealing with the :meth:`.AttributeEvents.append`,
+    when dealing with events such as :meth:`.AttributeEvents.append`,
     :meth:`.AttributeEvents.set`,
-    and :meth:`.AttributeEvents.remove` events.
+    and :meth:`.AttributeEvents.remove`.
 
     The :class:`.Event` object is currently interpreted by the backref
     event handlers, and is used to control the propagation of operations
@@ -459,11 +460,17 @@ class AttributeImpl(object):
             self.dispatch._active_history = True
 
         self.expire_missing = expire_missing
+        self._modified_token = None
 
     __slots__ = (
         'class_', 'key', 'callable_', 'dispatch', 'trackparent',
-        'parent_token', 'send_modified_events', 'is_equal', 'expire_missing'
+        'parent_token', 'send_modified_events', 'is_equal', 'expire_missing',
+        '_modified_token'
     )
+
+    def _init_modified_token(self):
+        self._modified_token = Event(self, OP_MODIFIED)
+        return self._modified_token
 
     def __str__(self):
         return "%s.%s" % (self.class_.__name__, self.key)
@@ -1636,6 +1643,8 @@ def flag_modified(instance, key):
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     impl = state.manager[key].impl
+    impl.dispatch.modified(
+        state, impl._modified_token or impl._init_modified_token())
     state._modified_event(dict_, impl, NO_VALUE, is_userland=True)
 
 

@@ -204,6 +204,28 @@ or more parent objects that are also part of the pickle, the :class:`.Mutable`
 mixin will re-establish the :attr:`.Mutable._parents` collection on each value
 object as the owning parents themselves are unpickled.
 
+Receiving Events
+----------------
+
+The :meth:`.AttributeEvents.modified` event handler may be used to receive
+an event when a mutable scalar emits a change event.  This event handler
+is called when the :func:`.attributes.flag_modified` function is called
+from within the mutable extension::
+
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy import event
+
+    Base = declarative_base()
+
+    class MyDataClass(Base):
+        __tablename__ = 'my_data'
+        id = Column(Integer, primary_key=True)
+        data = Column(MutableDict.as_mutable(JSONEncodedDict))
+
+    @event.listens_for(MyDataClass.data, "modified")
+    def modified_json(instance):
+        print("json value modified:", instance.data)
+
 .. _mutable_composites:
 
 Establishing Mutability on Composites

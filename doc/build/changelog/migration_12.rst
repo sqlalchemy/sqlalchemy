@@ -305,7 +305,35 @@ if this "append" event is the second part of a bulk replace::
 
 :ticket:`3896`
 
+.. _change_3303:
 
+New "modified" event handler for sqlalchemy.ext.mutable
+-------------------------------------------------------
+
+A new event handler :meth:`.AttributeEvents.modified` is added, which is
+triggered corresponding to calls to the :func:`.attributes.flag_modified`
+method, which is normally called from the :mod:`sqlalchemy.ext.mutable`
+extension::
+
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.ext.mutable import MutableDict
+    from sqlalchemy import event
+
+    Base = declarative_base()
+
+    class MyDataClass(Base):
+        __tablename__ = 'my_data'
+        id = Column(Integer, primary_key=True)
+        data = Column(MutableDict.as_mutable(JSONEncodedDict))
+
+    @event.listens_for(MyDataClass.data, "modified")
+    def modified_json(instance):
+        print("json value modified:", instance.data)
+
+Above, the event handler will be triggered when an in-place change to the
+``.data`` dictionary occurs.
+
+:ticket:`3303`
 
 New Features and Improvements - Core
 ====================================

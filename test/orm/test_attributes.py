@@ -2779,6 +2779,23 @@ class ListenerTest(fixtures.ORMTest):
         f1.barlist.remove(None)
         eq_(canary, [(f1, b1), (f1, None), (f1, b2), (f1, None)])
 
+    def test_flag_modified(self):
+        canary = Mock()
+
+        class Foo(object):
+            pass
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'bar')
+
+        event.listen(Foo.bar, "modified", canary)
+        f1 = Foo()
+        f1.bar = 'hi'
+        attributes.flag_modified(f1, "bar")
+        eq_(
+            canary.mock_calls,
+            [call(f1, attributes.Event(Foo.bar.impl, attributes.OP_MODIFIED))]
+        )
+
     def test_none_init_scalar(self):
         canary = Mock()
 

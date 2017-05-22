@@ -436,6 +436,19 @@
         assuming it would match the dialect-level paramstyle, causing
         mismatches to occur.
 
+    .. change:: 3303
+        :tags: feature, orm
+        :tickets: 3303
+
+        Added new event handler :meth:`.AttributeEvents.modified` which is
+        triggered when the func:`.attributes.flag_modified` function is
+        invoked, which is common when using the :mod:`sqlalchemy.ext.mutable`
+        extension module.
+
+        .. seealso::
+
+            :ref:`change_3303`
+
     .. change:: 3918
         :tags: bug, ext
         :tickets: 3918

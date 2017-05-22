@@ -2,6 +2,7 @@ from sqlalchemy import Integer, ForeignKey, String, func
 from sqlalchemy.types import PickleType, TypeDecorator, VARCHAR
 from sqlalchemy.orm import mapper, Session, composite, column_property
 from sqlalchemy.orm.mapper import Mapper
+from sqlalchemy.orm import attributes
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing import eq_, assert_raises_message, assert_raises
@@ -9,6 +10,8 @@ from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing import fixtures
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.ext.mutable import MutableDict, MutableList, MutableSet
+from sqlalchemy.testing import mock
+from sqlalchemy import event
 
 
 class Foo(fixtures.BasicEntity):
@@ -111,6 +114,19 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         sess.commit()
 
         eq_(f1.data, {'a': 'c'})
+
+    def test_modified_event(self):
+        canary = mock.Mock()
+        event.listen(Foo.data, "modified", canary)
+
+        f1 = Foo(data={"a": "b"})
+        f1.data["a"] = "c"
+
+        eq_(
+            canary.mock_calls,
+            [mock.call(
+                f1, attributes.Event(Foo.data.impl, attributes.OP_MODIFIED))]
+        )
 
     def test_clear(self):
         sess = Session()

@@ -1877,14 +1877,18 @@ class AttributeEvents(event.Events):
             target.dispatch._active_history = True
 
         if not raw or not retval:
-            def wrap(target, value, *arg):
+            def wrap(target, *arg):
                 if not raw:
                     target = target.obj()
                 if not retval:
-                    fn(target, value, *arg)
+                    if arg:
+                        value = arg[0]
+                    else:
+                        value = None
+                    fn(target, *arg)
                     return value
                 else:
-                    return fn(target, value, *arg)
+                    return fn(target, *arg)
             event_key = event_key.with_wrapper(wrap)
 
         event_key.base_listen(propagate=propagate)
@@ -2185,6 +2189,24 @@ class AttributeEvents(event.Events):
         .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
            and :meth:`.AttributeEvents.dispose_collection` events supersede
            the :class:`.collection.linker` hook.
+
+        """
+
+    def modified(self, target, initiator):
+        """Receive a 'modified' event.
+
+        This event is triggered when the :func:`.attributes.flag_modified`
+        function is used to trigger a modify event on an attribute without
+        any specific value being set.
+
+        .. versionadded:: 1.2
+
+        :param target: the object instance receiving the event.
+          If the listener is registered with ``raw=True``, this will
+          be the :class:`.InstanceState` object.
+
+        :param initiator: An instance of :class:`.attributes.Event`
+          representing the initiation of the event.
 
         """
 
