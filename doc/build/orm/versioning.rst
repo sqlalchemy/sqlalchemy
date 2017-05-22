@@ -65,6 +65,10 @@ mapper options::
             "version_id_col": version_id
         }
 
+.. note::  It is **strongly recommended** that the ``version_id`` column
+   be made NOT NULL.  The versioning feature **does not support** a NULL
+   value in the versioning column.
+
 Above, the ``User`` mapping tracks integer versions using the column
 ``version_id``.   When an object of type ``User`` is first flushed, the
 ``version_id`` column will be given a value of "1".   Then, an UPDATE
@@ -105,7 +109,7 @@ support a native GUID type, but we illustrate here using a simple string)::
         __tablename__ = 'user'
 
         id = Column(Integer, primary_key=True)
-        version_uuid = Column(String(32))
+        version_uuid = Column(String(32), nullable=False)
         name = Column(String(50), nullable=False)
 
         __mapper_args__ = {
@@ -220,7 +224,7 @@ at our choosing::
         __tablename__ = 'user'
 
         id = Column(Integer, primary_key=True)
-        version_uuid = Column(String(32))
+        version_uuid = Column(String(32), nullable=False)
         name = Column(String(50), nullable=False)
 
         __mapper_args__ = {
