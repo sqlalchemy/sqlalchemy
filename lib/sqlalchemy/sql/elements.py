@@ -518,7 +518,7 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
           produced featuring the given value embedded into the construct; the
           resulting :class:`.BindParameter` object is an instance of
           :class:`.ColumnElement`.  The Python value will ultimately be sent
-          to the DBAPI at execution time as a paramterized argument to the
+          to the DBAPI at execution time as a parameterized argument to the
           ``execute()`` or ``executemany()`` methods, after SQLAlchemy
           type-specific converters (e.g. those provided by any associated
           :class:`.TypeEngine` objects) are applied to the value.
@@ -1004,7 +1004,7 @@ class BindParameter(ColumnElement):
           value; for example, trivial Python types such as ``str``,
           ``int``, ``bool``
           may result in the :class:`.String`, :class:`.Integer` or
-          :class:`.Boolean` types being autoamtically selected.
+          :class:`.Boolean` types being automatically selected.
 
           The type of a :func:`.bindparam` is significant especially in that
           the type will apply pre-processing to the value before it is
@@ -2486,7 +2486,7 @@ class Extract(ColumnElement):
 class _label_reference(ColumnElement):
     """Wrap a column expression as it appears in a 'reference' context.
 
-    This expression is any that inclues an _order_by_label_element,
+    This expression is any that includes an _order_by_label_element,
     which is a Label, or a DESC / ASC construct wrapping a Label.
 
     The production of _label_reference() should occur when an expression
@@ -3282,7 +3282,7 @@ class WithinGroup(ColumnElement):
     It's supported only by certain database backends, such as PostgreSQL,
     Oracle and MS SQL Server.
 
-    The :class:`.WithinGroup` consturct extracts its type from the
+    The :class:`.WithinGroup` construct extracts its type from the
     method :meth:`.FunctionElement.within_group_type`.  If this returns
     ``None``, the function's ``.type`` is used.
 
