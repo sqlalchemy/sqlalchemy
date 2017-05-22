@@ -62,18 +62,14 @@ class scoped_session(object):
 
         """
         if kw:
-            scope = kw.pop('scope', False)
-            if scope is not None:
-                if self.registry.has():
-                    raise sa_exc.InvalidRequestError(
-                        "Scoped session is already present; "
-                        "no new arguments may be specified.")
-                else:
-                    sess = self.session_factory(**kw)
-                    self.registry.set(sess)
-                    return sess
+            if self.registry.has():
+                raise sa_exc.InvalidRequestError(
+                    "Scoped session is already present; "
+                    "no new arguments may be specified.")
             else:
-                return self.session_factory(**kw)
+                sess = self.session_factory(**kw)
+                self.registry.set(sess)
+                return sess
         else:
             return self.registry()
 

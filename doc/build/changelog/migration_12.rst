@@ -763,6 +763,28 @@ such as :meth:`.SessionEvents.before_flush`, use the new
 
 :ticket:`3753`
 
+.. _change_3796:
+
+"scope" keyword removed from scoped_session
+-------------------------------------------
+
+A very old and undocumented keyword argument ``scope`` has been removed::
+
+    from sqlalchemy.orm import scoped_session
+    Session = scoped_session(sessionmaker())
+
+    session = Session(scope=None)
+
+The purpose of this keyword was an attempt to allow for variable
+"scopes", where ``None`` indicated "no scope" and would therefore return
+a new :class:`.Session`.   The keyword has never been documented and will
+now raise ``TypeError`` if encountered.   It is not anticipated that this
+keyword is in use, however if users report issues related to this during
+beta tesing, it can be restored with a deprecation.
+
+:ticket:`3796`
+
+
 Key Behavioral Changes - Core
 =============================
 

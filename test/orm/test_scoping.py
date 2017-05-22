@@ -7,6 +7,7 @@ from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, query
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.mock import Mock
 
 
 class _ScopedTest(fixtures.MappedTest):
@@ -93,3 +94,25 @@ class ScopedSessionTest(fixtures.MappedTest):
             "At least one scoped session is already present. ",
             Session.configure, bind=testing.db
         )
+
+    def test_call_with_kwargs(self):
+        mock_scope_func = Mock()
+        SessionMaker = sa.orm.sessionmaker()
+        Session = scoped_session(sa.orm.sessionmaker(), mock_scope_func)
+
+        s0 = SessionMaker()
+        assert s0.autocommit == False
+
+        mock_scope_func.return_value = 0
+        s1 = Session()
+        assert s1.autocommit == False
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Scoped session is already present",
+            Session, autocommit=True
+        )
+
+        mock_scope_func.return_value = 1
+        s2 = Session(autocommit=True)
+        assert s2.autocommit == True

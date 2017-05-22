@@ -13,6 +13,18 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3796
+        :tags: bug, orm
+        :tickets: 3796
+
+        Removed a very old keyword argument from :class:`.scoped_session`
+        called ``scope``.  This keyword was never documented and was an
+        early attempt at allowing for variable scopes.
+
+        .. seealso::
+
+            :ref:`change_3796`
+
     .. change:: baked_opts
         :tags: feature, ext
 
