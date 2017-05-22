@@ -1,7 +1,7 @@
 .. _instrumentation_toplevel:
 
 Alternate Class Instrumentation
-================================
+===============================
 
 .. automodule:: sqlalchemy.ext.instrumentation
 

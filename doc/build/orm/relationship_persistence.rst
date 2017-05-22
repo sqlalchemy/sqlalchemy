@@ -167,7 +167,7 @@ the foreign key for the purposes of joining and cross-population.
 .. _passive_updates:
 
 Mutable Primary Keys / Update Cascades
----------------------------------------
+--------------------------------------
 
 When the primary key of an entity changes, related items
 which reference the primary key must also be updated as

@@ -1,8 +1,8 @@
 .. _connections_toplevel:
 
-=====================================
+====================================
 Working with Engines and Connections
-=====================================
+====================================
 
 .. module:: sqlalchemy.engine
 
@@ -148,7 +148,7 @@ is available as well::
 .. _connections_nested_transactions:
 
 Nesting of Transaction Blocks
-------------------------------
+-----------------------------
 
 The :class:`.Transaction` object also handles "nested"
 behavior by keeping track of the outermost begin/commit pair. In this example,
@@ -241,7 +241,7 @@ it so that a SELECT statement will issue a COMMIT::
 .. _dbengine_implicit:
 
 Connectionless Execution, Implicit Execution
-=============================================
+============================================
 
 Recall from the first section we mentioned executing with and without explicit
 usage of :class:`.Connection`. "Connectionless" execution

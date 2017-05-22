@@ -69,7 +69,7 @@ so that string-configured :class:`~sqlalchemy.schema.ForeignKey`
 references can be resolved without issue.
 
 Accessing the MetaData
-=======================
+======================
 
 The :func:`declarative_base` base class contains a
 :class:`.MetaData` object where newly defined

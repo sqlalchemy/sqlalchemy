@@ -1,6 +1,6 @@
-==========================
+==============
 Session Basics
-==========================
+==============
 
 What does the Session do ?
 ==========================
@@ -98,7 +98,7 @@ is then maintained by the helper.  Some of these helpers are discussed in the
 section :ref:`session_faq_whentocreate`.
 
 Adding Additional Configuration to an Existing sessionmaker()
---------------------------------------------------------------
+-------------------------------------------------------------
 
 A common scenario is where the :class:`.sessionmaker` is invoked
 at module import time, however the generation of one or more :class:`.Engine`
@@ -125,7 +125,7 @@ when the construct is invoked::
     session = Session()
 
 Creating Ad-Hoc Session Objects with Alternate Arguments
----------------------------------------------------------
+--------------------------------------------------------
 
 For the use case where an application needs to create a new :class:`.Session` with
 special arguments that deviate from what is normally used throughout the application,
@@ -155,14 +155,14 @@ transaction - see :ref:`session_external_transaction` for an example of this.
 .. _session_faq:
 
 Session Frequently Asked Questions
-===================================
+==================================
 
 By this point, many users already have questions about sessions.
 This section presents a mini-FAQ (note that we have also a :doc:`real FAQ </faq/index>`)
 of the most basic issues one is presented with when using a :class:`.Session`.
 
 When do I make a :class:`.sessionmaker`?
-------------------------------------------
+----------------------------------------
 
 Just one time, somewhere in your application's global scope. It should be
 looked upon as part of your application's configuration. If your
@@ -391,7 +391,7 @@ doing its work.   For example, we can further separate concerns using a `context
 
 
 Is the Session a cache?
-----------------------------------
+-----------------------
 
 Yeee...no. It's somewhat used as a cache, in that it implements the
 :term:`identity map` pattern, and stores objects keyed to their primary key.
@@ -429,7 +429,7 @@ The newer :ref:`core_inspection_toplevel` system can also be used::
 .. _session_faq_threadsafe:
 
 Is the session thread-safe?
-------------------------------
+---------------------------
 
 The :class:`.Session` is very much intended to be used in a
 **non-concurrent** fashion, which usually means in only one thread at a
@@ -475,7 +475,7 @@ using the :meth:`.Session.merge` method to copy the state of an object into
 a new object local to a different :class:`.Session`.
 
 Basics of Using a Session
-===========================
+=========================
 
 The most basic :class:`.Session` use patterns are presented here.
 
@@ -559,7 +559,7 @@ into the Session's list of objects to be marked as deleted::
 .. _session_deleting_from_collections:
 
 Deleting from Collections
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A common confusion that arises regarding :meth:`~.Session.delete` is when
 objects which are members of a collection are being deleted.   While the

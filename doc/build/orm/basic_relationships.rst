@@ -1,7 +1,7 @@
 .. _relationship_patterns:
 
 Basic Relationship Patterns
-----------------------------
+---------------------------
 
 A quick walkthrough of the basic relational patterns.
 
@@ -15,7 +15,7 @@ The imports used for each of the following sections is as follows::
 
 
 One To Many
-~~~~~~~~~~~~
+~~~~~~~~~~~
 
 A one to many relationship places a foreign key on the child table referencing
 the parent.  :func:`.relationship` is then specified on the parent, as referencing
@@ -59,7 +59,7 @@ on a single :func:`.relationship` instead of using
 
 
 Many To One
-~~~~~~~~~~~~
+~~~~~~~~~~~
 
 Many to one places a foreign key in the parent table referencing the child.
 :func:`.relationship` is declared on the parent, where a new scalar-holding
@@ -102,7 +102,7 @@ may be applied to a single :func:`.relationship`, such as ``Parent.child``::
 .. _relationships_one_to_one:
 
 One To One
-~~~~~~~~~~~
+~~~~~~~~~~
 
 One To One is essentially a bidirectional relationship with a scalar
 attribute on both sides. To achieve this, the :paramref:`~.relationship.uselist` flag indicates
@@ -149,7 +149,7 @@ to specify ``uselist`` on a backref, use the :func:`.backref` function::
 .. _relationships_many_to_many:
 
 Many To Many
-~~~~~~~~~~~~~
+~~~~~~~~~~~~
 
 Many to Many adds an association table between two classes. The association
 table is indicated by the :paramref:`~.relationship.secondary` argument to

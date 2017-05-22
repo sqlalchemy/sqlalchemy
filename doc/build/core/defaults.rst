@@ -5,7 +5,7 @@
 .. _metadata_defaults:
 
 Column Insert/Update Defaults
-==============================
+=============================
 
 SQLAlchemy provides a very rich featureset regarding column level events which
 take place during INSERT and UPDATE statements. Options include:
@@ -227,7 +227,7 @@ the database side normally.
 .. _triggered_columns:
 
 Triggered Columns
-------------------
+-----------------
 
 Columns with values set by a database trigger or other external process may be
 called out using :class:`.FetchedValue` as a marker::
@@ -273,7 +273,7 @@ rows should be performed after an insert or update.
 
 
 Defining Sequences
--------------------
+------------------
 
 SQLAlchemy represents database sequences using the
 :class:`~sqlalchemy.schema.Sequence` object, which is considered to be a

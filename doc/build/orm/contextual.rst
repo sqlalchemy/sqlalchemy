@@ -1,7 +1,7 @@
 .. _unitofwork_contextual:
 
 Contextual/Thread-local Sessions
-=================================
+================================
 
 Recall from the section :ref:`session_faq_whentocreate`, the concept of
 "session scopes" was introduced, with an emphasis on web applications

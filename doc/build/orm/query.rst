@@ -26,13 +26,13 @@ ORM-Specific Query Constructs
 .. autoclass:: sqlalchemy.orm.util.AliasedInsp
 
 .. autoclass:: sqlalchemy.orm.query.Bundle
-	:members:
+    :members:
 
 .. autoclass:: sqlalchemy.util.KeyedTuple
-	:members: keys, _fields, _asdict
+    :members: keys, _fields, _asdict
 
 .. autoclass:: sqlalchemy.orm.strategy_options.Load
-	:members:
+    :members:
 
 .. autofunction:: join
 

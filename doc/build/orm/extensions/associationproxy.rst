@@ -114,7 +114,7 @@ or dictionary is taken into account, so that the proxy should act just like
 the underlying collection or attribute does.
 
 Creation of New Values
------------------------
+----------------------
 
 When a list append() event (or set add(), dictionary __setitem__(), or scalar
 assignment event) is intercepted by the association proxy, it instantiates a
@@ -256,7 +256,7 @@ by all these operations::
 .. _proxying_dictionaries:
 
 Proxying to Dictionary Based Collections
------------------------------------------
+----------------------------------------
 
 The association proxy can proxy to dictionary based collections as well.   SQLAlchemy
 mappings usually use the :func:`.attribute_mapped_collection` collection type to

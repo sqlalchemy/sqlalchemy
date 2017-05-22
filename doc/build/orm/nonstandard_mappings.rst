@@ -5,7 +5,7 @@ Non-Traditional Mappings
 .. _maptojoin:
 
 Mapping a Class against Multiple Tables
-========================================
+=======================================
 
 Mappers can be constructed against arbitrary relational units (called
 *selectables*) in addition to plain tables. For example, the :func:`~.expression.join`

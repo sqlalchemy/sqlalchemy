@@ -1,5 +1,5 @@
 ORM Configuration
-==================
+=================
 
 .. contents::
     :local:
@@ -72,7 +72,7 @@ columns::
 
 
 How do I configure a Column that is a Python reserved word or similar?
-----------------------------------------------------------------------------
+----------------------------------------------------------------------
 
 Column-based attributes can be given any name desired in the mapping. See
 :ref:`mapper_column_distinct_names`.

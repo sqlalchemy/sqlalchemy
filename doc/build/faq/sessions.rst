@@ -1,5 +1,5 @@
 Sessions / Queries
-===================
+==================
 
 .. contents::
     :local:
@@ -135,7 +135,7 @@ For a detailed discussion on how to organize usage of the :class:`.Session`,
 please see :ref:`session_faq_whentocreate`.
 
 But why does flush() insist on issuing a ROLLBACK?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It would be great if :meth:`.Session.flush` could partially complete and then not roll
 back, however this is beyond its current capabilities since its internal
@@ -297,7 +297,7 @@ output::
     LEN!
 
 How Do I use Textual SQL with ORM Queries?
--------------------------------------------
+------------------------------------------
 
 See:
 
@@ -316,7 +316,7 @@ why isn't my ``__init__()`` called when I load objects?
 See :ref:`mapping_constructors` for a description of this behavior.
 
 how do I use ON DELETE CASCADE with SA's ORM?
-----------------------------------------------
+---------------------------------------------
 
 SQLAlchemy will always issue UPDATE or DELETE statements for dependent
 rows which are currently loaded in the :class:`.Session`.  For rows which

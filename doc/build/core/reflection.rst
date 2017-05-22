@@ -55,7 +55,7 @@ hasn't already been loaded; once loaded, new calls to
 reflection queries.
 
 Overriding Reflected Columns
------------------------------
+----------------------------
 
 Individual columns can be overridden with explicit values when reflecting
 tables; this is handy for specifying custom datatypes, constraints such as
@@ -67,7 +67,7 @@ primary keys that may not be configured within the database, etc.::
     ... autoload=True)
 
 Reflecting Views
------------------
+----------------
 
 The reflection system can also reflect views. Basic usage is the same as that
 of a table::

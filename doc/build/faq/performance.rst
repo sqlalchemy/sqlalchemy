@@ -17,7 +17,7 @@ Looking for performance issues typically involves two stratgies.  One
 is query profiling, and the other is code profiling.
 
 Query Profiling
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 Sometimes just plain SQL logging (enabled via python's logging module
 or via the ``echo=True`` argument on :func:`.create_engine`) can give an
@@ -154,7 +154,7 @@ analysis of the query plan is warranted, using a system such as EXPLAIN,
 SHOW PLAN, etc. as is provided by the database backend.
 
 Result Fetching Slowness - Core
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If on the other hand you see many thousands of calls related to fetching rows,
 or very long calls to ``fetchall()``, it may
@@ -223,7 +223,7 @@ that could indicate that everything is fast except for the actual network connec
 and too much time is spent with data moving over the network.
 
 Result Fetching Slowness - ORM
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To detect slowness in ORM fetching of rows (which is the most common area
 of performance concern), calls like ``populate_state()`` and ``_instance()`` will
@@ -269,7 +269,7 @@ practice they are very easy to read.
     with bundled profiling capabilities.
 
 I'm inserting 400,000 rows with the ORM and it's really slow!
---------------------------------------------------------------
+-------------------------------------------------------------
 
 The SQLAlchemy ORM uses the :term:`unit of work` pattern when synchronizing
 changes to the database. This pattern goes far beyond simple "inserts"

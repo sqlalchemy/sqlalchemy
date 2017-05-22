@@ -6,7 +6,7 @@ Microsoft SQL Server
 .. automodule:: sqlalchemy.dialects.mssql.base
 
 SQL Server Data Types
------------------------
+---------------------
 
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
 valid with SQL server are importable from the top level dialect, whether
@@ -110,7 +110,7 @@ pymssql
 .. automodule:: sqlalchemy.dialects.mssql.pymssql
 
 zxjdbc
---------------
+------
 
 .. automodule:: sqlalchemy.dialects.mssql.zxjdbc
 

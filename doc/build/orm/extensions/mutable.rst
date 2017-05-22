@@ -1,7 +1,7 @@
 .. _mutable_toplevel:
 
 Mutation Tracking
-==================
+=================
 
 .. automodule:: sqlalchemy.ext.mutable
 
@@ -20,15 +20,15 @@ API Reference
     :members:
 
 .. autoclass:: MutableDict
-	:members:
-	:undoc-members:
+    :members:
+    :undoc-members:
 
 .. autoclass:: MutableList
-	:members:
-	:undoc-members:
+    :members:
+    :undoc-members:
 
 .. autoclass:: MutableSet
-	:members:
-	:undoc-members:
+    :members:
+    :undoc-members:
 
 

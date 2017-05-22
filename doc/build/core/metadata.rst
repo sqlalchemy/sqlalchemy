@@ -256,7 +256,7 @@ There are two major migration tools available for SQLAlchemy:
 
 
 Specifying the Schema Name
----------------------------
+--------------------------
 
 Some databases support the concept of multiple schemas. A
 :class:`~sqlalchemy.schema.Table` can reference this by specifying the

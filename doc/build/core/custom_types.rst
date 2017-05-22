@@ -166,7 +166,7 @@ binary in CHAR(16) if desired::
                 return uuid.UUID(value)
 
 Marshal JSON Strings
-^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 This type uses ``simplejson`` to marshal Python data structures
 to/from JSON.   Can be modified to use Python's builtin json encoder::

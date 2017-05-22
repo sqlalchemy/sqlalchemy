@@ -1,7 +1,7 @@
 .. _dep_interfaces_core_toplevel:
 
 Deprecated Event Interfaces
-============================
+===========================
 
 .. module:: sqlalchemy.interfaces
 

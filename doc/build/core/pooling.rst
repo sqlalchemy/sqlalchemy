@@ -102,7 +102,7 @@ a last resort for when a DBAPI has some form of ``connect``
 that is not at all supported by SQLAlchemy.
 
 Constructing a Pool
-------------------------
+-------------------
 
 To use a :class:`.Pool` by itself, the ``creator`` function is
 the only argument that's required and is passed first, followed
@@ -171,7 +171,7 @@ when the database server has been restarted, and all previously established conn
 are no longer functional.   There are two approaches to this.
 
 Disconnect Handling - Optimistic
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The most common approach is to let SQLAlchemy handle disconnects as they
 occur, at which point the pool is refreshed.   This assumes the :class:`.Pool`
@@ -212,7 +212,7 @@ database restarts are not anticipated.
 .. _pool_setting_recycle:
 
 Setting Pool Recycle
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 An additional setting that can augment the "optimistic" approach is to set the
 pool recycle parameter.   This parameter prevents the pool from using a particular
@@ -231,7 +231,7 @@ of the :class:`.Pool` itself, independent of whether or not an :class:`.Engine` 
 .. _pool_disconnects_pessimistic:
 
 Disconnect Handling - Pessimistic
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 At the expense of some extra SQL emitted for each connection checked out from
 the pool, a "ping" operation established by a checkout event handler can
@@ -419,7 +419,7 @@ coercing the pool to recycle the connection record to make a new connection.
 
 
 API Documentation - Available Pool Implementations
----------------------------------------------------
+--------------------------------------------------
 
 .. autoclass:: sqlalchemy.pool.Pool
 

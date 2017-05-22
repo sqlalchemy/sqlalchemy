@@ -5,7 +5,7 @@ Additional Persistence Techniques
 .. _flush_embedded_sql_expressions:
 
 Embedding SQL Insert/Update Expressions into a Flush
-=====================================================
+====================================================
 
 This feature allows the value of a database column to be set to a SQL
 expression instead of a literal value. It's especially useful for atomic
@@ -32,7 +32,7 @@ from the database.
 .. _session_sql_expressions:
 
 Using SQL Expressions with Sessions
-====================================
+===================================
 
 SQL expressions and strings can be executed via the
 :class:`~sqlalchemy.orm.session.Session` within its transactional context.

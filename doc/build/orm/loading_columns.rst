@@ -9,7 +9,7 @@ This section presents additional options regarding the loading of columns.
 .. _deferred:
 
 Deferred Column Loading
-========================
+=======================
 
 This feature allows particular columns of a table be loaded only
 upon direct access, instead of when the entity is queried using
@@ -76,7 +76,7 @@ using :func:`.orm.undefer_group`, sending in the group name::
     query.options(undefer_group('photos')).all()
 
 Load Only Cols
----------------
+--------------
 
 An arbitrary set of columns can be selected as "load only" columns, which will
 be loaded while deferring all other columns on a given entity, using :func:`.orm.load_only`::
@@ -145,7 +145,7 @@ Column Deferral API
 .. _bundles:
 
 Column Bundles
-===============
+==============
 
 The :class:`.Bundle` may be used to query for groups of columns under one
 namespace.

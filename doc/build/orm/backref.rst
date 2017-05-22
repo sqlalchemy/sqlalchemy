@@ -105,7 +105,7 @@ exactly the same as if the above two relationships were created individually
 using :paramref:`~.relationship.back_populates` on each.
 
 Backref Arguments
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 We've established that the :paramref:`~.relationship.backref` keyword is merely a shortcut for building
 two individual :func:`.relationship` constructs that refer to each other.  Part of
@@ -187,7 +187,7 @@ it into a form that is interpreted by the receiving :func:`.relationship` as add
 arguments to be applied to the new relationship it creates.
 
 One Way Backrefs
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 An unusual case is that of the "one way backref".   This is where the
 "back-populating" behavior of the backref is only desirable in one

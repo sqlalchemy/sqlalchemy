@@ -9,5 +9,5 @@ API Reference
 -------------
 
 .. autoclass:: sqlalchemy.ext.indexable.index_property
-	:members:
+    :members:
 

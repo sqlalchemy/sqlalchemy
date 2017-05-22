@@ -1,5 +1,5 @@
 SQL Expressions
-=================
+===============
 
 .. contents::
     :local:

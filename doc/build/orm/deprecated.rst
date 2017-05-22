@@ -3,7 +3,7 @@
 .. _dep_interfaces_orm_toplevel:
 
 Deprecated ORM Event Interfaces
-================================
+===============================
 
 .. module:: sqlalchemy.orm.interfaces
 
@@ -17,19 +17,19 @@ until SQLAlchemy 0.5.  The non-ORM analogue is described at :ref:`dep_interfaces
     a consistent interface to all events without the need for subclassing.
 
 Mapper Events
------------------
+-------------
 
 .. autoclass:: MapperExtension
     :members:
 
 Session Events
------------------
+--------------
 
 .. autoclass:: SessionExtension
     :members:
 
 Attribute Events
---------------------
+----------------
 
 .. autoclass:: AttributeExtension
     :members:

@@ -22,7 +22,7 @@ refers to a :class:`.QueuePool` as a source of connectivity.
 For more detail, see :ref:`engines_toplevel` and :ref:`pooling_toplevel`.
 
 How do I pass custom connect arguments to my database API?
------------------------------------------------------------
+----------------------------------------------------------
 
 The :func:`.create_engine` call accepts additional arguments either
 directly via the ``connect_args`` keyword argument::
@@ -56,7 +56,7 @@ on how :class:`.Session` should be used in a multithreaded environment,
 see :ref:`session_faq_threadsafe`.
 
 Why does SQLAlchemy issue so many ROLLBACKs?
----------------------------------------------
+--------------------------------------------
 
 SQLAlchemy currently assumes DBAPI connections are in "non-autocommit" mode -
 this is the default behavior of the Python database API, meaning it
@@ -74,7 +74,7 @@ isolation. For background on why you might see stale data even on MySQL, see
 http://dev.mysql.com/doc/refman/5.1/en/innodb-transaction-model.html
 
 I'm on MyISAM - how do I turn it off?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The behavior of the connection pool's connection return behavior can be
 configured using ``reset_on_return``::
@@ -85,7 +85,7 @@ configured using ``reset_on_return``::
     engine = create_engine('mysql://scott:tiger@localhost/myisam_database', pool=QueuePool(reset_on_return=False))
 
 I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``reset_on_return`` accepts the values ``commit``, ``rollback`` in addition
 to ``True``, ``False``, and ``None``.   Setting to ``commit`` will cause

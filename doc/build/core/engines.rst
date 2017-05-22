@@ -42,7 +42,7 @@ applications.
 .. _supported_dbapis:
 
 Supported Databases
-====================
+===================
 
 SQLAlchemy includes many :class:`.Dialect` implementations for various
 backends.   Dialects for the most common databases are included with SQLAlchemy; a handful
@@ -212,7 +212,7 @@ For more information on connection pooling, see :ref:`pooling_toplevel`.
 .. _custom_dbapi_args:
 
 Custom DBAPI connect() arguments
-=================================
+================================
 
 Custom arguments used when issuing the ``connect()`` call to the underlying
 DBAPI may be issued in three distinct ways. String-based arguments can be
@@ -246,7 +246,7 @@ argument, which specifies a callable that returns a DBAPI connection:
 .. _dbengine_logging:
 
 Configuring Logging
-====================
+===================
 
 Python's standard `logging
 <http://docs.python.org/library/logging.html>`_ module is used to

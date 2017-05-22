@@ -6,7 +6,7 @@ PostgreSQL
 .. automodule:: sqlalchemy.dialects.postgresql.base
 
 PostgreSQL Data Types
-------------------------
+---------------------
 
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
 valid with PostgreSQL are importable from the top level dialect, whether
@@ -182,7 +182,7 @@ For example::
       )
 
 PostgreSQL DML Constructs
----------------------------
+-------------------------
 
 .. autofunction:: sqlalchemy.dialects.postgresql.dml.insert
 

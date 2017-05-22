@@ -3,7 +3,7 @@
 .. _mapper_composite:
 
 Composite Column Types
-=======================
+======================
 
 Sets of columns can be associated with a single user-defined datatype. The ORM
 provides a single attribute which represents the group of columns using the
