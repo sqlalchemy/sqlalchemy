@@ -36,19 +36,19 @@ Directed Graphs
 .. automodule:: examples.graphs
 
 Dynamic Relations as Dictionaries
-------------------------------------
+---------------------------------
 
 .. automodule:: examples.dynamic_dict
 
 .. _examples_generic_associations:
 
 Generic Associations
-------------------------
+--------------------
 
 .. automodule:: examples.generic_associations
 
 Large Collections
-------------------------
+-----------------
 
 .. automodule:: examples.large_collection
 
@@ -58,7 +58,7 @@ Materialized Paths
 .. automodule:: examples.materialized_paths
 
 Nested Sets
-------------
+-----------
 
 .. automodule:: examples.nested_sets
 
@@ -79,12 +79,12 @@ Relationship Join Conditions
 .. _examples_xmlpersistence:
 
 XML Persistence
-------------------------
+---------------
 
 .. automodule:: examples.elementtree
 
 Versioning Objects
-------------------------
+------------------
 
 .. _examples_versioned_history:
 
@@ -101,7 +101,7 @@ Versioning using Temporal Rows
 .. automodule:: examples.versioned_rows
 
 Vertical Attribute Mapping
-------------------------------------
+--------------------------
 
 .. automodule:: examples.vertical
 
@@ -109,10 +109,10 @@ Vertical Attribute Mapping
 .. _examples_inheritance:
 
 Inheritance Mapping Recipes
-============================
+===========================
 
 Basic Inheritance Mappings
-----------------------------------
+--------------------------
 
 .. automodule:: examples.inheritance
 
@@ -122,14 +122,14 @@ Special APIs
 .. _examples_instrumentation:
 
 Attribute Instrumentation
-------------------------------------
+-------------------------
 
 .. automodule:: examples.custom_attributes
 
 .. _examples_sharding:
 
 Horizontal Sharding
-------------------------
+-------------------
 
 .. automodule:: examples.sharding
 
@@ -139,14 +139,14 @@ Extending the ORM
 .. _examples_caching:
 
 Dogpile Caching
-------------------------
+---------------
 
 .. automodule:: examples.dogpile_caching
 
 .. _examples_postgis:
 
 PostGIS Integration
-------------------------
+-------------------
 
 .. automodule:: examples.postgis
 

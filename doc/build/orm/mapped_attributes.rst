@@ -1,7 +1,7 @@
 .. module:: sqlalchemy.orm
 
 Changing Attribute Behavior
-============================
+===========================
 
 .. _simple_validators:
 

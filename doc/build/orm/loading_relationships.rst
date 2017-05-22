@@ -617,7 +617,7 @@ limitations of :func:`.subqueryload`.
 .. _subqueryload_ordering:
 
 The Importance of Ordering
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A query which makes use of :func:`.subqueryload` in conjunction with a
 limiting modifier such as :meth:`.Query.first`, :meth:`.Query.limit`,
@@ -918,7 +918,7 @@ Above, all relationships on ``Address`` will be set to a lazy load.
 .. _contains_eager:
 
 Routing Explicit Joins/Statements into Eagerly Loaded Collections
-------------------------------------------------------------------
+-----------------------------------------------------------------
 
 The behavior of :func:`~sqlalchemy.orm.joinedload()` is such that joins are
 created automatically, using anonymous aliases as targets, the results of which
@@ -992,7 +992,7 @@ Or using the class-bound descriptor::
         contains_eager(Order.items))
 
 Using contains_eager() to load a custom-filtered collection result
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When we use :func:`.contains_eager`, *we* are constructing ourselves the
 SQL that will be used to populate collections.  From this, it naturally follows
@@ -1036,7 +1036,7 @@ in fact associated with the collection.
 
 
 Advanced Usage with Arbitrary Statements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``alias`` argument can be more creatively used, in that it can be made
 to represent any set of arbitrary names to match up into a statement.
@@ -1061,7 +1061,7 @@ to a string SQL statement::
         options(contains_eager(User.addresses, alias=eager_columns))
 
 Creating Custom Load Rules
----------------------------
+--------------------------
 
 .. warning::  This is an advanced technique!   Great care and testing
    should be applied.
@@ -1146,7 +1146,7 @@ and ``A.b.a`` from our event:
 
 
 Relationship Loader API
-------------------------
+-----------------------
 
 .. autofunction:: contains_alias
 

@@ -105,7 +105,7 @@ tables, a more flexible approach is to use that described in
 
 
 Using column_property for column level options
------------------------------------------------
+----------------------------------------------
 
 Options can be specified when mapping a :class:`.Column` using the
 :func:`.column_property` function.  This function

@@ -1,7 +1,7 @@
 .. _core_event_toplevel:
 
 Core Events
-============
+===========
 
 This section describes the event interfaces provided in
 SQLAlchemy Core.
@@ -12,13 +12,13 @@ ORM events are described in :ref:`orm_event_toplevel`.
    :members:
 
 Connection Pool Events
------------------------
+----------------------
 
 .. autoclass:: sqlalchemy.events.PoolEvents
    :members:
 
 SQL Execution and Connection Events
-------------------------------------
+-----------------------------------
 
 .. autoclass:: sqlalchemy.events.ConnectionEvents
     :members:
@@ -27,7 +27,7 @@ SQL Execution and Connection Events
     :members:
 
 Schema Events
------------------------
+-------------
 
 .. autoclass:: sqlalchemy.events.DDLEvents
     :members:

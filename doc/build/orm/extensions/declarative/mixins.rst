@@ -1,7 +1,7 @@
 .. _declarative_mixins:
 
 Mixin and Custom Base Classes
-==============================
+=============================
 
 A common need when using :mod:`~sqlalchemy.ext.declarative` is to
 share some functionality, such as a set of common columns, some common
@@ -292,7 +292,7 @@ the :class:`.declared_attr` is invoked::
    that will be mapped.
 
 Mixing in Association Proxy and Other Attributes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Mixins can specify user-defined attributes as well as other extension
 units such as :func:`.association_proxy`.   The usage of
@@ -373,7 +373,7 @@ and ``TypeB`` classes.
 .. _decl_mixin_inheritance:
 
 Controlling table inheritance with mixins
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``__tablename__`` attribute may be used to provide a function that
 will determine the name of the table used for each class in an inheritance
@@ -434,7 +434,7 @@ against the parent::
 .. _mixin_inheritance_columns:
 
 Mixing in Columns in Inheritance Scenarios
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In constrast to how ``__tablename__`` and other special names are handled when
 used with :class:`.declared_attr`, when we mix in columns and properties (e.g.

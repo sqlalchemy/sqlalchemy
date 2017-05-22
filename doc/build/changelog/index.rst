@@ -7,7 +7,7 @@ SQLAlchemy changelogs and migration guides are now integrated
 within the main documentation.
 
 Current Migration Guide
-------------------------
+-----------------------
 
 .. toctree::
    :titlesonly:

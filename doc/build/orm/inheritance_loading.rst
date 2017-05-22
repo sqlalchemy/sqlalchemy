@@ -30,7 +30,7 @@ tables will be available in the SELECT.
 .. _with_polymorphic:
 
 Using with_polymorphic
------------------------
+----------------------
 
 For the following sections, assume the ``Employee`` / ``Engineer`` / ``Manager``
 examples introduced in :ref:`inheritance_toplevel`.
@@ -339,7 +339,7 @@ narrowing the criterion to specific derived aliases or subclasses. Suppose the
 with a ``Company`` object. We'll add a ``company_id`` column to the
 ``employees`` table and a new table ``companies``:
 
-.. sourcecode:: python+sql
+.. sourcecode:: python
 
     class Company(Base):
         __tablename__ = 'company'
@@ -464,7 +464,7 @@ eager-loaded ``Engineer`` class, we access this class from the namespace of the
 .. _loading_joined_inheritance:
 
 Loading objects with joined table inheritance
------------------------------------------------
+---------------------------------------------
 
 When using joined table inheritance, if we query for a specific subclass
 that represents a JOIN of two tables such as our ``Engineer`` example
@@ -567,7 +567,7 @@ function and its configurational variants.
 .. _loading_single_inheritance:
 
 Loading objects with single table inheritance
------------------------------------------------
+---------------------------------------------
 
 In modern Declarative, single inheritance mappings produce :class:`.Column`
 objects that are mapped only to a subclass, and not available from the
@@ -655,6 +655,6 @@ Since we specified ``"*"`` for the entities, both ``Engineer`` and
 
 
 Inheritance Loading API
-------------------------
+-----------------------
 
 .. autofunction:: sqlalchemy.orm.with_polymorphic

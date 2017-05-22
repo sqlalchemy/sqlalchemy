@@ -17,7 +17,7 @@ Attribute Events
    :members:
 
 Mapper Events
----------------
+-------------
 
 .. autoclass:: sqlalchemy.orm.events.MapperEvents
    :members:
@@ -35,13 +35,13 @@ Session Events
    :members:
 
 Query Events
--------------
+------------
 
 .. autoclass:: sqlalchemy.orm.events.QueryEvents
    :members:
 
 Instrumentation Events
------------------------
+----------------------
 
 .. automodule:: sqlalchemy.orm.instrumentation
 

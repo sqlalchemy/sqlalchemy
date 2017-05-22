@@ -3,7 +3,7 @@
 .. _mapper_sql_expressions:
 
 SQL Expressions as Mapped Attributes
-=====================================
+====================================
 
 Attributes on a mapped class can be linked to SQL expressions, which can
 be used in queries.
@@ -174,7 +174,7 @@ here with a classical mapping::
         })
 
 Using a plain descriptor
--------------------------
+------------------------
 
 In cases where a SQL query more elaborate than what :func:`.orm.column_property`
 or :class:`.hybrid_property` can provide must be emitted, a regular Python

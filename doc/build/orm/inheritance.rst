@@ -1,7 +1,7 @@
 .. _inheritance_toplevel:
 
 Mapping Class Inheritance Hierarchies
-======================================
+=====================================
 
 SQLAlchemy supports three forms of inheritance: **single table inheritance**,
 where several types of classes are represented by a single table, **concrete
@@ -25,7 +25,7 @@ return objects of multiple types.
 .. _joined_inheritance:
 
 Joined Table Inheritance
--------------------------
+------------------------
 
 In joined table inheritance, each class along a hierarchy of classes
 is represented by a distinct table.  Querying for a particular subclass

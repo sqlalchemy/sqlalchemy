@@ -1,6 +1,6 @@
-==============================
+=============================
 What's New in SQLAlchemy 1.0?
-==============================
+=============================
 
 .. admonition:: About this Document
 
@@ -41,7 +41,7 @@ to proceed at speeds that rival direct use of the Core.
 :ticket:`3100`
 
 New Performance Example Suite
-------------------------------
+-----------------------------
 
 Inspired by the benchmarking done for the :ref:`bulk_operations` feature
 as well as for the :ref:`faq_how_to_profile` section of the FAQ, a new
@@ -94,7 +94,7 @@ once, a query as a pre-compiled unit begins to be feasible::
 .. _feature_3150:
 
 Improvements to declarative mixins, ``@declared_attr`` and related features
-----------------------------------------------------------------------------
+---------------------------------------------------------------------------
 
 The declarative system in conjunction with :class:`.declared_attr` has been
 overhauled to support new capabilities.
@@ -322,7 +322,7 @@ object totally smokes both namedtuple and KeyedTuple::
 .. _feature_slots:
 
 Significant Improvements in Structural Memory Use
---------------------------------------------------
+-------------------------------------------------
 
 Structural memory use has been improved via much more significant use
 of ``__slots__`` for many internal objects.  This optimization is
@@ -353,7 +353,7 @@ well as weakrefs, within a basic import of "nova.db.sqlalchemy.models"::
 .. _feature_updatemany:
 
 UPDATE statements are now batched with executemany() in a flush
-----------------------------------------------------------------
+---------------------------------------------------------------
 
 UPDATE statements can now be batched within an ORM flush
 into more performant executemany() call, similarly to how INSERT
@@ -418,7 +418,7 @@ of inheritance-oriented scenarios, including:
 .. _bug_3227:
 
 Session.get_bind() will receive the Mapper in all relevant Query cases
------------------------------------------------------------------------
+----------------------------------------------------------------------
 
 A series of issues were repaired where the :meth:`.Session.get_bind`
 would not receive the primary :class:`.Mapper` of the :class:`.Query`,
@@ -501,7 +501,7 @@ as remaining ORM constructs such as :func:`.orm.synonym`.
 .. _bug_3188:
 
 ColumnProperty constructs work a lot better with aliases, order_by
--------------------------------------------------------------------
+------------------------------------------------------------------
 
 A variety of issues regarding :func:`.column_property` have been fixed,
 most specifically with regards to the :func:`.aliased` construct as well
@@ -583,7 +583,7 @@ New Features and Improvements - Core
 .. _feature_3034:
 
 Select/Query LIMIT / OFFSET may be specified as an arbitrary SQL expression
-----------------------------------------------------------------------------
+---------------------------------------------------------------------------
 
 The :meth:`.Select.limit` and :meth:`.Select.offset` methods now accept
 any SQL expression, in addition to integer values, as arguments.  The ORM
@@ -826,7 +826,7 @@ the :class:`.Constraint` is constructed::
 .. _feature_insert_from_select_defaults:
 
 INSERT FROM SELECT now includes Python and SQL-expression defaults
--------------------------------------------------------------------
+------------------------------------------------------------------
 
 :meth:`.Insert.from_select` now includes Python and SQL-expression defaults if
 otherwise unspecified; the limitation where non-server column defaults
@@ -1354,7 +1354,7 @@ joined loader options can still be used::
 .. _bug_3233:
 
 Changes and fixes in handling of duplicate join targets
---------------------------------------------------------
+-------------------------------------------------------
 
 Changes here encompass bugs where an unexpected and inconsistent
 behavior would occur in some scenarios when joining to an entity
@@ -2155,7 +2155,7 @@ state.
 .. _feature_3084:
 
 MetaData.sorted_tables accessor is "deterministic"
------------------------------------------------------
+--------------------------------------------------
 
 The sorting of tables resulting from the :attr:`.MetaData.sorted_tables`
 accessor is "deterministic"; the ordering should be the same in all cases
@@ -2264,7 +2264,7 @@ flag::
 :ticket:`3319`
 
 New PostgreSQL Table options
------------------------------
+----------------------------
 
 Added support for PG table options TABLESPACE, ON COMMIT,
 WITH(OUT) OIDS, and INHERITS, when rendering DDL via
@@ -2398,14 +2398,14 @@ by PostgreSQL as of 9.4.  SQLAlchemy allows this using
     :class:`.FunctionFilter`
 
 PG8000 dialect supports client side encoding
----------------------------------------------
+--------------------------------------------
 
 The :paramref:`.create_engine.encoding` parameter is now honored
 by the pg8000 dialect, using on connect handler which
 emits ``SET CLIENT_ENCODING`` matching the selected encoding.
 
 PG8000 native JSONB support
---------------------------------------
+---------------------------
 
 Support for PG8000 versions greater than 1.10.1 has been added, where
 JSONB is supported natively.
@@ -2421,12 +2421,12 @@ Support for the pypy psycopg2cffi dialect is added.
     :mod:`sqlalchemy.dialects.postgresql.psycopg2cffi`
 
 Dialect Improvements and Changes - MySQL
-=============================================
+========================================
 
 .. _change_3155:
 
 MySQL TIMESTAMP Type now renders NULL / NOT NULL in all cases
---------------------------------------------------------------
+-------------------------------------------------------------
 
 The MySQL dialect has always worked around MySQL's implicit NOT NULL
 default associated with TIMESTAMP columns by emitting NULL for
@@ -2449,7 +2449,7 @@ columns.
 .. _change_3283:
 
 MySQL SET Type Overhauled to support empty sets, unicode, blank value handling
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 The :class:`.mysql.SET` type historically not included a system of handling
 blank sets and empty values separately; as different drivers had different
@@ -2582,7 +2582,7 @@ and is generally in decent working order, if someone wants to pick up
 on polishing it.
 
 Dialect Improvements and Changes - SQLite
-=============================================
+=========================================
 
 SQLite named and unnamed UNIQUE and FOREIGN KEY constraints will inspect and reflect
 -------------------------------------------------------------------------------------
@@ -2632,7 +2632,7 @@ to control the behavior completely, based on deprecation guidelines from
 Microsoft.  See :ref:`mssql_large_type_deprecation` for details.
 
 Dialect Improvements and Changes - Oracle
-=============================================
+=========================================
 
 .. _change_3220:
 
@@ -2653,7 +2653,7 @@ CTE support has been fixed up for Oracle, and there is also a new feature
 :ticket:`3220`
 
 New Oracle Keywords for DDL
------------------------------
+---------------------------
 
 Keywords such as COMPRESS, ON COMMIT, BITMAP:
 

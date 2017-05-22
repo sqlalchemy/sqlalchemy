@@ -59,7 +59,7 @@ Production Ready
   on top of `pythone-tds <https://github.com/denisenkom/pytds>`_.
 
 Experimental / Incomplete
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Dialects that are in an incomplete state or are considered somewhat experimental.
 

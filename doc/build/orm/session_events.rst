@@ -243,7 +243,7 @@ now has an identity key.   Track pending to persistent with the
         print("pending to persistent: %s" % object_)
 
 Pending to Transient
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 The :term:`pending` object can revert back to :term:`transient` if the
 :meth:`.Session.rollback` method is called before the pending object
@@ -256,7 +256,7 @@ for the object before it is flushed.  Track pending to transient with the
         print("transient to pending: %s" % object_)
 
 Loaded as Persistent
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 Objects can appear in the :class:`.Session` directly in the :term:`persistent`
 state when they are loaded from the database.   Tracking this state transition
@@ -316,7 +316,7 @@ Track the persistent to deleted transition with
 
 
 Deleted to Detached
-^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 The deleted object becomes :term:`detached` when the session's transaction
 is committed.  After the :meth:`.Session.commit` method is called, the
@@ -340,7 +340,7 @@ the deleted to detached transition using :meth:`.SessionEvents.deleted_to_detach
 
 
 Persistent to Detached
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 
 The persistent object becomes :term:`detached` when the object is de-associated
 with the :class:`.Session`, via the :meth:`.Session.expunge`,
@@ -360,7 +360,7 @@ Track objects as they move from persistent to detached using the
         print("object became detached: %s" % object_)
 
 Detached to Persistent
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 
 The detached object becomes persistent when it is re-associated with a
 session using the :meth:`.Session.add` or equivalent method.  Track
@@ -373,7 +373,7 @@ objects moving back to persistent from detached using the
 
 
 Deleted to Persistent
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 The :term:`deleted` object can be reverted to the :term:`persistent`
 state when the transaction in which it was DELETEd was rolled back

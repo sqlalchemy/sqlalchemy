@@ -210,7 +210,7 @@ e.g. PostgreSQL, Oracle, SQL Server (though SQL Server has
     Support for server side version identifier tracking.
 
 Programmatic or Conditional Version Counters
----------------------------------------------
+--------------------------------------------
 
 When ``version_id_generator`` is set to False, we can also programmatically
 (and conditionally) set the version identifier on our object in the same way

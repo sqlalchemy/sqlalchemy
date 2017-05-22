@@ -1,7 +1,7 @@
 .. _self_referential:
 
 Adjacency List Relationships
------------------------------
+----------------------------
 
 The **adjacency list** pattern is a common relational pattern whereby a table
 contains a foreign key reference to itself. This is the most common
@@ -119,7 +119,7 @@ the "remote" side.
     where a column points to itself.
 
 Self-Referential Query Strategies
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Querying of self-referential structures works like any other query::
 
@@ -218,7 +218,7 @@ arbitrarily join along a chain of self-referential nodes, see
 .. _self_referential_eager_loading:
 
 Configuring Self-Referential Eager Loading
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Eager loading of relationships occurs using joins or outerjoins from parent to
 child table during a normal query operation, such that the parent and its

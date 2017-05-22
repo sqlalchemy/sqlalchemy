@@ -16,7 +16,7 @@ and techniques.
 .. currentmodule:: sqlalchemy.orm
 
 Working with Large Collections
-===============================
+==============================
 
 The default behavior of :func:`.relationship` is to fully load
 the collection of items in, as according to the loading strategy of the
@@ -31,7 +31,7 @@ loading of child items both at load time as well as deletion time.
 .. _dynamic_relationship:
 
 Dynamic Relationship Loaders
------------------------------
+----------------------------
 
 A key feature to enable management of a large collection is the so-called "dynamic"
 relationship.  This is an optional form of :func:`~sqlalchemy.orm.relationship` which
@@ -140,7 +140,7 @@ loader option.
 .. _passive_deletes:
 
 Using Passive Deletes
-----------------------
+---------------------
 
 Use :paramref:`~.relationship.passive_deletes` to disable child object loading on a DELETE
 operation, in conjunction with "ON DELETE (CASCADE|SET NULL)" on your database
@@ -222,7 +222,7 @@ default list, by specifying the :paramref:`~.relationship.collection_class` opti
     assert child in parent.children
 
 Dictionary Collections
------------------------
+----------------------
 
 A little extra detail is needed when using a dictionary as a collection.
 This because objects are always loaded from the database as lists, and a key-generation
@@ -350,7 +350,7 @@ for examples.
 .. autofunction:: mapped_collection
 
 Custom Collection Implementations
-==================================
+=================================
 
 You can use your own types for collections as well.  In simple cases,
 inherting from ``list`` or ``set``, adding custom behavior, is all that's needed.
@@ -454,7 +454,7 @@ collections. Use them when your class doesn't quite meet the regular interface
 for its container type, or when you otherwise would like to use a different method to
 get the job done.
 
-.. sourcecode:: python+sql
+.. sourcecode:: python
 
     from sqlalchemy.orm.collections import collection
 
@@ -599,7 +599,7 @@ The ORM uses this approach for built-ins, quietly substituting a trivial
 subclass when a ``list``, ``set`` or ``dict`` is used directly.
 
 Collection Internals
-=====================
+====================
 
 Various internal methods.
 

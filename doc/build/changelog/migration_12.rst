@@ -1,6 +1,6 @@
-==============================
+=============================
 What's New in SQLAlchemy 1.2?
-==============================
+=============================
 
 .. admonition:: About this Document
 
@@ -516,7 +516,7 @@ Key Behavioral Changes - ORM
 .. _change_3740:
 
 Percent signs in literal_column() now conditionally escaped
-------------------------------------------------------------
+-----------------------------------------------------------
 
 The :obj:`.literal_column` construct now escapes percent sign characters
 conditionally, based on whether or not the DBAPI in use makes use of a
@@ -848,13 +848,13 @@ itself will also be present::
 :ticket:`3959`
 
 Dialect Improvements and Changes - MySQL
-=============================================
+========================================
 
 Dialect Improvements and Changes - SQLite
-=============================================
+=========================================
 
 Dialect Improvements and Changes - Oracle
-=============================================
+=========================================
 
 .. _change_3276:
 
@@ -896,7 +896,7 @@ Dialect Improvements and Changes - SQL Server
 .. _change_2626:
 
 SQL Server schema names with embedded dots supported
------------------------------------------------------
+----------------------------------------------------
 
 The SQL Server dialect has a behavior such that a schema name with a dot inside
 of it is assumed to be a "database"."owner" identifier pair, which is

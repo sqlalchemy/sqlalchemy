@@ -132,7 +132,7 @@ first looking within the PostgreSQL catalogs to see if it exists:
     DROP TABLE users{stop}
 
 Using the built-in DDLElement Classes
---------------------------------------
+-------------------------------------
 
 The ``sqlalchemy.schema`` package contains SQL expression constructs that
 provide DDL expressions. For example, to produce a ``CREATE TABLE`` statement:

@@ -6,7 +6,7 @@ Oracle
 .. automodule:: sqlalchemy.dialects.oracle.base
 
 Oracle Data Types
--------------------
+-----------------
 
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
 valid with Oracle are importable from the top level dialect, whether
@@ -54,11 +54,11 @@ construction arguments, are as follows:
 
 
 cx_Oracle
-----------
+---------
 
 .. automodule:: sqlalchemy.dialects.oracle.cx_oracle
 
 zxjdbc
--------
+------
 
 .. automodule:: sqlalchemy.dialects.oracle.zxjdbc

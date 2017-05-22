@@ -117,7 +117,7 @@ and objects::
     listen(my_engine, 'connect', my_on_connect)
 
 Modifiers
-----------
+---------
 
 Some listeners allow modifiers to be passed to :func:`.listen`.  These
 modifiers sometimes provide alternate calling signatures for
@@ -136,7 +136,7 @@ this value can be supported::
     listen(UserContact.phone, 'set', validate_phone, retval=True)
 
 Event Reference
-----------------
+---------------
 
 Both SQLAlchemy Core and SQLAlchemy ORM feature a wide variety of event hooks:
 

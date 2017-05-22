@@ -1111,7 +1111,7 @@ implies a basic one to many association from the ``users`` to a new
 table which stores email addresses, which we will call ``addresses``. Using
 declarative, we define this table along with its mapped class, ``Address``:
 
-.. sourcecode:: python+sql
+.. sourcecode:: python
 
     >>> from sqlalchemy import ForeignKey
     >>> from sqlalchemy.orm import relationship
@@ -1217,7 +1217,7 @@ already been created:
     COMMIT
 
 Working with Related Objects
-=============================
+============================
 
 Now when we create a ``User``, a blank ``addresses`` collection will be
 present. Various collection types, such as sets and dictionaries, are possible
@@ -1309,7 +1309,7 @@ to optimize the loading of this collection in a bit.
 .. _ormtutorial_joins:
 
 Querying with Joins
-====================
+===================
 
 Now that we have two tables, we can show some more features of :class:`.Query`,
 specifically how to create queries that deal with both tables at the same time.
@@ -1691,7 +1691,7 @@ very easy to use:
    ensure correct results.  See :ref:`subqueryload_ordering`.
 
 Joined Load
--------------
+-----------
 
 The other automatic eager loading function is more well known and is called
 :func:`.orm.joinedload`.   This style of loading emits a JOIN, by default
@@ -1750,7 +1750,7 @@ for both the lead and the related object.
    a detailed description of how this is used.
 
 Explicit Join + Eagerload
---------------------------
+-------------------------
 
 A third style of eager loading is when we are constructing a JOIN explicitly in
 order to locate the primary rows, and would like to additionally apply the extra

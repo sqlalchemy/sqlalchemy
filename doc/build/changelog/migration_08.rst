@@ -1,6 +1,6 @@
-==============================
+=============================
 What's New in SQLAlchemy 0.8?
-==============================
+=============================
 
 .. admonition:: About this Document
 
@@ -527,7 +527,7 @@ the :class:`.Table` to which ``User`` is mapped.
 :ticket:`2245`
 
 Query.update() supports UPDATE..FROM
--------------------------------------
+------------------------------------
 
 The new UPDATE..FROM mechanics work in query.update().
 Below, we emit an UPDATE against ``SomeEntity``, adding
@@ -576,7 +576,7 @@ that were not flushed in the current transaction.
 :ticket:`2452`
 
 Caching Example now uses dogpile.cache
----------------------------------------
+--------------------------------------
 
 The caching example now uses `dogpile.cache <https://dogpilecache.readthedocs.io/>`_.
 Dogpile.cache is a rewrite of the caching portion
@@ -607,7 +607,7 @@ this change is needed as illustrated in the Beaker example::
 :ticket:`2589`
 
 New Core Features
-==================
+=================
 
 Fully extensible, type-level operator support in Core
 -----------------------------------------------------
@@ -686,7 +686,7 @@ as more string, integer and date operators.
 .. _feature_2623:
 
 Multiple-VALUES support for Insert
------------------------------------
+----------------------------------
 
 The :meth:`.Insert.values` method now supports a list of dictionaries,
 which will render a multi-VALUES statement such as
@@ -708,7 +708,7 @@ remains unchanged::
 :ticket:`2623`
 
 Type Expressions
------------------
+----------------
 
 SQL expressions can now be associated with types.  Historically,
 :class:`.TypeEngine` has always allowed Python-side functions which
@@ -753,7 +753,7 @@ to embed PostGIS expressions inline in SQL based on type rules.
 :ticket:`1534`
 
 Core Inspection System
------------------------
+----------------------
 
 The :func:`.inspect` function introduced in :ref:`feature_orminspection_08`
 also applies to the core.  Applied to an :class:`.Engine` it produces
@@ -1241,7 +1241,7 @@ the previous behavior.
 :ticket:`2664`
 
 Repaired the Event Targeting of :class:`.InstrumentationEvents`
-----------------------------------------------------------------
+---------------------------------------------------------------
 
 The :class:`.InstrumentationEvents` series of event targets have
 documented that the events will only be fired off according to

@@ -6,7 +6,7 @@ MySQL
 .. automodule:: sqlalchemy.dialects.mysql.base
 
 MySQL Data Types
-------------------
+----------------
 
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
 valid with MySQL are importable from the top level dialect::
@@ -158,32 +158,32 @@ construction arguments, are as follows:
 
 
 MySQL-Python
---------------------
+------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
 
 pymysql
--------------
+-------
 
 .. automodule:: sqlalchemy.dialects.mysql.pymysql
 
 MySQL-Connector
-----------------------
+---------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqlconnector
 
 cymysql
-------------
+-------
 
 .. automodule:: sqlalchemy.dialects.mysql.cymysql
 
 OurSQL
---------------
+------
 
 .. automodule:: sqlalchemy.dialects.mysql.oursql
 
 Google App Engine
------------------------
+-----------------
 
 .. automodule:: sqlalchemy.dialects.mysql.gaerdbms
 
@@ -193,6 +193,6 @@ pyodbc
 .. automodule:: sqlalchemy.dialects.mysql.pyodbc
 
 zxjdbc
---------------
+------
 
 .. automodule:: sqlalchemy.dialects.mysql.zxjdbc

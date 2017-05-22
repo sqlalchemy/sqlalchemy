@@ -38,7 +38,7 @@ specifying the last argument as a dictionary::
                 )
 
 Using a Hybrid Approach with __table__
-=======================================
+======================================
 
 As an alternative to ``__tablename__``, a direct
 :class:`~sqlalchemy.schema.Table` construct may be used.  The

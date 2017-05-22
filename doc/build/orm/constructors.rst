@@ -3,7 +3,7 @@
 .. _mapping_constructors:
 
 Constructors and Object Initialization
-=======================================
+======================================
 
 Mapping imposes no restrictions or requirements on the constructor
 (``__init__``) method for the class. You are free to require any arguments for

@@ -68,7 +68,7 @@ configuration via the :meth:`.MapperEvents.before_configured` event::
 .. _declarative_abstract:
 
 ``__abstract__``
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 ``__abstract__`` causes declarative to skip the production
 of a table or mapper for the class entirely.  A class can be added within a

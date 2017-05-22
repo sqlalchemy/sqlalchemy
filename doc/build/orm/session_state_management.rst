@@ -574,7 +574,7 @@ or loaded with :meth:`~.Session.refresh` varies based on several factors, includ
 
 
 When to Expire or Refresh
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :class:`.Session` uses the expiration feature automatically whenever
 the transaction referred to by the session ends.  Meaning, whenever :meth:`.Session.commit`

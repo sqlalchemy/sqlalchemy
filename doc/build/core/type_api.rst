@@ -3,7 +3,7 @@
 .. _types_api:
 
 Base Type API
---------------
+-------------
 
 .. autoclass:: TypeEngine
    :members:
