@@ -511,12 +511,19 @@ def _collect_update_commands(
                     continue
 
             col = mapper.version_id_col
+            no_params = not params and not value_params
             params[col._label] = update_version_id
 
             if (bulk or col.key not in params) and \
                     mapper.version_id_generator is not False:
                 val = mapper.version_id_generator(update_version_id)
                 params[col.key] = val
+            elif mapper.version_id_generator is False and no_params:
+                # no version id generator, no values set on the table,
+                # and version id wasn't manually incremented.
+                # set version id to itself so we get an UPDATE
+                # statement
+                params[col.key] = update_version_id
 
         elif not (params or value_params):
             continue

@@ -13,6 +13,20 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3996
+        :tags: bug, orm
+        :tickets: 3996
+
+        Fixed bug where programmatic version_id counter in conjunction with
+        joined table inheritance would fail if the version_id counter
+        were not actually incremented and no other values on the base table
+        were modified, as the UPDATE would have an empty SET clause.  Since
+        programmatic version_id where version counter is not incremented
+        is a documented use case, this specific condition is now detected
+        and the UPDATE now sets the version_id value to itself, so that
+        concurrency checks still take place.
+
+
     .. change:: 3796
         :tags: bug, orm
         :tickets: 3796

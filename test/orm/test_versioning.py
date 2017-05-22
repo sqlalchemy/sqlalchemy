@@ -1284,3 +1284,65 @@ class ManualVersionTest(fixtures.MappedTest):
         sess.commit()
 
         eq_(a1.vid, 2)
+
+
+class ManualInheritanceVersionTest(fixtures.MappedTest):
+    run_define_tables = 'each'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a", metadata,
+            Column(
+                'id', Integer, primary_key=True,
+                test_needs_autoincrement=True),
+            Column('data', String(30)),
+            Column('vid', Integer, nullable=False)
+        )
+
+        Table(
+            "b", metadata,
+            Column(
+                'id', Integer, ForeignKey('a.id'), primary_key=True),
+            Column('b_data', String(30)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+        class B(A):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(
+            cls.classes.A, cls.tables.a, version_id_col=cls.tables.a.c.vid,
+            version_id_generator=False)
+
+        mapper(
+            cls.classes.B, cls.tables.b, inherits=cls.classes.A)
+
+    def test_no_increment(self):
+        sess = Session()
+        b1 = self.classes.B()
+
+        b1.vid = 1
+        b1.data = 'd1'
+        sess.add(b1)
+        sess.commit()
+
+        # change col on subtable only without
+        # incrementing version id
+        b1.b_data = 'bd2'
+        sess.commit()
+
+        eq_(b1.vid, 1)
+
+        b1.b_data = 'd3'
+        b1.vid = 2
+        sess.commit()
+
+        eq_(b1.vid, 2)
