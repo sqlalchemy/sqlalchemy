@@ -968,7 +968,7 @@ class Query(object):
         """
         self._invoke_all_eagers = value
 
-    def with_parent(self, instance, property=None):
+    def with_parent(self, instance, property=None, from_entity=None):
         """Add filtering criterion that relates the given instance
         to a child object or collection, using its attribute state
         as well as an established :func:`.relationship()`
@@ -981,16 +981,31 @@ class Query(object):
         that the given property can be None, in which case a search is
         performed against this :class:`.Query` object's target mapper.
 
+        :param instance:
+          An instance which has some :func:`.relationship`.
+
+        :param property:
+          String property name, or class-bound attribute, which indicates
+          what relationship from the instance should be used to reconcile the
+          parent/child relationship.
+
+        :param from_entity:
+          Entity in which to consider as the left side.  This defaults to the
+          "zero" entity of the :class:`.Query` itself.
+
         """
 
+        if from_entity:
+            entity_zero = inspect(from_entity)
+        else:
+            entity_zero = self._entity_zero()
         if property is None:
-            mapper_zero = self._mapper_zero()
 
             mapper = object_mapper(instance)
 
             for prop in mapper.iterate_properties:
                 if isinstance(prop, properties.RelationshipProperty) and \
-                        prop.mapper is mapper_zero:
+                        prop.mapper is entity_zero.mapper:
                     property = prop
                     break
             else:
@@ -998,11 +1013,11 @@ class Query(object):
                     "Could not locate a property which relates instances "
                     "of class '%s' to instances of class '%s'" %
                     (
-                        self._mapper_zero().class_.__name__,
+                        entity_zero.mapper.class_.__name__,
                         instance.__class__.__name__)
                 )
 
-        return self.filter(with_parent(instance, property))
+        return self.filter(with_parent(instance, property, entity_zero.entity))
 
     @_generative()
     def add_entity(self, entity, alias=None):
