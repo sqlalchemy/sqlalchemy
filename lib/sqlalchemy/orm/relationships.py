@@ -1355,10 +1355,16 @@ class RelationshipProperty(StrategizedProperty):
                 mapperlib.Mapper._configure_all()
             return self.prop
 
-    def _with_parent(self, instance, alias_secondary=True):
+    def _with_parent(self, instance, alias_secondary=True, from_entity=None):
         assert instance is not None
+        adapt_source = None
+        if from_entity is not None:
+            insp = inspect(from_entity)
+            if insp.is_aliased_class:
+                adapt_source = insp._adapter.adapt_clause
         return self._optimized_compare(
-            instance, value_is_parent=True, alias_secondary=alias_secondary)
+            instance, value_is_parent=True, adapt_source=adapt_source,
+            alias_secondary=alias_secondary)
 
     def _optimized_compare(self, state, value_is_parent=False,
                            adapt_source=None,

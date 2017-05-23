@@ -549,3 +549,14 @@
         .. seealso::
 
             :ref:`change_3934`
+
+    .. change:: 3607
+        :tags: bug, orm
+        :tickets: 3607
+
+        Fixed bug where :meth:`.Query.with_parent` would not work if the
+        :class:`.Query` were against an :func:`.aliased` construct rather than
+        a regular mapped class.  Also adds a new parameter
+        :paramref:`.util.with_parent.from_entity` to the standalone
+        :func:`.util.with_parent` function as well as
+        :meth:`.Query.with_parent`.

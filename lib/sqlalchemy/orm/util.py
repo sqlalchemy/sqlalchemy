@@ -974,7 +974,7 @@ def outerjoin(left, right, onclause=None, full=False, join_to_left=None):
     return _ORMJoin(left, right, onclause, True, full)
 
 
-def with_parent(instance, prop):
+def with_parent(instance, prop, from_entity=None):
     """Create filtering criterion that relates this query's primary entity
     to the given related instance, using established :func:`.relationship()`
     configuration.
@@ -985,13 +985,6 @@ def with_parent(instance, prop):
     Python without the need to render joins to the parent table
     in the rendered statement.
 
-    .. versionchanged:: 0.6.4
-        This method accepts parent instances in all
-        persistence states, including transient, persistent, and detached.
-        Only the requisite primary key/foreign key attributes need to
-        be populated.  Previous versions didn't work with transient
-        instances.
-
     :param instance:
       An instance which has some :func:`.relationship`.
 
@@ -1000,6 +993,12 @@ def with_parent(instance, prop):
       what relationship from the instance should be used to reconcile the
       parent/child relationship.
 
+    :param from_entity:
+      Entity in which to consider as the left side.  This defaults to the
+      "zero" entity of the :class:`.Query` itself.
+
+      .. versionadded:: 1.2
+
     """
     if isinstance(prop, util.string_types):
         mapper = object_mapper(instance)
@@ -1007,7 +1006,7 @@ def with_parent(instance, prop):
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 
-    return prop._with_parent(instance)
+    return prop._with_parent(instance, from_entity=from_entity)
 
 
 def has_identity(object):
