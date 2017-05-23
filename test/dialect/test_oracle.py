@@ -17,6 +17,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
 import decimal
+from sqlalchemy.engine import url
 from sqlalchemy.testing.schema import Table, Column
 import datetime
 import os
@@ -42,6 +43,30 @@ class DialectTest(fixtures.TestBase):
             dialect._parse_cx_oracle_ver("6.0b1"),
             (6, 0)
         )
+
+    def test_twophase_arg(self):
+
+        mock_dbapi = Mock(version="5.0.3")
+        dialect = cx_oracle.OracleDialect_cx_oracle(dbapi=mock_dbapi)
+        args = dialect.create_connect_args(
+            url.make_url("oracle+cx_oracle://a:b@host/db"))
+
+        eq_(args[1]['twophase'], True)
+
+        mock_dbapi = Mock(version="5.0.3")
+        dialect = cx_oracle.OracleDialect_cx_oracle(
+            dbapi=mock_dbapi, allow_twophase=False)
+        args = dialect.create_connect_args(
+            url.make_url("oracle+cx_oracle://a:b@host/db"))
+
+        eq_(args[1]['twophase'], False)
+
+        mock_dbapi = Mock(version="6.0b1")
+        dialect = cx_oracle.OracleDialect_cx_oracle(dbapi=mock_dbapi)
+        args = dialect.create_connect_args(
+            url.make_url("oracle+cx_oracle://a:b@host/db"))
+
+        assert 'twophase' not in args[1]
 
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
