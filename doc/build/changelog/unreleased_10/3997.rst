@@ -1,0 +1,10 @@
+.. change:: 3997
+    :tags: bug, oracle
+    :tickets: 3997
+    :versions: 1.2.0b1, 1.1.11
+
+    Support for two-phase transactions has been removed entirely for
+    cx_Oracle when version 6.0b1 or later of the DBAPI is in use.  The two-
+    phase feature historically has never been usable under cx_Oracle 5.x in
+    any case, and cx_Oracle 6.x has removed the connection-level "twophase"
+    flag upon which this feature relied.
