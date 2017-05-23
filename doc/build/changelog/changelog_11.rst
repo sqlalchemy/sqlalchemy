@@ -24,6 +24,7 @@
     .. change:: 3994
         :tags: bug, mssql
         :tickets: 3994
+        :versions: 1.2.0b1
 
         Fixed bug where SQL Server transaction isolation must be fetched
         from a different view when using Azure data warehouse, the query
