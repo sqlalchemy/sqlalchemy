@@ -75,6 +75,15 @@ The example below illustrates this lifecycle::
         # as that of commit proceeds.
         session.rollback()
         raise
+    finally:
+        # close the Session.  This will expunge any remaining
+        # objects as well as reset any existing SessionTransaction
+        # state.  Neither of these steps are usually essential.
+        # However, if the commit() or rollback() itself experienced
+        # an unanticipated internal failure (such as due to a mis-behaved
+        # user-defined event handler), .close() will ensure that 
+        # invalid state is removed.
+        session.close()
 
 .. _session_begin_nested:
 
