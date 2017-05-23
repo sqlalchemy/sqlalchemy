@@ -32,6 +32,17 @@
         best resiliency against future arbitrary API changes in new
         SQL Server versions.
 
+    .. change:: 3997
+        :tags: bug, oracle
+        :tickets: 3997
+        :versions: 1.2.0b1
+
+        Support for two-phase transactions has been removed entirely for
+        cx_Oracle when version 6.0b1 or later of the DBAPI is in use.  The two-
+        phase feature historically has never been usable under cx_Oracle 5.x in
+        any case, and cx_Oracle 6.x has removed the connection-level "twophase"
+        flag upon which this feature relied.
+
 .. changelog::
     :version: 1.1.10
     :released: Friday, May 19, 2017

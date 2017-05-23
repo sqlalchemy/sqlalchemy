@@ -25,7 +25,10 @@ directly as a TNS name.
 Additional arguments which may be specified either as query string arguments
 on the URL, or as keyword arguments to :func:`.create_engine()` are:
 
-* ``allow_twophase`` - enable two-phase transactions.  Defaults to ``True``.
+* ``allow_twophase`` - enable two-phase transactions.  This argument is
+  **deprecated** as of the cx_Oracle 5.x series, two phase transactions are
+  not supported under cx_Oracle and as of cx_Oracle 6.0b1 this feature is
+  removed entirely.
 
 * ``arraysize`` - set the cx_oracle.arraysize value on cursors, defaulted
   to 50.  This setting is significant with cx_Oracle as the contents of LOB
@@ -185,39 +188,12 @@ To disable this processing, pass ``auto_convert_lobs=False`` to
 Two Phase Transaction Support
 -----------------------------
 
-Two Phase transactions are implemented using XA transactions, and are known
-to work in a rudimental fashion with recent versions of cx_Oracle
-as of SQLAlchemy 0.8.0b2, 0.7.10.   However, the mechanism is not yet
-considered to be robust and should still be regarded as experimental.
+Two phase transactions are **not supported** under cx_Oracle due to poor
+driver support.   As of cx_Oracle 6.0b1, the interface for
+two phase transactions has been changed to be more of a direct pass-through
+to the underlying OCI layer with less automation.  The additional logic
+to support this system is not implemented in SQLAlchemy.
 
-In particular, the cx_Oracle DBAPI as recently as 5.1.2 has a bug regarding
-two phase which prevents
-a particular DBAPI connection from being consistently usable in both
-prepared transactions as well as traditional DBAPI usage patterns; therefore
-once a particular connection is used via :meth:`.Connection.begin_prepared`,
-all subsequent usages of the underlying DBAPI connection must be within
-the context of prepared transactions.
-
-The default behavior of :class:`.Engine` is to maintain a pool of DBAPI
-connections.  Therefore, due to the above glitch, a DBAPI connection that has
-been used in a two-phase operation, and is then returned to the pool, will
-not be usable in a non-two-phase context.   To avoid this situation,
-the application can make one of several choices:
-
-* Disable connection pooling using :class:`.NullPool`
-
-* Ensure that the particular :class:`.Engine` in use is only used
-  for two-phase operations.   A :class:`.Engine` bound to an ORM
-  :class:`.Session` which includes ``twophase=True`` will consistently
-  use the two-phase transaction style.
-
-* For ad-hoc two-phase operations without disabling pooling, the DBAPI
-  connection in use can be evicted from the connection pool using the
-  :meth:`.Connection.detach` method.
-
-.. versionchanged:: 0.8.0b2,0.7.10
-    Support for cx_oracle prepared transactions has been implemented
-    and tested.
 
 .. _cx_oracle_numeric:
 
@@ -723,6 +699,8 @@ class OracleDialect_cx_oracle(OracleDialect):
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB")
         self.supports_unicode_binds = self.cx_oracle_ver >= (5, 0)
 
+        self._enable_twophase = self.cx_oracle_ver < (6, 0)
+
         self.coerce_to_unicode = (
             self.cx_oracle_ver >= (5, 0) and
             coerce_to_unicode
@@ -904,6 +882,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def create_connect_args(self, url):
         dialect_opts = dict(url.query)
+
         for opt in ('use_ansi', 'auto_setinputsizes', 'auto_convert_lobs',
                     'threaded', 'allow_twophase'):
             if opt in dialect_opts:
@@ -936,8 +915,10 @@ class OracleDialect_cx_oracle(OracleDialect):
 
         opts = dict(
             threaded=self.threaded,
-            twophase=self.allow_twophase,
         )
+
+        if self._enable_twophase:
+            opts['twophase'] = self.allow_twophase
 
         if dsn is not None:
             opts['dsn'] = dsn
@@ -994,7 +975,12 @@ class OracleDialect_cx_oracle(OracleDialect):
         """create a two-phase transaction ID.
 
         this id will be passed to do_begin_twophase(), do_rollback_twophase(),
-        do_commit_twophase().  its format is unspecified."""
+        do_commit_twophase().  its format is unspecified.
+
+        .. deprecated:: two-phase transaction support is no longer functional
+           in SQLAlchemy's cx_Oracle dialect as of cx_Oracle 6.0b1
+
+        """
 
         id = random.randint(0, 2 ** 128)
         return (0x1234, "%032x" % id, "%032x" % 9)
