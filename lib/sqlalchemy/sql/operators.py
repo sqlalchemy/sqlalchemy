@@ -1091,18 +1091,19 @@ _PRECEDENCE = {
     sub: 7,
 
     concat_op: 6,
-    match_op: 6,
-    notmatch_op: 6,
 
-    ilike_op: 6,
-    notilike_op: 6,
-    like_op: 6,
-    notlike_op: 6,
-    in_op: 6,
-    notin_op: 6,
+    match_op: 5,
+    notmatch_op: 5,
 
-    is_: 6,
-    isnot: 6,
+    ilike_op: 5,
+    notilike_op: 5,
+    like_op: 5,
+    notlike_op: 5,
+    in_op: 5,
+    notin_op: 5,
+
+    is_: 5,
+    isnot: 5,
 
     eq: 5,
     ne: 5,

@@ -34,6 +34,23 @@
         An exception is now raised if the version id is programmatic and
         was set to NULL for an UPDATE.  Pull request courtesy Diana Clarke.
 
+    .. change:: 3999
+        :tags: bug, sql
+        :tickets: 3999
+
+        The operator precedence for all comparison operators such as LIKE, IS,
+        IN, MATCH, equals, greater than, less than, etc. has all been merged
+        into one level, so that expressions which make use of these against
+        each other will produce parentheses between them.   This suits the
+        stated operator precedence of databases like Oracle, MySQL and others
+        which place all of these operators as equal precedence, as well as
+        Postgresql as of 9.5 which has also flattened its operator precendence.
+
+        .. seealso::
+
+            :ref:`change_3999`
+
+
     .. change:: 3796
         :tags: bug, orm
         :tickets: 3796

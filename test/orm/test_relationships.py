@@ -442,12 +442,12 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         Entity = self.classes.Entity
         self.assert_compile(
             Entity.descendants.property.strategy._lazywhere,
-            "entity.path LIKE (:param_1 || :path_1)"
+            "entity.path LIKE :param_1 || :path_1"
         )
 
         self.assert_compile(
             Entity.descendants.property.strategy._rev_lazywhere,
-            ":param_1 LIKE (entity.path || :path_1)"
+            ":param_1 LIKE entity.path || :path_1"
         )
 
     def test_ancestors_lazyload_clause(self):
@@ -456,12 +456,12 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         # :param_1 LIKE (:param_1 || :path_1)
         self.assert_compile(
             Entity.anscestors.property.strategy._lazywhere,
-            ":param_1 LIKE (entity.path || :path_1)"
+            ":param_1 LIKE entity.path || :path_1"
         )
 
         self.assert_compile(
             Entity.anscestors.property.strategy._rev_lazywhere,
-            "entity.path LIKE (:param_1 || :path_1)"
+            "entity.path LIKE :param_1 || :path_1"
         )
 
     def test_descendants_lazyload(self):
@@ -524,7 +524,7 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(Entity).join(Entity.descendants, aliased=True),
             "SELECT entity.path AS entity_path FROM entity JOIN entity AS "
-            "entity_1 ON entity_1.path LIKE (entity.path || :path_1)"
+            "entity_1 ON entity_1.path LIKE entity.path || :path_1"
         )
 
 

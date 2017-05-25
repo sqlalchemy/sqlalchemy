@@ -512,6 +512,24 @@ The feature should be regarded as **experimental** within the 1.2 series.
 
 :ticket:`3953`
 
+.. _change_3999:
+
+Flattened operator precedence for comparison operators
+-------------------------------------------------------
+
+The operator precedence for operators like IN, LIKE, equals, IS, MATCH, and
+other comparison operators has been flattened into one level.  This will
+have the effect of more parenthesization being generated when comparison
+operators are combined together, such as::
+
+    (column('q') == null()) != (column('y') == null())
+
+Will now generate ``(q IS NULL) != (y IS NULL)`` rather than
+``q IS NULL != y IS NULL``.
+
+
+:ticket:`3999`
+
 .. _change_1546:
 
 Support for SQL Comments on Table, Column, includes DDL, reflection

@@ -1478,6 +1478,13 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(op2, "mytable.myid hoho :myid_1 lala :param_1")
         self.assert_compile(op3, "(mytable.myid hoho :myid_1) lala :param_1")
 
+    def test_is_eq_precedence_flat(self):
+        self.assert_compile(
+            (self.table1.c.name == null()) !=
+            (self.table1.c.description == null()),
+            "(mytable.name IS NULL) != (mytable.description IS NULL)",
+        )
+
 
 class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'

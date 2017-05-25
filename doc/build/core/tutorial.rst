@@ -1177,7 +1177,7 @@ username:
     ...                 addresses.c.email_address.like(users.c.name + '%')
     ...             )
     ...  )
-    users JOIN addresses ON addresses.email_address LIKE (users.name || :name_1)
+    users JOIN addresses ON addresses.email_address LIKE users.name || :name_1
 
 When we create a :func:`.select` construct, SQLAlchemy looks around at the
 tables we've mentioned and then places them in the FROM clause of the
@@ -1192,7 +1192,7 @@ here we make use of the :meth:`~.Select.select_from` method:
     ...    )
     {sql}>>> conn.execute(s).fetchall()
     SELECT users.fullname
-    FROM users JOIN addresses ON addresses.email_address LIKE (users.name || ?)
+    FROM users JOIN addresses ON addresses.email_address LIKE users.name || ?
     ('%',)
     {stop}[(u'Jack Jones',), (u'Jack Jones',), (u'Wendy Williams',)]
 
@@ -1273,7 +1273,7 @@ off to the database:
     {sql}>>> conn.execute(s, username='wendy').fetchall()
     SELECT users.id, users.name, users.fullname
     FROM users
-    WHERE users.name LIKE (? || '%')
+    WHERE users.name LIKE ? || '%'
     ('wendy',)
     {stop}[(2, u'wendy', u'Wendy Williams')]
 
@@ -1298,7 +1298,7 @@ single named value is needed in the execute parameters:
     SELECT users.id, users.name, users.fullname, addresses.id,
         addresses.user_id, addresses.email_address
     FROM users LEFT OUTER JOIN addresses ON users.id = addresses.user_id
-    WHERE users.name LIKE (? || '%') OR addresses.email_address LIKE (? || '@%')
+    WHERE users.name LIKE ? || '%' OR addresses.email_address LIKE ? || '@%'
     ORDER BY addresses.id
     ('jack', 'jack')
     {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')]
