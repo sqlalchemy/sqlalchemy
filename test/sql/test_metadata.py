@@ -348,6 +348,29 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             getattr, list(a.foreign_keys)[0], "column"
         )
 
+    def test_fk_mismatched_local_remote_cols(self):
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "ForeignKeyConstraint number of constrained columns must "
+            "match the number of referenced columns.",
+            ForeignKeyConstraint, ['a'], ['b.a', 'b.b']
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "ForeignKeyConstraint number of constrained columns "
+            "must match the number of referenced columns.",
+            ForeignKeyConstraint, ['a', 'b'], ['b.a']
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "ForeignKeyConstraint with duplicate source column "
+            "references are not supported.",
+            ForeignKeyConstraint, ['a', 'a'], ['b.a', 'b.b']
+        )
+
     def test_pickle_metadata_sequence_restated(self):
         m1 = MetaData()
         Table('a', m1,
