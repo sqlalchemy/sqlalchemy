@@ -67,6 +67,18 @@
         fail for cx_Oracle version 6.0b1 due to the "b" character.  Version
         string parsing is now via a regexp rather than a simple split.
 
+    .. change:: 3949
+        :tags: bug, schema
+        :versions: 1.2.0b1
+        :tickets: 3949
+
+        An :class:`.ArgumentError` is now raised if a
+        :class:`.ForeignKeyConstraint` object is created with a mismatched
+        number of "local" and "remote" columns, which otherwise causes the
+        internal state of the constraint to be incorrect.   Note that this
+        also impacts the condition where a dialect's reflection process
+        produces a mismatched set of columns for a foreign key constraint.
+
     .. change:: 3980
         :tags: bug, ext
         :versions: 1.2.0b1

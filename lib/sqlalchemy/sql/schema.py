@@ -2883,6 +2883,22 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         self.use_alter = use_alter
         self.match = match
 
+        if len(set(columns)) != len(refcolumns):
+            if len(set(columns)) != len(columns):
+                # e.g. FOREIGN KEY (a, a) REFERENCES r (b, c)
+                raise exc.ArgumentError(
+                    "ForeignKeyConstraint with duplicate source column "
+                    "references are not supported."
+                )
+            else:
+                # e.g. FOREIGN KEY (a) REFERENCES r (b, c)
+                # paraphrasing https://www.postgresql.org/docs/9.2/static/\
+                # ddl-constraints.html
+                raise exc.ArgumentError(
+                    "ForeignKeyConstraint number "
+                    "of constrained columns must match the number of "
+                    "referenced columns.")
+
         # standalone ForeignKeyConstraint - create
         # associated ForeignKey objects which will be applied to hosted
         # Column objects (in col.foreign_keys), either now or when attached
