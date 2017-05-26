@@ -830,6 +830,20 @@ class IMAGE(sqltypes.LargeBinary):
     __visit_name__ = 'IMAGE'
 
 
+class XML(sqltypes.Text):
+    """MSSQL XML type.
+
+    This is a placeholder type for reflection purposes that does not include
+    any Python-side datatype support.   It also does not currently support
+    additional arguments, such as "CONTENT", "DOCUMENT",
+    "xml_schema_collection".
+
+    .. versionadded:: 1.1.11
+
+    """
+    __visit_name__ = 'XML'
+
+
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
 
@@ -898,6 +912,7 @@ ischema_names = {
     'bit': BIT,
     'real': REAL,
     'image': IMAGE,
+    'xml': XML,
     'timestamp': TIMESTAMP,
     'money': MONEY,
     'smallmoney': SMALLMONEY,
@@ -1013,6 +1028,9 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_IMAGE(self, type_, **kw):
         return "IMAGE"
+
+    def visit_XML(self, type_, **kw):
+        return "XML"
 
     def visit_VARBINARY(self, type_, **kw):
         return self._extend(

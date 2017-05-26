@@ -44,6 +44,17 @@
         any case, and cx_Oracle 6.x has removed the connection-level "twophase"
         flag upon which this feature relied.
 
+    .. change:: 3973
+        :tags: bug, mssql
+        :tickets: 3973
+        :versions: 1.2.0b1
+
+        Added a placeholder type :class:`.mssql.XML` to the SQL Server
+        dialect, so that a reflected table which includes this type can
+        be re-rendered as a CREATE TABLE.  The type has no special round-trip
+        behavior nor does it currently support additional qualifying
+        arguments.
+
 .. changelog::
     :version: 1.1.10
     :released: Friday, May 19, 2017

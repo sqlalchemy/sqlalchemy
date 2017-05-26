@@ -11,9 +11,9 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import util
 from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode, tables
 from sqlalchemy.dialects.mssql import base
+from sqlalchemy.testing import mock
 
-
-class ReflectionTest(fixtures.TestBase, ComparesTables):
+class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     __only_on__ = 'mssql'
     __backend__ = True
 
@@ -64,6 +64,32 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         self.assert_tables_equal(addresses, reflected_addresses)
 
     @testing.provide_metadata
+    def _test_specific_type(self, type_obj, ddl):
+        metadata = self.metadata
+
+        table = Table(
+            'type_test', metadata,
+            Column('col1', type_obj)
+        )
+        table.create()
+
+        m2 = MetaData()
+        table2 = Table('type_test', m2, autoload_with=testing.db)
+        self.assert_compile(
+            schema.CreateTable(table2),
+            "CREATE TABLE type_test (col1 %s NULL)" % ddl
+        )
+
+    def test_xml_type(self):
+        self._test_specific_type(mssql.XML, "XML")
+
+    def test_image_type(self):
+        self._test_specific_type(mssql.IMAGE, "IMAGE")
+
+    def test_money_type(self):
+        self._test_specific_type(mssql.MONEY, "MONEY")
+
+    @testing.provide_metadata
     def test_identity(self):
         metadata = self.metadata
         table = Table(
@@ -86,7 +112,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         testing.db.execute("""
             create table foo (id integer primary key, data xml)
         """)
-        t1 = Table('foo', metadata, autoload=True)
+        with mock.patch.object(
+                testing.db.dialect, "ischema_names", {"int": mssql.INTEGER}):
+            t1 = Table('foo', metadata, autoload=True)
         assert isinstance(t1.c.id.type, Integer)
         assert isinstance(t1.c.data.type, types.NullType)
 
