@@ -273,6 +273,9 @@ class _MapperConfig(object):
 
         our_stuff = self.properties
 
+        late_mapped = _get_immediate_cls_attr(
+                    cls, '_sa_decl_prepare_nocascade', strict=True)
+
         for k in list(dict_):
 
             if k in ('__table__', '__tablename__', '__mapper_args__'):
@@ -302,7 +305,8 @@ class _MapperConfig(object):
                 # and place the evaluated value onto the class.
                 if not k.startswith('__'):
                     dict_.pop(k)
-                    setattr(cls, k, value)
+                    if not late_mapped:
+                        setattr(cls, k, value)
                 continue
             # we expect to see the name 'metadata' in some valid cases;
             # however at this point we see it's assigned to something trying

@@ -26,6 +26,21 @@
         and the UPDATE now sets the version_id value to itself, so that
         concurrency checks still take place.
 
+    .. change:: 3848
+        :tags: bug, orm, declarative
+        :tickets: 3848
+
+        Fixed bug where using :class:`.declared_attr` on an
+        :class:`.AbstractConcreteBase` where a particular return value were some
+        non-mapped symbol, including ``None``, would cause the attribute
+        to hard-evaluate just once and store the value to the object
+        dictionary, not allowing it to invoke for subclasses.   This behavior
+        is normal when :class:`.declared_attr` is on a mapped class, and
+        does not occur on a mixin or abstract class.  Since
+        :class:`.AbstractConcreteBase` is both "abstract" and actually
+        "mapped", a special exception case is made here so that the
+        "abstract" behavior takes precedence for :class:`.declared_attr`.
+
     .. change:: 3673
         :tags: bug, orm
         :tickets: 3673

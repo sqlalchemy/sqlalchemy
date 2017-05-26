@@ -1188,6 +1188,69 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         TypeA(filters=['foo'])
         TypeB(filters=['foo'])
 
+    def test_arbitrary_attrs_three(self):
+        class Mapped(Base):
+            __tablename__ = 't'
+            id = Column(Integer, primary_key=True)
+
+            @declared_attr
+            def some_attr(cls):
+                return cls.__name__ + "SOME ATTR"
+
+        eq_(Mapped.some_attr, "MappedSOME ATTR")
+        eq_(Mapped.__dict__['some_attr'], "MappedSOME ATTR")
+
+    def test_arbitrary_attrs_doesnt_apply_to_abstract_declared_attr(self):
+        names = ["name1", "name2", "name3"]
+
+        class SomeAbstract(Base):
+            __abstract__ = True
+
+            @declared_attr
+            def some_attr(cls):
+                return names.pop(0)
+
+        class M1(SomeAbstract):
+            __tablename__ = 't1'
+            id = Column(Integer, primary_key=True)
+
+        class M2(SomeAbstract):
+            __tablename__ = 't2'
+            id = Column(Integer, primary_key=True)
+
+        eq_(M1.__dict__['some_attr'], 'name1')
+        eq_(M2.__dict__['some_attr'], 'name2')
+
+    def test_arbitrary_attrs_doesnt_apply_to_prepare_nocascade(self):
+        names = ["name1", "name2", "name3"]
+
+        class SomeAbstract(Base):
+            __tablename__ = 't0'
+            __no_table__ = True
+
+            # used by AbstractConcreteBase
+            _sa_decl_prepare_nocascade = True
+
+            id = Column(Integer, primary_key=True)
+
+            @declared_attr
+            def some_attr(cls):
+                return names.pop(0)
+
+        class M1(SomeAbstract):
+            __tablename__ = 't1'
+            id = Column(Integer, primary_key=True)
+
+        class M2(SomeAbstract):
+            __tablename__ = 't2'
+            id = Column(Integer, primary_key=True)
+
+        eq_(M1.some_attr, "name2")
+        eq_(M2.some_attr, "name3")
+        eq_(M1.__dict__['some_attr'], 'name2')
+        eq_(M2.__dict__['some_attr'], 'name3')
+        assert isinstance(SomeAbstract.__dict__['some_attr'], declared_attr)
+
 
 class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
