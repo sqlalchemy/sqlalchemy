@@ -13,6 +13,20 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3853
+        :tags: bug, ext
+        :tickets: 3853
+
+        Implemented in-place mutation operators ``__ior__``, ``__iand__``,
+        ``__ixor__`` and ``__isub__`` for :class:`.mutable.MutableSet`
+        and ``__iadd__`` for :class:`.mutable.MutableList` so that change
+        events are fired off when these mutator methods are used to alter the
+        collection.
+
+        .. seealso::
+
+            :ref:`change_3853`
+
     .. change:: 4003
         :tags: feature, oracle
 

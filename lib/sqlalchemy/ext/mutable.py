@@ -806,6 +806,10 @@ class MutableList(Mutable, list):
         list.extend(self, x)
         self.changed()
 
+    def __iadd__(self, x):
+        self.extend(x)
+        return self
+
     def insert(self, i, x):
         list.insert(self, i, x)
         self.changed()
@@ -884,6 +888,22 @@ class MutableSet(Mutable, set):
     def symmetric_difference_update(self, *arg):
         set.symmetric_difference_update(self, *arg)
         self.changed()
+
+    def __ior__(self, other):
+        self.update(other)
+        return self
+
+    def __iand__(self, other):
+        self.intersection_update(other)
+        return self
+
+    def __ixor__(self, other):
+        self.symmetric_difference_update(other)
+        return self
+
+    def __isub__(self, other):
+        self.difference_update(other)
+        return self
 
     def add(self, elem):
         set.add(self, elem)

@@ -401,6 +401,18 @@ class _MutableListTestBase(_MutableListTestFixture):
 
         eq_(f1.data, [1, 2, 5])
 
+    def test_operator_extend(self):
+        sess = Session()
+
+        f1 = Foo(data=[1, 2])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data += [5]
+        sess.commit()
+
+        eq_(f1.data, [1, 2, 5])
+
     def test_insert(self):
         sess = Session()
 
@@ -561,6 +573,18 @@ class _MutableSetTestBase(_MutableSetTestFixture):
 
         eq_(f1.data, set([1, 2, 5]))
 
+    def test_binary_update(self):
+        sess = Session()
+
+        f1 = Foo(data=set([1, 2]))
+        sess.add(f1)
+        sess.commit()
+
+        f1.data |= set([2, 5])
+        sess.commit()
+
+        eq_(f1.data, set([1, 2, 5]))
+
     def test_intersection_update(self):
         sess = Session()
 
@@ -569,6 +593,18 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         sess.commit()
 
         f1.data.intersection_update(set([2, 5]))
+        sess.commit()
+
+        eq_(f1.data, set([2]))
+
+    def test_binary_intersection_update(self):
+        sess = Session()
+
+        f1 = Foo(data=set([1, 2]))
+        sess.add(f1)
+        sess.commit()
+
+        f1.data &= set([2, 5])
         sess.commit()
 
         eq_(f1.data, set([2]))
@@ -585,6 +621,18 @@ class _MutableSetTestBase(_MutableSetTestFixture):
 
         eq_(f1.data, set([1]))
 
+    def test_operator_difference_update(self):
+        sess = Session()
+
+        f1 = Foo(data=set([1, 2]))
+        sess.add(f1)
+        sess.commit()
+
+        f1.data -= set([2, 5])
+        sess.commit()
+
+        eq_(f1.data, set([1]))
+
     def test_symmetric_difference_update(self):
         sess = Session()
 
@@ -593,6 +641,18 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         sess.commit()
 
         f1.data.symmetric_difference_update(set([2, 5]))
+        sess.commit()
+
+        eq_(f1.data, set([1, 5]))
+
+    def test_binary_symmetric_difference_update(self):
+        sess = Session()
+
+        f1 = Foo(data=set([1, 2]))
+        sess.add(f1)
+        sess.commit()
+
+        f1.data ^= set([2, 5])
         sess.commit()
 
         eq_(f1.data, set([1, 5]))

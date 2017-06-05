@@ -411,6 +411,25 @@ parameter.
 
 :ticket:`3991`
 
+.. _change_3853:
+
+In-place mutation operators work for MutableSet, MutableList
+------------------------------------------------------------
+
+Implemented the in-place mutation operators ``__ior__``, ``__iand__``,
+``__ixor__`` and ``__isub__`` for :class:`.mutable.MutableSet` and ``__iadd__``
+for :class:`.mutable.MutableList`.   While these
+methods would successfully update the collection previously, they would
+not correctly fire off change events.   The operators mutate the collection
+as before but additionally emit the correct change event so that the change
+becomes part of the next flush process::
+
+    model = session.query(MyModel).first()
+    model.json_set &= {1, 3}
+
+
+:ticket:`3853`
+
 New Features and Improvements - Core
 ====================================
 
