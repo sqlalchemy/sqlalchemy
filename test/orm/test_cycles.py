@@ -6,13 +6,16 @@ T1/T2.
 
 """
 from sqlalchemy import testing
+from sqlalchemy import event
+from sqlalchemy.testing import mock
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, \
-    create_session, sessionmaker
+    create_session, sessionmaker, Session
 from sqlalchemy.testing import eq_, is_
 from sqlalchemy.testing.assertsql import RegexSQL, CompiledSQL, AllOf
 from sqlalchemy.testing import fixtures
+from itertools import count
 
 
 class SelfReferentialTest(fixtures.MappedTest):
@@ -1290,4 +1293,68 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
                 lambda ctx: {'c2_id': None, 'parent_id': p1.id,
                              'c1_id': None, 'c3_id': None}
             )
+        )
+
+
+class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
+
+    counter = count()
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            favorite_b_id = Column(ForeignKey('b.id', name="favorite_b_fk"))
+            bs = relationship("B", primaryjoin="A.id == B.a_id")
+            favorite_b = relationship(
+                "B", primaryjoin="A.favorite_b_id == B.id", post_update=True)
+            updated = Column(Integer, onupdate=lambda: next(cls.counter))
+
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey('a.id', name="a_fk"))
+
+    def setup(self):
+        super(PostUpdateOnUpdateTest, self).setup()
+        PostUpdateOnUpdateTest.counter = count()
+
+    def test_update_defaults(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+        a1 = A()
+        b1 = B()
+
+        a1.bs.append(b1)
+        a1.favorite_b = b1
+        s.add(a1)
+        s.flush()
+
+        eq_(a1.updated, 0)
+
+    def test_update_defaults_refresh_flush_event(self):
+        A, B = self.classes("A", "B")
+
+        canary = mock.Mock()
+        event.listen(A, "refresh_flush", canary)
+
+        s = Session()
+        a1 = A()
+        b1 = B()
+
+        a1.bs.append(b1)
+        a1.favorite_b = b1
+        s.add(a1)
+        s.flush()
+
+        eq_(a1.updated, 0)
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call(a1, mock.ANY, ['updated'])
+            ]
         )
