@@ -283,6 +283,13 @@ class _MapperConfig(object):
 
             value = dict_[k]
             if isinstance(value, declarative_props):
+                if isinstance(value, declared_attr) and value._cascading:
+                    util.warn(
+                        "Use of @declared_attr.cascading only applies to "
+                        "Declarative 'mixin' and 'abstract' classes.  "
+                        "Currently, this flag is ignored on mapped class "
+                        "%s" % self.cls)
+
                 value = getattr(cls, k)
 
             elif isinstance(value, QueryableAttribute) and \

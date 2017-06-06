@@ -1,6 +1,6 @@
 
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, expect_warnings
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 import sqlalchemy as sa
@@ -1229,6 +1229,21 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert 'somecol' in MyBase.__table__.c
         assert 'somecol' not in MyClass.__table__.c
+
+    def test_decl_cascading_warns_non_mixin(self):
+        with expect_warnings(
+                "Use of @declared_attr.cascading only applies to "
+                "Declarative 'mixin' and 'abstract' classes.  "
+                "Currently, this flag is ignored on mapped class "
+                "<class '.*.MyBase'>"
+        ):
+            class MyBase(Base):
+                __tablename__ = 'foo'
+                id = Column(Integer, primary_key=True)
+
+                @declared_attr.cascading
+                def somecol(cls):
+                    return Column(Integer)
 
     def test_column(self):
 

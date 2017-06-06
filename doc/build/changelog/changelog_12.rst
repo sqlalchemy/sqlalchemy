@@ -27,6 +27,16 @@
 
             :ref:`change_3853`
 
+    .. change:: 3847
+        :tags: bug, declarative
+        :tickets: 3847
+
+        A warning is emitted if the :attr:`.declared_attr.cascading` modifier
+        is used with a declarative attribute that is itself declared on
+        a class that is to be mapped, as opposed to a declarative mixin
+        class or ``__abstract__`` class.  The :attr:`.declared_attr.cascading`
+        modifier currently only applies to mixin/abstract classes.
+
     .. change:: 4003
         :tags: feature, oracle
 

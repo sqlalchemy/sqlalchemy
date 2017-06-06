@@ -1593,7 +1593,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         eq_(counter.mock_calls, [mock.call(A)])
 
-    def test_property_cascade(self):
+    def test_property_cascade_mixin(self):
         counter = mock.Mock()
 
         class Mixin(object):
@@ -1603,6 +1603,28 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
                 return column_property(cls.x + 2)
 
         class A(Base, Mixin):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+
+        class B(A):
+            pass
+
+        eq_(counter.mock_calls, [mock.call(A), mock.call(B)])
+
+    def test_property_cascade_abstract(self):
+        counter = mock.Mock()
+
+        class Abs(Base):
+            __abstract__ = True
+
+            @declared_attr.cascading
+            def my_prop(cls):
+                counter(cls)
+                return column_property(cls.x + 2)
+
+        class A(Abs):
             __tablename__ = 'a'
 
             id = Column(Integer, primary_key=True)
