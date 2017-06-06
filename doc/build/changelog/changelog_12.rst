@@ -39,6 +39,7 @@
 
     .. change:: 4003
         :tags: feature, oracle
+        :tickets: 4003
 
         The Oracle dialect now inspects unique and check constraints when using
         :meth:`.Inspector.get_unique_constraints`,
