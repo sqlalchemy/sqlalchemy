@@ -1358,3 +1358,19 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
                 mock.call(a1, mock.ANY, ['updated'])
             ]
         )
+
+    def test_update_defaults_can_set_value(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+        a1 = A()
+        b1 = B()
+
+        a1.bs.append(b1)
+        a1.favorite_b = b1
+        a1.updated = 5
+        s.add(a1)
+        s.flush()
+
+        eq_(a1.updated, 5)
+

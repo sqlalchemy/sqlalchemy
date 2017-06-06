@@ -925,6 +925,61 @@ beta tesing, it can be restored with a deprecation.
 
 :ticket:`3796`
 
+.. _change_3471:
+
+Refinements to post_update in conjunction with onupdate
+-------------------------------------------------------
+
+A relationship that uses the :paramref:`.relationship.post_update` feature
+will now interact better with a column that has an :paramref:`.Column.onupdate`
+value set.   If an object is inserted with an explicit value for the column,
+it is re-stated during the UPDATE so that the "onupdate" rule does not
+overwrite it::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        favorite_b_id = Column(ForeignKey('b.id', name="favorite_b_fk"))
+        bs = relationship("B", primaryjoin="A.id == B.a_id")
+        favorite_b = relationship(
+            "B", primaryjoin="A.favorite_b_id == B.id", post_update=True)
+        updated = Column(Integer, onupdate=my_onupdate_function)
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id', name="a_fk"))
+
+    a1 = A()
+    b1 = B()
+
+    a1.bs.append(b1)
+    a1.favorite_b = b1
+    a1.updated = 5
+    s.add(a1)
+    s.flush()
+
+Above, the previous behavior would be that an UPDATE would emit after the
+INSERT, thus triggering the "onupdate" and overwriting the value
+"5".   The SQL now looks like::
+
+    INSERT INTO a (favorite_b_id, updated) VALUES (?, ?)
+    (None, 5)
+    INSERT INTO b (a_id) VALUES (?)
+    (1,)
+    UPDATE a SET favorite_b_id=?, updated=? WHERE a.id = ?
+    (1, 5, 1)
+
+Additionally, if the value of "updated" is *not* set, then we correctly
+get back the newly generated value on ``a1.updated``; previously, the logic
+that refreshes or expires the attribute to allow the generated value
+to be present would not fire off for a post-update.   The
+:meth:`.SessionEvents.refresh_flush` event is also emitted when a refresh
+within flush occurs in this case.
+
+:ticket:`3471`
+
+:ticket:`3472`
 
 Key Behavioral Changes - Core
 =============================

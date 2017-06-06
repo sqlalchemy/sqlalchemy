@@ -591,7 +591,7 @@ def _collect_post_update_commands(base_mapper, uowtransaction, table,
                         state,
                         state_dict, col, passive=attributes.PASSIVE_OFF)
 
-            elif col in post_update_cols:
+            elif col in post_update_cols or col.onupdate is not None:
                 prop = mapper._columntoproperty[col]
                 history = state.manager[prop.key].impl.get_history(
                     state, state_dict,

@@ -59,14 +59,23 @@
 
     .. change:: 3472
         :tags: bug, orm
-        :tickets: 3472
+        :tickets: 3471, 3472
 
-        Fixed bug involving the :paramref:`.relationship.post_update` feature
-        where a column "onupdate" value would not result in expiration or
-        refresh of the corresponding object attribute, if the UPDATE for the
-        row were a result of the "post update" feature.  Additionally, the
-        :meth:`.SessionEvents.refresh_flush` event is now emitted for these
-        attributes when refreshed within the flush.
+        Repaired several use cases involving the
+        :paramref:`.relationship.post_update` feature when used in conjunction
+        with a column that has an "onupdate" value.   When the UPDATE emits,
+        the corresponding object attribute is now expired or refreshed so that
+        the newly generated "onupdate" value can populate on the object;
+        previously the stale value would remain.  Additionally, if the target
+        attribute is set in Python for the INSERT of the object, the value is
+        now re-sent during the UPDATE so that the "onupdate" does not overwrite
+        it (note this works just as well for server-generated onupdates).
+        Finally, the :meth:`.SessionEvents.refresh_flush` event is now emitted
+        for these attributes when refreshed within the flush.
+
+        .. seealso::
+
+            :ref:`change_3471`
 
     .. change:: 3996
         :tags: bug, orm
