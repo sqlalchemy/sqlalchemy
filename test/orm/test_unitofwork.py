@@ -695,26 +695,6 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         class MyOtherClass(cls.Basic):
             pass
 
-    def test_assertions(self):
-        myothertable, MyOtherClass = (self.tables.myothertable,
-                                      self.classes.MyOtherClass)
-        mytable, MyClass = self.tables.mytable, self.classes.MyClass
-
-        mapper(MyClass, mytable, properties={
-            'foo': relationship(MyOtherClass,
-                                passive_deletes='all',
-                                cascade="all")
-        })
-        mapper(MyOtherClass, myothertable)
-
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "On MyClass.foo, can't set passive_deletes='all' in conjunction "
-            "with 'delete' "
-            "or 'delete-orphan' cascade",
-            sa.orm.configure_mappers
-        )
-
     def test_extra_passive(self):
         myothertable, MyClass, MyOtherClass, mytable = (
             self.tables.myothertable,
@@ -769,6 +749,31 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         session.delete(mc)
         mc.children[0].data = 'some new data'
         assert_raises(sa.exc.DBAPIError, session.flush)
+
+    def test_extra_passive_obj_removed_o2m_still_nulls_out(self):
+        # see #3844, which we decided was not a bug
+        myothertable, MyClass, MyOtherClass, mytable = (
+            self.tables.myothertable,
+            self.classes.MyClass,
+            self.classes.MyOtherClass,
+            self.tables.mytable)
+
+        mapper(MyOtherClass, myothertable)
+        mapper(MyClass, mytable, properties={
+            'children': relationship(MyOtherClass,
+                                  passive_deletes='all')})
+
+        session = create_session()
+        mc = MyClass()
+        moc = MyOtherClass()
+        mc.children.append(moc)
+        session.add_all([mc, moc])
+        session.flush()
+
+        mc.children.remove(moc)
+        session.flush()
+
+        eq_(moc.parent_id, None)
 
     def test_dont_emit(self):
         myothertable, MyClass, MyOtherClass, mytable = (

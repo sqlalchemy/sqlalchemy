@@ -628,13 +628,14 @@ class RelationshipProperty(StrategizedProperty):
            database side.
 
            Additionally, setting the flag to the string value 'all' will
-           disable the "nulling out" of the child foreign keys, when there
-           is no delete or delete-orphan cascade enabled.  This is
-           typically used when a triggering or error raise scenario is in
-           place on the database side.  Note that the foreign key
-           attributes on in-session child objects will not be changed
-           after a flush occurs so this is a very special use-case
-           setting.
+           disable the "nulling out" of the child foreign keys, when the parent
+           object is deleted and there is no delete or delete-orphan cascade
+           enabled.  This is typically used when a triggering or error raise
+           scenario is in place on the database side.  Note that the foreign
+           key attributes on in-session child objects will not be changed after
+           a flush occurs so this is a very special use-case setting.
+           Additionally, the "nulling out" will still occur if the child
+           object is de-associated with the parent.
 
            .. seealso::
 
