@@ -63,7 +63,12 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                     'release build 1080137', (9, 2, 4)),
                 (
                     'PostgreSQL 10devel on x86_64-pc-linux-gnu'
-                    'compiled by gcc (GCC) 6.3.1 20170306, 64-bit', (10,))]:
+                    'compiled by gcc (GCC) 6.3.1 20170306, 64-bit', (10,)),
+                (
+                    'PostgreSQL 10beta1 on x86_64-pc-linux-gnu, '
+                    'compiled by gcc (GCC) 4.8.5 20150623 '
+                    '(Red Hat 4.8.5-11), 64-bit', (10,))
+        ]:
             eq_(testing.db.dialect._get_server_version_info(mock_conn(string)),
                 version)
 

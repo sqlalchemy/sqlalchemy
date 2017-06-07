@@ -21,6 +21,19 @@
 .. changelog::
     :version: 1.1.11
 
+    .. change:: 4005
+        :tags: bug, postgresql
+        :tickets: 4005
+        :versions: 1.2.0b1
+
+        Continuing with the fix that correctly handles Postgresql
+        version string "10devel" released in 1.1.8, an additional regexp
+        bump to handle version strings of the form "10beta1".   While
+        Postgresql now offers better ways to get this information, we
+        are sticking w/ the regexp at least through 1.1.x for the least
+        amount of risk to compatibility w/ older or alternate Postgresql
+        databases.
+
     .. change:: 3994
         :tags: bug, mssql
         :tickets: 3994
