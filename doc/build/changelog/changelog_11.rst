@@ -34,6 +34,15 @@
         amount of risk to compatibility w/ older or alternate Postgresql
         databases.
 
+    .. change:: 4006
+        :tags: bug, postgresql
+        :tickets: 4006
+        :versions: 1.2.0b1
+
+        Fixed bug where using :class:`.ARRAY` with a string type that
+        features a collation would fail to produce the correct syntax
+        within CREATE TABLE.
+
     .. change:: 3994
         :tags: bug, mssql
         :tickets: 3994
