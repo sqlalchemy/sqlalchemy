@@ -1873,9 +1873,15 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return "BYTEA"
 
     def visit_ARRAY(self, type_, **kw):
-        return self.process(type_.item_type) + ('[]' * (type_.dimensions
-                                                        if type_.dimensions
-                                                        is not None else 1))
+
+        # TODO: pass **kw?
+        inner = self.process(type_.item_type)
+        return re.sub(
+            r'((?: COLLATE.*)?)$',
+            (r'[]\1' *
+             (type_.dimensions if type_.dimensions is not None else 1)),
+            inner
+        )
 
 
 class PGIdentifierPreparer(compiler.IdentifierPreparer):

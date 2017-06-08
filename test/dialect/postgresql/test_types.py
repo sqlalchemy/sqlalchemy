@@ -830,6 +830,18 @@ class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
 class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = 'postgresql'
 
+    def test_array_type_render_str(self):
+        self.assert_compile(
+            postgresql.ARRAY(Unicode(30)),
+            "VARCHAR(30)[]"
+        )
+
+    def test_array_type_render_str_collate(self):
+        self.assert_compile(
+            postgresql.ARRAY(Unicode(30, collation="en_US")),
+            'VARCHAR(30)[] COLLATE "en_US"'
+        )
+
     def test_array_int_index(self):
         col = column('x', postgresql.ARRAY(Integer))
         self.assert_compile(
@@ -1064,6 +1076,17 @@ class ArrayRoundTripTest(object):
         assert isinstance(tbl.c.strarr.type, self.ARRAY)
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
+
+    @testing.provide_metadata
+    def test_array_str_collation(self):
+        m = self.metadata
+
+        t = Table(
+            't', m, Column('data',
+                           sqltypes.ARRAY(String(50, collation="en_US")))
+        )
+
+        t.create()
 
     @testing.provide_metadata
     def test_array_agg(self):
