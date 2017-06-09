@@ -9,7 +9,7 @@ from sqlalchemy import Table, MetaData, Column, Integer, Enum, Float, select, \
     func, DateTime, Numeric, exc, String, cast, REAL, TypeDecorator, Unicode, \
     Text, null, text, column, ARRAY, any_, all_
 from sqlalchemy.sql import operators
-from sqlalchemy import types
+from sqlalchemy import types as sqltypes
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import HSTORE, hstore, array, \
@@ -989,7 +989,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_array_agg_generic(self):
         expr = func.array_agg(column('q', Integer))
-        is_(expr.type.__class__, types.ARRAY)
+        is_(expr.type.__class__, sqltypes.ARRAY)
         is_(expr.type.item_type.__class__, Integer)
 
     def test_array_agg_specific(self):
@@ -1446,7 +1446,7 @@ class ArrayRoundTripTest(fixtures.TablesTest, AssertsExecutionResults):
             Column(
                 'data_2',
                 postgresql.ARRAY(
-                    types.Enum('a', 'b', 'c', name='my_enum_2')
+                    sqltypes.Enum('a', 'b', 'c', name='my_enum_2')
                 )
             )
         )
@@ -1565,12 +1565,12 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         # create these types so that we can issue
         # special SQL92 INTERVAL syntax
-        class y2m(types.UserDefinedType, postgresql.INTERVAL):
+        class y2m(sqltypes.UserDefinedType, postgresql.INTERVAL):
 
             def get_col_spec(self):
                 return "INTERVAL YEAR TO MONTH"
 
-        class d2s(types.UserDefinedType, postgresql.INTERVAL):
+        class d2s(sqltypes.UserDefinedType, postgresql.INTERVAL):
 
             def get_col_spec(self):
                 return "INTERVAL DAY TO SECOND"
@@ -1877,7 +1877,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         is_(col['foo'].type.__class__, Text)
 
     def test_ret_type_custom(self):
-        class MyType(types.UserDefinedType):
+        class MyType(sqltypes.UserDefinedType):
             pass
 
         col = column('x', HSTORE(text_type=MyType))
@@ -2562,20 +2562,20 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_path_typing(self):
         col = column('x', JSON())
         is_(
-            col['q'].type._type_affinity, types.JSON
+            col['q'].type._type_affinity, sqltypes.JSON
         )
         is_(
-            col[('q', )].type._type_affinity, types.JSON
+            col[('q', )].type._type_affinity, sqltypes.JSON
         )
         is_(
-            col['q']['p'].type._type_affinity, types.JSON
+            col['q']['p'].type._type_affinity, sqltypes.JSON
         )
         is_(
-            col[('q', 'p')].type._type_affinity, types.JSON
+            col[('q', 'p')].type._type_affinity, sqltypes.JSON
         )
 
     def test_custom_astext_type(self):
-        class MyType(types.UserDefinedType):
+        class MyType(sqltypes.UserDefinedType):
             pass
 
         col = column('x', JSON(astext_type=MyType))
