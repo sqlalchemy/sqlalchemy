@@ -430,6 +430,86 @@ becomes part of the next flush process::
 
 :ticket:`3853`
 
+.. _change_3769:
+
+AssociationProxy any(), has(), contains() work with chained association proxies
+-------------------------------------------------------------------------------
+
+The :meth:`.AssociationProxy.any`, :meth:`.AssociationProxy.has`
+and :meth:`.AssociationProxy.contains` comparison methods now support
+linkage to an attribute that is
+itself also an :class:`.AssociationProxy`, recursively.  Below, ``A.b_values``
+is an association proxy that links to ``AtoB.bvalue``, which is
+itself an association proxy onto ``B``::
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+
+        b_values = association_proxy("atob", "b_value")
+        c_values = association_proxy("atob", "c_value")
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey('a.id'))
+        value = Column(String)
+
+        c = relationship("C")
+
+
+    class C(Base):
+        __tablename__ = 'c'
+        id = Column(Integer, primary_key=True)
+        b_id = Column(ForeignKey('b.id'))
+        value = Column(String)
+
+
+    class AtoB(Base):
+        __tablename__ = 'atob'
+
+        a_id = Column(ForeignKey('a.id'), primary_key=True)
+        b_id = Column(ForeignKey('b.id'), primary_key=True)
+
+        a = relationship("A", backref="atob")
+        b = relationship("B", backref="atob")
+
+        b_value = association_proxy("b", "value")
+        c_value = association_proxy("b", "c")
+
+We can query on ``A.b_values`` using :meth:`.AssociationProxy.contains` to
+query across the two proxies ``A.b_values``, ``AtoB.b_value``:
+
+.. sourcecode:: pycon+sql
+
+    >>> s.query(A).filter(A.b_values.contains('hi')).all()
+    {opensql}SELECT a.id AS a_id
+    FROM a
+    WHERE EXISTS (SELECT 1
+    FROM atob
+    WHERE a.id = atob.a_id AND (EXISTS (SELECT 1
+    FROM b
+    WHERE b.id = atob.b_id AND b.value = :value_1)))
+
+Similarly, we can query on ``A.c_values`` using :meth:`.AssociationProxy.any`
+to query across the two proxies ``A.c_values``, ``AtoB.c_value``:
+
+.. sourcecode:: pycon+sql
+
+    >>> s.query(A).filter(A.c_values.any(value='x')).all()
+    {opensql}SELECT a.id AS a_id
+    FROM a
+    WHERE EXISTS (SELECT 1
+    FROM atob
+    WHERE a.id = atob.a_id AND (EXISTS (SELECT 1
+    FROM b
+    WHERE b.id = atob.b_id AND (EXISTS (SELECT 1
+    FROM c
+    WHERE b.id = c.b_id AND c.value = :value_1)))))
+
+:ticket:`3769`
+
 New Features and Improvements - Core
 ====================================
 

@@ -1260,6 +1260,18 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             # o2m -> scalar
             singular_collection = association_proxy('user_keywords', 'value')
 
+            # uselist assoc_proxy -> assoc_proxy -> obj
+            common_users = association_proxy("user_keywords", "common_users")
+
+            # non uselist assoc_proxy -> assoc_proxy -> obj
+            common_singular = association_proxy("singular", "keyword")
+
+            # non uselist assoc_proxy -> assoc_proxy -> scalar
+            singular_keyword = association_proxy("singular", "keyword")
+
+            # uselist assoc_proxy -> assoc_proxy -> scalar
+            common_keyword_name = association_proxy("user_keywords", "keyword_name")
+
         class Keyword(cls.Comparable):
             def __init__(self, keyword):
                 self.keyword = keyword
@@ -1273,9 +1285,14 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                 self.user = user
                 self.keyword = keyword
 
+            common_users = association_proxy("keyword", "user")
+            keyword_name = association_proxy("keyword", "keyword")
+
         class Singular(cls.Comparable):
             def __init__(self, value=None):
                 self.value = value
+
+            keyword = association_proxy("keywords", "keyword")
 
     @classmethod
     def setup_mappers(cls):
@@ -1555,6 +1572,140 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                 )
         )
 
+    def test_filter_any_chained(self):
+        User = self.classes.User
+
+        UserKeyword, User = self.classes.UserKeyword, self.classes.User
+        Keyword = self.classes.Keyword
+
+        q1 = self.session.query(User).filter(
+            User.common_users.any(User.name == 'user7')
+        )
+        self.assert_compile(
+            q1,
+
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM userkeywords "
+            "WHERE users.id = userkeywords.user_id AND (EXISTS (SELECT 1 "
+            "FROM keywords "
+            "WHERE keywords.id = userkeywords.keyword_id AND (EXISTS (SELECT 1 "
+            "FROM userkeywords "
+            "WHERE keywords.id = userkeywords.keyword_id AND (EXISTS (SELECT 1 "
+            "FROM users "
+            "WHERE users.id = userkeywords.user_id AND users.name = :name_1)))))))",
+            checkparams={'name_1': 'user7'}
+        )
+
+        q2 = self.session.query(User).filter(
+            User.user_keywords.any(
+                UserKeyword.keyword.has(
+                    Keyword.user_keyword.has(
+                        UserKeyword.user.has(
+                            User.name == 'user7'
+                        )
+                    )
+                )))
+        self._equivalent(q1, q2)
+
+    def test_filter_has_chained_has_to_any(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+        Keyword = self.classes.Keyword
+
+        q1 = self.session.query(User).filter(
+            User.common_singular.has(Keyword.keyword == 'brown')
+        )
+        self.assert_compile(
+            q1,
+
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM singular "
+            "WHERE singular.id = users.singular_id AND (EXISTS (SELECT 1 "
+            "FROM keywords "
+            "WHERE singular.id = keywords.singular_id AND "
+            "keywords.keyword = :keyword_1)))",
+            checkparams={'keyword_1': 'brown'}
+        )
+
+        q2 = self.session.query(User).filter(
+            User.singular.has(
+                Singular.keywords.any(Keyword.keyword == 'brown')))
+        self._equivalent(q1, q2)
+
+    def test_filter_has_scalar_raises(self):
+        User = self.classes.User
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Can't apply keyword arguments to column-targeted",
+            User.singular_keyword.has, keyword="brown"
+        )
+
+    def test_filter_contains_chained_has_to_any(self):
+        User = self.classes.User
+        Keyword = self.classes.Keyword
+        Singular = self.classes.Singular
+
+        q1 = self.session.query(User).filter(
+            User.singular_keyword.contains("brown")
+        )
+        self.assert_compile(
+            q1,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM singular "
+            "WHERE singular.id = users.singular_id AND (EXISTS (SELECT 1 "
+            "FROM keywords "
+            "WHERE singular.id = keywords.singular_id "
+            "AND keywords.keyword = :keyword_1)))",
+            checkparams={'keyword_1': 'brown'}
+        )
+        q2 = self.session.query(User).filter(
+            User.singular.has(
+                Singular.keywords.any(
+                    Keyword.keyword == 'brown'
+                )
+            )
+        )
+
+        self._equivalent(q1, q2)
+
+    def test_filter_contains_chained_any_to_has(self):
+        User = self.classes.User
+        Keyword = self.classes.Keyword
+        UserKeyword = self.classes.UserKeyword
+
+        q1 = self.session.query(User).filter(
+            User.common_keyword_name.contains("brown")
+        )
+        self.assert_compile(
+            q1,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM userkeywords "
+            "WHERE users.id = userkeywords.user_id AND (EXISTS (SELECT 1 "
+            "FROM keywords "
+            "WHERE keywords.id = userkeywords.keyword_id AND "
+            "keywords.keyword = :keyword_1)))",
+            checkparams={'keyword_1': 'brown'}
+        )
+
+        q2 = self.session.query(User).filter(
+            User.user_keywords.any(
+                UserKeyword.keyword.has(Keyword.keyword == "brown")
+            )
+        )
+        self._equivalent(q1, q2)
+
     def test_has_criterion_nul(self):
         # but we don't allow that with any criterion...
         User = self.classes.User
@@ -1574,7 +1725,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            r"Non-empty has\(\) not allowed",
+            r"Can't apply keyword arguments to column-targeted",
             User.singular_value.has, singular_value="singular4"
         )
 

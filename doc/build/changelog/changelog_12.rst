@@ -13,6 +13,19 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3769
+        :tags: bug, ext
+        :tickets: 3769
+
+        The :meth:`.AssociationProxy.any`, :meth:`.AssociationProxy.has`
+        and :meth:`.AssociationProxy.contains` comparison methods now support
+        linkage to an attribute that is itself also an
+        :class:`.AssociationProxy`, recursively.
+
+        .. seealso::
+
+            :ref:`change_3769`
+
     .. change:: 3853
         :tags: bug, ext
         :tickets: 3853

@@ -363,6 +363,41 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
     def _comparator(self):
         return self._get_property().comparator
 
+    @util.memoized_property
+    def _unwrap_target_assoc_proxy(self):
+        attr = getattr(self.target_class, self.value_attr)
+        if isinstance(attr, AssociationProxy):
+            return attr
+        return None
+
+    def _criterion_exists(self, criterion=None, **kwargs):
+        is_has = kwargs.pop('is_has', None)
+
+        target_assoc = self._unwrap_target_assoc_proxy
+        if target_assoc is not None:
+            inner = target_assoc._criterion_exists(
+                criterion=criterion, **kwargs)
+            return self._comparator._criterion_exists(inner)
+
+        if self._target_is_object:
+            prop = getattr(self.target_class, self.value_attr)
+            value_expr = prop._criterion_exists(criterion, **kwargs)
+        else:
+            if kwargs:
+                raise exc.ArgumentError(
+                    "Can't apply keyword arguments to column-targeted "
+                    "association proxy; use =="
+                )
+            elif is_has and criterion is not None:
+                raise exc.ArgumentError(
+                    "Non-empty has() not allowed for "
+                    "column-targeted association proxy; use =="
+                )
+
+            value_expr = criterion
+
+        return self._comparator._criterion_exists(value_expr)
+
     def any(self, criterion=None, **kwargs):
         """Produce a proxied 'any' expression using EXISTS.
 
@@ -372,29 +407,16 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         operators of the underlying proxied attributes.
 
         """
-        if self._target_is_object:
-            if self._value_is_scalar:
-                value_expr = getattr(
-                    self.target_class, self.value_attr).has(
-                    criterion, **kwargs)
-            else:
-                value_expr = getattr(
-                    self.target_class, self.value_attr).any(
-                    criterion, **kwargs)
-        else:
-            value_expr = criterion
-
-        # check _value_is_scalar here, otherwise
-        # we're scalar->scalar - call .any() so that
-        # the "can't call any() on a scalar" msg is raised.
-        if self.scalar and not self._value_is_scalar:
-            return self._comparator.has(
-                value_expr
+        if self._unwrap_target_assoc_proxy is None and (
+            self.scalar and (
+                not self._target_is_object or self._value_is_scalar)
+        ):
+            raise exc.InvalidRequestError(
+                "'any()' not implemented for scalar "
+                "attributes. Use has()."
             )
-        else:
-            return self._comparator.any(
-                value_expr
-            )
+        return self._criterion_exists(
+            criterion=criterion, is_has=False, **kwargs)
 
     def has(self, criterion=None, **kwargs):
         """Produce a proxied 'has' expression using EXISTS.
@@ -405,18 +427,15 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         operators of the underlying proxied attributes.
 
         """
-
-        if self._target_is_object:
-            return self._comparator.has(
-                getattr(self.target_class, self.value_attr).
-                has(criterion, **kwargs)
-            )
-        else:
-            if criterion is not None or kwargs:
-                raise exc.ArgumentError(
-                    "Non-empty has() not allowed for "
-                    "column-targeted association proxy; use ==")
-            return self._comparator.has()
+        if self._unwrap_target_assoc_proxy is None and (
+                not self.scalar or (
+                self._target_is_object and not self._value_is_scalar)
+        ):
+            raise exc.InvalidRequestError(
+                "'has()' not implemented for collections.  "
+                "Use any().")
+        return self._criterion_exists(
+            criterion=criterion, is_has=True, **kwargs)
 
     def contains(self, obj):
         """Produce a proxied 'contains' expression using EXISTS.
@@ -428,12 +447,23 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         operators of the underlying proxied attributes.
         """
 
-        if self.scalar and not self._value_is_scalar:
+        target_assoc = self._unwrap_target_assoc_proxy
+        if target_assoc is not None:
+            return self._comparator._criterion_exists(
+                target_assoc.contains(obj)
+            )
+        elif self._target_is_object and self.scalar and \
+                not self._value_is_scalar:
             return self._comparator.has(
                 getattr(self.target_class, self.value_attr).contains(obj)
             )
+        elif self._target_is_object and self.scalar and \
+                self._value_is_scalar:
+            raise exc.InvalidRequestError(
+                "contains() doesn't apply to a scalar endpoint; use ==")
         else:
-            return self._comparator.any(**{self.value_attr: obj})
+
+            return self._comparator._criterion_exists(**{self.value_attr: obj})
 
     def __eq__(self, obj):
         # note the has() here will fail for collections; eq_()
@@ -452,6 +482,8 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         return self._comparator.has(
             getattr(self.target_class, self.value_attr) != obj)
 
+    def __repr__(self):
+        return "AssociationProxy(%r, %r)" % (self.target_collection, self.value_attr)
 
 class _lazy_collection(object):
     def __init__(self, obj, target):
