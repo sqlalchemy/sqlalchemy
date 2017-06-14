@@ -264,7 +264,7 @@ class UOWTransaction(object):
                 self.states[state] = (isdelete, False)
         return True
 
-    def issue_post_update(self, state, post_update_cols):
+    def register_post_update(self, state, post_update_cols):
         mapper = state.manager.mapper.base_mapper
         states, cols = self.post_update_states[mapper]
         states.add(state)
@@ -424,6 +424,11 @@ class IterateMappersMixin(object):
 
 
 class Preprocess(IterateMappersMixin):
+    __slots__ = (
+        'dependency_processor', 'fromparent', 'processed',
+        'setup_flush_actions'
+    )
+
     def __init__(self, dependency_processor, fromparent):
         self.dependency_processor = dependency_processor
         self.fromparent = fromparent
@@ -465,7 +470,7 @@ class Preprocess(IterateMappersMixin):
 
 
 class PostSortRec(object):
-    disabled = False
+    __slots__ = 'disabled',
 
     def __new__(cls, uow, *args):
         key = (cls, ) + args
@@ -475,29 +480,26 @@ class PostSortRec(object):
             uow.postsort_actions[key] = \
                 ret = \
                 object.__new__(cls)
+            ret.disabled = False
             return ret
 
     def execute_aggregate(self, uow, recs):
         self.execute(uow)
 
-    def __repr__(self):
-        return "%s(%s)" % (
-            self.__class__.__name__,
-            ",".join(str(x) for x in self.__dict__.values())
-        )
-
 
 class ProcessAll(IterateMappersMixin, PostSortRec):
-    def __init__(self, uow, dependency_processor, delete, fromparent):
+    __slots__ = 'dependency_processor', 'isdelete', 'fromparent'
+
+    def __init__(self, uow, dependency_processor, isdelete, fromparent):
         self.dependency_processor = dependency_processor
-        self.delete = delete
+        self.isdelete = isdelete
         self.fromparent = fromparent
         uow.deps[dependency_processor.parent.base_mapper].\
             add(dependency_processor)
 
     def execute(self, uow):
         states = self._elements(uow)
-        if self.delete:
+        if self.isdelete:
             self.dependency_processor.process_deletes(uow, states)
         else:
             self.dependency_processor.process_saves(uow, states)
@@ -510,21 +512,23 @@ class ProcessAll(IterateMappersMixin, PostSortRec):
         return iter([])
 
     def __repr__(self):
-        return "%s(%s, delete=%s)" % (
+        return "%s(%s, isdelete=%s)" % (
             self.__class__.__name__,
             self.dependency_processor,
-            self.delete
+            self.isdelete
         )
 
     def _elements(self, uow):
         for mapper in self._mappers(uow):
             for state in uow.mappers[mapper]:
                 (isdelete, listonly) = uow.states[state]
-                if isdelete == self.delete and not listonly:
+                if isdelete == self.isdelete and not listonly:
                     yield state
 
 
-class IssuePostUpdate(PostSortRec):
+class PostUpdateAll(PostSortRec):
+    __slots__ = 'mapper', 'isdelete'
+
     def __init__(self, uow, mapper, isdelete):
         self.mapper = mapper
         self.isdelete = isdelete
@@ -537,6 +541,8 @@ class IssuePostUpdate(PostSortRec):
 
 
 class SaveUpdateAll(PostSortRec):
+    __slots__ = 'mapper',
+
     def __init__(self, uow, mapper):
         self.mapper = mapper
         assert mapper is mapper.base_mapper
@@ -556,7 +562,7 @@ class SaveUpdateAll(PostSortRec):
         for state in states:
             # keep saves before deletes -
             # this ensures 'row switch' operations work
-            action = SaveUpdateState(uow, state, base_mapper)
+            action = SaveUpdateState(uow, state)
             uow.dependencies.add((action, delete_all))
             yield action
 
@@ -564,8 +570,16 @@ class SaveUpdateAll(PostSortRec):
             states_for_prop = uow.filter_states_for_dep(dep, states)
             dep.per_state_flush_actions(uow, states_for_prop, False)
 
+    def __repr__(self):
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            self.mapper
+        )
+
 
 class DeleteAll(PostSortRec):
+    __slots__ = 'mapper',
+
     def __init__(self, uow, mapper):
         self.mapper = mapper
         assert mapper is mapper.base_mapper
@@ -585,7 +599,7 @@ class DeleteAll(PostSortRec):
         for state in states:
             # keep saves before deletes -
             # this ensures 'row switch' operations work
-            action = DeleteState(uow, state, base_mapper)
+            action = DeleteState(uow, state)
             uow.dependencies.add((save_all, action))
             yield action
 
@@ -593,24 +607,32 @@ class DeleteAll(PostSortRec):
             states_for_prop = uow.filter_states_for_dep(dep, states)
             dep.per_state_flush_actions(uow, states_for_prop, True)
 
+    def __repr__(self):
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            self.mapper
+        )
+
 
 class ProcessState(PostSortRec):
-    def __init__(self, uow, dependency_processor, delete, state):
+    __slots__ = 'dependency_processor', 'isdelete', 'state'
+
+    def __init__(self, uow, dependency_processor, isdelete, state):
         self.dependency_processor = dependency_processor
-        self.delete = delete
+        self.isdelete = isdelete
         self.state = state
 
     def execute_aggregate(self, uow, recs):
         cls_ = self.__class__
         dependency_processor = self.dependency_processor
-        delete = self.delete
+        isdelete = self.isdelete
         our_recs = [r for r in recs
                     if r.__class__ is cls_ and
                     r.dependency_processor is dependency_processor and
-                    r.delete is delete]
+                    r.isdelete is isdelete]
         recs.difference_update(our_recs)
         states = [self.state] + [r.state for r in our_recs]
-        if delete:
+        if isdelete:
             dependency_processor.process_deletes(uow, states)
         else:
             dependency_processor.process_saves(uow, states)
@@ -620,14 +642,16 @@ class ProcessState(PostSortRec):
             self.__class__.__name__,
             self.dependency_processor,
             orm_util.state_str(self.state),
-            self.delete
+            self.isdelete
         )
 
 
 class SaveUpdateState(PostSortRec):
-    def __init__(self, uow, state, mapper):
+    __slots__ = 'state', 'mapper'
+
+    def __init__(self, uow, state):
         self.state = state
-        self.mapper = mapper
+        self.mapper = state.mapper.base_mapper
 
     def execute_aggregate(self, uow, recs):
         cls_ = self.__class__
@@ -649,9 +673,11 @@ class SaveUpdateState(PostSortRec):
 
 
 class DeleteState(PostSortRec):
-    def __init__(self, uow, state, mapper):
+    __slots__ = 'state', 'mapper'
+
+    def __init__(self, uow, state):
         self.state = state
-        self.mapper = mapper
+        self.mapper = state.mapper.base_mapper
 
     def execute_aggregate(self, uow, recs):
         cls_ = self.__class__

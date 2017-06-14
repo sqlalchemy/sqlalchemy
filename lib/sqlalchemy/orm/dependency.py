@@ -105,7 +105,6 @@ class DependencyProcessor(object):
 
         """
 
-        parent_base_mapper = self.parent.primary_base_mapper
         child_base_mapper = self.mapper.primary_base_mapper
         child_saves = unitofwork.SaveUpdateAll(uow, child_base_mapper)
         child_deletes = unitofwork.DeleteAll(uow, child_base_mapper)
@@ -173,17 +172,11 @@ class DependencyProcessor(object):
                 before_delete = unitofwork.ProcessState(uow,
                                                         self, True, state)
                 if parent_in_cycles:
-                    parent_deletes = unitofwork.DeleteState(
-                        uow,
-                        state,
-                        parent_base_mapper)
+                    parent_deletes = unitofwork.DeleteState(uow, state)
             else:
                 after_save = unitofwork.ProcessState(uow, self, False, state)
                 if parent_in_cycles:
-                    parent_saves = unitofwork.SaveUpdateState(
-                        uow,
-                        state,
-                        parent_base_mapper)
+                    parent_saves = unitofwork.SaveUpdateState(uow, state)
 
             if child_in_cycles:
                 child_actions = []
@@ -194,15 +187,11 @@ class DependencyProcessor(object):
                         (deleted, listonly) = uow.states[child_state]
                         if deleted:
                             child_action = (
-                                unitofwork.DeleteState(
-                                    uow, child_state,
-                                    child_base_mapper),
+                                unitofwork.DeleteState(uow, child_state),
                                 True)
                         else:
                             child_action = (
-                                unitofwork.SaveUpdateState(
-                                    uow, child_state,
-                                    child_base_mapper),
+                                unitofwork.SaveUpdateState(uow, child_state),
                                 False)
                     child_actions.append(child_action)
 
@@ -306,7 +295,7 @@ class DependencyProcessor(object):
     def _post_update(self, state, uowcommit, related, is_m2o_delete=False):
         for x in related:
             if not is_m2o_delete or x is not None:
-                uowcommit.issue_post_update(
+                uowcommit.register_post_update(
                     state,
                     [r for l, r in self.prop.synchronize_pairs]
                 )
@@ -329,11 +318,11 @@ class OneToManyDP(DependencyProcessor):
                                   before_delete,
                                   ):
         if self.post_update:
-            child_post_updates = unitofwork.IssuePostUpdate(
+            child_post_updates = unitofwork.PostUpdateAll(
                 uow,
                 self.mapper.primary_base_mapper,
                 False)
-            child_pre_updates = unitofwork.IssuePostUpdate(
+            child_pre_updates = unitofwork.PostUpdateAll(
                 uow,
                 self.mapper.primary_base_mapper,
                 True)
@@ -370,11 +359,11 @@ class OneToManyDP(DependencyProcessor):
 
         if self.post_update:
 
-            child_post_updates = unitofwork.IssuePostUpdate(
+            child_post_updates = unitofwork.PostUpdateAll(
                 uow,
                 self.mapper.primary_base_mapper,
                 False)
-            child_pre_updates = unitofwork.IssuePostUpdate(
+            child_pre_updates = unitofwork.PostUpdateAll(
                 uow,
                 self.mapper.primary_base_mapper,
                 True)
@@ -600,11 +589,11 @@ class ManyToOneDP(DependencyProcessor):
                                   before_delete):
 
         if self.post_update:
-            parent_post_updates = unitofwork.IssuePostUpdate(
+            parent_post_updates = unitofwork.PostUpdateAll(
                 uow,
                 self.parent.primary_base_mapper,
                 False)
-            parent_pre_updates = unitofwork.IssuePostUpdate(
+            parent_pre_updates = unitofwork.PostUpdateAll(
                 uow,
                 self.parent.primary_base_mapper,
                 True)
@@ -637,7 +626,7 @@ class ManyToOneDP(DependencyProcessor):
         if self.post_update:
 
             if not isdelete:
-                parent_post_updates = unitofwork.IssuePostUpdate(
+                parent_post_updates = unitofwork.PostUpdateAll(
                     uow,
                     self.parent.primary_base_mapper,
                     False)
@@ -654,7 +643,7 @@ class ManyToOneDP(DependencyProcessor):
                         (after_save, parent_post_updates)
                     ])
             else:
-                parent_pre_updates = unitofwork.IssuePostUpdate(
+                parent_pre_updates = unitofwork.PostUpdateAll(
                     uow,
                     self.parent.primary_base_mapper,
                     True)
