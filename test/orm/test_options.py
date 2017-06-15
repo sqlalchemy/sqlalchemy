@@ -607,21 +607,6 @@ class FromSubclassOptionsTest(PathTest, fixtures.DeclarativeMappedTest):
             __tablename__ = 'sub_related'
             id = Column(Integer, primary_key=True)
 
-    def _assert_path_result(self, opt, q, paths):
-        q._attributes = q._attributes.copy()
-        attr = {}
-
-        for val in opt._to_bind:
-            val._bind_loader(
-                [ent.entity_zero for ent in q._mapper_entities],
-                q._current_path, attr, False)
-
-        assert_paths = [k[1] for k in attr]
-        eq_(
-            set([p for p in assert_paths]),
-            set([self._make_path(p) for p in paths])
-        )
-
     def test_with_current_nonmatching_entity_subclasses(self):
         BaseCls, SubClass, Related, SubRelated = self.classes(
             'BaseCls', 'SubClass', 'Related', 'SubRelated')
