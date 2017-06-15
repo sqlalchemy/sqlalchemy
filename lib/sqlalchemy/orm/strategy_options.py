@@ -472,7 +472,7 @@ class _UnboundLoad(Load):
 
     def _chop_path(self, to_chop, path):
         i = -1
-        for i, (c_token, (p_mapper, p_prop)) in enumerate(
+        for i, (c_token, (p_entity, p_prop)) in enumerate(
                 zip(to_chop, path.pairs())):
             if isinstance(c_token, util.string_types):
                 if i == 0 and c_token.endswith(':' + _DEFAULT_TOKEN):
@@ -482,7 +482,12 @@ class _UnboundLoad(Load):
                     return None
             elif isinstance(c_token, PropComparator):
                 if c_token.property is not p_prop or \
-                        c_token._parententity is not p_mapper:
+                        (
+                            c_token._parententity is not p_entity and (
+                                not c_token._parententity.is_mapper or
+                                not c_token._parententity.isa(p_entity)
+                            )
+                        ):
                     return None
         else:
             i += 1
