@@ -44,6 +44,10 @@ class Paperwork(fixtures.ComparableEntity):
     pass
 
 
+class Page(fixtures.ComparableEntity):
+    pass
+
+
 class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
     run_inserts = 'once'
     run_setup_mappers = 'once'

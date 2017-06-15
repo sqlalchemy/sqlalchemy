@@ -29,6 +29,21 @@
         Fixed AttributeError which would occur in :class:`.WithinGroup`
         construct during an iteration of the structure.
 
+    .. change:: 4011
+        :tags: bug, orm
+        :tickets: 4011
+        :versions: 1.2.0b1
+
+        Fixed issue with subquery eagerloading which continues on from
+        the series of issues fixed in :ticket:`2699`, :ticket:`3106`,
+        :ticket:`3893` involving that the "subquery" contains the correct
+        FROM clause when beginning from a joined inheritance subclass
+        and then subquery eager loading onto a relationship from
+        the base class, while the query also includes criteria against
+        the subclass. The fix in the previous tickets did not accommodate
+        for additional subqueryload operations loading more deeply from
+        the first level, so the fix has been further generalized.
+
     .. change:: 4005
         :tags: bug, postgresql
         :tickets: 4005
