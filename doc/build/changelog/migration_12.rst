@@ -1270,6 +1270,42 @@ itself will also be present::
 Dialect Improvements and Changes - MySQL
 ========================================
 
+.. _change_4009:
+
+Support for INSERT..ON DUPLICATE KEY UPDATE
+-------------------------------------------
+
+The ``ON DUPLICATE KEY UPDATE`` clause of ``INSERT`` supported by MySQL
+is now supported using a MySQL-specific version of the
+:class:`.Insert` object, via :func:`sqlalchemy.dialects.mysql.dml.insert`.
+This :class:`.Insert` subclass adds a new method
+:meth:`.Insert.on_duplicate_key_update` that implements MySQL's syntax::
+
+    from sqlalchemy.dialect.mysql import insert
+
+    insert_stmt = insert(my_table). \\
+        values(id='some_id', data='some data to insert')
+
+    on_conflict_stmt = insert_stmt.on_duplicate_key_update(
+        data=stmt.values.data,
+        status='U'
+    )
+
+    conn.execute(do_update_stmt)
+
+The above will render::
+
+    INSERT INTO my_table (id, data)
+    VALUES (:id, :data)
+    ON DUPLICATE KEY UPDATE data=VALUES(data), status=:status_1
+
+.. seealso::
+
+    :ref:`mysql_insert_on_duplicate_key_update`
+
+:ticket:`4009`
+
+
 Dialect Improvements and Changes - SQLite
 =========================================
 

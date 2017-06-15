@@ -10,12 +10,11 @@ from sqlalchemy import Table, MetaData, Column, select, String, \
     DateTime, Time, Date, Interval, NCHAR, CHAR, CLOB, TEXT, Boolean, \
     BOOLEAN, LargeBinary, BLOB, SmallInteger, INT, func, cast
 
+from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
-from sqlalchemy.testing import mock
-from sqlalchemy import testing
 from sqlalchemy.sql import table, column
-import re
+from sqlalchemy.sql.expression import literal_column
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -691,3 +690,46 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             t1.outerjoin(t2, t1.c.x == t2.c.y, full=True),
             "t1 FULL OUTER JOIN t2 ON t1.x = t2.y"
         )
+
+
+class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mysql.dialect()
+
+    def setup(self):
+        self.table = Table(
+            'foos', MetaData(),
+            Column('id', Integer, primary_key=True),
+            Column('bar', String(10)),
+            Column('baz', String(10)),
+        )
+
+    def test_from_values(self):
+        stmt = insert(
+            self.table, [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
+        stmt = stmt.on_duplicate_key_update(
+            bar=stmt.values.bar, baz=stmt.values.baz)
+        expected_sql = (
+            'INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) '
+            'ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)'
+        )
+        self.assert_compile(stmt, expected_sql)
+
+    def test_from_literal(self):
+        stmt = insert(
+            self.table, [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
+        stmt = stmt.on_duplicate_key_update(bar=literal_column('bb'))
+        expected_sql = (
+            'INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) '
+            'ON DUPLICATE KEY UPDATE bar = bb'
+        )
+        self.assert_compile(stmt, expected_sql)
+
+    def test_python_values(self):
+        stmt = insert(
+            self.table, [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
+        stmt = stmt.on_duplicate_key_update(bar="foobar")
+        expected_sql = (
+            'INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) '
+            'ON DUPLICATE KEY UPDATE bar = %s'
+        )
+        self.assert_compile(stmt, expected_sql)

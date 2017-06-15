@@ -307,6 +307,8 @@ And of course any valid MySQL statement can be executed as a string as well.
 Some limited direct support for MySQL extensions to SQL is currently
 available.
 
+* INSERT..ON DUPLICATE KEY UPDATE:  See :ref:`mysql_insert_on_duplicate_key_update`
+
 * SELECT pragma::
 
     select(..., prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
@@ -314,6 +316,87 @@ available.
 * UPDATE with LIMIT::
 
     update(..., mysql_limit=10)
+
+.. _mysql_insert_on_duplicate_key_update:
+
+INSERT...ON DUPLICATE KEY UPDATE (Upsert)
+------------------------------------------
+
+MySQL allows "upserts" (update or insert)
+of rows into a table via the ``ON DUPLICATE KEY UPDATE`` clause of the
+``INSERT`` statement.  A candidate row will only be inserted if that row does
+not match an existing primary or unique key in the table; otherwise, an UPDATE will
+be performed.   The statement allows for separate specification of the
+values to INSERT versus the values for UPDATE.
+
+SQLAlchemy provides ``ON DUPLICATE KEY UPDATE`` support via the MySQL-specific
+:func:`.mysql.dml.insert()` function, which provides
+the generative method :meth:`~.mysql.dml.Insert.on_duplicate_key_update`::
+
+    from sqlalchemy.dialects.mysql import insert
+
+    insert_stmt = insert(my_table).values(
+        id='some_existing_id',
+        data='inserted value')
+
+    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+        data=insert_stmt.values.data,
+        status='U'
+    )
+
+    conn.execute(on_duplicate_key_stmt)
+
+Unlike Postgresql's "ON CONFLICT" phrase, the "ON DUPLICATE KEY UPDATE"
+phrase will always match on any primary key or unique key, and will always
+perform an UPDATE if there's a match; there are no options for it to raise
+an error or to skip performing an UPDATE.
+
+``ON DUPLICATE KEY UPDATE`` is used to perform an update of the already
+existing row, using any combination of new values as well as values
+from the proposed insertion.   These values are specified using
+keyword arguments passed to the
+:meth:`~.mysql.dml.Insert.on_duplicate_key_update`
+given column key values (usually the name of the column, unless it
+specifies :paramref:`.Column.key`) as keys and literal or SQL expressions
+as values::
+
+    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+        data="some data"
+        updated_at=func.current_timestamp()
+    )
+
+.. warning::
+
+    The :meth:`.Insert.on_duplicate_key_update` method does **not** take into
+    account Python-side default UPDATE values or generation functions, e.g.
+    e.g. those specified using :paramref:`.Column.onupdate`.
+    These values will not be exercised for an ON DUPLICATE KEY style of UPDATE,
+    unless they are manually specified explicitly in the parameters.
+
+In order to refer to the proposed insertion row, the special alias
+:attr:`~.mysql.dml.Insert.values` is available as an attribute on
+the :class:`.mysql.dml.Insert` object; this object is a
+:class:`.ColumnCollection` which contains all columns of the target
+table::
+
+    from sqlalchemy.dialects.mysql import insert
+
+    stmt = insert(my_table).values(
+        id='some_id',
+        data='inserted value',
+        author='jlh')
+    do_update_stmt = stmt.on_duplicate_key_update(
+        data="updated value",
+        author=stmt.values.author
+    )
+    conn.execute(do_update_stmt)
+
+When rendered, the "values" namespace will produce the expression
+``VALUES(<columnname>)``.
+
+.. versionadded:: 1.2 Added support for MySQL ON DUPLICATE KEY UPDATE clause
+
+
 
 rowcount Support
 ----------------
@@ -813,6 +896,42 @@ class MySQLCompiler(compiler.SQLCompiler):
         return "JSON_EXTRACT(%s, %s)" % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw))
+
+    def visit_on_duplicate_key_update(self, on_duplicate, **kw):
+        cols = self.statement.table.c
+
+        clauses = []
+        # traverse in table column order
+        for column in cols:
+            val = on_duplicate.update.get(column.key)
+            if val is None:
+                continue
+            elif elements._is_literal(val):
+                val = elements.BindParameter(None, val, type_=column.type)
+                value_text = self.process(val.self_group(), use_schema=False)
+            elif isinstance(val, elements.BindParameter) and val.type._isnull:
+                val = val._clone()
+                val.type = column.type
+                value_text = self.process(val.self_group(), use_schema=False)
+            elif isinstance(val, elements.ColumnClause) \
+                    and val.table is on_duplicate.values_alias:
+                value_text = 'VALUES(' + self.preparer.quote(column.name) + ')'
+            else:
+                value_text = self.process(val.self_group(), use_schema=False)
+            name_text = self.preparer.quote(column.name)
+            clauses.append("%s = %s" % (name_text, value_text))
+
+        non_matching = set(on_duplicate.update) - set(cols.keys())
+        if non_matching:
+            util.warn(
+                'Additional column names not matching '
+                "any column keys in table '%s': %s" % (
+                    self.statement.table.name,
+                    (', '.join("'%s'" % c for c in non_matching))
+                )
+            )
+
+        return 'ON DUPLICATE KEY UPDATE ' + ', '.join(clauses)
 
     def visit_concat_op_binary(self, binary, operator, **kw):
         return "concat(%s, %s)" % (self.process(binary.left),

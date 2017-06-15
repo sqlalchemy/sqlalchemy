@@ -13,6 +13,18 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 4009
+        :tags: feature, mysql
+        :tickets: 4009
+
+        Added support for MySQL's ON DUPLICATE KEY UPDATE
+        MySQL-specific :class:`.mysql.dml.Insert` object.
+        Pull request courtesy Michael Doronin.
+
+        .. seealso::
+
+            :ref:`change_4009`
+
     .. change:: 4018
         :tags: bug, sql
         :tickets: 4018

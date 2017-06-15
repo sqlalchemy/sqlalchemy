@@ -156,6 +156,15 @@ construction arguments, are as follows:
 .. autoclass:: YEAR
     :members: __init__
 
+MySQL DML Constructs
+-------------------------
+
+.. autofunction:: sqlalchemy.dialects.mysql.dml.insert
+
+.. autoclass:: sqlalchemy.dialects.mysql.dml.Insert
+  :members:
+
+
 
 MySQL-Python
 ------------
