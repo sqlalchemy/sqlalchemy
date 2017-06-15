@@ -533,7 +533,7 @@ class FromSubclassOptionsTest(PathTest, fixtures.DeclarativeMappedTest):
             __tablename__ = 'basecls'
             id = Column(Integer, primary_key=True)
 
-            type = Column(String)
+            type = Column(String(30))
             related_id = Column(ForeignKey('related.id'))
             related = relationship("Related")
 
