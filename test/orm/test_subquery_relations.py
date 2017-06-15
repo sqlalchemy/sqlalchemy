@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import with_polymorphic
 
 from .inheritance._poly_fixtures import _Polymorphic, Person, Engineer, \
-    Paperwork, Machine, MachineType, Company
+    Paperwork, Page, Machine, MachineType, Company
 
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
@@ -1042,11 +1042,20 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                           Column('person_id', Integer,
                                  ForeignKey('people.person_id')))
 
+        pages = Table(
+            'pages', metadata,
+            Column('page_id',
+                   Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('stuff', String(50)),
+            Column('paperwork_id', ForeignKey('paperwork.paperwork_id'))
+        )
+
     @classmethod
     def setup_mappers(cls):
         people = cls.tables.people
         engineers = cls.tables.engineers
         paperwork = cls.tables.paperwork
+        pages = cls.tables.pages
 
         mapper(Person, people,
                polymorphic_on=people.c.type,
@@ -1059,15 +1068,26 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                inherits=Person,
                polymorphic_identity='engineer')
 
-        mapper(Paperwork, paperwork)
+        mapper(Paperwork, paperwork, properties={
+            'pages': relationship(Page, order_by=pages.c.page_id)
+        })
+
+        mapper(Page, pages)
 
     @classmethod
     def insert_data(cls):
 
         e1 = Engineer(primary_language="java")
         e2 = Engineer(primary_language="c++")
-        e1.paperwork = [Paperwork(description="tps report #1"),
-                        Paperwork(description="tps report #2")]
+        e1.paperwork = [Paperwork(description="tps report #1",
+                                  pages=[
+                                      Page(stuff='report1 page1'),
+                                      Page(stuff='report1 page2')
+                                  ]),
+                        Paperwork(description="tps report #2",
+                                  pages=[
+                                      Page(stuff='report2 page1'),
+                                      Page(stuff='report2 page2')])]
         e2.paperwork = [Paperwork(description="tps report #3")]
         sess = create_session()
         sess.add_all([e1, e2])
@@ -1169,6 +1189,69 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
                 {"primary_language_1": "java",
                     "description_1": "tps report #2"}
+            )
+        )
+
+    def test_correct_subquery_multilevel(self):
+        sess = create_session()
+        # use Person.paperwork here just to give the least
+        # amount of context
+        q = sess.query(Engineer).\
+            filter(Engineer.primary_language == 'java').\
+            options(
+                subqueryload(Engineer.paperwork).subqueryload(Paperwork.pages))
+
+        def go():
+            eq_(q.one().paperwork,
+                [Paperwork(description="tps report #1",
+                           pages=[Page(stuff='report1 page1'),
+                                  Page(stuff='report1 page2')]),
+                 Paperwork(description="tps report #2",
+                           pages=[Page(stuff='report2 page1'),
+                                  Page(stuff='report2 page2')])],
+
+                )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT people.person_id AS people_person_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.engineer_id AS engineers_engineer_id, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people JOIN engineers "
+                "ON people.person_id = engineers.engineer_id "
+                "WHERE engineers.primary_language = :primary_language_1",
+                {"primary_language_1": "java"}
+            ),
+            CompiledSQL(
+                "SELECT paperwork.paperwork_id AS paperwork_paperwork_id, "
+                "paperwork.description AS paperwork_description, "
+                "paperwork.person_id AS paperwork_person_id, "
+                "anon_1.people_person_id AS anon_1_people_person_id "
+                "FROM (SELECT people.person_id AS people_person_id "
+                "FROM people JOIN engineers "
+                "ON people.person_id = engineers.engineer_id "
+                "WHERE engineers.primary_language = :primary_language_1) "
+                "AS anon_1 JOIN paperwork "
+                "ON anon_1.people_person_id = paperwork.person_id "
+                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
+                {"primary_language_1": "java"}
+            ),
+            CompiledSQL(
+                "SELECT pages.page_id AS pages_page_id, "
+                "pages.stuff AS pages_stuff, "
+                "pages.paperwork_id AS pages_paperwork_id, "
+                "paperwork_1.paperwork_id AS paperwork_1_paperwork_id "
+                "FROM (SELECT people.person_id AS people_person_id "
+                "FROM people JOIN engineers ON people.person_id = "
+                "engineers.engineer_id "
+                "WHERE engineers.primary_language = :primary_language_1) "
+                "AS anon_1 JOIN paperwork AS paperwork_1 "
+                "ON anon_1.people_person_id = paperwork_1.person_id "
+                "JOIN pages ON paperwork_1.paperwork_id = pages.paperwork_id "
+                "ORDER BY paperwork_1.paperwork_id, pages.page_id",
+                {"primary_language_1": "java"}
             )
         )
 
