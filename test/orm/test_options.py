@@ -9,7 +9,9 @@ import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy.testing.assertions import eq_, assert_raises_message
 from test.orm import _fixtures
-
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.testing import fixtures
 
 class QueryTest(_fixtures.FixtureTest):
     run_setup_mappers = 'once'
@@ -515,6 +517,53 @@ class OptionsTest(PathTest, QueryTest):
             (User, 'orders', Order, "items"),
             (User, 'orders', Order, "items", Item, "keywords")
         ])
+
+
+class FromSubclassOptionsTest(PathTest, fixtures.DeclarativeMappedTest):
+    # test for regression to #3963
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        Base = cls.DeclarativeBasic
+
+        class BaseCls(Base):
+            __tablename__ = 'basecls'
+            id = Column(Integer, primary_key=True)
+
+            type = Column(String)
+            related_id = Column(ForeignKey('related.id'))
+            related = relationship("Related")
+
+        class SubClass(BaseCls):
+            __tablename__ = 'subcls'
+            id = Column(ForeignKey('basecls.id'), primary_key=True)
+
+        class Related(Base):
+            __tablename__ = 'related'
+            id = Column(Integer, primary_key=True)
+
+            sub_related_id = Column(ForeignKey('sub_related.id'))
+            sub_related = relationship('SubRelated')
+
+        class SubRelated(Base):
+            __tablename__ = 'sub_related'
+            id = Column(Integer, primary_key=True)
+
+    def test_with_current_nonmatching_entity_subclasses(self):
+        BaseCls, SubClass, Related, SubRelated = self.classes(
+            'BaseCls', 'SubClass', 'Related', 'SubRelated')
+        sess = Session()
+
+        q = sess.query(Related)._with_current_path(
+            self._make_path_registry(
+                [inspect(SubClass), 'related'])
+        )
+
+        opt = subqueryload(SubClass.related).subqueryload(Related.sub_related)
+        self._assert_path_result(opt, q, [(Related, "sub_related")])
 
 
 class OptionsNoPropTest(_fixtures.FixtureTest):
