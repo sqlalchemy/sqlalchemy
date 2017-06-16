@@ -8,6 +8,7 @@ from sqlalchemy.testing import fixtures, AssertsExecutionResults, \
 from sqlalchemy import testing
 from sqlalchemy.sql.visitors import ClauseVisitor, CloningVisitor, \
     cloned_traverse, ReplacingCloningVisitor
+from sqlalchemy.sql import visitors
 from sqlalchemy import exc
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import (eq_,
@@ -593,6 +594,15 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = func.row_number().over(order_by=t1.c.col1)
         expr2 = CloningVisitor().traverse(expr)
         assert str(expr) == str(expr2)
+
+        assert expr in visitors.iterate(expr, {})
+
+    def test_within_group(self):
+        expr = func.row_number().within_group(t1.c.col1)
+        expr2 = CloningVisitor().traverse(expr)
+        assert str(expr) == str(expr2)
+
+        assert expr in visitors.iterate(expr, {})
 
     def test_funcfilter(self):
         expr = func.count(1).filter(t1.c.col1 > 1)

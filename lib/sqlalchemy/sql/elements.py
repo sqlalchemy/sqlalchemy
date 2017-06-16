@@ -3379,7 +3379,7 @@ class WithinGroup(ColumnElement):
 
     def get_children(self, **kwargs):
         return [c for c in
-                (self.func, self.order_by)
+                (self.element, self.order_by)
                 if c is not None]
 
     def _copy_internals(self, clone=_clone, **kw):
