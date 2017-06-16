@@ -36,6 +36,14 @@
         for additional subqueryload operations loading more deeply from
         the first level, so the fix has been further generalized.
 
+    .. change:: 4012
+        :tags: bug, sql
+        :tickets: 4012
+        :versions: 1.2.0b1
+
+        Fixed AttributeError which would occur in :class:`.WithinGroup`
+        construct during an iteration of the structure.
+
     .. change:: 4005
         :tags: bug, postgresql
         :tickets: 4005
