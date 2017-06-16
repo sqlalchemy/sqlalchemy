@@ -1673,13 +1673,21 @@ class MySQLDialect(default.DefaultDialect):
         """Proxy a result row to smooth over MySQL-Python driver
         inconsistencies."""
 
-        return _DecodingRowProxy(rp.fetchone(), charset)
+        row = rp.fetchone()
+        if row:
+            return _DecodingRowProxy(row, charset)
+        else:
+            return None
 
     def _compat_first(self, rp, charset=None):
         """Proxy a result row to smooth over MySQL-Python driver
         inconsistencies."""
 
-        return _DecodingRowProxy(rp.first(), charset)
+        row = rp.first()
+        if row:
+            return _DecodingRowProxy(row, charset)
+        else:
+            return None
 
     def _extract_error_code(self, exception):
         raise NotImplementedError()
@@ -1720,6 +1728,7 @@ class MySQLDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         self._connection_charset = self._detect_charset(connection)
+        self._detect_sql_mode(connection)
         self._detect_ansiquotes(connection)
         if self._server_ansiquotes:
             # if ansiquotes == True, build a new IdentifierPreparer
@@ -1993,21 +2002,28 @@ class MySQLDialect(default.DefaultDialect):
                 collations[row[0]] = row[1]
         return collations
 
-    def _detect_ansiquotes(self, connection):
-        """Detect and adjust for the ANSI_QUOTES sql mode."""
-
+    def _detect_sql_mode(self, connection):
         row = self._compat_first(
             connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
             charset=self._connection_charset)
 
         if not row:
-            mode = ''
+            util.warn(
+                "Could not retrieve SQL_MODE; please ensure the "
+                "MySQL user has permissions to SHOW VARIABLES")
+            self._sql_mode = ''
         else:
-            mode = row[1] or ''
-            # 4.0
-            if mode.isdigit():
-                mode_no = int(mode)
-                mode = (mode_no | 4 == mode_no) and 'ANSI_QUOTES' or ''
+            self._sql_mode = row[1] or ''
+
+    def _detect_ansiquotes(self, connection):
+        """Detect and adjust for the ANSI_QUOTES sql mode."""
+
+        mode = self._sql_mode
+        if not mode:
+            mode = ''
+        elif mode.isdigit():
+            mode_no = int(mode)
+            mode = (mode_no | 4 == mode_no) and 'ANSI_QUOTES' or ''
 
         self._server_ansiquotes = 'ANSI_QUOTES' in mode
 
