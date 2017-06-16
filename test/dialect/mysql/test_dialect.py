@@ -3,7 +3,7 @@
 from sqlalchemy.testing import eq_
 from sqlalchemy import *
 from sqlalchemy.engine.url import make_url
-from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import fixtures, expect_warnings
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from ...engine import test_execute
@@ -101,6 +101,24 @@ class DialectTest(fixtures.TestBase):
                 options={"connect_args": {'charset': enc, 'use_unicode': 0}})
             conn = eng.connect()
             eq_(conn.dialect._connection_charset, enc)
+
+    def test_no_show_variables(self):
+        from sqlalchemy.testing import mock
+        engine = engines.testing_engine()
+
+        def my_execute(self, statement, *args, **kw):
+            if statement.startswith("SHOW VARIABLES"):
+                statement = "SELECT 1 FROM DUAL WHERE 1=0"
+            return real_exec(self, statement, *args, **kw)
+
+        real_exec = engine._connection_cls._execute_text
+        with mock.patch.object(
+                engine._connection_cls, "_execute_text", my_execute):
+            with expect_warnings(
+                "Could not retrieve SQL_MODE; please ensure the "
+                "MySQL user has permissions to SHOW VARIABLES"
+            ):
+                engine.connect()
 
     def test_autocommit_isolation_level(self):
         c = testing.db.connect().execution_options(

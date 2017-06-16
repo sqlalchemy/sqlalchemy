@@ -66,6 +66,17 @@
         features a collation would fail to produce the correct syntax
         within CREATE TABLE.
 
+    .. change:: 4007
+        :tags: bug, mysql
+        :tickets: 4007
+        :versions: 1.2.0b1
+
+        MySQL 5.7 has introduced permission limiting for the "SHOW VARIABLES"
+        command; the MySQL dialect will now handle when SHOW returns no
+        row, in particular for the initial fetch of SQL_MODE, and will
+        emit a warning that user permissions should be modified to allow the
+        row to be present.
+
     .. change:: 3994
         :tags: bug, mssql
         :tickets: 3994
