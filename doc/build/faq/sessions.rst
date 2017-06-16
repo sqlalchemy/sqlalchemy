@@ -497,4 +497,32 @@ Which is somewhat inconvenient.
 
 This `UniqueObject <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject>`_ recipe was created to address this issue.
 
+.. _faq_post_update_update:
 
+Why does post_update emit UPDATE in addition to the first UPDATE?
+-----------------------------------------------------------------
+
+The post_update feature, documented at :ref:`post_update`, involves that an
+UPDATE statement is emitted in response to changes to a particular
+relationship-bound foreign key, in addition to the INSERT/UPDATE/DELETE that
+would normally be emitted for the target row.  While the primary purpose of this
+UPDATE statement is that it pairs up with an INSERT or DELETE of that row, so
+that it can post-set or pre-unset a foreign key reference in order to break a
+cycle with a mutually dependent foreign key, it currently is also bundled as a
+second UPDATE that emits when the target row itself is subject to an UPDATE.
+In this case, the UPDATE emitted by post_update is *usually* unnecessary
+and will often appear wasteful.
+
+However, some research into trying to remove this "UPDATE / UPDATE" behavior
+reveals that major changes to the unit of work process would need to occur  not
+just throughout the post_update implementation, but also in areas that aren't
+related to post_update for this to work, in that the order of operations would
+need to be reversed on the non-post_update side in some cases, which in turn
+can impact other cases, such as correctly handling an UPDATE of a referenced
+primary key value (see :ticket:`1063` for a proof of concept).
+
+The answer is that "post_update" is used to break a cycle between two
+mutually dependent foreign keys, and to have this cycle breaking be limited
+to just INSERT/DELETE of the target table implies that the ordering of UPDATE
+statements elsewhere would need to be liberalized, leading to breakage
+in other edge cases.

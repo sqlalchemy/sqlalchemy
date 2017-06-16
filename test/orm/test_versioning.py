@@ -549,6 +549,142 @@ class VersioningTest(fixtures.MappedTest):
         )
 
 
+class VersionOnPostUpdateTest(fixtures.MappedTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'node', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('version_id', Integer),
+            Column('parent_id', ForeignKey('node.id'))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Node(cls.Basic):
+            pass
+
+    def _fixture(self, o2m, post_update, insert=True):
+        Node = self.classes.Node
+        node = self.tables.node
+
+        mapper(Node, node, properties={
+            'related': relationship(
+                Node,
+                remote_side=node.c.id if not o2m else node.c.parent_id,
+                post_update=post_update
+            )
+        }, version_id_col=node.c.version_id)
+
+        s = Session()
+        n1 = Node(id=1)
+        n2 = Node(id=2)
+
+        if insert:
+            s.add_all([n1, n2])
+            s.flush()
+        return s, n1, n2
+
+    def test_o2m_plain(self):
+        s, n1, n2 = self._fixture(o2m=True, post_update=False)
+
+        n1.related.append(n2)
+        s.flush()
+
+        eq_(n1.version_id, 1)
+        eq_(n2.version_id, 2)
+
+    def test_m2o_plain(self):
+        s, n1, n2 = self._fixture(o2m=False, post_update=False)
+
+        n1.related = n2
+        s.flush()
+
+        eq_(n1.version_id, 2)
+        eq_(n2.version_id, 1)
+
+    def test_o2m_post_update(self):
+        s, n1, n2 = self._fixture(o2m=True, post_update=True)
+
+        n1.related.append(n2)
+        s.flush()
+
+        eq_(n1.version_id, 1)
+        eq_(n2.version_id, 2)
+
+    def test_m2o_post_update(self):
+        s, n1, n2 = self._fixture(o2m=False, post_update=True)
+
+        n1.related = n2
+        s.flush()
+
+        eq_(n1.version_id, 2)
+        eq_(n2.version_id, 1)
+
+    def test_o2m_post_update_not_assoc_w_insert(self):
+        s, n1, n2 = self._fixture(o2m=True, post_update=True, insert=False)
+
+        n1.related.append(n2)
+        s.add_all([n1, n2])
+        s.flush()
+
+        eq_(n1.version_id, 1)
+        eq_(n2.version_id, 1)
+
+    def test_m2o_post_update_not_assoc_w_insert(self):
+        s, n1, n2 = self._fixture(o2m=False, post_update=True, insert=False)
+
+        n1.related = n2
+        s.add_all([n1, n2])
+        s.flush()
+
+        eq_(n1.version_id, 1)
+        eq_(n2.version_id, 1)
+
+    def test_o2m_post_update_version_assert(self):
+        Node = self.classes.Node
+        s, n1, n2 = self._fixture(o2m=True, post_update=True)
+
+        n1.related.append(n2)
+
+        # outwit the database transaction isolation and SQLA's
+        # expiration at the same time by using different Session on
+        # same transaction
+        s2 = Session(bind=s.connection(Node))
+        s2.query(Node).filter(Node.id == n2.id).update({"version_id": 3})
+        s2.commit()
+
+        assert_raises_message(
+            orm_exc.StaleDataError,
+            "UPDATE statement on table 'node' expected to "
+            r"update 1 row\(s\); 0 were matched.",
+            s.flush
+        )
+
+    def test_m2o_post_update_version_assert(self):
+        Node = self.classes.Node
+
+        s, n1, n2 = self._fixture(o2m=False, post_update=True)
+
+        n1.related = n2
+
+        # outwit the database transaction isolation and SQLA's
+        # expiration at the same time by using different Session on
+        # same transaction
+        s2 = Session(bind=s.connection(Node))
+        s2.query(Node).filter(Node.id == n1.id).update({"version_id": 3})
+        s2.commit()
+
+        assert_raises_message(
+            orm_exc.StaleDataError,
+            "UPDATE statement on table 'node' expected to "
+            r"update 1 row\(s\); 0 were matched.",
+            s.flush
+        )
+
+
 class NoBumpOnRelationshipTest(fixtures.MappedTest):
     __backend__ = True
 

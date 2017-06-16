@@ -13,6 +13,19 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3496
+        :tags: bug, orm
+        :tickets: 3496
+
+        An UPDATE emitted as a result of the
+        :paramref:`.relationship.post_update` feature will now integrate with
+        the versioning feature to both bump the version id of the row as well
+        as assert that the existing version number was matched.
+
+        .. seealso::
+
+            :ref:`change_3496`
+
     .. change:: 3769
         :tags: bug, ext
         :tickets: 3769
