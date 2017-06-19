@@ -195,6 +195,48 @@ class ColumnLoader(LoaderStrategy):
 
 
 @log.class_logger
+@properties.ColumnProperty.strategy_for(deferred_expression=True)
+class ExpressionColumnLoader(ColumnLoader):
+    def __init__(self, parent, strategy_key):
+        super(ExpressionColumnLoader, self).__init__(parent, strategy_key)
+
+    def setup_query(
+            self, context, entity, path, loadopt,
+            adapter, column_collection, memoized_populators, **kwargs):
+
+        if loadopt and "expression" in loadopt.local_opts:
+            columns = [loadopt.local_opts["expression"]]
+
+            for c in columns:
+                if adapter:
+                    c = adapter.columns[c]
+                column_collection.append(c)
+
+            fetch = columns[0]
+            if adapter:
+                fetch = adapter.columns[fetch]
+            memoized_populators[self.parent_property] = fetch
+
+    def create_row_processor(
+            self, context, path,
+            loadopt, mapper, result, adapter, populators):
+        # look through list of columns represented here
+        # to see which, if any, is present in the row.
+        if loadopt and "expression" in loadopt.local_opts:
+            columns = [loadopt.local_opts["expression"]]
+
+            for col in columns:
+                if adapter:
+                    col = adapter.columns[col]
+                getter = result._getter(col, False)
+                if getter:
+                    populators["quick"].append((self.key, getter))
+                    break
+            else:
+                populators["expire"].append((self.key, True))
+
+
+@log.class_logger
 @properties.ColumnProperty.strategy_for(deferred=True, instrument=True)
 @properties.ColumnProperty.strategy_for(do_nothing=True)
 class DeferredColumnLoader(LoaderStrategy):

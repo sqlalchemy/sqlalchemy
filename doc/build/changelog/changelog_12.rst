@@ -13,6 +13,19 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 3058
+        :tags: feature, orm
+        :tickets: 3058
+
+        Added a new feature :func:`.orm.with_expression` that allows an ad-hoc
+        SQL expression to be added to a specific entity in a query at result
+        time.  This is an alternative to the SQL expression being delivered as
+        a separate element in the result tuple.
+
+        .. seealso::
+
+            :ref:`change_3058`
+
     .. change:: 3496
         :tags: bug, orm
         :tickets: 3496

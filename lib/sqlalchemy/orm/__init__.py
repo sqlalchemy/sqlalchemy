@@ -68,6 +68,7 @@ from .query import AliasOption, Query, Bundle
 from ..util.langhelpers import public_factory
 from .. import util as _sa_util
 from . import strategies as _strategies
+from .. import sql as _sql
 
 
 def create_session(bind=None, **kwargs):
@@ -177,6 +178,20 @@ def deferred(*columns, **kw):
     return ColumnProperty(deferred=True, *columns, **kw)
 
 
+def deferred_expression():
+    """Indicate an attribute that populates from a query-time SQL expression.
+
+    .. versionadded:: 1.2
+
+    .. seealso::
+
+        :ref:`mapper_deferred_expression`
+
+    """
+    prop = ColumnProperty(_sql.null())
+    prop.strategy_key = (("deferred_expression", True),)
+    return prop
+
 mapper = public_factory(Mapper, ".orm.mapper")
 
 synonym = public_factory(SynonymProperty, ".orm.synonym")
@@ -235,6 +250,7 @@ contains_eager = strategy_options.contains_eager._unbound_fn
 defer = strategy_options.defer._unbound_fn
 undefer = strategy_options.undefer._unbound_fn
 undefer_group = strategy_options.undefer_group._unbound_fn
+with_expression = strategy_options.with_expression._unbound_fn
 load_only = strategy_options.load_only._unbound_fn
 lazyload = strategy_options.lazyload._unbound_fn
 lazyload_all = strategy_options.lazyload_all._unbound_all_fn

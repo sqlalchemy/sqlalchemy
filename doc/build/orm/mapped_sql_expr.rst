@@ -206,3 +206,65 @@ The plain descriptor approach is useful as a last resort, but is less performant
 in the usual case than both the hybrid and column property approaches, in that
 it needs to emit a SQL query upon each access.
 
+.. _mapper_deferred_expression:
+
+Query-time SQL expressions as mapped attributes
+-----------------------------------------------
+
+When using :meth:`.Session.query`, we have the option to specify not just
+mapped entities but ad-hoc SQL expressions as well.  Suppose if a class
+``A`` had integer attributes ``.x`` and ``.y``, we could query for ``A``
+objects, and additionally the sum of ``.x`` and ``.y``, as follows::
+
+    q = session.query(A, A.x + A.y)
+
+The above query returns tuples of the form ``(A object, integer)``.
+
+An option exists which can apply the ad-hoc ``A.x + A.y`` expression to the
+returned ``A`` objects instead of as a separate tuple entry; this is the
+:func:`.with_expression` query option in conjunction with the
+:func:`.deferred_expression` attribute mapping.    The class is mapped
+to include a placeholder attribute where any particular SQL expression
+may be applied::
+
+    from sqlalchemy.orm import deferred_expression
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        x = Column(Integer)
+        y = Column(Integer)
+
+        expr = deferred_expression()
+
+We can then query for objects of type ``A``, applying an arbitrary
+SQL expression to be populated into ``A.expr``::
+
+    from sqlalchemy.orm import with_expression
+    q = session.query(A).options(
+        with_expression(A.expr, A.x + A.y))
+
+The :func:`.deferred_expression` mapping has these caveats:
+
+* On an object where :func:`.deferred_expression` were not used to populate
+  the attribute, the attribute on an object instance will have the value
+  ``None``.
+
+* The mapped attribute currently **cannot** be applied to other parts of the
+  query and make use of the ad-hoc expression; that is, this won't work::
+
+    q = session.query(A).options(
+        with_expression(A.expr, A.x + A.y)
+    ).filter(A.expr > 5)
+
+  The ``A.expr`` expression will resolve to NULL in the above WHERE clause.
+  To use the expression throughout the query, assign to a variable and
+  use that::
+
+    a_expr = A.x + A.y
+    q = session.query(A).options(
+        with_expression(A.expr, a_expr)
+    ).filter(a_expr > 5)
+
+.. versionadded:: 1.2
+

@@ -213,6 +213,39 @@ are loaded with additional SELECT statements:
 
 :ticket:`3948`
 
+.. _change_3058:
+
+ORM attributes that can receive ad-hoc SQL expressions
+------------------------------------------------------
+
+A new ORM attribute type :func:`.orm.deferred_expression` is added which
+is similar to :func:`.orm.deferred`, except its SQL expression
+is determined at query time using a new option :func:`.orm.with_expression`;
+if not specified, the attribute defaults to ``None``::
+
+    from sqlalchemy.orm import deferred_expression
+    from sqlalchemy.orm import with_expression
+
+    class A(Base):
+        __tablename__ = 'a'
+        id = Column(Integer, primary_key=True)
+        x = Column(Integer)
+        y = Column(Integer)
+
+        # will be None normally...
+        expr = deferred_expression()
+
+    # but let's give it x + y
+    a1 = session.query(A).options(
+        with_expression(A.expr, A.x + A.y)).first()
+    print(a1.expr)
+
+.. seealso::
+
+    :ref:`mapper_deferred_expression`
+
+:ticket:`3058`
+
 .. _change_3229:
 
 Support for bulk updates of hybrids, composites

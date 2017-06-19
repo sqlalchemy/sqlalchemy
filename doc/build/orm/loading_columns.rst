@@ -132,15 +132,19 @@ unchanged, use :func:`.orm.defaultload`::
 Column Deferral API
 -------------------
 
+.. autofunction:: defer
+
 .. autofunction:: deferred
 
-.. autofunction:: defer
+.. autofunction:: deferred_expression
 
 .. autofunction:: load_only
 
 .. autofunction:: undefer
 
 .. autofunction:: undefer_group
+
+.. autofunction:: with_expression
 
 .. _bundles:
 

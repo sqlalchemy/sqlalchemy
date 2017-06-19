@@ -1348,6 +1348,54 @@ def undefer_group(name):
     return _UnboundLoad().undefer_group(name)
 
 
+from ..sql import expression as sql_expr
+from .util import _orm_full_deannotate
+
+
+@loader_option()
+def with_expression(loadopt, key, expression):
+    r"""Apply an ad-hoc SQL expression to a "deferred expression" attribute.
+
+    This option is used in conjunction with the :func:`.orm.deferred_expression`
+    mapper-level construct that indicates an attribute which should be the
+    target of an ad-hoc SQL expression.
+
+    E.g.::
+
+
+        sess.query(SomeClass).options(
+            with_expression(SomeClass.x_y_expr, SomeClass.x + SomeClass.y)
+        )
+
+    .. versionadded:: 1.2
+
+    :param key: Attribute to be undeferred.
+
+    :param expr: SQL expression to be applied to the attribute.
+
+    .. seealso::
+
+        :ref:`mapper_deferred_expression`
+
+    """
+
+    expression = sql_expr._labeled(
+        _orm_full_deannotate(expression))
+
+    return loadopt.set_column_strategy(
+        (key, ),
+        {"deferred_expression": True},
+        opts={"expression": expression}
+    )
+
+
+@with_expression._add_unbound_fn
+def with_expression(key, expression):
+    return _UnboundLoad._from_keys(
+        _UnboundLoad.with_expression, (key, ),
+        False, {"expression": expression})
+
+
 @loader_option()
 def selectin_polymorphic(loadopt, classes):
     """Indicate an eager load should take place for all attributes

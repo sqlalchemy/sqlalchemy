@@ -2,9 +2,13 @@ import sqlalchemy as sa
 from sqlalchemy import testing, util
 from sqlalchemy.orm import mapper, deferred, defer, undefer, Load, \
     load_only, undefer_group, create_session, synonym, relationship, Session,\
-    joinedload, defaultload, aliased, contains_eager, with_polymorphic
+    joinedload, defaultload, aliased, contains_eager, with_polymorphic, \
+    deferred_expression, with_expression
 from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from test.orm import _fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy import Integer, ForeignKey
+from sqlalchemy.testing import fixtures
 
 
 from .inheritance._poly_fixtures import Company, Person, Engineer, Manager, \
@@ -868,3 +872,104 @@ class InheritanceTest(_Polymorphic):
             "ON people.person_id = managers.person_id "
             "ORDER BY people.person_id"
         )
+
+
+
+class WithExpressionTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = Column(Integer)
+
+            my_expr = deferred_expression()
+
+            bs = relationship("B", order_by="B.id")
+
+        class B(fixtures.ComparableEntity, Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey('a.id'))
+            p = Column(Integer)
+            q = Column(Integer)
+
+            b_expr = deferred_expression()
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes("A", "B")
+        s = Session()
+
+        s.add_all([
+            A(id=1, x=1, y=2, bs=[B(id=1, p=1, q=2), B(id=2, p=4, q=8)]),
+            A(id=2, x=2, y=3),
+            A(id=3, x=5, y=10, bs=[B(id=3, p=5, q=0)]),
+            A(id=4, x=2, y=10, bs=[B(id=4, p=19, q=8), B(id=5, p=5, q=5)]),
+        ])
+
+        s.commit()
+
+    def test_simple_expr(self):
+        A = self.classes.A
+
+        s = Session()
+        a1 = s.query(A).options(
+            with_expression(A.my_expr, A.x + A.y)).filter(A.x > 1).\
+            order_by(A.id)
+
+        eq_(
+            a1.all(),
+            [
+                A(my_expr=5), A(my_expr=15), A(my_expr=12)
+            ]
+        )
+
+    def test_reuse_expr(self):
+        A = self.classes.A
+
+        s = Session()
+
+        # so people will obv. want to say, "filter(A.my_expr > 10)".
+        # but that means Query or Core has to post-modify the statement
+        # after construction.
+        expr = A.x + A.y
+        a1 = s.query(A).options(
+            with_expression(A.my_expr, expr)).filter(expr > 10).\
+            order_by(expr)
+
+        eq_(
+            a1.all(),
+            [A(my_expr=12), A(my_expr=15)]
+        )
+
+    def test_in_joinedload(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+
+        q = s.query(A).options(
+            joinedload(A.bs).with_expression(B.b_expr, B.p * A.x)
+        ).filter(A.id.in_([3, 4])).order_by(A.id)
+
+        eq_(
+            q.all(),
+            [
+                A(bs=[B(b_expr=25)]),
+                A(bs=[B(b_expr=38), B(b_expr=10)])
+            ]
+        )
+
+    def test_no_sql_not_set_up(self):
+        A = self.classes.A
+
+        s = Session()
+        a1 = s.query(A).first()
+
+        def go():
+            eq_(a1.my_expr, None)
+
+        self.assert_sql_count(testing.db, go, 0)
