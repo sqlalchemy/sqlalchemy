@@ -20,6 +20,7 @@
 
 .. changelog::
     :version: 1.1.11
+    :released: Monday, June 19, 2017
 
     .. change:: 4012
         :tags: bug, sql
