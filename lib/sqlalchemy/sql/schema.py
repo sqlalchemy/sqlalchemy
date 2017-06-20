@@ -593,10 +593,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 raise exc.ArgumentError(
                     "Can't redefine 'quote' or 'quote_schema' arguments")
 
+        if 'comment' in kwargs:
+            self.comment = kwargs.pop('comment', None)
+
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
-
-        self.comment = kwargs.pop('comment', None)
 
         if autoload:
             if not autoload_replace:

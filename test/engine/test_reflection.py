@@ -1055,6 +1055,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         eq_(t2.comment, 't1 comment')
         eq_(t2.c.id.comment, 'c1 comment')
 
+        t3 = Table('sometable', m2, extend_existing=True)
+        eq_(t3.comment, 't1 comment')
+        eq_(t3.c.id.comment, 'c1 comment')
+
     @testing.requires.check_constraint_reflection
     @testing.provide_metadata
     def test_check_constraint_reflection(self):
