@@ -13,6 +13,20 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 4017
+        :tags: bug, sql
+        :tickets: 4017
+
+        Added some extra strictness to the handling of Python "float" values
+        passed to SQL statements.  A "float" value will be associated with the
+        :class:`.Float` datatype and not the Decimal-coercing :class:`.Numeric`
+        datatype as was the case before, eliminating a confusing warning
+        emitted on SQLite as well as unecessary coercion to Decimal.
+
+        .. seealso::
+
+            :ref:`change_floats_12`
+
     .. change:: 3058
         :tags: feature, orm
         :tickets: 3058

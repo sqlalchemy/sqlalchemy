@@ -431,6 +431,24 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             filter_=lambda n: n is not None and round(n, 5) or None
         )
 
+    @testing.fails_on("mysql", "until we do #4020")
+    def test_float_coerce_round_trip(self):
+        expr = 15.7563
+
+        val = testing.db.scalar(
+            select([literal(expr)])
+        )
+        eq_(val, expr)
+
+    # TODO: this one still breaks on MySQL
+    # def test_decimal_coerce_round_trip(self):
+    #    expr = decimal.Decimal("15.7563")
+    #
+    #    val = testing.db.scalar(
+    #        select([literal(expr)])
+    #    )
+    #    eq_(val, expr)
+
     @testing.requires.precision_numerics_general
     def test_precision_decimal(self):
         numbers = set([
