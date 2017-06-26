@@ -431,7 +431,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             filter_=lambda n: n is not None and round(n, 5) or None
         )
 
-    @testing.fails_on("mysql", "until we do #4020")
     def test_float_coerce_round_trip(self):
         expr = 15.7563
 

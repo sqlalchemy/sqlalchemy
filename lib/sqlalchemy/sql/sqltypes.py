@@ -702,6 +702,8 @@ class Float(Numeric):
             return processors.to_decimal_processor_factory(
                 decimal.Decimal,
                 self._effective_decimal_return_scale)
+        elif dialect.supports_native_decimal:
+            return processors.to_float
         else:
             return None
 

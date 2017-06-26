@@ -29,6 +29,22 @@
 
             :ref:`change_floats_12`
 
+    .. change:: 4020
+        :tags: bug, sql, mysql
+        :tickets: 4020
+
+        The result processor for the :class:`.Float` type now unconditionally
+        runs values through the ``float()`` processor if the dialect
+        specifies that it also supports "native decimal" mode.  While most
+        backends will deliver Python ``float`` objects for a floating point
+        datatype, the MySQL backends in some cases lack the typing information
+        in order to provide this and return ``Decimal`` unless the float
+        conversion is done.
+
+        .. seealso::
+
+            :ref:`change_floats_12`
+
     .. change:: 4017
         :tags: bug, sql
         :tickets: 4017

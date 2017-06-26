@@ -801,8 +801,17 @@ if the application is working with plain floats.
     expr = column('a', Integer) * column('b', Float())
     assert isinstance(expr.type, Float)
 
+* The :class:`.Float` datatype will apply the ``float()`` processor to
+  result values unconditionally if the DBAPI is known to support native
+  ``Decimal()`` mode.  Some backends do not always guarantee that a floating
+  point number comes back as plain float and not precision numeric such
+  as MySQL.
 
 :ticket:`4017`
+
+:ticket:`4018`
+
+:ticket:`4020`
 
 Key Behavioral Changes - ORM
 ============================
