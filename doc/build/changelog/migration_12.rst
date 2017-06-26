@@ -782,10 +782,25 @@ if the application is working with plain floats.
   meant the result type would coerce to ``Decimal()``.  In particular,
   this would emit a confusing warning on SQLite::
 
-        float_value = connection.scalar(
-            select([literal(4.56)])   # the "BindParameter" will now be
-                                      # Float, not Numeric(asdecimal=True)
-        )
+
+    float_value = connection.scalar(
+        select([literal(4.56)])   # the "BindParameter" will now be
+                                  # Float, not Numeric(asdecimal=True)
+    )
+
+* Math operations between :class:`.Numeric`, :class:`.Float`, and
+  :class:`.Integer` will now preserve the :class:`.Numeric` or :class:`.Float`
+  type in the resulting expression's type, including the ``asdecimal`` flag
+  as well as if the type should be :class:`.Float`::
+
+    # asdecimal flag is maintained
+    expr = column('a', Integer) * column('b', Numeric(asdecimal=False))
+    assert expr.type.asdecimal == False
+
+    # Float subclass of Numeric is maintained
+    expr = column('a', Integer) * column('b', Float())
+    assert isinstance(expr.type, Float)
+
 
 :ticket:`4017`
 

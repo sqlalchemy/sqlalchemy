@@ -29,6 +29,8 @@ from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.sql import column
+import operator
 
 
 class AdaptTest(fixtures.TestBase):
@@ -2203,8 +2205,6 @@ class ExpressionTest(
         eq_(expr.type._type_affinity, types.Interval)
 
     def test_numerics_coercion(self):
-        from sqlalchemy.sql import column
-        import operator
 
         for op in (operator.add, operator.mul, operator.truediv, operator.sub):
             for other in (Numeric(10, 2), Integer):
@@ -2218,6 +2218,28 @@ class ExpressionTest(
                     column('bar', types.Numeric(10, 2))
                 )
                 assert isinstance(expr.type, types.Numeric)
+
+    def test_asdecimal_int_to_numeric(self):
+        expr = column('a', Integer) * column('b', Numeric(asdecimal=False))
+        is_(expr.type.asdecimal, False)
+
+        expr = column('a', Integer) * column('b', Numeric())
+        is_(expr.type.asdecimal, True)
+
+        expr = column('a', Integer) * column('b', Float())
+        is_(expr.type.asdecimal, False)
+        assert isinstance(expr.type, Float)
+
+    def test_asdecimal_numeric_to_int(self):
+        expr = column('a', Numeric(asdecimal=False)) * column('b', Integer)
+        is_(expr.type.asdecimal, False)
+
+        expr = column('a', Numeric()) * column('b', Integer)
+        is_(expr.type.asdecimal, True)
+
+        expr = column('a', Float()) * column('b', Integer)
+        is_(expr.type.asdecimal, False)
+        assert isinstance(expr.type, Float)
 
     def test_null_comparison(self):
         eq_(

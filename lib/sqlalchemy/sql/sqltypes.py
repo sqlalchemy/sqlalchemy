@@ -31,13 +31,12 @@ if util.jython:
     import array
 
 
-class _DateAffinity(object):
+class _LookupExpressionAdapter(object):
 
-    """Mixin date/time specific expression adaptations.
+    """Mixin expression adaptations based on lookup tables.
 
-    Rules are implemented within Date,Time,Interval,DateTime, Numeric,
-    Integer. Based on http://www.postgresql.org/docs/current/static
-    /functions-datetime.html.
+    These rules are currenly used by the numeric, integer and date types
+    which have detailed cross-expression coercion rules.
 
     """
 
@@ -50,12 +49,15 @@ class _DateAffinity(object):
 
         def _adapt_expression(self, op, other_comparator):
             othertype = other_comparator.type._type_affinity
-            return (
-                op, to_instance(
-                    self.type._expression_adaptations.
-                    get(op, self._blank_dict).
-                    get(othertype, NULLTYPE))
-            )
+            lookup = self.type._expression_adaptations.get(
+                op, self._blank_dict).get(
+                othertype, NULLTYPE)
+            if lookup is othertype:
+                return (op, other_comparator.type)
+            elif lookup is self.type._type_affinity:
+                return (op, self.type)
+            else:
+                return (op, to_instance(lookup))
     comparator_factory = Comparator
 
 
@@ -384,7 +386,7 @@ class UnicodeText(Text):
         super(UnicodeText, self).__init__(length=length, **kwargs)
 
 
-class Integer(_DateAffinity, TypeEngine):
+class Integer(_LookupExpressionAdapter, TypeEngine):
 
     """A type for ``int`` integers."""
 
@@ -456,7 +458,7 @@ class BigInteger(Integer):
     __visit_name__ = 'big_integer'
 
 
-class Numeric(_DateAffinity, TypeEngine):
+class Numeric(_LookupExpressionAdapter, TypeEngine):
 
     """A type for fixed precision numbers, such as ``NUMERIC`` or ``DECIMAL``.
 
@@ -703,29 +705,8 @@ class Float(Numeric):
         else:
             return None
 
-    @util.memoized_property
-    def _expression_adaptations(self):
-        return {
-            operators.mul: {
-                Interval: Interval,
-                Numeric: self.__class__,
-            },
-            operators.div: {
-                Numeric: self.__class__,
-            },
-            operators.truediv: {
-                Numeric: self.__class__,
-            },
-            operators.add: {
-                Numeric: self.__class__,
-            },
-            operators.sub: {
-                Numeric: self.__class__,
-            }
-        }
 
-
-class DateTime(_DateAffinity, TypeEngine):
+class DateTime(_LookupExpressionAdapter, TypeEngine):
 
     """A type for ``datetime.datetime()`` objects.
 
@@ -770,6 +751,10 @@ class DateTime(_DateAffinity, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
+
+        # Based on http://www.postgresql.org/docs/current/\
+        # static/functions-datetime.html.
+
         return {
             operators.add: {
                 Interval: self.__class__,
@@ -781,7 +766,7 @@ class DateTime(_DateAffinity, TypeEngine):
         }
 
 
-class Date(_DateAffinity, TypeEngine):
+class Date(_LookupExpressionAdapter, TypeEngine):
 
     """A type for ``datetime.date()`` objects."""
 
@@ -796,6 +781,9 @@ class Date(_DateAffinity, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
+        # Based on http://www.postgresql.org/docs/current/\
+        # static/functions-datetime.html.
+
         return {
             operators.add: {
                 Integer: self.__class__,
@@ -819,7 +807,7 @@ class Date(_DateAffinity, TypeEngine):
         }
 
 
-class Time(_DateAffinity, TypeEngine):
+class Time(_LookupExpressionAdapter, TypeEngine):
 
     """A type for ``datetime.time()`` objects."""
 
@@ -837,6 +825,9 @@ class Time(_DateAffinity, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
+        # Based on http://www.postgresql.org/docs/current/\
+        # static/functions-datetime.html.
+
         return {
             operators.add: {
                 Date: DateTime,
@@ -1627,7 +1618,7 @@ class Boolean(TypeEngine, SchemaType):
             return processors.int_to_boolean
 
 
-class Interval(_DateAffinity, TypeDecorator):
+class Interval(_LookupExpressionAdapter, TypeDecorator):
 
     """A type for ``datetime.timedelta()`` objects.
 
@@ -1719,6 +1710,9 @@ class Interval(_DateAffinity, TypeDecorator):
 
     @util.memoized_property
     def _expression_adaptations(self):
+        # Based on http://www.postgresql.org/docs/current/\
+        # static/functions-datetime.html.
+
         return {
             operators.add: {
                 Date: DateTime,

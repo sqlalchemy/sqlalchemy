@@ -13,6 +13,22 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: 4018
+        :tags: bug, sql
+        :tickets: 4018
+
+        The rules for type coercion between :class:`.Numeric`, :class:`.Integer`,
+        and date-related types now include additional logic that will attempt
+        to preserve the settings of the incoming type on the "resolved" type.
+        Currently the target for this is the ``asdecimal`` flag, so that
+        a math operation between :class:`.Numeric` or :class:`.Float` and
+        :class:`.Integer` will preserve the "asdecimal" flag as well as
+        if the type should be the :class:`.Float` subclass.
+
+        .. seealso::
+
+            :ref:`change_floats_12`
+
     .. change:: 4017
         :tags: bug, sql
         :tickets: 4017
