@@ -1356,7 +1356,7 @@ from .util import _orm_full_deannotate
 def with_expression(loadopt, key, expression):
     r"""Apply an ad-hoc SQL expression to a "deferred expression" attribute.
 
-    This option is used in conjunction with the :func:`.orm.deferred_expression`
+    This option is used in conjunction with the :func:`.orm.query_expression`
     mapper-level construct that indicates an attribute which should be the
     target of an ad-hoc SQL expression.
 
@@ -1375,7 +1375,7 @@ def with_expression(loadopt, key, expression):
 
     .. seealso::
 
-        :ref:`mapper_deferred_expression`
+        :ref:`mapper_query_expression`
 
     """
 
@@ -1384,7 +1384,7 @@ def with_expression(loadopt, key, expression):
 
     return loadopt.set_column_strategy(
         (key, ),
-        {"deferred_expression": True},
+        {"query_expression": True},
         opts={"expression": expression}
     )
 

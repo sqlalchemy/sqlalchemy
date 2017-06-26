@@ -206,7 +206,7 @@ The plain descriptor approach is useful as a last resort, but is less performant
 in the usual case than both the hybrid and column property approaches, in that
 it needs to emit a SQL query upon each access.
 
-.. _mapper_deferred_expression:
+.. _mapper_querytime_expression:
 
 Query-time SQL expressions as mapped attributes
 -----------------------------------------------
@@ -223,11 +223,11 @@ The above query returns tuples of the form ``(A object, integer)``.
 An option exists which can apply the ad-hoc ``A.x + A.y`` expression to the
 returned ``A`` objects instead of as a separate tuple entry; this is the
 :func:`.with_expression` query option in conjunction with the
-:func:`.deferred_expression` attribute mapping.    The class is mapped
+:func:`.query_expression` attribute mapping.    The class is mapped
 to include a placeholder attribute where any particular SQL expression
 may be applied::
 
-    from sqlalchemy.orm import deferred_expression
+    from sqlalchemy.orm import query_expression
 
     class A(Base):
         __tablename__ = 'a'
@@ -235,7 +235,7 @@ may be applied::
         x = Column(Integer)
         y = Column(Integer)
 
-        expr = deferred_expression()
+        expr = query_expression()
 
 We can then query for objects of type ``A``, applying an arbitrary
 SQL expression to be populated into ``A.expr``::
@@ -244,27 +244,37 @@ SQL expression to be populated into ``A.expr``::
     q = session.query(A).options(
         with_expression(A.expr, A.x + A.y))
 
-The :func:`.deferred_expression` mapping has these caveats:
+The :func:`.query_expression` mapping has these caveats:
 
-* On an object where :func:`.deferred_expression` were not used to populate
+* On an object where :func:`.query_expression` were not used to populate
   the attribute, the attribute on an object instance will have the value
   ``None``.
 
-* The mapped attribute currently **cannot** be applied to other parts of the
-  query and make use of the ad-hoc expression; that is, this won't work::
+* The query_expression value **does not refresh when the object is
+  expired**.  Once the object is expired, either via :meth:`.Session.expire`
+  or via the expire_on_commit behavior of :meth:`.Session.commit`, the value is
+  removed from the attribute and will return ``None`` on subsequent access.
+  Only by running a new :class:`.Query` that touches the object which includes
+  a new :func:`.with_expression` directive will the attribute be set to a
+  non-None value.
 
+* The mapped attribute currently **cannot** be applied to other parts of the
+  query, such as the WHERE clause, the ORDER BY clause, and make use of the
+  ad-hoc expression; that is, this won't work::
+
+    # wont work
     q = session.query(A).options(
         with_expression(A.expr, A.x + A.y)
-    ).filter(A.expr > 5)
+    ).filter(A.expr > 5).order_by(A.expr)
 
-  The ``A.expr`` expression will resolve to NULL in the above WHERE clause.
-  To use the expression throughout the query, assign to a variable and
-  use that::
+  The ``A.expr`` expression will resolve to NULL in the above WHERE clause
+  and ORDER BY clause. To use the expression throughout the query, assign to a
+  variable and use that::
 
     a_expr = A.x + A.y
     q = session.query(A).options(
         with_expression(A.expr, a_expr)
-    ).filter(a_expr > 5)
+    ).filter(a_expr > 5).order_by(a_expr)
 
 .. versionadded:: 1.2
 

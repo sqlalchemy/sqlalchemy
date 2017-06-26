@@ -178,18 +178,18 @@ def deferred(*columns, **kw):
     return ColumnProperty(deferred=True, *columns, **kw)
 
 
-def deferred_expression():
+def query_expression():
     """Indicate an attribute that populates from a query-time SQL expression.
 
     .. versionadded:: 1.2
 
     .. seealso::
 
-        :ref:`mapper_deferred_expression`
+        :ref:`mapper_query_expression`
 
     """
     prop = ColumnProperty(_sql.null())
-    prop.strategy_key = (("deferred_expression", True),)
+    prop.strategy_key = (("query_expression", True),)
     return prop
 
 mapper = public_factory(Mapper, ".orm.mapper")

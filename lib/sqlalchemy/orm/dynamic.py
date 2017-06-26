@@ -44,7 +44,7 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
 
 class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
-    accepts_scalar_loader = False
+    default_accepts_scalar_loader = False
     supports_population = False
     collection = False
 

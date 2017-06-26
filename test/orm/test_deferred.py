@@ -3,7 +3,7 @@ from sqlalchemy import testing, util
 from sqlalchemy.orm import mapper, deferred, defer, undefer, Load, \
     load_only, undefer_group, create_session, synonym, relationship, Session,\
     joinedload, defaultload, aliased, contains_eager, with_polymorphic, \
-    deferred_expression, with_expression
+    query_expression, with_expression
 from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from test.orm import _fixtures
 from sqlalchemy.testing.schema import Column
@@ -886,7 +886,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
             x = Column(Integer)
             y = Column(Integer)
 
-            my_expr = deferred_expression()
+            my_expr = query_expression()
 
             bs = relationship("B", order_by="B.id")
 
@@ -897,7 +897,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
             p = Column(Integer)
             q = Column(Integer)
 
-            b_expr = deferred_expression()
+            b_expr = query_expression()
 
     @classmethod
     def insert_data(cls):
@@ -973,3 +973,50 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
             eq_(a1.my_expr, None)
 
         self.assert_sql_count(testing.db, go, 0)
+
+    def test_dont_explode_on_expire_individual(self):
+        A = self.classes.A
+
+        s = Session()
+        q = s.query(A).options(
+            with_expression(A.my_expr, A.x + A.y)).filter(A.x > 1).\
+            order_by(A.id)
+
+        a1 = q.first()
+
+        eq_(a1.my_expr, 5)
+
+        s.expire(a1, ['my_expr'])
+
+        eq_(a1.my_expr, None)
+
+        # comes back
+        q = s.query(A).options(
+            with_expression(A.my_expr, A.x + A.y)).filter(A.x > 1).\
+            order_by(A.id)
+        q.first()
+        eq_(a1.my_expr, 5)
+
+    def test_dont_explode_on_expire_whole(self):
+        A = self.classes.A
+
+        s = Session()
+        q = s.query(A).options(
+            with_expression(A.my_expr, A.x + A.y)).filter(A.x > 1).\
+            order_by(A.id)
+
+        a1 = q.first()
+
+        eq_(a1.my_expr, 5)
+
+        s.expire(a1)
+
+        eq_(a1.my_expr, None)
+
+        # comes back
+        q = s.query(A).options(
+            with_expression(A.my_expr, A.x + A.y)).filter(A.x > 1).\
+            order_by(A.id)
+        q.first()
+        eq_(a1.my_expr, 5)
+

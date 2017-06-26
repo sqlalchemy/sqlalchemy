@@ -136,7 +136,7 @@ Column Deferral API
 
 .. autofunction:: deferred
 
-.. autofunction:: deferred_expression
+.. autofunction:: query_expression
 
 .. autofunction:: load_only
 
