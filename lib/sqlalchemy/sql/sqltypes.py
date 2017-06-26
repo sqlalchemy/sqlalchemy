@@ -2604,7 +2604,7 @@ MATCHTYPE = MatchType()
 
 _type_map = {
     int: Integer(),
-    float: Numeric(),
+    float: Float(),
     bool: BOOLEANTYPE,
     decimal.Decimal: Numeric(),
     dt.date: Date(),

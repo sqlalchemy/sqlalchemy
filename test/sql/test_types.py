@@ -2025,6 +2025,23 @@ class ExpressionTest(
         expr = column('foo', CHAR) == "asdf"
         eq_(expr.right.type.__class__, CHAR)
 
+    def test_actual_literal_adapters(self):
+        for data, expected in [
+            (5, Integer),
+            (2.65, Float),
+            (True, Boolean),
+            (decimal.Decimal("2.65"), Numeric),
+            (datetime.date(2015, 7, 20), Date),
+            (datetime.time(10, 15, 20), Time),
+            (datetime.datetime(2015, 7, 20, 10, 15, 20), DateTime),
+            (datetime.timedelta(seconds=5), Interval),
+            (None, types.NullType)
+        ]:
+            is_(
+                literal(data).type.__class__,
+                expected
+            )
+
     def test_typedec_operator_adapt(self):
         expr = test_table.c.bvalue + "hi"
 

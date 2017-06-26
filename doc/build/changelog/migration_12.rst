@@ -764,6 +764,31 @@ Where the value of the parameter "x_1" is ``'total/%score'``.
 
 :ticket:`2694`
 
+.. _change_floats_12:
+
+Stronger typing added to "float" datatypes
+------------------------------------------
+
+A series of changes allow for use of the :class:`.Float` datatype to more
+strongly link itself to Python floating point values, instead of the more
+generic :class:`.Numeric`.  The changes are mostly related to ensuring
+that Python floating point values are not erroneously coerced to
+``Decimal()``, and are coerced to ``float`` if needed, on the result side,
+if the application is working with plain floats.
+
+* A plain Python "float" value passed to a SQL expression will now be
+  pulled into a literal parameter with the type :class:`.Float`; previously,
+  the type was :class:`.Numeric`, with the default "asdecimal=True" flag, which
+  meant the result type would coerce to ``Decimal()``.  In particular,
+  this would emit a confusing warning on SQLite::
+
+        float_value = connection.scalar(
+            select([literal(4.56)])   # the "BindParameter" will now be
+                                      # Float, not Numeric(asdecimal=True)
+        )
+
+:ticket:`4017`
+
 Key Behavioral Changes - ORM
 ============================
 
