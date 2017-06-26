@@ -195,7 +195,7 @@ class ColumnLoader(LoaderStrategy):
 
 
 @log.class_logger
-@properties.ColumnProperty.strategy_for(deferred_expression=True)
+@properties.ColumnProperty.strategy_for(query_expression=True)
 class ExpressionColumnLoader(ColumnLoader):
     def __init__(self, parent, strategy_key):
         super(ExpressionColumnLoader, self).__init__(parent, strategy_key)
@@ -234,6 +234,15 @@ class ExpressionColumnLoader(ColumnLoader):
                     break
             else:
                 populators["expire"].append((self.key, True))
+
+    def init_class_attribute(self, mapper):
+        self.is_class_level = True
+
+        _register_attribute(
+            self.parent_property, mapper, useobject=False,
+            compare_function=self.columns[0].type.compare_values,
+            accepts_scalar_loader=False
+        )
 
 
 @log.class_logger

@@ -388,7 +388,7 @@ class AttributeImpl(object):
                  callable_, dispatch, trackparent=False, extension=None,
                  compare_function=None, active_history=False,
                  parent_token=None, expire_missing=True,
-                 send_modified_events=True,
+                 send_modified_events=True, accepts_scalar_loader=None,
                  **kwargs):
         r"""Construct an AttributeImpl.
 
@@ -449,6 +449,11 @@ class AttributeImpl(object):
         else:
             self.is_equal = compare_function
 
+        if accepts_scalar_loader is not None:
+            self.accepts_scalar_loader = accepts_scalar_loader
+        else:
+            self.accepts_scalar_loader = self.default_accepts_scalar_loader
+
         # TODO: pass in the manager here
         # instead of doing a lookup
         attr = manager_of_class(class_)[key]
@@ -465,7 +470,7 @@ class AttributeImpl(object):
     __slots__ = (
         'class_', 'key', 'callable_', 'dispatch', 'trackparent',
         'parent_token', 'send_modified_events', 'is_equal', 'expire_missing',
-        '_modified_token'
+        '_modified_token', 'accepts_scalar_loader'
     )
 
     def _init_modified_token(self):
@@ -657,7 +662,7 @@ class AttributeImpl(object):
 class ScalarAttributeImpl(AttributeImpl):
     """represents a scalar value-holding InstrumentedAttribute."""
 
-    accepts_scalar_loader = True
+    default_accepts_scalar_loader = True
     uses_objects = False
     supports_population = True
     collection = False
@@ -743,7 +748,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     """
 
-    accepts_scalar_loader = False
+    default_accepts_scalar_loader = False
     uses_objects = True
     supports_population = True
     collection = False
@@ -867,7 +872,7 @@ class CollectionAttributeImpl(AttributeImpl):
     semantics to the orm layer independent of the user data implementation.
 
     """
-    accepts_scalar_loader = False
+    default_accepts_scalar_loader = False
     uses_objects = True
     supports_population = True
     collection = True
