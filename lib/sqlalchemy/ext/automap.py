@@ -86,6 +86,7 @@ a serialized file, or from itself being reflected using
 explicit table declaration::
 
     from sqlalchemy import create_engine, MetaData, Table, Column, ForeignKey
+    from sqlalchemy.ext.automap import automap_base
     engine = create_engine("sqlite:///mydatabase.db")
 
     # produce our own MetaData object
