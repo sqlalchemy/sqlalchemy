@@ -13,6 +13,14 @@
 .. changelog::
     :version: 1.2.0b1
 
+    .. change:: scoped_autocommit
+        :tags: feature, orm
+
+        Added ``.autocommit`` attribute to :class:`.scoped_session`, proxying
+        the ``.autocommit`` attribute of the underling :class:`.Session`
+        currently assigned to the thread.  Pull request courtesy
+        Ben Fagin.
+
     .. change:: 4009
         :tags: feature, mysql
         :tickets: 4009
