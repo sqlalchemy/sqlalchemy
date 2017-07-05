@@ -2483,6 +2483,10 @@ class DDLCompiler(Compiled):
             text += " NO MINVALUE"
         if create.element.nomaxvalue is not None:
             text += " NO MAXVALUE"
+        if create.element.cache is not None:
+            text += " CACHE %d" % create.element.cache
+        if create.element.order is True:
+            text += " ORDER"
         if create.element.cycle is not None:
             text += " CYCLE"
         return text

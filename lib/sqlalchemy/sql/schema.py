@@ -2120,8 +2120,8 @@ class Sequence(DefaultGenerator):
 
     def __init__(self, name, start=None, increment=None, minvalue=None,
                  maxvalue=None, nominvalue=None, nomaxvalue=None, cycle=None,
-                 schema=None, optional=False, quote=None, metadata=None,
-                 quote_schema=None,
+                 schema=None, cache=None, order=None, optional=False,
+                 quote=None, metadata=None, quote_schema=None,
                  for_update=False):
         """Construct a :class:`.Sequence` object.
 
@@ -2188,6 +2188,19 @@ class Sequence(DefaultGenerator):
          schema name when a :class:`.MetaData` is also present are the same
          as that of :paramref:`.Table.schema`.
 
+        :param cache: optional integer value; number of future values in the
+         sequence which are calculated in advance.  Renders the CACHE keyword
+         understood by Oracle and PostgreSQL.
+
+         .. versionadded:: 1.1.12
+
+        :param order: optional boolean value; if true, renders the
+         ORDER keyword, understood by Oracle, indicating the sequence is
+         definitively ordered.   May be necessary to provide deterministic
+         ordering using Oracle RAC.
+
+         .. versionadded:: 1.1.12
+
         :param optional: boolean value, when ``True``, indicates that this
          :class:`.Sequence` object only needs to be explicitly generated
          on backends that don't provide another way to generate primary
@@ -2243,6 +2256,8 @@ class Sequence(DefaultGenerator):
         self.nominvalue = nominvalue
         self.nomaxvalue = nomaxvalue
         self.cycle = cycle
+        self.cache = cache
+        self.order = order
         self.optional = optional
         if schema is BLANK_SCHEMA:
             self.schema = schema = None

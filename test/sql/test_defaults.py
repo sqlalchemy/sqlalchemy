@@ -950,6 +950,18 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', cache=1000, order=True)),
+            "CREATE SEQUENCE foo_seq CACHE 1000 ORDER",
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence(
+                            'foo_seq', order=True)),
+            "CREATE SEQUENCE foo_seq ORDER",
+        )
+
+        self.assert_compile(
             DropSequence(Sequence('foo_seq')),
             "DROP SEQUENCE foo_seq",
         )
