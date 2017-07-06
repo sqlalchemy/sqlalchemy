@@ -254,7 +254,7 @@ class Dialect(object):
           a dictionary of the form
               {'name' : str, 'start' :int, 'increment': int, 'minvalue': int,
                'maxvalue': int, 'nominvalue': bool, 'nomaxvalue': bool,
-               'cycle': bool}
+               'cycle': bool, 'cache': int, 'order': bool}
 
         Additional column attributes may be present.
         """
