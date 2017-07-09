@@ -5,8 +5,7 @@ What's New in SQLAlchemy 1.2?
 .. admonition:: About this Document
 
     This document describes changes between SQLAlchemy version 1.1
-    and SQLAlchemy version 1.2.   1.2 is currently under development
-    and is unreleased.
+    and SQLAlchemy version 1.2.
 
 
 Introduction
