@@ -561,7 +561,7 @@ name as follows::
     :paramref:`.MetaData.naming_convention` - for additional usage details
     as well as a listing of all available naming components.
 
-    :ref:`alembic:tutorial_constraint_names` - in the Alembic documentation.
+    `The Importance of Naming Constraints <http://alembic.zzzcomputing.com/en/latest/naming.html>`_ - in the Alembic documentation.
 
 .. versionadded:: 0.9.2 Added the :paramref:`.MetaData.naming_convention` argument.
 

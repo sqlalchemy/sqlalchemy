@@ -131,12 +131,12 @@ mixin:
 
 When instantiating models that use these column types, you should pass
 whatever data type is expected by the DBAPI driver you're using for
-the column type. For :mod:`psycopg2` these are
-:class:`~psycopg2.extras.NumericRange`,
-:class:`~psycopg2.extras.DateRange`,
-:class:`~psycopg2.extras.DateTimeRange` and
-:class:`~psycopg2.extras.DateTimeTZRange` or the class you've
-registered with :func:`~psycopg2.extras.register_range`.
+the column type. For ``psycopg2`` these are
+``psycopg2.extras.NumericRange``,
+``psycopg2.extras.DateRange``,
+``psycopg2.extras.DateTimeRange`` and
+``psycopg2.extras.DateTimeTZRange`` or the class you've
+registered with ``psycopg2.extras.register_range``.
 
 For example:
 
