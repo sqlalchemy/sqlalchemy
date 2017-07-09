@@ -362,7 +362,7 @@ the :func:`.orm.selectin_polymorphic` loader option::
     )
 
 When the above query is run, two additional SELECT statements will
-be emitted::
+be emitted:
 
 .. sourcecode:: python+sql
 
@@ -448,7 +448,7 @@ loading via the :func:`.joinedload` function::
     )
 
 Using the query above, we get three SELECT statements emitted, however
-the one against ``Manager`` will be::
+the one against ``Manager`` will be:
 
 .. sourcecode:: sql
 
