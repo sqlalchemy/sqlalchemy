@@ -134,7 +134,7 @@ The above SELECT statement includes these advantages:
   much better on a database like MySQL that doesn't like subqueries
 
 * Its structure is independent of the original query; in conjunction with the
-  new :ref:`expanding IN parameter system <change_3953>_` we can in most cases
+  new :ref:`expanding IN parameter system <change_3953>` we can in most cases
   use the "baked" query to cache the string SQL, reducing per-query overhead
   significantly
 
@@ -242,7 +242,7 @@ if not specified, the attribute defaults to ``None``::
 
 .. seealso::
 
-    :ref:`mapper_query_expression`
+    :ref:`mapper_querytime_expression`
 
 :ticket:`3058`
 
@@ -425,7 +425,7 @@ Above, the event handler will be triggered when an in-place change to the
 Added "for update" arguments to Session.refresh
 ------------------------------------------------
 
-Added new argument :paramref:`.with_for_update` to the
+Added new argument :paramref:`.Session.refresh.with_for_update` to the
 :meth:`.Session.refresh` method.  When the :meth:`.Query.with_lockmode`
 method were deprecated in favor of :meth:`.Query.with_for_update`,
 the :meth:`.Session.refresh` method was never updated to reflect
@@ -745,8 +745,8 @@ Current backend support includes MySQL, Postgresql, and Oracle.
 New "autoescape" option for startswith(), endswith()
 ----------------------------------------------------
 
-The "autoescape" parameter is added to :meth:`.Operators.startswith`,
-:meth:`.Operators.endswith`, :meth:`.Operators.contains`.  This parameter
+The "autoescape" parameter is added to :meth:`.ColumnOperators.startswith`,
+:meth:`.ColumnOperators.endswith`, :meth:`.ColumnOperators.contains`.  This parameter
 does what "escape" does, except that it also automatically performs a search-
 and-replace of any wildcard characters to be escaped by that character, as
 these operators already add the wildcard expression on the outside of the
@@ -856,10 +856,10 @@ is also refined to only occur when appropriate.
 The after_rollback() Session event now emits before the expiration of objects
 -----------------------------------------------------------------------------
 
-The :meth:`.Session.after_rollback` event now has access to the attribute
+The :meth:`.SessionEvents.after_rollback` event now has access to the attribute
 state of objects before their state has been expired (e.g. the "snapshot
 removal").  This allows the event to be consistent with the behavior
-of the :meth:`.Session.after_commit` event which also emits before the
+of the :meth:`.SessionEvents.after_commit` event which also emits before the
 "snapshot" has been removed::
 
     sess = Session()
@@ -1136,7 +1136,7 @@ Additionally, if the value of "updated" is *not* set, then we correctly
 get back the newly generated value on ``a1.updated``; previously, the logic
 that refreshes or expires the attribute to allow the generated value
 to be present would not fire off for a post-update.   The
-:meth:`.SessionEvents.refresh_flush` event is also emitted when a refresh
+:meth:`.InstanceEvents.refresh_flush` event is also emitted when a refresh
 within flush occurs in this case.
 
 :ticket:`3471`
@@ -1277,9 +1277,9 @@ Support for INSERT..ON DUPLICATE KEY UPDATE
 
 The ``ON DUPLICATE KEY UPDATE`` clause of ``INSERT`` supported by MySQL
 is now supported using a MySQL-specific version of the
-:class:`.Insert` object, via :func:`sqlalchemy.dialects.mysql.dml.insert`.
-This :class:`.Insert` subclass adds a new method
-:meth:`.Insert.on_duplicate_key_update` that implements MySQL's syntax::
+:class:`~.expression.Insert` object, via :func:`sqlalchemy.dialects.mysql.dml.insert`.
+This :class:`~.expression.Insert` subclass adds a new method
+:meth:`~.mysql.dml.Insert.on_duplicate_key_update` that implements MySQL's syntax::
 
     from sqlalchemy.dialect.mysql import insert
 
@@ -1305,9 +1305,6 @@ The above will render::
 
 :ticket:`4009`
 
-
-Dialect Improvements and Changes - SQLite
-=========================================
 
 Dialect Improvements and Changes - Oracle
 =========================================
