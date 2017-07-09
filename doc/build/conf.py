@@ -34,11 +34,9 @@ import sqlalchemy
 
 extensions = [
             'sphinx.ext.autodoc',
-            'sphinx.ext.intersphinx',
-                'zzzeeksphinx',
-                'changelog',
-                'sphinx_paramlinks',
-                #'corrections'
+            'zzzeeksphinx',
+            'changelog',
+            'sphinx_paramlinks',
             ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -340,10 +338,5 @@ epub_copyright = u'2007-2015, SQLAlchemy authors'
 
 # Allow duplicate toc entries.
 #epub_tocdup = True
-
-intersphinx_mapping = {
-    'alembic': ('http://alembic.zzzcomputing.com/en/latest/', None),
-    'psycopg2': ('http://pythonhosted.org/psycopg2', None),
-}
 
 
