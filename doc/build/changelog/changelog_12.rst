@@ -12,6 +12,7 @@
 
 .. changelog::
     :version: 1.2.0b1
+    :released: July 10, 2017
 
     .. change:: scoped_autocommit
         :tags: feature, orm
