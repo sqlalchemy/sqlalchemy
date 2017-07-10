@@ -144,7 +144,7 @@ The above SELECT statement includes these advantages:
   **not** MySQL drivers or SQL Server ODBC drivers).   Neither joined eager
   loading nor subquery eager loading are compatible with :meth:`.Query.yield_per`.
 
-The disadvanages of selectin eager loading are potentially large SQL
+The disadvantages of selectin eager loading are potentially large SQL
 queries, with large lists of IN parameters.  The list of IN parameters themselves
 are chunked in groups of 500, so a result set of more than 500 lead objects
 will have more additional "SELECT IN" queries following.  Also, support
