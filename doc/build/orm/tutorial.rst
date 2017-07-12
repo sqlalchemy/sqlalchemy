@@ -1386,7 +1386,7 @@ is an important method at the center of usage for any SQL-fluent application.
     ON clause is a plain SQL expression.  To control the first entity in the list
     of JOINs, use the :meth:`.Query.select_from` method::
 
-        query = Session.query(User, Address).select_from(Address).join(User)
+        query = session.query(User, Address).select_from(Address).join(User)
 
 
 .. _ormtutorial_aliases:
