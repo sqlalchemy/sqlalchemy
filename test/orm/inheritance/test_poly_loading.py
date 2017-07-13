@@ -1,12 +1,12 @@
 from sqlalchemy import String, Integer, Column, ForeignKey
 from sqlalchemy.orm import relationship, Session, \
-    selectin_polymorphic, selectinload
+    selectin_polymorphic, selectinload, with_polymorphic
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, EachOf
-from ._poly_fixtures import Company, Person, Engineer, Manager, Boss, \
-    Machine, Paperwork, _Polymorphic
+from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, EachOf, Or
+from ._poly_fixtures import Company, Person, Engineer, Manager, \
+    _Polymorphic, GeometryFixtureBase
 
 
 class BaseAndSubFixture(object):
@@ -258,3 +258,213 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
         )
         eq_(result, [self.c1, self.c2])
 
+
+class TestGeometries(GeometryFixtureBase):
+
+    def test_threelevel_selectin_to_inline_mapped(self):
+        self._fixture_from_geometry({
+            "a": {
+                "subclasses": {
+                    "b": {"polymorphic_load": "selectin"},
+                    "c": {
+                        "subclasses": {
+                            "d": {
+                                "polymorphic_load": "inline", "single": True
+                            },
+                            "e": {
+                                "polymorphic_load": "inline", "single": True
+                            },
+                        },
+                        "polymorphic_load": "selectin",
+                    }
+                }
+            }
+        })
+
+        a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
+        sess = Session()
+        sess.add_all([d(d_data="d1"), e(e_data="e1")])
+        sess.commit()
+
+        q = sess.query(a)
+
+        result = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.type AS a_type, a.id AS a_id, "
+                "a.a_data AS a_a_data FROM a",
+                {}
+            ),
+            Or(
+                CompiledSQL(
+                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "c.c_data AS c_c_data, c.e_data AS c_e_data, "
+                    "c.d_data AS c_d_data "
+                    "FROM a JOIN c ON a.id = c.id "
+                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    [{'primary_keys': [1, 2]}]
+                ),
+                CompiledSQL(
+                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "c.c_data AS c_c_data, "
+                    "c.d_data AS c_d_data, c.e_data AS c_e_data "
+                    "FROM a JOIN c ON a.id = c.id "
+                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    [{'primary_keys': [1, 2]}]
+                )
+            )
+        )
+        with self.assert_statement_count(testing.db, 0):
+            eq_(
+                result,
+                [d(d_data="d1"), e(e_data="e1")]
+            )
+
+    def test_threelevel_selectin_to_inline_options(self):
+        self._fixture_from_geometry({
+            "a": {
+                "subclasses": {
+                    "b": {},
+                    "c": {
+                        "subclasses": {
+                            "d": {
+                                "single": True
+                            },
+                            "e": {
+                                "single": True
+                            },
+                        },
+                    }
+                }
+            }
+        })
+
+        a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
+        sess = Session()
+        sess.add_all([d(d_data="d1"), e(e_data="e1")])
+        sess.commit()
+
+        c_alias = with_polymorphic(c, (d, e))
+        q = sess.query(a).options(
+            selectin_polymorphic(a, [b, c_alias])
+        )
+
+        result = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.type AS a_type, a.id AS a_id, "
+                "a.a_data AS a_a_data FROM a",
+                {}
+            ),
+            Or(
+                CompiledSQL(
+                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "c.c_data AS c_c_data, c.e_data AS c_e_data, "
+                    "c.d_data AS c_d_data "
+                    "FROM a JOIN c ON a.id = c.id "
+                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    [{'primary_keys': [1, 2]}]
+                ),
+                CompiledSQL(
+                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "c.c_data AS c_c_data, c.d_data AS c_d_data, "
+                    "c.e_data AS c_e_data "
+                    "FROM a JOIN c ON a.id = c.id "
+                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    [{'primary_keys': [1, 2]}]
+                ),
+            )
+        )
+        with self.assert_statement_count(testing.db, 0):
+            eq_(
+                result,
+                [d(d_data="d1"), e(e_data="e1")]
+            )
+
+    def test_threelevel_selectin_to_inline_awkward_alias_options(self):
+        self._fixture_from_geometry({
+            "a": {
+                "subclasses": {
+                    "b": {},
+                    "c": {
+                        "subclasses": {
+                            "d": {},
+                            "e": {},
+                        },
+                    }
+                }
+            }
+        })
+
+        a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
+        sess = Session()
+        sess.add_all([d(d_data="d1"), e(e_data="e1")])
+        sess.commit()
+
+        from sqlalchemy import select
+
+        a_table, c_table, d_table, e_table = self.tables("a", "c", "d", "e")
+
+        poly = select([
+            a_table.c.id, a_table.c.type, c_table, d_table, e_table
+        ]).select_from(
+            a_table.join(c_table).outerjoin(d_table).outerjoin(e_table)
+        ).apply_labels().alias('poly')
+
+        c_alias = with_polymorphic(c, (d, e), poly)
+        q = sess.query(a).options(
+            selectin_polymorphic(a, [b, c_alias])
+        ).order_by(a.id)
+
+        result = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.type AS a_type, a.id AS a_id, "
+                "a.a_data AS a_a_data FROM a ORDER BY a.id",
+                {}
+            ),
+            Or(
+                # here, the test is that the adaptation of "a" takes place
+                CompiledSQL(
+                    "SELECT poly.a_type AS poly_a_type, "
+                    "poly.c_id AS poly_c_id, "
+                    "poly.a_id AS poly_a_id, poly.c_c_data AS poly_c_c_data, "
+                    "poly.e_id AS poly_e_id, poly.e_e_data AS poly_e_e_data, "
+                    "poly.d_id AS poly_d_id, poly.d_d_data AS poly_d_d_data "
+                    "FROM (SELECT a.id AS a_id, a.type AS a_type, "
+                    "c.id AS c_id, "
+                    "c.c_data AS c_c_data, d.id AS d_id, "
+                    "d.d_data AS d_d_data, "
+                    "e.id AS e_id, e.e_data AS e_e_data FROM a JOIN c "
+                    "ON a.id = c.id LEFT OUTER JOIN d ON c.id = d.id "
+                    "LEFT OUTER JOIN e ON c.id = e.id) AS poly "
+                    "WHERE poly.a_id IN ([EXPANDING_primary_keys]) "
+                    "ORDER BY poly.a_id",
+                    [{'primary_keys': [1, 2]}]
+                ),
+                CompiledSQL(
+                    "SELECT poly.a_type AS poly_a_type, "
+                    "poly.c_id AS poly_c_id, "
+                    "poly.a_id AS poly_a_id, poly.c_c_data AS poly_c_c_data, "
+                    "poly.d_id AS poly_d_id, poly.d_d_data AS poly_d_d_data, "
+                    "poly.e_id AS poly_e_id, poly.e_e_data AS poly_e_e_data "
+                    "FROM (SELECT a.id AS a_id, a.type AS a_type, "
+                    "c.id AS c_id, c.c_data AS c_c_data, d.id AS d_id, "
+                    "d.d_data AS d_d_data, e.id AS e_id, "
+                    "e.e_data AS e_e_data FROM a JOIN c ON a.id = c.id "
+                    "LEFT OUTER JOIN d ON c.id = d.id "
+                    "LEFT OUTER JOIN e ON c.id = e.id) AS poly "
+                    "WHERE poly.a_id IN ([EXPANDING_primary_keys]) "
+                    "ORDER BY poly.a_id",
+                    [{'primary_keys': [1, 2]}]
+                )
+            )
+        )
+        with self.assert_statement_count(testing.db, 0):
+            eq_(
+                result,
+                [d(d_data="d1"), e(e_data="e1")]
+            )

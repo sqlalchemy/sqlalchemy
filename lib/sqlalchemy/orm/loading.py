@@ -360,20 +360,26 @@ def _instance_processor(
         if (
                 key in context.attributes and
                 context.attributes[key].strategy ==
-                (('selectinload_polymorphic', True), ) and
-                mapper in context.attributes[key].local_opts['mappers']
-        ) or mapper.polymorphic_load == 'selectin':
+                (('selectinload_polymorphic', True), )
+        ):
+            selectin_load_via = mapper._should_selectin_load(
+                context.attributes[key].local_opts['entities'],
+                _polymorphic_from)
+        else:
+            selectin_load_via = mapper._should_selectin_load(
+                None, _polymorphic_from)
 
+        if selectin_load_via and selectin_load_via is not _polymorphic_from:
             # only_load_props goes w/ refresh_state only, and in a refresh
             # we are a single row query for the exact entity; polymorphic
             # loading does not apply
             assert only_load_props is None
 
-            callable_ = _load_subclass_via_in(context, path, mapper)
+            callable_ = _load_subclass_via_in(context, path, selectin_load_via)
 
             PostLoad.callable_for_path(
-                context, load_path, mapper,
-                callable_, mapper)
+                context, load_path, selectin_load_via,
+                callable_, selectin_load_via)
 
     post_load = PostLoad.for_context(context, load_path, only_load_props)
 
@@ -523,12 +529,15 @@ def _instance_processor(
     return _instance
 
 
-@util.dependencies("sqlalchemy.ext.baked")
-def _load_subclass_via_in(baked, context, path, mapper):
+def _load_subclass_via_in(context, path, entity):
+    mapper = entity.mapper
 
     zero_idx = len(mapper.base_mapper.primary_key) == 1
 
-    q, enable_opt, disable_opt = mapper._subclass_load_via_in
+    if entity.is_aliased_class:
+        q, enable_opt, disable_opt = mapper._subclass_load_via_in(entity)
+    else:
+        q, enable_opt, disable_opt = mapper._subclass_load_via_in_mapper
 
     def do_load(context, path, states, load_only, effective_entity):
         orig_query = context.query

@@ -1,15 +1,10 @@
-from sqlalchemy import Integer, String, ForeignKey, func, desc, and_, or_
-from sqlalchemy.orm import interfaces, relationship, mapper, \
-    clear_mappers, create_session, joinedload, joinedload_all, \
-    subqueryload, subqueryload_all, polymorphic_union, aliased,\
-    class_mapper
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.engine import default
+from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, mapper, \
+    create_session, polymorphic_union
 
 from sqlalchemy.testing import AssertsCompiledSQL, fixtures
-from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import assert_raises, eq_
+from sqlalchemy.testing import config
 
 
 class Company(fixtures.ComparableEntity):
@@ -370,3 +365,127 @@ class _PolymorphicJoins(_PolymorphicFixtureBase):
         manager_with_polymorphic = ('*', manager_join)
         return person_with_polymorphic,\
             manager_with_polymorphic
+
+
+class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
+    """Provides arbitrary inheritance hierarchies based on a dictionary
+    structure.
+
+    e.g.::
+
+        self._fixture_from_geometry(
+            "a": {
+                "subclasses": {
+                    "b": {"polymorphic_load": "selectin"},
+                    "c": {
+                        "subclasses": {
+                            "d": {
+                                "polymorphic_load": "inlne", "single": True
+                            },
+                            "e": {
+                                "polymorphic_load": "inline", "single": True
+                            },
+                        },
+                        "polymorphic_load": "selectin",
+                    }
+                }
+            }
+        )
+
+    would provide the equivalent of::
+
+        class a(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            a_data = Column(String(50))
+            type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "a"
+            }
+
+        class b(a):
+            __tablename__ = 'b'
+
+            id = Column(ForeignKey('a.id'), primary_key=True)
+            b_data = Column(String(50))
+
+            __mapper_args__ = {
+                "polymorphic_identity": "b",
+                "polymorphic_load": "selectin"
+            }
+
+            # ...
+
+        class c(a):
+            __tablename__ = 'c'
+
+        class d(c):
+            # ...
+
+        class e(c):
+            # ...
+
+    Declarative is used so that we get extra behaviors of declarative,
+    such as single-inheritance column masking.
+
+    """
+
+    run_create_tables = 'each'
+    run_define_tables = 'each'
+    run_setup_classes = 'each'
+    run_setup_mappers = 'each'
+
+    def _fixture_from_geometry(self, geometry, base=None):
+        if not base:
+            is_base = True
+            base = self.DeclarativeBasic
+        else:
+            is_base = False
+
+        for key, value in geometry.items():
+            if is_base:
+                type_ = Column(String(50))
+                items = {
+                    "__tablename__": key,
+                    "id": Column(Integer, primary_key=True),
+                    "type": type_,
+                    "__mapper_args__": {
+                        "polymorphic_on": type_,
+                        "polymorphic_identity": key
+                    }
+
+                }
+            else:
+                items = {
+                    "__mapper_args__": {
+                        "polymorphic_identity": key
+                    }
+                }
+
+                if not value.get("single", False):
+                    items["__tablename__"] = key
+                    items["id"] = Column(
+                        ForeignKey("%s.id" % base.__tablename__),
+                        primary_key=True)
+
+            items["%s_data" % key] = Column(String(50))
+
+            # add other mapper options to be transferred here as needed.
+            for mapper_opt in ("polymorphic_load", ):
+                if mapper_opt in value:
+                    items["__mapper_args__"][mapper_opt] = value[mapper_opt]
+
+            if is_base:
+                klass = type(key, (fixtures.ComparableEntity, base, ), items)
+            else:
+                klass = type(key, (base, ), items)
+
+            if "subclasses" in value:
+                self._fixture_from_geometry(value["subclasses"], klass)
+
+        if is_base and self.metadata.tables and self.run_create_tables:
+            self.tables.update(self.metadata.tables)
+            self.metadata.create_all(config.db)
+

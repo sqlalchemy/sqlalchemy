@@ -52,22 +52,24 @@ def track_cascade_events(descriptor, prop):
             return
 
         sess = state.session
-        if sess:
 
-            prop = state.manager.mapper._props[key]
+        prop = state.manager.mapper._props[key]
 
-            if sess._warn_on_events:
-                sess._flush_warning(
-                    "collection remove"
-                    if prop.uselist
-                    else "related attribute delete")
+        if sess and sess._warn_on_events:
+            sess._flush_warning(
+                "collection remove"
+                if prop.uselist
+                else "related attribute delete")
 
-            # expunge pending orphans
-            item_state = attributes.instance_state(item)
-            if prop._cascade.delete_orphan and \
-                item_state in sess._new and \
-                    prop.mapper._is_orphan(item_state):
+        # expunge pending orphans
+        item_state = attributes.instance_state(item)
+
+        if prop._cascade.delete_orphan and \
+                prop.mapper._is_orphan(item_state):
+            if sess and item_state in sess._new:
                 sess.expunge(item)
+            else:
+                item_state._orphaned_outside_of_session = True
 
     def set_(state, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance

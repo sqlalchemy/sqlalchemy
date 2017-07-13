@@ -403,8 +403,8 @@ using the value ``"selectin"`` on a per-subclass basis::
         type = Column(String(50))
 
         __mapper_args__ = {
-            'polymorphic_identity':'employee',
-            'polymorphic_on':type
+            'polymorphic_identity': 'employee',
+            'polymorphic_on': type
         }
 
     class Engineer(Employee):
@@ -414,7 +414,7 @@ using the value ``"selectin"`` on a per-subclass basis::
 
         __mapper_args__ = {
             'polymorphic_load': 'selectin',
-            'polymorphic_identity':'engineer',
+            'polymorphic_identity': 'engineer',
         }
 
     class Manager(Employee):
@@ -424,7 +424,7 @@ using the value ``"selectin"`` on a per-subclass basis::
 
         __mapper_args__ = {
             'polymorphic_load': 'selectin',
-            'polymorphic_identity':'manager',
+            'polymorphic_identity': 'manager',
         }
 
 
@@ -475,6 +475,78 @@ known to work with MySQL and Postgresql.
 
 .. warning::  The selectin polymorphic loading feature should be considered
    as **experimental** within early releases of the 1.2 series.
+
+.. _polymorphic_selectin_and_withpoly:
+
+Combining selectin and with_polymorphic
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note:: works as of 1.2.0b3
+
+With careful planning, selectin loading can be applied against a hierarchy
+that itself uses "with_polymorphic".  A particular use case is that of
+using selectin loading to load a joined-inheritance subtable, which then
+uses "with_polymorphic" to refer to further sub-classes, which may be
+joined- or single-table inheritanace.  If we added a class ``VicePresident`` that
+extends ``Manager`` using single-table inheritance, we could ensure that
+a load of ``Manager`` also fully loads ``VicePresident`` subtypes at the same time::
+
+    # use "Employee" example from the enclosing section
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_name = Column(String(30))
+
+        __mapper_args__ = {
+            'polymorphic_load': 'selectin',
+            'polymorphic_identity': 'manager',
+        }
+
+    class VicePresident(Manager):
+        vp_info = Column(String(30))
+
+        __mapper_args__ = {
+            "polymorphic_load": "inline",
+            "polymorphic_identity": "vp"
+        }
+
+
+Above, we add a ``vp_info`` column to the ``manager`` table, local to the
+``VicePresident`` subclass.   This subclass is linked to the polymorphic
+identity ``"vp"`` which refers to rows which have this data.     By setting the
+load style to "inline", it means that a load of ``Manager`` objects will also
+ensure that the ``vp_info`` column is queried for in the same SELECT statement.
+A query against ``Employee`` that encounters a ``Manager`` row would emit
+similarly to the following:
+
+.. sourcecode:: sql
+
+    SELECT employee.id AS employee_id, employee.name AS employee_name,
+           employee.type AS employee_type
+    FROM employee
+    )
+
+    SELECT manager.id AS manager_id, employee.id AS employee_id,
+           employee.type AS employee_type,
+           manager.manager_name AS manager_manager_name,
+           manager.vp_info AS manager_vp_info
+    FROM employee JOIN manager ON employee.id = manager.id
+    WHERE employee.id IN (?) ORDER BY employee.id
+    (1,)
+
+Combining "selectin" polymorhic loading with query-time
+:func:`.orm.with_polymorphic` usage is also possible (though this is very
+outer-space stuff!); assuming the above mappings had no ``polymorphic_load``
+set up, we could get the same result as follows::
+
+    from sqlalchemy.orm import with_polymorphic, selectin_polymorphic
+
+    manager_poly = with_polymorphic(Manager, [VicePresident])
+
+    s.query(Employee).options(
+        selectin_polymorphic(Employee, [manager_poly])).all()
+
 
 Referring to specific subtypes on relationships
 -----------------------------------------------

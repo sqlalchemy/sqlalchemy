@@ -1688,6 +1688,7 @@ class Session(_SessionClassMethods):
                     state.key = instance_key
 
                 self.identity_map.replace(state)
+                state._orphaned_outside_of_session = False
 
         statelib.InstanceState._commit_all_states(
             ((state, state.dict) for state in states),
@@ -1762,6 +1763,7 @@ class Session(_SessionClassMethods):
             self.add(instance, _warn=False)
 
     def _save_or_update_state(self, state):
+        state._orphaned_outside_of_session = False
         self._save_or_update_impl(state)
 
         mapper = _state_mapper(state)
@@ -2271,11 +2273,17 @@ class Session(_SessionClassMethods):
             proc = new.union(dirty).difference(deleted)
 
         for state in proc:
-            is_orphan = (
-                _state_mapper(state)._is_orphan(state) and state.has_identity)
-            _reg = flush_context.register_object(state, isdelete=is_orphan)
-            assert _reg, "Failed to add object to the flush context!"
-            processed.add(state)
+            is_orphan = _state_mapper(state)._is_orphan(state)
+
+            is_persistent_orphan = is_orphan and state.has_identity
+
+            if is_orphan and not is_persistent_orphan and state._orphaned_outside_of_session:
+                self._expunge_states([state])
+            else:
+                _reg = flush_context.register_object(
+                    state, isdelete=is_persistent_orphan)
+                assert _reg, "Failed to add object to the flush context!"
+                processed.add(state)
 
         # put all remaining deletes into the flush context.
         if objset:

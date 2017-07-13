@@ -61,6 +61,7 @@ class InstanceState(interfaces.InspectionAttr):
     expired = False
     _deleted = False
     _load_pending = False
+    _orphaned_outside_of_session = False
     is_instance = True
 
     callables = ()

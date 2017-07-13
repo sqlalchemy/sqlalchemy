@@ -520,13 +520,10 @@ class AssertsExecutionResults(object):
             db, callable_, assertsql.CountStatements(count))
 
     @contextlib.contextmanager
-    def assert_execution(self, *rules):
-        assertsql.asserter.add_rules(rules)
-        try:
+    def assert_execution(self, db, *rules):
+        with self.sql_execution_asserter(db) as asserter:
             yield
-            assertsql.asserter.statement_complete()
-        finally:
-            assertsql.asserter.clear_rules()
+        asserter.assert_(*rules)
 
-    def assert_statement_count(self, count):
-        return self.assert_execution(assertsql.CountStatements(count))
+    def assert_statement_count(self, db, count):
+        return self.assert_execution(db, assertsql.CountStatements(count))

@@ -1414,7 +1414,7 @@ def selectin_polymorphic(loadopt, classes):
     """
     loadopt.set_class_strategy(
         {"selectinload_polymorphic": True},
-        opts={"mappers": tuple(sorted((inspect(cls) for cls in classes), key=id))}
+        opts={"entities": tuple(sorted((inspect(cls) for cls in classes), key=id))}
     )
     return loadopt
 
