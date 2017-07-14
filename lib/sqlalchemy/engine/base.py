@@ -345,10 +345,13 @@ class Connection(Connectable):
         try:
             return self.__connection
         except AttributeError:
-            try:
-                return self._revalidate_connection()
-            except BaseException as e:
-                self._handle_dbapi_exception(e, None, None, None, None)
+            # escape "except AttributeError" before revalidating
+            # to prevent misleading stacktraces in Py3K
+            pass
+        try:
+            return self._revalidate_connection()
+        except BaseException as e:
+            self._handle_dbapi_exception(e, None, None, None, None)
 
     def get_isolation_level(self):
         """Return the current isolation level assigned to this
@@ -962,6 +965,10 @@ class Connection(Connectable):
             try:
                 conn = self.__connection
             except AttributeError:
+                # escape "except AttributeError" before revalidating
+                # to prevent misleading stacktraces in Py3K
+                conn = None
+            if conn is None:
                 conn = self._revalidate_connection()
 
             dialect = self.dialect
@@ -1111,6 +1118,10 @@ class Connection(Connectable):
             try:
                 conn = self.__connection
             except AttributeError:
+                # escape "except AttributeError" before revalidating
+                # to prevent misleading stacktraces in Py3K
+                conn = None
+            if conn is None:
                 conn = self._revalidate_connection()
 
             context = constructor(dialect, self, conn, *args)

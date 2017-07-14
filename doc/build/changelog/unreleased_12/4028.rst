@@ -1,0 +1,11 @@
+.. change:: 4028
+    :tags: bug, engine
+    :tickets: 4028
+
+    Made some adjustments to :class:`.Pool` and :class:`.Connection` such
+    that recovery logic is not run underneath exception catches for
+    ``pool.Empty``, ``AttributeError``, since when the recovery operation
+    itself fails, Python 3 creates a misleading stack trace referring to the
+    ``Empty`` / ``AttributeError`` as the cause, when in fact these exception
+    catches are part of control flow.
+
