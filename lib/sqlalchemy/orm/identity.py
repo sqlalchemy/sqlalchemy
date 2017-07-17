@@ -105,15 +105,26 @@ class WeakInstanceDict(IdentityMap):
             return o is not None
 
     def contains_state(self, state):
-        return state.key in self._dict and self._dict[state.key] is state
+        if state.key in self._dict:
+            try:
+                return self._dict[state.key] is state
+            except KeyError:
+                return False
+        else:
+            return False
 
     def replace(self, state):
         if state.key in self._dict:
-            existing = self._dict[state.key]
-            if existing is not state:
-                self._manage_removed_state(existing)
+            try:
+                existing = self._dict[state.key]
+            except KeyError:
+                # catch gc removed the key after we just checked for it
+                pass
             else:
-                return
+                if existing is not state:
+                    self._manage_removed_state(existing)
+                else:
+                    return
 
         self._dict[state.key] = state
         self._manage_incoming_state(state)
@@ -124,6 +135,10 @@ class WeakInstanceDict(IdentityMap):
         if key in self._dict:
             try:
                 existing_state = self._dict[key]
+            except KeyError:
+                # catch gc removed the key after we just checked for it
+                pass
+            else:
                 if existing_state is not state:
                     o = existing_state.obj()
                     if o is not None:
@@ -134,8 +149,6 @@ class WeakInstanceDict(IdentityMap):
                                 orm_util.state_str(state), state.key))
                 else:
                     return False
-            except KeyError:
-                pass
         self._dict[key] = state
         self._manage_incoming_state(state)
         return True
@@ -148,11 +161,16 @@ class WeakInstanceDict(IdentityMap):
     def get(self, key, default=None):
         if key not in self._dict:
             return default
-        state = self._dict[key]
-        o = state.obj()
-        if o is None:
+        try:
+            state = self._dict[key]
+        except KeyError:
+            # catch gc removed the key after we just checked for it
             return default
-        return o
+        else:
+            o = state.obj()
+            if o is None:
+                return default
+            return o
 
     def items(self):
         values = self.all_states()
@@ -201,10 +219,15 @@ class WeakInstanceDict(IdentityMap):
 
     def safe_discard(self, state):
         if state.key in self._dict:
-            st = self._dict[state.key]
-            if st is state:
-                self._dict.pop(state.key, None)
-                self._manage_removed_state(state)
+            try:
+                st = self._dict[state.key]
+            except KeyError:
+                # catch gc removed the key after we just checked for it
+                pass
+            else:
+                if st is state:
+                    self._dict.pop(state.key, None)
+                    self._manage_removed_state(state)
 
     def prune(self):
         return 0
