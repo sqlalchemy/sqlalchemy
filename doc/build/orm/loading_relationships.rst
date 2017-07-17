@@ -288,7 +288,7 @@ using the :func:`.joinedload` loader option:
 The JOIN emitted by default is a LEFT OUTER JOIN, to allow for a lead object
 that does not refer to a related row.  For an attribute that is guaranteed
 to have an element, such as a many-to-one
-reference to a related object where the referencing foriegn key is NOT NULL,
+reference to a related object where the referencing foreign key is NOT NULL,
 the query can be made more efficient by using an inner join; this is available
 at the mapping level via the :paramref:`.relationship.innerjoin` flag::
 
