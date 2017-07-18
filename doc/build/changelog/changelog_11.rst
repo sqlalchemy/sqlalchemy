@@ -31,6 +31,17 @@
         ORDER parameter understood by Oracle.  Pull request
         courtesy David Moore.
 
+    .. change:: 4031
+        :tags: bug, orm
+        :versions: 1.2.0b2
+        :tickets: 4031
+
+        Fixed bug involving JSON NULL evaluation logic added in 1.1 as part
+        of :ticket:`3514` where the logic would not accommodate ORM
+        mapped attributes named differently from the :class:`.Column`
+        that was mapped.
+
+
 .. changelog::
     :version: 1.1.11
     :released: Monday, June 19, 2017
