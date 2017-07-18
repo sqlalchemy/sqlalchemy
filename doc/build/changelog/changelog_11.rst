@@ -21,6 +21,16 @@
 .. changelog::
     :version: 1.1.12
 
+    .. change:: 4033
+        :tags: bug, orm
+        :tickets: 4033
+        :versions: 1.2.0b2
+
+        Fixed regression from 1.1.11 where adding additional non-entity
+        columns to a query that includes an entity with subqueryload
+        relationships would fail, due to an inspection added in 1.1.11 as a
+        result of :ticket:`4011`.
+
     .. change:: cache_order_sequence
         :tags: feature, oracle, posgresql
         :versions: 1.2.0b1

@@ -540,6 +540,25 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         eq_(self.static.user_address_result,
             sess.query(User).order_by(User.id).all())
 
+    def test_add_arbitrary_exprs(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties=dict(
+            addresses=relationship(Address, lazy='subquery')
+        ))
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User, '1'),
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "1 FROM users"
+        )
+
     def test_double(self):
         """Eager loading with two relationships simultaneously,
             from the same table, using aliases."""
