@@ -391,7 +391,7 @@ def _collect_insert_commands(
         for propkey in set(propkey_to_col).intersection(state_dict):
             value = state_dict[propkey]
             col = propkey_to_col[propkey]
-            if value is None and propkey not in eval_none and not render_nulls:
+            if value is None and col not in eval_none and not render_nulls:
                 continue
             elif not bulk and hasattr(value, '__clause_element__') or \
                     isinstance(value, sql.ClauseElement):
