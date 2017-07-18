@@ -857,6 +857,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             q._set_select_from(
                 list(set([
                     ent['entity'] for ent in orig_query.column_descriptions
+                    if ent['entity'] is not None
                 ])),
                 False
             )
