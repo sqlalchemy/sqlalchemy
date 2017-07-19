@@ -1975,7 +1975,7 @@ class Mapper(InspectionAttr):
             (
                 table,
                 frozenset(
-                    col.key for col in columns
+                    col for col in columns
                     if col.type.should_evaluate_none
                 )
             )

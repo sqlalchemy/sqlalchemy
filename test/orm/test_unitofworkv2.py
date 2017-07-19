@@ -2501,62 +2501,101 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 String(50).evaluates_none(), default='default_val'),
         )
 
+        Table(
+            'test_w_renames', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('evals_null_no_default', EvalsNull()),
+            Column('evals_null_default', EvalsNull(), default='default_val'),
+            Column('no_eval_null_no_default', String(50)),
+            Column('no_eval_null_default', String(50), default='default_val'),
+            Column(
+                'builtin_evals_null_no_default', String(50).evaluates_none()),
+            Column(
+                'builtin_evals_null_default',
+                String(50).evaluates_none(), default='default_val'),
+        )
+
     @classmethod
     def setup_classes(cls):
         class Thing(cls.Basic):
             pass
 
+        class AltNameThing(cls.Basic):
+            pass
+
     @classmethod
     def setup_mappers(cls):
         Thing = cls.classes.Thing
+        AltNameThing = cls.classes.AltNameThing
 
         mapper(Thing, cls.tables.test)
 
+        mapper(AltNameThing, cls.tables.test_w_renames, column_prefix="_foo_")
+
     def _assert_col(self, name, value):
-        Thing = self.classes.Thing
+        Thing, AltNameThing = self.classes.Thing, self.classes.AltNameThing
         s = Session()
 
         col = getattr(Thing, name)
         obj = s.query(col).filter(col == value).one()
         eq_(obj[0], value)
 
+        col = getattr(AltNameThing, "_foo_" + name)
+        obj = s.query(col).filter(col == value).one()
+        eq_(obj[0], value)
+
     def _test_insert(self, attr, expected):
-        Thing = self.classes.Thing
+        Thing, AltNameThing = self.classes.Thing, self.classes.AltNameThing
 
         s = Session()
         t1 = Thing(**{attr: None})
         s.add(t1)
+
+        t2 = AltNameThing(**{"_foo_" + attr: None})
+        s.add(t2)
+
         s.commit()
 
         self._assert_col(attr, expected)
 
     def _test_bulk_insert(self, attr, expected):
-        Thing = self.classes.Thing
+        Thing, AltNameThing = self.classes.Thing, self.classes.AltNameThing
 
         s = Session()
         s.bulk_insert_mappings(
             Thing, [{attr: None}]
+        )
+        s.bulk_insert_mappings(
+            AltNameThing, [{"_foo_" + attr: None}]
         )
         s.commit()
 
         self._assert_col(attr, expected)
 
     def _test_insert_novalue(self, attr, expected):
-        Thing = self.classes.Thing
+        Thing, AltNameThing = self.classes.Thing, self.classes.AltNameThing
 
         s = Session()
         t1 = Thing()
         s.add(t1)
+
+        t2 = AltNameThing()
+        s.add(t2)
+
         s.commit()
 
         self._assert_col(attr, expected)
 
     def _test_bulk_insert_novalue(self, attr, expected):
-        Thing = self.classes.Thing
+        Thing, AltNameThing = self.classes.Thing, self.classes.AltNameThing
 
         s = Session()
         s.bulk_insert_mappings(
             Thing, [{}]
+        )
+        s.bulk_insert_mappings(
+            AltNameThing, [{}]
         )
         s.commit()
 
