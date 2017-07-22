@@ -20,37 +20,7 @@
 
 .. changelog::
     :version: 1.1.12
-
-    .. change:: 4033
-        :tags: bug, orm
-        :tickets: 4033
-        :versions: 1.2.0b2
-
-        Fixed regression from 1.1.11 where adding additional non-entity
-        columns to a query that includes an entity with subqueryload
-        relationships would fail, due to an inspection added in 1.1.11 as a
-        result of :ticket:`4011`.
-
-    .. change:: cache_order_sequence
-        :tags: feature, oracle, posgresql
-        :versions: 1.2.0b1
-
-        Added new keywords :paramref:`.Sequence.cache` and
-        :paramref:`.Sequence.order` to :class:`.Sequence`, to allow rendering
-        of the CACHE parameter understood by Oracle and PostgreSQL, and the
-        ORDER parameter understood by Oracle.  Pull request
-        courtesy David Moore.
-
-    .. change:: 4031
-        :tags: bug, orm
-        :versions: 1.2.0b2
-        :tickets: 4031
-
-        Fixed bug involving JSON NULL evaluation logic added in 1.1 as part
-        of :ticket:`3514` where the logic would not accommodate ORM
-        mapped attributes named differently from the :class:`.Column`
-        that was mapped.
-
+    :include_notes_from: unreleased_11
 
 .. changelog::
     :version: 1.1.11
