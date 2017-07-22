@@ -1,0 +1,9 @@
+.. change:: 4033
+    :tags: bug, orm
+    :tickets: 4033
+
+    Fixed regression from 1.1.11 where adding additional non-entity
+    columns to a query that includes an entity with subqueryload
+    relationships would fail, due to an inspection added in 1.1.11 as a
+    result of :ticket:`4011`.
+
