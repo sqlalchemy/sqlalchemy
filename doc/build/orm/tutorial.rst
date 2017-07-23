@@ -456,7 +456,7 @@ three new ``User`` objects we've added:
     ('fred', 'Fred Flinstone', 'blah')
     COMMIT
 
-:meth:`~.Session.commit` flushes whatever remaining changes remain to the
+:meth:`~.Session.commit` flushes the remaining changes to the
 database, and commits the transaction. The connection resources referenced by
 the session are now returned to the connection pool. Subsequent operations
 with this session will occur in a **new** transaction, which will again
