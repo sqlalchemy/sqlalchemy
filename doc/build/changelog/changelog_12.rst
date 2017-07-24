@@ -12,7 +12,17 @@
 
 .. changelog::
     :version: 1.2.0b2
-    :include_notes_from: unreleased_12
+    :released: July 24, 2017
+
+    .. change:: 4033
+        :tags: bug, orm
+        :tickets: 4033
+
+        Fixed regression from 1.1.11 where adding additional non-entity
+        columns to a query that includes an entity with subqueryload
+        relationships would fail, due to an inspection added in 1.1.11 as a
+        result of :ticket:`4011`.
+
 
 .. changelog::
     :version: 1.2.0b1
