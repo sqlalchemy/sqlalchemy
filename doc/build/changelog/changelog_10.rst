@@ -22,19 +22,6 @@
 
 
 .. changelog::
-    :version: 1.0.18
-
-    .. change:: 3937
-        :tags: bug, oracle
-        :tickets: 3937
-        :versions: 1.1.7
-
-        A fix to cx_Oracle's WITH_UNICODE mode which was uncovered by the
-        fact that cx_Oracle 5.3 now seems to hardcode this flag on in
-        the build; an internal method that uses this mode wasn't using
-        the correct signature.
-
-.. changelog::
     :version: 1.0.17
     :released: January 17, 2017
 
