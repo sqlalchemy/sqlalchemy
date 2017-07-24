@@ -161,7 +161,7 @@ def run_as_contextmanager(ctx, fn, *arg, **kw):
     except:
         exc_info = sys.exc_info()
         raise_ = ctx.__exit__(*exc_info)
-        if raise_ is None:
+        if not raise_:
             raise
         else:
             return raise_
