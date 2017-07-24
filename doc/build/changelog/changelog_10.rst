@@ -18,7 +18,25 @@
 
 .. changelog::
     :version: 1.0.18
-    :include_notes_from: unreleased_10
+    :released: July 24, 2017
+
+    .. change::
+        :tags: bug, tests, py3k
+        :tickets: 4034
+        :versions: 1.0.18, 1.1.12, 1.2.0b2
+
+        Fixed issue in testing fixtures which was incompatible with a change
+        made as of Python 3.6.2 involving context managers.
+
+    .. change:: 3937
+        :tags: bug, oracle
+        :tickets: 3937
+        :versions: 1.1.7
+
+        A fix to cx_Oracle's WITH_UNICODE mode which was uncovered by the
+        fact that cx_Oracle 5.3 now seems to hardcode this flag on in
+        the build; an internal method that uses this mode wasn't using
+        the correct signature.
 
 
 .. changelog::
