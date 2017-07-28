@@ -17,6 +17,9 @@
 
 
 .. changelog::
+    :version: 1.0.19
+
+.. changelog::
     :version: 1.0.18
     :released: July 24, 2017
 
