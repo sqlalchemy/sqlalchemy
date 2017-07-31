@@ -12,6 +12,7 @@
 
 .. changelog::
     :version: 1.2.0b3
+    :include_notes_from: unreleased_12
 
 .. changelog::
     :version: 1.2.0b2
