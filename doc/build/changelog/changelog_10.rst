@@ -18,6 +18,7 @@
 
 .. changelog::
     :version: 1.0.19
+    :include_notes_from: unreleased_10
 
 .. changelog::
     :version: 1.0.18
