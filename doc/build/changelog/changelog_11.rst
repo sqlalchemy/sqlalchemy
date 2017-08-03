@@ -20,7 +20,7 @@
 
 .. changelog::
     :version: 1.1.13
-    :include_notes_from: unreleased_11
+    :released: August 3, 2017
 
 .. changelog::
     :version: 1.1.12
