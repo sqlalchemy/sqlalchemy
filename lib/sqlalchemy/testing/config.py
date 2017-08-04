@@ -24,6 +24,7 @@ except ImportError:
 
 class Config(object):
     def __init__(self, db, db_opts, options, file_config):
+        self._set_name(db)
         self.db = db
         self.db_opts = db_opts
         self.options = options
@@ -32,7 +33,14 @@ class Config(object):
         self.test_schema_2 = "test_schema_2"
 
     _stack = collections.deque()
-    _configs = {}
+    _configs = set()
+
+    def _set_name(self, db):
+        if db.dialect.server_version_info:
+            svi = ".".join(str(tok) for tok in db.dialect.server_version_info)
+            self.name = "%s+%s_[%s]" % (db.name, db.driver, svi)
+        else:
+            self.name = "%s+%s" % (db.name, db.driver)
 
     @classmethod
     def register(cls, db, db_opts, options, file_config):
@@ -42,10 +50,7 @@ class Config(object):
         gets set as the "_current".
         """
         cfg = Config(db, db_opts, options, file_config)
-
-        cls._configs[cfg.db.name] = cfg
-        cls._configs[(cfg.db.name, cfg.db.dialect)] = cfg
-        cls._configs[cfg.db] = cfg
+        cls._configs.add(cfg)
         return cfg
 
     @classmethod
@@ -80,8 +85,7 @@ class Config(object):
 
     @classmethod
     def all_configs(cls):
-        for cfg in set(cls._configs.values()):
-            yield cfg
+        return cls._configs
 
     @classmethod
     def all_dbs(cls):

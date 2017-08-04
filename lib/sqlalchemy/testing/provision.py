@@ -57,6 +57,7 @@ def setup_config(db_url, options, file_config, follower_ident):
     eng = engines.testing_engine(db_url, db_opts)
     _post_configure_engine(db_url, eng, follower_ident)
     eng.connect().close()
+
     cfg = config.Config.register(eng, db_opts, options, file_config)
     if follower_ident:
         _configure_follower(cfg, follower_ident)
