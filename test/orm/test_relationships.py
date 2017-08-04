@@ -1083,7 +1083,8 @@ class FKsAsPksTest(fixtures.MappedTest):
                         "Dependency rule tried to blank-out "
                         "primary key column 'tableB.id' on instance ")
 
-    @testing.fails_on_everything_except('sqlite', 'mysql')
+    @testing.fails_on_everything_except(
+        'sqlite', testing.requires.mysql_non_strict)
     def test_nullPKsOK_BtoA(self):
         A, tableA = self.classes.A, self.tables.tableA
 
