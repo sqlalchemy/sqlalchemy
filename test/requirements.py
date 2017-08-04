@@ -908,7 +908,7 @@ class DefaultRequirements(SuiteRequirements):
     def mysql_non_strict(self):
         def check(config):
             row = config.db.execute("show variables like 'sql_mode'").first()
-            return not row or "STRICT" not in row[1]
+            return not row or "STRICT_TRANS_TABLES" not in row[1]
 
         return only_if(check)
 
