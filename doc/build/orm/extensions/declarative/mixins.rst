@@ -436,7 +436,7 @@ against the parent::
 Mixing in Columns in Inheritance Scenarios
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In constrast to how ``__tablename__`` and other special names are handled when
+In contrast to how ``__tablename__`` and other special names are handled when
 used with :class:`.declared_attr`, when we mix in columns and properties (e.g.
 relationships, column properties, etc.), the function is
 invoked for the **base class only** in the hierarchy.  Below, only the

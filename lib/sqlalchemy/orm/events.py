@@ -730,7 +730,7 @@ class MapperEvents(event.Events):
             def go():
                 # ...
 
-        Constrast this event to :meth:`.MapperEvents.after_configured`,
+        Contrast this event to :meth:`.MapperEvents.after_configured`,
         which is invoked after the series of mappers has been configured,
         as well as :meth:`.MapperEvents.mapper_configured`, which is invoked
         on a per-mapper basis as each one is configured to the extent possible.
@@ -777,7 +777,7 @@ class MapperEvents(event.Events):
         operation proceeds; unlike that event, when this event is invoked,
         all cross-configurations (e.g. backrefs) will also have been made
         available for any mappers that were pending.
-        Also constrast to :meth:`.MapperEvents.before_configured`,
+        Also contrast to :meth:`.MapperEvents.before_configured`,
         which is invoked before the series of mappers has been configured.
 
         This event can **only** be applied to the :class:`.Mapper` class
