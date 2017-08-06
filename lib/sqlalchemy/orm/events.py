@@ -302,6 +302,9 @@ class InstanceEvents(event.Events):
         attributes and collections may or may not be loaded or even
         initialized, depending on what's present in the result rows.
 
+        The :meth:`.InstanceEvents.load` event is also available in a
+        class-method decorator format called :func:`.orm.reconstructor`.
+
         :param target: the mapped instance.  If
          the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
@@ -316,6 +319,8 @@ class InstanceEvents(event.Events):
             :meth:`.InstanceEvents.init`
 
             :meth:`.InstanceEvents.refresh`
+
+            :ref:`mapping_constructors`
 
         """
 

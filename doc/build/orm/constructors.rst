@@ -18,10 +18,13 @@ then quietly restoring attributes directly on the instance rather than calling
 ``__init__``.
 
 If you need to do some setup on database-loaded instances before they're ready
-to use, you can use the ``@reconstructor`` decorator to tag a method as the
-ORM counterpart to ``__init__``. SQLAlchemy will call this method with no
-arguments every time it loads or reconstructs one of your instances. This is
-useful for recreating transient properties that are normally assigned in your
+to use, there is an event hook known as :meth:`.InstanceEvents.load` which
+can achieve this; it is also available via a class-specific decorator called
+:func:`.orm.reconstructor`.   When using :func:`.orm.reconstructor`,
+the mapper will invoke the decorated method with no
+arguments every time it loads or reconstructs an instance of the
+class. This is
+useful for recreating transient properties that are normally assigned in
 ``__init__``::
 
     from sqlalchemy import orm
@@ -36,21 +39,22 @@ useful for recreating transient properties that are normally assigned in your
         def init_on_load(self):
             self.stuff = []
 
-When ``obj = MyMappedClass()`` is executed, Python calls the ``__init__``
-method as normal and the ``data`` argument is required.  When instances are
+Above, when ``obj = MyMappedClass()`` is executed, the ``__init__`` constructor
+is invoked normally and the ``data`` argument is required.  When instances are
 loaded during a :class:`~sqlalchemy.orm.query.Query` operation as in
 ``query(MyMappedClass).one()``, ``init_on_load`` is called.
 
-Any method may be tagged as the :func:`~sqlalchemy.orm.reconstructor`, even
-the ``__init__`` method. SQLAlchemy will call the reconstructor method with no
-arguments. Scalar (non-collection) database-mapped attributes of the instance
-will be available for use within the function. Eagerly-loaded collections are
-generally not yet available and will usually only contain the first element.
+Any method may be tagged as the :func:`.orm.reconstructor`, even
+the ``__init__`` method itself.    It is invoked after all immediate
+column-level attributes are loaded as well as after eagerly-loaded scalar
+relationships.  Eagerly loaded collections may be only partially populated
+or not populated at all, depending on the kind of eager loading used.
+
 ORM state changes made to objects at this stage will not be recorded for the
-next flush() operation, so the activity within a reconstructor should be
+next flush operation, so the activity within a reconstructor should be
 conservative.
 
-:func:`~sqlalchemy.orm.reconstructor` is a shortcut into a larger system
+:func:`.orm.reconstructor` is a shortcut into a larger system
 of "instance level" events, which can be subscribed to using the
 event API - see :class:`.InstanceEvents` for the full API description
 of these events.
