@@ -2902,6 +2902,12 @@ def reconstructor(fn):
     this stage will not be recorded for the next flush() operation, so
     the activity within a reconstructor should be conservative.
 
+    .. seealso::
+
+        :ref:`mapping_constructors`
+
+        :meth:`.InstanceEvents.load`
+
     """
     fn.__sa_reconstructor__ = True
     return fn
