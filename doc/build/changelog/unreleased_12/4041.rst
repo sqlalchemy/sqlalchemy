@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4041
+
+    Fixed bug where the pg8000 driver would fail if using
+    :meth:`.MetaData.reflect` with a schema name, since the schema name would
+    be sent as a "quoted_name" object that's a string subclass, which pg8000
+    doesn't recognize.   The quoted_name type is added to pg8000's
+    py_types collection on connect.

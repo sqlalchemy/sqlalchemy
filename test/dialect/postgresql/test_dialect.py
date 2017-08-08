@@ -8,7 +8,8 @@ from sqlalchemy import testing
 import datetime
 from sqlalchemy import (
     Table, Column, select, MetaData, text, Integer, String, Sequence, Numeric,
-    DateTime, BigInteger, func, extract, SmallInteger, TypeDecorator)
+    DateTime, BigInteger, func, extract, SmallInteger, TypeDecorator, literal,
+    cast)
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
@@ -224,6 +225,20 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 users.c.id == 4).execute().fetchall(), [(4, 'newname')])
         finally:
             users.drop()
+
+    def test_quoted_name_bindparam_ok(self):
+        from sqlalchemy.sql.elements import quoted_name
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(
+                    select(
+                        [cast(
+                            literal(quoted_name("some_name", False)), String)]
+                    )
+                ),
+                "some_name"
+            )
 
     def test_preexecute_passivedefault(self):
         """test that when we get a primary key column back from

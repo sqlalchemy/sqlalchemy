@@ -73,6 +73,7 @@ from .base import (
     _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES)
 import re
 from sqlalchemy.dialects.postgresql.json import JSON
+from ...sql.elements import quoted_name
 
 
 class _PGNumeric(sqltypes.Numeric):
@@ -244,6 +245,11 @@ class PGDialect_pg8000(PGDialect):
 
     def on_connect(self):
         fns = []
+
+        def on_connect(conn):
+            conn.py_types[quoted_name] = conn.py_types[unicode]
+        fns.append(on_connect)
+
         if self.client_encoding is not None:
             def on_connect(conn):
                 self.set_client_encoding(conn, self.client_encoding)
