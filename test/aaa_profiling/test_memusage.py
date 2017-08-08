@@ -70,7 +70,12 @@ def profile_memory(maxtimes=250,
                         else len(get_objects_skipping_sqlite_issue())
                     )
 
-                print("sample gc sizes:", samples)
+                # note: this prints lots of text, and when using pytest-xdist,
+                # actually interferes with memory itself from just sending
+                # the stdout between processes :).
+                # need to figure out a "condiional print" that doesn't send
+                # any stdout when we have pytest-xdist happening
+                # print("sample gc sizes:", samples)
 
                 if assert_no_sessions:
                     assert len(_sessions) == 0
