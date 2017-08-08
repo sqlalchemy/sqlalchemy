@@ -58,7 +58,10 @@ def profile_memory(maxtimes=250,
             max_ = 0
             max_grew_for = 0
             success = False
-            for y in range(maxtimes // 5):
+            until_maxtimes = 0
+            while True:
+                if until_maxtimes >= maxtimes // 5:
+                    break
                 for x in range(5):
                     func(*args)
                     gc_collect()
@@ -82,6 +85,7 @@ def profile_memory(maxtimes=250,
                     )
                     max_ = latest_max
                     max_grew_for += 1
+                    until_maxtimes += 1
                     continue
                 else:
                     print("Max remained at %s, %s more attempts left" %
@@ -90,8 +94,13 @@ def profile_memory(maxtimes=250,
                     if max_grew_for == 0:
                         success = True
                         break
-            else:
-                assert False, repr(samples)
+
+            if not success:
+                assert False, \
+                    "Ran for a total of %d times, memory kept growing: %r" % (
+                        maxtimes,
+                        samples
+                    )
 
             assert success
         return profile
