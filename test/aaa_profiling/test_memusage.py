@@ -82,19 +82,19 @@ def profile_memory(maxtimes=250,
 
                 latest_max = max(samples[-5:])
                 if latest_max > max_:
-                    print(
-                        "Max grew from %s to %s, max has "
-                        "grown for %s samples" % (
-                            max_, latest_max, max_grew_for
-                        )
-                    )
+                    #print(
+                    #    "Max grew from %s to %s, max has "
+                    #    "grown for %s samples" % (
+                    #        max_, latest_max, max_grew_for
+                    #    )
+                    #)
                     max_ = latest_max
                     max_grew_for += 1
                     until_maxtimes += 1
                     continue
                 else:
-                    print("Max remained at %s, %s more attempts left" %
-                          (max_, max_grew_for))
+                    #print("Max remained at %s, %s more attempts left" %
+                    #      (max_, max_grew_for))
                     max_grew_for -= 1
                     if max_grew_for == 0:
                         success = True
