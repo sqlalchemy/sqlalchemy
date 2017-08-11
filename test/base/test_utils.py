@@ -439,7 +439,7 @@ class ToListTest(fixtures.TestBase):
         )
 
 
-class ColumnCollectionTest(fixtures.TestBase):
+class ColumnCollectionTest(testing.AssertsCompiledSQL, fixtures.TestBase):
 
     def test_in(self):
         cc = sql.ColumnCollection()
@@ -495,6 +495,41 @@ class ColumnCollectionTest(fixtures.TestBase):
         ci = cc.as_immutable()
         eq_(ci._all_columns, [c1, c2a, c3, c2b])
         eq_(list(ci), [c1, c2b, c3])
+
+    def test_identical_dupe_add(self):
+        cc = sql.ColumnCollection()
+
+        c1, c2, c3 = (column('c1'),
+                      column('c2'),
+                      column('c3'))
+
+        cc.add(c1)
+        cc.add(c2)
+        cc.add(c3)
+        cc.add(c2)
+
+        eq_(cc._all_columns, [c1, c2, c3])
+
+        self.assert_compile(
+            cc == [c1, c2, c3],
+            "c1 = c1 AND c2 = c2 AND c3 = c3"
+        )
+
+        # for iter, c2a is replaced by c2b, ordering
+        # is maintained in that way.  ideally, iter would be
+        # the same as the "_all_columns" collection.
+        eq_(list(cc), [c1, c2, c3])
+
+        assert cc.contains_column(c2)
+
+        ci = cc.as_immutable()
+        eq_(ci._all_columns, [c1, c2, c3])
+        eq_(list(ci), [c1, c2, c3])
+
+        self.assert_compile(
+            ci == [c1, c2, c3],
+            "c1 = c1 AND c2 = c2 AND c3 = c3"
+        )
 
     def test_replace(self):
         cc = sql.ColumnCollection()

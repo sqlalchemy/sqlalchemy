@@ -3402,7 +3402,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
             documented arguments.
 
         """
-        self.table = None
+        self.table = table = None
 
         columns = []
         processed_expressions = []
@@ -3417,11 +3417,20 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.unique = kw.pop('unique', False)
         if 'info' in kw:
             self.info = kw.pop('info')
+
+        # TODO: consider "table" argument being public, but for
+        # the purpose of the fix here, it starts as private.
+        if '_table' in kw:
+            table = kw.pop('_table')
+
         self._validate_dialect_kwargs(kw)
 
         # will call _set_parent() if table-bound column
         # objects are present
         ColumnCollectionMixin.__init__(self, *columns)
+
+        if table is not None:
+            self._set_parent(table)
 
     def _set_parent(self, table):
         ColumnCollectionMixin._set_parent(self, table)
