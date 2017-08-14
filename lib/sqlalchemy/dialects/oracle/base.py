@@ -1469,21 +1469,9 @@ class OracleDialect(default.DefaultDialect):
 
         oracle_sys_col = re.compile(r'SYS_NC\d+\$', re.IGNORECASE)
 
-        def upper_name_set(names):
-            return {i.upper() for i in names}
-
-        pk_names = upper_name_set(pkeys)
-
-        def remove_if_primary_key(index):
-            # don't include the primary key index
-            if index is not None and \
-               upper_name_set(index['column_names']) == pk_names:
-                indexes.pop()
-
         index = None
         for rset in rp:
             if rset.index_name != last_index_name:
-                remove_if_primary_key(index)
                 index = dict(name=self.normalize_name(rset.index_name),
                              column_names=[], dialect_options={})
                 indexes.append(index)
@@ -1500,7 +1488,17 @@ class OracleDialect(default.DefaultDialect):
                 index['column_names'].append(
                     self.normalize_name(rset.column_name))
             last_index_name = rset.index_name
-        remove_if_primary_key(index)
+
+        def upper_name_set(names):
+            return {i.upper() for i in names}
+
+        pk_names = upper_name_set(pkeys)
+        if pk_names:
+            def is_pk_index(index):
+                # don't include the primary key index
+                return upper_name_set(index['column_names']) == pk_names
+            indexes = [idx for idx in indexes if not is_pk_index(idx)]
+
         return indexes
 
     @reflection.cache

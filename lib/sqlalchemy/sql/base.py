@@ -517,6 +517,10 @@ class ColumnCollection(util.OrderedProperties):
             # columns collection
 
             existing = self[key]
+
+            if existing is value:
+                return
+
             if not existing.shares_lineage(value):
                 util.warn('Column %r on table %r being replaced by '
                           '%r, which has the same key.  Consider '

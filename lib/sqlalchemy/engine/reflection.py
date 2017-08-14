@@ -810,6 +810,7 @@ class Inspector(object):
 
             sa_schema.Index(
                 name, *idx_cols,
+                _table=table,
                 **dict(list(dialect_options.items()) + [('unique', unique)])
             )
 

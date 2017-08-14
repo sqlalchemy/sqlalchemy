@@ -2255,6 +2255,21 @@ class ConstraintTest(fixtures.TestBase):
         i = Index('i', func.foo(t.c.x))
         self._assert_index_col_x(t, i)
 
+    def test_index_no_cols_private_table_arg(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer))
+        i = Index('i', _table=t)
+        is_(i.table, t)
+        eq_(list(i.columns), [])
+
+    def test_index_w_cols_private_table_arg(self):
+        m = MetaData()
+        t = Table('t', m, Column('x', Integer))
+        i = Index('i', t.c.x, _table=t)
+        is_(i.table, t)
+
+        eq_(i.columns, [t.c.x])
+
     def test_inline_decl_columns(self):
         m = MetaData()
         c = Column('x', Integer)

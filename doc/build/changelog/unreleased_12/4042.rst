@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4042
+
+    Fixed bug where an index reflected under Oracle with an expression like
+    "column DESC" would not be returned, if the table also had no primary
+    key, as a result of logic that attempts to filter out the
+    index implicitly added by Oracle onto the primary key columns.
