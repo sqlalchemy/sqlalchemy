@@ -81,7 +81,7 @@ class PyTest(TestCommand):
     # not working at the time of this comment.
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
 
-    default_options = ["-n", "4", "-q"]
+    default_options = ["-n", "4", "-q", "--nomemory"]
 
     def initialize_options(self):
         TestCommand.initialize_options(self)
