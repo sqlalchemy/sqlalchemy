@@ -409,11 +409,13 @@ def want_method(cls, fn):
 def generate_sub_tests(cls, module):
     if getattr(cls, '__backend__', False):
         for cfg in _possible_configs_for_cls(cls):
+            orig_name = cls.__name__
             name = "%s_%s" % (cls.__name__, cfg.name)
             subcls = type(
                 name,
                 (cls, ),
                 {
+                    "_sa_orig_cls_name": orig_name,
                     "__only_on_config__": cfg
                 }
             )
@@ -459,11 +461,8 @@ def before_test(test, test_module_name, test_class, test_name):
 
     # like a nose id, e.g.:
     # "test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause"
-    name = test_class.__name__
 
-    suffix = "_%s_%s" % (config.db.name, config.db.driver)
-    if name.endswith(suffix):
-        name = name[0:-(len(suffix))]
+    name = getattr(test_class, '_sa_orig_cls_name', test_class.__name__)
 
     id_ = "%s.%s.%s" % (test_module_name, name, test_name)
 
