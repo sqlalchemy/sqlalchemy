@@ -514,7 +514,7 @@ Glossary
             http://en.wikipedia.org/wiki/Atomicity_(database_systems)
 
     consistency
-        Consistency is one of the compoments of the :term:`ACID` model,
+        Consistency is one of the components of the :term:`ACID` model,
         and ensures that any transaction will
         bring the database from one valid state to another. Any data
         written to the database must be valid according to all defined
