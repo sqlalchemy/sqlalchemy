@@ -1701,7 +1701,6 @@ class UUIDTest(fixtures.TestBase):
         'postgresql+zxjdbc',
         'column "data" is of type uuid but expression '
         'is of type character varying')
-    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_string(self):
         import uuid
         self._test_round_trip(
@@ -1716,7 +1715,6 @@ class UUIDTest(fixtures.TestBase):
         'postgresql+zxjdbc',
         'column "data" is of type uuid but expression is '
         'of type character varying')
-    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_uuid(self):
         import uuid
         self._test_round_trip(
@@ -1730,7 +1728,7 @@ class UUIDTest(fixtures.TestBase):
     @testing.fails_on('postgresql+zxjdbc',
                       'column "data" is of type uuid[] but '
                       'expression is of type character varying')
-    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID with ARRAY')
     def test_uuid_array(self):
         import uuid
         self._test_round_trip(
@@ -1745,7 +1743,7 @@ class UUIDTest(fixtures.TestBase):
     @testing.fails_on('postgresql+zxjdbc',
                       'column "data" is of type uuid[] but '
                       'expression is of type character varying')
-    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID with ARRAY')
     def test_uuid_string_array(self):
         import uuid
         self._test_round_trip(

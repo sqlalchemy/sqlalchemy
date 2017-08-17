@@ -70,10 +70,15 @@ from ... import processors
 from ... import types as sqltypes
 from .base import (
     PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext,
-    _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES)
+    _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES, UUID)
 import re
 from sqlalchemy.dialects.postgresql.json import JSON
 from ...sql.elements import quoted_name
+
+try:
+    from uuid import UUID as _python_UUID
+except ImportError:
+    _python_UUID = None
 
 
 class _PGNumeric(sqltypes.Numeric):
@@ -111,6 +116,24 @@ class _PGJSON(JSON):
             return None  # Has native JSON
         else:
             return super(_PGJSON, self).result_processor(dialect, coltype)
+
+
+class _PGUUID(UUID):
+    def bind_processor(self, dialect):
+        if not self.as_uuid:
+            def process(value):
+                if value is not None:
+                    value = _python_UUID(value)
+                return value
+            return process
+
+    def result_processor(self, dialect, coltype):
+        if not self.as_uuid:
+            def process(value):
+                if value is not None:
+                    value = str(value)
+                return value
+            return process
 
 
 class PGExecutionContext_pg8000(PGExecutionContext):
@@ -156,7 +179,8 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Numeric: _PGNumericNoBind,
             sqltypes.Float: _PGNumeric,
             JSON: _PGJSON,
-            sqltypes.JSON: _PGJSON
+            sqltypes.JSON: _PGJSON,
+            UUID: _PGUUID
         }
     )
 
