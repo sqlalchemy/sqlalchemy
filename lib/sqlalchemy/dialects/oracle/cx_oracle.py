@@ -858,6 +858,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                                 size, precision, scale):
             # convert all NUMBER with precision + positive scale to Decimal
             # this almost allows "native decimal" mode.
+
             if self.supports_native_decimal and \
                     defaultType == cx_Oracle.NUMBER and \
                     precision and scale > 0:
@@ -966,7 +967,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def is_disconnect(self, e, connection, cursor):
         error, = e.args
-        if isinstance(e, self.dbapi.InterfaceError):
+        if isinstance(e, (
+                self.dbapi.InterfaceError, self.dbapi.DatabaseError)):
             return "not connected" in str(e)
         elif hasattr(error, 'code'):
             # ORA-00028: your session has been killed
