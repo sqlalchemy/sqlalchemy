@@ -1003,6 +1003,9 @@ class InvalidateDuringResultTest(fixtures.TestBase):
         self.meta.drop_all()
         self.engine.dispose()
 
+    @testing.crashes(
+        "oracle",
+        "cx_oracle 6 doesn't allow a close like this due to open cursors")
     @testing.fails_if([
         '+mysqlconnector', '+mysqldb', '+cymysql', '+pymysql', '+pg8000'],
         "Buffers the result set and doesn't check for connection close")
