@@ -713,8 +713,13 @@ class DefaultRequirements(SuiteRequirements):
         such as 319438950232418390.273596, 87673.594069654243
 
         """
+        def cx_oracle_6_config(config):
+            return config.db.driver == "cx_oracle" and \
+                config.db.dialect.cx_oracle_ver >= (6, )
+
         return fails_if(
-            [('sqlite', None, None, 'TODO'),
+            [cx_oracle_6_config,
+             ('sqlite', None, None, 'TODO'),
              ("firebird", None, None, "Precision must be from 1 to 18"),
              ("sybase+pysybase", None, None, "TODO"),
              ('mssql+pymssql', None, None,
