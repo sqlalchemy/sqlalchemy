@@ -228,13 +228,13 @@ class ServerSideCursorsTest(fixtures.TestBase, testing.AssertsExecutionResults):
     __backend__ = True
 
     def _is_server_side(self, cursor):
-        if self.engine.url.drivername == 'postgresql':
+        if self.engine.dialect.driver == "psycopg2":
             return cursor.name
-        elif self.engine.url.drivername == 'mysql':
-            sscursor = __import__('MySQLdb.cursors').cursors.SSCursor
-            return isinstance(cursor, sscursor)
-        elif self.engine.url.drivername == 'mysql+pymysql':
+        elif self.engine.dialect.driver == 'pymysql':
             sscursor = __import__('pymysql.cursors').cursors.SSCursor
+            return isinstance(cursor, sscursor)
+        elif self.engine.dialect.driver == "mysqldb":
+            sscursor = __import__('MySQLdb.cursors').cursors.SSCursor
             return isinstance(cursor, sscursor)
         else:
             return False
