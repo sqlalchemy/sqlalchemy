@@ -1367,7 +1367,12 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     @testing.requires.enforces_check_constraints
     def test_check_constraint(self):
         assert_raises(
-            (exc.IntegrityError, exc.ProgrammingError),
+            (
+                exc.IntegrityError, exc.ProgrammingError,
+                exc.OperationalError,
+                # PyMySQL raising InternalError until
+                # https://github.com/PyMySQL/PyMySQL/issues/607 is resolved
+                exc.InternalError),
             testing.db.execute,
             "insert into non_native_enum_table "
             "(id, someenum) values(1, 'four')")
