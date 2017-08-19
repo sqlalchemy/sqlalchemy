@@ -870,14 +870,18 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def mysql_zero_date(self):
         def check(config):
-             row = config.db.execute("show variables like 'sql_mode'").first()
-             return not row or "NO_ZERO_DATE" not in row[1]
+            if not against(config, 'mysql'):
+                return False
+            row = config.db.execute("show variables like 'sql_mode'").first()
+            return not row or "NO_ZERO_DATE" not in row[1]
 
         return only_if(check)
 
     @property
     def mysql_non_strict(self):
         def check(config):
+            if not against(config, 'mysql'):
+                return False
              row = config.db.execute("show variables like 'sql_mode'").first()
              return not row or "STRICT" not in row[1]
 
