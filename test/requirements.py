@@ -51,14 +51,8 @@ class DefaultRequirements(SuiteRequirements):
     def enforces_check_constraints(self):
         """Target database must also enforce check constraints."""
 
-        def mysql_not_mariadb_102(config):
-            return against(config, "mysql") and (
-                not config.db.dialect._is_mariadb or
-                config.db.dialect._mariadb_normalized_version_info < (10, 2)
-            )
-
         return self.check_constraints + fails_on(
-            mysql_not_mariadb_102,
+            self._mysql_not_mariadb_102,
             "check constraints don't enforce on MySQL, MariaDB<10.2"
         )
 
@@ -392,11 +386,10 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def check_constraint_reflection(self):
-        return fails_on_everything_except(
-                    "postgresql",
-                    "sqlite",
-                    "oracle"
-                )
+        return only_if(
+            ["postgresql", "sqlite", "oracle",
+            self._mariadb_102]
+        )
 
     @property
     def temp_table_names(self):
@@ -989,6 +982,17 @@ class DefaultRequirements(SuiteRequirements):
             return not row or "STRICT_TRANS_TABLES" not in row[1]
 
         return only_if(check)
+
+    def _mariadb_102(self, config):
+        return against(config, "mysql") and \
+                config.db.dialect._is_mariadb and \
+                config.db.dialect._mariadb_normalized_version_info > (10, 2)
+
+    def _mysql_not_mariadb_102(self, config):
+        return against(config, "mysql") and (
+            not config.db.dialect._is_mariadb or
+            config.db.dialect._mariadb_normalized_version_info < (10, 2)
+        )
 
     def _has_mysql_on_windows(self, config):
         return against(config, 'mysql') and \

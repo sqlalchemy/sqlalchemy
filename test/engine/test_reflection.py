@@ -7,7 +7,7 @@ from sqlalchemy.testing import (
     ComparesTables, engines, AssertsCompiledSQL,
     fixtures, skip)
 from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import eq_, is_true, assert_raises, \
+from sqlalchemy.testing import eq_, eq_regex, is_true, assert_raises, \
     assert_raises_message
 from sqlalchemy import testing
 from sqlalchemy.util import ue
@@ -1076,7 +1076,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             const for const in
             t2.constraints if isinstance(const, sa.CheckConstraint)][0]
 
-        eq_(ck.sqltext.text, "q > 10")
+        eq_regex(ck.sqltext.text, r".?q.? > 10")
         eq_(ck.name, "ck1")
 
     @testing.provide_metadata

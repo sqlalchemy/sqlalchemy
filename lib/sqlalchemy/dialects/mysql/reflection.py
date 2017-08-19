@@ -20,7 +20,8 @@ class ReflectedState(object):
         self.table_options = {}
         self.table_name = None
         self.keys = []
-        self.constraints = []
+        self.fk_constraints = []
+        self.ck_constraints = []
 
 
 @log.class_logger
@@ -56,8 +57,10 @@ class MySQLTableDefinitionParser(object):
                     util.warn("Unknown schema content: %r" % line)
                 elif type_ == 'key':
                     state.keys.append(spec)
-                elif type_ == 'constraint':
-                    state.constraints.append(spec)
+                elif type_ == 'fk_constraint':
+                    state.fk_constraints.append(spec)
+                elif type_ == 'ck_constraint':
+                    state.ck_constraints.append(spec)
                 else:
                     pass
         return state
@@ -76,8 +79,8 @@ class MySQLTableDefinitionParser(object):
             spec['columns'] = self._parse_keyexprs(spec['columns'])
             return 'key', spec
 
-        # CONSTRAINT
-        m = self._re_constraint.match(line)
+        # FOREIGN KEY CONSTRAINT
+        m = self._re_fk_constraint.match(line)
         if m:
             spec = m.groupdict()
             spec['table'] = \
@@ -86,7 +89,13 @@ class MySQLTableDefinitionParser(object):
                              for c in self._parse_keyexprs(spec['local'])]
             spec['foreign'] = [c[0]
                                for c in self._parse_keyexprs(spec['foreign'])]
-            return 'constraint', spec
+            return 'fk_constraint', spec
+
+        # CHECK constraint
+        m = self._re_ck_constraint.match(line)
+        if m:
+            spec = m.groupdict()
+            return 'ck_constraint', spec
 
         # PARTITION and SUBPARTITION
         m = self._re_partition.match(line)
@@ -331,8 +340,8 @@ class MySQLTableDefinitionParser(object):
             r"(?: +COLLATE +(?P<collate>[\w_]+))?"
             r"(?: +(?P<notnull>(?:NOT )?NULL))?"
             r"(?: +DEFAULT +(?P<default>"
-            r"(?:NULL|'(?:''|[^'])*'|\w+"
-            r"(?: +ON UPDATE \w+)?)"
+            r"(?:NULL|'(?:''|[^'])*'|[\w\(\)]+"
+            r"(?: +ON UPDATE [\w\(\)]+)?)"
             r"))?"
             r"(?: +(?P<autoincr>AUTO_INCREMENT))?"
             r"(?: +COMMENT +'(?P<comment>(?:''|[^'])*)')?"
@@ -378,7 +387,7 @@ class MySQLTableDefinitionParser(object):
         # unique constraints come back as KEYs
         kw = quotes.copy()
         kw['on'] = 'RESTRICT|CASCADE|SET NULL|NOACTION'
-        self._re_constraint = _re_compile(
+        self._re_fk_constraint = _re_compile(
             r'  '
             r'CONSTRAINT +'
             r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
@@ -390,6 +399,19 @@ class MySQLTableDefinitionParser(object):
             r'(?: +(?P<match>MATCH \w+))?'
             r'(?: +ON DELETE (?P<ondelete>%(on)s))?'
             r'(?: +ON UPDATE (?P<onupdate>%(on)s))?'
+            % kw
+        )
+
+        # CONSTRAINT `CONSTRAINT_1` CHECK (`x` > 5)'
+        # testing on MariaDB 10.2 shows that the CHECK constraint
+        # is returned on a line by itself, so to match without worrying
+        # about parenthesis in the expresion we go to the end of the line
+        self._re_ck_constraint = _re_compile(
+            r'  '
+            r'CONSTRAINT +'
+            r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
+            r'CHECK +'
+            r'\((?P<sqltext>.+)\),?'
             % kw
         )
 

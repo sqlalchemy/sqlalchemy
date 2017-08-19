@@ -1888,6 +1888,11 @@ class MySQLDialect(default.DefaultDialect):
         return 'MariaDB' in self.server_version_info
 
     @property
+    def _is_mariadb_102(self):
+        return self._is_mariadb and \
+            self._mariadb_normalized_version_info > (10, 2)
+
+    @property
     def _mariadb_normalized_version_info(self):
         if len(self.server_version_info) > 5:
             return self.server_version_info[3:]
@@ -1977,8 +1982,7 @@ class MySQLDialect(default.DefaultDialect):
 
         fkeys = []
 
-        for spec in parsed_state.constraints:
-            # only FOREIGN KEYs
+        for spec in parsed_state.fk_constraints:
             ref_name = spec['table'][-1]
             ref_schema = len(spec['table']) > 1 and \
                 spec['table'][-2] or schema
@@ -2008,6 +2012,18 @@ class MySQLDialect(default.DefaultDialect):
             }
             fkeys.append(fkey_d)
         return fkeys
+
+    @reflection.cache
+    def get_check_constraints(
+            self, connection, table_name, schema=None, **kw):
+
+        parsed_state = self._parsed_state_or_create(
+            connection, table_name, schema, **kw)
+
+        return [
+            {"name": spec['name'], "sqltext": spec['sqltext']}
+            for spec in parsed_state.ck_constraints
+        ]
 
     @reflection.cache
     def get_table_comment(self, connection, table_name, schema=None, **kw):

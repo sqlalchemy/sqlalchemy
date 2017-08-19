@@ -1,0 +1,18 @@
+.. change:
+    :tags: bug, mysql
+    :tickets: 4096
+    :versions: 1.2.0b3
+
+    Fixed issue where CURRENT_TIMESTAMP would not reflect correctly
+    in the MariaDB 10.2 series due to a syntax change, where the function
+    is now represented as ``current_timestamp()``.
+
+.. change:
+    :tags: bug, mysql
+    :tickets: 4098
+    :versions: 1.2.0b3
+
+    MariaDB 10.2 now supports CHECK constraints (warning: use version 10.2.9
+    or greater due to upstream issues noted in :ticket:`4097`).  Reflection
+    now takes these CHECK constraints into account when they are present in
+    the ``SHOW CREATE TABLE`` output.
