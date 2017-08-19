@@ -168,7 +168,7 @@ def _pg_create_db(cfg, eng, ident):
                 conn.execute(
                     "CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
             except exc.OperationalError as err:
-                if attempt != 2 and "accessed by other users" in str(err):
+                if attempt != 10 and "accessed by other users" in str(err):
                     time.sleep(.2)
                     continue
                 else:
