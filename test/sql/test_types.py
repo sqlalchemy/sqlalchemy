@@ -1381,10 +1381,13 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         t = Table(
             'my_table', self.metadata,
             Column(
-                'data', Enum("one", "two", "three", name="e1").with_variant(
-                    Enum("four", "five", "six", name="e2"), "some_other_db"
+                'data', Enum("one", "two", "three",
+                             native_enum=False, name="e1").with_variant(
+                    Enum("four", "five", "six", native_enum=False,
+                         name="e2"), "some_other_db"
                 )
-            )
+            ),
+            mysql_engine='InnoDB'
         )
 
         eq_(
@@ -1395,7 +1398,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         with testing.db.connect() as conn:
             self.metadata.create_all(conn)
             assert_raises(
-                (exc.IntegrityError, exc.ProgrammingError, exc.DataError),
+                (exc.DBAPIError, ),
                 conn.execute,
                 "insert into my_table "
                 "(data) values('four')")
@@ -1408,8 +1411,9 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         t = Table(
             'my_table', self.metadata,
             Column(
-                'data', Enum("one", "two", "three", name="e1").with_variant(
-                    Enum("four", "five", "six", name="e2"),
+                'data', Enum("one", "two", "three", native_enum=False,
+                             name="e1").with_variant(
+                    Enum("four", "five", "six", native_enum=False, name="e2"),
                     testing.db.dialect.name
                 )
             )
@@ -1424,7 +1428,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         with testing.db.connect() as conn:
             self.metadata.create_all(conn)
             assert_raises(
-                (exc.IntegrityError, exc.ProgrammingError, exc.DataError),
+                (exc.DBAPIError, ),
                 conn.execute,
                 "insert into my_table "
                 "(data) values('two')")
