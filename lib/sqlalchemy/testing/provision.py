@@ -41,6 +41,7 @@ class register(object):
 
 def create_follower_db(follower_ident):
     for cfg in _configs_for_db_operation():
+        log.info("CREATE database %s, URI %r", follower_ident, cfg.db.url)
         _create_db(cfg, cfg.db, follower_ident)
 
 
@@ -66,6 +67,7 @@ def setup_config(db_url, options, file_config, follower_ident):
 
 def drop_follower_db(follower_ident):
     for cfg in _configs_for_db_operation():
+        log.info("DROP database %s, URI %r", follower_ident, cfg.db.url)
         _drop_db(cfg, cfg.db, follower_ident)
 
 
