@@ -51,8 +51,15 @@ class DefaultRequirements(SuiteRequirements):
     def enforces_check_constraints(self):
         """Target database must also enforce check constraints."""
 
+        def mysql_not_mariadb_102(config):
+            return against(config, "mysql") and (
+                not config.db.dialect._is_mariadb or
+                config.db.dialect.server_version_info < (5, 5, 5, 10, 2)
+            )
+
         return self.check_constraints + fails_on(
-            ['mysql'], "check constraints don't enforce"
+            mysql_not_mariadb_102,
+            "check constraints don't enforce on MySQL, MariaDB<10.2"
         )
 
     @property

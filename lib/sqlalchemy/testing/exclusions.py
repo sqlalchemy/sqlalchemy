@@ -410,7 +410,7 @@ def future(fn, *arg):
 
 
 def fails_on(db, reason=None):
-    return fails_if(Predicate.as_predicate(db), reason)
+    return fails_if(db, reason)
 
 
 def fails_on_everything_except(*dbs):
@@ -422,12 +422,13 @@ def fails_on_everything_except(*dbs):
 
 
 def skip(db, reason=None):
-    return skip_if(Predicate.as_predicate(db), reason)
+    return skip_if(db, reason)
 
 
 def only_on(dbs, reason=None):
     return only_if(
-        OrPredicate([Predicate.as_predicate(db) for db in util.to_list(dbs)])
+        OrPredicate([Predicate.as_predicate(db, reason)
+                     for db in util.to_list(dbs)])
     )
 
 
