@@ -1,8 +1,10 @@
 from sqlalchemy.engine import url as sa_url
+from sqlalchemy import create_engine
 from sqlalchemy import text
 from sqlalchemy import exc
 from sqlalchemy.util import compat
 from . import config, engines
+import collections
 import os
 import time
 import logging
@@ -278,36 +280,47 @@ def _oracle_update_db_opts(db_url, db_opts):
     db_opts['_retry_on_12516'] = True
 
 
-def reap_oracle_dbs(eng, idents_file):
+def reap_oracle_dbs(idents_file):
     log.info("Reaping Oracle dbs...")
-    with eng.connect() as conn:
-        with open(idents_file) as file_:
-            idents = set(line.strip() for line in file_)
 
-        log.info("identifiers in file: %s", ", ".join(idents))
+    urls = collections.defaultdict(list)
+    with open(idents_file) as file_:
+        for line in file_:
+            line = line.strip()
+            db_name, db_url = line.split(" ")
+            urls[db_url].append(db_name)
 
-        to_reap = conn.execute(
-            "select u.username from all_users u where username "
-            "like 'TEST_%' and not exists (select username "
-            "from v$session where username=u.username)")
-        all_names = set([username.lower() for (username, ) in to_reap])
-        to_drop = set()
-        for name in all_names:
-            if name.endswith("_ts1") or name.endswith("_ts2"):
-                continue
-            elif name in idents:
-                to_drop.add(name)
-                if "%s_ts1" % name in all_names:
-                    to_drop.add("%s_ts1" % name)
-                if "%s_ts2" % name in all_names:
-                    to_drop.add("%s_ts2" % name)
+    for url in urls:
+        idents = urls[url]
+        log.info("db reaper connecting to %r", url)
+        eng = create_engine(url)
+        with eng.connect() as conn:
 
-        dropped = total = 0
-        for total, username in enumerate(to_drop, 1):
-            if _ora_drop_ignore(conn, username):
-                dropped += 1
-        log.info(
-            "Dropped %d out of %d stale databases detected", dropped, total)
+            log.info("identifiers in file: %s", ", ".join(idents))
+
+            to_reap = conn.execute(
+                "select u.username from all_users u where username "
+                "like 'TEST_%' and not exists (select username "
+                "from v$session where username=u.username)")
+            all_names = {username.lower() for (username, ) in to_reap}
+            to_drop = set()
+            for name in all_names:
+                if name.endswith("_ts1") or name.endswith("_ts2"):
+                    continue
+                elif name in idents:
+                    to_drop.add(name)
+                    if "%s_ts1" % name in all_names:
+                        to_drop.add("%s_ts1" % name)
+                    if "%s_ts2" % name in all_names:
+                        to_drop.add("%s_ts2" % name)
+
+            dropped = total = 0
+            for total, username in enumerate(to_drop, 1):
+                if _ora_drop_ignore(conn, username):
+                    dropped += 1
+            log.info(
+                "Dropped %d out of %d stale databases detected",
+                dropped, total)
 
 
 @_follower_url_from_main.for_db("oracle")
