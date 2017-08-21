@@ -292,6 +292,8 @@ def reap_oracle_dbs(idents_file):
             urls[db_url].append(db_name)
 
     for url in urls:
+        if not url.startswith("oracle"):
+            continue
         idents = urls[url]
         log.info("db reaper connecting to %r", url)
         eng = create_engine(url)
