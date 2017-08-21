@@ -1059,6 +1059,7 @@ class EnumSetTest(
             eq_(t.c.e6.type.values, ("", "a"))
             eq_(t.c.e7.type.values, ("", "'a'", "b'b", "'"))
 
+    @testing.requires.mysql_non_strict
     @testing.provide_metadata
     def test_broken_enum_returns_blanks(self):
         t = Table(
