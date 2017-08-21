@@ -495,6 +495,7 @@ class SessionTransaction(object):
                     except:
                         rollback_err = sys.exc_info()
                     finally:
+                        transaction._state = DEACTIVE
                         if self.session._enable_transaction_accounting:
                             transaction._restore_snapshot(
                                 dirty_only=transaction.nested)

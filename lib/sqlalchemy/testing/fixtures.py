@@ -223,9 +223,9 @@ class RemovesEvents(object):
     def _event_fns(self):
         return set()
 
-    def event_listen(self, target, name, fn):
+    def event_listen(self, target, name, fn, **kw):
         self._event_fns.add((target, name, fn))
-        event.listen(target, name, fn)
+        event.listen(target, name, fn, **kw)
 
     def teardown(self):
         for key in self._event_fns:

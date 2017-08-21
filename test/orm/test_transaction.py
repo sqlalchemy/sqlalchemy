@@ -12,7 +12,7 @@ from test.orm._fixtures import FixtureTest
 from sqlalchemy import inspect
 
 
-class SessionTransactionTest(FixtureTest):
+class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
     run_inserts = None
     __backend__ = True
 
@@ -477,6 +477,112 @@ class SessionTransactionTest(FixtureTest):
             "being rolled back; no further SQL can be emitted within this "
             "transaction.",
             sess.rollback)
+
+    @testing.emits_warning(".*previous exception")
+    def test_failed_rollback_deactivates_transaction(self):
+        # test #4050
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        session = Session(bind=testing.db)
+
+        rollback_error = testing.db.dialect.dbapi.InterfaceError(
+            "Can't roll back to savepoint")
+
+        def prevent_savepoint_rollback(
+                cursor, statement, parameters, context=None):
+            if "rollback to savepoint" in statement.lower():
+                raise rollback_error
+
+        self.event_listen(
+            testing.db.dialect,
+            "do_execute", prevent_savepoint_rollback)
+
+        with session.transaction:
+            session.add(User(id=1, name='x'))
+
+        session.begin_nested()
+        # raises IntegrityError on flush
+        session.add(User(id=1, name='x'))
+        assert_raises_message(
+            sa_exc.InterfaceError,
+            "Can't roll back to savepoint",
+            session.commit,
+        )
+
+        # rollback succeeds, because the Session is deactivated
+        eq_(session.transaction._state, _session.DEACTIVE)
+        session.rollback()
+
+        # back to normal
+        eq_(session.transaction._state, _session.ACTIVE)
+
+        trans = session.transaction
+
+        # leave the outermost trans
+        session.rollback()
+
+        # trans is now closed
+        eq_(trans._state, _session.CLOSED)
+
+        # outermost transction is new
+        is_not_(session.transaction, trans)
+
+        # outermost is active
+        eq_(session.transaction._state, _session.ACTIVE)
+
+    @testing.emits_warning(".*previous exception")
+    def test_failed_rollback_deactivates_transaction_ctx_integration(self):
+        # test #4050 in the same context as that of oslo.db
+
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        session = Session(bind=testing.db, autocommit=True)
+
+        evented_exceptions = []
+        caught_exceptions = []
+
+        def canary(context):
+            evented_exceptions.append(context.original_exception)
+
+        rollback_error = testing.db.dialect.dbapi.InterfaceError(
+            "Can't roll back to savepoint")
+
+        def prevent_savepoint_rollback(
+                cursor, statement, parameters, context=None):
+            if "rollback to savepoint" in statement.lower():
+                raise rollback_error
+
+        self.event_listen(testing.db, "handle_error", canary, retval=True)
+        self.event_listen(
+            testing.db.dialect, "do_execute", prevent_savepoint_rollback)
+
+        with session.begin():
+            session.add(User(id=1, name='x'))
+
+        try:
+            with session.begin():
+                try:
+                    with session.begin_nested():
+                        # raises IntegrityError on flush
+                        session.add(User(id=1, name='x'))
+
+                # outermost is the failed SAVEPOINT rollback
+                # from the "with session.begin_nested()"
+                except sa_exc.DBAPIError as dbe_inner:
+                    caught_exceptions.append(dbe_inner.orig)
+                    raise
+        except sa_exc.DBAPIError as dbe_outer:
+            caught_exceptions.append(dbe_outer.orig)
+
+        is_(
+            type(evented_exceptions[0]),
+            testing.db.dialect.dbapi.IntegrityError
+        )
+        eq_(evented_exceptions[1], rollback_error)
+        eq_(len(evented_exceptions), 2)
+        eq_(caught_exceptions, [rollback_error, rollback_error])
 
     def test_no_prepare_wo_twophase(self):
         sess = create_session(bind=testing.db, autocommit=False)

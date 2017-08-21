@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4050
+
+    Fixed regression introduced in 1.2.0b1 due to :ticket:`3934` where the
+    :class:`.Session` would fail to "deactivate" the transaction, if a
+    rollback failed (the target issue is when MySQL loses track of a SAVEPOINT).
+    This would cause a subsequent call to :meth:`.Session.rollback` to raise
+    an error a second time, rather than completing and bringing the
+    :class:`.Session` back to ACTIVE.
