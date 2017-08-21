@@ -423,7 +423,14 @@ def generate_sub_tests(cls, module):
     if getattr(cls, '__backend__', False):
         for cfg in _possible_configs_for_cls(cls):
             orig_name = cls.__name__
-            name = "%s_%s" % (cls.__name__, cfg.name)
+
+            # we can have special chars in these names except for the
+            # pytest junit plugin, which is tripped up by the brackets
+            # and periods, so sanitize
+
+            alpha_name = re.sub('[_\[\]\.]+', '_', cfg.name)
+            alpha_name = re.sub('_+$', '', alpha_name)
+            name = "%s_%s" % (cls.__name__, alpha_name)
             subcls = type(
                 name,
                 (cls, ),
