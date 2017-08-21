@@ -167,7 +167,7 @@ def _pg_create_db(cfg, eng, ident):
         except Exception:
             pass
         currentdb = conn.scalar("select current_database()")
-        for attempt in range(3):
+        for attempt in range(10):
             try:
                 conn.execute(
                     "CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
@@ -178,6 +178,15 @@ def _pg_create_db(cfg, eng, ident):
                 else:
                     raise
             else:
+                time.sleep(.5)
+                result = conn.execute(
+                    "SELECT datname FROM pg_database "
+                    "where datname=%s" % ident)
+                row = result.first()
+                if not row:
+                    raise Exception(
+                        "Database named %s did not get "
+                        "created, in engine %r" % (ident, eng.url))
                 break
 
 
