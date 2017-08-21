@@ -181,7 +181,7 @@ def _pg_create_db(cfg, eng, ident):
                 time.sleep(.5)
                 result = conn.execute(
                     "SELECT datname FROM pg_database "
-                    "where datname=%s" % ident)
+                    "where datname='%s'" % ident)
                 row = result.first()
                 if not row:
                     raise Exception(
