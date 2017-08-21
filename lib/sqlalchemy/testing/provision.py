@@ -169,16 +169,27 @@ def _pg_create_db(cfg, eng, ident):
         currentdb = conn.scalar("select current_database()")
         for attempt in range(10):
             try:
+                log.info(
+                    "emitting CREATE DATABASE %s url %r" %
+                    (ident, eng.url))
                 conn.execute(
                     "CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
             except exc.OperationalError as err:
+                conn.connection.rollback()
                 if attempt != 10 and "accessed by other users" in str(err):
+                    log.info(
+                        "got accessed by others for database %s, URI %r, "
+                        "sleeping for .2",
+                        ident, eng.url)
                     time.sleep(.2)
                     continue
                 else:
                     raise
             else:
                 time.sleep(.5)
+                log.info(
+                    "checking for database %s URI %r" %
+                    (ident, eng.url))
                 result = conn.execute(
                     "SELECT datname FROM pg_database "
                     "where datname='%s'" % ident)
