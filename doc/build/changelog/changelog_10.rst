@@ -15,6 +15,9 @@
     .. include:: changelog_07.rst
         :start-line: 5
 
+.. changelog::
+    :version: 1.0.20
+    :include_notes_from: unreleased_10
 
 .. changelog::
     :version: 1.0.19
