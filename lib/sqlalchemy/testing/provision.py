@@ -1,11 +1,13 @@
 from sqlalchemy.engine import url as sa_url
+from sqlalchemy import create_engine
 from sqlalchemy import text
 from sqlalchemy import exc
 from sqlalchemy.util import compat
 from . import config, engines
+import collections
+import os
 import time
 import logging
-import os
 log = logging.getLogger(__name__)
 
 FOLLOWER_IDENT = None
@@ -41,6 +43,7 @@ class register(object):
 
 def create_follower_db(follower_ident):
     for cfg in _configs_for_db_operation():
+        log.info("CREATE database %s, URI %r", follower_ident, cfg.db.url)
         _create_db(cfg, cfg.db, follower_ident)
 
 
@@ -57,6 +60,7 @@ def setup_config(db_url, options, file_config, follower_ident):
     eng = engines.testing_engine(db_url, db_opts)
     _post_configure_engine(db_url, eng, follower_ident)
     eng.connect().close()
+
     cfg = config.Config.register(eng, db_opts, options, file_config)
     if follower_ident:
         _configure_follower(cfg, follower_ident)
@@ -65,6 +69,7 @@ def setup_config(db_url, options, file_config, follower_ident):
 
 def drop_follower_db(follower_ident):
     for cfg in _configs_for_db_operation():
+        log.info("DROP database %s, URI %r", follower_ident, cfg.db.url)
         _drop_db(cfg, cfg.db, follower_ident)
 
 
@@ -162,18 +167,21 @@ def _pg_create_db(cfg, eng, ident):
         except Exception:
             pass
         currentdb = conn.scalar("select current_database()")
-        for attempt in range(3):
+        for attempt in range(10):
             try:
                 conn.execute(
                     "CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
             except exc.OperationalError as err:
-                if attempt != 2 and "accessed by other users" in str(err):
-                    time.sleep(.2)
-                    continue
-                else:
-                    raise
+                if "accessed by other users" in str(err):
+                    log.info(
+                        "Waiting to create %s, URI %r, "
+                        "template DB is in use sleeping for .5",
+                        ident, eng.url)
+                    time.sleep(.5)
             else:
                 break
+        else:
+            raise err
 
 
 @_create_db.for_db("mysql")
@@ -276,36 +284,49 @@ def _oracle_update_db_opts(db_url, db_opts):
     db_opts['_retry_on_12516'] = True
 
 
-def reap_oracle_dbs(eng, idents_file):
+def reap_oracle_dbs(idents_file):
     log.info("Reaping Oracle dbs...")
-    with eng.connect() as conn:
-        with open(idents_file) as file_:
-            idents = set(line.strip() for line in file_)
 
-        log.info("identifiers in file: %s", ", ".join(idents))
+    urls = collections.defaultdict(list)
+    with open(idents_file) as file_:
+        for line in file_:
+            line = line.strip()
+            db_name, db_url = line.split(" ")
+            urls[db_url].append(db_name)
 
-        to_reap = conn.execute(
-            "select u.username from all_users u where username "
-            "like 'TEST_%' and not exists (select username "
-            "from v$session where username=u.username)")
-        all_names = set([username.lower() for (username, ) in to_reap])
-        to_drop = set()
-        for name in all_names:
-            if name.endswith("_ts1") or name.endswith("_ts2"):
-                continue
-            elif name in idents:
-                to_drop.add(name)
-                if "%s_ts1" % name in all_names:
-                    to_drop.add("%s_ts1" % name)
-                if "%s_ts2" % name in all_names:
-                    to_drop.add("%s_ts2" % name)
+    for url in urls:
+        if not url.startswith("oracle"):
+            continue
+        idents = urls[url]
+        log.info("db reaper connecting to %r", url)
+        eng = create_engine(url)
+        with eng.connect() as conn:
 
-        dropped = total = 0
-        for total, username in enumerate(to_drop, 1):
-            if _ora_drop_ignore(conn, username):
-                dropped += 1
-        log.info(
-            "Dropped %d out of %d stale databases detected", dropped, total)
+            log.info("identifiers in file: %s", ", ".join(idents))
+
+            to_reap = conn.execute(
+                "select u.username from all_users u where username "
+                "like 'TEST_%' and not exists (select username "
+                "from v$session where username=u.username)")
+            all_names = {username.lower() for (username, ) in to_reap}
+            to_drop = set()
+            for name in all_names:
+                if name.endswith("_ts1") or name.endswith("_ts2"):
+                    continue
+                elif name in idents:
+                    to_drop.add(name)
+                    if "%s_ts1" % name in all_names:
+                        to_drop.add("%s_ts1" % name)
+                    if "%s_ts2" % name in all_names:
+                        to_drop.add("%s_ts2" % name)
+
+            dropped = total = 0
+            for total, username in enumerate(to_drop, 1):
+                if _ora_drop_ignore(conn, username):
+                    dropped += 1
+            log.info(
+                "Dropped %d out of %d stale databases detected",
+                dropped, total)
 
 
 @_follower_url_from_main.for_db("oracle")

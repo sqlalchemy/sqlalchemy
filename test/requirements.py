@@ -882,8 +882,8 @@ class DefaultRequirements(SuiteRequirements):
         def check(config):
             if not against(config, 'mysql'):
                 return False
-             row = config.db.execute("show variables like 'sql_mode'").first()
-             return not row or "STRICT" not in row[1]
+            row = config.db.execute("show variables like 'sql_mode'").first()
+            return not row or "STRICT" not in row[1]
 
         return only_if(check)
 
