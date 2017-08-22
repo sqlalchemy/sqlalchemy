@@ -42,7 +42,7 @@ be employed.  See :ref:`pool_disconnects` for current approaches.
 .. seealso::
 
     :ref:`pool_disconnects` - Background on several techniques for dealing
-     with timed out connections as well as database restarts.
+    with timed out connections as well as database restarts.
 
 .. _mysql_storage_engines:
 
