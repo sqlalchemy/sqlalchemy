@@ -161,6 +161,8 @@ Connection pools support an event interface that allows hooks to execute
 upon first connect, upon each new connection, and upon checkout and
 checkin of connections.   See :class:`.PoolEvents` for details.
 
+.. _pool_disconnects:
+
 Dealing with Disconnects
 ------------------------
 
