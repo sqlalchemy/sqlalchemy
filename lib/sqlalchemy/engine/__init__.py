@@ -354,6 +354,10 @@ def create_engine(*args, **kwargs):
         this is configurable with the MySQLDB connection itself and the
         server configuration as well).
 
+        .. seealso::
+
+            :ref:`pool_setting_recycle`
+
     :param pool_reset_on_return='rollback': set the "reset on return"
         behavior of the pool, which is whether ``rollback()``,
         ``commit()``, or nothing is called upon connections

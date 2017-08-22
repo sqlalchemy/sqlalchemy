@@ -23,19 +23,26 @@ supported in any given server release.
 
 .. _mysql_connection_timeouts:
 
-Connection Timeouts
--------------------
+Connection Timeouts and Disconnects
+-----------------------------------
 
 MySQL features an automatic connection close behavior, for connections that
-have been idle for eight hours or more.   To circumvent having this issue, use
-the ``pool_recycle`` option which controls the maximum age of any connection::
+have been idle for a fixed period of time, defaulting to eight hours.
+To circumvent having this issue, use
+the :paramref:`.create_engine.pool_recycle` option which ensures that
+a connection will be discarded and replaced with a new one if it has been
+present in the pool for a fixed number of seconds::
 
     engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
 
+For more comprehensive disconnect detection of pooled connections, including
+accommodation of  server restarts and network issues, a pre-ping approach may
+be employed.  See :ref:`pool_disconnects` for current approaches.
+
 .. seealso::
 
-    :ref:`pool_setting_recycle` - full description of the pool recycle feature.
-
+    :ref:`pool_disconnects` - Background on several techniques for dealing
+     with timed out connections as well as database restarts.
 
 .. _mysql_storage_engines:
 
