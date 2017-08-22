@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4045
+
+    Fixed more regressions caused by cx_Oracle 6.0; at the moment, the only
+    behavioral change for users is disconnect detection now detects for
+    cx_Oracle.DatabaseError in addition to cx_Oracle.InterfaceError, as
+    this behavior seems to have changed.   Other issues regarding numeric
+    precision and uncloseable connections are pending with the upstream
+    cx_Oracle issue tracker.
