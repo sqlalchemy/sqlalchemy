@@ -53,10 +53,14 @@ and replaced with a new connection when it is next checked out.
 For the more general case of accommodating database restarts and other
 temporary loss of connectivity due to network issues, connections that
 are in the pool may be recycled in response to more generalized disconnect
-detection techniques.  The section :ref:`:ref:`pool_disconnects` provides
+detection techniques.  The section :ref:`pool_disconnects` provides
 background on both "pessimistic" (e.g. pre-ping) and "optimistic"
 (e.g. graceful recovery) techniques.   Modern SQLAlchemy tends to favor
 the "pessimistic" approach.
+
+.. seealso::
+
+    :ref:`pool_disconnects`
 
 
 Why does SQLAlchemy issue so many ROLLBACKs?
