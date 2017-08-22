@@ -54,7 +54,7 @@ def setup_options(make_option):
     make_option("--db", action="append", type="string", dest="db",
                 help="Use prefab database uri. Multiple OK, "
                 "first one is run by default.")
-    make_option('--dbs', action='callback', callback=_list_dbs,
+    make_option('--dbs', action='callback', zeroarg_callback=_list_dbs,
                 help="List available prefab dbs")
     make_option("--dburi", action="append", type="string", dest="dburi",
                 help="Database uri.  Multiple OK, "
