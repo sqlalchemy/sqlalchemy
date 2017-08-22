@@ -42,18 +42,22 @@ in the query string of the URL::
 "MySQL Server has gone away"
 ----------------------------
 
-There are two major causes for this error:
+The primary cause of this error is that the MySQL connection has timed out
+and has been closed by the server.   The MySQL server closes connections
+which have been idle a period of time which defaults to eight hours.
+To accommodate this, the immediate setting is to enable the
+:paramref:`.create_engine.pool_recycle` setting, which will ensure that a
+connection which is older than a set amount of seconds will be discarded
+and replaced with a new connection when it is next checked out.
 
-1. The MySQL client closes connections which have been idle for a set period
-of time, defaulting to eight hours.   This can be avoided by using the ``pool_recycle``
-setting with :func:`.create_engine`, described at :ref:`mysql_connection_timeouts`.
+For the more general case of accommodating database restarts and other
+temporary loss of connectivity due to network issues, connections that
+are in the pool may be recycled in response to more generalized disconnect
+detection techniques.  The section :ref:`:ref:`pool_disconnects` provides
+background on both "pessimistic" (e.g. pre-ping) and "optimistic"
+(e.g. graceful recovery) techniques.   Modern SQLAlchemy tends to favor
+the "pessimistic" approach.
 
-2. Usage of the MySQLdb :term:`DBAPI`, or a similar DBAPI, in a non-threadsafe manner, or in an otherwise
-inappropriate way.   The MySQLdb connection object is not threadsafe - this expands
-out to any SQLAlchemy system that links to a single connection, which includes the ORM
-:class:`.Session`.  For background
-on how :class:`.Session` should be used in a multithreaded environment,
-see :ref:`session_faq_threadsafe`.
 
 Why does SQLAlchemy issue so many ROLLBACKs?
 --------------------------------------------
