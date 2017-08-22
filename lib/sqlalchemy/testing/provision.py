@@ -159,23 +159,26 @@ def _sqlite_post_configure_engine(url, engine, follower_ident):
 
 @_create_db.for_db("postgresql")
 def _pg_create_db(cfg, eng, ident):
+    template_db = cfg.options.postgresql_templatedb
+
     with eng.connect().execution_options(
             isolation_level="AUTOCOMMIT") as conn:
         try:
             _pg_drop_db(cfg, conn, ident)
         except Exception:
             pass
-        currentdb = conn.scalar("select current_database()")
-        for attempt in range(10):
+        if not template_db:
+            template_db = conn.scalar("select current_database()")
+        for attempt in range(3):
             try:
                 conn.execute(
-                    "CREATE DATABASE %s TEMPLATE %s" % (ident, currentdb))
+                    "CREATE DATABASE %s TEMPLATE %s" % (ident, template_db))
             except exc.OperationalError as err:
                 if "accessed by other users" in str(err):
                     log.info(
                         "Waiting to create %s, URI %r, "
-                        "template DB is in use sleeping for .5",
-                        ident, eng.url)
+                        "template DB %s is in use sleeping for .5",
+                        ident, eng.url, template_db)
                     time.sleep(.5)
             else:
                 break

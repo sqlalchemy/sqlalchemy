@@ -63,6 +63,11 @@ def setup_options(make_option):
                 help="Drop all tables in the target database first")
     make_option("--backend-only", action="store_true", dest="backend_only",
                 help="Run only tests marked with __backend__")
+    make_option("--nomemory", action="store_true", dest="nomemory",
+                help="Don't run memory profiling tests")
+    make_option("--postgresql-templatedb", type="string",
+                help="name of template database to use for Postgresql "
+                     "CREATE DATABASE (defaults to current database)")
     make_option("--low-connections", action="store_true",
                 dest="low_connections",
                 help="Use a low number of distinct connections - "
@@ -226,6 +231,12 @@ def post(fn):
 def _setup_options(opt, file_config):
     global options
     options = opt
+
+
+@pre
+def _set_nomemory(opt, file_config):
+    if opt.nomemory:
+        exclude_tags.add("memory_intensive")
 
 
 @pre
