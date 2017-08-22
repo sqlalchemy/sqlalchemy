@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4049
+
+    Fixed regression where the use of a :func:`.undefer_group` option
+    in conjunction with a lazy loaded relationship option would cause
+    an attribute error, due to a bug in the SQL cache key generation
+    added in 1.2 as part of :ticket:`3954`.

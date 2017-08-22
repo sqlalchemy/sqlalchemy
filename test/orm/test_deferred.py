@@ -387,6 +387,44 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
              "FROM orders ORDER BY orders.id",
              {})])
 
+    def test_undefer_group_from_relationship_lazyload(self):
+        users, Order, User, orders = \
+            (self.tables.users,
+             self.classes.Order,
+             self.classes.User,
+             self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders=relationship(Order, order_by=orders.c.id)))
+        mapper(
+            Order, orders, properties=util.OrderedDict([
+                ('userident', deferred(orders.c.user_id, group='primary')),
+                ('description', deferred(orders.c.description,
+                 group='primary')),
+                ('opened', deferred(orders.c.isopen, group='primary'))
+            ])
+        )
+
+        sess = create_session()
+        q = sess.query(User).filter(User.id == 7).options(
+            defaultload(User.orders).undefer_group('primary')
+        )
+
+        def go():
+            result = q.all()
+            o2 = result[0].orders[1]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+        self.sql_eq_(go, [
+            ("SELECT users.id AS users_id, users.name AS users_name "
+             "FROM users WHERE users.id = :id_1", {"id_1": 7}),
+            ("SELECT orders.user_id AS orders_user_id, orders.description "
+             "AS orders_description, orders.isopen AS orders_isopen, "
+             "orders.id AS orders_id, orders.address_id AS orders_address_id "
+             "FROM orders WHERE :param_1 = orders.user_id ORDER BY orders.id",
+             {'param_1': 7})])
+
     def test_undefer_star(self):
         orders, Order = self.tables.orders, self.classes.Order
 

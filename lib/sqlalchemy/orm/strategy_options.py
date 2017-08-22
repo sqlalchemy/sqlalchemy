@@ -110,7 +110,7 @@ class Load(Generative, MapperOption):
             serialized.append(
                 (
                     tuple(serialized_path) +
-                    obj.strategy +
+                    (obj.strategy or ()) +
                     (tuple([
                         (key, obj.local_opts[key])
                         for key in sorted(obj.local_opts)

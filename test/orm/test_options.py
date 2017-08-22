@@ -1393,3 +1393,32 @@ class CacheKeyTest(PathTest, QueryTest):
             )
         )
 
+    def test_unbound_cache_key_undefer_group(self):
+        User, Address = self.classes('User', 'Address')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = defaultload(User.addresses).undefer_group('xyz')
+
+        eq_(
+            opt._generate_cache_key(query_path),
+
+            (
+                (Address, 'column:*', ("undefer_group_xyz", True)),
+            )
+        )
+
+    def test_bound_cache_key_undefer_group(self):
+        User, Address = self.classes('User', 'Address')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = Load(User).defaultload(User.addresses).undefer_group('xyz')
+
+        eq_(
+            opt._generate_cache_key(query_path),
+
+            (
+                (Address, 'column:*', ("undefer_group_xyz", True)),
+            )
+        )
