@@ -1,4 +1,4 @@
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, ne_
 import sys
 from operator import and_
 
@@ -1988,7 +1988,8 @@ class CustomCollectionsTest(fixtures.MappedTest):
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
 
-        existing = set([id(b) for b in list(f.bars.values())])
+        strongref = list(f.bars.values())
+        existing = set([id(b) for b in strongref])
 
         col = collections.collection_adapter(f.bars)
         col.append_with_event(Bar('b'))
@@ -1999,7 +2000,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         assert len(list(f.bars)) == 2
 
         replaced = set([id(b) for b in list(f.bars.values())])
-        self.assert_(existing != replaced)
+        ne_(existing, replaced)
 
     def test_list(self):
         self._test_list(list)
