@@ -602,7 +602,7 @@ class ConnectionEvents(event.Events):
         arguments should be returned as a three-tuple in this case::
 
             @event.listens_for(Engine, "before_execute", retval=True)
-            def before_execute(conn, conn, clauseelement, multiparams, params):
+            def before_execute(conn, clauseelement, multiparams, params):
                 # do something with clauseelement, multiparams, params
                 return clauseelement, multiparams, params
 
