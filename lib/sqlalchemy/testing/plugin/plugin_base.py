@@ -65,6 +65,9 @@ def setup_options(make_option):
                 help="Run only tests marked with __backend__")
     make_option("--nomemory", action="store_true", dest="nomemory",
                 help="Don't run memory profiling tests")
+    make_option("--postgresql-templatedb", type="string",
+                help="name of template database to use for Postgresql "
+                     "CREATE DATABASE (defaults to current database)")
     make_option("--low-connections", action="store_true",
                 dest="low_connections",
                 help="Use a low number of distinct connections - "
