@@ -1,15 +1,15 @@
 # /home/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and
+# For each test in aaa_profiling, the corresponding function and 
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received.
+# If a callcount does exist, it is compared to what we received. 
 # assertions are raised if the counts do not match.
-#
-# To add a new callcount test, apply the function_call_count
-# decorator and re-run the tests using the --write-profiles
+# 
+# To add a new callcount test, apply the function_call_count 
+# decorator and re-run the tests using the --write-profiles 
 # option - this file will be rewritten including the new count.
-#
+# 
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -183,18 +183,18 @@ test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_build_query 3.5_sqlite_pysq
 
 # TEST: test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results
 
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mysql_mysqldb_dbapiunicode_cextensions 567666
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mysql_mysqldb_dbapiunicode_nocextensions 580466
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_postgresql_psycopg2_dbapiunicode_cextensions 578324
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 591124
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_cextensions 557938
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 570738
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_mysql_mysqldb_dbapiunicode_cextensions 570849
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_mysql_mysqldb_dbapiunicode_nocextensions 583849
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_postgresql_psycopg2_dbapiunicode_cextensions 598107
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_postgresql_psycopg2_dbapiunicode_nocextensions 611107
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_sqlite_pysqlite_dbapiunicode_cextensions 562621
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_sqlite_pysqlite_dbapiunicode_nocextensions 575621
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mysql_mysqldb_dbapiunicode_cextensions 430866
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mysql_mysqldb_dbapiunicode_nocextensions 443666
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_postgresql_psycopg2_dbapiunicode_cextensions 441526
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 454326
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_cextensions 421140
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 433940
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_mysql_mysqldb_dbapiunicode_cextensions 434049
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_mysql_mysqldb_dbapiunicode_nocextensions 447049
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_postgresql_psycopg2_dbapiunicode_cextensions 461309
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_postgresql_psycopg2_dbapiunicode_nocextensions 474309
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_sqlite_pysqlite_dbapiunicode_cextensions 425823
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.5_sqlite_pysqlite_dbapiunicode_nocextensions 438823
 
 # TEST: test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity
 

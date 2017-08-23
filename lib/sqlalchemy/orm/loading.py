@@ -314,9 +314,24 @@ def _instance_processor(
                 # be present in some unexpected way.
                 populators["expire"].append((prop.key, False))
             else:
+                getter = None
+                # the "adapter" can be here via different paths,
+                # e.g. via adapter present at setup_query or adapter
+                # applied to the query afterwards via eager load subquery.
+                # If the column here
+                # were already a product of this adapter, sending it through
+                # the adapter again can return a totally new expression that
+                # won't be recognized in the result, and the ColumnAdapter
+                # currently does not accommodate for this.   OTOH, if the
+                # column were never applied through this adapter, we may get
+                # None back, in which case we still won't get our "getter".
+                # so try both against result._getter().  See issue #4048
                 if adapter:
-                    col = adapter.columns[col]
-                getter = result._getter(col, False)
+                    adapted_col = adapter.columns[col]
+                    if adapted_col is not None:
+                        getter = result._getter(adapted_col, False)
+                if not getter:
+                    getter = result._getter(col, False)
                 if getter:
                     populators["quick"].append((prop.key, getter))
                 else:

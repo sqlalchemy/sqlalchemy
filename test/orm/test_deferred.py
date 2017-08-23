@@ -2,7 +2,8 @@ import sqlalchemy as sa
 from sqlalchemy import testing, util
 from sqlalchemy.orm import mapper, deferred, defer, undefer, Load, \
     load_only, undefer_group, create_session, synonym, relationship, Session,\
-    joinedload, defaultload, aliased, contains_eager, with_polymorphic
+    joinedload, defaultload, aliased, contains_eager, with_polymorphic, \
+    subqueryload
 from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from test.orm import _fixtures
 
@@ -382,6 +383,167 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
              "orders.address_id AS orders_address_id "
              "FROM orders ORDER BY orders.id",
              {})])
+
+    def test_undefer_group_from_relationship_lazyload(self):
+        users, Order, User, orders = \
+            (self.tables.users,
+             self.classes.Order,
+             self.classes.User,
+             self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders=relationship(Order, order_by=orders.c.id)))
+        mapper(
+            Order, orders, properties=util.OrderedDict([
+                ('userident', deferred(orders.c.user_id, group='primary')),
+                ('description', deferred(orders.c.description,
+                 group='primary')),
+                ('opened', deferred(orders.c.isopen, group='primary'))
+            ])
+        )
+
+        sess = create_session()
+        q = sess.query(User).filter(User.id == 7).options(
+            defaultload(User.orders).undefer_group('primary')
+        )
+
+        def go():
+            result = q.all()
+            o2 = result[0].orders[1]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+        self.sql_eq_(go, [
+            ("SELECT users.id AS users_id, users.name AS users_name "
+             "FROM users WHERE users.id = :id_1", {"id_1": 7}),
+            ("SELECT orders.user_id AS orders_user_id, orders.description "
+             "AS orders_description, orders.isopen AS orders_isopen, "
+             "orders.id AS orders_id, orders.address_id AS orders_address_id "
+             "FROM orders WHERE :param_1 = orders.user_id ORDER BY orders.id",
+             {'param_1': 7})])
+
+    def test_undefer_group_from_relationship_subqueryload(self):
+        users, Order, User, orders = \
+            (self.tables.users,
+             self.classes.Order,
+             self.classes.User,
+             self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders=relationship(Order, order_by=orders.c.id)))
+        mapper(
+            Order, orders, properties=util.OrderedDict([
+                ('userident', deferred(orders.c.user_id, group='primary')),
+                ('description', deferred(orders.c.description,
+                 group='primary')),
+                ('opened', deferred(orders.c.isopen, group='primary'))
+            ])
+        )
+
+        sess = create_session()
+        q = sess.query(User).filter(User.id == 7).options(
+            subqueryload(User.orders).undefer_group('primary')
+        )
+
+        def go():
+            result = q.all()
+            o2 = result[0].orders[1]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+        self.sql_eq_(go, [
+            ("SELECT users.id AS users_id, users.name AS users_name "
+             "FROM users WHERE users.id = :id_1", {"id_1": 7}),
+            ("SELECT orders.user_id AS orders_user_id, orders.description "
+             "AS orders_description, orders.isopen AS orders_isopen, "
+             "orders.id AS orders_id, orders.address_id AS orders_address_id, "
+             "anon_1.users_id AS anon_1_users_id FROM (SELECT users.id AS "
+             "users_id FROM users WHERE users.id = :id_1) AS anon_1 "
+             "JOIN orders ON anon_1.users_id = orders.user_id ORDER BY "
+             "anon_1.users_id, orders.id", [{'id_1': 7}])]
+        )
+
+    def test_undefer_group_from_relationship_joinedload(self):
+        users, Order, User, orders = \
+            (self.tables.users,
+             self.classes.Order,
+             self.classes.User,
+             self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders=relationship(Order, order_by=orders.c.id)))
+        mapper(
+            Order, orders, properties=util.OrderedDict([
+                ('userident', deferred(orders.c.user_id, group='primary')),
+                ('description', deferred(orders.c.description,
+                 group='primary')),
+                ('opened', deferred(orders.c.isopen, group='primary'))
+            ])
+        )
+
+        sess = create_session()
+        q = sess.query(User).filter(User.id == 7).options(
+            joinedload(User.orders).undefer_group('primary')
+        )
+
+        def go():
+            result = q.all()
+            o2 = result[0].orders[1]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.description, 'order 3')
+        self.sql_eq_(go, [
+            ("SELECT users.id AS users_id, users.name AS users_name, "
+             "orders_1.user_id AS orders_1_user_id, orders_1.description AS "
+             "orders_1_description, orders_1.isopen AS orders_1_isopen, "
+             "orders_1.id AS orders_1_id, orders_1.address_id AS "
+             "orders_1_address_id FROM users "
+             "LEFT OUTER JOIN orders AS orders_1 ON users.id = "
+             "orders_1.user_id WHERE users.id = :id_1 "
+             "ORDER BY orders_1.id", {"id_1": 7})]
+        )
+
+    def test_undefer_group_from_relationship_joinedload_colexpr(self):
+        users, Order, User, orders = \
+            (self.tables.users,
+             self.classes.Order,
+             self.classes.User,
+             self.tables.orders)
+
+        mapper(User, users, properties=dict(
+            orders=relationship(Order, order_by=orders.c.id)))
+        mapper(
+            Order, orders, properties=util.OrderedDict([
+                ('userident', deferred(orders.c.user_id, group='primary')),
+                ('lower_desc', deferred(
+                    sa.func.lower(orders.c.description).label(None),
+                    group='primary')),
+                ('opened', deferred(orders.c.isopen, group='primary'))
+            ])
+        )
+
+        sess = create_session()
+        q = sess.query(User).filter(User.id == 7).options(
+            joinedload(User.orders).undefer_group('primary')
+        )
+
+        def go():
+            result = q.all()
+            o2 = result[0].orders[1]
+            eq_(o2.opened, 1)
+            eq_(o2.userident, 7)
+            eq_(o2.lower_desc, 'order 3')
+        self.sql_eq_(go, [
+            ("SELECT users.id AS users_id, users.name AS users_name, "
+             "orders_1.user_id AS orders_1_user_id, "
+             "lower(orders_1.description) AS lower_1, "
+             "orders_1.isopen AS orders_1_isopen, orders_1.id AS orders_1_id, "
+             "orders_1.address_id AS orders_1_address_id, "
+             "orders_1.description AS orders_1_description FROM users "
+             "LEFT OUTER JOIN orders AS orders_1 ON users.id = "
+             "orders_1.user_id WHERE users.id = :id_1 "
+             "ORDER BY orders_1.id", {"id_1": 7})]
+        )
 
     def test_undefer_star(self):
         orders, Order = self.tables.orders, self.classes.Order
