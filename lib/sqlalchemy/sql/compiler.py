@@ -832,16 +832,25 @@ class SQLCompiler(Compiled):
              cast.typeclause._compiler_dispatch(self, **kwargs))
 
     def _format_frame_clause(self, range_, **kw):
+
         return '%s AND %s' % (
             "UNBOUNDED PRECEDING"
             if range_[0] is elements.RANGE_UNBOUNDED
             else "CURRENT ROW" if range_[0] is elements.RANGE_CURRENT
-            else "%s PRECEDING" % (self.process(range_[0], **kw), ),
+            else "%s PRECEDING" % (
+                self.process(elements.literal(abs(range_[0])), **kw), )
+            if range_[0] < 0
+            else "%s FOLLOWING" % (
+                self.process(elements.literal(range_[0]), **kw), ),
 
             "UNBOUNDED FOLLOWING"
             if range_[1] is elements.RANGE_UNBOUNDED
             else "CURRENT ROW" if range_[1] is elements.RANGE_CURRENT
-            else "%s FOLLOWING" % (self.process(range_[1], **kw), )
+            else "%s PRECEDING" % (
+                self.process(elements.literal(abs(range_[1])), **kw), )
+            if range_[1] < 0
+            else "%s FOLLOWING" % (
+                self.process(elements.literal(range_[1]), **kw), ),
         )
 
     def visit_over(self, over, **kwargs):

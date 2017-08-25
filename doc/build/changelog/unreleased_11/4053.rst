@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4053
+
+    Altered the range specification for window functions to allow
+    for two of the same PRECEDING or FOLLOWING keywords in a range
+    by allowing for the left side of the range to be positive
+    and for the right to be negative, e.g. (1, 3) is
+    "1 FOLLOWING AND 3 FOLLOWING".

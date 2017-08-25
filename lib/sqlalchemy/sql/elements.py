@@ -3136,6 +3136,10 @@ class Over(ColumnElement):
 
             func.row_number().over(order_by='x', range_=(-2, None))
 
+        * RANGE BETWEEN 1 FOLLOWING AND 3 FOLLOWING::
+
+            func.row_number().over(order_by='x', range_=(1, 3))
+
         .. versionadded:: 1.1 support for RANGE / ROWS within a window
 
 
@@ -3197,42 +3201,30 @@ class Over(ColumnElement):
             raise exc.ArgumentError("2-tuple expected for range/rows")
 
         if range_[0] is None:
-            preceding = RANGE_UNBOUNDED
+            lower = RANGE_UNBOUNDED
         else:
             try:
-                preceding = int(range_[0])
+                lower = int(range_[0])
             except ValueError:
                 raise exc.ArgumentError(
-                    "Integer or None expected for preceding value")
+                    "Integer or None expected for range value")
             else:
-                if preceding > 0:
-                    raise exc.ArgumentError(
-                        "Preceding value must be a "
-                        "negative integer, zero, or None")
-                elif preceding < 0:
-                    preceding = literal(abs(preceding))
-                else:
-                    preceding = RANGE_CURRENT
+                if lower == 0:
+                    lower = RANGE_CURRENT
 
         if range_[1] is None:
-            following = RANGE_UNBOUNDED
+            upper = RANGE_UNBOUNDED
         else:
             try:
-                following = int(range_[1])
+                upper = int(range_[1])
             except ValueError:
                 raise exc.ArgumentError(
-                    "Integer or None expected for following value")
+                    "Integer or None expected for range value")
             else:
-                if following < 0:
-                    raise exc.ArgumentError(
-                        "Following value must be a positive "
-                        "integer, zero, or None")
-                elif following > 0:
-                    following = literal(following)
-                else:
-                    following = RANGE_CURRENT
+                if upper == 0:
+                    upper = RANGE_CURRENT
 
-        return preceding, following
+        return lower, upper
 
     @property
     def func(self):
