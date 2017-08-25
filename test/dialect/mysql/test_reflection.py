@@ -263,7 +263,7 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             'mysql_def', MetaData(testing.db),
             Column('c1', Integer()),
             mysql_engine='MEMORY',
-            mysql_comment=comment,
+            comment=comment,
             mysql_default_charset='utf8',
             mysql_auto_increment='5',
             mysql_avg_row_length='3',
@@ -280,7 +280,7 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             def_table.drop()
 
         assert def_table.kwargs['mysql_engine'] == 'MEMORY'
-        assert def_table.kwargs['mysql_comment'] == comment
+        assert def_table.comment == comment
         assert def_table.kwargs['mysql_default_charset'] == 'utf8'
         assert def_table.kwargs['mysql_auto_increment'] == '5'
         assert def_table.kwargs['mysql_avg_row_length'] == '3'
@@ -288,6 +288,8 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         assert def_table.kwargs['mysql_connection'] == 'fish'
 
         assert reflected.kwargs['mysql_engine'] == 'MEMORY'
+
+        assert reflected.comment == comment
         assert reflected.kwargs['mysql_comment'] == comment
         assert reflected.kwargs['mysql_default charset'] == 'utf8'
         assert reflected.kwargs['mysql_avg_row_length'] == '3'
