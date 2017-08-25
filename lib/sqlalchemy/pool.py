@@ -1164,23 +1164,27 @@ class QueuePool(Pool):
             wait = use_overflow and self._overflow >= self._max_overflow
             return self._pool.get(wait, self._timeout)
         except sqla_queue.Empty:
-            if use_overflow and self._overflow >= self._max_overflow:
-                if not wait:
-                    return self._do_get()
-                else:
-                    raise exc.TimeoutError(
-                        "QueuePool limit of size %d overflow %d reached, "
-                        "connection timed out, timeout %d" %
-                        (self.size(), self.overflow(), self._timeout))
-
-            if self._inc_overflow():
-                try:
-                    return self._create_connection()
-                except:
-                    with util.safe_reraise():
-                        self._dec_overflow()
-            else:
+            # don't do things inside of "except Empty", because when we say
+            # we timed out or can't connect and raise, Python 3 tells
+            # people the real error is queue.Empty which it isn't.
+            pass
+        if use_overflow and self._overflow >= self._max_overflow:
+            if not wait:
                 return self._do_get()
+            else:
+                raise exc.TimeoutError(
+                    "QueuePool limit of size %d overflow %d reached, "
+                    "connection timed out, timeout %d" %
+                    (self.size(), self.overflow(), self._timeout))
+
+        if self._inc_overflow():
+            try:
+                return self._create_connection()
+            except:
+                with util.safe_reraise():
+                    self._dec_overflow()
+        else:
+            return self._do_get()
 
     def _inc_overflow(self):
         if self._max_overflow == -1:
