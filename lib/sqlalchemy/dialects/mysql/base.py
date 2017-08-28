@@ -1171,7 +1171,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         ], nonpart_options):
             arg = opts[opt]
             if opt in _reflection._options_of_type_string:
-                arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
+
+                arg = self.sql_compiler.render_literal_value(
+                    arg, sqltypes.String())
 
             if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
                        'DEFAULT_CHARACTER_SET', 'CHARACTER_SET',
@@ -1196,7 +1198,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         ], part_options):
             arg = opts[opt]
             if opt in _reflection._options_of_type_string:
-                arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
+                arg = self.sql_compiler.render_literal_value(
+                    arg, sqltypes.String())
 
             opt = opt.replace('_', ' ')
             joiner = ' '

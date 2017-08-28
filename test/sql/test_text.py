@@ -4,7 +4,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_, \
     assert_raises_message, expect_warnings, assert_warnings
 from sqlalchemy import text, select, Integer, String, Float, \
     bindparam, and_, func, literal_column, exc, MetaData, Table, Column,\
-    asc, func, desc, union
+    asc, func, desc, union, literal
 from sqlalchemy.types import NullType
 from sqlalchemy.sql import table, column, util as sql_util
 from sqlalchemy import util
@@ -330,6 +330,23 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             "select '%%' where foo like '%%bar%%'",
             dialect="mysql"
         )
+
+    def test_percent_signs_literal_binds(self):
+        stmt = select([literal("percent % signs %%")])
+        self.assert_compile(
+            stmt,
+            "SELECT 'percent % signs %%' AS anon_1",
+            dialect="sqlite",
+            literal_binds=True
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT 'percent %% signs %%%%' AS anon_1",
+            dialect="mysql",
+            literal_binds=True
+        )
+
 
 class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

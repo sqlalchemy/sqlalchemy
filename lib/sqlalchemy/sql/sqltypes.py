@@ -205,6 +205,10 @@ class String(Concatenable, TypeEngine):
     def literal_processor(self, dialect):
         def process(value):
             value = value.replace("'", "''")
+
+            if dialect.identifier_preparer._double_percents:
+                value = value.replace('%', '%%')
+
             return "'%s'" % value
         return process
 

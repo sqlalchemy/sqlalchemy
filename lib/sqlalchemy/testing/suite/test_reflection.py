@@ -104,9 +104,12 @@ class ComponentReflectionTest(fixtures.TablesTest):
               )
         Table('comment_test', metadata,
               Column('id', sa.Integer, primary_key=True, comment='id comment'),
-              Column('data', sa.String(20), comment='data comment'),
+              Column('data', sa.String(20), comment='data % comment'),
+              Column(
+                  'd2', sa.String(20),
+                  comment=r"""Comment types type speedily ' " \ '' Fun!"""),
               schema=schema,
-              comment='the test table comment')
+              comment=r"""the test % ' " \ table comment""")
 
         if testing.requires.index_reflection.enabled:
             cls.define_index(metadata, users)
@@ -274,7 +277,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
         eq_(
             insp.get_table_comment("comment_test", schema=schema),
-            {"text": "the test table comment"}
+            {"text": r"""the test % ' " \ table comment"""}
         )
 
         eq_(
@@ -290,7 +293,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
             ],
             [
                 {'comment': 'id comment', 'name': 'id'},
-                {'comment': 'data comment', 'name': 'data'}
+                {'comment': 'data % comment', 'name': 'data'},
+                {'comment': r"""Comment types type speedily ' " \ '' Fun!""",
+                 'name': 'd2'}
             ]
         )
 

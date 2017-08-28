@@ -187,6 +187,10 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         data = r'backslash one \ backslash two \\ end'
         self._literal_round_trip(Text, [data], [data])
 
+    def test_literal_percentsigns(self):
+        data = r'percent % signs %% percent'
+        self._literal_round_trip(Text, [data], [data])
+
 
 class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
     __backend__ = True
