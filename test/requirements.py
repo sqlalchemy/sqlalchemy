@@ -265,6 +265,13 @@ class DefaultRequirements(SuiteRequirements):
                        'pypostgresql bombs on multiple isolation level calls')
 
     @property
+    def autocommit(self):
+        """target dialect supports 'AUTOCOMMIT' as an isolation_level"""
+        return only_on(
+            ('postgresql', 'mysql'),
+            "dialect does not support AUTOCOMMIT isolation mode")
+
+    @property
     def row_triggers(self):
         """Target must support standard statement-running EACH ROW triggers."""
 

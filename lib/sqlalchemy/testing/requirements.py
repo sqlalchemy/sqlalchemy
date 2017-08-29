@@ -513,6 +513,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def autocommit(self):
+        """target dialect supports 'AUTOCOMMIT' as an isolation_level"""
+        return exclusions.closed()
+
+    @property
     def json_type(self):
         """target platform implements a native JSON type."""
 
