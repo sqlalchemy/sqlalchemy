@@ -1406,3 +1406,10 @@ as the "owner".
     :ref:`multipart_schema_names`
 
 :ticket:`2626`
+
+AUTOCOMMIT isolation level support
+----------------------------------
+
+Both the PyODBC and pymssql dialects now support the "AUTOCOMMIT" isolation
+level as set by :meth:`.Connection.execution_options` which will establish
+the correct flags on the DBAPI connection object.

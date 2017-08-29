@@ -250,6 +250,7 @@ To set using per-connection execution options::
 
 Valid values for ``isolation_level`` include:
 
+* ``AUTOCOMMIT`` - pyodbc / pymssql-specific
 * ``READ COMMITTED``
 * ``READ UNCOMMITTED``
 * ``REPEATABLE READ``
@@ -259,6 +260,7 @@ Valid values for ``isolation_level`` include:
 .. versionadded:: 1.1 support for isolation level setting on Microsoft
    SQL Server.
 
+.. versionadded:: 1.2 added AUTOCOMMIT isolation level setting
 
 Nullability
 -----------

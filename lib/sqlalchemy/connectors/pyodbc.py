@@ -194,3 +194,17 @@ class PyODBCConnector(Connector):
             except ValueError:
                 version.append(n)
         return tuple(version)
+
+    def set_isolation_level(self, connection, level):
+        # adjust for ConnectionFairy being present
+        # allows attribute set e.g. "connection.autocommit = True"
+        # to work properly
+        if hasattr(connection, 'connection'):
+            connection = connection.connection
+
+        if level == 'AUTOCOMMIT':
+            connection.autocommit = True
+        else:
+            connection.autocommit = False
+            super(PyODBCConnector, self).set_isolation_level(connection,
+                                                             level)

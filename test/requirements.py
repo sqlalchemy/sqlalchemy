@@ -268,7 +268,7 @@ class DefaultRequirements(SuiteRequirements):
     def autocommit(self):
         """target dialect supports 'AUTOCOMMIT' as an isolation_level"""
         return only_on(
-            ('postgresql', 'mysql'),
+            ('postgresql', 'mysql', 'mssql+pyodbc', 'mssql+pymssql'),
             "dialect does not support AUTOCOMMIT isolation mode")
 
     @property

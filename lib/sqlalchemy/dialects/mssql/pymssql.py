@@ -94,4 +94,12 @@ class MSDialect_pymssql(MSDialect):
         else:
             return False
 
+    def set_isolation_level(self, connection, level):
+        if level == 'AUTOCOMMIT':
+            connection.autocommit(True)
+        else:
+            connection.autocommit(False)
+            super(MSDialect_pymssql, self).set_isolation_level(connection,
+                                                                level)
+
 dialect = MSDialect_pymssql
