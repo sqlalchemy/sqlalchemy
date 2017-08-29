@@ -755,7 +755,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             order_by(User.id, adalias.c.id)
 
         def go():
-            eq_(self.static.user_address_result, q.order_by(User.id).all())
+            eq_(self.static.user_address_result, q.all())
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 

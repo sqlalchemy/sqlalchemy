@@ -634,12 +634,15 @@ class CTEDefaultTest(fixtures.TablesTest):
                 expected
             )
 
+    @testing.requires.ctes_on_dml
     def test_update_in_select(self):
         self._test_a_in_b("update", "select")
 
+    @testing.requires.ctes_on_dml
     def test_delete_in_select(self):
         self._test_a_in_b("update", "select")
 
+    @testing.requires.ctes_on_dml
     def test_insert_in_select(self):
         self._test_a_in_b("update", "select")
 

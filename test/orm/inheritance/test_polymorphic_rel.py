@@ -94,7 +94,8 @@ class _PolymorphicTestBase(object):
             select([func.count('*')]).select_from(
                 sess.query(Person).with_polymorphic('*')
                 .options(joinedload(Engineer.machines))
-                .limit(2).offset(1).with_labels().subquery()
+                .order_by(Person.person_id).limit(2).offset(1)
+                .with_labels().subquery()
             ).scalar(), 2)
 
     def test_get_one(self):

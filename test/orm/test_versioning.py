@@ -786,6 +786,7 @@ class NoBumpOnRelationshipTest(fixtures.MappedTest):
 
 class ColumnTypeTest(fixtures.MappedTest):
     __backend__ = True
+    __requires__ = 'sane_rowcount',
 
     @classmethod
     def define_tables(cls, metadata):
@@ -900,6 +901,7 @@ class RowSwitchTest(fixtures.MappedTest):
 
 class AlternateGeneratorTest(fixtures.MappedTest):
     __backend__ = True
+    __requires__ = 'sane_rowcount',
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1581,6 +1583,7 @@ class ManualVersionTest(fixtures.MappedTest):
 class ManualInheritanceVersionTest(fixtures.MappedTest):
     run_define_tables = 'each'
     __backend__ = True
+    __requires__ = 'sane_rowcount',
 
     @classmethod
     def define_tables(cls, metadata):

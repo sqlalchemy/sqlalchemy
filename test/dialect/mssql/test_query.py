@@ -6,7 +6,7 @@ from sqlalchemy.testing import fixtures, AssertsCompiledSQL, assertions
 from sqlalchemy import testing
 from sqlalchemy.util import ue
 from sqlalchemy import util
-from sqlalchemy.testing.assertsql import CursorSQL
+from sqlalchemy.testing.assertsql import CursorSQL, DialectSQL
 from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
     func, PrimaryKeyConstraint, desc, Sequence, DDL, ForeignKey, or_, and_
 from sqlalchemy import event
@@ -190,6 +190,8 @@ class QueryUnicodeTest(fixtures.TestBase):
     __only_on__ = 'mssql'
     __backend__ = True
 
+    @testing.requires.mssql_freetds
+    @testing.requires.python2
     def test_convert_unicode(self):
         meta = MetaData(testing.db)
         t1 = Table(
@@ -284,7 +286,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             meta.drop_all()
 
     @testing.provide_metadata
-    def test_disable_scope_identity(self):
+    def _test_disable_scope_identity(self):
         engine = engines.testing_engine(options={"use_scope_identity": False})
         metadata = self.metadata
         t1 = Table(
@@ -298,10 +300,11 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         with self.sql_execution_asserter(engine) as asserter:
             engine.execute(t1.insert(), {"data": "somedata"})
 
+        # TODO: need a dialect SQL that acts like Cursor SQL
         asserter.assert_(
-            CursorSQL(
-                "INSERT INTO t1 (data) VALUES (?)",
-                ("somedata", )
+            DialectSQL(
+                "INSERT INTO t1 (data) VALUES (:data)",
+                {"data": "somedata"}
             ),
             CursorSQL("SELECT @@identity AS lastrowid"),
         )

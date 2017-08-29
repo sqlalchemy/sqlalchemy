@@ -1872,6 +1872,13 @@ class MySQLDialect(default.DefaultDialect):
         return 'MariaDB' in self.server_version_info
 
     @property
+    def _mariadb_normalized_version_info(self):
+        if len(self.server_version_info) > 5:
+            return self.server_version_info[3:]
+        else:
+            return self.server_version_info
+
+    @property
     def _supports_cast(self):
         return self.server_version_info is None or \
             self.server_version_info >= (4, 0, 2)

@@ -523,6 +523,7 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(result.fetchone(), None)
         assert connection.closed
 
+    @testing.requires.updateable_autoincrement_pks
     def test_connectionless_autoclose_no_metadata(self):
         result = testing.db.execute("update users set user_id=5")
         connection = result.connection

@@ -16,7 +16,6 @@ from sqlalchemy.orm import mapper, relationship, backref, create_session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
-
 class EagerTest(fixtures.MappedTest):
     run_deletes = None
     run_inserts = "once"
@@ -24,13 +23,6 @@ class EagerTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
-        if testing.db.dialect.supports_native_boolean:
-            false = 'false'
-        else:
-            false = "0"
-
-        cls.other['false'] = false
 
         Table('owners', metadata,
               Column('id', Integer, primary_key=True,
@@ -55,7 +47,7 @@ class EagerTest(fixtures.MappedTest):
                      primary_key=True),
               Column('owner_id', Integer, ForeignKey('owners.id'),
                      primary_key=True),
-              Column('someoption', sa.Boolean, server_default=false,
+              Column('someoption', sa.Boolean, server_default=sa.false(),
                      nullable=False))
 
     @classmethod
@@ -216,17 +208,16 @@ class EagerTest(fixtures.MappedTest):
 
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     def test_without_outerjoin_literal(self):
-        Thing, tests, false = (self.classes.Thing,
-                               self.tables.tests,
-                               self.other.false)
+        Thing, tests= (self.classes.Thing,
+                               self.tables.tests)
 
         s = create_session()
         q = s.query(Thing).options(sa.orm.joinedload('category'))
         result = (q.filter(
                 (tests.c.owner_id == 1) &
                 text(
-                    'options.someoption is null or options.someoption=%s' %
-                    false)).join('owner_option'))
+                    'options.someoption is null or options.someoption=:opt'
+                ).bindparams(opt=False)).join('owner_option'))
 
         result_str = ["%d %s" % (t.id, t.category.name) for t in result]
         eq_(result_str, ['3 Some Category'])

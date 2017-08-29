@@ -158,9 +158,6 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     def teardown_class(cls):
         super(UnicodeSchemaTest, cls).teardown_class()
 
-    @testing.fails_on(
-        'mssql+pyodbc',
-        'pyodbc returns a non unicode encoding of the results description.')
     def test_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
@@ -199,9 +196,6 @@ class UnicodeSchemaTest(fixtures.MappedTest):
         assert new_a1.t2s[0].d == b1.d
         session.expunge_all()
 
-    @testing.fails_on(
-        'mssql+pyodbc',
-        'pyodbc returns a non unicode encoding of the results description.')
     def test_inheritance_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
@@ -241,10 +235,12 @@ class BinaryHistTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         class Foo(cls.Basic):
             pass
 
+    @testing.requires.non_broken_binary
     def test_binary_equality(self):
         Foo, t1 = self.classes.Foo, self.tables.t1
 
-        data = b("this is some data")
+        #data = b("this is some data")
+        data = b'm\x18' #m\xf2\r\n\x7f\x10'
 
         mapper(Foo, t1)
 
@@ -639,7 +635,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
 
 
 class BatchDeleteIgnoresRowcountTest(fixtures.DeclarativeMappedTest):
-    __requires__ = ('foreign_keys',)
+    __requires__ = ('foreign_keys', 'recursive_fk_cascade')
 
     @classmethod
     def setup_classes(cls):

@@ -430,7 +430,6 @@ class PrimaryKeyTest(fixtures.MappedTest):
         g2 = sess.query(Graph).get(Version(g.id, g.version_id))
         eq_(g.version, g2.version)
 
-    @testing.fails_on('mssql', 'Cannot update identity columns.')
     def test_pk_mutation(self):
         Graph, Version = self.classes.Graph, self.classes.Version
 

@@ -8,6 +8,7 @@ from sqlalchemy import Table, Column, MetaData, Float, \
     Date, Time, DateTime, DefaultClause, PickleType, text, Text, \
     UnicodeText, LargeBinary
 from sqlalchemy import types, schema
+from sqlalchemy import util
 from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql.base import TIME, _MSDate
 from sqlalchemy.dialects.mssql.base import MS_2005_VERSION, MS_2008_VERSION
@@ -46,6 +47,8 @@ class TimeTypeTest(fixtures.TestBase):
 
 
 class MSDateTypeTest(fixtures.TestBase):
+    __only_on__ = 'mssql'
+    __backend__ = True
 
     def test_result_processor(self):
         expected = datetime.date(2000, 1, 2)
@@ -435,6 +438,8 @@ class TypeRoundTripTest(
         fixtures.TestBase, AssertsExecutionResults, ComparesTables):
     __only_on__ = 'mssql'
 
+    __backend__ = True
+
     @classmethod
     def setup_class(cls):
         global metadata
@@ -443,9 +448,6 @@ class TypeRoundTripTest(
     def teardown(self):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except(
-        'mssql+pyodbc',
-        'mssql+mxodbc')
     def test_decimal_notation(self):
         numeric_table = Table(
             'numeric_table', metadata,
@@ -812,22 +814,6 @@ class TypeRoundTripTest(
                 engine.execute(tbl.delete())
 
 
-class MonkeyPatchedBinaryTest(fixtures.TestBase):
-    __only_on__ = 'mssql+pymssql'
-
-    def test_unicode(self):
-        module = __import__('pymssql')
-        result = module.Binary('foo')
-        eq_(result, 'foo')
-
-    def test_bytes(self):
-        module = __import__('pymssql')
-        input = b('\x80\x03]q\x00X\x03\x00\x00\x00oneq\x01a.')
-        expected_result = input
-        result = module.Binary(input)
-        eq_(result, expected_result)
-
-
 binary_table = None
 MyPickleType = None
 
@@ -837,6 +823,8 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     """Test the Binary and VarBinary types"""
 
     __only_on__ = 'mssql'
+    __requires__ = "non_broken_binary",
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
@@ -873,6 +861,16 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         )
         binary_table.create(engine)
         return binary_table
+
+    def test_character_binary(self):
+        engine = testing.db
+        binary_table = self._fixture(engine)
+        with engine.connect() as conn:
+            conn.execute(
+                binary_table.insert(),
+                primary_id=1,
+                data=b("some normal data")
+            )
 
     def test_binary_legacy_types(self):
         self._test_binary(False)
@@ -980,7 +978,10 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
                 # the type we used here is 100 bytes
                 # so we will get 100 bytes zero-padded
                 paddedstream = list(stream2[0:99])
-                paddedstream.extend(['\x00'] * (100 - len(paddedstream)))
+                if util.py3k:
+                    paddedstream.extend([0] * (100 - len(paddedstream)))
+                else:
+                    paddedstream.extend(['\x00'] * (100 - len(paddedstream)))
                 eq_(
                     list(row['data_slice']), paddedstream
                 )

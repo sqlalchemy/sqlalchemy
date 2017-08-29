@@ -38,7 +38,8 @@ class _cast_on_2005(expression.ColumnElement):
 @compiles(_cast_on_2005)
 def _compile(element, compiler, **kw):
     from . import base
-    if compiler.dialect.server_version_info < base.MS_2005_VERSION:
+    if compiler.dialect.server_version_info is None or \
+             compiler.dialect.server_version_info < base.MS_2005_VERSION:
         return compiler.process(element.bindvalue, **kw)
     else:
         return compiler.process(cast(element.bindvalue, Unicode), **kw)

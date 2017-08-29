@@ -503,9 +503,7 @@ class QueryTest(fixtures.TestBase):
 
     @testing.fails_on('firebird', "uses sql-92 rules")
     @testing.fails_on('sybase', "uses sql-92 rules")
-    @testing.fails_if(
-        lambda: testing.against('mssql+pyodbc') and not
-        testing.db.dialect.freetds, "uses sql-92 rules")
+    @testing.skip_if(['mssql'])
     def test_bind_in(self):
         """test calling IN against a bind parameter.
 

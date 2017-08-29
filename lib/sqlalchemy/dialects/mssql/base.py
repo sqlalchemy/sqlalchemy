@@ -560,17 +560,20 @@ This option can also be specified engine-wide using the
 Rowcount Support / ORM Versioning
 ---------------------------------
 
-The SQL Server drivers have very limited ability to return the number
-of rows updated from an UPDATE or DELETE statement.  In particular, the
-pymssql driver has no support, whereas the pyodbc driver can only return
-this value under certain conditions.
+The SQL Server drivers may have limited ability to return the number
+of rows updated from an UPDATE or DELETE statement.
 
-In particular, updated rowcount is not available when OUTPUT INSERTED
-is used.  This impacts the SQLAlchemy ORM's versioning feature when
-server-side versioning schemes are used.  When
-using pyodbc, the "implicit_returning" flag needs to be set to false
-for any ORM mapped class that uses a version_id column in conjunction with
-a server-side version generator::
+As of this writing, the PyODBC driver is not able to return a rowcount when
+OUTPUT INSERTED is used.  This impacts the SQLAlchemy ORM's versioning feature
+in many cases where server-side value generators are in use in that while the
+versioning operations can succeed, the ORM cannot always check that an UPDATE
+or DELETE statement matched the number of rows expected, which is how it
+verifies that the version identifier matched.   When this condition occurs, a
+warning will be emitted but the operation will proceed.
+
+The use of OUTPUT INSERTED can be disabled by setting the
+:paramref:`.Table.implicit_returning` flag to ``False`` on a particular
+:class:`.Table`, which in declarative looks like::
 
     class MyTable(Base):
         __tablename__ = 'mytable'
@@ -585,14 +588,10 @@ a server-side version generator::
             'implicit_returning': False
         }
 
-Without the implicit_returning flag above, the UPDATE statement will
-use ``OUTPUT inserted.timestamp`` and the rowcount will be returned as
--1, causing the versioning logic to fail.
-
 Enabling Snapshot Isolation
 ---------------------------
 
-Not necessarily specific to SQLAlchemy, SQL Server has a default transaction
+SQL Server has a default transaction
 isolation mode that locks entire tables, and causes even mildly concurrent
 applications to have long held locks and frequent deadlocks.
 Enabling snapshot isolation for the database as a whole is recommended
@@ -606,12 +605,6 @@ following ALTER DATABASE commands executed at the SQL prompt::
 Background on SQL Server snapshot isolation is available at
 http://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
-Known Issues
-------------
-
-* No support for more than one ``IDENTITY`` column per table
-* reflection of indexes does not work with versions older than
-  SQL Server 2005
 
 """
 import datetime

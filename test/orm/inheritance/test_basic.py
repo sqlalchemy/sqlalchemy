@@ -517,7 +517,7 @@ class SortOnlyOnImportantFKsTest(fixtures.MappedTest):
               Column('id', Integer, primary_key=True,
                      test_needs_autoincrement=True),
               Column('b_id', Integer,
-                     ForeignKey('b.id', use_alter=True, name='b')))
+                     ForeignKey('b.id', use_alter=True, name='b_fk')))
         Table('b', metadata,
               Column('id', Integer, ForeignKey('a.id'), primary_key=True))
 

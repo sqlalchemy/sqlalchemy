@@ -1573,7 +1573,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
                     sess.flush
                 )
 
-    @testing.requires.sane_multi_rowcount
+    @testing.requires.sane_rowcount
     def test_delete_twice(self):
         Parent, Child = self._fixture()
         sess = Session()

@@ -1542,10 +1542,10 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
                         test_needs_autoincrement=True)
             b_id = Column(Integer, ForeignKey('b.id'))
 
-    @testing.fails_on("oracle",
-                      "seems like oracle's query engine can't "
-                      "handle this, not clear if there's an "
-                      "expression-level bug on our end though")
+    @testing.fails_on(["oracle", "mssql"],
+                      "Oracle / SQL server engines can't handle this, "
+                      "not clear if there's an expression-level bug on our "
+                      "end though")
     def test_join_w_eager_w_any(self):
         A, B, C, D, E = (self.classes.A,
                          self.classes.B,

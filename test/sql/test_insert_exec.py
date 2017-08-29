@@ -158,6 +158,7 @@ class InsertExecTest(fixtures.TablesTest):
             {'id': 'hi', 'foo': 'thisisfoo', 'bar': "thisisbar"}
         )
 
+    @testing.requires.sequences
     def test_lastrow_accessor_four(self):
         metadata = MetaData()
         self._test_lastrow_accessor(

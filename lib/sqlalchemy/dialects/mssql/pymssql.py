@@ -17,6 +17,9 @@ pymssql is a Python module that provides a Python DBAPI interface around
 `FreeTDS <http://www.freetds.org/>`_.  Compatible builds are available for
 Linux, MacOSX and Windows platforms.
 
+Modern versions of this driver work very well with SQL Server and
+FreeTDS from Linux and is highly recommended.
+
 """
 from .base import MSDialect, MSIdentifierPreparer
 from ... import types as sqltypes, util, processors
@@ -41,7 +44,7 @@ class MSIdentifierPreparer_pymssql(MSIdentifierPreparer):
 
 
 class MSDialect_pymssql(MSDialect):
-    supports_sane_rowcount = False
+    supports_native_decimal = True
     driver = 'pymssql'
 
     preparer = MSIdentifierPreparer_pymssql
@@ -67,10 +70,6 @@ class MSDialect_pymssql(MSDialect):
             util.warn("The pymssql dialect expects at least "
                       "the 1.0 series of the pymssql DBAPI.")
         return module
-
-    def __init__(self, **params):
-        super(MSDialect_pymssql, self).__init__(**params)
-        self.use_scope_identity = True
 
     def _get_server_version_info(self, connection):
         vers = connection.scalar("select @@version")
@@ -111,6 +110,7 @@ class MSDialect_pymssql(MSDialect):
         else:
             connection.autocommit(False)
             super(MSDialect_pymssql, self).set_isolation_level(connection,
-                                                                level)
+                                                               level)
+
 
 dialect = MSDialect_pymssql

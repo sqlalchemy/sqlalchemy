@@ -246,7 +246,7 @@ class MemUsageTest(EnsureZeroed):
 class MemUsageWBackendTest(EnsureZeroed):
 
     __tags__ = 'memory_intensive',
-    __requires__ = 'cpython',
+    __requires__ = 'cpython', 'memory_process_intensive'
     __backend__ = True
 
     # ensure a pure growing test trips the assertion

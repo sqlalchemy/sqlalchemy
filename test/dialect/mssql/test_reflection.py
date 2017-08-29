@@ -130,26 +130,28 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         dbname = testing.db.scalar("select db_name()")
         owner = testing.db.scalar("SELECT user_name()")
+        referred_schema = '%(dbname)s.%(owner)s' % {
+            "dbname": dbname, "owner": owner}
 
         inspector = inspect(testing.db)
         bar_via_db = inspector.get_foreign_keys(
-            "bar", schema="%s.%s" % (dbname, owner))
+            "bar", schema=referred_schema)
         eq_(
             bar_via_db,
             [{
                 'referred_table': 'foo',
                 'referred_columns': ['id'],
-                'referred_schema': 'test.dbo',
+                'referred_schema': referred_schema,
                 'name': 'fkfoo',
                 'constrained_columns': ['foo_id']}]
         )
 
-        assert testing.db.has_table("bar", schema="test.dbo")
+        assert testing.db.has_table("bar", schema=referred_schema)
 
         m2 = MetaData()
-        Table('bar', m2, schema="test.dbo", autoload=True,
-                                autoload_with=testing.db)
-        eq_(m2.tables["test.dbo.foo"].schema, "test.dbo")
+        Table('bar', m2, schema=referred_schema, autoload=True,
+                               autoload_with=testing.db)
+        eq_(m2.tables["%s.foo" % referred_schema].schema, referred_schema)
 
     @testing.provide_metadata
     def test_indexes_cols(self):

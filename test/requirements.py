@@ -54,7 +54,7 @@ class DefaultRequirements(SuiteRequirements):
         def mysql_not_mariadb_102(config):
             return against(config, "mysql") and (
                 not config.db.dialect._is_mariadb or
-                config.db.dialect.server_version_info < (5, 5, 5, 10, 2)
+                config.db.dialect._mariadb_normalized_version_info < (10, 2)
             )
 
         return self.check_constraints + fails_on(
@@ -101,6 +101,13 @@ class DefaultRequirements(SuiteRequirements):
 
         return fails_on_everything_except('sqlite', 'oracle', '+zxjdbc') + \
             skip_if('mssql')
+
+    @property
+    def recursive_fk_cascade(self):
+        """target database must support ON DELETE CASCADE on a self-referential
+        foreign key"""
+
+        return skip_if(["mssql"])
 
     @property
     def deferrable_fks(self):
@@ -192,6 +199,13 @@ class DefaultRequirements(SuiteRequirements):
                 )
 
     @property
+    def non_broken_binary(self):
+        """target DBAPI must work fully with binary values"""
+
+        # see https://github.com/pymssql/pymssql/issues/504
+        return skip_if(["mssql+pymssql"])
+
+    @property
     def binary_comparisons(self):
         """target database/driver can allow BLOB/BINARY fields to be compared
         against a bound parameter value.
@@ -227,10 +241,8 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if(
             [
-                "mssql+pyodbc",
-                "mssql+mxodbc",
-                "mysql+mysqldb",
-                "mysql+pymysql"], "no driver support"
+                "mssql",
+                "mysql"], "no driver support"
         )
 
     @property
@@ -248,6 +260,17 @@ class DefaultRequirements(SuiteRequirements):
             exclude("mssql", "<", (9, 0, 0),
                     "SQL Server 2005+ is required for "
                     "independent connections")])
+
+    @property
+    def memory_process_intensive(self):
+        """Driver is able to handle the memory tests which run in a subprocess
+        and iterate through hundreds of connections
+
+        """
+        return skip_if([
+            no_support("oracle", "Oracle XE usually can't handle these"),
+            no_support("mssql+pyodbc", "MS ODBC drivers struggle")
+        ])
 
     @property
     def updateable_autoincrement_pks(self):
@@ -330,7 +353,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def savepoints_w_release(self):
         return self.savepoints + skip_if(
-            "oracle", "oracle doesn't support release of savepoint")
+            ["oracle", "mssql"],
+            "database doesn't support release of savepoint"
+        )
+
 
     @property
     def schemas(self):
@@ -403,6 +429,15 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def ctes_on_dml(self):
+        """target database supports CTES which consist of INSERT, UPDATE
+        or DELETE"""
+
+        return only_if(
+            ['postgresql']
+        )
+
+    @property
     def mod_operator_as_percent_sign(self):
         """target database must use a plain percent '%' as the 'modulus'
         operator."""
@@ -427,11 +462,23 @@ class DefaultRequirements(SuiteRequirements):
             ], 'no support for EXCEPT')
 
     @property
+    def order_by_col_from_union(self):
+        """target database supports ordering by a column from a SELECT
+        inside of a UNION
+
+        E.g.  (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
+
+        Fails on SQL Server
+
+        """
+        return fails_if('mssql')
+
+    @property
     def parens_in_union_contained_select_w_limit_offset(self):
         """Target database must support parenthesized SELECT in UNION
         when LIMIT/OFFSET is specifically present.
 
-        E.g. (SELECT ...) UNION (SELECT ..)
+        E.g. (SELECT ... LIMIT ..) UNION (SELECT .. OFFSET ..)
 
         This is known to fail on SQLite.
 
@@ -443,7 +490,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support parenthesized SELECT in UNION
         when OFFSET/LIMIT is specifically not present.
 
-        E.g. (SELECT ... LIMIT ..) UNION (SELECT .. OFFSET ..)
+        E.g. (SELECT ...) UNION (SELECT ..)
 
         This is known to fail on SQLite.  It also fails on Oracle
         because without LIMIT/OFFSET, there is currently no step that
@@ -549,12 +596,6 @@ class DefaultRequirements(SuiteRequirements):
                 util.py2k,
                 "bug in mysqlconnector 2.0"
             ),
-            LambdaPredicate(
-                lambda config: against(config, 'mssql+pyodbc') and
-                config.db.dialect.freetds and
-                config.db.dialect.freetds_driver_version < "0.91",
-                "older freetds doesn't support unicode DDL"
-            ),
             exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
         ])
 
@@ -597,6 +638,13 @@ class DefaultRequirements(SuiteRequirements):
 
         return fails_on_everything_except('postgresql', 'oracle', 'mssql',
                                           'sybase', 'sqlite')
+
+    @property
+    def nested_aggregates(self):
+        """target database can select an aggregate from a subquery that's
+        also using an aggregate"""
+
+        return skip_if(["mssql"])
 
     @property
     def array_type(self):
@@ -722,8 +770,7 @@ class DefaultRequirements(SuiteRequirements):
              ('sqlite', None, None, 'TODO'),
              ("firebird", None, None, "Precision must be from 1 to 18"),
              ("sybase+pysybase", None, None, "TODO"),
-             ('mssql+pymssql', None, None,
-              'FIXME: improve pymssql dec handling')]
+            ]
         )
 
     @property
@@ -892,15 +939,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def mssql_freetds(self):
-        return only_on(
-            LambdaPredicate(
-                lambda config: (
-                    (against(config, 'mssql+pyodbc') and
-                     config.db.dialect.freetds)
-                    or against(config, 'mssql+pymssql')
-                )
-            )
-        )
+        return only_on(["mssql+pymssql"])
 
     @property
     def ad_hoc_engines(self):

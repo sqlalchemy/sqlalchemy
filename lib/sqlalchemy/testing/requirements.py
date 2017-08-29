@@ -174,6 +174,19 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def ctes(self):
+        """Target database supports CTEs"""
+
+        return exclusions.closed()
+
+    @property
+    def ctes_on_dml(self):
+        """target database supports CTES which consist of INSERT, UPDATE
+        or DELETE"""
+
+        return exclusions.closed()
+
+    @property
     def autoincrement_insert(self):
         """target platform generates new surrogate integer primary key values
         when insert() is executed, excluding the pk column."""
@@ -578,6 +591,22 @@ class SuiteRequirements(Requirements):
 
         """
         return exclusions.closed()
+
+    @property
+    def nested_aggregates(self):
+        """target database can select an aggregate from a subquery that's
+        also using an aggregate
+
+        """
+        return exclusions.open()
+
+    @property
+    def recursive_fk_cascade(self):
+        """target database must support ON DELETE CASCADE on a self-referential
+        foreign key
+
+        """
+        return exclusions.open()
 
     @property
     def precision_numerics_retains_significant_digits(self):

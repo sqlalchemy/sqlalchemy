@@ -179,7 +179,8 @@ class ExecuteTest(fixtures.TestBase):
     @testing.fails_on_everything_except(
         'postgresql+psycopg2', 'postgresql+psycopg2cffi',
         'postgresql+pypostgresql', 'postgresql+pygresql',
-        'mysql+mysqlconnector', 'mysql+pymysql', 'mysql+cymysql')
+        'mysql+mysqlconnector', 'mysql+pymysql', 'mysql+cymysql',
+        'mssql+pymssql')
     def test_raw_python(self):
         def go(conn):
             conn.execute(

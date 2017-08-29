@@ -250,6 +250,7 @@ class M2MTest(fixtures.MappedTest):
                                    (Transition, [{'name': 'transition1'},
                                                  {'name': 'transition2'}])})
 
+    @testing.requires.updateable_autoincrement_pks
     @testing.requires.sane_multi_rowcount
     def test_stale_conditions(self):
         Place, Transition, place_input, place, transition = (

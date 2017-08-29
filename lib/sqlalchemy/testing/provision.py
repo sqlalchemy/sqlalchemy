@@ -287,49 +287,61 @@ def _oracle_update_db_opts(db_url, db_opts):
     db_opts['_retry_on_12516'] = True
 
 
-def reap_oracle_dbs(idents_file):
-    log.info("Reaping Oracle dbs...")
+def reap_dbs(idents_file):
+    log.info("Reaping databases...")
 
-    urls = collections.defaultdict(list)
+    urls = collections.defaultdict(set)
+    idents = collections.defaultdict(set)
+
     with open(idents_file) as file_:
         for line in file_:
             line = line.strip()
             db_name, db_url = line.split(" ")
-            urls[db_url].append(db_name)
+            url_obj = sa_url.make_url(db_url)
+            url_key = (url_obj.get_backend_name(), url_obj.host)
+            urls[url_key].add(db_url)
+            idents[url_key].add(db_name)
 
-    for url in urls:
-        if not url.startswith("oracle"):
-            continue
-        idents = urls[url]
-        log.info("db reaper connecting to %r", url)
-        eng = create_engine(url)
-        with eng.connect() as conn:
+    for url_key in urls:
+        backend = url_key[0]
+        url = list(urls[url_key])[0]
+        ident = idents[url_key]
+        if backend == "oracle":
+            _reap_oracle_dbs(url, ident)
+        elif backend == "mssql":
+            _reap_mssql_dbs(url, ident)
 
-            log.info("identifiers in file: %s", ", ".join(idents))
+def _reap_oracle_dbs(url, idents):
+    log.info("db reaper connecting to %r", url)
+    eng = create_engine(url)
+    with eng.connect() as conn:
 
-            to_reap = conn.execute(
-                "select u.username from all_users u where username "
-                "like 'TEST_%' and not exists (select username "
-                "from v$session where username=u.username)")
-            all_names = {username.lower() for (username, ) in to_reap}
-            to_drop = set()
-            for name in all_names:
-                if name.endswith("_ts1") or name.endswith("_ts2"):
-                    continue
-                elif name in idents:
-                    to_drop.add(name)
-                    if "%s_ts1" % name in all_names:
-                        to_drop.add("%s_ts1" % name)
-                    if "%s_ts2" % name in all_names:
-                        to_drop.add("%s_ts2" % name)
+        log.info("identifiers in file: %s", ", ".join(idents))
 
-            dropped = total = 0
-            for total, username in enumerate(to_drop, 1):
-                if _ora_drop_ignore(conn, username):
-                    dropped += 1
-            log.info(
-                "Dropped %d out of %d stale databases detected",
-                dropped, total)
+        to_reap = conn.execute(
+            "select u.username from all_users u where username "
+            "like 'TEST_%' and not exists (select username "
+            "from v$session where username=u.username)")
+        all_names = {username.lower() for (username, ) in to_reap}
+        to_drop = set()
+        for name in all_names:
+            if name.endswith("_ts1") or name.endswith("_ts2"):
+                continue
+            elif name in idents:
+                to_drop.add(name)
+                if "%s_ts1" % name in all_names:
+                    to_drop.add("%s_ts1" % name)
+                if "%s_ts2" % name in all_names:
+                    to_drop.add("%s_ts2" % name)
+
+        dropped = total = 0
+        for total, username in enumerate(to_drop, 1):
+            if _ora_drop_ignore(conn, username):
+                dropped += 1
+        log.info(
+            "Dropped %d out of %d stale databases detected",
+            dropped, total)
+
 
 
 @_follower_url_from_main.for_db("oracle")
@@ -340,3 +352,65 @@ def _oracle_follower_url_from_main(url, ident):
     return url
 
 
+@_create_db.for_db("mssql")
+def _mssql_create_db(cfg, eng, ident):
+    with eng.connect().execution_options(
+            isolation_level="AUTOCOMMIT") as conn:
+        conn.execute("create database %s" % ident)
+        conn.execute(
+            "ALTER DATABASE %s SET ALLOW_SNAPSHOT_ISOLATION ON" % ident)
+        conn.execute(
+            "ALTER DATABASE %s SET READ_COMMITTED_SNAPSHOT ON" % ident)
+        conn.execute("use %s" % ident)
+        conn.execute("create schema test_schema")
+
+
+@_drop_db.for_db("mssql")
+def _mssql_drop_db(cfg, eng, ident):
+    with eng.connect().execution_options(
+            isolation_level="AUTOCOMMIT") as conn:
+        _mssql_drop_ignore(conn, ident)
+
+def _mssql_drop_ignore(conn, ident):
+    try:
+        # typically when this happens, we can't KILL the session anyway,
+        # so let the cleanup process drop the DBs
+        # for row in conn.execute("select session_id from sys.dm_exec_sessions "
+        #        "where database_id=db_id('%s')" % ident):
+        #    log.info("killing SQL server sesssion %s", row['session_id'])
+        #    conn.execute("kill %s" % row['session_id'])
+
+        conn.execute("drop database %s" % ident)
+        log.info("Reaped db: %s", ident)
+        return True
+    except exc.DatabaseError as err:
+        log.warning("couldn't drop db: %s", err)
+        return False
+
+
+def _reap_mssql_dbs(url, idents):
+    log.info("db reaper connecting to %r", url)
+    eng = create_engine(url)
+    with eng.connect().execution_options(
+            isolation_level="AUTOCOMMIT") as conn:
+
+        log.info("identifiers in file: %s", ", ".join(idents))
+
+        to_reap = conn.execute(
+            "select d.name from sys.databases as d where name "
+            "like 'TEST_%' and not exists (select session_id "
+            "from sys.dm_exec_sessions "
+            "where database_id=d.database_id)")
+        all_names = {dbname.lower() for (dbname, ) in to_reap}
+        to_drop = set()
+        for name in all_names:
+            if name in idents:
+                to_drop.add(name)
+
+        dropped = total = 0
+        for total, dbname in enumerate(to_drop, 1):
+            if _mssql_drop_ignore(conn, dbname):
+                dropped += 1
+        log.info(
+            "Dropped %d out of %d stale databases detected",
+            dropped, total)

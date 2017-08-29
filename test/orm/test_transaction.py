@@ -1,6 +1,7 @@
 from __future__ import with_statement
 from sqlalchemy import (
     testing, exc as sa_exc, event, String, Column, Table, select, func)
+from sqlalchemy.sql import elements
 from sqlalchemy.testing import (
     fixtures, engines, eq_, assert_raises, assert_raises_message,
     assert_warnings, mock, expect_warnings, is_, is_not_)
@@ -10,7 +11,6 @@ from sqlalchemy.orm import (
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
 from sqlalchemy import inspect
-
 
 class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
     run_inserts = None
@@ -491,7 +491,9 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         def prevent_savepoint_rollback(
                 cursor, statement, parameters, context=None):
-            if "rollback to savepoint" in statement.lower():
+            if context is not None and context.compiled and isinstance(
+                    context.compiled.statement,
+                    elements.RollbackToSavepointClause):
                 raise rollback_error
 
         self.event_listen(
@@ -551,7 +553,9 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         def prevent_savepoint_rollback(
                 cursor, statement, parameters, context=None):
-            if "rollback to savepoint" in statement.lower():
+            if context is not None and context.compiled and isinstance(
+                    context.compiled.statement,
+                    elements.RollbackToSavepointClause):
                 raise rollback_error
 
         self.event_listen(testing.db, "handle_error", canary, retval=True)

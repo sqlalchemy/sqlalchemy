@@ -344,13 +344,18 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             def get_col_spec(self):
                 return "BAR"
 
+        t = Table('t', MetaData(), Column('bar', MyType, nullable=False))
+
         self.assert_compile(
-            ddl.CreateColumn(Column('bar', MyType)),
-            "bar FOOB bar"
+            ddl.CreateColumn(t.c.bar),
+            "bar FOOB bar NOT NULL"
         )
+
+        t = Table('t', MetaData(),
+                  Column('bar', MyOtherType, nullable=False))
         self.assert_compile(
-            ddl.CreateColumn(Column('bar', MyOtherType)),
-            "bar BAR"
+            ddl.CreateColumn(t.c.bar),
+            "bar BAR NOT NULL"
         )
 
     def test_typedecorator_literal_render_fallback_bound(self):
@@ -1165,7 +1170,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         Table(
             'non_native_enum_table', metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, autoincrement=False),
             Column('someenum', Enum('one', 'two', 'three', native_enum=False)),
             Column('someotherenum',
                    Enum('one', 'two', 'three',
@@ -1369,7 +1374,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     @testing.requires.enforces_check_constraints
     def test_check_constraint(self):
         assert_raises(
-            (exc.IntegrityError, exc.ProgrammingError),
+            (exc.IntegrityError, exc.ProgrammingError, exc.OperationalError),
             testing.db.execute,
             "insert into non_native_enum_table "
             "(id, someenum) values(1, 'four')")
@@ -1614,6 +1619,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.requires.non_broken_binary
     def test_round_trip(self):
         testobj1 = pickleable.Foo('im foo 1')
         testobj2 = pickleable.Foo('im foo 2')
@@ -2399,10 +2405,10 @@ class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):
                 return "FOOB %s" % kw['type_expression'].name
 
         m = MetaData()
-        t = Table('t', m, Column('bar', MyType))
+        t = Table('t', m, Column('bar', MyType, nullable=False))
         self.assert_compile(
             ddl.CreateColumn(t.c.bar),
-            "bar FOOB bar"
+            "bar FOOB bar NOT NULL"
         )
 
 

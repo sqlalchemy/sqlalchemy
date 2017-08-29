@@ -102,6 +102,7 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
+    @testing.requires.updateable_autoincrement_pks
     @testing.requires.predictable_gc
     def test_stale_state_positive_pk_change(self):
         """Illustrate that we can't easily link a

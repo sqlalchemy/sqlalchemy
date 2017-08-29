@@ -242,6 +242,7 @@ class CompoundSelectTest(fixtures.TablesTest):
             [(2, 2, 3), (3, 3, 4)]
         )
 
+    @testing.requires.order_by_col_from_union
     @testing.requires.parens_in_union_contained_select_w_limit_offset
     def test_limit_offset_selectable_in_unions(self):
         table = self.tables.some_table

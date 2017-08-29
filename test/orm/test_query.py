@@ -2082,27 +2082,30 @@ class SliceTest(QueryTest):
         User = self.classes.User
 
         sess = create_session()
-        q = sess.query(User)
+        q = sess.query(User).order_by(User.id)
 
         self.assert_sql(
             testing.db, lambda: q[10:20], [
                 (
                     "SELECT users.id AS users_id, users.name "
-                    "AS users_name FROM users LIMIT :param_1 OFFSET :param_2",
+                    "AS users_name FROM users ORDER BY users.id "
+                    "LIMIT :param_1 OFFSET :param_2",
                     {'param_1': 10, 'param_2': 10})])
 
         self.assert_sql(
             testing.db, lambda: q[:20], [
                 (
                     "SELECT users.id AS users_id, users.name "
-                    "AS users_name FROM users LIMIT :param_1",
+                    "AS users_name FROM users ORDER BY users.id "
+                    "LIMIT :param_1",
                     {'param_1': 20})])
 
         self.assert_sql(
             testing.db, lambda: q[5:], [
                 (
                     "SELECT users.id AS users_id, users.name "
-                    "AS users_name FROM users LIMIT -1 OFFSET :param_1",
+                    "AS users_name FROM users ORDER BY users.id "
+                    "LIMIT -1 OFFSET :param_1",
                     {'param_1': 5})])
 
         self.assert_sql(testing.db, lambda: q[2:2], [])
@@ -2113,19 +2116,19 @@ class SliceTest(QueryTest):
             testing.db, lambda: q[-5:-2], [
                 (
                     "SELECT users.id AS users_id, users.name AS users_name "
-                    "FROM users", {})])
+                    "FROM users ORDER BY users.id", {})])
 
         self.assert_sql(
             testing.db, lambda: q[-5:], [
                 (
                     "SELECT users.id AS users_id, users.name AS users_name "
-                    "FROM users", {})])
+                    "FROM users ORDER BY users.id", {})])
 
         self.assert_sql(
             testing.db, lambda: q[:], [
                 (
                     "SELECT users.id AS users_id, users.name AS users_name "
-                    "FROM users", {})])
+                    "FROM users ORDER BY users.id", {})])
 
 
 class FilterTest(QueryTest, AssertsCompiledSQL):
@@ -4456,6 +4459,8 @@ class SessionBindTest(QueryTest):
         with self._assert_bind_args(session):
             session.query(func.max(User.score)).scalar()
 
+
+    @testing.requires.nested_aggregates
     def test_column_property_select(self):
         User = self.classes.User
         Address = self.classes.Address
