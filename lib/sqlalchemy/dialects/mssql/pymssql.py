@@ -18,7 +18,7 @@ pymssql is a Python module that provides a Python DBAPI interface around
 Linux, MacOSX and Windows platforms.
 
 """
-from .base import MSDialect
+from .base import MSDialect, MSIdentifierPreparer
 from ... import types as sqltypes, util, processors
 import re
 
@@ -31,9 +31,20 @@ class _MSNumeric_pymssql(sqltypes.Numeric):
             return sqltypes.Numeric.result_processor(self, dialect, type_)
 
 
+class MSIdentifierPreparer_pymssql(MSIdentifierPreparer):
+
+    def __init__(self, dialect):
+        super(MSIdentifierPreparer_pymssql, self).__init__(dialect)
+        # pymssql has the very unusual behavior that it uses pyformat
+        # yet does not require that percent signs be doubled
+        self._double_percents = False
+
+
 class MSDialect_pymssql(MSDialect):
     supports_sane_rowcount = False
     driver = 'pymssql'
+
+    preparer = MSIdentifierPreparer_pymssql
 
     colspecs = util.update_copy(
         MSDialect.colspecs,

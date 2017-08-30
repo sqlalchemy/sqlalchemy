@@ -1,0 +1,9 @@
+.. change::
+    :tags: mssql, bug
+    :tickets: 4057
+
+    Fixed the pymssql dialect so that percent signs in SQL text, such
+    as used in modulus expressions or literal textual values, are
+    **not** doubled up, as seems to be what pymssql expects.  This is
+    despite the fact that the pymssql DBAPI uses the "pyformat" parameter
+    style which itself considers the percent sign to be significant.
