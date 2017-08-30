@@ -1939,7 +1939,7 @@ class MSDialect(default.DefaultDialect):
                      "join sys.schemas as sch on sch.schema_id=tab.schema_id "
                      "where tab.name = :tabname "
                      "and sch.name=:schname "
-                     "and ind.is_primary_key=0",
+                     "and ind.is_primary_key=0 and ind.type != 0",
                      bindparams=[
                          sql.bindparam('tabname', tablename,
                                        sqltypes.String(convert_unicode=True)),
