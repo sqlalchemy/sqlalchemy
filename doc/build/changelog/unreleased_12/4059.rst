@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4059
+
+    Added a rule to SQL Server index reflection to ignore the so-called
+    "heap" index that is implicitly present on a table that does not
+    specify a clustered index.
+
