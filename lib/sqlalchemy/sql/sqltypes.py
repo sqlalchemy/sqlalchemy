@@ -1603,12 +1603,12 @@ class Boolean(TypeEngine, SchemaType):
         return bool
 
     def literal_processor(self, dialect):
-        if dialect.supports_native_boolean:
-            def process(value):
-                return "true" if value else "false"
-        else:
-            def process(value):
-                return str(1 if value else 0)
+        compiler = dialect.statement_compiler(dialect, None)
+        true = compiler.visit_true(None)
+        false = compiler.visit_false(None)
+
+        def process(value):
+            return true if value else false
         return process
 
     def bind_processor(self, dialect):

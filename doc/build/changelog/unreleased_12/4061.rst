@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4061
+
+    SQL Server supports what SQLAlchemy calls "native boolean"
+    with its BIT type, as this type only accepts 0 or 1 and the
+    DBAPIs return its value as True/False.   So the SQL Server
+    dialects now enable "native boolean" support, in that a
+    CHECK constraint is not generated for a :class:`.Boolean`
+    datatype.  The only difference vs. other native boolean
+    is that there are no "true" / "false" constants so "1" and
+    "0" are still rendered here.
+
