@@ -1,5 +1,6 @@
 .. change::
     :tags: feature, mssql
+    :tickets: 4058
 
     Added support for "AUTOCOMMIT" isolation level, as established
     via :meth:`.Connection.execution_options`, to the
