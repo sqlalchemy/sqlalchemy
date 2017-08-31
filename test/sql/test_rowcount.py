@@ -65,6 +65,15 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
         r = employees_table.update(department == 'C').execute(department='C')
         assert r.rowcount == 3
 
+    @testing.requires.sane_rowcount_w_returning
+    def test_update_rowcount_return_defaults(self):
+        department = employees_table.c.department
+        stmt = employees_table.update(department == 'C').values(
+            name=employees_table.c.department + 'Z').return_defaults()
+
+        r = stmt.execute()
+        assert r.rowcount == 3
+
     def test_raw_sql_rowcount(self):
         # test issue #3622, make sure eager rowcount is called for text
         with testing.db.connect() as conn:
@@ -117,3 +126,4 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(
             r.rowcount, 2
         )
+

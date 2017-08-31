@@ -16,6 +16,7 @@ import re
 class PyODBCConnector(Connector):
     driver = 'pyodbc'
 
+    supports_sane_rowcount_returning = False
     supports_sane_multi_rowcount = False
 
     if util.py2k:

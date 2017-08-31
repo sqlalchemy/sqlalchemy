@@ -249,6 +249,10 @@ class DefaultDialect(interfaces.Dialect):
     def dialect_description(self):
         return self.name + "+" + self.driver
 
+    @property
+    def supports_sane_rowcount_returning(self):
+        return self.supports_sane_rowcount
+
     @classmethod
     def get_pool_class(cls, url):
         return getattr(cls, 'poolclass', pool.QueuePool)

@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, mssql, orm
+    :tickets: 4062
+
+    Added a new class of "rowcount support" for dialects that is specific to
+    when "RETURNING", which on SQL Server looks like "OUTPUT inserted", is in
+    use, as the PyODBC backend isn't able to give us rowcount on an UPDATE or
+    DELETE statement when OUTPUT is in effect.  This primarily affects the ORM
+    when a flush is updating a row that contains server-calcluated values,
+    raising an error if the backend does not return the expected row count.
+    PyODBC now states that it supports rowcount except if OUTPUT.inserted is
+    present, which is taken into account by the ORM during a flush as to
+    whether it will look for a rowcount.

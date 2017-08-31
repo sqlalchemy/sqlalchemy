@@ -559,13 +559,6 @@ class DefaultRequirements(SuiteRequirements):
         ])
 
     @property
-    def sane_rowcount(self):
-        return skip_if(
-            lambda config: not config.db.dialect.supports_sane_rowcount,
-            "driver doesn't support 'sane' rowcount"
-        )
-
-    @property
     def emulated_lastrowid(self):
         """"target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes.
@@ -592,13 +585,6 @@ class DefaultRequirements(SuiteRequirements):
             fails_on_everything_except('mysql',
                                        'sqlite+pysqlite',
                                        'sqlite+pysqlcipher')
-
-    @property
-    def sane_multi_rowcount(self):
-        return fails_if(
-            lambda config: not config.db.dialect.supports_sane_multi_rowcount,
-            "driver %(driver)s %(doesnt_support)s 'sane' multi row count"
-        )
 
     @property
     def nullsordering(self):

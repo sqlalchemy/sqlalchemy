@@ -193,6 +193,29 @@ class SuiteRequirements(Requirements):
 
         return exclusions.open()
 
+
+    @property
+    def sane_rowcount(self):
+        return exclusions.skip_if(
+            lambda config: not config.db.dialect.supports_sane_rowcount,
+            "driver doesn't support 'sane' rowcount"
+        )
+
+    @property
+    def sane_multi_rowcount(self):
+        return exclusions.fails_if(
+            lambda config: not config.db.dialect.supports_sane_multi_rowcount,
+            "driver %(driver)s %(doesnt_support)s 'sane' multi row count"
+        )
+
+    @property
+    def sane_rowcount_w_returning(self):
+        return exclusions.fails_if(
+            lambda config:
+                not config.db.dialect.supports_sane_rowcount_returning,
+            "driver doesn't support 'sane' rowcount when returning is on"
+        )
+
     @property
     def empty_inserts(self):
         """target platform supports INSERT with no values, i.e.

@@ -693,22 +693,28 @@ def _emit_update_statements(base_mapper, uowtransaction,
         records = list(records)
 
         statement = cached_stmt
-
-        # TODO: would be super-nice to not have to determine this boolean
-        # inside the loop here, in the 99.9999% of the time there's only
-        # one connection in use
-        assert_singlerow = connection.dialect.supports_sane_rowcount
-        assert_multirow = assert_singlerow and \
-            connection.dialect.supports_sane_multi_rowcount
-        allow_multirow = has_all_defaults and not needs_version_id
+        return_defaults = False
 
         if not has_all_pks:
             statement = statement.return_defaults()
+            return_defaults = True
         elif bookkeeping and not has_all_defaults and \
                 mapper.base_mapper.eager_defaults:
             statement = statement.return_defaults()
+            return_defaults = True
         elif mapper.version_id_col is not None:
             statement = statement.return_defaults(mapper.version_id_col)
+            return_defaults = True
+
+        assert_singlerow = (
+            connection.dialect.supports_sane_rowcount
+            if not return_defaults
+            else connection.dialect.supports_sane_rowcount_returning
+        )
+
+        assert_multirow = assert_singlerow and \
+            connection.dialect.supports_sane_multi_rowcount
+        allow_multirow = has_all_defaults and not needs_version_id
 
         if hasvalue:
             for state, state_dict, params, mapper, \
@@ -728,7 +734,7 @@ def _emit_update_statements(base_mapper, uowtransaction,
                         c.context.compiled_parameters[0],
                         value_params)
                 rows += c.rowcount
-                check_rowcount = True
+                check_rowcount = assert_singlerow
         else:
             if not allow_multirow:
                 check_rowcount = assert_singlerow
