@@ -271,7 +271,7 @@ class PGDialect_pg8000(PGDialect):
         fns = []
 
         def on_connect(conn):
-            conn.py_types[quoted_name] = conn.py_types[unicode]
+            conn.py_types[quoted_name] = conn.py_types[util.text_type]
         fns.append(on_connect)
 
         if self.client_encoding is not None:
