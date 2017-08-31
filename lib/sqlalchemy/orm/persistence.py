@@ -934,10 +934,15 @@ def _emit_post_update_statements(base_mapper, uowtransaction,
         records = list(records)
         connection = key[0]
 
-        assert_singlerow = connection.dialect.supports_sane_rowcount
+        assert_singlerow = (
+            connection.dialect.supports_sane_rowcount
+            if mapper.version_id_col is None
+            else connection.dialect.supports_sane_rowcount_returning
+        )
         assert_multirow = assert_singlerow and \
             connection.dialect.supports_sane_multi_rowcount
         allow_multirow = not needs_version_id or assert_multirow
+
 
         if not allow_multirow:
             check_rowcount = assert_singlerow
@@ -1043,7 +1048,12 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
                     stacklevel=12)
                 connection.execute(statement, del_objects)
         else:
-            connection.execute(statement, del_objects)
+            c = connection.execute(statement, del_objects)
+
+            if not need_version_id:
+                only_warn = True
+
+            rows_matched = c.rowcount
 
         if base_mapper.confirm_deleted_rows and \
                 rows_matched > -1 and expected != rows_matched:

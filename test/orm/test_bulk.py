@@ -33,6 +33,7 @@ class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
 
         mapper(Foo, version_table, version_id_col=version_table.c.version_id)
 
+    @testing.emits_warning(r".*versioning cannot be verified")
     def test_bulk_insert_via_save(self):
         Foo = self.classes.Foo
 
@@ -45,6 +46,7 @@ class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
             [Foo(version_id=1, value='value')]
         )
 
+    @testing.emits_warning(r".*versioning cannot be verified")
     def test_bulk_update_via_save(self):
         Foo = self.classes.Foo
 
@@ -349,9 +351,11 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
     def test_update_keys(self):
         self._test_update(self.classes.PersonKeys)
 
+    @testing.requires.updateable_autoincrement_pks
     def test_update_attrs(self):
         self._test_update(self.classes.PersonAttrs)
 
+    @testing.requires.updateable_autoincrement_pks
     def test_update_both(self):
         # want to make sure that before [ticket:3849], this did not have
         # a successful behavior or workaround

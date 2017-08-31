@@ -355,6 +355,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         eq_(sess.query(User).count(), 1)
 
+    @testing.requires.sane_rowcount
     def test_deleted_adds_to_imap_unconditionally(self):
         users, User = self.tables.users, self.classes.User
 
