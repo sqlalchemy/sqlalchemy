@@ -98,6 +98,42 @@ class MergeTest(_fixtures.FixtureTest):
                 Address(id=2, email_address='fred2'),
             ])))
 
+    def test_transient_to_pending_collection_pk_none(self):
+        User, Address, addresses, users = (self.classes.User,
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users)
+
+        mapper(User, users, properties={
+            'addresses': relationship(Address, backref='user',
+                                      collection_class=OrderedSet)})
+        mapper(Address, addresses)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
+
+        u = User(id=None, name='fred', addresses=OrderedSet([
+            Address(id=None, email_address='fred1'),
+            Address(id=None, email_address='fred2'),
+        ]))
+        eq_(load.called, 0)
+
+        sess = create_session()
+        sess.merge(u)
+        eq_(load.called, 3)
+
+        merged_users = [e for e in sess if isinstance(e, User)]
+        eq_(len(merged_users), 1)
+        assert merged_users[0] is not u
+
+        sess.flush()
+        sess.expunge_all()
+
+        eq_(sess.query(User).one(),
+            User(name='fred', addresses=OrderedSet([
+                Address(email_address='fred1'),
+                Address(email_address='fred2'),
+            ])))
+
     def test_transient_to_persistent(self):
         User, users = self.classes.User, self.tables.users
 

@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4056
+    :versions: 1.2.0b3
+
+    Fixed bug in :meth:`.Session.merge` where objects in a collection that had
+    the primary key attribute set to ``None`` for a key that is  typically
+    autoincrementing would be considered to be a database-persisted key for
+    part of the internal deduplication process, causing only one object to
+    actually be inserted in the database.
