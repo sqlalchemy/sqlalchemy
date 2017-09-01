@@ -617,7 +617,7 @@ The above illustrates the SQL that's generated for an
 the ``||`` operator now compiles as MySQL's ``concat()`` function.
 
 If you have come across an operator which really isn't available, you can
-always use the :meth:`.ColumnOperators.op` method; this generates whatever operator you need:
+always use the :meth:`.Operators.op` method; this generates whatever operator you need:
 
 .. sourcecode:: pycon+sql
 
@@ -628,7 +628,17 @@ This function can also be used to make bitwise operators explicit. For example::
 
     somecolumn.op('&')(0xff)
 
-is a bitwise AND of the value in `somecolumn`.
+is a bitwise AND of the value in ``somecolumn``.
+
+When using :meth:`.Operators.op`, the return type of the expression may be important,
+especialy when the operator is used in an expression that will be sent as a result
+column.   For this case, be sure to make the type explicit, if not what's
+normally expected, using :func:`.type_coerce`::
+
+    from sqlalchemy import type_coerce
+    expr = type_coerce(somecolumn.op('-%>')('foo'), MySpecialType())
+    stmt = select([expr])
+
 
 Operator Customization
 -----------------------
