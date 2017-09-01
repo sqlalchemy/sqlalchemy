@@ -477,6 +477,15 @@ class TypeEngine(Visitable):
             d[coltype] = rp = d['impl'].result_processor(dialect, coltype)
             return rp
 
+    def _cached_custom_processor(self, dialect, key, fn):
+        try:
+            return dialect._type_memos[self][key]
+        except KeyError:
+            d = self._dialect_info(dialect)
+            impl = d['impl']
+            d[key] = result = fn(impl)
+            return result
+
     def _dialect_info(self, dialect):
         """Return a dialect-specific registry which
         caches a dialect-specific implementation, bind processing

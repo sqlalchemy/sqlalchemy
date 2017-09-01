@@ -295,7 +295,6 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
             msg, util.text_type(e), re.UNICODE), "%r !~ %s" % (msg, e)
         print(util.text_type(e).encode('utf-8'))
 
-
 class AssertsCompiledSQL(object):
     def assert_compile(self, clause, result, params=None,
                        checkparams=None, dialect=None,

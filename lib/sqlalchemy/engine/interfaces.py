@@ -110,16 +110,6 @@ class Dialect(object):
       the "implicit" functionality is not used and inserted_primary_key
       will not be available.
 
-    dbapi_type_map
-      A mapping of DB-API type objects present in this Dialect's
-      DB-API implementation mapped to TypeEngine implementations used
-      by the dialect.
-
-      This is used to apply types to result sets based on the DB-API
-      types present in cursor.description; it only takes effect for
-      result sets against textual statements where no explicit
-      typemap was present.
-
     colspecs
       A dictionary of TypeEngine classes from sqlalchemy.types mapped
       to subclasses that are specific to the dialect class.  This

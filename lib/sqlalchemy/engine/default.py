@@ -108,7 +108,6 @@ class DefaultDialect(interfaces.Dialect):
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    dbapi_type_map = {}
     colspecs = {}
     default_paramstyle = 'named'
     supports_default_values = False
@@ -1112,7 +1111,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return (self.isinsert or self.isupdate) and \
             bool(self.compiled.postfetch)
 
-    def set_input_sizes(self, translate=None, exclude_types=None):
+    def set_input_sizes(
+            self, translate=None, include_types=None, exclude_types=None):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
@@ -1136,7 +1136,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 dbtype = typeengine.dialect_impl(self.dialect).\
                     get_dbapi_type(self.dialect.dbapi)
                 if dbtype is not None and \
-                        (not exclude_types or dbtype not in exclude_types):
+                        (not exclude_types or dbtype not in exclude_types) and \
+                        (not include_types or dbtype in include_types):
                     if key in self._expanded_parameters:
                         inputsizes.extend(
                             [dbtype] * len(self._expanded_parameters[key]))
@@ -1154,7 +1155,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 dbtype = typeengine.dialect_impl(self.dialect).\
                     get_dbapi_type(self.dialect.dbapi)
                 if dbtype is not None and \
-                        (not exclude_types or dbtype not in exclude_types):
+                        (not exclude_types or dbtype not in exclude_types) and \
+                        (not include_types or dbtype in include_types):
                     if translate:
                         # TODO: this part won't work w/ the
                         # expanded_parameters feature, e.g. for cx_oracle

@@ -750,10 +750,14 @@ class DefaultRequirements(SuiteRequirements):
         """target backend supports Decimal() objects using E notation
         to represent very large values."""
 
-        return skip_if(
-            [("sybase+pyodbc", None, None,
-              "Don't know how do get these values through FreeTDS + Sybase"),
-             ("firebird", None, None, "Precision must be from 1 to 18")])
+        return fails_if(
+            [
+                ("sybase+pyodbc", None, None,
+                 "Don't know how do get these values through FreeTDS + Sybase"
+                 ),
+                ("firebird", None, None, "Precision must be from 1 to 18")
+            ]
+        )
 
     @property
     def precision_numerics_many_significant_digits(self):
@@ -761,15 +765,17 @@ class DefaultRequirements(SuiteRequirements):
         such as 319438950232418390.273596, 87673.594069654243
 
         """
-        def cx_oracle_6_config(config):
-            return config.db.driver == "cx_oracle" and \
-                config.db.dialect.cx_oracle_ver >= (6, )
+
+        def broken_cx_oracle(config):
+            return against(config, 'oracle+cx_oracle') and \
+                config.db.dialect.cx_oracle_ver <= (6, 0, 2) and \
+                config.db.dialect.cx_oracle_ver > (6, )
 
         return fails_if(
-            [cx_oracle_6_config,
-             ('sqlite', None, None, 'TODO'),
-             ("firebird", None, None, "Precision must be from 1 to 18"),
-             ("sybase+pysybase", None, None, "TODO"),
+            [
+                ('sqlite', None, None, 'TODO'),
+                ("firebird", None, None, "Precision must be from 1 to 18"),
+                ("sybase+pysybase", None, None, "TODO"),
             ]
         )
 
@@ -781,9 +787,7 @@ class DefaultRequirements(SuiteRequirements):
 
         return fails_if(
             [
-                ('oracle', None, None,
-                 "this may be a bug due to the difficulty in handling "
-                 "oracle precision numerics"),
+                ("oracle", None, None, "driver doesn't do this automatically"),
                 ("firebird", None, None,
                  "database and/or driver truncates decimal places.")
             ]
@@ -998,4 +1002,20 @@ class DefaultRequirements(SuiteRequirements):
         return only_if(
             lambda config: against(config, 'postgresql') and
             config.db.scalar("show server_encoding").lower() == "utf8"
+        )
+
+    @property
+    def broken_cx_oracle6_numerics(config):
+        return exclusions.LambdaPredicate(
+            lambda config: against(config, 'oracle+cx_oracle') and
+            config.db.dialect.cx_oracle_ver <= (6, 0, 2) and
+            config.db.dialect.cx_oracle_ver > (6, ),
+            "cx_Oracle github issue #77"
+        )
+
+    @property
+    def oracle5x(self):
+        return only_if(
+            lambda config: against(config, "oracle+cx_oracle") and
+            config.db.dialect.cx_oracle_ver < (6, )
         )

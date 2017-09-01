@@ -422,6 +422,28 @@ class DOUBLE_PRECISION(sqltypes.Numeric):
             precision=precision, scale=scale, asdecimal=asdecimal)
 
 
+class BINARY_DOUBLE(sqltypes.Numeric):
+    __visit_name__ = 'BINARY_DOUBLE'
+
+    def __init__(self, precision=None, scale=None, asdecimal=None):
+        if asdecimal is None:
+            asdecimal = False
+
+        super(BINARY_DOUBLE, self).__init__(
+            precision=precision, scale=scale, asdecimal=asdecimal)
+
+
+class BINARY_FLOAT(sqltypes.Numeric):
+    __visit_name__ = 'BINARY_FLOAT'
+
+    def __init__(self, precision=None, scale=None, asdecimal=None):
+        if asdecimal is None:
+            asdecimal = False
+
+        super(BINARY_FLOAT, self).__init__(
+            precision=precision, scale=scale, asdecimal=asdecimal)
+
+
 class BFILE(sqltypes.LargeBinary):
     __visit_name__ = 'BFILE'
 
@@ -556,6 +578,12 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_DOUBLE_PRECISION(self, type_, **kw):
         return self._generate_numeric(type_, "DOUBLE PRECISION", **kw)
+
+    def visit_BINARY_DOUBLE(self, type_, **kw):
+        return self._generate_numeric(type_, "BINARY_DOUBLE", **kw)
+
+    def visit_BINARY_FLOAT(self, type_, **kw):
+        return self._generate_numeric(type_, "BINARY_FLOAT", **kw)
 
     def visit_NUMBER(self, type_, **kw):
         return self._generate_numeric(type_, "NUMBER", **kw)
@@ -746,12 +774,14 @@ class OracleCompiler(compiler.SQLCompiler):
     def returning_clause(self, stmt, returning_cols):
         columns = []
         binds = []
+
         for i, column in enumerate(
                 expression._select_iterables(returning_cols)):
             if column.type._has_column_expression:
                 col_expr = column.type.column_expression(column)
             else:
                 col_expr = column
+
             outparam = sql.outparam("ret_%d" % i, type_=column.type)
             self.binds[outparam.key] = outparam
             binds.append(
@@ -760,7 +790,8 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.process(col_expr, within_columns_clause=False))
 
             self._add_to_result_map(
-                outparam.key, outparam.key,
+                getattr(col_expr, 'name', col_expr.anon_label),
+                getattr(col_expr, 'name', col_expr.anon_label),
                 (column, getattr(column, 'name', None),
                  getattr(column, 'key', None)),
                 column.type

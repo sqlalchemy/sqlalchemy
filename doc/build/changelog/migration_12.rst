@@ -1358,6 +1358,72 @@ The above will render::
 Dialect Improvements and Changes - Oracle
 =========================================
 
+.. _change_cxoracle_12:
+
+Major Refactor to cx_Oracle Dialect, Typing System
+--------------------------------------------------
+
+With the introduction of the 6.x series of the cx_Oracle DBAPI, SQLAlchemy's
+cx_Oracle dialect has been reworked and simplified to take advantage of recent
+improvements in cx_Oracle as well as dropping support for patterns that were
+more relevant before the 5.x series of cx_Oracle.
+
+* The minimum cx_Oracle version supported is now 5.1.3; 5.3 or the most recent
+  6.x series are recommended.
+
+* The handling of datatypes has been refactored.  The ``cursor.setinputsizes()``
+  method is no longer used for any datatype except LOB types, per advice from
+  cx_Oracle's developers. As a result, the parameters ``auto_setinputsizes``
+  and ``exclude_setinputsizes`` are deprecated and no longer have any effect.
+
+* The ``coerce_to_decimal`` flag, when set to False to indicate that coercion
+  of numeric types with precision and scale to ``Decimal`` should not occur,
+  only impacts untyped (e.g. plain string with no :class:`.TypeEngine` objects)
+  statements. A Core expression that includes a :class:`.Numeric` type or
+  subtype will now follow the decimal coercion rules of that type.
+
+* The "two phase" transaction support in the dialect, already dropped for the
+  6.x series of cx_Oracle, has now been removed entirely as this feature has
+  never worked correctly and is unlikely to have been in production use.
+  As a result, the ``allow_twophase`` dialect flag is deprecated and also has no
+  effect.
+
+* Fixed a bug involving the column keys present with RETURNING.  Given
+  a statement as follows::
+
+    result = conn.execute(table.insert().values(x=5).returning(table.c.a, table.c.b))
+
+  Previously, the keys in each row of the result would be ``ret_0`` and ``ret_1``,
+  which are identifiers internal to the cx_Oracle RETURNING implementation.
+  The keys will now be ``a`` and ``b`` as is expected for other dialects.
+
+* cx_Oracle's LOB datatype represents return values as a ``cx_Oracle.LOB``
+  object, which is a cursor-associated proxy that returns the ultimate data
+  value via a ``.read()`` method.  Historically, if more rows were read before
+  these LOB objects were consumed (specifically, more rows than the value of
+  cursor.arraysize which causes a new batch of rows to be read), these LOB
+  objects would raise the error "LOB variable no longer valid after subsequent
+  fetch". SQLAlchemy worked around this by both automatically calling
+  ``.read()`` upon these LOBs within its typing system, as well as using a
+  special ``BufferedColumnResultSet`` which would ensure this data was buffered
+  in case a call like ``cursor.fetchmany()`` or ``cursor.fetchall()`` were
+  used.
+
+  The dialect now makes use of a cx_Oracle outpttypehandler to handle these
+  ``.read()`` calls, so that they are always called up front regardless of how
+  many rows are being fetched, so that this error can no longer occur.  As a
+  result, the use of the ``BufferedColumnResultSet``, as well as some other
+  internals to the Core ``ResultSet`` that were specific to this use case,
+  have been removed.   The type objects are also simplified as they no longer
+  need to process a binary column result.
+
+  Additionally, cx_Oracle 6.x has removed the conditions under which this error
+  occurs in any case, so the error is no longer possible.   The error
+  can occur on SQLAlchemy in the case that the seldom (if ever) used
+  ``auto_convert_lobs=False`` option is in use, in conjunction with the
+  previous 5.x series of cx_Oracle, and more rows are read before the LOB
+  objects can be consumed.  Upgrading to cx_Oracle 6.x will resolve that issue.
+
 .. _change_4003:
 
 Oracle Unique, Check constraints now reflected

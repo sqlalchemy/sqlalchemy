@@ -360,7 +360,6 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             [None]
         )
 
-    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_insert_non_default_plus_default(self):
         t1 = self.tables.t1
         result = testing.db.execute(
@@ -372,7 +371,6 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             {"id": 1, "data": None, "insdef": 0}
         )
 
-    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_update_non_default_plus_default(self):
         t1 = self.tables.t1
         testing.db.execute(
@@ -387,7 +385,6 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             {"data": None, 'upddef': 1}
         )
 
-    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_insert_all(self):
         t1 = self.tables.t1
         result = testing.db.execute(
@@ -398,7 +395,6 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             {"id": 1, "data": None, "insdef": 0}
         )
 
-    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_update_all(self):
         t1 = self.tables.t1
         testing.db.execute(

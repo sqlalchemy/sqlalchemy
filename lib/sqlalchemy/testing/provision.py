@@ -284,7 +284,7 @@ def _oracle_drop_db(cfg, eng, ident):
 
 @_update_db_opts.for_db("oracle")
 def _oracle_update_db_opts(db_url, db_opts):
-    db_opts['_retry_on_12516'] = True
+    pass
 
 
 def reap_dbs(idents_file):

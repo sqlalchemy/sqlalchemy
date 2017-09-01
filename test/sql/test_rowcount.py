@@ -66,7 +66,8 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
         assert r.rowcount == 3
 
     @testing.skip_if(
-        "oracle", "temporary skip until cx_oracle refactor is merged")
+        testing.requires.oracle5x,
+        "unknown DBAPI error fixed in later version")
     @testing.requires.sane_rowcount_w_returning
     def test_update_rowcount_return_defaults(self):
         department = employees_table.c.department

@@ -447,7 +447,6 @@ class ResultMetaData(object):
     def _merge_textual_cols_by_position(
             self, context, cursor_description, result_columns):
         dialect = context.dialect
-        typemap = dialect.dbapi_type_map
         num_ctx_cols = len(result_columns) if result_columns else None
 
         if num_ctx_cols > len(cursor_description):
@@ -470,14 +469,13 @@ class ResultMetaData(object):
                         "in textual SQL: %r" % obj[0])
                 seen.add(obj[0])
             else:
-                mapped_type = typemap.get(coltype, sqltypes.NULLTYPE)
+                mapped_type = sqltypes.NULLTYPE
                 obj = None
 
             yield idx, colname, mapped_type, coltype, obj, untranslated
 
     def _merge_cols_by_name(self, context, cursor_description, result_columns):
         dialect = context.dialect
-        typemap = dialect.dbapi_type_map
         case_sensitive = dialect.case_sensitive
         result_map = self._create_result_map(result_columns, case_sensitive)
 
@@ -487,7 +485,7 @@ class ResultMetaData(object):
             try:
                 ctx_rec = result_map[colname]
             except KeyError:
-                mapped_type = typemap.get(coltype, sqltypes.NULLTYPE)
+                mapped_type = sqltypes.NULLTYPE
                 obj = None
             else:
                 obj = ctx_rec[1]
@@ -496,11 +494,9 @@ class ResultMetaData(object):
 
     def _merge_cols_by_none(self, context, cursor_description):
         dialect = context.dialect
-        typemap = dialect.dbapi_type_map
         for idx, colname, untranslated, coltype in \
                 self._colnames_from_description(context, cursor_description):
-            mapped_type = typemap.get(coltype, sqltypes.NULLTYPE)
-            yield idx, colname, mapped_type, coltype, None, untranslated
+            yield idx, colname, sqltypes.NULLTYPE, coltype, None, untranslated
 
     @classmethod
     def _create_result_map(cls, result_columns, case_sensitive=True):
@@ -1385,8 +1381,10 @@ class BufferedColumnResultProxy(ResultProxy):
     fetchone() is called.  If fetchmany() or fetchall() are called,
     the full grid of results is fetched.  This is to operate with
     databases where result rows contain "live" results that fall out
-    of scope unless explicitly fetched.  Currently this includes
-    cx_Oracle LOB objects.
+    of scope unless explicitly fetched.
+
+    .. versionchanged:: 1.2  This :class:`.ResultProxy` is not used by
+       any SQLAlchemy-included dialects.
 
     """
 

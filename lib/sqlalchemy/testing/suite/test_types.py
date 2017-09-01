@@ -511,8 +511,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             numbers
         )
 
-    @testing.skip_if(
-        "oracle", "temporary skip until cx_oracle refactor is merged")
+    @testing.fails_if(testing.requires.broken_cx_oracle6_numerics)
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal_large(self):
         """test exceedingly large decimals.

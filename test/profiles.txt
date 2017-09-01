@@ -1,15 +1,15 @@
 # /home/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and
+# For each test in aaa_profiling, the corresponding function and 
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received.
+# If a callcount does exist, it is compared to what we received. 
 # assertions are raised if the counts do not match.
-#
-# To add a new callcount test, apply the function_call_count
-# decorator and re-run the tests using the --write-profiles
+# 
+# To add a new callcount test, apply the function_call_count 
+# decorator and re-run the tests using the --write-profiles 
 # option - this file will be rewritten including the new count.
-#
+# 
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -367,6 +367,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_mysqldb_dbapiunicode_nocextensions 52
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_pymysql_dbapiunicode_cextensions 48
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_mysql_pymysql_dbapiunicode_nocextensions 52
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_oracle_cx_oracle_dbapiunicode_cextensions 47
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 51
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_postgresql_psycopg2_dbapiunicode_cextensions 48
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 52
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 2.7_sqlite_pysqlite_dbapiunicode_cextensions 48
@@ -379,6 +381,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.5_postgresql_psycopg2_dbapiunicode_nocextensions 56
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.5_sqlite_pysqlite_dbapiunicode_cextensions 52
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.5_sqlite_pysqlite_dbapiunicode_nocextensions 56
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.6_oracle_cx_oracle_dbapiunicode_cextensions 51
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute 3.6_oracle_cx_oracle_dbapiunicode_nocextensions 55
 
 # TEST: test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute
 
@@ -386,6 +390,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_mysqldb_dbapiunicode_nocextensions 91
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_pymysql_dbapiunicode_cextensions 87
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_mysql_pymysql_dbapiunicode_nocextensions 91
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_oracle_cx_oracle_dbapiunicode_cextensions 86
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 90
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_postgresql_psycopg2_dbapiunicode_cextensions 87
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 91
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 2.7_sqlite_pysqlite_dbapiunicode_cextensions 87
@@ -398,6 +404,8 @@ test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.5_
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.5_postgresql_psycopg2_dbapiunicode_nocextensions 95
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.5_sqlite_pysqlite_dbapiunicode_cextensions 91
 test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.5_sqlite_pysqlite_dbapiunicode_nocextensions 95
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.6_oracle_cx_oracle_dbapiunicode_cextensions 90
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute 3.6_oracle_cx_oracle_dbapiunicode_nocextensions 94
 
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile
 
@@ -405,6 +413,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_mysqldb_dbapiunicode_nocextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_pymysql_dbapiunicode_cextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_mysql_pymysql_dbapiunicode_nocextensions 15
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_oracle_cx_oracle_dbapiunicode_cextensions 15
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_postgresql_psycopg2_dbapiunicode_cextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 15
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 2.7_sqlite_pysqlite_dbapiunicode_cextensions 15
@@ -417,6 +427,22 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.5
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.5_postgresql_psycopg2_dbapiunicode_nocextensions 16
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.5_sqlite_pysqlite_dbapiunicode_cextensions 16
 test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.5_sqlite_pysqlite_dbapiunicode_nocextensions 16
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.6_oracle_cx_oracle_dbapiunicode_cextensions 16
+test.aaa_profiling.test_resultset.ResultSetTest.test_contains_doesnt_compile 3.6_oracle_cx_oracle_dbapiunicode_nocextensions 16
+
+# TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_raw_string
+
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_string 2.7_oracle_cx_oracle_dbapiunicode_cextensions 357
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_string 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 15379
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_string 3.6_oracle_cx_oracle_dbapiunicode_cextensions 326
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_string 3.6_oracle_cx_oracle_dbapiunicode_nocextensions 14330
+
+# TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_raw_unicode
+
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_unicode 2.7_oracle_cx_oracle_dbapiunicode_cextensions 20361
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_unicode 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 35383
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_unicode 3.6_oracle_cx_oracle_dbapiunicode_cextensions 330
+test.aaa_profiling.test_resultset.ResultSetTest.test_raw_unicode 3.6_oracle_cx_oracle_dbapiunicode_nocextensions 14334
 
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_string
 
@@ -424,6 +450,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_db
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_mysqldb_dbapiunicode_nocextensions 55515
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_pymysql_dbapiunicode_cextensions 122475
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_mysql_pymysql_dbapiunicode_nocextensions 137477
+test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_oracle_cx_oracle_dbapiunicode_cextensions 518
+test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 15520
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_postgresql_psycopg2_dbapiunicode_cextensions 498
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 15500
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 2.7_sqlite_pysqlite_dbapiunicode_cextensions 440
@@ -436,6 +464,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.5_postgresql_psyco
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.5_postgresql_psycopg2_dbapiunicode_nocextensions 14527
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.5_sqlite_pysqlite_dbapiunicode_cextensions 460
 test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.5_sqlite_pysqlite_dbapiunicode_nocextensions 14464
+test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.6_oracle_cx_oracle_dbapiunicode_cextensions 522
+test.aaa_profiling.test_resultset.ResultSetTest.test_string 3.6_oracle_cx_oracle_dbapiunicode_nocextensions 14526
 
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_unicode
 
@@ -443,6 +473,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_d
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_mysqldb_dbapiunicode_nocextensions 55515
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_pymysql_dbapiunicode_cextensions 122475
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_mysql_pymysql_dbapiunicode_nocextensions 137477
+test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_oracle_cx_oracle_dbapiunicode_cextensions 20518
+test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 55520
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_postgresql_psycopg2_dbapiunicode_cextensions 498
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 15500
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 2.7_sqlite_pysqlite_dbapiunicode_cextensions 440
@@ -455,6 +487,8 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.5_postgresql_psyc
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.5_postgresql_psycopg2_dbapiunicode_nocextensions 14527
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.5_sqlite_pysqlite_dbapiunicode_cextensions 460
 test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.5_sqlite_pysqlite_dbapiunicode_nocextensions 14464
+test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.6_oracle_cx_oracle_dbapiunicode_cextensions 522
+test.aaa_profiling.test_resultset.ResultSetTest.test_unicode 3.6_oracle_cx_oracle_dbapiunicode_nocextensions 14526
 
 # TEST: test.aaa_profiling.test_zoomark.ZooMarkTest.test_invocation
 

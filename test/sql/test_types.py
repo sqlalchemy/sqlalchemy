@@ -1579,6 +1579,7 @@ binary_table = MyPickleType = metadata = None
 
 
 class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
+    __backend__ = True
 
     @classmethod
     def setup_class(cls):
