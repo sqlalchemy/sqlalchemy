@@ -1785,7 +1785,8 @@ class MySQLDialect(default.DefaultDialect):
                           self.dbapi.ProgrammingError)):
             return self._extract_error_code(e) in \
                 (2006, 2013, 2014, 2045, 2055)
-        elif isinstance(e, self.dbapi.InterfaceError):
+        elif isinstance(
+                e, (self.dbapi.InterfaceError, self.dbapi.InternalError)):
             # if underlying connection is closed,
             # this is the error you get
             return "(0, '')" in str(e)

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4065
+    :versions: 1.2.0b3, 1.1.14
+
+    mysqlclient as of 1.3.11 changed the exception
+    class for a particular disconnect situation from 
+    InterfaceError to InternalError; the disconnection
+    detection logic now accommodates this.
