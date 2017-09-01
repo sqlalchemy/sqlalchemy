@@ -1207,6 +1207,56 @@ The reason post_update emits an UPDATE even for an UPDATE is now discussed at
 Key Behavioral Changes - Core
 =============================
 
+.. _change_4063:
+
+The typing behavior of custom operators has been made consistent
+----------------------------------------------------------------
+
+User defined operators can be made on the fly using the
+:meth:`.Operators.op` function.   Previously, the typing behavior of
+an expression against such an operator was inconsistent and also not
+controllable.
+
+Whereas in 1.1, an expression such as the following would produce
+a result with no return type (assume ``-%>`` is some special operator
+supported by the database)::
+
+    >>> column('x', types.DateTime).op('-%>')(None).type
+    NullType()
+
+Other types would use the default behavior of using the left-hand type
+as the return type::
+
+    >>> column('x', types.String(50)).op('-%>')(None).type
+    String(length=50)
+
+These behaviors were mostly by accident, so the behavior has been made
+consistent with the second form, that is the default return type is the
+same as the left-hand expression::
+
+    >>> column('x', types.DateTime).op('-%>')(None).type
+    DateTime()
+
+As most user-defined operators tend to be "comparison" operators, often
+one of the many special operators defined by Postgresql, the
+:paramref:`.Operators.op.is_comparison` flag has been repaired to follow
+its documented behavior of allowing the return type to be :class:`.Boolean`
+in all cases, including for :class:`.ARRAY` and :class:`.JSON`::
+
+    >>> column('x', types.String(50)).op('-%>', is_comparison=True)(None).type
+    Boolean()
+    >>> column('x', types.ARRAY(types.Integer)).op('-%>', is_comparison=True)(None).type
+    Boolean()
+    >>> column('x', types.JSON()).op('-%>', is_comparison=True)(None).type
+    Boolean()
+
+To assist with boolean comparison operators, a new shorthand method
+:meth:`.Operators.bool_op` has been added.    This method should be preferred
+for on-the-fly boolean operators::
+
+    >>> print(column('x', types.Integer).bool_op('-%>')(5))
+    x -%> :x_1
+
 
 .. _change_3785:
 

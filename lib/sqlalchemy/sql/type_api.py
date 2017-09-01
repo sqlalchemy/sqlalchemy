@@ -93,6 +93,7 @@ class TypeEngine(Visitable):
             boolean comparison or special SQL keywords like MATCH or BETWEEN.
 
             """
+
             return op, self.type
 
         def __reduce__(self):
@@ -352,6 +353,10 @@ class TypeEngine(Visitable):
 
         return self.__class__.bind_expression.__code__ \
             is not TypeEngine.bind_expression.__code__
+
+    @staticmethod
+    def _to_instance(cls_or_self):
+        return to_instance(cls_or_self)
 
     def compare_values(self, x, y):
         """Compare two values for equality."""
@@ -634,7 +639,9 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
                 )
                 return self.type.adapt_operator(op), self.type
             else:
-                return op, self.type
+                return super(
+                    UserDefinedType.Comparator, self
+                )._adapt_expression(op, other_comparator)
 
     comparator_factory = Comparator
 

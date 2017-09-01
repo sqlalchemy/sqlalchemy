@@ -81,6 +81,18 @@ def _boolean_compare(expr, op, obj, negate=None, reverse=False,
                                 negate=negate, modifiers=kwargs)
 
 
+def _custom_op_operate(expr, op, obj, reverse=False, result_type=None,
+                       **kw):
+    if result_type is None:
+        if op.return_type:
+            result_type = op.return_type
+        elif op.is_comparison:
+            result_type = type_api.BOOLEANTYPE
+
+    return _binary_operate(
+        expr, op, obj, reverse=reverse, result_type=result_type, **kw)
+
+
 def _binary_operate(expr, op, obj, reverse=False, result_type=None,
                     **kw):
     obj = _check_literal(expr, op, obj)
@@ -249,7 +261,7 @@ operator_lookup = {
     "div": (_binary_operate,),
     "mod": (_binary_operate,),
     "truediv": (_binary_operate,),
-    "custom_op": (_binary_operate,),
+    "custom_op": (_custom_op_operate,),
     "json_path_getitem_op": (_binary_operate, ),
     "json_getitem_op": (_binary_operate, ),
     "concat_op": (_binary_operate,),
