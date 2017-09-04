@@ -574,7 +574,18 @@ class SynonymProperty(DescriptorProperty):
 
     @util.memoized_property
     def _proxied_property(self):
-        return getattr(self.parent.class_, self.name).property
+        attr = getattr(self.parent.class_, self.name)
+        if not hasattr(attr, 'property') or not \
+                isinstance(attr.property, MapperProperty):
+            raise sa_exc.InvalidRequestError(
+                """synonym() attribute "%s.%s" only supports """
+                """ORM mapped attributes, got %r""" % (
+                    self.parent.class_.__name__,
+                    self.name,
+                    attr
+                )
+            )
+        return attr.property
 
     def _comparator_factory(self, mapper):
         prop = self._proxied_property

@@ -1381,6 +1381,31 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         u = s.query(User).filter(User.y == 8).one()
         eq_(u.y, 8)
 
+    def test_synonym_of_non_property_raises(self):
+        from sqlalchemy.ext.associationproxy import association_proxy
+
+        class User(object):
+            pass
+
+        users, Address, addresses = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses)
+
+        mapper(User, users, properties={
+            'y': synonym('x'),
+            'addresses': relationship(Address)
+        })
+        mapper(Address, addresses)
+        User.x = association_proxy("addresses", "email_address")
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            r'synonym\(\) attribute "User.x" only supports ORM mapped '
+            'attributes, got .*AssociationProxy',
+            getattr, User.y, "property"
+        )
+
     def test_synonym_column_location(self):
         users, User = self.tables.users, self.classes.User
 

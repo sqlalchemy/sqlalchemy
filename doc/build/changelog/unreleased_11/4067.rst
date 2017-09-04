@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4067
+    :versions: 1.2.0b3
+
+    An :class:`.InvalidRequestError` is raised when a :func:`.synonym`
+    is used against an attribute that is not against a :class:`.MapperProperty`,
+    such as an association proxy.  Previously, a recursion overflow would
+    occur trying to locate non-existent attributes.
