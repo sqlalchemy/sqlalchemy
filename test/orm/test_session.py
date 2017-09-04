@@ -1,5 +1,5 @@
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, assertions, is_true
+    assert_raises_message, assertions, is_true, is_
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing import pickleable
 from sqlalchemy.util import pickle
@@ -1171,6 +1171,35 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         s2.add(u1)
         assert u1 in s2
 
+    def test_fast_discard_race(self):
+        # test issue #4068
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        u1_state = u1._sa_instance_state
+        ref = u1_state.obj
+        u1_state.obj = lambda: None
+
+        u2 = sess.query(User).first()
+        u1_state._cleanup(ref)
+
+        u3 = sess.query(User).first()
+
+        is_(u2, u3)
+
+        u2_state = u2._sa_instance_state
+        ref = u2_state.obj
+        u2_state.obj = lambda: None
+        u2_state._cleanup(ref)
+        assert not sess.identity_map.contains_state(u2._sa_instance_state)
+
 
 class StrongIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1303,6 +1332,38 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         s.flush()
         eq_(prune(), 0)
         self.assert_(len(s.identity_map) == 0)
+
+    @testing.uses_deprecated()
+    def test_fast_discard_race(self):
+        # test issue #4068
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session(weak_identity_map=False)
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        u1_state = u1._sa_instance_state
+        sess.identity_map._dict.pop(u1_state.key)
+        ref = u1_state.obj
+        u1_state.obj = lambda: None
+
+        u2 = sess.query(User).first()
+        u1_state._cleanup(ref)
+
+        u3 = sess.query(User).first()
+
+        is_(u2, u3)
+
+        u2_state = u2._sa_instance_state
+        assert sess.identity_map.contains_state(u2._sa_instance_state)
+        ref = u2_state.obj
+        u2_state.obj = lambda: None
+        u2_state._cleanup(ref)
+        assert not sess.identity_map.contains_state(u2._sa_instance_state)
 
 
 class IsModifiedTest(_fixtures.FixtureTest):
