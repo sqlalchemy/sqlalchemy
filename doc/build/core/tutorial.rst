@@ -640,10 +640,17 @@ normally expected, using :func:`.type_coerce`::
     stmt = select([expr])
 
 
+For boolean operators, use the :meth:`.Operators.bool_op` method, which
+will ensure that the return type of the expression is handled as boolean::
+
+    somecolumn.bool_op('-->')('some value')
+
+.. versionadded:: 1.2.0b3  Added the :meth:`.Operators.bool_op` method.
+
 Operator Customization
 ----------------------
 
-While :meth:`.ColumnOperators.op` is handy to get at a custom operator in a hurry,
+While :meth:`.Operators.op` is handy to get at a custom operator in a hurry,
 the Core supports fundamental customization and extension of the operator system at
 the type level.   The behavior of existing operators can be modified on a per-type
 basis, and new operations can be defined which become available for all column

@@ -51,7 +51,7 @@ class _LookupExpressionAdapter(object):
             othertype = other_comparator.type._type_affinity
             lookup = self.type._expression_adaptations.get(
                 op, self._blank_dict).get(
-                othertype, NULLTYPE)
+                othertype, self.type)
             if lookup is othertype:
                 return (op, other_comparator.type)
             elif lookup is self.type._type_affinity:
@@ -2571,9 +2571,7 @@ class NullType(TypeEngine):
     class Comparator(TypeEngine.Comparator):
 
         def _adapt_expression(self, op, other_comparator):
-            if operators.is_comparison(op):
-                return op, BOOLEANTYPE
-            elif isinstance(other_comparator, NullType.Comparator) or \
+            if isinstance(other_comparator, NullType.Comparator) or \
                     not operators.is_commutative(op):
                 return op, self.expr.type
             else:

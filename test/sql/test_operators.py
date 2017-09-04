@@ -2631,8 +2631,37 @@ class CustomOpTest(fixtures.TestBase):
         assert operators.is_comparison(op1)
         assert not operators.is_comparison(op2)
 
-        expr = c.op('$', is_comparison=True)(None)
-        is_(expr.type, sqltypes.BOOLEANTYPE)
+    def test_return_types(self):
+        some_return_type = sqltypes.DECIMAL()
+
+        for typ in [
+            sqltypes.NULLTYPE,
+            Integer(),
+            ARRAY(String),
+            String(50),
+            Boolean(),
+            DateTime(),
+            sqltypes.JSON(),
+            postgresql.ARRAY(Integer),
+            sqltypes.Numeric(5, 2),
+        ]:
+            c = column('x', typ)
+            expr = c.op('$', is_comparison=True)(None)
+            is_(expr.type, sqltypes.BOOLEANTYPE)
+
+            c = column('x', typ)
+            expr = c.bool_op('$')(None)
+            is_(expr.type, sqltypes.BOOLEANTYPE)
+
+            expr = c.op('$')(None)
+            is_(expr.type, typ)
+
+            expr = c.op('$', return_type=some_return_type)(None)
+            is_(expr.type, some_return_type)
+
+            expr = c.op(
+                '$', is_comparison=True, return_type=some_return_type)(None)
+            is_(expr.type, some_return_type)
 
 
 class TupleTypingTest(fixtures.TestBase):
