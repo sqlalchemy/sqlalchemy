@@ -1920,26 +1920,32 @@ class Session(_SessionClassMethods):
             key_is_persistent = True
 
         if key in self.identity_map:
-            merged = self.identity_map[key]
-        elif key_is_persistent and key in _resolve_conflict_map:
-            merged = _resolve_conflict_map[key]
-
-        elif not load:
-            if state.modified:
-                raise sa_exc.InvalidRequestError(
-                    "merge() with load=False option does not support "
-                    "objects marked as 'dirty'.  flush() all changes on "
-                    "mapped instances before merging with load=False.")
-            merged = mapper.class_manager.new_instance()
-            merged_state = attributes.instance_state(merged)
-            merged_state.key = key
-            self._update_impl(merged_state)
-            new_instance = True
-
-        elif key_is_persistent:
-            merged = self.query(mapper.class_).get(key[1])
+            try:
+                merged = self.identity_map[key]
+            except KeyError:
+                # object was GC'ed right as we checked for it
+                merged = None
         else:
             merged = None
+
+        if merged is None:
+            if key_is_persistent and key in _resolve_conflict_map:
+                merged = _resolve_conflict_map[key]
+
+            elif not load:
+                if state.modified:
+                    raise sa_exc.InvalidRequestError(
+                        "merge() with load=False option does not support "
+                        "objects marked as 'dirty'.  flush() all changes on "
+                        "mapped instances before merging with load=False.")
+                merged = mapper.class_manager.new_instance()
+                merged_state = attributes.instance_state(merged)
+                merged_state.key = key
+                self._update_impl(merged_state)
+                new_instance = True
+
+            elif key_is_persistent:
+                merged = self.query(mapper.class_).get(key[1])
 
         if merged is None:
             merged = mapper.class_manager.new_instance()

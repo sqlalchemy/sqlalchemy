@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4069
+    :versions: 1.2.0b3
+    
+    Fixed bug in :meth:`.Session.merge` following along similar lines as that
+    of :ticket:`4030`, where an internal check for a target object in
+    the identity map could lead to an error if it were to be garbage collected
+    immediately before the merge routine actually retrieves the object.
