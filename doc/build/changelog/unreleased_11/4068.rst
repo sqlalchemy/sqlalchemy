@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, orm
     :tickets: 4068
+    :versions: 1.2.0b3
 
     Fixed race condition in ORM identity map which would cause objects
     to be inappropriately removed during a load operation, causing

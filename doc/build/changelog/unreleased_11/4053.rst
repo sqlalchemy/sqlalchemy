@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, sql
     :tickets: 4053
+    :versions: 1.2.0b3
 
     Altered the range specification for window functions to allow
     for two of the same PRECEDING or FOLLOWING keywords in a range
