@@ -19,6 +19,10 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.1.15
+    :include_notes_from: unreleased_11
+
+.. changelog::
     :version: 1.1.14
     :released: September 5, 2017
 
