@@ -20,7 +20,71 @@
 
 .. changelog::
     :version: 1.1.14
-    :include_notes_from: unreleased_11
+    :released: September 5, 2017
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4069
+        :versions: 1.2.0b3
+
+        Fixed bug in :meth:`.Session.merge` following along similar lines as that
+        of :ticket:`4030`, where an internal check for a target object in
+        the identity map could lead to an error if it were to be garbage collected
+        immediately before the merge routine actually retrieves the object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4048
+        :versions: 1.2.0b3
+
+        Fixed bug where an :func:`.undefer_group` option would not be recognized
+        if it extended from a relationship that was loading using joined eager
+        loading.  Additionally, as the bug led to excess work being performed,
+        Python function call counts are also improved by 20% within the initial
+        calculation of result set columns, complementing the joined eager load
+        improvements of :ticket:`3915`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4068
+
+        Fixed race condition in ORM identity map which would cause objects
+        to be inappropriately removed during a load operation, causing
+        duplicate object identities to occur, particularly under joined eager
+        loading which involves deduplication of objects.  The issue is specific
+        to garbage collection of weak references and is observed only under the
+        Pypy interpreter.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4056
+        :versions: 1.2.0b3
+
+        Fixed bug in :meth:`.Session.merge` where objects in a collection that had
+        the primary key attribute set to ``None`` for a key that is  typically
+        autoincrementing would be considered to be a database-persisted key for
+        part of the internal deduplication process, causing only one object to
+        actually be inserted in the database.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4053
+
+        Altered the range specification for window functions to allow
+        for two of the same PRECEDING or FOLLOWING keywords in a range
+        by allowing for the left side of the range to be positive
+        and for the right to be negative, e.g. (1, 3) is
+        "1 FOLLOWING AND 3 FOLLOWING".
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4067
+        :versions: 1.2.0b3
+
+        An :class:`.InvalidRequestError` is raised when a :func:`.synonym`
+        is used against an attribute that is not against a :class:`.MapperProperty`,
+        such as an association proxy.  Previously, a recursion overflow would
+        occur trying to locate non-existent attributes.
 
 .. changelog::
     :version: 1.1.13
