@@ -29,8 +29,9 @@ class OnDuplicateTest(fixtures.TablesTest):
         foos = self.tables.foos
         with testing.db.connect() as conn:
             conn.execute(insert(foos, dict(id=1, bar='b', baz='bz')))
-            stmt = insert(foos, [dict(id=1, bar='ab'), dict(id=2, bar='b')])
-            stmt = stmt.on_duplicate_key_update(bar=stmt.values.bar)
+            stmt = insert(foos).values(
+                [dict(id=1, bar='ab'), dict(id=2, bar='b')])
+            stmt = stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
             result = conn.execute(stmt)
             eq_(result.inserted_primary_key, [2])
             eq_(
@@ -41,17 +42,17 @@ class OnDuplicateTest(fixtures.TablesTest):
     def test_last_inserted_id(self):
         foos = self.tables.foos
         with testing.db.connect() as conn:
-            stmt = insert(foos, {"bar": "b", "baz": "bz"})
+            stmt = insert(foos).values({"bar": "b", "baz": "bz"})
             result = conn.execute(
                 stmt.on_duplicate_key_update(
-                    bar=stmt.values.bar, baz="newbz")
+                    bar=stmt.inserted.bar, baz="newbz")
             )
             eq_(result.inserted_primary_key, [1])
 
-            stmt = insert(foos, {"id": 1, "bar": "b", "baz": "bz"})
+            stmt = insert(foos).values({"id": 1, "bar": "b", "baz": "bz"})
             result = conn.execute(
                 stmt.on_duplicate_key_update(
-                    bar=stmt.values.bar, baz="newbz")
+                    bar=stmt.inserted.bar, baz="newbz")
             )
             eq_(result.inserted_primary_key, [1])
 

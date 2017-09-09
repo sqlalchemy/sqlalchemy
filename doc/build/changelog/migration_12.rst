@@ -1336,7 +1336,7 @@ This :class:`~.expression.Insert` subclass adds a new method
         values(id='some_id', data='some data to insert')
 
     on_conflict_stmt = insert_stmt.on_duplicate_key_update(
-        data=stmt.values.data,
+        data=stmt.inserted.data,
         status='U'
     )
 

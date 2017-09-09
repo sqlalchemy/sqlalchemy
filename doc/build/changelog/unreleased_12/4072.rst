@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4072
+
+    Changed the name of the ``.values`` attribute of the new MySQL
+    INSERT..ON DUPLICATE KEY UPDATE construct to ``.inserted``, as
+    :class:`.Insert` already has a method called :meth:`.Insert.values`.
+    The ``.inserted`` attribute ultimately renders the MySQL ``VALUES()``
+    function.

@@ -704,10 +704,10 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_from_values(self):
-        stmt = insert(
-            self.table, [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
+        stmt = insert(self.table).values(
+            [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
         stmt = stmt.on_duplicate_key_update(
-            bar=stmt.values.bar, baz=stmt.values.baz)
+            bar=stmt.inserted.bar, baz=stmt.inserted.baz)
         expected_sql = (
             'INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) '
             'ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)'
@@ -715,8 +715,8 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(stmt, expected_sql)
 
     def test_from_literal(self):
-        stmt = insert(
-            self.table, [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
+        stmt = insert(self.table).values(
+            [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
         stmt = stmt.on_duplicate_key_update(bar=literal_column('bb'))
         expected_sql = (
             'INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) '
@@ -725,8 +725,8 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(stmt, expected_sql)
 
     def test_python_values(self):
-        stmt = insert(
-            self.table, [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
+        stmt = insert(self.table).values(
+            [{'id': 1, 'bar': 'ab'}, {'id': 2, 'bar': 'b'}])
         stmt = stmt.on_duplicate_key_update(bar="foobar")
         expected_sql = (
             'INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) '

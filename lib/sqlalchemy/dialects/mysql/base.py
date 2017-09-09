@@ -332,8 +332,8 @@ INSERT...ON DUPLICATE KEY UPDATE (Upsert)
 MySQL allows "upserts" (update or insert)
 of rows into a table via the ``ON DUPLICATE KEY UPDATE`` clause of the
 ``INSERT`` statement.  A candidate row will only be inserted if that row does
-not match an existing primary or unique key in the table; otherwise, an UPDATE will
-be performed.   The statement allows for separate specification of the
+not match an existing primary or unique key in the table; otherwise, an UPDATE
+will be performed.   The statement allows for separate specification of the
 values to INSERT versus the values for UPDATE.
 
 SQLAlchemy provides ``ON DUPLICATE KEY UPDATE`` support via the MySQL-specific
@@ -347,7 +347,7 @@ the generative method :meth:`~.mysql.dml.Insert.on_duplicate_key_update`::
         data='inserted value')
 
     on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
-        data=insert_stmt.values.data,
+        data=insert_stmt.inserted.data,
         status='U'
     )
 
@@ -381,7 +381,7 @@ as values::
     unless they are manually specified explicitly in the parameters.
 
 In order to refer to the proposed insertion row, the special alias
-:attr:`~.mysql.dml.Insert.values` is available as an attribute on
+:attr:`~.mysql.dml.Insert.inserted` is available as an attribute on
 the :class:`.mysql.dml.Insert` object; this object is a
 :class:`.ColumnCollection` which contains all columns of the target
 table::
@@ -394,11 +394,11 @@ table::
         author='jlh')
     do_update_stmt = stmt.on_duplicate_key_update(
         data="updated value",
-        author=stmt.values.author
+        author=stmt.inserted.author
     )
     conn.execute(do_update_stmt)
 
-When rendered, the "values" namespace will produce the expression
+When rendered, the "inserted" namespace will produce the expression
 ``VALUES(<columnname>)``.
 
 .. versionadded:: 1.2 Added support for MySQL ON DUPLICATE KEY UPDATE clause
@@ -921,7 +921,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                 val.type = column.type
                 value_text = self.process(val.self_group(), use_schema=False)
             elif isinstance(val, elements.ColumnClause) \
-                    and val.table is on_duplicate.values_alias:
+                    and val.table is on_duplicate.inserted_alias:
                 value_text = 'VALUES(' + self.preparer.quote(column.name) + ')'
             else:
                 value_text = self.process(val.self_group(), use_schema=False)
