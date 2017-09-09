@@ -2871,20 +2871,7 @@ class Mapper(InspectionAttr):
 
     @_memoized_configured_property
     def _compiled_cache(self):
-        return util.LRUCache(self._compiled_cache_size,
-                             size_alert=self._alert_lru_cache_limit)
-
-    def _alert_lru_cache_limit(self, lru_cache):
-        util.warn(
-            "Compiled statement cache for mapper %s is "
-            "reaching its size threshold of %d, based on _compiled_cache_size "
-            "of %d.  Please refer to "
-            "http://docs.sqlalchemy.org/en/latest/faq/performance.html"
-            "#faq_compiled_cache_threshold"
-            " for best practices." %
-            (self,
-             lru_cache.size_threshold,
-             self._compiled_cache_size))
+        return util.LRUCache(self._compiled_cache_size)
 
     @_memoized_configured_property
     def _sorted_tables(self):
