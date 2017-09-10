@@ -7,6 +7,8 @@
 
 import operator
 from ..sql import operators
+from .. import inspect
+from .. import util
 
 
 class UnevaluatableError(Exception):
@@ -59,9 +61,17 @@ class EvaluatorCompiler(object):
                 )
             key = parentmapper._columntoproperty[clause].key
         else:
-            raise UnevaluatableError(
-                "Cannot evaluate column: %s" % clause
-            )
+            key = clause.key
+            if self.target_cls and key in inspect(self.target_cls).column_attrs:
+                util.warn(
+                    "Evaluating non-mapped column expression '%r' onto "
+                    "ORM instances; this is a deprecated use case.  Please "
+                    "make use of the actual mapped columns in ORM-evaluated "
+                    "UPDATE / DELETE expressions." % clause)
+            else:
+                raise UnevaluatableError(
+                    "Cannot evaluate column: %s" % clause
+                )
 
         get_corresponding_attr = operator.attrgetter(key)
         return lambda obj: get_corresponding_attr(obj)

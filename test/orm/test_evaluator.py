@@ -15,7 +15,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import is_
 from sqlalchemy import inspect
-
+from sqlalchemy.testing import expect_warnings
 
 compiler = evaluator.EvaluatorCompiler()
 
@@ -38,7 +38,8 @@ class EvaluateTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         Table('users', metadata,
               Column('id', Integer, primary_key=True),
-              Column('name', String(64)))
+              Column('name', String(64)),
+              Column('othername', String(64)))
 
     @classmethod
     def setup_classes(cls):
@@ -84,8 +85,23 @@ class EvaluateTest(fixtures.MappedTest):
         eval_eq(User.name == None,  # noqa
                 testcases=[(User(name='foo'), False), (User(name=None), True)])
 
-    def test_raise_on_unannotated_column(self):
+    def test_warn_on_unannotated_matched_column(self):
         User = self.classes.User
+
+        compiler = evaluator.EvaluatorCompiler(User)
+
+        with expect_warnings(
+            r"Evaluating non-mapped column expression 'Column\('othername'.* "
+                "onto ORM instances; this is a deprecated use case."):
+            meth = compiler.process(User.name == Column('othername', String))
+
+        u1 = User(id=5)
+        meth(u1)
+
+    def test_raise_on_unannotated_unmatched_column(self):
+        User = self.classes.User
+
+        compiler = evaluator.EvaluatorCompiler(User)
 
         assert_raises_message(
             evaluator.UnevaluatableError,

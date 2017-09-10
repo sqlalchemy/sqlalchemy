@@ -1394,11 +1394,11 @@ class BulkEvaluate(BulkUD):
 
             self._additional_evaluators(evaluator_compiler)
 
-        except evaluator.UnevaluatableError:
+        except evaluator.UnevaluatableError as err:
             raise sa_exc.InvalidRequestError(
-                "Could not evaluate current criteria in Python. "
-                "Specify 'fetch' or False for the "
-                "synchronize_session parameter.")
+                'Could not evaluate current criteria in Python: "%s". '
+                'Specify \'fetch\' or False for the '
+                'synchronize_session parameter.' % err)
 
         # TODO: detect when the where clause is a trivial primary key match
         self.matched_objects = [
