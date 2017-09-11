@@ -91,7 +91,7 @@ class EvaluateTest(fixtures.MappedTest):
         compiler = evaluator.EvaluatorCompiler(User)
 
         with expect_warnings(
-            r"Evaluating non-mapped column expression 'Column\('othername'.* "
+            r"Evaluating non-mapped column expression 'othername' "
                 "onto ORM instances; this is a deprecated use case."):
             meth = compiler.process(User.name == Column('othername', String))
 
