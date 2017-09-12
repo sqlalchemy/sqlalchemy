@@ -1520,7 +1520,9 @@ class PGCompiler(compiler.SQLCompiler):
 
         set_parameters = dict(clause.update_values_to_set)
         # create a list of column assignment clauses as tuples
-        cols = self.statement.table.c
+
+        insert_statement = self.stack[-1]['selectable']
+        cols = insert_statement.table.c
         for c in cols:
             col_key = c.key
             if col_key in set_parameters:
