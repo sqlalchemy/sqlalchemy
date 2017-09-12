@@ -121,7 +121,10 @@ FUNCTIONS = {
     functions.random: 'random%(expr)s',
     functions.sysdate: 'sysdate',
     functions.session_user: 'SESSION_USER',
-    functions.user: 'USER'
+    functions.user: 'USER',
+    functions.cube: 'CUBE%(expr)s',
+    functions.rollup: 'ROLLUP%(expr)s',
+    functions.grouping_sets: 'GROUPING SETS%(expr)s',
 }
 
 EXTRACT_MAP = {

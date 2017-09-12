@@ -3293,7 +3293,7 @@ class WithinGroup(ColumnElement):
     """Represent a WITHIN GROUP (ORDER BY) clause.
 
     This is a special operator against so-called
-    so-called "ordered set aggregate" and "hypothetical
+    "ordered set aggregate" and "hypothetical
     set aggregate" functions, including ``percentile_cont()``,
     ``rank()``, ``dense_rank()``, etc.
 
