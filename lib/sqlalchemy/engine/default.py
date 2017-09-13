@@ -1177,10 +1177,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 self.root_connection._handle_dbapi_exception(
                     e, None, None, None, self)
 
-    def _exec_default(self, default, type_):
+    def _exec_default(self, column, default, type_):
         if default.is_sequence:
             return self.fire_sequence(default, type_)
         elif default.is_callable:
+            self.current_column = column
             return default.arg(self)
         elif default.is_clause_element:
             # TODO: expensive branching here should be
@@ -1195,17 +1196,97 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         else:
             return default.arg
 
+    current_parameters = None
+    """A dictionary of parameters applied to the current row.
+
+    This attribute is only available in the context of a user-defined default
+    generation function, e.g. as described at :ref:`context_default_functions`.
+    It consists of a dictionary which includes entries for each column/value
+    pair that is to be part of the INSERT or UPDATE statement. The keys of the
+    dictionary will be the key value of each :class:`.Column`, which is usually
+    synonymous with the name.
+
+    Note that the :attr:`.DefaultExecutionContext.current_parameters` attribute
+    does not accommodate for the "multi-values" feature of the
+    :meth:`.Insert.values` method.  The
+    :meth:`.DefaultExecutionContext.get_current_parameters` method should be
+    preferred.
+
+    .. seealso::
+
+        :meth:`.DefaultExecutionContext.get_current_parameters`
+
+        :ref:`context_default_functions`
+
+    """
+
+    def get_current_parameters(self, isolate_multiinsert_groups=True):
+        """Return a dictionary of parameters applied to the current row.
+
+        This method can only be used in the context of a user-defined default
+        generation function, e.g. as described at
+        :ref:`context_default_functions`. When invoked, a dictionary is
+        returned which includes entries for each column/value pair that is part
+        of the INSERT or UPDATE statement. The keys of the dictionary will be
+        the key value of each :class:`.Column`, which is usually synonymous
+        with the name.
+
+        :param isolate_multiinsert_groups=True: indicates that multi-valued
+         INSERT contructs created using :meth:`.Insert.values` should be
+         handled by returning only the subset of parameters that are local
+         to the current column default invocation.   When ``False``, the
+         raw parameters of the statement are returned including the
+         naming convention used in the case of multi-valued INSERT.
+
+        .. versionadded:: 1.2  added
+           :meth:`.DefaultExecutionContext.get_current_parameters`
+           which provides more functionality over the existing
+           :attr:`.DefaultExecutionContext.current_parameters`
+           attribute.
+
+        .. seealso::
+
+            :attr:`.DefaultExecutionContext.current_parameters`
+
+            :ref:`context_default_functions`
+
+        """
+        try:
+            parameters = self.current_parameters
+            column = self.current_column
+        except AttributeError:
+            raise exc.InvalidRequestError(
+                "get_current_parameters() can only be invoked in the "
+                "context of a Python side column default function")
+        if isolate_multiinsert_groups and \
+            self.isinsert and \
+                self.compiled.statement._has_multi_parameters:
+            if column._is_multiparam_column:
+                index = column.index + 1
+                d = {column.original.key: parameters[column.key]}
+            else:
+                d = {column.key: parameters[column.key]}
+                index = 0
+            keys = self.compiled.statement.parameters[0].keys()
+            d.update(
+                (key, parameters["%s_m%d" % (key, index)])
+                for key in keys
+            )
+            return d
+        else:
+            return parameters
+
     def get_insert_default(self, column):
         if column.default is None:
             return None
         else:
-            return self._exec_default(column.default, column.type)
+            return self._exec_default(column, column.default, column.type)
 
     def get_update_default(self, column):
         if column.onupdate is None:
             return None
         else:
-            return self._exec_default(column.onupdate, column.type)
+            return self._exec_default(column, column.onupdate, column.type)
 
     def _process_executemany_defaults(self):
         key_getter = self.compiled._key_getters_for_crud_column[2]

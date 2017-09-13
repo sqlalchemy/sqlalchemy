@@ -90,38 +90,57 @@ as the function itself without calling it (i.e. there are no parenthesis
 following) - SQLAlchemy will execute the function at the time the statement
 executes.
 
+.. _context_default_functions:
+
 Context-Sensitive Default Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Python functions used by :paramref:`.Column.default` and :paramref:`.Column.onupdate` may also make use of
-the current statement's context in order to determine a value. The `context`
-of a statement is an internal SQLAlchemy object which contains all information
-about the statement being executed, including its source expression, the
-parameters associated with it and the cursor. The typical use case for this
-context with regards to default generation is to have access to the other
-values being inserted or updated on the row. To access the context, provide a
-function that accepts a single ``context`` argument::
+The Python functions used by :paramref:`.Column.default` and
+:paramref:`.Column.onupdate` may also make use of the current statement's
+context in order to determine a value. The `context` of a statement is an
+internal SQLAlchemy object which contains all information about the statement
+being executed, including its source expression, the parameters associated with
+it and the cursor. The typical use case for this context with regards to
+default generation is to have access to the other values being inserted or
+updated on the row. To access the context, provide a function that accepts a
+single ``context`` argument::
 
     def mydefault(context):
-        return context.current_parameters['counter'] + 12
+        return context.get_current_parameters()['counter'] + 12
 
     t = Table('mytable', meta,
         Column('counter', Integer),
         Column('counter_plus_twelve', Integer, default=mydefault, onupdate=mydefault)
     )
 
-Above we illustrate a default function which will execute for all INSERT and
-UPDATE statements where a value for ``counter_plus_twelve`` was otherwise not
-provided, and the value will be that of whatever value is present in the
-execution for the ``counter`` column, plus the number 12.
+The above default generation function is applied so that it will execute for
+all INSERT and UPDATE statements where a value for ``counter_plus_twelve`` was
+otherwise not provided, and the value will be that of whatever value is present
+in the execution for the ``counter`` column, plus the number 12.
 
-While the context object passed to the default function has many attributes,
-the ``current_parameters`` member is a special member provided only during the
-execution of a default function for the purposes of deriving defaults from its
-existing values. For a single statement that is executing many sets of bind
-parameters, the user-defined function is called for each set of parameters,
-and ``current_parameters`` will be provided with each individual parameter set
-for each execution.
+For a single statement that is being executed using "executemany" style, e.g.
+with multiple parameter sets passed to :meth:`.Connection.execute`, the user-
+defined function is called once for each set of parameters. For the use case of
+a multi-valued :class:`.Insert` construct (e.g. with more than one VALUES
+clause set up via the :meth:`.Insert.values` method), the user-defined function
+is also called once for each set of parameters.
+
+When the function is invoked, the special method
+:meth:`.DefaultExecutionContext.get_current_parameters` is available from
+the context object (an subclass of :class:`.DefaultExecutionContext`).  This
+method returns a dictionary of column-key to values that represents the
+full set of values for the INSERT or UPDATE statement.   In the case of a
+multi-valued INSERT construct, the subset of parameters that corresponds to
+the individual VALUES clause is isolated from the full parameter dictionary
+and returned alone.
+
+.. versionadded:: 1.2
+
+    Added :meth:`.DefaultExecutionContext.get_current_parameters` method,
+    which improves upon the still-present
+    :attr:`.DefaultExecutionContext.current_parameters` attribute
+    by offering the service of organizing multiple VALUES clauses
+    into individual parameter dictionaries.
 
 SQL Expressions
 ---------------

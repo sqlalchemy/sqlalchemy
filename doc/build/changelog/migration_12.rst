@@ -812,7 +812,6 @@ if the application is working with plain floats.
 
 :ticket:`4020`
 
-
 .. change_3249:
 
 Support for GROUPING SETS, CUBE, ROLLUP
@@ -839,6 +838,43 @@ are named in the documentation now::
     FROM t GROUP BY GROUPING SETS((t.x, t.y), (t.z, t.q))
 
 :ticket:`3429`
+
+.. _change_4075:
+
+Parameter helper for multi-valued INSERT with contextual default generator
+--------------------------------------------------------------------------
+
+A default generation function, e.g. that described at
+:ref:`context_default_functions`, can look at the current parameters relevant
+to the statment via the :attr:`.DefaultExecutionContext.current_parameters`
+attribute.  However, in the case of a :class:`.Insert` construct that specifies
+multiple VALUES clauses via the :meth:`.Insert.values` method, the user-defined
+function is called multiple times, once for each parameter set, however there
+was no way to know which subset of keys in
+:attr:`.DefaultExecutionContext.current_parameters` apply to that column.  A
+new function :meth:`.DefaultExecutionContext.get_current_parameters` is added,
+which includes a keyword argument
+:paramref:`.DefaultExecutionContext.get_current_parameters.isolate_multiinsert_groups`
+defaulting to ``True``, which performs the extra work of delivering a sub-dictionary of
+:attr:`.DefaultExecutionContext.current_parameters` which has the names
+localized to the current VALUES clause being processed::
+
+
+    def mydefault(context):
+        return context.get_current_parameters()['counter'] + 12
+
+    mytable = Table('mytable', meta,
+        Column('counter', Integer),
+        Column('counter_plus_twelve',
+               Integer, default=mydefault, onupdate=mydefault)
+    )
+
+    stmt = mytable.insert().values(
+        [{"counter": 5}, {"counter": 18}, {"counter": 20}])
+
+    conn.execute(stmt)
+
+:ticket:`4075`
 
 Key Behavioral Changes - ORM
 ============================

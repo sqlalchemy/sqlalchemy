@@ -15,6 +15,7 @@ from sqlalchemy.dialects import sqlite
 from sqlalchemy.testing import fixtures
 from sqlalchemy.util import u, b
 from sqlalchemy import util
+from sqlalchemy.testing import mock
 import itertools
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
@@ -1630,3 +1631,66 @@ class InsertFromSelectTest(fixtures.TestBase):
             testing.db.execute(table.select().order_by(table.c.x)).fetchall(),
             [(2, 1, 5), (7, 1, 12)]
         )
+
+class CurrentParametersTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        def gen_default(context):
+            pass
+
+        Table(
+            "some_table", metadata,
+            Column('x', String(50), default=gen_default),
+            Column('y', String(50)),
+        )
+
+    def _fixture(self, fn):
+
+        def gen_default(context):
+            fn(context)
+        some_table = self.tables.some_table
+        some_table.c.x.default.arg = gen_default
+        return fn
+
+    def _test(self, exec_type, usemethod):
+        collect = mock.Mock()
+
+        @self._fixture
+        def fn(context):
+            collect(context.get_current_parameters())
+
+        table = self.tables.some_table
+        if exec_type in ('multivalues', 'executemany'):
+            parameters = [{"y": "h1"}, {"y": "h2"}]
+        else:
+            parameters = [{"y": "hello"}]
+
+        if exec_type == 'multivalues':
+            stmt, params = table.insert().values(parameters), {}
+        else:
+            stmt, params = table.insert(), parameters
+
+        with testing.db.connect() as conn:
+            conn.execute(stmt, params)
+        eq_(
+            collect.mock_calls,
+            [mock.call({"y": param['y'], "x": None}) for param in parameters]
+        )
+
+    def test_single_w_attribute(self):
+        self._test("single", "attribute")
+
+    def test_single_w_method(self):
+        self._test("single", "method")
+
+    def test_executemany_w_attribute(self):
+        self._test("executemany", "attribute")
+
+    def test_executemany_w_method(self):
+        self._test("executemany", "method")
+
+    @testing.requires.multivalues_inserts
+    def test_multivalued_w_method(self):
+        self._test("multivalues", "method")

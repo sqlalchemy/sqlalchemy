@@ -3656,6 +3656,8 @@ class ColumnClause(Immutable, ColumnElement):
 
     onupdate = default = server_default = server_onupdate = None
 
+    _is_multiparam_column = False
+
     _memoized_property = util.group_expirable_memoized_property()
 
     def __init__(self, text, type_=None, is_literal=False, _selectable=None):

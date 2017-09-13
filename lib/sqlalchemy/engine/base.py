@@ -977,7 +977,7 @@ class Connection(Connectable):
         except BaseException as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
-        ret = ctx._exec_default(default, None)
+        ret = ctx._exec_default(None, default, None)
         if self.should_close_with_result:
             self.close()
 

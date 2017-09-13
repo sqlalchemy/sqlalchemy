@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4075
+
+    Added a new method :meth:`.DefaultExecutionContext.get_current_parameters`
+    which is used within a function-based default value generator in
+    order to retrieve the current parameters being passed to the statement.
+    The new function differs from the
+    :attr:`.DefaultExecutionContext.current_parameters` attribute in
+    that it also provides for optional grouping of parameters that
+    correspond to a multi-valued "insert" construct.  Previously it was not
+    possible to identify the subset of parameters that were relevant to
+    the function call.
+
+    .. seealso::
+
+        :ref:`change_4075`
+
+        :ref:`context_default_functions`

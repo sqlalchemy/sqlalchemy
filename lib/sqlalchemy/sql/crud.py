@@ -395,7 +395,10 @@ def _create_update_prefetch_bind_param(compiler, c, process=True, name=None):
 
 
 class _multiparam_column(elements.ColumnElement):
+    _is_multiparam_column = True
+
     def __init__(self, original, index):
+        self.index = index
         self.key = "%s_m%d" % (original.key, index + 1)
         self.original = original
         self.default = original.default
