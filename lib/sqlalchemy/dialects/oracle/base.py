@@ -733,12 +733,17 @@ class OracleCompiler(compiler.SQLCompiler):
 
         def visit_join(join):
             if join.isouter:
+                # https://docs.oracle.com/database/121/SQLRF/queries006.htm#SQLRF52354
+                # "apply the outer join operator (+) to all columns of B in
+                # the join condition in the WHERE clause" - that is,
+                # unconditionally regardless of operator or the other side
                 def visit_binary(binary):
-                    if binary.operator == sql_operators.eq:
-                        if join.right.is_derived_from(binary.left.table):
-                            binary.left = _OuterJoinColumn(binary.left)
-                        elif join.right.is_derived_from(binary.right.table):
-                            binary.right = _OuterJoinColumn(binary.right)
+                    if isinstance(binary.left, expression.ColumnClause) \
+                            and join.right.is_derived_from(binary.left.table):
+                        binary.left = _OuterJoinColumn(binary.left)
+                    elif isinstance(binary.right, expression.ColumnClause) \
+                            and join.right.is_derived_from(binary.right.table):
+                        binary.right = _OuterJoinColumn(binary.right)
                 clauses.append(visitors.cloned_traverse(
                     join.onclause, {}, {'binary': visit_binary}))
             else:
