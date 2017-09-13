@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4076
+
+    Fixed bug where Oracle 8 "non ansi" join mode would not add the
+    ``(+)`` operator to expressions that used an operator other than the
+    ``=`` operator.  The ``(+)`` needs to be on all columns that are part
+    of the right-hand side.

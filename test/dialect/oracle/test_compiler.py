@@ -4,6 +4,7 @@
 from sqlalchemy.testing import eq_
 from sqlalchemy import types as sqltypes, exc, schema
 from sqlalchemy.sql import table, column
+from sqlalchemy import and_
 from sqlalchemy.testing import (fixtures,
                                 AssertsExecutionResults,
                                 AssertsCompiledSQL)
@@ -599,6 +600,54 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'WHERE thirdtable.otherstuff = '
                             'mytable.name) AS bar FROM mytable',
                             dialect=oracle.dialect(use_ansi=False))
+
+    def test_nonansi_plusses_everthing_in_the_condition(self):
+        table1 = table('mytable',
+                       column('myid', Integer),
+                       column('name', String),
+                       column('description', String))
+
+        table2 = table(
+            'myothertable',
+            column('otherid', Integer),
+            column('othername', String),
+        )
+
+        stmt = select([table1]).select_from(
+            table1.outerjoin(
+                table2,
+                and_(
+                    table1.c.myid == table2.c.otherid,
+                    table2.c.othername > 5,
+                    table1.c.name == 'foo'
+                )
+            )
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable, myothertable WHERE mytable.myid = "
+            "myothertable.otherid(+) AND myothertable.othername(+) > "
+            ":othername_1 AND mytable.name = :name_1",
+            dialect=oracle.dialect(use_ansi=False))
+
+        stmt = select([table1]).select_from(
+            table1.outerjoin(
+                table2,
+                and_(
+                    table1.c.myid == table2.c.otherid,
+                    table2.c.othername == None,
+                    table1.c.name == None
+                )
+            )
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable, myothertable WHERE mytable.myid = "
+            "myothertable.otherid(+) AND myothertable.othername(+) IS NULL "
+            "AND mytable.name IS NULL",
+            dialect=oracle.dialect(use_ansi=False))
 
     def test_nonansi_nested_right_join(self):
         a = table('a', column('a'))
