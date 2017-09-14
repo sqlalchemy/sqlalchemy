@@ -86,6 +86,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
 
+    def test_cube_operators(self):
+
+        t = table('t', column('value'),
+                  column('x'), column('y'), column('z'), column('q'))
+
+        stmt = select([func.sum(t.c.value)])
+
+        self.assert_compile(
+            stmt.group_by(func.cube(t.c.x, t.c.y)),
+            "SELECT sum(t.value) AS sum_1 FROM t GROUP BY CUBE(t.x, t.y)"
+        )
+
+        self.assert_compile(
+            stmt.group_by(func.rollup(t.c.x, t.c.y)),
+            "SELECT sum(t.value) AS sum_1 FROM t GROUP BY ROLLUP(t.x, t.y)"
+        )
+
+        self.assert_compile(
+            stmt.group_by(
+                func.grouping_sets(t.c.x, t.c.y)
+            ),
+            "SELECT sum(t.value) AS sum_1 FROM t "
+            "GROUP BY GROUPING SETS(t.x, t.y)"
+        )
+
+        self.assert_compile(
+            stmt.group_by(
+                func.grouping_sets(
+                    sql.tuple_(t.c.x, t.c.y),
+                    sql.tuple_(t.c.z, t.c.q),
+                )
+            ),
+            "SELECT sum(t.value) AS sum_1 FROM t GROUP BY "
+            "GROUPING SETS((t.x, t.y), (t.z, t.q))"
+        )
+
     def test_generic_annotation(self):
         fn = func.coalesce('x', 'y')._annotate({"foo": "bar"})
         self.assert_compile(

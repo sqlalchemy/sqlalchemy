@@ -812,6 +812,34 @@ if the application is working with plain floats.
 
 :ticket:`4020`
 
+
+.. change_3249:
+
+Support for GROUPING SETS, CUBE, ROLLUP
+---------------------------------------
+
+All three of GROUPING SETS, CUBE, ROLLUP are available via the
+:attr:`.func` namespace.  In the case of CUBE and ROLLUP, these functions
+already work in previous versions, however for GROUPING SETS, a placeholder
+is added to the compiler to allow for the space.  All three functions
+are named in the documentation now::
+
+    >>> from sqlalchemy import select, table, column, func, tuple_
+    >>> t = table('t',
+    ...           column('value'), column('x'),
+    ...           column('y'), column('z'), column('q'))
+    >>> stmt = select([func.sum(t.c.value)]).group_by(
+    ...     func.grouping_sets(
+    ...         tuple_(t.c.x, t.c.y),
+    ...         tuple_(t.c.z, t.c.q),
+    ...     )
+    ... )
+    >>> print(stmt)
+    SELECT sum(t.value) AS sum_1
+    FROM t GROUP BY GROUPING SETS((t.x, t.y), (t.z, t.q))
+
+:ticket:`3429`
+
 Key Behavioral Changes - ORM
 ============================
 
