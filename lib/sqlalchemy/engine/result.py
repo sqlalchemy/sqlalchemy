@@ -862,12 +862,28 @@ class ResultProxy(object):
             self.closed = True
 
     def __iter__(self):
+        """Implement iteration protocol."""
+
         while True:
             row = self.fetchone()
             if row is None:
                 return
             else:
                 yield row
+
+    def __next__(self):
+        """Implement the next() protocol.
+
+        .. versionadded:: 1.2
+
+        """
+        row = self.fetchone()
+        if row is None:
+            raise StopIteration()
+        else:
+            return row
+
+    next = __next__
 
     @util.memoized_property
     def inserted_primary_key(self):
