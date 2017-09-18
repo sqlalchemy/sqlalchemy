@@ -61,6 +61,23 @@ class ResultProxyTest(fixtures.TablesTest):
             rows.append(row)
         eq_(len(rows), 3)
 
+    def test_row_next(self):
+        users = self.tables.users
+
+        users.insert().execute(
+            {'user_id': 7, 'user_name': 'jack'},
+            {'user_id': 8, 'user_name': 'ed'},
+            {'user_id': 9, 'user_name': 'fred'},
+        )
+        r = users.select().execute()
+        rows = []
+        while True:
+            row = next(r, 'foo')
+            if row == 'foo':
+                break
+            rows.append(row)
+        eq_(len(rows), 3)
+
     @testing.requires.subqueries
     def test_anonymous_rows(self):
         users = self.tables.users
