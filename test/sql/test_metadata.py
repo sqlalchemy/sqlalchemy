@@ -18,7 +18,7 @@ from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
 from sqlalchemy.testing import eq_, is_, mock, is_true
 from contextlib import contextmanager
 from sqlalchemy import util
-
+from sqlalchemy.testing import engines
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
 
@@ -610,18 +610,27 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             ),
             test_needs_fk=True)
 
+        table3 = Table(
+            'has_comments', meta,
+            Column('foo', Integer, comment='some column'),
+            comment='table comment'
+        )
+
         def test_to_metadata():
             meta2 = MetaData()
             table_c = table.tometadata(meta2)
             table2_c = table2.tometadata(meta2)
-            return (table_c, table2_c)
+            table3_c = table3.tometadata(meta2)
+            return (table_c, table2_c, table3_c)
 
         def test_pickle():
             meta.bind = testing.db
             meta2 = pickle.loads(pickle.dumps(meta))
             assert meta2.bind is None
             pickle.loads(pickle.dumps(meta2))
-            return (meta2.tables['mytable'], meta2.tables['othertable'])
+            return (
+                meta2.tables['mytable'],
+                meta2.tables['othertable'], meta2.tables['has_comments'])
 
         def test_pickle_via_reflect():
             # this is the most common use case, pickling the results of a
@@ -629,11 +638,15 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             meta2 = MetaData(bind=testing.db)
             t1 = Table('mytable', meta2, autoload=True)
             Table('othertable', meta2, autoload=True)
+            Table('has_comments', meta2, autoload=True)
             meta3 = pickle.loads(pickle.dumps(meta2))
             assert meta3.bind is None
             assert meta3.tables['mytable'] is not t1
 
-            return (meta3.tables['mytable'], meta3.tables['othertable'])
+            return (
+                meta3.tables['mytable'], meta3.tables['othertable'],
+                meta3.tables['has_comments']
+            )
 
         meta.create_all(testing.db)
         try:
@@ -641,7 +654,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
                     (test_to_metadata, True, False), \
                     (test_pickle, True, False), \
                     (test_pickle_via_reflect, False, True):
-                table_c, table2_c = test()
+                table_c, table2_c, table3_c = test()
                 self.assert_tables_equal(table, table_c)
                 self.assert_tables_equal(table2, table2_c)
                 assert table is not table_c
@@ -676,6 +689,10 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
                         assert False
                     assert c.columns.contains_column(table_c.c.name)
                     assert not c.columns.contains_column(table.c.name)
+
+                if testing.requires.comment_reflection.enabled:
+                    eq_(table3_c.comment, "table comment")
+                    eq_(table3_c.c.foo.comment, "some column")
 
         finally:
             meta.drop_all(testing.db)
