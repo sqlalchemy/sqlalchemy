@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4088
+
+    Internal refinements to the :class:`.Enum`, :class:`.Interval`, and
+    :class:`.Boolean` types, which now extend a common mixin
+    :class:`.Emulated` that indicates a type that provides Python-side
+    emulation of a DB native type, switching out to the DB native type when a
+    supporting backend is in use.   The Postgresql :class:`.INTERVAL` type
+    when used directly will now include the correct type coercion rules for
+    SQL expressions that also take effect for :class:`.sqltypes.Interval`
+    (such as adding a date to an interval yields a datetime).

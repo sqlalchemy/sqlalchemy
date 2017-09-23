@@ -15,7 +15,8 @@ import collections
 import json
 
 from . import elements
-from .type_api import TypeEngine, TypeDecorator, to_instance, Variant
+from .type_api import TypeEngine, TypeDecorator, to_instance, Variant, \
+    Emulated, NativeForEmulated
 from .elements import quoted_name, TypeCoerce as type_coerce, _defer_name, \
     Slice, _literal_as_binds
 from .. import exc, util, processors
@@ -1130,8 +1131,7 @@ class SchemaType(SchemaEventTarget):
             return variant_mapping['_default'] is self
 
 
-class Enum(String, SchemaType):
-
+class Enum(Emulated, String, SchemaType):
     """Generic Enum Type.
 
     The :class:`.Enum` type provides a set of possible string values
@@ -1195,11 +1195,12 @@ class Enum(String, SchemaType):
 
     .. seealso::
 
-        :class:`~.postgresql.ENUM` - PostgreSQL-specific type,
+        :class:`.postgresql.ENUM` - PostgreSQL-specific type,
         which has additional functionality.
 
-    """
+        :class:`.mysql.ENUM` - MySQL-specific type
 
+    """
     __visit_name__ = 'enum'
 
     def __init__(self, *enums, **kw):
@@ -1277,13 +1278,30 @@ class Enum(String, SchemaType):
            .. versionadded:: 1.1.0b2
 
         """
+        self._enum_init(enums, kw)
+
+    @property
+    def _enums_argument(self):
+        if self.enum_class is not None:
+            return [self.enum_class]
+        else:
+            return self.enums
+
+    def _enum_init(self, enums, kw):
+        """internal init for :class:`.Enum` and subclasses.
+
+        friendly init helper used by subclasses to remove
+        all the Enum-specific keyword arguments from kw.  Allows all
+        other arguments in kw to pass through.
+
+        """
+        self.native_enum = kw.pop('native_enum', True)
+        self.create_constraint = kw.pop('create_constraint', True)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
 
-        self.native_enum = kw.pop('native_enum', True)
         convert_unicode = kw.pop('convert_unicode', None)
-        self.create_constraint = kw.pop('create_constraint', True)
         self.validate_strings = kw.pop('validate_strings', False)
 
         if convert_unicode is None:
@@ -1300,19 +1318,31 @@ class Enum(String, SchemaType):
             length = 0
         self._valid_lookup[None] = self._object_lookup[None] = None
 
-        String.__init__(self,
-                        length=length,
-                        convert_unicode=convert_unicode,
-                        )
-        SchemaType.__init__(self, **kw)
+        super(Enum, self).__init__(
+            length=length,
+            convert_unicode=convert_unicode,
+        )
+
+        if self.enum_class:
+            kw.setdefault('name', self.enum_class.__name__.lower())
+        SchemaType.__init__(
+            self,
+            name=kw.pop('name', None),
+            schema=kw.pop('schema', None),
+            metadata=kw.pop('metadata', None),
+            inherit_schema=kw.pop('inherit_schema', False),
+            quote=kw.pop('quote', None),
+            _create_events=kw.pop('_create_events', True)
+        )
 
     def _parse_into_values(self, enums, kw):
+        if not enums and '_enums' in kw:
+            enums = kw.pop('_enums')
+
         if len(enums) == 1 and hasattr(enums[0], '__members__'):
             self.enum_class = enums[0]
             values = list(self.enum_class.__members__)
             objects = [self.enum_class.__members__[k] for k in values]
-            kw.setdefault('name', self.enum_class.__name__.lower())
-
             return values, objects
         else:
             self.enum_class = None
@@ -1330,6 +1360,10 @@ class Enum(String, SchemaType):
         self._valid_lookup.update(
             [(value, value) for value in self._valid_lookup.values()]
         )
+
+    @property
+    def native(self):
+        return self.native_enum
 
     def _db_value_for_elem(self, elem):
         try:
@@ -1371,10 +1405,27 @@ class Enum(String, SchemaType):
                 '"%s" is not among the defined enum values' % elem)
 
     def __repr__(self):
-        return util.generic_repr(self,
-                                 additional_kw=[('native_enum', True)],
-                                 to_inspect=[Enum, SchemaType],
-                                 )
+        return util.generic_repr(
+            self,
+            additional_kw=[('native_enum', True)],
+            to_inspect=[Enum, SchemaType],
+        )
+
+    def adapt_to_emulated(self, impltype, **kw):
+        kw.setdefault("convert_unicode", self.convert_unicode)
+        kw.setdefault("validate_strings", self.validate_strings)
+        kw.setdefault('name', self.name)
+        kw.setdefault('schema', self.schema)
+        kw.setdefault('inherit_schema', self.inherit_schema)
+        kw.setdefault('metadata', self.metadata)
+        kw.setdefault('_create_events', False)
+        kw.setdefault('native_enum', self.native_enum)
+        assert '_enums' in kw
+        return impltype(**kw)
+
+    def adapt(self, impltype, **kw):
+        kw['_enums'] = self._enums_argument
+        return super(Enum, self).adapt(impltype, **kw)
 
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):
@@ -1384,8 +1435,7 @@ class Enum(String, SchemaType):
 
     @util.dependencies("sqlalchemy.sql.schema")
     def _set_table(self, schema, column, table):
-        if self.native_enum:
-            SchemaType._set_table(self, column, table)
+        SchemaType._set_table(self, column, table)
 
         if not self.create_constraint:
             return
@@ -1402,34 +1452,9 @@ class Enum(String, SchemaType):
         )
         assert e.table is table
 
-    def copy(self, **kw):
-        return SchemaType.copy(self, **kw)
-
-    def adapt(self, impltype, **kw):
-        schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', self.metadata)
-        _create_events = kw.pop('_create_events', False)
-        if issubclass(impltype, Enum):
-            if self.enum_class is not None:
-                args = [self.enum_class]
-            else:
-                args = self.enums
-            return impltype(name=self.name,
-                            schema=schema,
-                            metadata=metadata,
-                            convert_unicode=self.convert_unicode,
-                            native_enum=self.native_enum,
-                            inherit_schema=self.inherit_schema,
-                            validate_strings=self.validate_strings,
-                            _create_events=_create_events,
-                            *args,
-                            **kw)
-        else:
-            # TODO: why would we be here?
-            return super(Enum, self).adapt(impltype, **kw)
-
     def literal_processor(self, dialect):
-        parent_processor = super(Enum, self).literal_processor(dialect)
+        parent_processor = super(
+            Enum, self).literal_processor(dialect)
 
         def process(value):
             value = self._db_value_for_elem(value)
@@ -1460,6 +1485,9 @@ class Enum(String, SchemaType):
             return value
 
         return process
+
+    def copy(self, **kw):
+        return SchemaType.copy(self, **kw)
 
     @property
     def python_type(self):
@@ -1549,7 +1577,7 @@ class PickleType(TypeDecorator):
             return x == y
 
 
-class Boolean(TypeEngine, SchemaType):
+class Boolean(Emulated, TypeEngine, SchemaType):
 
     """A bool datatype.
 
@@ -1559,6 +1587,7 @@ class Boolean(TypeEngine, SchemaType):
     """
 
     __visit_name__ = 'boolean'
+    native = True
 
     def __init__(
             self, create_constraint=True, name=None, _create_events=True):
@@ -1624,7 +1653,43 @@ class Boolean(TypeEngine, SchemaType):
             return processors.int_to_boolean
 
 
-class Interval(_LookupExpressionAdapter, TypeDecorator):
+class _AbstractInterval(_LookupExpressionAdapter, TypeEngine):
+    @util.memoized_property
+    def _expression_adaptations(self):
+        # Based on http://www.postgresql.org/docs/current/\
+        # static/functions-datetime.html.
+
+        return {
+            operators.add: {
+                Date: DateTime,
+                Interval: self.__class__,
+                DateTime: DateTime,
+                Time: Time,
+            },
+            operators.sub: {
+                Interval: self.__class__
+            },
+            operators.mul: {
+                Numeric: self.__class__
+            },
+            operators.truediv: {
+                Numeric: self.__class__
+            },
+            operators.div: {
+                Numeric: self.__class__
+            }
+        }
+
+    @property
+    def _type_affinity(self):
+        return Interval
+
+    def coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
+        return self.impl.coerce_compared_value(op, value)
+
+
+class Interval(Emulated, _AbstractInterval, TypeDecorator):
 
     """A type for ``datetime.timedelta()`` objects.
 
@@ -1669,19 +1734,12 @@ class Interval(_LookupExpressionAdapter, TypeDecorator):
         self.second_precision = second_precision
         self.day_precision = day_precision
 
-    def adapt(self, cls, **kw):
-        if self.native and hasattr(cls, '_adapt_from_generic_interval'):
-            return cls._adapt_from_generic_interval(self, **kw)
-        else:
-            return self.__class__(
-                native=self.native,
-                second_precision=self.second_precision,
-                day_precision=self.day_precision,
-                **kw)
-
     @property
     def python_type(self):
         return dt.timedelta
+
+    def adapt_to_emulated(self, impltype, **kw):
+        return _AbstractInterval.adapt(self, impltype, **kw)
 
     def bind_processor(self, dialect):
         impl_processor = self.impl.bind_processor(dialect)
@@ -1713,41 +1771,6 @@ class Interval(_LookupExpressionAdapter, TypeDecorator):
                     return None
                 return value - epoch
         return process
-
-    @util.memoized_property
-    def _expression_adaptations(self):
-        # Based on http://www.postgresql.org/docs/current/\
-        # static/functions-datetime.html.
-
-        return {
-            operators.add: {
-                Date: DateTime,
-                Interval: self.__class__,
-                DateTime: DateTime,
-                Time: Time,
-            },
-            operators.sub: {
-                Interval: self.__class__
-            },
-            operators.mul: {
-                Numeric: self.__class__
-            },
-            operators.truediv: {
-                Numeric: self.__class__
-            },
-            operators.div: {
-                Numeric: self.__class__
-            }
-        }
-
-    @property
-    def _type_affinity(self):
-        return Interval
-
-    def coerce_compared_value(self, op, value):
-        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
-
-        return self.impl.coerce_compared_value(op, value)
 
 
 class JSON(Indexable, TypeEngine):

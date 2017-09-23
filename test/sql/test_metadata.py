@@ -1797,6 +1797,24 @@ class SchemaTypeTest(fixtures.TestBase):
 
         is_true(y_copy.type._create_events)
 
+        # for Postgresql, this will emit CREATE TYPE
+        m.dispatch.before_create(t1, testing.db)
+        try:
+            eq_(t1.c.y.type.evt_targets, (t1, ))
+        finally:
+            # do the drop so that Postgresql emits DROP TYPE
+            m.dispatch.after_drop(t1, testing.db)
+
+    def test_enum_nonnative_column_copy_transfers_events(self):
+        m = MetaData()
+
+        type_ = self.WrapEnum('a', 'b', 'c', name='foo', native_enum=False)
+        y = Column('y', type_)
+        y_copy = y.copy()
+        t1 = Table('x', m, y_copy)
+
+        is_true(y_copy.type._create_events)
+
         m.dispatch.before_create(t1, testing.db)
         eq_(t1.c.y.type.evt_targets, (t1, ))
 
