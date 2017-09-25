@@ -865,6 +865,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             args.append(c.copy(schema=schema))
         table = Table(
             name, metadata, schema=schema,
+            comment=self.comment,
             *args, **self.kwargs
         )
         for c in self.constraints:
@@ -1433,6 +1434,7 @@ class Column(SchemaItem, ColumnClause):
             onupdate=self.onupdate,
             server_onupdate=self.server_onupdate,
             doc=self.doc,
+            comment=self.comment,
             *args
         )
         return self._schema_item_copy(c)
