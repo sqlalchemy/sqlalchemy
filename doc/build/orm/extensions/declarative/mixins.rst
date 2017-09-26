@@ -383,7 +383,8 @@ This is achieved using the :class:`.declared_attr` indicator in conjunction
 with a method named ``__tablename__()``.   Declarative will always
 invoke :class:`.declared_attr` for the special names
 ``__tablename__``, ``__mapper_args__`` and ``__table_args__``
-function **for each mapped class in the hierarchy**.   The function therefore
+function **for each mapped class in the hierarchy, except if overridden
+in a subclass**.   The function therefore
 needs to expect to receive each class individually and to provide the
 correct answer for each.
 
@@ -464,8 +465,8 @@ named columns on each subclass.  However in this case, we may want to have
 an ``id`` column on every table, and have them refer to each other via
 foreign key.  We can achieve this as a mixin by using the
 :attr:`.declared_attr.cascading` modifier, which indicates that the
-function should be invoked **for each class in the hierarchy**, just like
-it does for ``__tablename__``::
+function should be invoked **for each class in the hierarchy**, in *almost*
+(see warning below) the same way as it does for ``__tablename__``::
 
     class HasIdMixin(object):
         @declared_attr.cascading
@@ -484,6 +485,17 @@ it does for ``__tablename__``::
         __tablename__ = 'engineer'
         primary_language = Column(String(50))
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
+
+.. warning::
+
+    The :attr:`.declared_attr.cascading` feature currently does
+    **not** allow for a subclass to override the attribute with a different
+    function or value.  This is a current limitation in the mechanics of
+    how ``@declared_attr`` is resolved, and a warning is emitted if
+    this condition is detected.   This limitation does **not**
+    exist for the special attribute names such as ``__tablename__``, which
+    resolve in a different way internally than that of
+    :attr:`.declared_attr.cascading`.
 
 
 .. versionadded:: 1.0.0 added :attr:`.declared_attr.cascading`.
