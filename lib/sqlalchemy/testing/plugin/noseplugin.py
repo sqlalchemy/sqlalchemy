@@ -41,7 +41,7 @@ class NoseSQLAlchemy(Plugin):
         opt = parser.add_option
 
         def make_option(name, **kw):
-            callback_ = kw.pop("callback", None)
+            callback_ = kw.pop("callback", None) or kw.pop("zeroarg_callback", None)
             if callback_:
                 def wrap_(option, opt_str, value, parser):
                     callback_(opt_str, value, parser)
