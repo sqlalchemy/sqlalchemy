@@ -49,8 +49,6 @@ assumed to be completed and the 'configure' step has finished::
             ""
             # do something with mappings
 
-.. versionadded:: 0.7.3
-
 ``__declare_first__()``
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -109,6 +107,55 @@ created perhaps within distinct databases::
     DefaultBase.metadata.create_all(some_engine)
     OtherBase.metadata_create_all(some_other_engine)
 
-.. versionadded:: 0.7.3
+
+``__table_cls__``
+~~~~~~~~~~~~~~~~~
+
+Allows the callable / class used to generate a :class:`.Table` to be customized.
+This is a very open-ended hook that can allow special customizations
+to a :class:`.Table` that one generates here::
+
+    class MyMixin(object):
+        @classmethod
+        def __table_cls__(cls, name, metadata, *arg, **kw):
+            return Table(
+                "my_" + name,
+                metadata, *arg, **kw
+            )
+
+The above mixin would cause all :class:`.Table` objects generated to include
+the prefix ``"my_"``, followed by the name normally specified using the
+``__tablename__`` attribute.
+
+``__table_cls__`` also supports the case of returning ``None``, which
+causes the class to be considered as single-table inheritance vs. its subclass.
+This may be useful in some customization schemes to determine that single-table
+inheritance should take place based on the arguments for the table itself,
+such as, define as single-inheritance if there is no primary key present::
+
+    class AutoTable(object):
+        @declared_attr
+        def __tablename__(cls):
+            return cls.__name__
+
+        @classmethod
+        def __table_cls__(cls, *arg, **kw):
+            for obj in arg[1:]:
+                if (isinstance(obj, Column) and obj.primary_key) or \
+                        isinstance(obj, PrimaryKeyConstraint):
+                    return Table(*arg, **kw)
+
+            return None
+
+    class Person(AutoTable, Base):
+        id = Column(Integer, primary_key=True)
+
+    class Employee(Person):
+        employee_name = Column(String)
+
+The above ``Employee`` class would be mapped as single-table inheritance
+against ``Person``; the ``employee_name`` column would be added as a member
+of the ``Person`` table.
 
 
+.. versionadded:: 1.0.0
