@@ -10,3 +10,4 @@
     when used directly will now include the correct type coercion rules for
     SQL expressions that also take effect for :class:`.sqltypes.Interval`
     (such as adding a date to an interval yields a datetime).
+
