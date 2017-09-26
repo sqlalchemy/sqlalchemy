@@ -140,6 +140,7 @@ class AdaptTest(fixtures.TestBase):
                             "sqlalchemy" in subcl.__module__:
                         yield True, subcl, [typ]
 
+        from sqlalchemy.sql import sqltypes
         for is_down_adaption, typ, target_adaptions in adaptions():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
@@ -148,9 +149,14 @@ class AdaptTest(fixtures.TestBase):
             else:
                 t1 = typ()
             for cls in target_adaptions:
-                if not issubclass(typ, types.Enum) and \
-                        issubclass(cls, types.Enum):
+                if (
+                    (is_down_adaption and
+                        issubclass(typ, sqltypes.Emulated)) or
+                    (not is_down_adaption and
+                        issubclass(cls, sqltypes.Emulated))
+                ):
                     continue
+
                 if cls.__module__.startswith("test"):
                     continue
 
@@ -162,7 +168,11 @@ class AdaptTest(fixtures.TestBase):
                     t2, t1 = t1, t2
 
                 for k in t1.__dict__:
-                    if k in ('impl', '_is_oracle_number', '_create_events'):
+                    if k in (
+                            'impl', '_is_oracle_number',
+                            '_create_events', 'create_constraint',
+                            'inherit_schema', 'schema', 'metadata',
+                            'name', ):
                         continue
                     # assert each value was copied, or that
                     # the adapted type has a more specific
@@ -1498,12 +1508,24 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     def test_adapt(self):
         from sqlalchemy.dialects.postgresql import ENUM
         e1 = Enum('one', 'two', 'three', native_enum=False)
-        eq_(e1.adapt(ENUM).native_enum, False)
+
+        false_adapt = e1.adapt(ENUM)
+        eq_(false_adapt.native_enum, False)
+        assert not isinstance(false_adapt, ENUM)
+
         e1 = Enum('one', 'two', 'three', native_enum=True)
-        eq_(e1.adapt(ENUM).native_enum, True)
-        e1 = Enum('one', 'two', 'three', name='foo', schema='bar')
+        true_adapt = e1.adapt(ENUM)
+        eq_(true_adapt.native_enum, True)
+        assert isinstance(true_adapt, ENUM)
+
+        e1 = Enum('one', 'two', 'three', name='foo',
+                  schema='bar', metadata=MetaData())
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
+        is_(e1.adapt(ENUM).metadata, e1.metadata)
+        eq_(e1.adapt(Enum).name, 'foo')
+        eq_(e1.adapt(Enum).schema, 'bar')
+        is_(e1.adapt(Enum).metadata, e1.metadata)
         e1 = Enum(self.SomeEnum)
         eq_(e1.adapt(ENUM).name, 'someenum')
         eq_(e1.adapt(ENUM).enums, ['one', 'two', 'three'])
@@ -2204,8 +2226,6 @@ class ExpressionTest(
         assert expr.right.type._type_affinity is MyFoobarType
 
     def test_date_coercion(self):
-        from sqlalchemy.sql import column
-
         expr = column('bar', types.NULLTYPE) - column('foo', types.TIMESTAMP)
         eq_(expr.type._type_affinity, types.NullType)
 
@@ -2214,6 +2234,14 @@ class ExpressionTest(
 
         expr = func.current_date() - column('foo', types.TIMESTAMP)
         eq_(expr.type._type_affinity, types.Interval)
+
+    def test_interval_coercion(self):
+        expr = column('bar', types.Interval) + column('foo', types.Date)
+        eq_(expr.type._type_affinity, types.DateTime)
+
+        expr = column('bar', types.Interval) * column('foo', types.Numeric)
+        eq_(expr.type._type_affinity, types.Interval)
+
 
     def test_numerics_coercion(self):
 
@@ -2503,12 +2531,6 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         assert adapted.native is False
         eq_(str(adapted), "DATETIME")
 
-    @testing.fails_on(
-        "postgresql+zxjdbc",
-        "Not yet known how to pass values of the INTERVAL type")
-    @testing.fails_on(
-        "oracle+zxjdbc",
-        "Not yet known how to pass values of the INTERVAL type")
     def test_roundtrip(self):
         small_delta = datetime.timedelta(days=15, seconds=5874)
         delta = datetime.timedelta(414)
@@ -2520,9 +2542,6 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(row['native_interval_args'], delta)
         eq_(row['non_native_interval'], delta)
 
-    @testing.fails_on(
-        "oracle+zxjdbc",
-        "Not yet known how to pass values of the INTERVAL type")
     def test_null(self):
         interval_table.insert().execute(
             id=1, native_inverval=None, non_native_interval=None)

@@ -878,7 +878,7 @@ from sqlalchemy.sql import elements
 from ... import sql, schema, exc, util
 from ...engine import default, reflection
 from ...sql import compiler, expression
-from ... import types as sqltypes
+from ...sql import sqltypes
 
 try:
     from uuid import UUID as _python_UUID
@@ -963,7 +963,7 @@ class TIME(sqltypes.TIME):
         self.precision = precision
 
 
-class INTERVAL(sqltypes.TypeEngine):
+class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
 
     """PostgreSQL INTERVAL type.
 
@@ -972,6 +972,7 @@ class INTERVAL(sqltypes.TypeEngine):
 
     """
     __visit_name__ = 'INTERVAL'
+    native = True
 
     def __init__(self, precision=None, fields=None):
         """Construct an INTERVAL.
@@ -988,7 +989,7 @@ class INTERVAL(sqltypes.TypeEngine):
         self.fields = fields
 
     @classmethod
-    def _adapt_from_generic_interval(cls, interval):
+    def adapt_emulated_to_native(cls, interval, **kw):
         return INTERVAL(precision=interval.second_precision)
 
     @property
@@ -1088,7 +1089,7 @@ class TSVECTOR(sqltypes.TypeEngine):
     __visit_name__ = 'TSVECTOR'
 
 
-class ENUM(sqltypes.Enum):
+class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
     """PostgreSQL ENUM type.
 
@@ -1166,6 +1167,8 @@ class ENUM(sqltypes.Enum):
 
     """
 
+    native_enum = True
+
     def __init__(self, *enums, **kw):
         """Construct an :class:`~.postgresql.ENUM`.
 
@@ -1197,6 +1200,20 @@ class ENUM(sqltypes.Enum):
         """
         self.create_type = kw.pop("create_type", True)
         super(ENUM, self).__init__(*enums, **kw)
+
+    @classmethod
+    def adapt_emulated_to_native(cls, impl, **kw):
+        """Produce a Postgresql native :class:`.postgresql.ENUM` from plain
+        :class:`.Enum`.
+
+        """
+        kw.setdefault("validate_strings", impl.validate_strings)
+        kw.setdefault('name', impl.name)
+        kw.setdefault('schema', impl.schema)
+        kw.setdefault('inherit_schema', impl.inherit_schema)
+        kw.setdefault('metadata', impl.metadata)
+        kw.setdefault('_create_events', False)
+        return cls(**kw)
 
     def create(self, bind=None, checkfirst=True):
         """Emit ``CREATE TYPE`` for this

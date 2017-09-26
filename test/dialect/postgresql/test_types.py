@@ -1583,6 +1583,15 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
         result = connection.execute(s).first()
         eq_(result[0], datetime.timedelta(40))
 
+    def test_interval_coercion(self):
+        expr = column('bar', postgresql.INTERVAL) + column('foo', types.Date)
+        eq_(expr.type._type_affinity, types.DateTime)
+
+        expr = column('bar', postgresql.INTERVAL) * \
+            column('foo', types.Numeric)
+        eq_(expr.type._type_affinity, types.Interval)
+        assert isinstance(expr.type, postgresql.INTERVAL)
+
 
 class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
