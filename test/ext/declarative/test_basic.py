@@ -1,6 +1,6 @@
 
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, expect_warnings
+    assert_raises_message, expect_warnings, is_
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 import sqlalchemy as sa
@@ -17,6 +17,7 @@ from sqlalchemy.testing import fixtures, mock
 from sqlalchemy.orm.events import MapperEvents
 from sqlalchemy.orm import mapper
 from sqlalchemy import event
+from sqlalchemy import inspect
 
 Base = None
 
@@ -1140,6 +1141,44 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert Bar.__table__.c.id.references(Foo2.__table__.c.id)
         assert Bar.__table__.kwargs['mysql_engine'] == 'InnoDB'
+
+    def test_table_cls_attribute(self):
+        class Foo(Base):
+            __tablename__ = "foo"
+
+            @classmethod
+            def __table_cls__(cls, *arg, **kw):
+                name = arg[0]
+                return Table(name + 'bat', *arg[1:], **kw)
+
+            id = Column(Integer, primary_key=True)
+
+        eq_(Foo.__table__.name, "foobat")
+
+    def test_table_cls_attribute_return_none(self):
+        from sqlalchemy.schema import Column, PrimaryKeyConstraint
+
+        class AutoTable(object):
+            @declared_attr.cascading
+            def __tablename__(cls):
+                return cls.__name__
+
+            @classmethod
+            def __table_cls__(cls, *arg, **kw):
+                for obj in arg[1:]:
+                    if (isinstance(obj, Column) and obj.primary_key) or \
+                            isinstance(obj, PrimaryKeyConstraint):
+                        return Table(*arg, **kw)
+
+                return None
+
+        class Person(AutoTable, Base):
+            id = Column(Integer, primary_key=True)
+
+        class Employee(Person):
+            employee_name = Column(String)
+
+        is_(inspect(Employee).local_table, Person.__table__)
 
     def test_expression(self):
 
