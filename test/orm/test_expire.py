@@ -13,6 +13,7 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.sql import select
+from sqlalchemy.orm import make_transient_to_detached
 
 
 class ExpireTest(_fixtures.FixtureTest):
@@ -1034,6 +1035,46 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'addresses' not in attributes.instance_state(u1) \
             .expired_attributes
         assert 'addresses' not in attributes.instance_state(u1).callables
+
+    def test_deferred_expire_w_transient_to_detached(self):
+        orders, Order = self.tables.orders, self.classes.Order
+        mapper(Order, orders, properties={
+            "description": deferred(orders.c.description)
+        })
+
+        s = Session()
+        item = Order(id=1)
+
+        make_transient_to_detached(item)
+        s.add(item)
+        item.isopen
+        assert 'description' not in item.__dict__
+
+    def test_deferred_expire_normally(self):
+        orders, Order = self.tables.orders, self.classes.Order
+        mapper(Order, orders, properties={
+            "description": deferred(orders.c.description)
+        })
+
+        s = Session()
+
+        item = s.query(Order).first()
+        s.expire(item)
+        item.isopen
+        assert 'description' not in item.__dict__
+
+    def test_deferred_expire_explicit_attrs(self):
+        orders, Order = self.tables.orders, self.classes.Order
+        mapper(Order, orders, properties={
+            "description": deferred(orders.c.description)
+        })
+
+        s = Session()
+
+        item = s.query(Order).first()
+        s.expire(item, ['isopen', 'description'])
+        item.isopen
+        assert 'description' in item.__dict__
 
 
 class PolymorphicExpireTest(fixtures.MappedTest):
