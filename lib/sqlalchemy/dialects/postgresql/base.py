@@ -1869,8 +1869,10 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         inner = self.process(type_.item_type)
         return re.sub(
             r'((?: COLLATE.*)?)$',
-            (r'[]\1' *
-             (type_.dimensions if type_.dimensions is not None else 1)),
+            (r'%s\1' % (
+                "[]" *
+                (type_.dimensions if type_.dimensions is not None else 1)
+            )),
             inner
         )
 
