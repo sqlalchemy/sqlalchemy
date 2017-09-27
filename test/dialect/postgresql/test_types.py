@@ -842,6 +842,29 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             'VARCHAR(30)[] COLLATE "en_US"'
         )
 
+    def test_array_type_render_str_multidim(self):
+        self.assert_compile(
+            postgresql.ARRAY(Unicode(30), dimensions=2),
+            "VARCHAR(30)[][]"
+        )
+
+        self.assert_compile(
+            postgresql.ARRAY(Unicode(30), dimensions=3),
+            "VARCHAR(30)[][][]"
+        )
+
+    def test_array_type_render_str_collate_multidim(self):
+        self.assert_compile(
+            postgresql.ARRAY(Unicode(30, collation="en_US"), dimensions=2),
+            'VARCHAR(30)[][] COLLATE "en_US"'
+        )
+
+        self.assert_compile(
+            postgresql.ARRAY(Unicode(30, collation="en_US"), dimensions=3),
+            'VARCHAR(30)[][][] COLLATE "en_US"'
+        )
+
+
     def test_array_int_index(self):
         col = column('x', postgresql.ARRAY(Integer))
         self.assert_compile(
