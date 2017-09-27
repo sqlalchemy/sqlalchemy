@@ -1,5 +1,5 @@
 from sqlalchemy.testing import eq_, assert_raises, \
-    assert_raises_message, is_
+    assert_raises_message, is_, expect_warnings
 from sqlalchemy.ext import declarative as decl
 import sqlalchemy as sa
 from sqlalchemy import testing
@@ -1613,6 +1613,30 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         eq_(counter.mock_calls, [mock.call(A), mock.call(B)])
 
+    def test_property_cascade_mixin_override(self):
+        counter = mock.Mock()
+
+        class Mixin(object):
+            @declared_attr.cascading
+            def my_prop(cls):
+                counter(cls)
+                return column_property(cls.x + 2)
+
+        class A(Base, Mixin):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+
+        with expect_warnings(
+                "Attribute 'my_prop' on class .*B.* "
+                "cannot be processed due to @declared_attr.cascading; "
+                "skipping"):
+            class B(A):
+                my_prop = Column('foobar', Integer)
+
+        eq_(counter.mock_calls, [mock.call(A), mock.call(B)])
+
     def test_property_cascade_abstract(self):
         counter = mock.Mock()
 
@@ -1634,6 +1658,21 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             pass
 
         eq_(counter.mock_calls, [mock.call(A), mock.call(B)])
+
+    def test_warn_cascading_used_w_tablename(self):
+        class Mixin(object):
+            @declared_attr.cascading
+            def __tablename__(cls):
+                return "foo"
+
+        with expect_warnings(
+            "@declared_attr.cascading is not supported on the "
+            "__tablename__ attribute on class .*A."
+        ):
+            class A(Mixin, Base):
+                id = Column(Integer, primary_key=True)
+
+        eq_(A.__table__.name, "foo")
 
     def test_col_prop_attrs_associated_w_class_for_mapper_args(self):
         from sqlalchemy import Column

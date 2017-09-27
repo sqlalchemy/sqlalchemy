@@ -199,11 +199,24 @@ class declared_attr(interfaces._MappedAttribute, property):
         or MapperProperty-based declared attribute should be configured
         distinctly per mapped subclass, within a mapped-inheritance scenario.
 
-        .. note::
+        .. warning::
 
-            The :attr:`.declared_attr.cascading` modifier **only** applies
-            to the use of :class:`.declared_attr` on declarative mixin classes
-            and ``__abstract__`` classes.
+            The :attr:`.declared_attr.cascading` modifier has several
+            limitations:
+
+            * The flag **only** applies to the use of :class:`.declared_attr`
+              on declarative mixin classes and ``__abstract__`` classes; it
+              currently has no effect when used on a mapped class directly.
+
+            * The flag **only** applies to normally-named attributes, e.g.
+              not any special underscore attributes such as ``__tablename__``.
+              On these attributes it has **no** effect.
+
+            * The flag currently **does not allow further overrides** down
+              the class hierarchy; if a subclass tries to override the
+              attribute, a warning is emitted and the overridden attribute
+              is skipped.  This is a limitation that it is hoped will be
+              resolved at some point.
 
         Below, both MyClass as well as MySubClass will have a distinct
         ``id`` Column object established::

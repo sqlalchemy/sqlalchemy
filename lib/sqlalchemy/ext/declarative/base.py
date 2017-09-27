@@ -88,6 +88,19 @@ def _as_declarative(cls, classname, dict_):
     _MapperConfig.setup_mapping(cls, classname, dict_)
 
 
+def _check_declared_props_nocascade(obj, name, cls):
+
+    if isinstance(obj, declarative_props):
+        if getattr(obj, '_cascading', False):
+            util.warn(
+                "@declared_attr.cascading is not supported on the %s "
+                "attribute on class %s.  This attribute invokes for "
+                "subclasses in any case." % (name, cls))
+        return True
+    else:
+        return False
+
+
 class _MapperConfig(object):
 
     @classmethod
@@ -167,9 +180,11 @@ class _MapperConfig(object):
 
             for name, obj in vars(base).items():
                 if name == '__mapper_args__':
+                    check_decl = \
+                        _check_declared_props_nocascade(obj, name, cls)
                     if not mapper_args_fn and (
                         not class_mapped or
-                        isinstance(obj, declarative_props)
+                        check_decl
                     ):
                         # don't even invoke __mapper_args__ until
                         # after we've determined everything about the
@@ -177,17 +192,21 @@ class _MapperConfig(object):
                         # make a copy of it so a class-level dictionary
                         # is not overwritten when we update column-based
                         # arguments.
-                        mapper_args_fn = lambda: dict(cls.__mapper_args__)
+                        mapper_args_fn = lambda: dict(cls.__mapper_args__)  # noqa
                 elif name == '__tablename__':
+                    check_decl = \
+                        _check_declared_props_nocascade(obj, name, cls)
                     if not tablename and (
                         not class_mapped or
-                        isinstance(obj, declarative_props)
+                        check_decl
                     ):
                         tablename = cls.__tablename__
                 elif name == '__table_args__':
+                    check_decl = \
+                        _check_declared_props_nocascade(obj, name, cls)
                     if not table_args and (
                         not class_mapped or
-                        isinstance(obj, declarative_props)
+                        check_decl
                     ):
                         table_args = cls.__table_args__
                         if not isinstance(
@@ -220,6 +239,18 @@ class _MapperConfig(object):
                     elif isinstance(obj, declarative_props):
                         oldclassprop = isinstance(obj, util.classproperty)
                         if not oldclassprop and obj._cascading:
+                            if name in dict_:
+                                # unfortunately, while we can use the user-
+                                # defined attribute here to allow a clean
+                                # override, if there's another
+                                # subclass below then it still tries to use
+                                # this.  not sure if there is enough information
+                                # here to add this as a feature later on.
+                                util.warn(
+                                    "Attribute '%s' on class %s cannot be "
+                                    "processed due to "
+                                    "@declared_attr.cascading; "
+                                    "skipping" % (name, cls))
                             dict_[name] = column_copies[obj] = \
                                 ret = obj.__get__(obj, cls)
                             setattr(cls, name, ret)
