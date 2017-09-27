@@ -661,6 +661,22 @@ class ColumnOperators(Operators):
         """Produce a :func:`~.expression.any_` clause against the
         parent object.
 
+        This operator is only appropriate against a scalar subquery
+        object, or for some backends an column expression that is
+        against the ARRAY type, e.g.::
+
+            # postgresql '5 = ANY (somearray)'
+            expr = 5 == mytable.c.somearray.any_()
+
+            # mysql '5 = ANY (SELECT value FROM table)'
+            expr = 5 == select([table.c.value]).as_scalar().any_()
+
+        .. seealso::
+
+            :func:`~.expression.any_` - standalone version
+
+            :func:`~.expression.all_` - ALL operator
+
         .. versionadded:: 1.1
 
         """
@@ -669,6 +685,22 @@ class ColumnOperators(Operators):
     def all_(self):
         """Produce a :func:`~.expression.all_` clause against the
         parent object.
+
+        This operator is only appropriate against a scalar subquery
+        object, or for some backends an column expression that is
+        against the ARRAY type, e.g.::
+
+            # postgresql '5 = ALL (somearray)'
+            expr = 5 == mytable.c.somearray.all_()
+
+            # mysql '5 = ALL (SELECT value FROM table)'
+            expr = 5 == select([table.c.value]).as_scalar().all_()
+
+        .. seealso::
+
+            :func:`~.expression.all_` - standalone version
+
+            :func:`~.expression.any_` - ANY operator
 
         .. versionadded:: 1.1
 
