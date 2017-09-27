@@ -2518,11 +2518,29 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5}
         )
 
+    def test_any_array_method(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == t.c.arrval.any_(),
+            ":param_1 = ANY (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
     def test_all_array(self):
         t = self._fixture()
 
         self.assert_compile(
             5 == all_(t.c.arrval),
+            ":param_1 = ALL (tab1.arrval)",
+            checkparams={"param_1": 5}
+        )
+
+    def test_all_array_method(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == t.c.arrval.all_(),
             ":param_1 = ALL (tab1.arrval)",
             checkparams={"param_1": 5}
         )
@@ -2635,11 +2653,31 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={'data_1': 10, 'param_1': 5}
         )
 
+    def test_any_subq_method(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == select([t.c.data]).where(t.c.data < 10).as_scalar().any_(),
+            ":param_1 = ANY (SELECT tab1.data "
+            "FROM tab1 WHERE tab1.data < :data_1)",
+            checkparams={'data_1': 10, 'param_1': 5}
+        )
+
     def test_all_subq(self):
         t = self._fixture()
 
         self.assert_compile(
             5 == all_(select([t.c.data]).where(t.c.data < 10)),
+            ":param_1 = ALL (SELECT tab1.data "
+            "FROM tab1 WHERE tab1.data < :data_1)",
+            checkparams={'data_1': 10, 'param_1': 5}
+        )
+
+    def test_all_subq_method(self):
+        t = self._fixture()
+
+        self.assert_compile(
+            5 == select([t.c.data]).where(t.c.data < 10).as_scalar().all_(),
             ":param_1 = ALL (SELECT tab1.data "
             "FROM tab1 WHERE tab1.data < :data_1)",
             checkparams={'data_1': 10, 'param_1': 5}

@@ -15,7 +15,7 @@ from .elements import BindParameter, True_, False_, BinaryExpression, \
     Null, _const_expr, _clause_element_as_expr, \
     ClauseList, ColumnElement, TextClause, UnaryExpression, \
     collate, _is_literal, _literal_as_text, ClauseElement, and_, or_, \
-    Slice, Visitable, _literal_as_binds
+    Slice, Visitable, _literal_as_binds, CollectionAggregate
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 
@@ -250,6 +250,8 @@ operator_lookup = {
     "json_path_getitem_op": (_binary_operate, ),
     "json_getitem_op": (_binary_operate, ),
     "concat_op": (_binary_operate,),
+    "any_op": (_scalar, CollectionAggregate._create_any),
+    "all_op": (_scalar, CollectionAggregate._create_all),
     "lt": (_boolean_compare, operators.ge),
     "le": (_boolean_compare, operators.gt),
     "ne": (_boolean_compare, operators.eq),
