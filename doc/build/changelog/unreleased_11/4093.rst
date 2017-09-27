@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4093
+    :versions: 1.2.0b3
+
+    Fixed bug where the recently added :meth:`.ColumnOperators.any_`
+    and :meth:`.ColumnOperators.all_` methods didn't work when called
+    as methods, as opposed to using the standalone functions
+    :func:`~.expression.any_` and :func:`~.expression.all_`.  Also
+    added documentation examples for these relatively unintuitive
+    SQL operators.
