@@ -16,6 +16,7 @@ from sqlalchemy.schema import DDL, Index
 from sqlalchemy import event
 from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy import ForeignKey
+import re
 
 metadata, users = None, None
 
@@ -639,6 +640,50 @@ class ComponentReflectionTest(fixtures.TablesTest):
             # differently, so ignore this flag
             refl.pop('duplicates_index', None)
             eq_(orig, refl)
+
+    @testing.requires.check_constraint_reflection
+    def test_get_check_constraints(self):
+        self._test_get_check_constraints()
+
+    @testing.requires.check_constraint_reflection
+    @testing.requires.schemas
+    def test_get_check_constraints_schema(self):
+        self._test_get_check_constraints(schema=testing.config.test_schema)
+
+    @testing.provide_metadata
+    def _test_get_check_constraints(self, schema=None):
+        orig_meta = self.metadata
+        Table(
+            'sa_cc', orig_meta,
+            Column('a', Integer()),
+            sa.CheckConstraint('a > 1 AND a < 5', name='cc1'),
+            sa.CheckConstraint('a = 1 OR (a > 2 AND a < 5)', name='cc2'),
+            schema=schema
+        )
+
+        orig_meta.create_all()
+
+        inspector = inspect(orig_meta.bind)
+        reflected = sorted(
+            inspector.get_check_constraints('sa_cc', schema=schema),
+            key=operator.itemgetter('name')
+        )
+
+        reflected = [
+            {"name": item["name"],
+             # trying to minimize effect of quoting, parenthesis, etc.
+             # may need to add more to this as new dialects get CHECK
+             # constraint reflection support
+             "sqltext": re.sub(r"[`'\(\)]", '', item["sqltext"].lower())}
+            for item in reflected
+        ]
+        eq_(
+            reflected,
+            [
+                {'name': 'cc1', 'sqltext': 'a > 1 and a < 5'},
+                {'name': 'cc2', 'sqltext': 'a = 1 or a > 2 and a < 5'}
+            ]
+        )
 
     @testing.provide_metadata
     def _test_get_view_definition(self, schema=None):

@@ -382,6 +382,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def check_constraint_reflection(self):
+        """target dialect supports reflection of check constraints"""
+        return exclusions.closed()
+
+    @property
     def duplicate_key_raises_integrity_error(self):
         """target dialect raises IntegrityError when reporting an INSERT
         with a primary key violation.  (hint: it should)

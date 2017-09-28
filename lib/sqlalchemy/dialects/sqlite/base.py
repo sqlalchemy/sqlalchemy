@@ -1545,14 +1545,19 @@ class SQLiteDialect(default.DefaultDialect):
     def _get_table_sql(self, connection, table_name, schema=None, **kw):
         try:
             s = ("SELECT sql FROM "
-                 " (SELECT * FROM sqlite_master UNION ALL "
-                 "  SELECT * FROM sqlite_temp_master) "
-                 "WHERE name = '%s' "
-                 "AND type = 'table'") % table_name
+                 " (SELECT * FROM %(schema)ssqlite_master UNION ALL "
+                 "  SELECT * FROM %(schema)ssqlite_temp_master) "
+                 "WHERE name = '%(table)s' "
+                 "AND type = 'table'" % {
+                     "schema": ("%s." % schema) if schema else "",
+                     "table": table_name})
             rs = connection.execute(s)
         except exc.DBAPIError:
-            s = ("SELECT sql FROM sqlite_master WHERE name = '%s' "
-                 "AND type = 'table'") % table_name
+            s = ("SELECT sql FROM %(schema)ssqlite_master "
+                 "WHERE name = '%(table)s' "
+                 "AND type = 'table'" % {
+                     "schema": ("%s." % schema) if schema else "",
+                     "table": table_name})
             rs = connection.execute(s)
         return rs.scalar()
 
