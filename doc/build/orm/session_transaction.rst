@@ -81,7 +81,7 @@ The example below illustrates this lifecycle::
         # state.  Neither of these steps are usually essential.
         # However, if the commit() or rollback() itself experienced
         # an unanticipated internal failure (such as due to a mis-behaved
-        # user-defined event handler), .close() will ensure that 
+        # user-defined event handler), .close() will ensure that
         # invalid state is removed.
         session.close()
 
@@ -141,39 +141,45 @@ things like unique constraint exceptions::
 Autocommit Mode
 ---------------
 
-The example of :class:`.Session` transaction lifecycle illustrated at
-the start of :ref:`unitofwork_transaction` applies to a :class:`.Session` configured in the
-default mode of ``autocommit=False``.   Constructing a :class:`.Session`
-with ``autocommit=True`` produces a :class:`.Session` placed into "autocommit" mode, where each SQL statement
-invoked by a :meth:`.Session.query` or :meth:`.Session.execute` occurs
-using a new connection from the connection pool, discarding it after
-results have been iterated.   The :meth:`.Session.flush` operation
-still occurs within the scope of a single transaction, though this transaction
-is closed out after the :meth:`.Session.flush` operation completes.
+The examples of session lifecycle at :ref:`unitofwork_transaction` refer
+to a :class:`.Session` that runs in its default mode of ``autocommit=False``.
+In this mode, the :class:`.Session` begins new transactions automatically
+as soon as it needs to do work upon a database connection; the transaction
+then stays in progress until the :meth:`.Session.commit` or :meth:`.Session.rollback`
+methods are called.
+
+The :class:`.Session` also features an older legacy mode of use called
+**autocommit mode**, where a transaction is not started implicitly, and unless
+the the :meth:`.Session.begin` method is invoked, the :class:`.Session` will
+perform each database operation on a new connection checked out from the
+connection pool, which is then released back to the pool immediately
+after the operation completes.  This refers to
+methods like :meth:`.Session.execute` as well as when executing a query
+returned by :meth:`.Session.query`.  For a flush operation, the :class:`.Session`
+starts a new transaction for the duration of the flush, and commits it when
+complete.
 
 .. warning::
 
-    "autocommit" mode should **not be considered for general use**.
-    If used, it should always be combined with the usage of
-    :meth:`.Session.begin` and :meth:`.Session.commit`, to ensure
-    a transaction demarcation.
+    "autocommit" mode is a **legacy mode of use** and should not be
+    considered for new projects.   If autocommit mode is used, it is strongly
+    advised that the application at least ensure that tranasction scope
+    is made present via the :meth:`.Session.begin` method, rather than
+    using the session in pure autocommit mode.
 
-    Executing queries outside of a demarcated transaction is a legacy mode
-    of usage, and can in some cases lead to concurrent connection
-    checkouts.
+    If the :meth:`.Session.begin` method is not used, and operations are allowed
+    to proceed using ad-hoc connections with immediate autocommit, then the
+    application probably should set ``autoflush=False, expire_on_commit=False``,
+    since these features are intended to be used only within the context
+    of a database transaction.
 
-    In the absence of a demarcated transaction, the :class:`.Session`
-    cannot make appropriate decisions as to when autoflush should
-    occur nor when auto-expiration should occur, so these features
-    should be disabled with ``autoflush=False, expire_on_commit=False``.
-
-Modern usage of "autocommit" is for framework integrations that need to control
-specifically when the "begin" state occurs.  A session which is configured with
-``autocommit=True`` may be placed into the "begin" state using the
-:meth:`.Session.begin` method.
-After the cycle completes upon :meth:`.Session.commit` or :meth:`.Session.rollback`,
-connection and transaction resources are :term:`released` and the :class:`.Session`
-goes back into "autocommit" mode, until :meth:`.Session.begin` is called again::
+Modern usage of "autocommit mode" tends to be for framework integrations that
+wish to control specifically when the "begin" state occurs.  A session which is
+configured with ``autocommit=True`` may be placed into the "begin" state using
+the :meth:`.Session.begin` method. After the cycle completes upon
+:meth:`.Session.commit` or :meth:`.Session.rollback`, connection and
+transaction resources are :term:`released` and the :class:`.Session` goes back
+into "autocommit" mode, until :meth:`.Session.begin` is called again::
 
     Session = sessionmaker(bind=engine, autocommit=True)
     session = Session()
@@ -189,7 +195,7 @@ goes back into "autocommit" mode, until :meth:`.Session.begin` is called again::
         raise
 
 The :meth:`.Session.begin` method also returns a transactional token which is
-compatible with the Python 2.6 ``with`` statement::
+compatible with the ``with`` statement::
 
     Session = sessionmaker(bind=engine, autocommit=True)
     session = Session()
