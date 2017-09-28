@@ -202,6 +202,35 @@ class ParseConnectTest(fixtures.TestBase):
 
         eq_(dialect.is_disconnect("not an error", None, None), False)
 
+    def test_pyodbc_disconnect(self):
+        dialect = pyodbc.dialect()
+
+        class MockDBAPIError(Exception):
+            pass
+
+        class MockProgrammingError(MockDBAPIError):
+            pass
+
+        dialect.dbapi = Mock(
+            Error=MockDBAPIError, ProgrammingError=MockProgrammingError)
+
+        for error in [
+            MockDBAPIError("[%s] some pyodbc message" % code)
+            for code in [
+                '08S01', '01002', '08003', '08007',
+                '08S02', '08001', 'HYT00', 'HY010']
+        ] + [
+            MockProgrammingError(message)
+            for message in [
+                "(some pyodbc stuff) The cursor's connection has been closed.",
+                "(some pyodbc stuff) Attempt to use a closed connection."
+            ]
+        ]:
+            eq_(dialect.is_disconnect(error, None, None), True)
+
+        eq_(dialect.is_disconnect(
+            MockProgrammingError("not an error"), None, None), False)
+
     @testing.requires.mssql_freetds
     def test_bad_freetds_warning(self):
         engine = engines.testing_engine()
