@@ -124,8 +124,6 @@ class PyODBCConnector(Connector):
         if isinstance(e, self.dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(e) or \
                 'Attempt to use a closed connection.' in str(e)
-        elif isinstance(e, self.dbapi.Error):
-            return '[08S01]' in str(e)
         else:
             return False
 

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4095
+    :versions: 1.2.0b3
+
+    Added a full range of "connection closed" exception codes to the
+    PyODBC dialect for SQL Server, including '08S01', '01002', '08003',
+    '08007', '08S02', '08001', 'HYT00', 'HY010'.  Previously, only '08S01'
+    was covered.
