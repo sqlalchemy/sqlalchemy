@@ -389,6 +389,7 @@ class DefaultRequirements(SuiteRequirements):
         return self.unique_constraint_reflection + \
             skip_if("mysql")  + skip_if("oracle")
 
+
     @property
     def check_constraint_reflection(self):
         return fails_on_everything_except(
