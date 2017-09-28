@@ -778,20 +778,35 @@ class Session(_SessionClassMethods):
     def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this :class:`.Session`.
 
-        The :meth:`.Session.begin` method is only
-        meaningful if this session is in **autocommit mode** prior to
-        it being called; see :ref:`session_autocommit` for background
-        on this setting.
+        .. warning::
 
-        The method will raise an error if this :class:`.Session`
-        is already inside of a transaction, unless
-        :paramref:`.Session.begin.subtransactions` or
-        :paramref:`.Session.begin.nested` are specified.
+            The :meth:`.Session.begin` method is part of a larger pattern
+            of use with the :class:`.Session` known as **autocommit mode**.
+            This is essentially a **legacy mode of use** and is
+            not necessary for new applications.    The :class:`.Session`
+            normally handles the work of "begin" transparently, which in
+            turn relies upon the Python DBAPI to transparently "begin"
+            transactions; there is **no need to explcitly begin transactions**
+            when using modern :class:`.Session` programming patterns.
+            In its default mode of ``autocommit=False``, the
+            :class:`.Session` does all of its work within
+            the context of a transaction, so as soon as you call
+            :meth:`.Session.commit`, the next transaction is implicitly
+            started when the next database operation is invoked.  See
+            :ref:`session_autocommit` for further background.
+
+        The method will raise an error if this :class:`.Session` is already
+        inside of a transaction, unless
+        :paramref:`~.Session.begin.subtransactions` or
+        :paramref:`~.Session.begin.nested` are specified.  A "subtransaction"
+        is essentially a code embedding pattern that does not affect the
+        transactional state of the database connection unless a rollback is
+        emitted, in which case the whole transaction is rolled back.  For
+        documentation on subtransactions, please see
+        :ref:`session_subtransactions`.
 
         :param subtransactions: if True, indicates that this
-         :meth:`~.Session.begin` can create a subtransaction if a transaction
-         is already in progress. For documentation on subtransactions, please
-         see :ref:`session_subtransactions`.
+         :meth:`~.Session.begin` can create a "subtransaction".
 
         :param nested: if True, begins a SAVEPOINT transaction and is equivalent
          to calling :meth:`~.Session.begin_nested`. For documentation on
