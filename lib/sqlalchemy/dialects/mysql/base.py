@@ -1868,6 +1868,21 @@ class MySQLDialect(default.DefaultDialect):
 
         default.DefaultDialect.initialize(self, connection)
 
+        self._warn_for_known_db_issues()
+
+    def _warn_for_known_db_issues(self):
+        if self._is_mariadb:
+            mdb_version = self._mariadb_normalized_version_info
+            if mdb_version > (10, 2) and mdb_version < (10, 2, 9):
+                util.warn(
+                    "MariaDB %r before 10.2.9 has known issues regarding "
+                    "CHECK constraints, which impact handling of NULL values "
+                    "with SQLAlchemy's boolean datatype (MDEV-13596). An "
+                    "additional issue prevents proper migrations of columns "
+                    "with CHECK constraints (MDEV-11114).  Please upgrade to "
+                    "MariaDB 10.2.9 or greater, or use the MariaDB 10.1 "
+                    "series, to avoid these issues." % (mdb_version, ))
+
     @property
     def _is_mariadb(self):
         return 'MariaDB' in self.server_version_info
