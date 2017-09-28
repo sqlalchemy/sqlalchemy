@@ -710,7 +710,23 @@ class ConnectionEvents(event.Events):
         the scope of this hook; the rollback of the per-statement transaction
         also occurs after the hook is called.
 
-        The user-defined event handler has two options for replacing
+        For the common case of detecting a "disconnect" situation which
+        is not currently handled by the SQLAlchemy dialect, the
+        :attr:`.ExceptionContext.is_disconnect` flag can be set to True which
+        will cause the exception to be considered as a disconnect situation,
+        which typically results in the connection pool being invalidated::
+
+            @event.listens_for(Engine, "handle_error")
+            def handle_exception(context):
+                if isinstance(context.original_exception, pyodbc.Error):
+                    for code in (
+                        '08S01', '01002', '08003',
+                        '08007', '08S02', '08001', 'HYT00', 'HY010'):
+
+                        if code in str(context.original_exception):
+                            context.is_disconnect = True
+
+        A handler function has two options for replacing
         the SQLAlchemy-constructed exception into one that is user
         defined.   It can either raise this new exception directly, in
         which case all further event listeners are bypassed and the
@@ -748,9 +764,10 @@ class ConnectionEvents(event.Events):
                     return MySpecialException("failed",
                         cause=context.chained_exception)
 
-        Handlers that return ``None`` may remain within this chain; the
-        last non-``None`` return value is the one that continues to be
-        passed to the next handler.
+        Handlers that return ``None`` may be used within the chain; when
+        a handler returns ``None``, the previous exception instance,
+        if any, is maintained as the current exception that is passed onto the
+        next handler.
 
         When a custom exception is raised or returned, SQLAlchemy raises
         this new exception as-is, it is not wrapped by any SQLAlchemy
