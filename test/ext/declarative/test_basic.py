@@ -1159,7 +1159,7 @@ class DeclarativeTest(DeclarativeTestBase):
         from sqlalchemy.schema import Column, PrimaryKeyConstraint
 
         class AutoTable(object):
-            @declared_attr.cascading
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__
 
