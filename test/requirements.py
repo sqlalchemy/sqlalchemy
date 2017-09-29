@@ -386,9 +386,9 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def check_constraint_reflection(self):
-        return only_if(
-            ["postgresql", "sqlite", "oracle",
-            self._mariadb_102]
+        return fails_on_everything_except(
+            "postgresql", "sqlite", "oracle",
+            self._mariadb_102
         )
 
     @property
