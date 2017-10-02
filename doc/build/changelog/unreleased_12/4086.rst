@@ -1,0 +1,10 @@
+.. change::
+    :tags: feature, mssql
+    :tickets: 4086
+
+    Added a new :class:`.mssql.TIMESTAMP` datatype, that
+    correctly acts like a binary datatype for SQL Server
+    rather than a datetime type, as SQL Server breaks the
+    SQL standard here.  Also added :class:`.mssql.ROWVERSION`,
+    as the "TIMESTAMP" type in SQL Server is deprecated in
+    favor of ROWVERSION.

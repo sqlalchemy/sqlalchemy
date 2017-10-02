@@ -1576,7 +1576,6 @@ def createTables(meta, schema=None):
                   Column('test3', sa.Text),
                   Column('test4', sa.Numeric(10, 2), nullable=False),
                   Column('test5', sa.Date),
-                  Column('test5_1', sa.TIMESTAMP),
                   Column('parent_user_id', sa.Integer,
                          sa.ForeignKey('%susers.user_id' % schema_prefix)),
                   Column('test6', sa.Date, nullable=False),
