@@ -193,6 +193,9 @@ class PluginLoader(object):
         self.impls = {}
         self.auto_fn = auto_fn
 
+    def clear(self):
+        self.impls.clear()
+
     def load(self, name):
         if name in self.impls:
             return self.impls[name]()

@@ -594,6 +594,7 @@ class ReturnTypeTest(fixtures.TestBase):
 
 
 class ExecuteTest(fixtures.TestBase):
+    __backend__ = True
 
     @engines.close_first
     def tearDown(self):
@@ -708,14 +709,7 @@ class ExecuteTest(fixtures.TestBase):
         w = select(['*'], from_obj=[func.current_date(bind=testing.db)]).\
             scalar()
 
-        # construct a column-based FROM object out of a function,
-        # like in [ticket:172]
-        s = select([sql.column('date', type_=DateTime)],
-                   from_obj=[func.current_date(bind=testing.db)])
-        q = s.execute().first()[s.c.date]
-        r = s.alias('datequery').select().scalar()
-
-        assert x == y == z == w == q == r
+        assert x == y == z == w
 
     def test_extract_bind(self):
         """Basic common denominator execution tests for extract()"""
