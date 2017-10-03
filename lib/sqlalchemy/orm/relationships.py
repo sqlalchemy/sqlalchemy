@@ -1799,6 +1799,15 @@ class RelationshipProperty(StrategizedProperty):
                 (self.key, self.parent.class_)
             )
 
+    def _persists_for(self, mapper):
+        """Return True if this property will persist values on behalf
+        of the given mapper.
+
+        """
+
+        return self.key in mapper.relationships and \
+            mapper.relationships[self.key] is self
+
     def _columns_are_mapped(self, *cols):
         """Return True if all columns in the given collection are
         mapped by the tables referenced by this :class:`.Relationship`.
@@ -2673,10 +2682,16 @@ class JoinCondition(object):
             else:
                 other_props = []
                 prop_to_from = self._track_overlapping_sync_targets[to_]
+
                 for pr, fr_ in prop_to_from.items():
                     if pr.mapper in mapperlib._mapper_registry and \
+                        (
+                            self.prop._persists_for(pr.parent) or
+                            pr._persists_for(self.prop.parent)
+                        ) and \
                         fr_ is not from_ and \
                             pr not in self.prop._reverse_property:
+
                         other_props.append((pr, fr_))
 
                 if other_props:
