@@ -16,6 +16,8 @@ from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import exc
 from sqlalchemy import inspect
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy.ext.declarative import declarative_base
 
 
 class _RelationshipErrors(object):
@@ -525,6 +527,166 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             sess.query(Entity).join(Entity.descendants, aliased=True),
             "SELECT entity.path AS entity_path FROM entity JOIN entity AS "
             "entity_1 ON entity_1.path LIKE entity.path || :path_1"
+        )
+
+
+class OverlappingFksSiblingTest(fixtures.TestBase):
+    """Test multiple relationships that use sections of the same
+    composite foreign key.
+
+    """
+
+    def teardown(self):
+        clear_mappers()
+
+    def _fixture_one(
+            self, add_b_a=False, add_b_a_viewonly=False, add_b_amember=False,
+            add_bsub1_a=False, add_bsub2_a_viewonly=False):
+
+        Base = declarative_base(metadata=self.metadata)
+
+        class A(Base):
+
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            a_members = relationship('AMember', backref='a')
+
+        class AMember(Base):
+
+            __tablename__ = 'a_member'
+
+            a_id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+            a_member_id = Column(Integer, primary_key=True)
+
+        class B(Base):
+            __tablename__ = 'b'
+
+            __mapper_args__ = {
+                'polymorphic_on': 'type'
+            }
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+
+            a_id = Column(Integer, ForeignKey('a.id'), nullable=False)
+            a_member_id = Column(Integer)
+
+            __table_args__ = (
+                ForeignKeyConstraint(
+                    ('a_id', 'a_member_id'),
+                    ('a_member.a_id', 'a_member.a_member_id')),
+            )
+
+            # if added and viewonly is not true, this relationship
+            # writes to B.a_id, which conflicts with BSub2.a_member,
+            # so should warn
+            if add_b_a:
+                a = relationship('A', viewonly=add_b_a_viewonly)
+
+            # if added, this relationship writes to B.a_id, which conflicts
+            # with BSub1.a
+            if add_b_amember:
+                a_member = relationship('AMember')
+
+        # however, *no* warning should be emitted otherwise.
+
+        class BSub1(B):
+
+            if add_bsub1_a:
+                a = relationship('A')
+
+            __mapper_args__ = {'polymorphic_identity': 'bsub1'}
+
+        class BSub2(B):
+
+            if add_bsub2_a_viewonly:
+                a = relationship("A", viewonly=True)
+
+            a_member = relationship('AMember')
+
+            __mapper_args__ = {'polymorphic_identity': 'bsub2'}
+
+        configure_mappers()
+        self.metadata.create_all()
+
+        return A, AMember, B, BSub1, BSub2
+
+    @testing.provide_metadata
+    def _test_fixture_one_run(self, **kw):
+        A, AMember, B, BSub1, BSub2 = self._fixture_one(**kw)
+
+        bsub2 = BSub2()
+        am1 = AMember(a_member_id=1)
+
+        a1 = A(a_members=[am1])
+        bsub2.a_member = am1
+
+        bsub1 = BSub1()
+        a2 = A()
+        bsub1.a = a2
+
+        session = Session(testing.db)
+        session.add_all([bsub1, bsub2, am1, a1, a2])
+        session.commit()
+
+        assert bsub1.a is a2
+        assert bsub2.a is a1
+
+        # meaningless, because BSub1 doesn't have a_member
+        bsub1.a_member = am1
+
+        # meaningless, because BSub2's ".a" is viewonly=True
+        bsub2.a = a2
+
+        session.commit()
+        assert bsub1.a is a2  # beacuse bsub1.a_member is not a relationship
+        assert bsub2.a is a1  # because bsub2.a is viewonly=True
+
+        # everyone has a B.a relationship
+        eq_(
+            session.query(B, A).outerjoin(B.a).order_by(B.id).all(),
+            [(bsub1, a2), (bsub2, a1)]
+        )
+
+    @testing.provide_metadata
+    def test_warn_one(self):
+        assert_raises_message(
+            exc.SAWarning,
+            r"relationship '(?:BSub1.a|BSub2.a_member|B.a)' will copy column "
+            r"(?:a.id|a_member.a_id) to column b.a_id",
+            self._fixture_one, add_b_a=True, add_bsub1_a=True
+        )
+
+    @testing.provide_metadata
+    def test_warn_two(self):
+        assert_raises_message(
+            exc.SAWarning,
+            r"relationship '(?:BSub1.a|B.a_member)' will copy column "
+            r"(?:a.id|a_member.a_id) to column b.a_id",
+            self._fixture_one, add_b_amember=True, add_bsub1_a=True
+        )
+
+    @testing.provide_metadata
+    def test_warn_three(self):
+        assert_raises_message(
+            exc.SAWarning,
+            r"relationship '(?:BSub1.a|B.a_member|B.a)' will copy column "
+            r"(?:a.id|a_member.a_id) to column b.a_id",
+            self._fixture_one, add_b_amember=True, add_bsub1_a=True,
+            add_b_a=True
+        )
+
+    @testing.provide_metadata
+    def test_works_one(self):
+        self._test_fixture_one_run(
+            add_b_a=True, add_b_a_viewonly=True, add_bsub1_a=True
+        )
+
+    @testing.provide_metadata
+    def test_works_two(self):
+        self._test_fixture_one_run(
+            add_b_a=True, add_bsub2_a_viewonly=True
         )
 
 
