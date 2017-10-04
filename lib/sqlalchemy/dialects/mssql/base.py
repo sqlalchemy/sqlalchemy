@@ -607,6 +607,7 @@ http://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
 
 """
+import codecs
 import datetime
 import operator
 import re
@@ -617,7 +618,7 @@ from ... import engine
 from ...engine import reflection, default
 from ... import types as sqltypes
 from ...types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
-    FLOAT, TIMESTAMP, DATETIME, DATE, BINARY,\
+    FLOAT, DATETIME, DATE, BINARY,\
     TEXT, VARCHAR, NVARCHAR, CHAR, NCHAR
 
 
@@ -793,6 +794,75 @@ class _StringType(object):
         super(_StringType, self).__init__(collation=collation)
 
 
+class TIMESTAMP(sqltypes._Binary):
+    """Implement the SQL Server TIMESTAMP type.
+
+    Note this is **completely different** than the SQL Standard
+    TIMESTAMP type, which is not supported by SQL Server.  It
+    is a read-only datatype that does not support INSERT of values.
+
+    .. versionadded:: 1.2
+
+    .. seealso::
+
+        :class:`.mssql.ROWVERSION`
+
+    """
+
+    __visit_name__ = 'TIMESTAMP'
+
+    # expected by _Binary to be present
+    length = None
+
+    def __init__(self, convert_int=False):
+        """Construct a TIMESTAMP or ROWVERSION type.
+
+        :param convert_int: if True, binary integer values will
+         be converted to integers on read.
+
+        .. versionadded:: 1.2
+
+        """
+        self.convert_int = convert_int
+
+    def result_processor(self, dialect, coltype):
+        super_ = super(TIMESTAMP, self).result_processor(dialect, coltype)
+        if self.convert_int:
+            def process(value):
+                value = super_(value)
+                if value is not None:
+                    # https://stackoverflow.com/a/30403242/34549
+                    value = int(codecs.encode(value, 'hex'), 16)
+                return value
+            return process
+        else:
+            return super_
+
+
+class ROWVERSION(TIMESTAMP):
+    """Implement the SQL Server ROWVERSION type.
+
+    The ROWVERSION datatype is a SQL Server synonym for the TIMESTAMP
+    datatype, however current SQL Server documentation suggests using
+    ROWVERSION for new datatypes going forward.
+
+    The ROWVERSION datatype does **not** reflect (e.g. introspect) from the
+    database as itself; the returned datatype will be
+    :class:`.mssql.TIMESTAMP`.
+
+    This is a read-only datatype that does not support INSERT of values.
+
+    .. versionadded:: 1.2
+
+    .. seealso::
+
+        :class:`.mssql.TIMESTAMP`
+
+    """
+
+    __visit_name__ = 'ROWVERSION'
+
+
 class NTEXT(sqltypes.UnicodeText):
 
     """MSSQL NTEXT type, for variable-length unicode text up to 2^30
@@ -959,6 +1029,12 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
             return "TIME(%s)" % precision
         else:
             return "TIME"
+
+    def visit_TIMESTAMP(self, type_, **kw):
+        return "TIMESTAMP"
+
+    def visit_ROWVERSION(self, type_, **kw):
+        return "ROWVERSION"
 
     def visit_DATETIME2(self, type_, **kw):
         precision = getattr(type_, 'precision', None)

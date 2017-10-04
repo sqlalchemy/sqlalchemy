@@ -4,9 +4,10 @@ from sqlalchemy.testing import is_, is_not_
 import datetime
 import os
 from sqlalchemy import Table, Column, MetaData, Float, \
-    Integer, String, Boolean, TIMESTAMP, Sequence, Numeric, select, \
+    Integer, String, Boolean, Sequence, Numeric, select, \
     Date, Time, DateTime, DefaultClause, PickleType, text, Text, \
     UnicodeText, LargeBinary
+from sqlalchemy.dialects.mssql import TIMESTAMP, ROWVERSION
 from sqlalchemy import types, schema
 from sqlalchemy import util
 from sqlalchemy.databases import mssql
@@ -18,6 +19,10 @@ from sqlalchemy import testing
 from sqlalchemy.testing import emits_warning_on
 import decimal
 from sqlalchemy.util import b
+from sqlalchemy import inspect
+from sqlalchemy.sql import sqltypes
+import sqlalchemy as sa
+import codecs
 
 
 class TimeTypeTest(fixtures.TestBase):
@@ -79,6 +84,95 @@ class MSDateTypeTest(fixtures.TestBase):
                     extract(field, fivedaysago)])
             ).scalar()
             eq_(r, exp)
+
+
+class RowVersionTest(fixtures.TablesTest):
+    __only_on__ = 'mssql'
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'rv_t', metadata,
+            Column('data', String(50)),
+            Column('rv', ROWVERSION)
+        )
+
+        Table(
+            'ts_t', metadata,
+            Column('data', String(50)),
+            Column('rv', TIMESTAMP)
+        )
+
+    def test_rowversion_reflection(self):
+        # ROWVERSION is only a synonym for TIMESTAMP
+        insp = inspect(testing.db)
+        assert isinstance(
+            insp.get_columns('rv_t')[1]['type'], TIMESTAMP
+        )
+
+    def test_timestamp_reflection(self):
+        insp = inspect(testing.db)
+        assert isinstance(
+            insp.get_columns('ts_t')[1]['type'], TIMESTAMP
+        )
+
+    def test_class_hierarchy(self):
+        """TIMESTAMP and ROWVERSION aren't datetime types, theyre binary."""
+
+        assert issubclass(TIMESTAMP, sqltypes._Binary)
+        assert issubclass(ROWVERSION, sqltypes._Binary)
+
+    def test_round_trip_ts(self):
+        self._test_round_trip('ts_t', TIMESTAMP, False)
+
+    def test_round_trip_rv(self):
+        self._test_round_trip('rv_t', ROWVERSION, False)
+
+    def test_round_trip_ts_int(self):
+        self._test_round_trip('ts_t', TIMESTAMP, True)
+
+    def test_round_trip_rv_int(self):
+        self._test_round_trip('rv_t', ROWVERSION, True)
+
+    def _test_round_trip(self, tab, cls, convert_int):
+        t = Table(
+            tab, MetaData(),
+            Column('data', String(50)),
+            Column('rv', cls(convert_int=convert_int))
+        )
+
+        with testing.db.connect() as conn:
+            conn.execute(t.insert().values(data='foo'))
+            last_ts_1 = conn.scalar("SELECT @@DBTS")
+
+            if convert_int:
+                last_ts_1 = int(codecs.encode(last_ts_1, 'hex'), 16)
+
+            eq_(conn.scalar(select([t.c.rv])), last_ts_1)
+
+            conn.execute(
+                t.update().values(data='bar').where(t.c.data == 'foo'))
+            last_ts_2 = conn.scalar("SELECT @@DBTS")
+            if convert_int:
+                last_ts_2 = int(codecs.encode(last_ts_2, 'hex'), 16)
+
+            eq_(conn.scalar(select([t.c.rv])), last_ts_2)
+
+    def test_cant_insert_rowvalue(self):
+        self._test_cant_insert(self.tables.rv_t)
+
+    def test_cant_insert_timestamp(self):
+        self._test_cant_insert(self.tables.ts_t)
+
+    def _test_cant_insert(self, tab):
+        with testing.db.connect() as conn:
+            assert_raises_message(
+                sa.exc.DBAPIError,
+                r".*Cannot insert an explicit value into a timestamp column.",
+                conn.execute,
+                tab.insert().values(data='ins', rv=b'000')
+            )
 
 
 class TypeDDLTest(fixtures.TestBase):
@@ -342,21 +436,6 @@ class TypeDDLTest(fixtures.TestBase):
                 str(LargeBinary().compile(dialect=dialect)),
                 "IMAGE"
             )
-
-    def test_timestamp(self):
-        """Exercise TIMESTAMP column."""
-
-        dialect = mssql.dialect()
-
-        metadata = MetaData()
-        spec, expected = (TIMESTAMP, 'TIMESTAMP')
-        t = Table(
-            'mssql_ts', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('t', spec, nullable=None))
-        gen = dialect.ddl_compiler(dialect, schema.CreateTable(t))
-        testing.eq_(gen.get_column_specification(t.c.t), "t %s" % expected)
-        self.assert_(repr(t.c.t))
 
     def test_money(self):
         """Exercise type specification for money types."""

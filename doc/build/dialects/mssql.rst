@@ -63,6 +63,8 @@ construction arguments, are as follows:
 .. autoclass:: REAL
    :members: __init__
 
+.. autoclass:: ROWVERSION
+   :members: __init__
 
 .. autoclass:: SMALLDATETIME
    :members: __init__
@@ -83,6 +85,9 @@ construction arguments, are as follows:
 .. autoclass:: TIME
    :members: __init__
 
+
+.. autoclass:: TIMESTAMP
+   :members: __init__
 
 .. autoclass:: TINYINT
    :members: __init__
