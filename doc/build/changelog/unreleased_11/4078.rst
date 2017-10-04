@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4078
+    :versions: 1.2.0b3
+
+    Fixed bug where ORM relationship would warn against conflicting sync
+    targets (e.g. two relationships would both write to the same column) for
+    sibling classes in an inheritance hierarchy, where the two relationships
+    would never actually conflict during writes.
