@@ -769,6 +769,38 @@ class RelationshipToSingleTest(
             "AND employees_1.type IN (:type_1)"
         )
 
+    def test_correlated_column_select(self):
+        Company, Employee, Engineer = (self.classes.Company,
+                                       self.classes.Employee,
+                                       self.classes.Engineer)
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies)
+        mapper(
+            Employee, employees,
+            polymorphic_on=employees.c.type,
+            properties={
+                'company': relationship(Company)
+            }
+        )
+        mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
+
+        sess = create_session()
+        engineer_count = sess.query(func.count(Engineer.employee_id)) \
+            .select_from(Engineer) \
+            .filter(Engineer.company_id == Company.company_id) \
+            .correlate(Company) \
+            .as_scalar()
+
+        self.assert_compile(
+            sess.query(Company.company_id, engineer_count),
+            "SELECT companies.company_id AS companies_company_id, "
+            "(SELECT count(employees.employee_id) AS count_1 "
+            "FROM employees WHERE employees.company_id = "
+            "companies.company_id AND employees.type IN (:type_1)) AS anon_1 "
+            "FROM companies"
+        )
+
     def test_no_aliasing_from_overlap(self):
         # test [ticket:3233]
 
