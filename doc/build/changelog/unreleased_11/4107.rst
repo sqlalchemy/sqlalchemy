@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4107
+    :versions: 1.2.0b3
+
+    Fixed bug in :obj:`.array_agg` function where passing an argument
+    that is already of type :class:`.ARRAY`, such as a Postgresql
+    :obj:`.postgresql.array` construct, would produce a ``ValueError``, due
+    to the function attempting to nest the arrays.

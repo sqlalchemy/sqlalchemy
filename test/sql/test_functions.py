@@ -554,12 +554,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class ReturnTypeTest(fixtures.TestBase):
+class ReturnTypeTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_array_agg(self):
         expr = func.array_agg(column('data', Integer))
         is_(expr.type._type_affinity, ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_array_agg_array_datatype(self):
+        expr = func.array_agg(column('data', ARRAY(Integer)))
+        is_(expr.type._type_affinity, ARRAY)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_array_agg_array_literal_implicit_type(self):
+        from sqlalchemy.dialects.postgresql import array, ARRAY as PG_ARRAY
+        expr = array([column('data', Integer), column('d2', Integer)])
+
+        assert isinstance(expr.type, PG_ARRAY)
+
+        agg_expr = func.array_agg(expr)
+        assert isinstance(agg_expr.type, PG_ARRAY)
+        is_(agg_expr.type._type_affinity, ARRAY)
+        is_(agg_expr.type.item_type._type_affinity, Integer)
+
+        self.assert_compile(
+            agg_expr,
+            "array_agg(ARRAY[data, d2])",
+            dialect="postgresql"
+        )
+
+    def test_array_agg_array_literal_explicit_type(self):
+        from sqlalchemy.dialects.postgresql import array
+        expr = array([column('data', Integer), column('d2', Integer)])
+
+        agg_expr = func.array_agg(expr, type_=ARRAY(Integer))
+        is_(agg_expr.type._type_affinity, ARRAY)
+        is_(agg_expr.type.item_type._type_affinity, Integer)
+
+        self.assert_compile(
+            agg_expr,
+            "array_agg(ARRAY[data, d2])",
+            dialect="postgresql"
+        )
 
     def test_mode(self):
         expr = func.mode(0.5).within_group(
