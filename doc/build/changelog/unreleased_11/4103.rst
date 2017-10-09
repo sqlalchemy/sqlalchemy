@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4103
+    :versions: 1.2.0b3
+
+    Fixed bug where correlated select used against single-table inheritance
+    entity would fail to render correctly in the outer query, due to adjustment
+    for single inheritance discriminator criteria inappropriately re-applying
+    the criteria to the outer query.

@@ -18,7 +18,7 @@ from collections import deque
 from .elements import BindParameter, ColumnClause, ColumnElement, \
     Null, UnaryExpression, literal_column, Label, _label_reference, \
     _textual_label_reference
-from .selectable import ScalarSelect, Join, FromClause, FromGrouping
+from .selectable import SelectBase, ScalarSelect, Join, FromClause, FromGrouping
 from .schema import Column
 
 join_condition = util.langhelpers.public_factory(
@@ -235,17 +235,21 @@ def surface_selectables(clause):
             stack.append(elem.element)
 
 
-def surface_column_elements(clause):
+def surface_column_elements(clause, include_scalar_selects=True):
     """traverse and yield only outer-exposed column elements, such as would
     be addressable in the WHERE clause of a SELECT if this element were
     in the columns clause."""
+
+    filter_ = (FromGrouping, )
+    if not include_scalar_selects:
+        filter_ += (SelectBase, )
 
     stack = deque([clause])
     while stack:
         elem = stack.popleft()
         yield elem
         for sub in elem.get_children():
-            if isinstance(sub, FromGrouping):
+            if isinstance(sub, filter_):
                 continue
             stack.append(sub)
 
