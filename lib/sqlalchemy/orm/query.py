@@ -4010,7 +4010,8 @@ class _ColumnEntity(_QueryEntity):
             self._from_entities = set(self.entities)
         else:
             all_elements = [
-                elem for elem in sql_util.surface_column_elements(column)
+                elem for elem in sql_util.surface_column_elements(
+                    column, include_scalar_selects=False)
                 if 'parententity' in elem._annotations
             ]
 
