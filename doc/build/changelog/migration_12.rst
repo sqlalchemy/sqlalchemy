@@ -1351,6 +1351,33 @@ is already applied.
 Dialect Improvements and Changes - PostgreSQL
 =============================================
 
+.. _change_4109:
+
+Support for Batch Mode / Fast Execution Helpers
+------------------------------------------------
+
+The psycopg2 ``cursor.executemany()`` method has been identified as performing
+poorly, particularly with INSERT statements.   To alleviate this, psycopg2
+has added `Fast Execution Helpers <http://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_
+which rework statements such as INSERT statements into fewer SQL calls with
+multiple VALUES clauses.   SQLAlchemy 1.2 now includes support for these
+helpers to be used transparently whenever the :class:`.Engine` makes use
+of ``cursor.executemany()`` to invoke a statement against multiple parameter
+sets.   The feature is off by default and can be enabled using the
+``use_batch_mode`` argument on :func:`.create_engine`::
+
+    engine = create_engine(
+        "postgresql+psycopg2://scott:tiger@host/dbname",
+        use_batch_mode=True)
+
+The feature is considered to be experimental for the moment but may become
+on by default in a future release.
+
+.. seealso::
+
+    :ref:`psycopg2_batch_mode`
+
+
 .. _change_3959:
 
 Support for fields specification in INTERVAL, including full reflection

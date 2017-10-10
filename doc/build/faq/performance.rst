@@ -298,6 +298,12 @@ SQL generation and execution system that the ORM builds on top of
 is part of the :doc:`Core <core/tutorial>`.  Using this system directly, we can produce an INSERT that
 is competitive with using the raw database API directly.
 
+.. note::
+
+    When using the psycopg2 dialect, consider making use of the
+    :ref:`batch execution helpers <psycopg2_batch_mode>` feature of psycopg2,
+    now supported directly by the SQLAlchemy psycopg2 dialect.
+
 Alternatively, the SQLAlchemy ORM offers the :ref:`bulk_operations`
 suite of methods, which provide hooks into subsections of the unit of
 work process in order to emit Core-level INSERT and UPDATE constructs with

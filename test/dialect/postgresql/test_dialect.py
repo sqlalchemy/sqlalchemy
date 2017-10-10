@@ -9,7 +9,7 @@ import datetime
 from sqlalchemy import (
     Table, Column, select, MetaData, text, Integer, String, Sequence, Numeric,
     DateTime, BigInteger, func, extract, SmallInteger, TypeDecorator, literal,
-    cast)
+    cast, bindparam)
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
@@ -82,6 +82,87 @@ class DialectTest(fixtures.TestBase):
 
         e = engine_from_config(config, _initialize=False)
         eq_(e.dialect.use_native_unicode, True)
+
+
+class BatchInsertsTest(fixtures.TablesTest):
+    __only_on__ = 'postgresql+psycopg2'
+    __backend__ = True
+
+    run_create_tables = "each"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'data', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', String),
+            Column('y', String),
+            Column('z', Integer, server_default="5")
+        )
+
+    def setup(self):
+        super(BatchInsertsTest, self).setup()
+        self.engine = engines.testing_engine(options={"use_batch_mode": True})
+
+    def teardown(self):
+        self.engine.dispose()
+        super(BatchInsertsTest, self).teardown()
+
+    def test_insert(self):
+        with self.engine.connect() as conn:
+            conn.execute(
+                self.tables.data.insert(),
+                [
+                    {"x": "x1", "y": "y1"},
+                    {"x": "x2", "y": "y2"},
+                    {"x": "x3", "y": "y3"}
+                ]
+            )
+
+            eq_(
+                conn.execute(select([self.tables.data])).fetchall(),
+                [
+                    (1, "x1", "y1", 5),
+                    (2, "x2", "y2", 5),
+                    (3, "x3", "y3", 5)
+                ]
+            )
+
+    def test_not_sane_rowcount(self):
+        self.engine.connect().close()
+        assert not self.engine.dialect.supports_sane_multi_rowcount
+
+    def test_update(self):
+        with self.engine.connect() as conn:
+            conn.execute(
+                self.tables.data.insert(),
+                [
+                    {"x": "x1", "y": "y1"},
+                    {"x": "x2", "y": "y2"},
+                    {"x": "x3", "y": "y3"}
+                ]
+            )
+
+            conn.execute(
+                self.tables.data.update().
+                where(self.tables.data.c.x == bindparam('xval')).
+                values(y=bindparam('yval')),
+                [
+                    {"xval": "x1", "yval": "y5"},
+                    {"xval": "x3", "yval": "y6"}
+                ]
+            )
+            eq_(
+                conn.execute(
+                    select([self.tables.data]).
+                    order_by(self.tables.data.c.id)).
+                fetchall(),
+                [
+                    (1, "x1", "y5", 5),
+                    (2, "x2", "y2", 5),
+                    (3, "x3", "y6", 5)
+                ]
+            )
 
 
 class MiscBackendTest(
