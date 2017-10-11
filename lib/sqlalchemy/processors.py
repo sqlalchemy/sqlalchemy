@@ -49,13 +49,6 @@ def str_to_datetime_processor_factory(regexp, type_):
     return process
 
 
-def boolean_to_int(value):
-    if value is None:
-        return None
-    else:
-        return int(bool(value))
-
-
 def py_fallback():
     def to_unicode_processor_factory(encoding, errors=None):
         decoder = codecs.getdecoder(encoding)

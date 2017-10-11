@@ -545,6 +545,44 @@ to query across the two proxies ``A.c_values``, ``AtoB.c_value``:
 New Features and Improvements - Core
 ====================================
 
+.. _change_4102:
+
+Boolean datatype now enforces strict True/False/None values
+-----------------------------------------------------------
+
+In version 1.1, the change described in :ref:`change_3730` produced an
+unintended side effect of altering the way :class:`.Boolean` behaves when
+presented with a non-integer value, such as a string.   In particular, the
+string value ``"0"``, which would previously result in the value ``False``
+being generated, would now produce ``True``.  Making matters worse, the change
+in behavior was only for some backends and not others, meaning code that sends
+string ``"0"`` values to :class:`.Boolean` would break inconsistently across
+backends.
+
+The ultimate solution to this problem is that **string values are not supported
+with Boolean**, so in 1.2 a hard ``TypeError`` is raised if a non-integer /
+True/False/None value is passed.  Additionally, only the integer values
+0 and 1 are accepted.
+
+To accomodate for applications that wish to have more liberal interpretation
+of boolean values, the :class:`.TypeDecorator` should be used.   Below
+illustrates a recipe that will allow for the "liberal" behavior of the pre-1.1
+:class:`.Boolean` datatype::
+
+    from sqlalchemy import Boolean
+    from sqlalchemy import TypeDecorator
+
+    class LiberalBoolean(TypeDecorator):
+        impl = Boolean
+
+        def process_bind_param(self, value, dialect):
+            if value is not None:
+                value = bool(int(value))
+            return value
+
+
+:ticket:`4102`
+
 .. _change_3919:
 
 Pessimistic disconnection detection added to the connection pool
