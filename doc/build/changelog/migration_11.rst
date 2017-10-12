@@ -1646,6 +1646,21 @@ with the pure-Python int-to-boolean processor and is more forgiving of
 existing data already within the database.   Values of None/NULL are as before
 retained as None/NULL.
 
+.. note::
+
+   this change had an unintended side effect that the interpretation of non-
+   integer values, such as strings, also changed in behavior such that the
+   string value ``"0"`` would be interpreted as "true", but only on backends
+   that don't have a native boolean datatype - on "native boolean" backends
+   like Postgresql, the string value ``"0"`` is passed directly to the driver
+   and is interpreted as "false".  This is an inconsistency that did not occur
+   with the previous implementation.It should be noted that passing strings or
+   any other value outside of ``None``, ``True``, ``False``, ``1``, ``0`` to
+   the :class:`.Boolean` datatype is **not supported** and version 1.2 will
+   raise an error for this scenario (or possibly just emit a warning, TBD).
+   See also :ticket:`4102`.
+
+
 :ticket:`3730`
 
 .. _change_2837:
