@@ -1581,8 +1581,21 @@ class Boolean(Emulated, TypeEngine, SchemaType):
 
     """A bool datatype.
 
-    Boolean typically uses BOOLEAN or SMALLINT on the DDL side, and on
+    :class:`.Boolean` typically uses BOOLEAN or SMALLINT on the DDL side, and on
     the Python side deals in ``True`` or ``False``.
+
+    The :class:`.Boolean` datatype currently has two levels of assertion
+    that the values persisted are simple true/false values.  For all
+    backends, only the Python values ``None``, ``True``, ``False``, ``1``
+    or ``0`` are accepted as parameter values.   For those backends that
+    don't support a "native boolean" datatype, a CHECK constraint is also
+    created on the target column.   Production of the CHECK constraint
+    can be disabled by passing the :paramref:`.Boolean.create_constraint`
+    flag set to ``False``.
+
+    .. versionchanged:: 1.2 the :class:`.Boolean` datatype now asserts that
+       incoming Python values are already in pure boolean form.
+
 
     """
 
@@ -1631,20 +1644,40 @@ class Boolean(Emulated, TypeEngine, SchemaType):
     def python_type(self):
         return bool
 
+    _strict_bools = frozenset([None, True, False])
+
+    def _strict_as_bool(self, value):
+        if value not in self._strict_bools:
+            if not isinstance(value, int):
+                raise TypeError(
+                    "Not a boolean value: %r" % value)
+            else:
+                raise ValueError(
+                    "Value %r is not None, True, or False" % value)
+        return value
+
     def literal_processor(self, dialect):
         compiler = dialect.statement_compiler(dialect, None)
         true = compiler.visit_true(None)
         false = compiler.visit_false(None)
 
         def process(value):
-            return true if value else false
+            return true if self._strict_as_bool(value) else false
         return process
 
     def bind_processor(self, dialect):
+        _strict_as_bool = self._strict_as_bool
         if dialect.supports_native_boolean:
-            return None
+            _coerce = bool
         else:
-            return processors.boolean_to_int
+            _coerce = int
+
+        def process(value):
+            value = _strict_as_bool(value)
+            if value is not None:
+                value = _coerce(value)
+            return value
+        return process
 
     def result_processor(self, dialect, coltype):
         if dialect.supports_native_boolean:

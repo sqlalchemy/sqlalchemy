@@ -2621,15 +2621,14 @@ class BooleanTest(
     def test_nonnative_processor_coerces_to_onezero(self):
         boolean_table = self.tables.boolean_table
         with testing.db.connect() as conn:
-            conn.execute(
+            assert_raises_message(
+                exc.StatementError,
+                "Value 5 is not None, True, or False",
+                conn.execute,
                 boolean_table.insert(),
                 {"id": 1, "unconstrained_value": 5}
             )
 
-            eq_(
-                conn.scalar("select unconstrained_value from boolean_table"),
-                1
-            )
 
     @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
     def test_nonnative_processor_coerces_integer_to_boolean(self):
@@ -2649,6 +2648,169 @@ class BooleanTest(
                 conn.scalar(select([boolean_table.c.unconstrained_value])),
                 True
             )
+
+    def test_bind_processor_coercion_native_true(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=True))
+        is_(proc(True), True)
+
+    def test_bind_processor_coercion_native_false(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=True))
+        is_(proc(False), False)
+
+    def test_bind_processor_coercion_native_none(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=True))
+        is_(proc(None), None)
+
+    def test_bind_processor_coercion_native_0(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=True))
+        is_(proc(0), False)
+
+    def test_bind_processor_coercion_native_1(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=True))
+        is_(proc(1), True)
+
+    def test_bind_processor_coercion_native_str(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=True))
+        assert_raises_message(
+            TypeError,
+            "Not a boolean value: 'foo'",
+            proc, "foo"
+        )
+
+    def test_bind_processor_coercion_native_int_out_of_range(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=True))
+        assert_raises_message(
+            ValueError,
+            "Value 15 is not None, True, or False",
+            proc, 15
+        )
+
+    def test_bind_processor_coercion_nonnative_true(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=False))
+        eq_(proc(True), 1)
+
+    def test_bind_processor_coercion_nonnative_false(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=False))
+        eq_(proc(False), 0)
+
+    def test_bind_processor_coercion_nonnative_none(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=False))
+        is_(proc(None), None)
+
+    def test_bind_processor_coercion_nonnative_0(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=False))
+        eq_(proc(0), 0)
+
+    def test_bind_processor_coercion_nonnative_1(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=False))
+        eq_(proc(1), 1)
+
+    def test_bind_processor_coercion_nonnative_str(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=False))
+        assert_raises_message(
+            TypeError,
+            "Not a boolean value: 'foo'",
+            proc, "foo"
+        )
+
+    def test_bind_processor_coercion_nonnative_int_out_of_range(self):
+        proc = Boolean().bind_processor(
+            mock.Mock(supports_native_boolean=False))
+        assert_raises_message(
+            ValueError,
+            "Value 15 is not None, True, or False",
+            proc, 15
+        )
+
+    def test_literal_processor_coercion_native_true(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=True))
+        eq_(proc(True), "true")
+
+    def test_literal_processor_coercion_native_false(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=True))
+        eq_(proc(False), "false")
+
+    def test_literal_processor_coercion_native_1(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=True))
+        eq_(proc(1), "true")
+
+    def test_literal_processor_coercion_native_0(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=True))
+        eq_(proc(0), "false")
+
+    def test_literal_processor_coercion_native_str(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=True))
+        assert_raises_message(
+            TypeError,
+            "Not a boolean value: 'foo'",
+            proc, "foo"
+        )
+
+    def test_literal_processor_coercion_native_int_out_of_range(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=True))
+        assert_raises_message(
+            ValueError,
+            "Value 15 is not None, True, or False",
+            proc, 15
+        )
+
+    def test_literal_processor_coercion_nonnative_true(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=False))
+        eq_(proc(True), "1")
+
+    def test_literal_processor_coercion_nonnative_false(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=False))
+        eq_(proc(False), "0")
+
+    def test_literal_processor_coercion_nonnative_1(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=False))
+        eq_(proc(1), "1")
+
+    def test_literal_processor_coercion_nonnative_0(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=False))
+        eq_(proc(0), "0")
+
+    def test_literal_processor_coercion_nonnative_str(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=False))
+        assert_raises_message(
+            TypeError,
+            "Not a boolean value: 'foo'",
+            proc, "foo"
+        )
+
+    def test_literal_processor_coercion_native_int_out_of_range(self):
+        proc = Boolean().literal_processor(
+            default.DefaultDialect(supports_native_boolean=True))
+        assert_raises_message(
+            ValueError,
+            "Value 15 is not None, True, or False",
+            proc, 15
+        )
+
 
 
 class PickleTest(fixtures.TestBase):
