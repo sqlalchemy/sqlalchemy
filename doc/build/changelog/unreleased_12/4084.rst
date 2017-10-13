@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4084
-
-    Fixed issue where the :func:`.make_transient_to_detached` function
-    would expire all attributes on the target object, including "deferred"
-    attributes, which has the effect of the attribute being undeferred
-    for the next refesh, causing an unexpected load of the attribute.

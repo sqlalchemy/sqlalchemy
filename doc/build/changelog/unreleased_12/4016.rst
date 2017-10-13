@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 4016
-
-    Enabled UUID support for the pg8000 driver, which supports native Python
-    uuid round trips for this datatype.  Arrays of UUID are still not supported,
-    however.

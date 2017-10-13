@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4087
-
-    Fixed bug in new SQL comments feature where table and column comment
-    would not be copied when using :meth:`.Table.tometadata`.

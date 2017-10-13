@@ -12,7 +12,400 @@
 
 .. changelog::
     :version: 1.2.0b3
-    :include_notes_from: unreleased_12
+    :released: October 13, 2017
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4061
+
+        SQL Server supports what SQLAlchemy calls "native boolean"
+        with its BIT type, as this type only accepts 0 or 1 and the
+        DBAPIs return its value as True/False.   So the SQL Server
+        dialects now enable "native boolean" support, in that a
+        CHECK constraint is not generated for a :class:`.Boolean`
+        datatype.  The only difference vs. other native boolean
+        is that there are no "true" / "false" constants so "1" and
+        "0" are still rendered here.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4064
+
+        Partial support for persisting and retrieving the Oracle value
+        "infinity" is implemented with cx_Oracle, using Python float values
+        only, e.g. ``float("inf")``.  Decimal support is not yet fulfilled by
+        the cx_Oracle DBAPI driver.
+
+    .. change::
+        :tags: bug, oracle
+
+        The cx_Oracle dialect has been reworked and modernized to take advantage of
+        new patterns that weren't present in the old 4.x series of cx_Oracle. This
+        includes that the minimum cx_Oracle version is the 5.x series and that
+        cx_Oracle 6.x is now fully tested. The most significant change involves
+        type conversions, primarily regarding the numeric / floating point and LOB
+        datatypes, making more effective use of cx_Oracle type handling hooks to
+        simplify how bind parameter and result data is processed.
+
+        .. seealso::
+
+            :ref:`change_cxoracle_12`
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 3997
+
+        two phase support for cx_Oracle has been completely removed for all
+        versions of cx_Oracle, whereas in 1.2.0b1 this change only took effect for
+        the 6.x series of cx_Oracle.  This feature never worked correctly
+        in any version of cx_Oracle and in cx_Oracle 6.x, the API which SQLAlchemy
+        relied upon was removed.
+
+        .. seealso::
+
+            :ref:`change_cxoracle_12`
+
+    .. change::
+        :tags: bug, oracle
+
+        The column keys present in a result set when using :meth:`.Insert.returning`
+        with the cx_Oracle backend now use the correct column / label names
+        like that of all other dialects.  Previously, these came out as
+        ``ret_nnn``.
+
+        .. seealso::
+
+            :ref:`change_cxoracle_12`
+
+    .. change::
+        :tags: bug, oracle
+
+        Several parameters to the cx_Oracle dialect are now deprecated and will
+        have no effect: ``auto_setinputsizes``, ``exclude_setinputsizes``,
+        ``allow_twophase``.
+
+        .. seealso::
+
+            :ref:`change_cxoracle_12`
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4075
+
+        Added a new method :meth:`.DefaultExecutionContext.get_current_parameters`
+        which is used within a function-based default value generator in
+        order to retrieve the current parameters being passed to the statement.
+        The new function differs from the
+        :attr:`.DefaultExecutionContext.current_parameters` attribute in
+        that it also provides for optional grouping of parameters that
+        correspond to a multi-valued "insert" construct.  Previously it was not
+        possible to identify the subset of parameters that were relevant to
+        the function call.
+
+        .. seealso::
+
+            :ref:`change_4075`
+
+            :ref:`context_default_functions`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4050
+
+        Fixed regression introduced in 1.2.0b1 due to :ticket:`3934` where the
+        :class:`.Session` would fail to "deactivate" the transaction, if a
+        rollback failed (the target issue is when MySQL loses track of a SAVEPOINT).
+        This would cause a subsequent call to :meth:`.Session.rollback` to raise
+        an error a second time, rather than completing and bringing the
+        :class:`.Session` back to ACTIVE.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4041
+
+        Fixed bug where the pg8000 driver would fail if using
+        :meth:`.MetaData.reflect` with a schema name, since the schema name would
+        be sent as a "quoted_name" object that's a string subclass, which pg8000
+        doesn't recognize.   The quoted_name type is added to pg8000's
+        py_types collection on connect.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4016
+
+        Enabled UUID support for the pg8000 driver, which supports native Python
+        uuid round trips for this datatype.  Arrays of UUID are still not supported,
+        however.
+
+    .. change::
+        :tags: mssql, bug
+        :tickets: 4057
+
+        Fixed the pymssql dialect so that percent signs in SQL text, such
+        as used in modulus expressions or literal textual values, are
+        **not** doubled up, as seems to be what pymssql expects.  This is
+        despite the fact that the pymssql DBAPI uses the "pyformat" parameter
+        style which itself considers the percent sign to be significant.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 4091
+
+        A warning is emitted if a subclass attempts to override an attribute
+        that was declared on a superclass using ``@declared_attr.cascading``
+        that the overridden attribute will be ignored. This use
+        case cannot be fully supported down to further subclasses without more
+        complex development efforts, so for consistency the "cascading" is
+        honored all the way down regardless of overriding attributes.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 4092
+
+        A warning is emitted if the ``@declared_attr.cascading`` attribute is
+        used with a special declarative name such as ``__tablename__``, as this
+        has no effect.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 4077
+
+        Added ``__next__()`` and ``next()`` methods to :class:`.ResultProxy`,
+        so that the ``next()`` builtin function works on the object directly.
+        :class:`.ResultProxy` has long had an ``__iter__()`` method which already
+        allows it to respond to the ``iter()`` builtin.   The implementation
+        for ``__iter__()`` is unchanged, as performance testing has indicated
+        that iteration using a ``__next__()`` method with ``StopIteration``
+        is about 20% slower in both Python 2.7 and 3.6.
+
+    .. change::
+        :tags: feature, mssql
+        :tickets: 4086
+
+        Added a new :class:`.mssql.TIMESTAMP` datatype, that
+        correctly acts like a binary datatype for SQL Server
+        rather than a datetime type, as SQL Server breaks the
+        SQL standard here.  Also added :class:`.mssql.ROWVERSION`,
+        as the "TIMESTAMP" type in SQL Server is deprecated in
+        favor of ROWVERSION.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4084
+
+        Fixed issue where the :func:`.make_transient_to_detached` function
+        would expire all attributes on the target object, including "deferred"
+        attributes, which has the effect of the attribute being undeferred
+        for the next refesh, causing an unexpected load of the attribute.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4026
+
+        Fixed bug in :ref:`change_3948` which prevented "selectin" and
+        "inline" settings in a multi-level class hierarchy from interacting
+        together as expected.    A new example is added to the documentation.
+
+        .. seealso::
+
+            :ref:`polymorphic_selectin_and_withpoly`
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4042
+
+        Fixed bug where an index reflected under Oracle with an expression like
+        "column DESC" would not be returned, if the table also had no primary
+        key, as a result of logic that attempts to filter out the
+        index implicitly added by Oracle onto the primary key columns.
+
+    .. change::
+    	:tags: bug, orm
+    	:tickets: 4071
+
+    	Removed the warnings that are emitted when the LRU caches employed
+    	by the mapper as well as loader srtategies reach their threshold; the
+    	purpose of this warning was at first a guard against excess cache keys
+    	being generated but became basically a check on the "creating many
+    	engines" antipattern.   While this is still an antipattern, the presense
+    	of test suites which both create an engine per test as well as raise
+    	on all warnings will be an inconvenience; it should not be critical
+    	that such test suites change their architecture just for this warning
+    	(though engine-per-test suite is always better).
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4049
+
+        Fixed regression where the use of a :func:`.undefer_group` option
+        in conjunction with a lazy loaded relationship option would cause
+        an attribute error, due to a bug in the SQL cache key generation
+        added in 1.2 as part of :ticket:`3954`.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4045
+
+        Fixed more regressions caused by cx_Oracle 6.0; at the moment, the only
+        behavioral change for users is disconnect detection now detects for
+        cx_Oracle.DatabaseError in addition to cx_Oracle.InterfaceError, as
+        this behavior seems to have changed.   Other issues regarding numeric
+        precision and uncloseable connections are pending with the upstream
+        cx_Oracle issue tracker.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4060
+
+        Fixed bug where the SQL Server dialect could pull columns from multiple
+        schemas when reflecting a self-referential foreign key constraint, if
+        multiple schemas contained a constraint of the same name against a
+        table of the same name.
+
+
+    .. change::
+        :tags: feature, mssql
+        :tickets: 4058
+
+        Added support for "AUTOCOMMIT" isolation level, as established
+        via :meth:`.Connection.execution_options`, to the
+        PyODBC and pymssql dialects.   This isolation level sets the
+        appropriate DBAPI-specific flags on the underlying
+        connection object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4073
+
+        Modified the change made to the ORM update/delete evaluator in
+        :ticket:`3366` such that if an unmapped column expression is present
+        in the update or delete, if the evaluator can match its name to the
+        mapped columns of the target class, a warning is emitted, rather than
+        raising UnevaluatableError.  This is essentially the pre-1.2 behavior,
+        and is to allow migration for applications that are currently relying
+        upon this pattern.  However, if the given attribute name cannot be
+        matched to the columns of the mapper, the UnevaluatableError is
+        still raised, which is what was fixed in :ticket:`3366`.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4087
+
+        Fixed bug in new SQL comments feature where table and column comment
+        would not be copied when using :meth:`.Table.tometadata`.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4102
+
+        In release 1.1, the :class:`.Boolean` type was broken in that
+        boolean coercion via ``bool()`` would occur for backends that did not
+        feature "native boolean", but would not occur for native boolean backends,
+        meaning the string ``"0"`` now behaved inconsistently. After a poll, a
+        consensus was reached that non-boolean values should be raising an error,
+        especially in the ambiguous case of string ``"0"``; so the :class:`.Boolean`
+        datatype will now raise ``ValueError`` if an incoming value is not
+        within the range ``None, True, False, 1, 0``.
+
+        .. seealso::
+
+            :ref:`change_4102`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4063
+
+        Refined the behavior of :meth:`.Operators.op` such that in all cases,
+        if the :paramref:`.Operators.op.is_comparison` flag is set to True,
+        the return type of the resulting expression will be
+        :class:`.Boolean`, and if the flag is False, the return type of the
+        resulting expression will be the same type as that of the left-hand
+        expression, which is the typical default behavior of other operators.
+        Also added a new parameter :paramref:`.Operators.op.return_type` as well
+        as a helper method :meth:`.Operators.bool_op`.
+
+        .. seealso::
+
+            :ref:`change_4063`
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4072
+
+        Changed the name of the ``.values`` attribute of the new MySQL
+        INSERT..ON DUPLICATE KEY UPDATE construct to ``.inserted``, as
+        :class:`.Insert` already has a method called :meth:`.Insert.values`.
+        The ``.inserted`` attribute ultimately renders the MySQL ``VALUES()``
+        function.
+
+    .. change::
+        :tags: bug, mssql, orm
+        :tickets: 4062
+
+        Added a new class of "rowcount support" for dialects that is specific to
+        when "RETURNING", which on SQL Server looks like "OUTPUT inserted", is in
+        use, as the PyODBC backend isn't able to give us rowcount on an UPDATE or
+        DELETE statement when OUTPUT is in effect.  This primarily affects the ORM
+        when a flush is updating a row that contains server-calcluated values,
+        raising an error if the backend does not return the expected row count.
+        PyODBC now states that it supports rowcount except if OUTPUT.inserted is
+        present, which is taken into account by the ORM during a flush as to
+        whether it will look for a rowcount.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4088
+
+        Internal refinements to the :class:`.Enum`, :class:`.Interval`, and
+        :class:`.Boolean` types, which now extend a common mixin
+        :class:`.Emulated` that indicates a type that provides Python-side
+        emulation of a DB native type, switching out to the DB native type when a
+        supporting backend is in use.   The Postgresql :class:`.INTERVAL` type
+        when used directly will now include the correct type coercion rules for
+        SQL expressions that also take effect for :class:`.sqltypes.Interval`
+        (such as adding a date to an interval yields a datetime).
+
+
+    .. change::
+        :tags: bug, mssql, orm
+
+        Enabled the "sane_rowcount" flag for the pymssql dialect, indicating
+        that the DBAPI now reports the correct number of rows affected from
+        an UPDATE or DELETE statement.  This impacts mostly the ORM versioning
+        feature in that it now can verify the number of rows affected on a
+        target version.
+
+    .. change:: 4028
+        :tags: bug, engine
+        :tickets: 4028
+
+        Made some adjustments to :class:`.Pool` and :class:`.Connection` such
+        that recovery logic is not run underneath exception catches for
+        ``pool.Empty``, ``AttributeError``, since when the recovery operation
+        itself fails, Python 3 creates a misleading stack trace referring to the
+        ``Empty`` / ``AttributeError`` as the cause, when in fact these exception
+        catches are part of control flow.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4076
+
+        Fixed bug where Oracle 8 "non ansi" join mode would not add the
+        ``(+)`` operator to expressions that used an operator other than the
+        ``=`` operator.  The ``(+)`` needs to be on all columns that are part
+        of the right-hand side.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4059
+
+        Added a rule to SQL Server index reflection to ignore the so-called
+        "heap" index that is implicitly present on a table that does not
+        specify a clustered index.
+
 
 .. changelog::
     :version: 1.2.0b2
