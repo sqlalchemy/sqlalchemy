@@ -345,7 +345,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         table = self.tables.some_table
 
         stmt = select([table.c.id]).where(
-            table.c.x.in_(bindparam('q', expanding=True)))
+            table.c.x.in_(bindparam('q', expanding=True))).order_by(table.c.id)
 
         self._assert_result(
             stmt,
@@ -358,7 +358,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         table = self.tables.some_table
 
         stmt = select([table.c.id]).where(
-            tuple_(table.c.x, table.c.y).in_(bindparam('q', expanding=True)))
+            tuple_(table.c.x, table.c.y).in_(bindparam('q', expanding=True))).order_by(table.c.id)
 
         self._assert_result(
             stmt,
