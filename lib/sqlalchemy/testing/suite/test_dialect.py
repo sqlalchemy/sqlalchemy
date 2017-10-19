@@ -29,7 +29,9 @@ class ExceptionTest(fixtures.TablesTest):
     @requirements.duplicate_key_raises_integrity_error
     def test_integrity_error(self):
 
-        with config.db.begin() as conn:
+        with config.db.connect() as conn:
+
+            trans = conn.begin()
             conn.execute(
                 self.tables.manual_pk.insert(),
                 {'id': 1, 'data': 'd1'}
@@ -41,6 +43,8 @@ class ExceptionTest(fixtures.TablesTest):
                 self.tables.manual_pk.insert(),
                 {'id': 1, 'data': 'd1'}
             )
+
+            trans.rollback()
 
 
 class AutocommitTest(fixtures.TablesTest):
