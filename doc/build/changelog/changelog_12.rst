@@ -230,7 +230,7 @@
     	:tickets: 4071
 
     	Removed the warnings that are emitted when the LRU caches employed
-    	by the mapper as well as loader srtategies reach their threshold; the
+    	by the mapper as well as loader strategies reach their threshold; the
     	purpose of this warning was at first a guard against excess cache keys
     	being generated but became basically a check on the "creating many
     	engines" antipattern.   While this is still an antipattern, the presense
