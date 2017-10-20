@@ -618,7 +618,7 @@ from ... import engine
 from ...engine import reflection, default
 from ... import types as sqltypes
 from ...types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
-    FLOAT, DATETIME, DATE, BINARY,\
+    FLOAT, DATETIME, DATE, BINARY, \
     TEXT, VARCHAR, NVARCHAR, CHAR, NCHAR
 
 
@@ -874,10 +874,9 @@ class NTEXT(sqltypes.UnicodeText):
 class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
     """The MSSQL VARBINARY type.
 
-    This type extends both :class:`.types.VARBINARY` and
-    :class:`.types.LargeBinary`.   In "deprecate_large_types" mode,
-    the :class:`.types.LargeBinary` type will produce ``VARBINARY(max)``
-    on SQL Server.
+    This type is present to support "deprecate_large_types" mode where
+    either ``VARBINARY(max)`` or IMAGE is rendered.   Otherwise, this type
+    object is redundant vs. :class:`.types.VARBINARY`.
 
     .. versionadded:: 1.0.0
 

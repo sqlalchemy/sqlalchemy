@@ -898,7 +898,6 @@ class BinaryTest(fixtures.TestBase):
     __requires__ = "non_broken_binary",
     __backend__ = True
 
-
     def test_character_binary(self):
         self._test_round_trip(
             mssql.MSVarBinary(800), b("some normal data")
@@ -920,7 +919,7 @@ class BinaryTest(fixtures.TestBase):
             Column('id', Integer, primary_key=True),
             Column('data', type_)
         )
-        binary_table.create()
+        binary_table.create(engine)
 
         if expected is None:
             expected = data
@@ -1011,17 +1010,51 @@ class BinaryTest(fixtures.TestBase):
             deprecate_large_types=False
         )
 
-    def test_slice_one(self):
+    def test_mssql_varbinary_max(self):
+        stream1 = self._load_stream('binary_data_one.dat')
+        self._test_round_trip(
+            mssql.VARBINARY("max"),
+            stream1
+        )
+
+    def test_mssql_legacy_varbinary_max(self):
+        stream1 = self._load_stream('binary_data_one.dat')
+        self._test_round_trip(
+            mssql.VARBINARY("max"),
+            stream1,
+            deprecate_large_types=False
+        )
+
+    def test_binary_slice(self):
+        self._test_var_slice(types.BINARY)
+
+    def test_binary_slice_zeropadding(self):
+        self._test_var_slice_zeropadding(types.BINARY, True)
+
+    def test_varbinary_slice(self):
+        self._test_var_slice(types.VARBINARY)
+
+    def test_varbinary_slice_zeropadding(self):
+        self._test_var_slice_zeropadding(types.VARBINARY, False)
+
+    def test_mssql_varbinary_slice(self):
+        self._test_var_slice(mssql.VARBINARY)
+
+    def test_mssql_varbinary_slice_zeropadding(self):
+        self._test_var_slice_zeropadding(mssql.VARBINARY, False)
+
+    def _test_var_slice(self, type_):
         stream1 = self._load_stream('binary_data_one.dat')
 
         data = stream1[0:100]
 
         self._test_round_trip(
-            types.BINARY(100),
+            type_(100),
             data
         )
 
-    def test_slice_zeropadding(self):
+    def _test_var_slice_zeropadding(
+            self, type_, pad, deprecate_large_types=True):
         stream2 = self._load_stream('binary_data_two.dat')
 
         data = stream2[0:99]
@@ -1029,10 +1062,13 @@ class BinaryTest(fixtures.TestBase):
         # the type we used here is 100 bytes
         # so we will get 100 bytes zero-padded
 
-        paddedstream = stream2[0:99] + b'\x00'
+        if pad:
+            paddedstream = stream2[0:99] + b'\x00'
+        else:
+            paddedstream = stream2[0:99]
 
         self._test_round_trip(
-            types.BINARY(100),
+            type_(100),
             data, expected=paddedstream
         )
 

@@ -87,7 +87,7 @@ versioning.
 
 """
 
-from .base import MSExecutionContext, MSDialect, VARBINARY
+from .base import MSExecutionContext, MSDialect, BINARY, VARBINARY
 from ...connectors.pyodbc import PyODBCConnector
 from ... import types as sqltypes, util, exc
 import decimal
@@ -167,7 +167,13 @@ class _MSFloat_pyodbc(_ms_numeric_pyodbc, sqltypes.Float):
     pass
 
 
-class _VARBINARY_pyodbc(VARBINARY):
+class _ms_binary_pyodbc(object):
+    """Wraps binary values in dialect-specific Binary wrapper.
+    If the value is null, return a pyodbc-specific BinaryNull
+    object to prevent pyODBC [and FreeTDS] from defaulting binary
+    NULL types to SQLWCHAR and causing implicit conversion errors.
+    """
+
     def bind_processor(self, dialect):
         if dialect.dbapi is None:
             return None
@@ -181,6 +187,14 @@ class _VARBINARY_pyodbc(VARBINARY):
                 # pyodbc-specific
                 return dialect.dbapi.BinaryNull
         return process
+
+
+class _VARBINARY_pyodbc(_ms_binary_pyodbc, VARBINARY):
+    pass
+
+
+class _BINARY_pyodbc(_ms_binary_pyodbc, BINARY):
+    pass
 
 
 class MSExecutionContext_pyodbc(MSExecutionContext):
@@ -240,7 +254,13 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         {
             sqltypes.Numeric: _MSNumeric_pyodbc,
             sqltypes.Float: _MSFloat_pyodbc,
+            BINARY: _BINARY_pyodbc,
+
+            # SQL Server dialect has a VARBINARY that is just to support
+            # "deprecate_large_types" w/ VARBINARY(max), but also we must
+            # handle the usual SQL standard VARBINARY
             VARBINARY: _VARBINARY_pyodbc,
+            sqltypes.VARBINARY: _VARBINARY_pyodbc,
             sqltypes.LargeBinary: _VARBINARY_pyodbc,
         }
     )
