@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4120
+    :versions: 1.2.0b4
+
+    MySQL 5.7.20 now warns for use of the @tx_isolation variable; a version
+    check is now performed and uses @transaction_isolation instead
+    to prevent this warning.

@@ -130,9 +130,17 @@ def _expect_warnings(exc_cls, messages, regex=True, assert_=True,
 
     real_warn = warnings.warn
 
-    def our_warn(msg, exception, *arg, **kw):
-        if not issubclass(exception, exc_cls):
-            return real_warn(msg, exception, *arg, **kw)
+    def our_warn(msg, *arg, **kw):
+        if isinstance(msg, exc_cls):
+            exception = msg
+            msg = str(exception)
+        elif arg:
+            exception = arg[0]
+        else:
+            exception = None
+
+        if not exception or not issubclass(exception, exc_cls):
+            return real_warn(msg, *arg, **kw)
 
         if not filters:
             return
@@ -143,7 +151,7 @@ def _expect_warnings(exc_cls, messages, regex=True, assert_=True,
                 seen.discard(filter_)
                 break
         else:
-            real_warn(msg, exception, *arg, **kw)
+            real_warn(msg, *arg, **kw)
 
     with mock.patch("warnings.warn", our_warn):
         yield
