@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, ext
+    :tickets: 4116
+    :versions: 1.2.0b4
+
+    Fixed bug where the association proxy would inadvertently link itself
+    to an :class:`.AliasedClass` object if it were called first with
+    the :class:`.AliasedClass` as a parent, causing errors upon subsequent
+    usage.

@@ -14,6 +14,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing.mock import Mock, call
 from sqlalchemy.testing.assertions import expect_warnings
+from sqlalchemy.ext.declarative import declarative_base
 
 
 class DictCollection(dict):
@@ -1845,6 +1846,31 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
             a1.elements.update,
             (("B", 3), 'elem2'), (("C", 4), "elem3")
         )
+
+
+class AttributeAccessTest(fixtures.TestBase):
+    def test_resolve_aliased_class(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            value = Column(String)
+
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer, ForeignKey(A.id))
+            a = relationship(A)
+            a_value = association_proxy('a', 'value')
+
+        spec = aliased(B).a_value
+
+        is_(spec.owning_class, B)
+
+        spec = B.a_value
+
+        is_(spec.owning_class, B)
 
 
 class InfoTest(fixtures.TestBase):

@@ -19,6 +19,7 @@ import weakref
 from .. import exc, orm, util
 from ..orm import collections, interfaces
 from ..sql import not_, or_
+from .. import inspect
 
 
 def association_proxy(target_collection, attr, **kw):
@@ -245,7 +246,17 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def __get__(self, obj, class_):
         if self.owning_class is None:
-            self.owning_class = class_ and class_ or type(obj)
+            try:
+                insp = inspect(class_)
+            except exc.NoInspectionAvailable:
+                pass
+            else:
+                if hasattr(insp, 'mapper'):
+                    self.owning_class = insp.mapper.class_
+
+            if self.owning_class is None:
+                self.owning_class = type(obj)
+
         if obj is None:
             return self
 
