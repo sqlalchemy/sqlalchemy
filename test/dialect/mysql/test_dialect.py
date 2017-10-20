@@ -8,6 +8,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from ...engine import test_execute
 import datetime
+from sqlalchemy.dialects import mysql
 
 
 class DialectTest(fixtures.TestBase):
@@ -142,6 +143,45 @@ class DialectTest(fixtures.TestBase):
                 isolation_level=sa_value
             )
             assert c.execute('SELECT @@tx_isolation;').scalar() == mysql_value
+
+
+class ParseVersionTest(fixtures.TestBase):
+    def test_mariadb_normalized_version(self):
+        for expected, version in [
+            ((10, 2, 7), (10, 2, 7, 'MariaDB')),
+            ((10, 2, 7), (5, 6, 15, 10, 2, 7, 'MariaDB')),
+            ((10, 2, 10), (10, 2, 10, 'MariaDB')),
+            ((5, 7, 20), (5, 7, 20)),
+            ((5, 6, 15), (5, 6, 15)),
+            ((10, 2, 6),
+             (10, 2, 6, 'MariaDB', 10, 2, '6+maria~stretch', 'log')),
+        ]:
+            dialect = mysql.dialect()
+            dialect.server_version_info = version
+            eq_(
+                dialect._mariadb_normalized_version_info,
+                expected
+            )
+
+    def test_mariadb_check_warning(self):
+
+        for expect_, version in [
+            (True, (10, 2, 7, 'MariaDB')),
+            (True, (5, 6, 15, 10, 2, 7, 'MariaDB')),
+            (False, (10, 2, 10, 'MariaDB')),
+            (False, (5, 7, 20)),
+            (False, (5, 6, 15)),
+            (True, (10, 2, 6, 'MariaDB', 10, 2, '6+maria~stretch', 'log')),
+        ]:
+            dialect = mysql.dialect()
+            dialect.server_version_info = version
+            if expect_:
+                with expect_warnings(
+                        ".*before 10.2.9 has known issues regarding "
+                        "CHECK constraints"):
+                    dialect._warn_for_known_db_issues()
+            else:
+                dialect._warn_for_known_db_issues()
 
 
 class RemoveUTCTimestampTest(fixtures.TablesTest):
