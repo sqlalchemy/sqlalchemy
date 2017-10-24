@@ -1459,17 +1459,17 @@ is now supported using a MySQL-specific version of the
 This :class:`~.expression.Insert` subclass adds a new method
 :meth:`~.mysql.dml.Insert.on_duplicate_key_update` that implements MySQL's syntax::
 
-    from sqlalchemy.dialect.mysql import insert
+    from sqlalchemy.dialects.mysql import insert
 
-    insert_stmt = insert(my_table). \\
+    insert_stmt = insert(my_table). \
         values(id='some_id', data='some data to insert')
 
     on_conflict_stmt = insert_stmt.on_duplicate_key_update(
-        data=stmt.inserted.data,
+        data=insert_stmt.inserted.data,
         status='U'
     )
 
-    conn.execute(do_update_stmt)
+    conn.execute(on_conflict_stmt)
 
 The above will render::
 
