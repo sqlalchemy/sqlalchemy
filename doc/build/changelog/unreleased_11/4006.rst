@@ -5,4 +5,4 @@
 
     Made further fixes to the :class:`.ARRAY` class in conjunction with
     COLLATE, as the fix made in :ticket:`4006` failed to accommodate
-    for a multidimentional array.
+    for a multidimensional array.
