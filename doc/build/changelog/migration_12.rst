@@ -1461,7 +1461,7 @@ This :class:`~.expression.Insert` subclass adds a new method
 
     from sqlalchemy.dialects.mysql import insert
 
-    insert_stmt = insert(my_table). \\
+    insert_stmt = insert(my_table). \
         values(id='some_id', data='some data to insert')
 
     on_conflict_stmt = insert_stmt.on_duplicate_key_update(
