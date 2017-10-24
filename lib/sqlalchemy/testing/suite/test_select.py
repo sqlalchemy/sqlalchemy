@@ -4,6 +4,7 @@ from ..assertions import eq_
 from sqlalchemy import util
 from sqlalchemy import Integer, String, select, func, bindparam, union, tuple_
 from sqlalchemy import testing
+from sqlalchemy import literal_column
 
 from ..schema import Table, Column
 
@@ -365,3 +366,107 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             [(2, ), (3, ), (4, )],
             params={"q": [(2, 3), (3, 4), (4, 5)]},
         )
+
+
+class LikeFunctionsTest(fixtures.TablesTest):
+    __backend__ = True
+
+    run_inserts = 'once'
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("some_table", metadata,
+              Column('id', Integer, primary_key=True),
+              Column('data', String(50)))
+
+    @classmethod
+    def insert_data(cls):
+        config.db.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "data": "abcdefg"},
+                {"id": 2, "data": "ab/cdefg"},
+                {"id": 3, "data": "ab%cdefg"},
+                {"id": 4, "data": "ab_cdefg"},
+                {"id": 5, "data": "abcde/fg"},
+                {"id": 6, "data": "abcde%fg"},
+                {"id": 7, "data": "ab#cdefg"},
+                {"id": 8, "data": "ab9cdefg"},
+                {"id": 9, "data": "abcde#fg"},
+                {"id": 10, "data": "abcd9fg"},
+            ]
+        )
+
+    def _test(self, expr, expected):
+        some_table = self.tables.some_table
+
+        with config.db.connect() as conn:
+            rows = {
+                value for value, in
+                conn.execute(select([some_table.c.id]).where(expr))
+            }
+
+        eq_(rows, expected)
+
+    def test_startswith_unescaped(self):
+        col = self.tables.some_table.c.data
+        self._test(col.startswith("ab%c"), {1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+
+    def test_startswith_autoescape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.startswith("ab%c", autoescape=True), {3})
+
+    def test_startswith_sqlexpr(self):
+        col = self.tables.some_table.c.data
+        self._test(
+            col.startswith(literal_column("'ab%c'")),
+            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+
+    def test_startswith_escape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.startswith("ab##c", escape="#"), {7})
+
+    def test_startswith_autoescape_escape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.startswith("ab%c", autoescape=True, escape="#"), {3})
+        self._test(col.startswith("ab#c", autoescape=True, escape="#"), {7})
+
+    def test_endswith_unescaped(self):
+        col = self.tables.some_table.c.data
+        self._test(col.endswith("e%fg"), {1, 2, 3, 4, 5, 6, 7, 8, 9})
+
+    def test_endswith_sqlexpr(self):
+        col = self.tables.some_table.c.data
+        self._test(col.endswith(literal_column("'e%fg'")),
+                   {1, 2, 3, 4, 5, 6, 7, 8, 9})
+
+    def test_endswith_autoescape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.endswith("e%fg", autoescape=True), {6})
+
+    def test_endswith_escape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.endswith("e##fg", escape="#"), {9})
+
+    def test_endswith_autoescape_escape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.endswith("e%fg", autoescape=True, escape="#"), {6})
+        self._test(col.endswith("e#fg", autoescape=True, escape="#"), {9})
+
+    def test_contains_unescaped(self):
+        col = self.tables.some_table.c.data
+        self._test(col.contains("b%cde"), {1, 2, 3, 4, 5, 6, 7, 8, 9})
+
+    def test_contains_autoescape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.contains("b%cde", autoescape=True), {3})
+
+    def test_contains_escape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.contains("b##cde", escape="#"), {7})
+
+    def test_contains_autoescape_escape(self):
+        col = self.tables.some_table.c.data
+        self._test(col.contains("b%cd", autoescape=True, escape="#"), {3})
+        self._test(col.contains("b#cd", autoescape=True, escape="#"), {7})

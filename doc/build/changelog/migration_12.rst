@@ -783,21 +783,36 @@ New "autoescape" option for startswith(), endswith()
 ----------------------------------------------------
 
 The "autoescape" parameter is added to :meth:`.ColumnOperators.startswith`,
-:meth:`.ColumnOperators.endswith`, :meth:`.ColumnOperators.contains`.  This parameter
-does what "escape" does, except that it also automatically performs a search-
-and-replace of any wildcard characters to be escaped by that character, as
-these operators already add the wildcard expression on the outside of the
-given value.
+:meth:`.ColumnOperators.endswith`, :meth:`.ColumnOperators.contains`.
+This parameter when set to ``True`` will automatically escape all occurrences
+of ``%``, ``_`` with an escape character, which defaults to a forwards slash ``/``;
+occurrences of the escape character itself are also escaped.  The forwards slash
+is used to avoid conflicts with settings like Postgresql's
+``standard_confirming_strings``, whose default value changed as of Postgresql
+9.1, and MySQL's ``NO_BACKSLASH_ESCAPES`` settings.  The existing "escape" parameter
+can now be used to change the autoescape character, if desired.
+
+.. note::  This feature has been changed as of 1.2.0b4 from its initial
+   implementation in 1.2.0b2 such that autoescape is now passed as a boolean
+   value, rather than a specific character to use as the escape character.
 
 An expression such as::
 
-    >>> column('x').startswith('total%score', autoescape='/')
+    >>> column('x').startswith('total%score', autoescape=True)
 
 Renders as::
 
-    x LIKE :x_1 || '%%' ESCAPE '/'
+    x LIKE :x_1 || '%' ESCAPE '/'
 
 Where the value of the parameter "x_1" is ``'total/%score'``.
+
+Similarly, an expression that has backslashes::
+
+    >>> column('x').startswith('total/score', autoescape=True)
+
+Will render the same way, with the value of the parameter "x_1" as
+``'total//score'``.
+
 
 :ticket:`2694`
 
