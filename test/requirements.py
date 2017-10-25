@@ -829,18 +829,23 @@ class DefaultRequirements(SuiteRequirements):
     def duplicate_key_raises_integrity_error(self):
         return fails_on("postgresql+pg8000")
 
-    @property
-    def hstore(self):
-        def check_hstore(config):
+    def _has_pg_extension(self, name):
+        def check(config):
             if not against(config, "postgresql"):
                 return False
-            try:
-                config.db.execute("SELECT 'a=>1,a=>2'::hstore;")
-                return True
-            except Exception:
-                return False
+            count = config.db.scalar(
+                "SELECT count(*) FROM pg_extension "
+                "WHERE extname='%s'" % name)
+            return bool(count)
+        return only_if(check, "needs %s extension" % name)
 
-        return only_if(check_hstore)
+    @property
+    def hstore(self):
+        return self._has_pg_extension("hstore")
+
+    @property
+    def btree_gist(self):
+        return self._has_pg_extension("btree_gist")
 
     @property
     def range_types(self):

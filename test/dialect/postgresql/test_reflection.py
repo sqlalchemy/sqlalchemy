@@ -13,7 +13,8 @@ from sqlalchemy import Table, Column, MetaData, Integer, String, \
 from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL
+from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL, TSRANGE
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
 import re
 
 
@@ -971,6 +972,36 @@ class ReflectionTest(fixtures.TestBase):
         self.assert_('uc_a' not in indexes)
         self.assert_('uc_a' in constraints)
 
+    @testing.requires.btree_gist
+    @testing.provide_metadata
+    def test_reflection_with_exclude_constraint(self):
+        m = self.metadata
+        Table(
+            't', m,
+            Column('id', Integer, primary_key=True),
+            Column('period', TSRANGE),
+            ExcludeConstraint(('period', '&&'), name='quarters_period_excl')
+        )
+
+        m.create_all()
+
+        insp = inspect(testing.db)
+
+        # PostgreSQL will create an implicit index for an exclude constraint.
+        # we don't reflect the EXCLUDE yet.
+        eq_(
+            insp.get_indexes('t'),
+            [{'unique': False, 'name': 'quarters_period_excl',
+              'duplicates_constraint': 'quarters_period_excl',
+              'dialect_options': {'postgresql_using': 'gist'},
+              'column_names': ['period']}]
+        )
+
+        # reflection corrects for the dupe
+        reflected = Table('t', MetaData(testing.db), autoload=True)
+
+        eq_(set(reflected.indexes), set())
+
     @testing.provide_metadata
     def test_reflect_unique_index(self):
         insp = inspect(testing.db)
@@ -1024,6 +1055,7 @@ class ReflectionTest(fixtures.TestBase):
             u'cc1': u'(a > 1) AND (a < 5)',
             u'cc2': u'(a = 1) OR ((a > 2) AND (a < 5))'
         })
+
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
