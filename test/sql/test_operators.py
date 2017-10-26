@@ -1,6 +1,7 @@
 from sqlalchemy.testing import fixtures, eq_, is_, is_not_
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.sql import column, desc, asc, literal, collate, null, \
     true, false, any_, all_
 from sqlalchemy.sql import sqltypes
@@ -2299,9 +2300,9 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_contains_autoescape(self):
         self.assert_compile(
-            column('x').contains('a%b_c', autoescape='\\'),
-            "x LIKE '%' || :x_1 || '%' ESCAPE '\\'",
-            checkparams={'x_1': 'a\\%b\\_c'}
+            column('x').contains('a%b_c/d', autoescape=True),
+            "x LIKE '%' || :x_1 || '%' ESCAPE '/'",
+            checkparams={'x_1': 'a/%b/_c//d'}
         )
 
     def test_contains_literal(self):
@@ -2334,9 +2335,9 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_not_contains_autoescape(self):
         self.assert_compile(
-            ~column('x').contains('a%b_c', autoescape='\\'),
-            "x NOT LIKE '%' || :x_1 || '%' ESCAPE '\\'",
-            checkparams={'x_1': 'a\\%b\\_c'}
+            ~column('x').contains('a%b_c/d', autoescape=True),
+            "x NOT LIKE '%' || :x_1 || '%' ESCAPE '/'",
+            checkparams={'x_1': 'a/%b/_c//d'}
         )
 
     def test_contains_concat(self):
@@ -2443,9 +2444,16 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_startswith_autoescape(self):
         self.assert_compile(
-            column('x').startswith('a%b_c', autoescape='\\'),
-            "x LIKE :x_1 || '%' ESCAPE '\\'",
-            checkparams={'x_1': 'a\\%b\\_c'}
+            column('x').startswith('a%b_c/d', autoescape=True),
+            "x LIKE :x_1 || '%' ESCAPE '/'",
+            checkparams={'x_1': 'a/%b/_c//d'}
+        )
+
+    def test_startswith_autoescape_custom_escape(self):
+        self.assert_compile(
+            column('x').startswith('a%b_c/d^e', autoescape=True, escape='^'),
+            "x LIKE :x_1 || '%' ESCAPE '^'",
+            checkparams={'x_1': 'a^%b^_c/d^^e'}
         )
 
     def test_not_startswith(self):
@@ -2464,9 +2472,9 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_not_startswith_autoescape(self):
         self.assert_compile(
-            ~column('x').startswith('a%b_c', autoescape='\\'),
-            "x NOT LIKE :x_1 || '%' ESCAPE '\\'",
-            checkparams={'x_1': 'a\\%b\\_c'}
+            ~column('x').startswith('a%b_c/d', autoescape=True),
+            "x NOT LIKE :x_1 || '%' ESCAPE '/'",
+            checkparams={'x_1': 'a/%b/_c//d'}
         )
 
     def test_startswith_literal(self):
@@ -2547,9 +2555,32 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_endswith_autoescape(self):
         self.assert_compile(
-            column('x').endswith('a%b_c', autoescape='\\'),
-            "x LIKE '%' || :x_1 ESCAPE '\\'",
-            checkparams={'x_1': 'a\\%b\\_c'}
+            column('x').endswith('a%b_c/d', autoescape=True),
+            "x LIKE '%' || :x_1 ESCAPE '/'",
+            checkparams={'x_1': 'a/%b/_c//d'}
+        )
+
+    def test_endswith_autoescape_custom_escape(self):
+        self.assert_compile(
+            column('x').endswith('a%b_c/d^e', autoescape=True, escape="^"),
+            "x LIKE '%' || :x_1 ESCAPE '^'",
+            checkparams={'x_1': 'a^%b^_c/d^^e'}
+        )
+
+    def test_endswith_autoescape_warning(self):
+        with expect_warnings("The autoescape parameter is now a simple"):
+            self.assert_compile(
+                column('x').endswith('a%b_c/d', autoescape='P'),
+                "x LIKE '%' || :x_1 ESCAPE '/'",
+                checkparams={'x_1': 'a/%b/_c//d'}
+            )
+
+    def test_endswith_autoescape_nosqlexpr(self):
+        assert_raises_message(
+            TypeError,
+            "String value expected when autoescape=True",
+            column('x').endswith,
+            literal_column("'a%b_c/d'"), autoescape=True
         )
 
     def test_not_endswith(self):
@@ -2568,9 +2599,9 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_not_endswith_autoescape(self):
         self.assert_compile(
-            ~column('x').endswith('a%b_c', autoescape='\\'),
-            "x NOT LIKE '%' || :x_1 ESCAPE '\\'",
-            checkparams={'x_1': 'a\\%b\\_c'}
+            ~column('x').endswith('a%b_c/d', autoescape=True),
+            "x NOT LIKE '%' || :x_1 ESCAPE '/'",
+            checkparams={'x_1': 'a/%b/_c//d'}
         )
 
     def test_endswith_literal(self):
