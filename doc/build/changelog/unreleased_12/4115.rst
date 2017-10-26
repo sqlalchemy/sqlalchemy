@@ -1,4 +1,4 @@
-:change:
+.. change::
     :tags: bug, mysql
     :tickets: 4115
 
