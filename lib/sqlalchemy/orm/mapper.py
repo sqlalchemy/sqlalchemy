@@ -1098,6 +1098,7 @@ class Mapper(InspectionAttr):
         self.inherits._inheriting_mappers.append(self)
         self.passive_updates = self.inherits.passive_updates
         self._all_tables = self.inherits._all_tables
+
         for key, prop in mapper._props.items():
             if key not in self._props and \
                 not self._should_exclude(key, key, local=False,

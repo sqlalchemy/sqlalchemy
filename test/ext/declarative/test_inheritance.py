@@ -1092,6 +1092,10 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             eq_(sess.query(Manager).all(), [Manager(name='dogbert')])
             eq_(sess.query(Boss).all(), [Boss(name='pointy haired')])
 
+        e1 = sess.query(Engineer).order_by(Engineer.name).first()
+        sess.expire(e1)
+        eq_(e1.name, 'dilbert')
+
     def test_explicit(self):
         engineers = Table(
             'engineers', Base.metadata,
@@ -1212,6 +1216,55 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                                'concrete': True}
 
         self._roundtrip(Employee, Manager, Engineer, Boss)
+
+    def test_abstract_concrete_extension_descriptor_refresh(self):
+        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+            @declared_attr
+            def name(cls):
+                return Column(String(50))
+
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            employee_id = Column(Integer, primary_key=True,
+                                 test_needs_autoincrement=True)
+            paperwork = Column(String(10))
+            __mapper_args__ = {
+                'polymorphic_identity': 'manager', 'concrete': True}
+
+        class Engineer(Employee):
+            __tablename__ = 'engineer'
+            employee_id = Column(Integer, primary_key=True,
+                                 test_needs_autoincrement=True)
+
+            @property
+            def paperwork(self):
+                return "p"
+
+            __mapper_args__ = {
+                'polymorphic_identity': 'engineer', 'concrete': True}
+
+        Base.metadata.create_all()
+        sess = Session()
+        sess.add(Engineer(name='d'))
+        sess.commit()
+
+        # paperwork is excluded because there's a descritor; so it is
+        # not in the Engineers mapped properties at all, though is inside the
+        # class manager.   Maybe it shouldn't be in the class manager either.
+        assert 'paperwork' in Engineer.__mapper__.class_manager
+        assert 'paperwork' not in Engineer.__mapper__.attrs.keys()
+
+        # type currently does get mapped, as a
+        # ConcreteInheritedProperty, which means, "ignore this thing inherited
+        # from the concrete base".   if we didn't specify concrete=True, then
+        # this one gets stuck in the error condition also.
+        assert 'type' in Engineer.__mapper__.class_manager
+        assert 'type' in Engineer.__mapper__.attrs.keys()
+
+        e1 = sess.query(Engineer).first()
+        eq_(e1.name, 'd')
+        sess.expire(e1)
+        eq_(e1.name, 'd')
 
     def test_concrete_extension(self):
         class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
