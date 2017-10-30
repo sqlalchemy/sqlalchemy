@@ -2146,10 +2146,9 @@ class SQLCompiler(Compiled):
         MySQL and MSSQL override this.
 
         """
-        return "FROM " + ', '.join(
-            t._compiler_dispatch(self, asfrom=True,
-                                 fromhints=from_hints, **kw)
-            for t in extra_froms)
+        raise NotImplementedError(
+            "This backend does not support multiple-table "
+            "criteria within UPDATE")
 
     def visit_update(self, update_stmt, asfrom=False, **kw):
         toplevel = not self.stack
@@ -2232,6 +2231,25 @@ class SQLCompiler(Compiled):
     def _key_getters_for_crud_column(self):
         return crud._key_getters_for_crud_column(self, self.statement)
 
+    def delete_extra_from_clause(self, update_stmt,
+                                 from_table, extra_froms,
+                                 from_hints, **kw):
+        """Provide a hook to override the generation of an
+        DELETE..FROM clause.
+
+        This can be used to implement DELETE..USING for example.
+
+        MySQL and MSSQL override this.
+
+        """
+        raise NotImplementedError(
+            "This backend does not support multiple-table "
+            "criteria within DELETE")
+
+    def delete_table_clause(self, delete_stmt, from_table,
+                            extra_froms):
+        return from_table._compiler_dispatch(self, asfrom=True, iscrud=True)
+
     def visit_delete(self, delete_stmt, asfrom=False, **kw):
         toplevel = not self.stack
 
@@ -2241,6 +2259,8 @@ class SQLCompiler(Compiled):
 
         crud._setup_crud_params(self, delete_stmt, crud.ISDELETE, **kw)
 
+        extra_froms = delete_stmt._extra_froms
+
         text = "DELETE "
 
         if delete_stmt._prefixes:
@@ -2248,12 +2268,14 @@ class SQLCompiler(Compiled):
                                             delete_stmt._prefixes, **kw)
 
         text += "FROM "
-        table_text = delete_stmt.table._compiler_dispatch(
-            self, asfrom=True, iscrud=True)
+        table_text = self.delete_table_clause(delete_stmt, delete_stmt.table,
+                                              extra_froms)
 
         if delete_stmt._hints:
             dialect_hints, table_text = self._setup_crud_hints(
                 delete_stmt, table_text)
+        else:
+            dialect_hints = None
 
         text += table_text
 
@@ -2261,6 +2283,15 @@ class SQLCompiler(Compiled):
             if self.returning_precedes_values:
                 text += " " + self.returning_clause(
                     delete_stmt, delete_stmt._returning)
+
+        if extra_froms:
+            extra_from_text = self.delete_extra_from_clause(
+                delete_stmt,
+                delete_stmt.table,
+                extra_froms,
+                dialect_hints, **kw)
+            if extra_from_text:
+                text += " " + extra_from_text
 
         if delete_stmt._whereclause is not None:
             t = delete_stmt._whereclause._compiler_dispatch(self, **kw)
@@ -2323,6 +2354,24 @@ class StrSQLCompiler(SQLCompiler):
         ]
 
         return 'RETURNING ' + ', '.join(columns)
+
+    def update_from_clause(self, update_stmt,
+                           from_table, extra_froms,
+                           from_hints,
+                           **kw):
+        return "FROM " + ', '.join(
+            t._compiler_dispatch(self, asfrom=True,
+                                 fromhints=from_hints, **kw)
+            for t in extra_froms)
+
+    def delete_extra_from_clause(self, update_stmt,
+                           from_table, extra_froms,
+                           from_hints,
+                           **kw):
+        return ', ' + ', '.join(
+            t._compiler_dispatch(self, asfrom=True,
+                                 fromhints=from_hints, **kw)
+            for t in extra_froms)
 
 
 class DDLCompiler(Compiled):

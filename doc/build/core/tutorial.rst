@@ -2055,10 +2055,11 @@ The tables are referenced explicitly in the SET clause::
             users.name=%s WHERE users.id = addresses.id
             AND addresses.email_address LIKE concat(%s, '%')
 
-SQLAlchemy doesn't do anything special when these constructs are used on
-a non-supporting database.  The ``UPDATE FROM`` syntax generates by default
-when multiple tables are present, and the statement will be rejected
-by the database if this syntax is not supported.
+When the construct is used on a non-supporting database, the compiler
+will raise ``NotImplementedError``.   For convenience, when a statement
+is printed as a string without specification of a dialect, the "string SQL"
+compiler will be invoked which provides a non-working SQL representation of the
+construct.
 
 .. _updates_order_parameters:
 
@@ -2128,6 +2129,37 @@ Finally, a delete.  This is accomplished easily enough using the
     ('m',)
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+
+.. _multi_table_deletes:
+
+Multiple Table Deletes
+----------------------
+
+.. versionadded:: 1.2
+
+The PostgreSQL, Microsoft SQL Server, and MySQL backends all support DELETE
+statements that refer to multiple tables within the WHERE criteria.   For PG
+and MySQL, this is the "DELETE USING" syntax, and for SQL Server, it's a
+"DELETE FROM" that refers to more than one table.  The SQLAlchemy
+:func:`.delete` construct supports both of these modes
+implicitly, by specifying multiple tables in the WHERE clause::
+
+    stmt = users.delete().\
+            where(users.c.id == addresses.c.id).\
+            where(addresses.c.email_address.startswith('ed%'))
+    conn.execute(stmt)
+
+On a Postgresql backend, the resulting SQL from the above statement would render as::
+
+    DELETE FROM users USING addresses
+    WHERE users.id = addresses.id
+    AND (addresses.email_address LIKE %(email_address_1)s || '%%')
+
+When the construct is used on a non-supporting database, the compiler
+will raise ``NotImplementedError``.   For convenience, when a statement
+is printed as a string without specification of a dialect, the "string SQL"
+compiler will be invoked which provides a non-working SQL representation of the
+construct.
 
 Matched Row Counts
 ------------------

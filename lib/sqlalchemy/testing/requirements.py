@@ -693,6 +693,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def delete_from(self):
+        """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
+        return exclusions.closed()
+
+    @property
     def update_where_target_in_subquery(self):
         """Target must support UPDATE where the same table is present in a
         subquery in the WHERE clause.

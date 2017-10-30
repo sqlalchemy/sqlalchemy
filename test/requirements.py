@@ -325,6 +325,12 @@ class DefaultRequirements(SuiteRequirements):
                        "Backend does not support UPDATE..FROM")
 
     @property
+    def delete_from(self):
+        """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
+        return only_on(['postgresql', 'mssql', 'mysql', 'sybase'],
+                       "Backend does not support UPDATE..FROM")
+
+    @property
     def update_where_target_in_subquery(self):
         """Target must support UPDATE where the same table is present in a
         subquery in the WHERE clause.

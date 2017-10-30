@@ -726,6 +726,7 @@ class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
 
 
 class UpdateDeleteFromTest(fixtures.MappedTest):
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -800,6 +801,25 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
                 (1, True), (2, None),
                 (3, None), (4, True),
                 (5, True), (6, None)])
+        )
+
+    @testing.requires.delete_from
+    def test_delete_from_joined_subq_test(self):
+        Document = self.classes.Document
+        s = Session()
+
+        subq = s.query(func.max(Document.title).label('title')).\
+            group_by(Document.user_id).subquery()
+
+        s.query(Document).filter(Document.title == subq.c.title).\
+            delete(synchronize_session=False)
+
+        eq_(
+            set(s.query(Document.id, Document.flag)),
+            set([
+                (2, None),
+                (3, None),
+                (6, None)])
         )
 
     def test_no_eval_against_multi_table_criteria(self):
@@ -1014,6 +1034,19 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         eq_(
             set(s.query(Person.name, Engineer.engineer_name)),
             set([('e1', 'e1', ), ('e2', 'e5')])
+        )
+
+    @testing.requires.delete_from
+    def test_delete_from(self):
+        Engineer = self.classes.Engineer
+        Person = self.classes.Person
+        s = Session(testing.db)
+        s.query(Engineer).filter(Engineer.id == Person.id).\
+            filter(Person.name == 'e2').delete()
+
+        eq_(
+            set(s.query(Person.name, Engineer.engineer_name)),
+            set([('e1', 'e1', )])
         )
 
     @testing.only_on('mysql', 'Multi table update')

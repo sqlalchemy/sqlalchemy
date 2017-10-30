@@ -391,7 +391,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             where(table1.c.name == sel.c.othername).\
             values(name='foo')
 
-        dialect = default.DefaultDialect()
+        dialect = default.StrCompileDialect()
         dialect.positional = True
         self.assert_compile(
             upd,
@@ -419,7 +419,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
 class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
                             AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = 'default_enhanced'
 
     run_create_tables = run_inserts = run_deletes = None
 

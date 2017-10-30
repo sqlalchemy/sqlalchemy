@@ -526,6 +526,8 @@ the :class:`.Table` to which ``User`` is mapped.
 
 :ticket:`2245`
 
+.. _change_orm_2365:
+
 Query.update() supports UPDATE..FROM
 ------------------------------------
 
