@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4126
+    :versions: 1.2.0b4
+
+    Fixed bug where ``__repr__`` of :class:`.ColumnDefault` would fail
+    if the argument were a tuple.  Pull request courtesy Nicolas Caniart.
