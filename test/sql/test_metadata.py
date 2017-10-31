@@ -550,6 +550,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
              "CheckConstraint("
              "%s"
              ", name='someconstraint')" % repr(ck.sqltext)),
+            (ColumnDefault(('foo', 'bar')), "ColumnDefault(('foo', 'bar'))")
         ):
             eq_(
                 repr(const),

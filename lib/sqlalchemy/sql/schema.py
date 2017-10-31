@@ -2081,7 +2081,7 @@ class ColumnDefault(DefaultGenerator):
     __visit_name__ = property(_visit_name)
 
     def __repr__(self):
-        return "ColumnDefault(%r)" % self.arg
+        return "ColumnDefault(%r)" % (self.arg, )
 
 
 class Sequence(DefaultGenerator):
