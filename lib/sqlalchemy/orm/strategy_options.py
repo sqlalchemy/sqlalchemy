@@ -546,7 +546,7 @@ def contains_eager(loadopt, attr, alias=None):
     ``User`` entity, and the returned ``Order`` objects would have the
     ``Order.user`` attribute pre-populated.
 
-    :func:`contains_eager` also accepts an `alias` argument, which is the
+    :func:`.contains_eager` also accepts an `alias` argument, which is the
     string name of an alias, an :func:`~sqlalchemy.sql.expression.alias`
     construct, or an :func:`~sqlalchemy.orm.aliased` construct. Use this when
     the eagerly-loaded rows are to come from an aliased table::
@@ -555,6 +555,18 @@ def contains_eager(loadopt, attr, alias=None):
         sess.query(Order).\
                 join((user_alias, Order.user)).\
                 options(contains_eager(Order.user, alias=user_alias))
+
+    When using :func:`.contains_eager` in conjunction with inherited
+    subclasses, the :meth:`.RelationshipProperty.of_type` modifier should
+    also be used in order to set up the pathing properly::
+
+        sess.query(Company).\
+            outerjoin(Company.employees.of_type(Manager)).\
+            options(
+                contains_eager(
+                    Company.employees.of_type(Manager),
+                    alias=Manager)
+            )
 
     .. seealso::
 
