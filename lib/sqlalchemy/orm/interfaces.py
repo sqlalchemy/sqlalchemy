@@ -404,6 +404,9 @@ class PropComparator(operators.ColumnOperators):
         :param \class_: a class or mapper indicating that criterion will be
             against this specific subclass.
 
+        .. seealso::
+
+            :ref:`inheritance_of_type`
 
         """
 

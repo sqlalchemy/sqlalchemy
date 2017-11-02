@@ -547,6 +547,7 @@ set up, we could get the same result as follows::
     s.query(Employee).options(
         selectin_polymorphic(Employee, [manager_poly])).all()
 
+.. _inheritance_of_type:
 
 Referring to specific subtypes on relationships
 -----------------------------------------------

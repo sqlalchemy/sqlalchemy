@@ -963,11 +963,9 @@ class RelationshipProperty(StrategizedProperty):
                 return pj
 
         def of_type(self, cls):
-            """Produce a construct that represents a particular 'subtype' of
-            attribute for the parent class.
+            r"""Redefine this object in terms of a polymorphic subclass.
 
-            Currently this is usable in conjunction with :meth:`.Query.join`
-            and :meth:`.Query.outerjoin`.
+            See :meth:`.PropComparator.of_type` for an example.
 
             """
             return RelationshipProperty.Comparator(
