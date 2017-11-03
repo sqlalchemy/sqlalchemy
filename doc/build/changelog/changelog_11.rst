@@ -18,6 +18,10 @@
 
 
 .. changelog::
+    :version: 1.1.16
+    :include_notes_from: unreleased_11
+
+.. changelog::
     :version: 1.1.15
     :released: November 3, 2017
 
