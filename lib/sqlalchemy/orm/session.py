@@ -179,25 +179,25 @@ class SessionTransaction(object):
 
     .. seealso::
 
-    :meth:`.Session.rollback`
+        :meth:`.Session.rollback`
 
-    :meth:`.Session.commit`
+        :meth:`.Session.commit`
 
-    :meth:`.Session.begin`
+        :meth:`.Session.begin`
 
-    :meth:`.Session.begin_nested`
+        :meth:`.Session.begin_nested`
 
-    :attr:`.Session.is_active`
+        :attr:`.Session.is_active`
 
-    :meth:`.SessionEvents.after_transaction_create`
+        :meth:`.SessionEvents.after_transaction_create`
 
-    :meth:`.SessionEvents.after_transaction_end`
+        :meth:`.SessionEvents.after_transaction_end`
 
-    :meth:`.SessionEvents.after_commit`
+        :meth:`.SessionEvents.after_commit`
 
-    :meth:`.SessionEvents.after_rollback`
+        :meth:`.SessionEvents.after_rollback`
 
-    :meth:`.SessionEvents.after_soft_rollback`
+        :meth:`.SessionEvents.after_soft_rollback`
 
     """
 

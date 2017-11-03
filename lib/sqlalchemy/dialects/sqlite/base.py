@@ -531,8 +531,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
     The default string storage format is::
 
-        "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(min)02d:\
-%(second)02d.%(microsecond)06d"
+        "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(min)02d:%(second)02d.%(microsecond)06d"
 
     e.g.::
 
@@ -558,6 +557,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
      Otherwise, if positional groups are used, the datetime() constructor
      is called with positional arguments via
      ``*map(int, match_obj.groups(0))``.
+
     """
 
     _storage_format = (

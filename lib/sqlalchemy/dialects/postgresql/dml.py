@@ -54,40 +54,41 @@ class Insert(StandardInsert):
         required, but only one of these can be specified.
 
         :param constraint:
-        The name of a unique or exclusion constraint on the table,
-        or the constraint object itself if it has a .name attribute.
+         The name of a unique or exclusion constraint on the table,
+         or the constraint object itself if it has a .name attribute.
 
         :param index_elements:
-        A sequence consisting of string column names, :class:`.Column`
-        objects, or other column expression objects that will be used
-        to infer a target index.
+         A sequence consisting of string column names, :class:`.Column`
+         objects, or other column expression objects that will be used
+         to infer a target index.
 
         :param index_where:
-        Additional WHERE criterion that can be used to infer a
-        conditional target index.
+         Additional WHERE criterion that can be used to infer a
+         conditional target index.
 
         :param set_:
-        Required argument. A dictionary or other mapping object
-        with column names as keys and expressions or literals as values,
-        specifying the ``SET`` actions to take.
-        If the target :class:`.Column` specifies a ".key" attribute distinct
-        from the column name, that key should be used.
+         Required argument. A dictionary or other mapping object
+         with column names as keys and expressions or literals as values,
+         specifying the ``SET`` actions to take.
+         If the target :class:`.Column` specifies a ".key" attribute distinct
+         from the column name, that key should be used.
 
-        .. warning:: This dictionary does **not** take into account
-           Python-specified default UPDATE values or generation functions,
-           e.g. those specified using :paramref:`.Column.onupdate`.
-           These values will not be exercised for an ON CONFLICT style of
-           UPDATE, unless they are manually specified in the
-           :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
+         .. warning:: This dictionary does **not** take into account
+            Python-specified default UPDATE values or generation functions,
+            e.g. those specified using :paramref:`.Column.onupdate`.
+            These values will not be exercised for an ON CONFLICT style of
+            UPDATE, unless they are manually specified in the
+            :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
 
         :param where:
-        Optional argument. If present, can be a literal SQL
-        string or an acceptable expression for a ``WHERE`` clause
-        that restricts the rows affected by ``DO UPDATE SET``. Rows
-        not meeting the ``WHERE`` condition will not be updated
-        (effectively a ``DO NOTHING`` for those rows).
+         Optional argument. If present, can be a literal SQL
+         string or an acceptable expression for a ``WHERE`` clause
+         that restricts the rows affected by ``DO UPDATE SET``. Rows
+         not meeting the ``WHERE`` condition will not be updated
+         (effectively a ``DO NOTHING`` for those rows).
 
-        .. versionadded:: 1.1
+         .. versionadded:: 1.1
+
 
         .. seealso::
 
@@ -109,19 +110,19 @@ class Insert(StandardInsert):
         are optional, but only one of these can be specified.
 
         :param constraint:
-        The name of a unique or exclusion constraint on the table,
-        or the constraint object itself if it has a .name attribute.
+         The name of a unique or exclusion constraint on the table,
+         or the constraint object itself if it has a .name attribute.
 
         :param index_elements:
-        A sequence consisting of string column names, :class:`.Column`
-        objects, or other column expression objects that will be used
-        to infer a target index.
+         A sequence consisting of string column names, :class:`.Column`
+         objects, or other column expression objects that will be used
+         to infer a target index.
 
         :param index_where:
-        Additional WHERE criterion that can be used to infer a
-        conditional target index.
+         Additional WHERE criterion that can be used to infer a
+         conditional target index.
 
-        .. versionadded:: 1.1
+         .. versionadded:: 1.1
 
         .. seealso::
 

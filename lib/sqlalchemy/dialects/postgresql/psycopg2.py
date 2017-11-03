@@ -5,12 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: postgresql+psycopg2
     :name: psycopg2
     :dbapi: psycopg2
-    :connectstring: postgresql+psycopg2://user:password@host:port/dbname\
-[?key=value&key=value...]
+    :connectstring: postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]
     :url: http://pypi.python.org/pypi/psycopg2/
 
 psycopg2 Connect Arguments
@@ -31,6 +30,7 @@ psycopg2-specific keyword arguments which are accepted by
   Note that the :paramref:`.Connection.execution_options.stream_results`
   execution option is a more targeted
   way of enabling this mode on a per-execution basis.
+
 * ``use_native_unicode``: Enable the usage of Psycopg2 "native unicode" mode
   per connection.  True by default.
 
@@ -70,10 +70,9 @@ using ``host`` as an additional keyword argument::
     create_engine("postgresql+psycopg2://user:password@/dbname?\
 host=/var/lib/postgresql")
 
-See also:
+.. seealso::
 
-`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/\
-libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+    `PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 .. _psycopg2_execution_options:
 
