@@ -909,3 +909,180 @@ class SubclassRelationshipTest2(
                 {}
             )
         )
+
+
+class SubclassRelationshipTest3(
+        testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
+
+    run_setup_classes = 'once'
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class _A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50), nullable=False)
+            b = relationship('_B', back_populates='a')
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class _B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50), nullable=False)
+            a_id = Column(Integer, ForeignKey(_A.id))
+            a = relationship(_A, back_populates='b')
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class _C(Base):
+            __tablename__ = 'c'
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50), nullable=False)
+            b_id = Column(Integer, ForeignKey(_B.id))
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class A1(_A):
+            __mapper_args__ = {'polymorphic_identity': 'A1'}
+
+        class B1(_B):
+            __mapper_args__ = {'polymorphic_identity': 'B1'}
+
+        class C1(_C):
+            __mapper_args__ = {'polymorphic_identity': 'C1'}
+            b1 = relationship(B1, backref='c1')
+
+    _query1 = (
+        "SELECT b.id AS b_id, b.type AS b_type, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.type AS c_type, c.b_id AS c_b_id, a.id AS a_id, "
+        "a.type AS a_type "
+        "FROM a LEFT OUTER JOIN b ON "
+        "a.id = b.a_id AND b.type IN (:type_1) "
+        "LEFT OUTER JOIN c ON "
+        "b.id = c.b_id AND c.type IN (:type_2) WHERE a.type IN (:type_3)"
+    )
+
+    _query2 = (
+        "SELECT bbb.id AS bbb_id, bbb.type AS bbb_type, bbb.a_id AS bbb_a_id, "
+        "ccc.id AS ccc_id, ccc.type AS ccc_type, ccc.b_id AS ccc_b_id, "
+        "aaa.id AS aaa_id, aaa.type AS aaa_type "
+        "FROM a AS aaa LEFT OUTER JOIN b AS bbb "
+        "ON aaa.id = bbb.a_id AND bbb.type IN (:type_1) "
+        "LEFT OUTER JOIN c AS ccc ON "
+        "bbb.id = ccc.b_id AND ccc.type IN (:type_2) "
+        "WHERE aaa.type IN (:type_3)"
+    )
+
+    _query3 = (
+        "SELECT bbb.id AS bbb_id, bbb.type AS bbb_type, bbb.a_id AS bbb_a_id, "
+        "c.id AS c_id, c.type AS c_type, c.b_id AS c_b_id, "
+        "aaa.id AS aaa_id, aaa.type AS aaa_type "
+        "FROM a AS aaa LEFT OUTER JOIN b AS bbb "
+        "ON aaa.id = bbb.a_id AND bbb.type IN (:type_1) "
+        "LEFT OUTER JOIN c ON "
+        "bbb.id = c.b_id AND c.type IN (:type_2) "
+        "WHERE aaa.type IN (:type_3)"
+    )
+
+    def _test(self, join_of_type, of_type_for_c1, aliased_):
+        A1, B1, C1 = self.classes('A1', 'B1', 'C1')
+
+        if aliased_:
+            A1 = aliased(A1, name='aaa')
+            B1 = aliased(B1, name='bbb')
+            C1 = aliased(C1, name='ccc')
+
+        sess = Session()
+        abc = sess.query(A1)
+
+        if join_of_type:
+            abc = abc.outerjoin(A1.b.of_type(B1)).\
+                options(contains_eager(A1.b.of_type(B1)))
+
+            if of_type_for_c1:
+                abc = abc.outerjoin(B1.c1.of_type(C1)).\
+                    options(
+                        contains_eager(A1.b.of_type(B1), B1.c1.of_type(C1)))
+            else:
+                abc = abc.outerjoin(B1.c1).\
+                    options(contains_eager(A1.b.of_type(B1), B1.c1))
+        else:
+            abc = abc.outerjoin(B1, A1.b).\
+                options(contains_eager(A1.b.of_type(B1)))
+
+            if of_type_for_c1:
+                abc = abc.outerjoin(C1, B1.c1).\
+                    options(
+                        contains_eager(A1.b.of_type(B1), B1.c1.of_type(C1)))
+            else:
+                abc = abc.outerjoin(B1.c1).\
+                    options(contains_eager(A1.b.of_type(B1), B1.c1))
+
+        if aliased_:
+            if of_type_for_c1:
+                self.assert_compile(abc, self._query2)
+            else:
+                self.assert_compile(abc, self._query3)
+        else:
+            self.assert_compile(abc, self._query1)
+
+    def test_join_of_type_contains_eager_of_type_b1_c1(self):
+        self._test(
+            join_of_type=True,
+            of_type_for_c1=True,
+            aliased_=False
+        )
+
+    def test_join_flat_contains_eager_of_type_b1_c1(self):
+        self._test(
+            join_of_type=False,
+            of_type_for_c1=True,
+            aliased_=False
+        )
+
+    def test_join_of_type_contains_eager_of_type_b1(self):
+        self._test(
+            join_of_type=True,
+            of_type_for_c1=False,
+            aliased_=False
+        )
+
+    def test_join_flat_contains_eager_of_type_b1(self):
+        self._test(
+            join_of_type=False,
+            of_type_for_c1=False,
+            aliased_=False
+        )
+
+    def test_aliased_join_of_type_contains_eager_of_type_b1_c1(self):
+        self._test(
+            join_of_type=True,
+            of_type_for_c1=True,
+            aliased_=True
+        )
+
+    def test_aliased_join_flat_contains_eager_of_type_b1_c1(self):
+        self._test(
+            join_of_type=False,
+            of_type_for_c1=True,
+            aliased_=True
+        )
+
+    def test_aliased_join_of_type_contains_eager_of_type_b1(self):
+        self._test(
+            join_of_type=True,
+            of_type_for_c1=False,
+            aliased_=True
+        )
+
+    def test_aliased_join_flat_contains_eager_of_type_b1(self):
+        self._test(
+            join_of_type=False,
+            of_type_for_c1=False,
+            aliased_=True
+        )
+
