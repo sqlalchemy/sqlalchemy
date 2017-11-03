@@ -62,6 +62,91 @@ the "pessimistic" approach.
 
     :ref:`pool_disconnects`
 
+.. _mysql_sync_errors:
+
+"Commands out of sync; you can't run this command now" / "This result object does not return rows. It has been closed automatically"
+------------------------------------------------------------------------------------------------------------------------------------
+
+The MySQL drivers have a fairly wide class of failure modes whereby the state of
+the connection to the server is in an invalid state.  Typically, when the connection
+is used again, one of these two error messages will occur.    The reason is because
+the state of the server has been changed to one in which the client library
+does not expect, such that when the client library emits a new statement
+on the connection, the server does not respond as expected.
+
+In SQLAlchemy, because database connections are pooled, the issue of the messaging
+being out of sync on a connection becomes more important, since when an operation
+fails, if the connection itself is in an unusable state, if it goes back into the
+connection pool, it will malfunction when checked out again.  The mitigation
+for this issue is that the connection is **invalidated** when such a failure
+mode occurs so that the underlying database connection to MySQL is discarded.
+This invalidation occurs automatically for many known failure modes and can
+also be called explicitly via the :meth:`.Connection.invalidate` method.
+
+There is also a second class of failure modes within this category where a context manager
+such as ``with session.begin_nested():`` wants to "roll back" the transaction
+when an error occurs; however within some failure modes of the connection, the
+rollback itself (which can also be a RELEASE SAVEPOINT operation) also
+fails, causing misleading stack traces.
+
+Originally, the cause of this error used to be fairly simple, it meant that
+a multithreaded program was invoking commands on a single connection from more
+than one thread.   This applied to the original "MySQLdb" native-C driver that was
+pretty much the only driver in use.   However, with the introduction of pure Python
+drivers like PyMySQL and MySQL-connector-Python, as well as increased use of
+tools such as gevent/eventlet, multiprocessing (often with Celery), and others,
+there is a whole series of factors that has been known to cause this problem, some of
+which have been improved across SQLAlchemy versions but others which are unavoidable:
+
+* **Sharing a connection among threads** - This is the original reason these kinds
+  of errors occurred.  A program used the same connection in two or more threads at
+  the same time, meaning multiple sets of messages got mixed up on the connection,
+  putting the server-side session into a state that the client no longer knows how
+  to interpret.   However, other causes are usually more likely today.
+
+* **Sharing the filehandle for the connection among processes** - This usually occurs
+  when a program uses ``os.fork()`` to spawn a new process, and a TCP connection
+  that is present in th parent process gets shared into one or more child processes.
+  As multiple processes are now emitting messages to essentially the same filehandle,
+  the server receives interleaved messages and breaks the state of the connection.
+
+  This scenario can occur very easily if a program uses Python's "multiprocessing"
+  module and makes use of an :class:`.Engine` that was created in the parent
+  process.  It's common that "multiprocessing" is in use when using tools like
+  Celery.  The correct approach should be either that a new :class:`.Engine`
+  is produced when a child process first starts, discarding any :class:`.Engine`
+  that came down from the parent process; or, the :class:`.Engine` that's inherited
+  from the parent process can have it's internal pool of connections disposed by
+  calling :meth:`.Engine.dispose`.
+
+* **Greenlet Monkeypatching w/ Exits** - When using a library like gevent or eventlet
+  that monkeypatches the Python networking API, libraries like PyMySQL are now
+  working in an asynchronous mode of operation, even though they are not developed
+  explicitly against this model.  A common issue is that a greenthread is interrupted,
+  often due to timeout logic in the application.  This results in the ``GreenletExit``
+  exception being raised, and the pure-Python MySQL driver is interrupted from
+  its work, which may have been that it was receiving a response from the server
+  or preparing to otherwise reset the state of the connection.   When the exception
+  cuts all that work short, the conversation between client and server is now
+  out of sync and subsequent usage of the connection may fail.   SQLAlchemy
+  as of version 1.1.0 knows how to guard against this, as if a database operation
+  is interrupted by a so-called "exit exception", which includes ``GreenletExit``
+  and any other subclass of Python ``BaseException`` that is not also a subclass
+  of ``Exception``, the connection is invalidated.
+
+* **Rollbacks / SAVEPOINT releases failing** - Some classes of error cause
+  the connection to be unusable within the context of a transaction, as well
+  as when operating in a "SAVEPOINT" block.  In these cases, the failure
+  on the connection has rendered any SAVEPOINT as no longer existing, yet
+  when SQLAlchemy, or the application, attempts to "roll back" this savepoint,
+  the "RELEASE SAVEPOINT" operation fails, typically with a message like
+  "savepoint does not exist".   In this case, under Python 3 there will be
+  a chain of exceptions output, where the ultimate "cause" of the error
+  will be displayed as well.  Under Python 2, there are no "chained" exceptions,
+  however recent versions of SQLAlchemy will attempt to emit a warning
+  illustrating the original failure cause, while still throwing the
+  immediate error which is the failure of the ROLLBACK.
+
 
 Why does SQLAlchemy issue so many ROLLBACKs?
 --------------------------------------------
