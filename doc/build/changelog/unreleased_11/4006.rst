@@ -1,8 +1,0 @@
-.. change:: 4006
-    :tags: bug, postgresql
-    :tickets: 4006
-    :versions: 1.2.0b3
-
-    Made further fixes to the :class:`.ARRAY` class in conjunction with
-    COLLATE, as the fix made in :ticket:`4006` failed to accommodate
-    for a multidimensional array.

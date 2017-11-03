@@ -19,7 +19,159 @@
 
 .. changelog::
     :version: 1.1.15
-    :include_notes_from: unreleased_11
+    :released: November 3, 2017
+
+    .. change:
+        :tags: bug, sqlite
+        :tickets: 4099
+        :versions: 1.2.0b3
+
+        Fixed bug where SQLite CHECK constraint reflection would fail
+        if the referenced table were in a remote schema, e.g. on SQLite a
+        remote database referred to by ATTACH.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4097
+        :versions: 1.2.0b3
+
+        Warning emitted when MariaDB 10.2.8 or earlier in the 10.2
+        series is detected as there are major issues with CHECK
+        constraints within these versions that were resolved as of
+        10.2.9.
+
+        Note that this changelog message was NOT released with
+        SQLAlchemy 1.2.0b3 and was added retroactively.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4095
+        :versions: 1.2.0b3
+
+        Added a full range of "connection closed" exception codes to the
+        PyODBC dialect for SQL Server, including '08S01', '01002', '08003',
+        '08007', '08S02', '08001', 'HYT00', 'HY010'.  Previously, only '08S01'
+        was covered.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4126
+        :versions: 1.2.0b4
+
+        Fixed bug where ``__repr__`` of :class:`.ColumnDefault` would fail
+        if the argument were a tuple.  Pull request courtesy Nicolas Caniart.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 4124
+        :versions: 1.2.0b4
+
+        Fixed bug where a descriptor that is elsewhere a mapped column
+        or relationship within a hierarchy based on :class:`.AbstractConcreteBase`
+        would be referred towards during a refresh operation, causing an error
+        as the attribute is not mapped as a mapper property.
+        A similar issue can arise for other attributes like the "type" column
+        added by :class:`.AbstractConcreteBase` if the class fails to include
+        "concrete=True" in its mapper, however the check here should also
+        prevent that scenario from causing a problem.
+
+    .. change:: 4006
+        :tags: bug, postgresql
+        :tickets: 4006
+        :versions: 1.2.0b3
+
+        Made further fixes to the :class:`.ARRAY` class in conjunction with
+        COLLATE, as the fix made in :ticket:`4006` failed to accommodate
+        for a multidimensional array.
+
+    .. change::
+        :tags: bug, orm, ext
+        :tickets: 4116
+        :versions: 1.2.0b4
+
+        Fixed bug where the association proxy would inadvertently link itself
+        to an :class:`.AliasedClass` object if it were called first with
+        the :class:`.AliasedClass` as a parent, causing errors upon subsequent
+        usage.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4120
+        :versions: 1.2.0b4
+
+        MySQL 5.7.20 now warns for use of the @tx_isolation variable; a version
+        check is now performed and uses @transaction_isolation instead
+        to prevent this warning.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4107
+        :versions: 1.2.0b3
+
+        Fixed bug in :obj:`.array_agg` function where passing an argument
+        that is already of type :class:`.ARRAY`, such as a Postgresql
+        :obj:`.postgresql.array` construct, would produce a ``ValueError``, due
+        to the function attempting to nest the arrays.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4078
+        :versions: 1.2.0b3
+
+        Fixed bug where ORM relationship would warn against conflicting sync
+        targets (e.g. two relationships would both write to the same column) for
+        sibling classes in an inheritance hierarchy, where the two relationships
+        would never actually conflict during writes.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4074
+        :versions: 1.2.0b3
+
+        Fixed bug in Postgresql :meth:`.postgresql.dml.Insert.on_conflict_do_update`
+        which would prevent the insert statement from being used as a CTE,
+        e.g. via :meth:`.Insert.cte`, within another statement.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4103
+        :versions: 1.2.0b3
+
+        Fixed bug where correlated select used against single-table inheritance
+        entity would fail to render correctly in the outer query, due to adjustment
+        for single inheritance discriminator criteria inappropriately re-applying
+        the criteria to the outer query.
+
+    .. change:
+        :tags: bug, mysql
+        :tickets: 4096
+        :versions: 1.2.0b3
+
+        Fixed issue where CURRENT_TIMESTAMP would not reflect correctly
+        in the MariaDB 10.2 series due to a syntax change, where the function
+        is now represented as ``current_timestamp()``.
+
+    .. change:
+        :tags: bug, mysql
+        :tickets: 4098
+        :versions: 1.2.0b3
+
+        MariaDB 10.2 now supports CHECK constraints (warning: use version 10.2.9
+        or greater due to upstream issues noted in :ticket:`4097`).  Reflection
+        now takes these CHECK constraints into account when they are present in
+        the ``SHOW CREATE TABLE`` output.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4093
+        :versions: 1.2.0b3
+
+        Fixed bug where the recently added :meth:`.ColumnOperators.any_`
+        and :meth:`.ColumnOperators.all_` methods didn't work when called
+        as methods, as opposed to using the standalone functions
+        :func:`~.expression.any_` and :func:`~.expression.all_`.  Also
+        added documentation examples for these relatively unintuitive
+        SQL operators.
 
 .. changelog::
     :version: 1.1.14

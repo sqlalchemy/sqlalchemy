@@ -1,8 +1,0 @@
-.. change:
-    :tags: bug, sqlite
-    :tickets: 4099
-    :versions: 1.2.0b3
-
-    Fixed bug where SQLite CHECK constraint reflection would fail
-    if the referenced table were in a remote schema, e.g. on SQLite a
-    remote database referred to by ATTACH.

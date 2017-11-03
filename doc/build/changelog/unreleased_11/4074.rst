@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 4074
-    :versions: 1.2.0b3
-
-    Fixed bug in Postgresql :meth:`.postgresql.dml.Insert.on_conflict_do_update`
-    which would prevent the insert statement from being used as a CTE,
-    e.g. via :meth:`.Insert.cte`, within another statement.
