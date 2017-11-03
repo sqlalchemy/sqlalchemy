@@ -226,7 +226,7 @@ class Pool(log.Identified):
             to the :class:`.Pool`.
 
         :param pre_ping: if True, the pool will emit a "ping" (typically
-        "SELECT 1", but is dialect-specific) on the connection
+         "SELECT 1", but is dialect-specific) on the connection
          upon checkout, to test if the connection is alive or not.   If not,
          the connection is transparently re-connected and upon success, all
          other pooled connections established prior to that timestamp are
@@ -234,6 +234,7 @@ class Pool(log.Identified):
          interpret the disconnection error.
 
          .. versionadded:: 1.2
+
         """
         if logging_name:
             self.logging_name = self._orig_logging_name = logging_name

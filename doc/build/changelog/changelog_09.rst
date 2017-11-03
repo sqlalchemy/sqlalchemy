@@ -1,4 +1,3 @@
-
 =============
 0.9 Changelog
 =============
@@ -11,7 +10,7 @@
     .. include:: changelog_07.rst
         :start-line: 5
 
-.. changelog::
+.. _unreleased_changelog::
     :version: 0.9.11
 
     .. change::
@@ -2046,7 +2045,6 @@
         .. seealso::
 
             :ref:`relationship_custom_operator`
-
 
     .. change::
         :tags: bug, sqlite

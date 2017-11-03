@@ -1,5 +1,3 @@
-
-
 =============
 1.1 Changelog
 =============
@@ -17,6 +15,7 @@
 
     .. include:: changelog_07.rst
         :start-line: 5
+
 
 .. changelog::
     :version: 1.1.15
@@ -614,8 +613,8 @@
         processing, as normally takes effect to handle both user-defined
         type level conversions as well as dialect-required conversions, such
         as those required for JSON datatypes.   Additionally, clarified that
-        the keys in the set_ dictionary should match the "key" of the column,
-        if distinct from the column name.  A warning is emitted
+        the keys in the ``set_`` dictionary should match the "key" of the
+        column, if distinct from the column name.  A warning is emitted
         for remaining column names that don't match column keys; for
         compatibility reasons, these are emitted as they were previously.
 
@@ -658,7 +657,7 @@
         :tickets: 3878
 
         Fixed 1.1 regression where "import *" would not work for
-        sqlalchemy.sql.expression, due to mis-spelled "any_" and "all_"
+        sqlalchemy.sql.expression, due to mis-spelled ``any_`` and ``all_``
         functions.
 
     .. change:: 3880
