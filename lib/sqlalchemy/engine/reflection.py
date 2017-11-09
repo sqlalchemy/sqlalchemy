@@ -561,7 +561,7 @@ class Inspector(object):
         table reflection.  Direct usage is like::
 
             from sqlalchemy import create_engine, MetaData, Table
-            from sqlalchemy.engine import reflection
+            from sqlalchemy.engine.reflection import Inspector
 
             engine = create_engine('...')
             meta = MetaData()
