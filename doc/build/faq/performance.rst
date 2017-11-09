@@ -307,21 +307,21 @@ The example below illustrates time-based tests for several different
 methods of inserting rows, going from the most automated to the least.
 With cPython 2.7, runtimes observed::
 
-    SQLAlchemy ORM: Total time for 100000 records 7.2070479393 secs
-    SQLAlchemy ORM pk given: Total time for 100000 records 4.28471207619 secs
-    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 1.58296084404 secs
-    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.453973054886 secs
-    SQLAlchemy Core: Total time for 100000 records 0.210998058319 secs
-    sqlite3: Total time for 100000 records 0.136252880096 sec
+    SQLAlchemy ORM: Total time for 100000 records 6.89754080772 secs
+    SQLAlchemy ORM pk given: Total time for 100000 records 4.09481811523 secs
+    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 1.65821218491 secs
+    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.466513156891 secs
+    SQLAlchemy Core: Total time for 100000 records 0.21024107933 secs
+    sqlite3: Total time for 100000 records 0.137335062027 sec
 
-We can reduce the time by a factor of three using recent versions of `Pypy <http://pypy.org/>`_::
+We can reduce the time by a factor of nearly three using recent versions of `Pypy <http://pypy.org/>`_::
 
-    SQLAlchemy ORM: Total time for 100000 records 2.192882061 secs
-    SQLAlchemy ORM pk given: Total time for 100000 records 1.41679310799 secs
-    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 0.494568824768 secs
-    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.325763940811 secs
-    SQLAlchemy Core: Total time for 100000 records 0.239127874374 secs
-    sqlite3: Total time for 100000 records 0.124729156494 sec
+    SQLAlchemy ORM: Total time for 100000 records 2.39429616928 secs
+    SQLAlchemy ORM pk given: Total time for 100000 records 1.51412987709 secs
+    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 0.568987131119 secs
+    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.320806980133 secs
+    SQLAlchemy Core: Total time for 100000 records 0.206904888153 secs
+    sqlite3: Total time for 100000 records 0.165791988373 sec
 
 Script::
 
@@ -371,7 +371,7 @@ Script::
         init_sqlalchemy()
         t0 = time.time()
         for i in xrange(n):
-            customer = Customer(id=i+1, name="NAME " + str(i))
+            customer = Customer(id=i + 1, name="NAME " + str(i))
             DBSession.add(customer)
             if i % 1000 == 0:
                 DBSession.flush()
@@ -384,13 +384,11 @@ Script::
     def test_sqlalchemy_orm_bulk_save_objects(n=100000):
         init_sqlalchemy()
         t0 = time.time()
-        n1 = n
-        while n1 > 0:
-            n1 = n1 - 10000
+        for chunk in range(0, n, 10000):
             DBSession.bulk_save_objects(
                 [
                     Customer(name="NAME " + str(i))
-                    for i in xrange(min(10000, n1))
+                    for i in xrange(chunk, min(chunk + 10000, n))
                 ]
             )
         DBSession.commit()
@@ -398,23 +396,23 @@ Script::
             "SQLAlchemy ORM bulk_save_objects(): Total time for " + str(n) +
             " records " + str(time.time() - t0) + " secs")
 
+
     def test_sqlalchemy_orm_bulk_insert(n=100000):
         init_sqlalchemy()
         t0 = time.time()
-        n1 = n
-        while n1 > 0:
-            n1 = n1 - 10000
+        for chunk in range(0, n, 10000):
             DBSession.bulk_insert_mappings(
                 Customer,
                 [
                     dict(name="NAME " + str(i))
-                    for i in xrange(min(10000, n1))
+                    for i in xrange(chunk, min(chunk + 10000, n))
                 ]
             )
         DBSession.commit()
         print(
             "SQLAlchemy ORM bulk_insert_mappings(): Total time for " + str(n) +
             " records " + str(time.time() - t0) + " secs")
+
 
     def test_sqlalchemy_core(n=100000):
         init_sqlalchemy()
