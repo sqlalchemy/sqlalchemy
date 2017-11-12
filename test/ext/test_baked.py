@@ -13,6 +13,7 @@ from sqlalchemy.orm import exc as orm_exc
 import itertools
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+import contextlib
 
 
 class BakedTest(_fixtures.FixtureTest):
@@ -373,6 +374,71 @@ class LikeQueryTest(BakedTest):
             eq_(u1.name, 'jack')
             sess.close()
         eq_(len(bq._bakery), 4)
+
+
+class ResultPostCriteriaTest(BakedTest):
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        Address = cls.classes.Address
+        Order = cls.classes.Order
+
+        mapper(User, cls.tables.users, properties={
+            "addresses": relationship(
+                Address, order_by=cls.tables.addresses.c.id),
+            "orders": relationship(
+                Order, order_by=cls.tables.orders.c.id)
+        })
+        mapper(Address, cls.tables.addresses)
+        mapper(Order, cls.tables.orders)
+
+    @contextlib.contextmanager
+    def _fixture(self):
+        from sqlalchemy import event
+        User = self.classes.User
+
+        with testing.db.connect() as conn:
+            @event.listens_for(conn, "before_execute")
+            def before_execute(conn, clauseelement, multiparams, params):
+                assert "yes" in conn._execution_options
+
+            bq = self.bakery(
+                lambda s: s.query(User.id).order_by(User.id))
+
+            sess = Session(conn)
+
+            yield sess, bq
+
+    def test_first(self):
+        with self._fixture() as (sess, bq):
+            result = bq(sess).with_post_criteria(
+                lambda q: q.execution_options(yes=True))
+            eq_(result.first(), (7, ))
+
+    def test_iter(self):
+        with self._fixture() as (sess, bq):
+            result = bq(sess).with_post_criteria(
+                lambda q: q.execution_options(yes=True))
+            eq_(list(result)[0], (7, ))
+
+    def test_spoiled(self):
+        with self._fixture() as (sess, bq):
+
+            result = bq.spoil()(sess).with_post_criteria(
+                lambda q: q.execution_options(yes=True))
+
+            eq_(list(result)[0], (7, ))
+
+    def test_get(self):
+        User = self.classes.User
+        with self._fixture() as (sess, bq):
+            bq = self.bakery(
+                lambda s: s.query(User))
+
+            result = bq(sess).with_post_criteria(
+                lambda q: q.execution_options(yes=True))
+            eq_(result.get(7), User(id=7))
 
 
 class ResultTest(BakedTest):

@@ -61,17 +61,21 @@ class ShardedQuery(Query):
             # were done, this is where it would happen
             return iter(partial)
 
-    def get(self, ident, **kwargs):
-        if self._shard_id is not None:
-            return super(ShardedQuery, self).get(ident)
-        else:
-            ident = util.to_list(ident)
-            for shard_id in self.id_chooser(self, ident):
-                o = self.set_shard(shard_id).get(ident, **kwargs)
-                if o is not None:
-                    return o
+    def _get_impl(self, ident, fallback_fn):
+        def _fallback(query, ident):
+            if self._shard_id is not None:
+                return fallback_fn(self, ident)
             else:
-                return None
+                ident = util.to_list(ident)
+                for shard_id in self.id_chooser(self, ident):
+                    q = self.set_shard(shard_id)
+                    o = fallback_fn(q, ident)
+                    if o is not None:
+                        return o
+                else:
+                    return None
+
+        return super(ShardedQuery, self)._get_impl(ident, _fallback)
 
 
 class ShardedSession(Session):
