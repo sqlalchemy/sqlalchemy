@@ -186,6 +186,54 @@ class ShardTest(object):
         eq_(set([c.city for c in asia_and_europe]), set(['Tokyo',
             'London', 'Dublin']))
 
+    def test_get_baked_query(self):
+        sess = self._fixture_data()
+
+        tokyo = sess.query(WeatherLocation).filter_by(city="Tokyo").one()
+        tokyo.city
+        sess.expunge_all()
+
+        from sqlalchemy.ext.baked import BakedQuery
+
+        bakery = BakedQuery.bakery()
+
+        bq = bakery(lambda session: session.query(WeatherLocation))
+        t = bq(sess).get(tokyo.id)
+        eq_(t.city, tokyo.city)
+
+    def test_get_baked_query_shard_id(self):
+        sess = self._fixture_data()
+
+        tokyo = sess.query(WeatherLocation).filter_by(city="Tokyo").one()
+        tokyo.city
+        sess.expunge_all()
+
+        from sqlalchemy.ext.baked import BakedQuery
+
+        bakery = BakedQuery.bakery()
+
+        bq = bakery(lambda session: session.query(WeatherLocation))
+        t = bq(sess).with_post_criteria(
+            lambda q: q.set_shard("asia")).get(tokyo.id)
+        eq_(t.city, tokyo.city)
+
+    def test_filter_baked_query_shard_id(self):
+        sess = self._fixture_data()
+
+        tokyo = sess.query(WeatherLocation).filter_by(city="Tokyo").one()
+        tokyo.city
+        sess.expunge_all()
+
+        from sqlalchemy.ext.baked import BakedQuery
+
+        bakery = BakedQuery.bakery()
+
+        bq = bakery(lambda session: session.query(WeatherLocation)).\
+            with_criteria(lambda q: q.filter_by(id=tokyo.id))
+        t = bq(sess).with_post_criteria(
+            lambda q: q.set_shard("asia")).one()
+        eq_(t.city, tokyo.city)
+
     def test_shard_id_event(self):
         canary = []
 
