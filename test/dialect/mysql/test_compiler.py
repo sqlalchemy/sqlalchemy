@@ -8,7 +8,7 @@ from sqlalchemy import Table, MetaData, Column, select, String, \
     NUMERIC, DECIMAL, Numeric, Float, FLOAT, TIMESTAMP, DATE, \
     DATETIME, TIME, \
     DateTime, Time, Date, Interval, NCHAR, CHAR, CLOB, TEXT, Boolean, \
-    BOOLEAN, LargeBinary, BLOB, SmallInteger, INT, func, cast
+    BOOLEAN, LargeBinary, BLOB, SmallInteger, INT, func, cast, literal
 
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
@@ -202,6 +202,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             matchtable.c.title.match('somstr'),
             "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)")
+
+    def test_match_compile_kw(self):
+        expr = literal('x').match(literal('y'))
+        self.assert_compile(
+            expr,
+            "MATCH ('x') AGAINST ('y' IN BOOLEAN MODE)",
+            literal_binds=True
+        )
+
+    def test_concat_compile_kw(self):
+        expr = literal('x', type_=String) + literal('y', type_=String)
+        self.assert_compile(
+            expr,
+            "concat('x', 'y')",
+            literal_binds=True
+        )
 
     def test_for_update(self):
         table1 = table('mytable',
