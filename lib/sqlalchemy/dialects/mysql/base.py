@@ -941,21 +941,21 @@ class MySQLCompiler(compiler.SQLCompiler):
         return 'ON DUPLICATE KEY UPDATE ' + ', '.join(clauses)
 
     def visit_concat_op_binary(self, binary, operator, **kw):
-        return "concat(%s, %s)" % (self.process(binary.left),
-                                   self.process(binary.right))
+        return "concat(%s, %s)" % (self.process(binary.left, **kw),
+                                   self.process(binary.right, **kw))
 
     def visit_match_op_binary(self, binary, operator, **kw):
         return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % \
-            (self.process(binary.left), self.process(binary.right))
+            (self.process(binary.left, **kw), self.process(binary.right, **kw))
 
     def get_from_hint_text(self, table, text):
         return text
 
-    def visit_typeclause(self, typeclause, type_=None):
+    def visit_typeclause(self, typeclause, type_=None, **kw):
         if type_ is None:
             type_ = typeclause.type.dialect_impl(self.dialect)
         if isinstance(type_, sqltypes.TypeDecorator):
-            return self.visit_typeclause(typeclause, type_.impl)
+            return self.visit_typeclause(typeclause, type_.impl, **kw)
         elif isinstance(type_, sqltypes.Integer):
             if getattr(type_, 'unsigned', False):
                 return 'UNSIGNED INTEGER'
@@ -1208,7 +1208,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         return ' '.join(table_opts)
 
-    def visit_create_index(self, create):
+    def visit_create_index(self, create, **kw):
         index = create.element
         self._verify_index_table(index)
         preparer = self.preparer
@@ -1225,7 +1225,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         index_prefix = index.kwargs.get('mysql_prefix', None)
         if index_prefix:
-          text += index_prefix + ' '
+            text += index_prefix + ' '
 
         text += "INDEX %s ON %s " % (name, table)
 
