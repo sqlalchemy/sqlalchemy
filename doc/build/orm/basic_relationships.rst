@@ -324,7 +324,7 @@ is stored along with each association between ``Parent`` and
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
 
-As always, the bidirectional version make use of :paramref:`.relationship.back_populates`
+As always, the bidirectional version makes use of :paramref:`.relationship.back_populates`
 or :paramref:`.relationship.backref`::
 
     class Association(Base):
