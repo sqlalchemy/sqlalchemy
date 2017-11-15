@@ -1650,6 +1650,7 @@ class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 'bitstring', postgresql.BIT(4)),
             Column('addr', postgresql.INET),
             Column('addr2', postgresql.MACADDR),
+            Column('price', postgresql.MONEY),
             Column('addr3', postgresql.CIDR),
             Column('doubleprec', postgresql.DOUBLE_PRECISION),
             Column('plain_interval', postgresql.INTERVAL),
