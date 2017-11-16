@@ -1,0 +1,5 @@
+.. change::
+    :tags: feature, postgresql
+
+    Added new :class:`.postgresql.MONEY` datatype.  Pull request courtesy
+    Cleber J Santos.
