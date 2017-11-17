@@ -53,6 +53,8 @@ from .expression import (
     modifier,
     not_,
     null,
+    nullsfirst,
+    nullslast,
     or_,
     outerjoin,
     outparam,
