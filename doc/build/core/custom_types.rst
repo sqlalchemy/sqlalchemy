@@ -163,7 +163,9 @@ binary in CHAR(16) if desired::
             if value is None:
                 return value
             else:
-                return uuid.UUID(value)
+                if not isinstance(value, uuid.UUID):
+                    value = uuid.UUID(value)
+                return value
 
 Marshal JSON Strings
 ^^^^^^^^^^^^^^^^^^^^
