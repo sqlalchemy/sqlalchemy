@@ -376,6 +376,11 @@ class OracleCompiler_cx_oracle(OracleCompiler):
         quote = getattr(name, 'quote', None)
         if quote is True or quote is not False and \
                 self.preparer._bindparam_requires_quotes(name):
+            if kw.get('expanding', False):
+                raise exc.CompileError(
+                    "Can't use expanding feature with parameter name "
+                    "%r on Oracle; it requires quoting which is not supported "
+                    "in this context." % name)
             quoted_name = '"%s"' % name
             self._quoted_bind_names[name] = quoted_name
             return OracleCompiler.bindparam_string(self, quoted_name, **kw)

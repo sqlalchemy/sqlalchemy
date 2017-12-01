@@ -85,6 +85,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update().values(plain=5), 'UPDATE s SET "plain"=:"plain"'
         )
 
+    def test_bindparam_quote_raise_on_expanding(self):
+        assert_raises_message(
+            exc.CompileError,
+            "Can't use expanding feature with parameter name 'uid' on "
+            "Oracle; it requires quoting which is not supported in this "
+            "context",
+            bindparam("uid", expanding=True).compile,
+            dialect=cx_oracle.dialect()
+        )
+
     def test_cte(self):
         part = table(
             'part',

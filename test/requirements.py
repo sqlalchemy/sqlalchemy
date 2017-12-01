@@ -145,6 +145,13 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["firebird", "mssql+mxodbc"], "not supported by driver")
 
     @property
+    def no_quoting_special_bind_names(self):
+        """Target database will quote bound paramter names, doesn't support
+        EXPANDING"""
+
+        return skip_if(["oracle"])
+
+    @property
     def identity(self):
         """Target database must support GENERATED AS IDENTITY or a facsimile.
 

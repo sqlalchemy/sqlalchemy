@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4140
+
+    Fixed bug in new "expanding bind parameter" feature whereby if multiple
+    params were used in one statement, the regular expression would not
+    match the parameter name correctly.

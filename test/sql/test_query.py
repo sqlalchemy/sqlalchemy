@@ -471,6 +471,66 @@ class QueryTest(fixtures.TestBase):
                 ), [{"uname": ['fred']}, {"uname": ['ed']}]
             )
 
+    @testing.requires.no_quoting_special_bind_names
+    def test_expanding_in_special_chars(self):
+        testing.db.execute(
+            users.insert(),
+            [
+                dict(user_id=7, user_name='jack'),
+                dict(user_id=8, user_name='fred'),
+            ]
+        )
+
+        with testing.db.connect() as conn:
+            stmt = select([users]).where(
+                users.c.user_name.in_(bindparam('u35', expanding=True))
+            ).where(
+                users.c.user_id == bindparam("u46")
+            ).order_by(users.c.user_id)
+
+            eq_(
+                conn.execute(
+                    stmt, {"u35": ['jack', 'fred'], "u46": 7}).fetchall(),
+                [(7, 'jack')]
+            )
+
+            stmt = select([users]).where(
+                users.c.user_name.in_(bindparam('u.35', expanding=True))
+            ).where(
+                users.c.user_id == bindparam("u.46")
+            ).order_by(users.c.user_id)
+
+            eq_(
+                conn.execute(
+                    stmt, {"u.35": ['jack', 'fred'], "u.46": 7}).fetchall(),
+                [(7, 'jack')]
+            )
+
+    def test_expanding_in_multiple(self):
+        testing.db.execute(
+            users.insert(),
+            [
+                dict(user_id=7, user_name='jack'),
+                dict(user_id=8, user_name='fred'),
+                dict(user_id=9, user_name='ed')
+            ]
+        )
+
+        with testing.db.connect() as conn:
+            stmt = select([users]).where(
+                users.c.user_name.in_(bindparam('uname', expanding=True))
+            ).where(
+                users.c.user_id.in_(bindparam('userid', expanding=True))
+            ).order_by(users.c.user_id)
+
+            eq_(
+                conn.execute(
+                    stmt,
+                    {"uname": ['jack', 'fred', 'ed'], "userid": [8, 9]}
+                ).fetchall(),
+                [(8, 'fred'), (9, 'ed')]
+            )
+
     @testing.requires.tuple_in
     def test_expanding_in_composite(self):
         testing.db.execute(
