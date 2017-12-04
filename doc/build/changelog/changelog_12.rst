@@ -19,6 +19,22 @@
     :released: October 13, 2017
 
     .. change::
+        :tags: feature, postgresql
+        :tickets: 4109
+
+        Added a new flag ``use_batch_mode`` to the psycopg2 dialect.  This flag
+        enables the use of psycopg2's ``psycopg2.extras.execute_batch``
+        extension when the :class:`.Engine` calls upon
+        ``cursor.executemany()``. This extension provides a critical
+        performance increase by over an order of magnitude when running INSERT
+        statements in batch.  The flag is False by default as it is considered
+        to be experimental for now.
+
+        .. seealso::
+
+            :ref:`change_4109`
+
+    .. change::
         :tags: bug, mssql
         :tickets: 4061
 

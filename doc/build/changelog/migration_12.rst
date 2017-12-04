@@ -1430,6 +1430,7 @@ on by default in a future release.
 
     :ref:`psycopg2_batch_mode`
 
+:ticket:`4109`
 
 .. _change_3959:
 
