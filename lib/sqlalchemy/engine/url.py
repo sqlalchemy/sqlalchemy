@@ -54,7 +54,7 @@ class URL(object):
                  host=None, port=None, database=None, query=None):
         self.drivername = drivername
         self.username = username
-        self.password = password
+        self.password_original = password
         self.host = host
         if port is not None:
             self.port = int(port)
@@ -104,6 +104,17 @@ class URL(object):
             self.host == other.host and \
             self.database == other.database and \
             self.query == other.query
+
+    @property
+    def password(self):
+        if self.password_original is None:
+            return None
+        else:
+            return util.text_type(self.password_original)
+
+    @password.setter
+    def password(self, password):
+        self.password_original = password
 
     def get_backend_name(self):
         if '+' not in self.drivername:

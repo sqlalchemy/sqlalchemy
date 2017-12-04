@@ -1,4 +1,4 @@
-from sqlalchemy.testing import assert_raises, eq_, assert_raises_message
+from sqlalchemy.testing import assert_raises, eq_, is_
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config, exc, pool
 from sqlalchemy.engine.default import DefaultDialect
@@ -81,6 +81,39 @@ class ParseConnectTest(fixtures.TestBase):
         u = url.make_url('dbtype://username:pass%2Fword@hostspec/database')
         eq_(u.password, 'pass/word')
         eq_(str(u), 'dbtype://username:pass%2Fword@hostspec/database')
+
+    def test_password_custom_obj(self):
+        class SecurePassword(str):
+            def __init__(self, value):
+                self.value = value
+
+            def __str__(self):
+                return self.value
+
+        sp = SecurePassword("secured_password")
+        u = url.URL(
+            "dbtype",
+            username="x", password=sp,
+            host="localhost"
+        )
+
+        eq_(u.password, "secured_password")
+        eq_(str(u), "dbtype://x:secured_password@localhost")
+
+        # test in-place modification
+        sp.value = "new_secured_password"
+        eq_(u.password, "new_secured_password")
+        eq_(str(u), "dbtype://x:new_secured_password@localhost")
+
+        u.password = "hi"
+
+        eq_(u.password, "hi")
+        eq_(str(u), "dbtype://x:hi@localhost")
+
+        u.password = None
+
+        is_(u.password, None)
+        eq_(str(u), "dbtype://x@localhost")
 
 
 class DialectImportTest(fixtures.TestBase):
