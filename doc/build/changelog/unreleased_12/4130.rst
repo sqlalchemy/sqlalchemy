@@ -1,0 +1,15 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4130
+
+    Fixed bug in :func:`.contains_eager` query option where making use of a
+    path that used :meth:`.PropComparator.of_type` to refer to a subclass
+    across more than one level of joins would also require that the "alias"
+    argument were provided with the same subtype in order to avoid adding
+    unwanted FROM clauses to the query; additionally,  using
+    :func:`.contains_eager` across subclasses that use :func:`.aliased` objects
+    of subclasses as the :meth:`.PropComparator.of_type` argument will also
+    render correctly.
+
+
+

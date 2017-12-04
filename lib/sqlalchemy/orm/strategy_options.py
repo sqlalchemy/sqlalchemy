@@ -211,7 +211,7 @@ class Load(Generative, MapperOption):
 
             if getattr(attr, '_of_type', None):
                 ac = attr._of_type
-                ext_info = inspect(ac)
+                ext_info = of_type_info = inspect(ac)
 
                 existing = path.entity_path[prop].get(
                     self.context, "path_with_polymorphic")
@@ -221,8 +221,23 @@ class Load(Generative, MapperOption):
                         ext_info.mapper, aliased=True,
                         _use_mapper_path=True,
                         _existing_alias=existing)
+                    ext_info = inspect(ac)
+                elif not ext_info.with_polymorphic_mappers:
+                    ext_info = orm_util.AliasedInsp(
+                        ext_info.entity,
+                        ext_info.mapper.base_mapper,
+                        ext_info.selectable,
+                        ext_info.name,
+                        ext_info.with_polymorphic_mappers or [ext_info.mapper],
+                        ext_info.polymorphic_on,
+                        ext_info._base_alias,
+                        ext_info._use_mapper_path,
+                        ext_info._adapt_on_names,
+                        ext_info.represents_outer_join
+                    )
+
                 path.entity_path[prop].set(
-                    self.context, "path_with_polymorphic", inspect(ac))
+                    self.context, "path_with_polymorphic", ext_info)
 
                 # the path here will go into the context dictionary and
                 # needs to match up to how the class graph is traversed.
@@ -235,7 +250,7 @@ class Load(Generative, MapperOption):
                 # it might be better for "path" to really represent,
                 # "the path", but trying to keep the impact of the cache
                 # key feature localized for now
-                self._of_type = ext_info
+                self._of_type = of_type_info
             else:
                 path = path[prop]
 
@@ -786,6 +801,10 @@ def contains_eager(loadopt, attr, alias=None):
         if not isinstance(alias, str):
             info = inspect(alias)
             alias = info.selectable
+
+    elif getattr(attr, '_of_type', None):
+        ot = inspect(attr._of_type)
+        alias = ot.selectable
 
     cloned = loadopt.set_relationship_strategy(
         attr,
