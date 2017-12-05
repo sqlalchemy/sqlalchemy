@@ -846,6 +846,26 @@ class MutableColumnCopyJSONTest(_MutableDictTestBase, fixtures.MappedTest):
         self._test_non_mutable()
 
 
+class MutableColumnCopyArrayTest(_MutableListTestBase, fixtures.MappedTest):
+    __requires__ = 'array_type',
+
+    @classmethod
+    def define_tables(cls, metadata):
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.sql.sqltypes import ARRAY
+
+        MutableList = cls._type_fixture()
+
+        Base = declarative_base(metadata=metadata)
+
+        class Mixin(object):
+            data = Column(MutableList.as_mutable(ARRAY(Integer)))
+
+        class Foo(Mixin, Base):
+            __tablename__ = 'foo'
+            id = Column(Integer, primary_key=True)
+
+
 class MutableListWithScalarPickleTest(_MutableListTestBase,
                                       fixtures.MappedTest):
 

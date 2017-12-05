@@ -7,7 +7,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
     ForeignKeyConstraint, PrimaryKeyConstraint, ColumnDefault, Index, event,\
     events, Unicode, types as sqltypes, bindparam, \
     Table, Column, Boolean, Enum, func, text, TypeDecorator, \
-    BLANK_SCHEMA
+    BLANK_SCHEMA, ARRAY
 from sqlalchemy import schema, exc
 from sqlalchemy.engine import default
 from sqlalchemy.sql import elements, naming
@@ -1649,6 +1649,14 @@ class SchemaTypeTest(fixtures.TestBase):
 
         typ = MyType()
         self._test_before_parent_attach(typ, target_typ, double=True)
+
+    def test_before_parent_attach_array_enclosing_schematype(self):
+        # test for [ticket:4141] which is the same idea as [ticket:3832]
+        # for ARRAY
+
+        typ = ARRAY(String)
+
+        self._test_before_parent_attach(typ)
 
     def test_before_parent_attach_typedec_of_schematype(self):
         class MyType(TypeDecorator, sqltypes.SchemaType):

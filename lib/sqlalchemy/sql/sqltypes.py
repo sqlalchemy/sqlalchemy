@@ -2411,6 +2411,8 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEventTarget"""
 
+        super(ARRAY, self)._set_parent_with_dispatch(parent)
+
         if isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent_with_dispatch(parent)
 
