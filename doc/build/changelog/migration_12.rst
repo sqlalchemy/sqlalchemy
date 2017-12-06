@@ -245,6 +245,31 @@ if not specified, the attribute defaults to ``None``::
 
 :ticket:`3058`
 
+.. _change_orm_959:
+
+ORM Support of multiple-table deletes
+-------------------------------------
+
+The ORM :meth:`.Query.delete` method supports multiple-table criteria
+for DELETE, as introduced in :ref:`change_959`.   The feature works
+in the same manner as multiple-table criteria for UPDATE, first
+introduced in 0.8 and described at :ref:`change_orm_2365`.
+
+Below, we emit a DELETE against ``SomeEntity``, adding
+a FROM clause (or equivalent, depending on backend)
+against ``SomeOtherEntity``::
+
+    query(SomeEntity).\
+        filter(SomeEntity.id==SomeOtherEntity.id).\
+        filter(SomeOtherEntity.foo=='bar').\
+        delete()
+
+.. seealso::
+
+    :ref:`change_959`
+
+:ticket:`959`
+
 .. _change_3229:
 
 Support for bulk updates of hybrids, composites
@@ -776,6 +801,37 @@ Current backend support includes MySQL, Postgresql, and Oracle.
 
 :ticket:`1546`
 
+.. _change_959:
+
+Multiple-table criteria support for DELETE
+------------------------------------------
+
+The :class:`.Delete` construct now supports multiple-table criteria,
+implemented for those backends which support it, currently these are
+Postgresql, MySQL and Microsoft SQL Server (support is also added to the
+currently non-working Sybase dialect).   The feature works in the same
+was as that of multiple-table criteria for UPDATE, first introduced in
+the 0.7 and 0.8 series.
+
+Given a statement as::
+
+    stmt = users.delete().\
+            where(users.c.id == addresses.c.id).\
+            where(addresses.c.email_address.startswith('ed%'))
+    conn.execute(stmt)
+
+The resulting SQL from the above statement on a Postgresql backend
+would render as::
+
+    DELETE FROM users USING addresses
+    WHERE users.id = addresses.id
+    AND (addresses.email_address LIKE %(email_address_1)s || '%%')
+
+.. seealso::
+
+    :ref:`multi_table_deletes`
+
+:ticket:`959`
 
 .. _change_2694:
 

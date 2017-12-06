@@ -1510,6 +1510,28 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                  fromhints=from_hints, **kw)
             for t in [from_table] + extra_froms)
 
+    def delete_table_clause(self, delete_stmt, from_table,
+                            extra_froms):
+        """If we have extra froms make sure we render any alias as hint."""
+        ashint = False
+        if extra_froms:
+            ashint = True
+        return from_table._compiler_dispatch(
+            self, asfrom=True, iscrud=True, ashint=ashint
+        )
+
+    def delete_extra_from_clause(self, delete_stmt, from_table,
+                                 extra_froms, from_hints, **kw):
+        """Render the DELETE .. FROM clause specific to MSSQL.
+
+        Yes, it has the FROM keyword twice.
+
+        """
+        return "FROM " + ', '.join(
+            t._compiler_dispatch(self, asfrom=True,
+                                 fromhints=from_hints, **kw)
+            for t in [from_table] + extra_froms)
+
 
 class MSSQLStrictCompiler(MSSQLCompiler):
 

@@ -2926,7 +2926,7 @@ class ExecutionOptionsTest(fixtures.TestBase):
 
 
 class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = 'default_enhanced'
 
     def test_insert_literal_binds(self):
         stmt = table1.insert().values(myid=3, name='jack')

@@ -1091,6 +1091,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM table1 AS foo"
         )
 
+    def test_delete_extra_froms(self):
+        t1 = table('t1', column('c1'))
+        t2 = table('t2', column('c1'))
+        q = delete(t1).where(t1.c.c1 == t2.c.c1)
+        self.assert_compile(
+            q, "DELETE FROM t1 USING t2 WHERE t1.c1 = t2.c1"
+        )
+
+    def test_delete_extra_froms_alias(self):
+        a1 = table('t1', column('c1')).alias('a1')
+        t2 = table('t2', column('c1'))
+        q = delete(a1).where(a1.c.c1 == t2.c.c1)
+        self.assert_compile(
+            q, "DELETE FROM t1 AS a1 USING t2 WHERE a1.c1 = t2.c1"
+        )
+
 
 class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()

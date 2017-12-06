@@ -232,6 +232,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s LOCK IN SHARE MODE")
 
+    def test_delete_extra_froms(self):
+        t1 = table('t1', column('c1'))
+        t2 = table('t2', column('c1'))
+        q = sql.delete(t1).where(t1.c.c1 == t2.c.c1)
+        self.assert_compile(
+            q, "DELETE FROM t1 USING t1, t2 WHERE t1.c1 = t2.c1"
+        )
+
+    def test_delete_extra_froms_alias(self):
+        a1 = table('t1', column('c1')).alias('a1')
+        t2 = table('t2', column('c1'))
+        q = sql.delete(a1).where(a1.c.c1 == t2.c.c1)
+        self.assert_compile(
+            q, "DELETE FROM a1 USING t1 AS a1, t2 WHERE a1.c1 = t2.c1"
+        )
+        self.assert_compile(sql.delete(a1), "DELETE FROM t1 AS a1")
+
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 

@@ -1647,6 +1647,23 @@ class PGCompiler(compiler.SQLCompiler):
 
         return 'ON CONFLICT %s DO UPDATE SET %s' % (target_text, action_text)
 
+    def update_from_clause(self, update_stmt,
+                           from_table, extra_froms,
+                           from_hints,
+                           **kw):
+        return "FROM " + ', '.join(
+            t._compiler_dispatch(self, asfrom=True,
+                                 fromhints=from_hints, **kw)
+            for t in extra_froms)
+
+    def delete_extra_from_clause(self, delete_stmt, from_table,
+                           extra_froms, from_hints, **kw):
+        """Render the DELETE .. USING clause specific to PostgresSQL."""
+        return "USING " + ', '.join(
+            t._compiler_dispatch(self, asfrom=True,
+                                 fromhints=from_hints, **kw)
+            for t in extra_froms)
+
 
 class PGDDLCompiler(compiler.DDLCompiler):
 
