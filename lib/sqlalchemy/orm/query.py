@@ -3066,7 +3066,8 @@ class Query(object):
         # omitting the FROM clause from a query(X) (#2818);
         # .with_only_columns() after we have a core select() so that
         # we get just "SELECT 1" without any entities.
-        return sql.exists(self.add_columns('1').with_labels().
+        return sql.exists(self.enable_eagerloads(False).add_columns('1').
+                          with_labels().
                           statement.with_only_columns([1]))
 
     def count(self):

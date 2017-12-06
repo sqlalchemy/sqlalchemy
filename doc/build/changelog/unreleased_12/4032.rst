@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4032
+
+    The :meth:`.Query.exists` method will now disable eager loaders for when
+    the query is rendered.  Previously, joined-eager load joins would be rendered
+    unnecessarily as well as subquery eager load queries would be needlessly
+    generated.   The new behavior matches that of the :meth:`.Query.subquery`
+    method.
