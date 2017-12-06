@@ -571,7 +571,7 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
 
     """
 
-    __visit_name__ = 'column'
+    __visit_name__ = 'column_element'
     primary_key = False
     foreign_keys = []
 

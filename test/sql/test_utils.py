@@ -1,8 +1,9 @@
-from sqlalchemy.testing import fixtures, is_true, is_false
+from sqlalchemy.testing import fixtures, is_true, is_false, eq_
 from sqlalchemy import MetaData, Table, Column, Integer, String
 from sqlalchemy import and_, or_, bindparam
-from sqlalchemy.sql.elements import ClauseList
+from sqlalchemy.sql.elements import ClauseList, ColumnElement
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import util as sql_util
 
 
 class CompareClausesTest(fixtures.TestBase):
@@ -106,3 +107,14 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(b1.compare(b8))
         is_false(b8.compare(b9))
         is_true(b8.compare(b8))
+
+
+class MiscTest(fixtures.TestBase):
+    def test_column_element_no_visit(self):
+        class MyElement(ColumnElement):
+            pass
+
+        eq_(
+            sql_util.find_tables(MyElement(), check_columns=True),
+            []
+        )

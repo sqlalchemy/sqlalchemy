@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4142
+
+    Changed the "visit name" of :class:`.ColumnElement` from "column" to
+    "column_element", so that when this element is used as the basis for a
+    user-defined SQL element, it is not assumed to behave like a table-bound
+    :class:`.ColumnClause` when processed by various SQL traversal utilities,
+    as are commonly used by the ORM.
