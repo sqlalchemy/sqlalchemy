@@ -1489,6 +1489,26 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             "FROM users WHERE users.id = :id_1)"
         )
 
+    def test_subquery_no_eagerloads(self):
+        User = self.classes.User
+        s = Session()
+
+        self.assert_compile(
+            s.query(User).options(joinedload(User.addresses)).subquery(),
+            "SELECT users.id, users.name FROM users"
+        )
+
+    def test_exists_no_eagerloads(self):
+        User = self.classes.User
+        s = Session()
+
+        self.assert_compile(
+            s.query(
+                s.query(User).options(joinedload(User.addresses)).exists()
+            ),
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1"
+        )
+
     def test_named_subquery(self):
         User = self.classes.User
 
