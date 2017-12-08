@@ -13,9 +13,49 @@ raised as a result of DBAPI exceptions are all subclasses of
 
 """
 
+from .util import compat
+
 
 class SQLAlchemyError(Exception):
     """Generic error class."""
+
+    code = None
+
+    def __init__(self, *arg, **kw):
+        code = kw.pop('code', None)
+        if code is not None:
+            self.code = code
+        super(SQLAlchemyError, self).__init__(*arg, **kw)
+
+    def _code_str(self):
+        if not self.code:
+            return ""
+        else:
+            return (
+                "(Background on this error at: "
+                "http://sqlalche.me/e/%s)" % (self.code, )
+            )
+
+    def _message(self):
+        # get string representation just like Exception.__str__(self),
+        # but also support if the string has non-ascii chars
+        if len(self.args) == 1:
+            return compat.text_type(self.args[0])
+        else:
+            return compat.text_type(self.args)
+
+    def __str__(self):
+        message = self._message()
+
+        if self.code:
+            message = (
+                "%s %s" % (message, self._code_str())
+            )
+
+        return message
+
+    def __unicode__(self):
+        return self.__str__()
 
 
 class ArgumentError(SQLAlchemyError):
@@ -72,12 +112,12 @@ class CircularDependencyError(SQLAlchemyError):
       see :ref:`use_alter`.
 
     """
-    def __init__(self, message, cycles, edges, msg=None):
+    def __init__(self, message, cycles, edges, msg=None, code=None):
         if msg is None:
             message += " (%s)" % ", ".join(repr(s) for s in cycles)
         else:
             message = msg
-        SQLAlchemyError.__init__(self, message)
+        SQLAlchemyError.__init__(self, message, code=code)
         self.cycles = cycles
         self.edges = edges
 
@@ -136,6 +176,7 @@ class InvalidatePoolError(DisconnectionError):
 
     """
     invalidate_pool = True
+
 
 class TimeoutError(SQLAlchemyError):
     """Raised when a connection pool times out on getting a connection."""
@@ -258,8 +299,8 @@ class StatementError(SQLAlchemyError):
     orig = None
     """The DBAPI exception object."""
 
-    def __init__(self, message, statement, params, orig):
-        SQLAlchemyError.__init__(self, message)
+    def __init__(self, message, statement, params, orig, code=None):
+        SQLAlchemyError.__init__(self, message, code=code)
         self.statement = statement
         self.params = params
         self.orig = orig
@@ -275,18 +316,18 @@ class StatementError(SQLAlchemyError):
     def __str__(self):
         from sqlalchemy.sql import util
 
-        details = [SQLAlchemyError.__str__(self)]
+        details = [self._message()]
         if self.statement:
             details.append("[SQL: %r]" % self.statement)
             if self.params:
                 params_repr = util._repr_params(self.params, 10)
                 details.append("[parameters: %r]" % params_repr)
+        code_str = self._code_str()
+        if code_str:
+            details.append(code_str)
         return ' '.join([
             "(%s)" % det for det in self.detail
         ] + details)
-
-    def __unicode__(self):
-        return self.__str__()
 
 
 class DBAPIError(StatementError):
@@ -312,6 +353,8 @@ class DBAPIError(StatementError):
 
     """
 
+    code = 'dbapi'
+
     @classmethod
     def instance(cls, statement, params,
                  orig, dbapi_base_err,
@@ -327,7 +370,14 @@ class DBAPIError(StatementError):
         if orig is not None:
             # not a DBAPI error, statement is present.
             # raise a StatementError
-            if not isinstance(orig, dbapi_base_err) and statement:
+            if isinstance(orig, SQLAlchemyError) and statement:
+                return StatementError(
+                    "(%s.%s) %s" %
+                    (orig.__class__.__module__, orig.__class__.__name__,
+                     orig.args[0]),
+                    statement, params, orig, code=orig.code
+                )
+            elif not isinstance(orig, dbapi_base_err) and statement:
                 return StatementError(
                     "(%s.%s) %s" %
                     (orig.__class__.__module__, orig.__class__.__name__,
@@ -345,13 +395,15 @@ class DBAPIError(StatementError):
                     cls = glob[name]
                     break
 
-        return cls(statement, params, orig, connection_invalidated)
+        return cls(statement, params, orig, connection_invalidated,
+                   code=cls.code)
 
     def __reduce__(self):
         return self.__class__, (self.statement, self.params,
                                 self.orig, self.connection_invalidated)
 
-    def __init__(self, statement, params, orig, connection_invalidated=False):
+    def __init__(self, statement, params, orig, connection_invalidated=False,
+                 code=None):
         try:
             text = str(orig)
         except Exception as e:
@@ -362,7 +414,7 @@ class DBAPIError(StatementError):
                 orig.__class__.__module__, orig.__class__.__name__, text, ),
             statement,
             params,
-            orig
+            orig, code=code
         )
         self.connection_invalidated = connection_invalidated
 
@@ -370,34 +422,49 @@ class DBAPIError(StatementError):
 class InterfaceError(DBAPIError):
     """Wraps a DB-API InterfaceError."""
 
+    code = "rvf5"
+
 
 class DatabaseError(DBAPIError):
     """Wraps a DB-API DatabaseError."""
+
+    code = "4xp6"
 
 
 class DataError(DatabaseError):
     """Wraps a DB-API DataError."""
 
+    code = "9h9h"
+
 
 class OperationalError(DatabaseError):
     """Wraps a DB-API OperationalError."""
+
+    code = "e3q8"
 
 
 class IntegrityError(DatabaseError):
     """Wraps a DB-API IntegrityError."""
 
+    code = "gkpj"
+
 
 class InternalError(DatabaseError):
     """Wraps a DB-API InternalError."""
+
+    code = "2j85"
 
 
 class ProgrammingError(DatabaseError):
     """Wraps a DB-API ProgrammingError."""
 
+    code = "f405"
+
 
 class NotSupportedError(DatabaseError):
     """Wraps a DB-API NotSupportedError."""
 
+    code = "tw8g"
 
 # Warnings
 

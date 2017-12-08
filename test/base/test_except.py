@@ -1,3 +1,5 @@
+#! coding:utf-8
+
 """Tests exceptions and DB-API exception wrapping."""
 
 
@@ -5,6 +7,7 @@ from sqlalchemy import exc as sa_exceptions
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import eq_
 from sqlalchemy.engine import default
+from sqlalchemy.util import u, compat
 
 
 class Error(Exception):
@@ -69,7 +72,58 @@ class WrapTest(fixtures.TestBase):
             eq_(
                 str(exc),
                 "(test.base.test_except.OperationalError)  "
-                "[SQL: 'this is a message']")
+                "[SQL: 'this is a message'] (Background on this error at: "
+                "http://sqlalche.me/e/e3q8)")
+
+    def test_statement_error_no_code(self):
+        try:
+            raise sa_exceptions.DBAPIError.instance(
+                'select * from table', [{"x": 1}],
+                sa_exceptions.InvalidRequestError("hello"), DatabaseError)
+        except sa_exceptions.StatementError as err:
+            eq_(
+                str(err),
+                "(sqlalchemy.exc.InvalidRequestError) hello "
+                "[SQL: 'select * from table'] [parameters: [{'x': 1}]]"
+            )
+            eq_(err.args, ("(sqlalchemy.exc.InvalidRequestError) hello", ))
+
+    def test_statement_error_w_code(self):
+        try:
+            raise sa_exceptions.DBAPIError.instance(
+                'select * from table', [{"x": 1}],
+                sa_exceptions.InvalidRequestError("hello", code="abcd"),
+                DatabaseError)
+        except sa_exceptions.StatementError as err:
+            eq_(
+                str(err),
+                "(sqlalchemy.exc.InvalidRequestError) hello "
+                "[SQL: 'select * from table'] [parameters: [{'x': 1}]] "
+                "(Background on this error at: http://sqlalche.me/e/abcd)"
+            )
+            eq_(err.args, ("(sqlalchemy.exc.InvalidRequestError) hello", ))
+
+    def test_wrap_multi_arg(self):
+        # this is not supported by the API but oslo_db is doing it
+        orig = sa_exceptions.DBAPIError(False, False, False)
+        orig.args = [2006, 'Test raise operational error']
+        eq_(
+            str(orig),
+            "(2006, 'Test raise operational error') "
+            "(Background on this error at: http://sqlalche.me/e/dbapi)"
+        )
+
+    def test_wrap_unicode_arg(self):
+        # this is not supported by the API but oslo_db is doing it
+        orig = sa_exceptions.DBAPIError(False, False, False)
+        orig.args = [u('méil')]
+        eq_(
+            compat.text_type(orig),
+            compat.u(
+                "méil (Background on this error at: "
+                "http://sqlalche.me/e/dbapi)")
+        )
+        eq_(orig.args, (u('méil'),))
 
     def test_tostring_large_dict(self):
         try:
@@ -103,14 +157,19 @@ class WrapTest(fixtures.TestBase):
                 'this is a message',
                 [{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1},
                  {1: 1}, {1: 1}, {1: 1}, {1: 1}, ],
-                OperationalError(), DatabaseError)
+                OperationalError("sql error"), DatabaseError)
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(test.base.test_except.OperationalError)  "
+                "(test.base.test_except.OperationalError) sql error "
                 "[SQL: 'this is a message'] [parameters: [{1: 1}, "
                 "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: "
-                "1}, {1: 1}, {1: 1}]]"
+                "1}, {1: 1}, {1: 1}]] (Background on this error at: "
+                "http://sqlalche.me/e/e3q8)"
+            )
+            eq_(
+                exc.args,
+                ("(test.base.test_except.OperationalError) sql error", )
             )
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', [
@@ -123,7 +182,8 @@ class WrapTest(fixtures.TestBase):
                 "[SQL: 'this is a message'] [parameters: [{1: 1}, "
                 "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, "
                 "{1: 1}, {1: 1}  ... displaying 10 of 11 total "
-                "bound parameter sets ...  {1: 1}, {1: 1}]]"
+                "bound parameter sets ...  {1: 1}, {1: 1}]] "
+                "(Background on this error at: http://sqlalche.me/e/e3q8)"
                 )
         try:
             raise sa_exceptions.DBAPIError.instance(
@@ -138,7 +198,8 @@ class WrapTest(fixtures.TestBase):
                 str(exc),
                 "(test.base.test_except.OperationalError)  "
                 "[SQL: 'this is a message'] [parameters: [(1,), "
-                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]]")
+                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]] "
+                "(Background on this error at: http://sqlalche.me/e/e3q8)")
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', [
                 (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ),
@@ -150,7 +211,8 @@ class WrapTest(fixtures.TestBase):
                 "[SQL: 'this is a message'] [parameters: [(1,), "
                 "(1,), (1,), (1,), (1,), (1,), (1,), (1,)  "
                 "... displaying 10 of 11 total bound "
-                "parameter sets ...  (1,), (1,)]]"
+                "parameter sets ...  (1,), (1,)]] "
+                "(Background on this error at: http://sqlalche.me/e/e3q8)"
                 )
 
     def test_db_error_busted_dbapi(self):

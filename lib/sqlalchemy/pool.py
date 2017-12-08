@@ -1176,7 +1176,7 @@ class QueuePool(Pool):
                 raise exc.TimeoutError(
                     "QueuePool limit of size %d overflow %d reached, "
                     "connection timed out, timeout %d" %
-                    (self.size(), self.overflow(), self._timeout))
+                    (self.size(), self.overflow(), self._timeout), code="3o7r")
 
         if self._inc_overflow():
             try:

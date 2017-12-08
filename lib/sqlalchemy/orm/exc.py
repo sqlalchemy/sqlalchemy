@@ -60,6 +60,8 @@ class DetachedInstanceError(sa_exc.SQLAlchemyError):
     """An attempt to access unloaded attributes on a
     mapped instance that is detached."""
 
+    code = "bhk3"
+
 
 class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
