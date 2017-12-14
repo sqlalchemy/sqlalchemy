@@ -1,0 +1,17 @@
+.. change::
+    :tags: orm, feature
+    :tickets: 4137
+
+    Added a new data member to the identity key tuple
+    used by the ORM's identity map, known as the
+    "identity_token".  This token defaults to None but
+    may be used by database sharding schemes to differentiate
+    objects in memory with the same primary key that come
+    from different databases.   The horizontal sharding
+    extension integrates this token applying the shard
+    identifier to it, thus allowing primary keys to be
+    duplicated across horizontally sharded backends.
+
+    .. seealso::
+
+        :ref:`change_4137`

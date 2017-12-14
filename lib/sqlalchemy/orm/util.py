@@ -214,7 +214,7 @@ def identity_key(*args, **kwargs):
 
     This function has several call styles:
 
-    * ``identity_key(class, ident)``
+    * ``identity_key(class, ident, identity_token=token)``
 
       This form receives a mapped class and a primary key scalar or
       tuple as an argument.
@@ -222,10 +222,13 @@ def identity_key(*args, **kwargs):
       E.g.::
 
         >>> identity_key(MyClass, (1, 2))
-        (<class '__main__.MyClass'>, (1, 2))
+        (<class '__main__.MyClass'>, (1, 2), None)
 
       :param class: mapped class (must be a positional argument)
       :param ident: primary key, may be a scalar or tuple argument.
+      ;param identity_token: optional identity token
+
+        .. versionadded:: 1.2 added identity_token
 
 
     * ``identity_key(instance=instance)``
@@ -239,7 +242,7 @@ def identity_key(*args, **kwargs):
 
         >>> instance = MyClass(1, 2)
         >>> identity_key(instance=instance)
-        (<class '__main__.MyClass'>, (1, 2))
+        (<class '__main__.MyClass'>, (1, 2), None)
 
       In this form, the given instance is ultimately run though
       :meth:`.Mapper.identity_key_from_instance`, which will have the
@@ -248,7 +251,7 @@ def identity_key(*args, **kwargs):
 
       :param instance: object instance (must be given as a keyword arg)
 
-    * ``identity_key(class, row=row)``
+    * ``identity_key(class, row=row, identity_token=token)``
 
       This form is similar to the class/tuple form, except is passed a
       database result row as a :class:`.RowProxy` object.
@@ -258,41 +261,50 @@ def identity_key(*args, **kwargs):
         >>> row = engine.execute("select * from table where a=1 and b=2").\
 first()
         >>> identity_key(MyClass, row=row)
-        (<class '__main__.MyClass'>, (1, 2))
+        (<class '__main__.MyClass'>, (1, 2), None)
 
       :param class: mapped class (must be a positional argument)
       :param row: :class:`.RowProxy` row returned by a :class:`.ResultProxy`
        (must be given as a keyword arg)
+      ;param identity_token: optional identity token
+
+        .. versionadded:: 1.2 added identity_token
 
     """
     if args:
-        if len(args) == 1:
+        row = None
+        largs = len(args)
+        if largs == 1:
             class_ = args[0]
             try:
                 row = kwargs.pop("row")
             except KeyError:
                 ident = kwargs.pop("ident")
-        elif len(args) == 2:
-            class_, ident = args
-        elif len(args) == 3:
+        elif largs in (2, 3):
             class_, ident = args
         else:
             raise sa_exc.ArgumentError(
                 "expected up to three positional arguments, "
-                "got %s" % len(args))
+                "got %s" % largs)
+
+        identity_token = kwargs.pop("identity_token", None)
         if kwargs:
             raise sa_exc.ArgumentError("unknown keyword arguments: %s"
                                        % ", ".join(kwargs))
         mapper = class_mapper(class_)
-        if "ident" in locals():
-            return mapper.identity_key_from_primary_key(util.to_list(ident))
-        return mapper.identity_key_from_row(row)
-    instance = kwargs.pop("instance")
-    if kwargs:
-        raise sa_exc.ArgumentError("unknown keyword arguments: %s"
-                                   % ", ".join(kwargs.keys))
-    mapper = object_mapper(instance)
-    return mapper.identity_key_from_instance(instance)
+        if row is None:
+            return mapper.identity_key_from_primary_key(
+                util.to_list(ident), identity_token=identity_token)
+        else:
+            return mapper.identity_key_from_row(
+                row, identity_token=identity_token)
+    else:
+        instance = kwargs.pop("instance")
+        if kwargs:
+            raise sa_exc.ArgumentError("unknown keyword arguments: %s"
+                                       % ", ".join(kwargs.keys))
+        mapper = object_mapper(instance)
+        return mapper.identity_key_from_instance(instance)
 
 
 class ORMAdapter(sql_util.ColumnAdapter):

@@ -867,9 +867,10 @@ class Query(object):
         :return: The object instance, or ``None``.
 
         """
-        return self._get_impl(ident, loading.load_on_ident)
+        return self._get_impl(
+            ident, loading.load_on_ident)
 
-    def _get_impl(self, ident, fallback_fn):
+    def _get_impl(self, ident, fallback_fn, identity_token=None):
         # convert composite types to individual args
         if hasattr(ident, '__composite_values__'):
             ident = ident.__composite_values__()
@@ -884,7 +885,8 @@ class Query(object):
                 "primary key for query.get(); primary key columns are %s" %
                 ','.join("'%s'" % c for c in mapper.primary_key))
 
-        key = mapper.identity_key_from_primary_key(ident)
+        key = mapper.identity_key_from_primary_key(
+            ident, identity_token=identity_token)
 
         if not self._populate_existing and \
                 not mapper.always_refresh and \
@@ -4127,7 +4129,7 @@ class QueryContext(object):
         'eager_joins', 'create_eager_joins', 'propagate_options',
         'attributes', 'statement', 'from_clause', 'whereclause',
         'order_by', 'labels', '_for_update_arg', 'runid', 'partials',
-        'post_load_paths'
+        'post_load_paths', 'identity_token'
     )
 
     def __init__(self, query):
@@ -4164,6 +4166,7 @@ class QueryContext(object):
         self.propagate_options = set(o for o in query._with_options if
                                      o.propagate_to_loaders)
         self.attributes = query._attributes.copy()
+        self.identity_token = None
 
 
 class AliasOption(interfaces.MapperOption):

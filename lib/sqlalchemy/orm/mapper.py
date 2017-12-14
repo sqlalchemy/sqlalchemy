@@ -2506,7 +2506,7 @@ class Mapper(InspectionAttr):
         else:
             return True
 
-    def identity_key_from_row(self, row, adapter=None):
+    def identity_key_from_row(self, row, identity_token=None, adapter=None):
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
 
@@ -2522,16 +2522,16 @@ class Mapper(InspectionAttr):
             pk_cols = [adapter.columns[c] for c in pk_cols]
 
         return self._identity_class, \
-            tuple(row[column] for column in pk_cols)
+            tuple(row[column] for column in pk_cols), identity_token
 
-    def identity_key_from_primary_key(self, primary_key):
+    def identity_key_from_primary_key(self, primary_key, identity_token=None):
         """Return an identity-map key for use in storing/retrieving an
         item from an identity map.
 
         :param primary_key: A list of values indicating the identifier.
 
         """
-        return self._identity_class, tuple(primary_key)
+        return self._identity_class, tuple(primary_key), identity_token
 
     def identity_key_from_instance(self, instance):
         """Return the identity key for the given instance, based on
@@ -2546,17 +2546,18 @@ class Mapper(InspectionAttr):
         attribute name `key`.
 
         """
-        return self.identity_key_from_primary_key(
-            self.primary_key_from_instance(instance))
+        state = attributes.instance_state(instance)
+        return self._identity_key_from_state(state, attributes.PASSIVE_OFF)
 
-    def _identity_key_from_state(self, state):
+    def _identity_key_from_state(
+            self, state, passive=attributes.PASSIVE_RETURN_NEVER_SET):
         dict_ = state.dict
         manager = state.manager
         return self._identity_class, tuple([
-            manager[self._columntoproperty[col].key].
-            impl.get(state, dict_, attributes.PASSIVE_RETURN_NEVER_SET)
-            for col in self.primary_key
-        ])
+            manager[prop.key].
+            impl.get(state, dict_, passive)
+            for prop in self._identity_key_props
+        ]), state.identity_token
 
     def primary_key_from_instance(self, instance):
         """Return the list of primary key values for the given
@@ -2569,17 +2570,9 @@ class Mapper(InspectionAttr):
 
         """
         state = attributes.instance_state(instance)
-        return self._primary_key_from_state(state, attributes.PASSIVE_OFF)
-
-    def _primary_key_from_state(
-            self, state, passive=attributes.PASSIVE_RETURN_NEVER_SET):
-        dict_ = state.dict
-        manager = state.manager
-        return [
-            manager[prop.key].
-            impl.get(state, dict_, passive)
-            for prop in self._identity_key_props
-        ]
+        identity_key = self._identity_key_from_state(
+            state, attributes.PASSIVE_OFF)
+        return identity_key[1]
 
     @_memoized_configured_property
     def _identity_key_props(self):
