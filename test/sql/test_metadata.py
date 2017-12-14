@@ -1047,8 +1047,11 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
                       Column('id', Integer, primary_key=True),
                       Column('data1', Integer, index=True),
                       Column('data2', Integer),
+                      Index('text', text('data1 + 1')),
                       )
-        Index('multi', table.c.data1, table.c.data2),
+        Index('multi', table.c.data1, table.c.data2)
+        Index('func', func.abs(table.c.data1))
+        Index('multi-func', table.c.data1, func.abs(table.c.data2))
 
         meta2 = MetaData()
         table_c = table.tometadata(meta2)
@@ -1056,7 +1059,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         def _get_key(i):
             return [i.name, i.unique] + \
                 sorted(i.kwargs.items()) + \
-                list(i.columns.keys())
+                [str(col) for col in i.expressions]
 
         eq_(
             sorted([_get_key(i) for i in table.indexes]),

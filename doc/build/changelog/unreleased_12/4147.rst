@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4147
+
+    Fixed bug where the :meth:`.Table.tometadata` method would not properly
+    accommodate :class:`.Index` objects that didn't consist of simple
+    column expressions, such as indexes against a :func:`.text` construct,
+    indexes that used SQL expressions or :attr:`.func`, etc.   The routine
+    now copies expressions fully to a new :class:`.Index` object while
+    substituting all table-bound :class:`.Column` objects for those
+    of the target table.
