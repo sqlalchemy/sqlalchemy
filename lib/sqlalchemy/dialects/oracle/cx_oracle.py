@@ -223,6 +223,8 @@ class _OracleNumeric(sqltypes.Numeric):
             def process(value):
                 if isinstance(value, (int, float)):
                     return processor(value)
+                elif value is not None and value.is_infinite():
+                    return float(value)
                 else:
                     return value
             return process
@@ -242,7 +244,12 @@ class _OracleNumeric(sqltypes.Numeric):
             outconverter = None
             if precision:
                 if self.asdecimal:
-                    if is_cx_oracle_6:
+                    if default_type == cx_Oracle.NATIVE_FLOAT:
+                        # receiving float and doing Decimal after the fact
+                        # allows for float("inf") to be handled
+                        type_ = default_type
+                        outconverter = decimal.Decimal
+                    elif is_cx_oracle_6:
                         type_ = decimal.Decimal
                     else:
                         type_ = cx_Oracle.STRING
@@ -258,7 +265,10 @@ class _OracleNumeric(sqltypes.Numeric):
                         type_ = cx_Oracle.NATIVE_FLOAT
             else:
                 if self.asdecimal:
-                    if is_cx_oracle_6:
+                    if default_type == cx_Oracle.NATIVE_FLOAT:
+                        type_ = default_type
+                        outconverter = decimal.Decimal
+                    elif is_cx_oracle_6:
                         type_ = decimal.Decimal
                     else:
                         type_ = cx_Oracle.STRING

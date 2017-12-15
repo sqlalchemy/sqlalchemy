@@ -282,19 +282,58 @@ class TypesTest(fixtures.TestBase):
                    Column("intcol", Integer),
                    Column("numericcol", oracle.BINARY_DOUBLE(asdecimal=False)))
         t1.create()
-        t1.insert().execute(
-            intcol=1,
-            numericcol=float("inf"),
+        t1.insert().execute([
+            dict(
+                intcol=1,
+                numericcol=float("inf")
+            ),
+            dict(
+                intcol=2,
+                numericcol=float("-inf")
+            ),
+        ])
+
+        eq_(
+            select([t1.c.numericcol]).
+            order_by(t1.c.intcol).execute().fetchall(),
+            [(float('inf'), ), (float('-inf'), )]
         )
 
         eq_(
-            select([t1.c.numericcol]).scalar(),
-            float("inf")
+            testing.db.execute(
+                "select numericcol from t1 order by intcol").fetchall(),
+            [(float('inf'), ), (float('-inf'), )]
+        )
+
+    @testing.provide_metadata
+    def test_numeric_infinity_decimal(self):
+        m = self.metadata
+        t1 = Table('t1', m,
+                   Column("intcol", Integer),
+                   Column("numericcol", oracle.BINARY_DOUBLE(asdecimal=True)))
+        t1.create()
+        t1.insert().execute([
+            dict(
+                intcol=1,
+                numericcol=decimal.Decimal("Infinity")
+            ),
+            dict(
+                intcol=2,
+                numericcol=decimal.Decimal("-Infinity")
+            ),
+        ])
+
+        eq_(
+            select([t1.c.numericcol]).
+            order_by(t1.c.intcol).execute().fetchall(),
+            [(decimal.Decimal("Infinity"), ), (decimal.Decimal("-Infinity"), )]
         )
 
         eq_(
-            testing.db.scalar("select numericcol from t1"),
-            float("inf"))
+            testing.db.execute(
+                "select numericcol from t1 order by intcol").fetchall(),
+            [(decimal.Decimal("Infinity"), ), (decimal.Decimal("-Infinity"), )]
+        )
 
     @testing.provide_metadata
     def test_numerics_broken_inspection(self):
