@@ -322,3 +322,6 @@ class AutocommitTextTest(test_execute.AutocommitTextTest):
 
     def test_revoke(self):
         self._test_keyword("REVOKE USAGE ON SCHEMA fooschema FROM foorole")
+
+    def test_truncate(self):
+        self._test_keyword("TRUNCATE footable")
