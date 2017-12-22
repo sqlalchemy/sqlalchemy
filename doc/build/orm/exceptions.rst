@@ -1,3 +1,5 @@
+.. _orm_exceptions_toplevel:
+
 ORM Exceptions
 ==============
 

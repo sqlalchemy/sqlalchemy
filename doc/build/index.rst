@@ -16,6 +16,7 @@ A high level view and getting set up.
 :doc:`Frequently Asked Questions <faq/index>` |
 :doc:`Migration from 1.1 <changelog/migration_12>` |
 :doc:`Glossary <glossary>` |
+:doc:`Error Messages <errors>` |
 :doc:`Changelog catalog <changelog/index>`
 
 SQLAlchemy ORM

@@ -20,5 +20,6 @@ documentation, see :ref:`index_toplevel`.
 Indices and tables
 ------------------
 
+* :ref:`errors`
 * :ref:`glossary`
 * :ref:`genindex`
