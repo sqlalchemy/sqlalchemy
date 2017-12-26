@@ -1037,41 +1037,6 @@ localized to the current VALUES clause being processed::
 Key Behavioral Changes - ORM
 ============================
 
-.. _change_3740:
-
-Percent signs in literal_column() now conditionally escaped
------------------------------------------------------------
-
-The :obj:`.literal_column` construct now escapes percent sign characters
-conditionally, based on whether or not the DBAPI in use makes use of a
-percent-sign-sensitive paramstyle or not (e.g. 'format' or 'pyformat').
-
-Previously, it was not possible to produce a :obj:`.literal_column`
-construct that stated a single percent sign::
-
-    >>> from sqlalchemy import literal_column
-    >>> print(literal_column('some%symbol'))
-    some%%symbol
-
-The percent sign is now unaffected for dialects that are not set to
-use the 'format' or 'pyformat' paramstyles; dialects such most MySQL
-dialects which do state one of these paramstyles will continue to escape
-as is appropriate::
-
-    >>> from sqlalchemy import literal_column
-    >>> print(literal_column('some%symbol'))
-    some%symbol
-    >>> from sqlalchemy.dialects import mysql
-    >>> print(literal_column('some%symbol').compile(dialect=mysql.dialect()))
-    some%%symbol
-
-As part of this change, the doubling that has been present when using
-operators like :meth:`.ColumnOperators.contains`,
-:meth:`.ColumnOperators.startswith` and :meth:`.ColumnOperators.endswith`
-is also refined to only occur when appropriate.
-
-:ticket:`3740`
-
 .. _change_3934:
 
 The after_rollback() Session event now emits before the expiration of objects
@@ -1478,6 +1443,42 @@ for on-the-fly boolean operators::
 
     >>> print(column('x', types.Integer).bool_op('-%>')(5))
     x -%> :x_1
+
+
+.. _change_3740:
+
+Percent signs in literal_column() now conditionally escaped
+-----------------------------------------------------------
+
+The :obj:`.literal_column` construct now escapes percent sign characters
+conditionally, based on whether or not the DBAPI in use makes use of a
+percent-sign-sensitive paramstyle or not (e.g. 'format' or 'pyformat').
+
+Previously, it was not possible to produce a :obj:`.literal_column`
+construct that stated a single percent sign::
+
+    >>> from sqlalchemy import literal_column
+    >>> print(literal_column('some%symbol'))
+    some%%symbol
+
+The percent sign is now unaffected for dialects that are not set to
+use the 'format' or 'pyformat' paramstyles; dialects such most MySQL
+dialects which do state one of these paramstyles will continue to escape
+as is appropriate::
+
+    >>> from sqlalchemy import literal_column
+    >>> print(literal_column('some%symbol'))
+    some%symbol
+    >>> from sqlalchemy.dialects import mysql
+    >>> print(literal_column('some%symbol').compile(dialect=mysql.dialect()))
+    some%%symbol
+
+As part of this change, the doubling that has been present when using
+operators like :meth:`.ColumnOperators.contains`,
+:meth:`.ColumnOperators.startswith` and :meth:`.ColumnOperators.endswith`
+is also refined to only occur when appropriate.
+
+:ticket:`3740`
 
 
 .. _change_3785:
