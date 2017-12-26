@@ -60,7 +60,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 4126
-        :versions: 1.2.0b4
+        :versions: 1.2.0
 
         Fixed bug where ``__repr__`` of :class:`.ColumnDefault` would fail
         if the argument were a tuple.  Pull request courtesy Nicolas Caniart.
@@ -68,7 +68,7 @@
     .. change::
         :tags: bug, orm, declarative
         :tickets: 4124
-        :versions: 1.2.0b4
+        :versions: 1.2.0
 
         Fixed bug where a descriptor that is elsewhere a mapped column
         or relationship within a hierarchy based on :class:`.AbstractConcreteBase`
@@ -91,7 +91,7 @@
     .. change::
         :tags: bug, orm, ext
         :tickets: 4116
-        :versions: 1.2.0b4
+        :versions: 1.2.0
 
         Fixed bug where the association proxy would inadvertently link itself
         to an :class:`.AliasedClass` object if it were called first with
@@ -101,7 +101,7 @@
     .. change::
         :tags: bug, mysql
         :tickets: 4120
-        :versions: 1.2.0b4
+        :versions: 1.2.0
 
         MySQL 5.7.20 now warns for use of the @tx_isolation variable; a version
         check is now performed and uses @transaction_isolation instead

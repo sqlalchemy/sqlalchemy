@@ -644,7 +644,7 @@ class ColumnOperators(Operators):
 
           .. versionadded:: 1.2
 
-          .. versionchanged:: 1.2.0b4 The
+          .. versionchanged:: 1.2.0 The
             :paramref:`.ColumnOperators.startswith.autoescape` parameter is
              now a simple boolean rather than a character; the escape
              character itself is also escaped, and defaults to a forwards
@@ -732,7 +732,7 @@ class ColumnOperators(Operators):
 
           .. versionadded:: 1.2
 
-          .. versionchanged:: 1.2.0b4 The
+          .. versionchanged:: 1.2.0 The
             :paramref:`.ColumnOperators.endswith.autoescape` parameter is
              now a simple boolean rather than a character; the escape
              character itself is also escaped, and defaults to a forwards
@@ -820,7 +820,7 @@ class ColumnOperators(Operators):
 
           .. versionadded:: 1.2
 
-          .. versionchanged:: 1.2.0b4 The
+          .. versionchanged:: 1.2.0 The
             :paramref:`.ColumnOperators.contains.autoescape` parameter is
              now a simple boolean rather than a character; the escape
              character itself is also escaped, and defaults to a forwards

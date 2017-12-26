@@ -11,7 +11,7 @@
         :start-line: 5
 
 .. changelog::
-    :version: 1.2.0b4
+    :version: 1.2.0
     :include_notes_from: unreleased_12
 
 .. changelog::
@@ -1202,7 +1202,7 @@
         also applies it to all occurrences of the wildcard characters "%"
         and "_" automatically.  Pull request courtesy Diana Clarke.
 
-        .. note::  This feature has been changed as of 1.2.0b4 from its initial
+        .. note::  This feature has been changed as of 1.2.0 from its initial
            implementation in 1.2.0b2 such that autoescape is now passed as a
            boolean value, rather than a specific character to use as the escape
            character.

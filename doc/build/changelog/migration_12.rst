@@ -897,7 +897,7 @@ is used to avoid conflicts with settings like Postgresql's
 9.1, and MySQL's ``NO_BACKSLASH_ESCAPES`` settings.  The existing "escape" parameter
 can now be used to change the autoescape character, if desired.
 
-.. note::  This feature has been changed as of 1.2.0b4 from its initial
+.. note::  This feature has been changed as of 1.2.0 from its initial
    implementation in 1.2.0b2 such that autoescape is now passed as a boolean
    value, rather than a specific character to use as the escape character.
 
