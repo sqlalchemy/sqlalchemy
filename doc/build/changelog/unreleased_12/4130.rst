@@ -1,6 +1,6 @@
 .. change::
-   :tags: bug, orm
-   :tickets: 4130
+    :tags: bug, orm
+    :tickets: 4130
 
     Fixed bug in :func:`.contains_eager` query option where making use of a
     path that used :meth:`.PropComparator.of_type` to refer to a subclass
