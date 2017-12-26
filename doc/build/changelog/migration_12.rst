@@ -567,6 +567,55 @@ to query across the two proxies ``A.c_values``, ``AtoB.c_value``:
 
 :ticket:`3769`
 
+.. _change_4137:
+
+Identity key enhancements to support sharding
+---------------------------------------------
+
+The identity key structure used by the ORM now contains an additional
+member, so that two identical primary keys that originate from different
+contexts can co-exist within the same identity map.
+
+The example at :ref:`examples_sharding` has been updated to illustrate this
+behavior.  The example shows a sharded class ``WeatherLocation`` that
+refers to a dependent ``WeatherReport`` object, where the ``WeatherReport``
+class is mapped to a table that stores a simple integer primary key.  Two
+``WeatherReport`` objects from different databases may have the same
+primary key value.   The example now illustrates that a new ``identity_token``
+field tracks this difference so that the two objects can co-exist in the
+same identity map::
+
+    tokyo = WeatherLocation('Asia', 'Tokyo')
+    newyork = WeatherLocation('North America', 'New York')
+
+    tokyo.reports.append(Report(80.0))
+    newyork.reports.append(Report(75))
+
+    sess = create_session()
+
+    sess.add_all([tokyo, newyork, quito])
+
+    sess.commit()
+
+    # the Report class uses a simple integer primary key.  So across two
+    # databases, a primary key will be repeated.  The "identity_token" tracks
+    # in memory that these two identical primary keys are local to different
+    # databases.
+
+    newyork_report = newyork.reports[0]
+    tokyo_report = tokyo.reports[0]
+
+    assert inspect(newyork_report).identity_key == (Report, (1, ), "north_america")
+    assert inspect(tokyo_report).identity_key == (Report, (1, ), "asia")
+
+    # the token representing the originating shard is also available directly
+
+    assert inspect(newyork_report).identity_token == "north_america"
+    assert inspect(tokyo_report).identity_token == "asia"
+
+
+:ticket:`4137`
+
 New Features and Improvements - Core
 ====================================
 

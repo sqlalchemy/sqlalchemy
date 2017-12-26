@@ -7,6 +7,7 @@ from test.orm import _fixtures
 from sqlalchemy.orm import class_mapper, synonym, Session, aliased
 from sqlalchemy.orm.attributes import instance_state, NO_VALUE
 from sqlalchemy import testing
+from sqlalchemy.orm.util import identity_key
 
 
 class TestORMInspection(_fixtures.FixtureTest):
@@ -487,7 +488,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(u1)
         eq_(
             insp.identity_key,
-            (User, (u1.id, ))
+            identity_key(User, (u1.id, ))
         )
 
     def test_persistence_states(self):

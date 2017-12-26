@@ -369,6 +369,7 @@ def _instance_processor(
     session_id = context.session.hash_key
     version_check = context.version_check
     runid = context.runid
+    identity_token = context.identity_token
 
     if not refresh_state and _polymorphic_from is not None:
         key = ('loader', path.path)
@@ -430,7 +431,8 @@ def _instance_processor(
             # session, or we have to create a new one
             identitykey = (
                 identity_class,
-                tuple([row[column] for column in pk_cols])
+                tuple([row[column] for column in pk_cols]),
+                identity_token
             )
 
             instance = session_identity_map.get(identitykey)
@@ -464,6 +466,7 @@ def _instance_processor(
                 dict_ = instance_dict(instance)
                 state = instance_state(instance)
                 state.key = identitykey
+                state.identity_token = identity_token
 
                 # attach instance to session.
                 state.session_id = session_id

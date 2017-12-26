@@ -15,6 +15,7 @@ the source distribution.
 
 """
 
+from .. import inspect
 from .. import util
 from ..orm.session import Session
 from ..orm.query import Query
@@ -42,7 +43,7 @@ class ShardedQuery(Query):
 
     def _execute_and_instances(self, context):
         def iter_for_shard(shard_id):
-            context.attributes['shard_id'] = shard_id
+            context.attributes['shard_id'] = context.identity_token = shard_id
             result = self._connection_from_session(
                 mapper=self._mapper_zero(),
                 shard_id=shard_id).execute(
@@ -62,6 +63,9 @@ class ShardedQuery(Query):
             return iter(partial)
 
     def _get_impl(self, ident, fallback_fn):
+        # TODO: the "ident" here should be getting the identity token
+        # which indicates that this area can likely be simplified, as the
+        # token will fall through into _execute_and_instances
         def _fallback(query, ident):
             if self._shard_id is not None:
                 return fallback_fn(self, ident)
@@ -75,7 +79,13 @@ class ShardedQuery(Query):
                 else:
                     return None
 
-        return super(ShardedQuery, self)._get_impl(ident, _fallback)
+        if self._shard_id is not None:
+            identity_token = self._shard_id
+        else:
+            identity_token = None
+
+        return super(ShardedQuery, self)._get_impl(
+            ident, _fallback, identity_token=identity_token)
 
 
 class ShardedSession(Session):
@@ -112,9 +122,24 @@ class ShardedSession(Session):
             for k in shards:
                 self.bind_shard(k, shards[k])
 
+    def _choose_shard_and_assign(self, mapper, instance, **kw):
+        if instance is not None:
+            state = inspect(instance)
+            if state.key:
+                token = state.key[2]
+                assert token is not None
+                return token
+            elif state.identity_token:
+                return state.identity_token
+
+        shard_id = self.shard_chooser(mapper, instance, **kw)
+        if instance is not None:
+            state.identity_token = shard_id
+        return shard_id
+
     def connection(self, mapper=None, instance=None, shard_id=None, **kwargs):
         if shard_id is None:
-            shard_id = self.shard_chooser(mapper, instance)
+            shard_id = self._choose_shard_and_assign(mapper, instance)
 
         if self.transaction is not None:
             return self.transaction.connection(mapper, shard_id=shard_id)
@@ -128,7 +153,8 @@ class ShardedSession(Session):
     def get_bind(self, mapper, shard_id=None,
                  instance=None, clause=None, **kw):
         if shard_id is None:
-            shard_id = self.shard_chooser(mapper, instance, clause=clause)
+            shard_id = self._choose_shard_and_assign(
+                mapper, instance, clause=clause)
         return self.__binds[shard_id]
 
     def bind_shard(self, shard_id, bind):
