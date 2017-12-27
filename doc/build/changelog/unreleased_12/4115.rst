@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 4115
-
-    Fixed regression from issue 1.2.0b3 where "MariaDB" version comparison can
-    fail for some particular MariaDB version strings under Python 3.

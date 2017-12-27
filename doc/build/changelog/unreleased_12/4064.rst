@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 4064
-
-    Added some additional rules to fully handle ``Decimal('Infinity')``,
-    ``Decimal('-Infinity')`` values with cx_Oracle numerics when using
-    ``asdecimal=True``.

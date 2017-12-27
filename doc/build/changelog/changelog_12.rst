@@ -12,10 +12,191 @@
 
 .. changelog::
     :version: 1.2.0
-    :include_notes_from: unreleased_12
+    :released: December 27, 2017
+
+    .. change::
+        :tags: orm, feature
+        :tickets: 4137
+
+        Added a new data member to the identity key tuple
+        used by the ORM's identity map, known as the
+        "identity_token".  This token defaults to None but
+        may be used by database sharding schemes to differentiate
+        objects in memory with the same primary key that come
+        from different databases.   The horizontal sharding
+        extension integrates this token applying the shard
+        identifier to it, thus allowing primary keys to be
+        duplicated across horizontally sharded backends.
+
+        .. seealso::
+
+            :ref:`change_4137`
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4115
+
+        Fixed regression from issue 1.2.0b3 where "MariaDB" version comparison can
+        fail for some particular MariaDB version strings under Python 3.
+
+    .. change::
+        :tags: enhancement, sql
+        :tickets: 959
+
+        Implemented "DELETE..FROM" syntax for Postgresql, MySQL, MS SQL Server
+        (as well as within the unsupported Sybase dialect) in a manner similar
+        to how "UPDATE..FROM" works.  A DELETE statement that refers to more than
+        one table will switch into "multi-table" mode and render the appropriate
+        "USING" or multi-table "FROM" clause as understood by the database.
+        Pull request courtesy Pieter Mulder.
+
+        .. seealso::
+
+            :ref:`change_959`
+
+    .. change::
+       :tags: bug, sql
+       :tickets: 2694
+
+       Reworked the new "autoescape" feature introduced in
+       :ref:`change_2694` in 1.2.0b2 to be fully automatic; the escape
+       character now defaults to a forwards slash ``"/"`` and
+       is applied to percent, underscore, as well as the escape
+       character itself, for fully automatic escaping.  The
+       character can also be changed using the "escape" parameter.
+
+       .. seealso::
+
+            :ref:`change_2694`
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4147
+
+        Fixed bug where the :meth:`.Table.tometadata` method would not properly
+        accommodate :class:`.Index` objects that didn't consist of simple
+        column expressions, such as indexes against a :func:`.text` construct,
+        indexes that used SQL expressions or :attr:`.func`, etc.   The routine
+        now copies expressions fully to a new :class:`.Index` object while
+        substituting all table-bound :class:`.Column` objects for those
+        of the target table.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4142
+
+        Changed the "visit name" of :class:`.ColumnElement` from "column" to
+        "column_element", so that when this element is used as the basis for a
+        user-defined SQL element, it is not assumed to behave like a table-bound
+        :class:`.ColumnClause` when processed by various SQL traversal utilities,
+        as are commonly used by the ORM.
+
+    .. change::
+        :tags: bug, sql, ext
+        :tickets: 4141
+
+        Fixed issue in :class:`.ARRAY` datatype which is essentially the same
+        issue as that of :ticket:`3832`, except not a regression, where
+        column attachment events on top of :class:`.ARRAY` would not fire
+        correctly, thus interfering with systems which rely upon this.   A key
+        use case that was broken by this is the use of mixins to declare
+        columns that make use of :meth:`.MutableList.as_mutable`.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 4089
+
+        The "password" attribute of the :class:`.url.URL` object can now be
+        any user-defined or user-subclassed string object that responds to the
+        Python ``str()`` builtin.   The object passed will be maintained as the
+        datamember :attr:`.url.URL.password_original` and will be consulted
+        when the :attr:`.url.URL.password` attribute is read to produce the
+        string value.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4130
+
+        Fixed bug in :func:`.contains_eager` query option where making use of a
+        path that used :meth:`.PropComparator.of_type` to refer to a subclass
+        across more than one level of joins would also require that the "alias"
+        argument were provided with the same subtype in order to avoid adding
+        unwanted FROM clauses to the query; additionally,  using
+        :func:`.contains_eager` across subclasses that use :func:`.aliased` objects
+        of subclasses as the :meth:`.PropComparator.of_type` argument will also
+        render correctly.
+
+
+
+
+    .. change::
+        :tags: feature, postgresql
+
+        Added new :class:`.postgresql.MONEY` datatype.  Pull request courtesy
+        Cleber J Santos.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4140
+
+        Fixed bug in new "expanding bind parameter" feature whereby if multiple
+        params were used in one statement, the regular expression would not
+        match the parameter name correctly.
+
+    .. change::
+        :tags: enhancement, ext
+        :tickets: 4135
+
+        Added new method :meth:`.baked.Result.with_post_criteria` to baked
+        query system, allowing non-SQL-modifying transformations to take place
+        after the query has been pulled from the cache.  Among other things,
+        this method can be used with :class:`.horizontal_shard.ShardedQuery`
+        to set the shard identifier.   :class:`.horizontal_shard.ShardedQuery`
+        has also been modified such that its :meth:`.ShardedQuery.get` method
+        interacts correctly with that of :class:`.baked.Result`.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4064
+
+        Added some additional rules to fully handle ``Decimal('Infinity')``,
+        ``Decimal('-Infinity')`` values with cx_Oracle numerics when using
+        ``asdecimal=True``.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4121
+
+        Fixed bug where sqltypes.BINARY and sqltypes.VARBINARY datatypes
+        would not include correct bound-value handlers for pyodbc,
+        which allows the pyodbc.NullParam value to be passed that
+        helps with FreeTDS.
+
+
+
+
+    .. change::
+        :tags: feature, misc
+
+        Added a new errors section to the documentation with background
+        about common error messages.   Selected exceptions within SQLAlchemy
+        will include a link in their string output to the relevant section
+        within this page.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4032
+
+        The :meth:`.Query.exists` method will now disable eager loaders for when
+        the query is rendered.  Previously, joined-eager load joins would be rendered
+        unnecessarily as well as subquery eager load queries would be needlessly
+        generated.   The new behavior matches that of the :meth:`.Query.subquery`
+        method.
 
 .. changelog::
     :version: 1.2.0b3
+    :released: December 27, 2017
     :released: October 13, 2017
 
     .. change::
@@ -429,6 +610,7 @@
 
 .. changelog::
     :version: 1.2.0b2
+    :released: December 27, 2017
     :released: July 24, 2017
 
     .. change:: 4033
@@ -443,6 +625,7 @@
 
 .. changelog::
     :version: 1.2.0b1
+    :released: December 27, 2017
     :released: July 10, 2017
 
     .. change:: scoped_autocommit
