@@ -24,8 +24,7 @@ from .. import util
 from ..sql import operators
 from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
                    EXT_CONTINUE, EXT_STOP, NOT_EXTENSION)
-from .base import (InspectionAttr, InspectionAttr,
-    InspectionAttrInfo, _MappedAttribute)
+from .base import InspectionAttr, InspectionAttrInfo, _MappedAttribute
 import collections
 from .. import inspect
 from . import path_registry
