@@ -271,7 +271,7 @@ class Compiled(object):
         if e is None:
             raise exc.UnboundExecutionError(
                 "This Compiled object is not bound to any Engine "
-                "or Connection.")
+                "or Connection.", code="2afi")
         return e._execute_compiled(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):
@@ -540,11 +540,11 @@ class SQLCompiler(Compiled):
                         raise exc.InvalidRequestError(
                             "A value is required for bind parameter %r, "
                             "in parameter group %d" %
-                            (bindparam.key, _group_number))
+                            (bindparam.key, _group_number), code="cd3x")
                     else:
                         raise exc.InvalidRequestError(
                             "A value is required for bind parameter %r"
-                            % bindparam.key)
+                            % bindparam.key, code="cd3x")
 
                 elif bindparam.callable:
                     pd[name] = bindparam.effective_value
@@ -559,11 +559,11 @@ class SQLCompiler(Compiled):
                         raise exc.InvalidRequestError(
                             "A value is required for bind parameter %r, "
                             "in parameter group %d" %
-                            (bindparam.key, _group_number))
+                            (bindparam.key, _group_number), code="cd3x")
                     else:
                         raise exc.InvalidRequestError(
                             "A value is required for bind parameter %r"
-                            % bindparam.key)
+                            % bindparam.key, code="cd3x")
 
                 if bindparam.callable:
                     pd[self.bind_names[bindparam]] = bindparam.effective_value
