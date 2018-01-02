@@ -462,6 +462,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         if target_assoc is not None:
             return self._comparator._criterion_exists(
                 target_assoc.contains(obj)
+                if not target_assoc.scalar else target_assoc == obj
             )
         elif self._target_is_object and self.scalar and \
                 not self._value_is_scalar:

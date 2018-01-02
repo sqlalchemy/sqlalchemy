@@ -1281,6 +1281,10 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             # nonuselist -> nonuselist
             user = association_proxy('user_keyword', 'user')
 
+            # uselist assoc_proxy -> collection -> assoc_proxy -> scalar object
+            # (o2m relationship, associationproxy(m2o relationship, m2o relationship))
+            singulars = association_proxy("user_keywords", "singular")
+
         class UserKeyword(cls.Comparable):
             def __init__(self, user=None, keyword=None):
                 self.user = user
@@ -1288,6 +1292,8 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
             common_users = association_proxy("keyword", "user")
             keyword_name = association_proxy("keyword", "keyword")
+
+            singular = association_proxy("user", "singular")
 
         class Singular(cls.Comparable):
             def __init__(self, value=None):
@@ -1311,7 +1317,8 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             'singular': relationship(Singular)
         })
         mapper(Keyword, keywords, properties={
-            'user_keyword': relationship(UserKeyword, uselist=False)
+            'user_keyword': relationship(UserKeyword, uselist=False),
+            'user_keywords': relationship(UserKeyword)
         })
 
         mapper(UserKeyword, userkeywords, properties={
@@ -1703,6 +1710,40 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         q2 = self.session.query(User).filter(
             User.user_keywords.any(
                 UserKeyword.keyword.has(Keyword.keyword == "brown")
+            )
+        )
+        self._equivalent(q1, q2)
+
+    def test_filter_contains_chained_any_to_has_to_eq(self):
+        User = self.classes.User
+        Keyword = self.classes.Keyword
+        UserKeyword = self.classes.UserKeyword
+        Singular = self.classes.Singular
+
+        singular = self.session.query(Singular).order_by(Singular.id).first()
+
+        q1 = self.session.query(Keyword).filter(
+            Keyword.singulars.contains(singular)
+        )
+        self.assert_compile(
+            q1,
+            "SELECT keywords.id AS keywords_id, "
+            "keywords.keyword AS keywords_keyword, "
+            "keywords.singular_id AS keywords_singular_id "
+            "FROM keywords "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM userkeywords "
+            "WHERE keywords.id = userkeywords.keyword_id AND "
+            "(EXISTS (SELECT 1 "
+            "FROM users "
+            "WHERE users.id = userkeywords.user_id AND "
+            ":param_1 = users.singular_id)))",
+            checkparams={"param_1": singular.id}
+        )
+
+        q2 = self.session.query(Keyword).filter(
+            Keyword.user_keywords.any(
+                UserKeyword.user.has(User.singular == singular)
             )
         )
         self._equivalent(q1, q2)
