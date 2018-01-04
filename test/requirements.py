@@ -1028,15 +1028,6 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def broken_cx_oracle6_numerics(config):
-        return exclusions.LambdaPredicate(
-            lambda config: against(config, 'oracle+cx_oracle') and
-            config.db.dialect.cx_oracle_ver <= (6, 0, 2) and
-            config.db.dialect.cx_oracle_ver > (6, ),
-            "cx_Oracle github issue #77"
-        )
-
-    @property
     def oracle5x(self):
         return only_if(
             lambda config: against(config, "oracle+cx_oracle") and

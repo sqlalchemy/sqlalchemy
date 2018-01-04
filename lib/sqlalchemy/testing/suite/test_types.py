@@ -495,7 +495,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             numbers
         )
 
-    @testing.fails_if(testing.requires.broken_cx_oracle6_numerics)
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal_large(self):
         """test exceedingly large decimals.
