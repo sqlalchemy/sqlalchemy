@@ -1093,6 +1093,98 @@ class CacheKeyTest(PathTest, QueryTest):
             None
         )
 
+    def test_unbound_cache_key_excluded_of_type_safe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+        # query of:
+        #
+        # query(User).options(
+        #       subqueryload(User.orders).
+        #       subqueryload(Order.items.of_type(SubItem)))
+        #
+        #
+        # we are lazy loading Address objects from User.addresses
+        # the path excludes our option so cache key should
+        # be None
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = subqueryload(User.orders).\
+            subqueryload(Order.items.of_type(SubItem))
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_unbound_cache_key_excluded_of_type_unsafe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+        # query of:
+        #
+        # query(User).options(
+        #       subqueryload(User.orders).
+        #       subqueryload(Order.items.of_type(aliased(SubItem))))
+        #
+        #
+        # we are lazy loading Address objects from User.addresses
+        # the path excludes our option so cache key should
+        # be None
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = subqueryload(User.orders).\
+            subqueryload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_bound_cache_key_excluded_of_type_safe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+        # query of:
+        #
+        # query(User).options(
+        #       subqueryload(User.orders).
+        #       subqueryload(Order.items.of_type(SubItem)))
+        #
+        #
+        # we are lazy loading Address objects from User.addresses
+        # the path excludes our option so cache key should
+        # be None
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = Load(User).subqueryload(User.orders).\
+            subqueryload(Order.items.of_type(SubItem))
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_bound_cache_key_excluded_of_type_unsafe(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+        # query of:
+        #
+        # query(User).options(
+        #       subqueryload(User.orders).
+        #       subqueryload(Order.items.of_type(aliased(SubItem))))
+        #
+        #
+        # we are lazy loading Address objects from User.addresses
+        # the path excludes our option so cache key should
+        # be None
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = Load(User).subqueryload(User.orders).\
+            subqueryload(Order.items.of_type(aliased(SubItem)))
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
     def test_unbound_cache_key_included_of_type_safe(self):
         User, Address, Order, Item, SubItem = self.classes(
             'User', 'Address', 'Order', 'Item', 'SubItem')

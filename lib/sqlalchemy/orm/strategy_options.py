@@ -85,7 +85,17 @@ class Load(Generative, MapperOption):
 
             endpoint = obj._of_type or obj.path.path[-1]
             chopped = self._chop_path(loader_path, path)
-            if not chopped and not obj._of_type:
+
+            if (
+                # means loader_path and path are unrelated,
+                # this does not need to be part of a cache key
+                chopped is None
+            ) or (
+                # means no additional path with loader_path + path
+                # and the endpoint isn't using of_type so isn't modified into
+                # an alias or other unsafe entity
+                not chopped and not obj._of_type
+            ):
                 continue
 
             serialized_path = []
