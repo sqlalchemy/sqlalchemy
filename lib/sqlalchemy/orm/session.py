@@ -339,14 +339,20 @@ class SessionTransaction(object):
         """
         assert self._is_transaction_boundary
 
-        self.session._expunge_states(
-            set(self._new).union(self.session._new),
-            to_transient=True)
+        to_expunge = set(self._new).union(self.session._new)
+        self.session._expunge_states(to_expunge, to_transient=True)
 
         for s, (oldkey, newkey) in self._key_switches.items():
+            # we probably can do this conditionally based on
+            # if we expunged or not, but safe_discard does that anyway
             self.session.identity_map.safe_discard(s)
+
+            # restore the old key
             s.key = oldkey
-            self.session.identity_map.replace(s)
+
+            # now restore the object, but only if we didn't expunge
+            if s not in to_expunge:
+                self.session.identity_map.replace(s)
 
         for s in set(self._deleted).union(self.session._deleted):
             self.session._update_impl(s, revert_deletion=True)

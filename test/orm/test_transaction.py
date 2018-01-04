@@ -1600,6 +1600,34 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
         assert s.identity_map[(User, ('u1',))] is u1
         assert s.identity_map[(User, ('u2',))] is u2
 
+    @testing.requires.savepoints
+    def test_key_replaced_by_update_nested(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        u1 = User(name='u1')
+
+        s = Session()
+        s.add(u1)
+        s.commit()
+
+        with s.begin_nested():
+            u2 = User(name='u2')
+            s.add(u2)
+            s.flush()
+
+            u2.name = 'u3'
+
+        s.rollback()
+
+        assert u1 in s
+        assert u2 not in s
+
+        u1.name = 'u5'
+
+        s.commit()
+
     def test_multiple_key_replaced_by_update(self):
         users, User = self.tables.users, self.classes.User
 
