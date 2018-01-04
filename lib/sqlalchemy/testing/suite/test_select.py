@@ -87,6 +87,7 @@ class OrderByLabelTest(fixtures.TablesTest):
             [(7, ), (5, ), (3, )]
         )
 
+    @testing.requires.group_by_complex_expression
     def test_group_by_composed(self):
         table = self.tables.some_table
         expr = (table.c.x + table.c.y).label('lx')

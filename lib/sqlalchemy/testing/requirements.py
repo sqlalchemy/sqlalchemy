@@ -206,6 +206,17 @@ class SuiteRequirements(Requirements):
 
         return exclusions.open()
 
+    @property
+    def group_by_complex_expression(self):
+        """target platform supports SQL expressions in GROUP BY
+
+        e.g.
+
+        SELECT x + y AS somelabel FROM table GROUP BY x + y
+
+        """
+
+        return exclusions.open()
 
     @property
     def sane_rowcount(self):
