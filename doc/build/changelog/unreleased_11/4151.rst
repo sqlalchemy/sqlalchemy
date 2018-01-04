@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4151
+    :versions: 1.2.1
+
+    Fixed bug where an object that is expunged during a rollback of
+    a nested or subtransaction which also had its primary key mutated
+    would not be correctly removed from the session, causing subsequent
+    issues in using the session.
