@@ -663,6 +663,23 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def json_type(self):
         return only_on([
+            lambda config:
+                against(config, "mysql") and (
+                    (
+                        not config.db.dialect._is_mariadb and
+                        against(config, "mysql >= 5.7")
+                    )
+                    or (
+                        config.db.dialect._mariadb_normalized_version_info >=
+                        (10, 2, 7)
+                    )
+                ),
+            "postgresql >= 9.3"
+        ])
+
+    @property
+    def reflects_json_type(self):
+        return only_on([
             lambda config: against(config, "mysql >= 5.7") and
             not config.db.dialect._is_mariadb,
             "postgresql >= 9.3"
