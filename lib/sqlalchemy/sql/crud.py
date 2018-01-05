@@ -597,23 +597,28 @@ def _extend_values_for_multiparams(compiler, stmt, values, kw):
     values_0 = values
     values = [values]
 
-    values.extend(
-        [
-            (
-                c,
-                (_create_bind_param(
-                    compiler, c, row[c.key],
-                    name="%s_m%d" % (c.key, i + 1), **kw
-                ) if elements._is_literal(row[c.key])
-                    else compiler.process(
-                        row[c.key].self_group(), **kw))
-                if c.key in row else
-                _process_multiparam_default_bind(compiler, stmt, c, i, kw)
-            )
-            for (c, param) in values_0
-        ]
-        for i, row in enumerate(stmt.parameters[1:])
-    )
+    for i, row in enumerate(stmt.parameters[1:]):
+        extension = []
+        for (col, param) in values_0:
+            if col in row or col.key in row:
+                key = col if col in row else col.key
+
+                if elements._is_literal(row[key]):
+                    new_param = _create_bind_param(
+                        compiler, col, row[key],
+                        name="%s_m%d" % (col.key, i + 1), **kw
+                    )
+                else:
+                    new_param = compiler.process(row[key].self_group(), **kw)
+            else:
+                new_param = _process_multiparam_default_bind(
+                    compiler, stmt, col, i, kw
+                )
+
+            extension.append((col, new_param))
+
+        values.append(extension)
+
     return values
 
 

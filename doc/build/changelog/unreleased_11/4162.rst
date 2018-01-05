@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4162
+    :versions: 1.2.1
+
+    Fixed bug in :meth:`.Insert.values` where using the "multi-values"
+    format in combination with :class:`.Column` objects as keys rather
+    than strings would fail.   Pull request courtesy Aubrey Stark-Toller.
