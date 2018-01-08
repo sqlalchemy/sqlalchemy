@@ -697,6 +697,14 @@ class DefaultRequirements(SuiteRequirements):
                         'oracle', 'sybase'])
 
     @property
+    def timestamp_microseconds(self):
+        """target dialect supports representation of Python
+        datetime.datetime() with microsecond objects but only
+        if TIMESTAMP is used."""
+
+        return only_on(['oracle'])
+
+    @property
     def datetime_historic(self):
         """target dialect supports representation of Python
         datetime.datetime() objects with historic (pre 1900) values."""

@@ -3,7 +3,7 @@
 from .. import fixtures, config
 from ..assertions import eq_
 from ..config import requirements
-from sqlalchemy import Integer, Unicode, UnicodeText, select
+from sqlalchemy import Integer, Unicode, UnicodeText, select, TIMESTAMP
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
     Text, Numeric, Float, literal, Boolean, cast, null, JSON, and_, type_coerce
 from ..schema import Table, Column
@@ -279,6 +279,12 @@ class DateTimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
     __requires__ = 'datetime_microseconds',
     __backend__ = True
     datatype = DateTime
+    data = datetime.datetime(2012, 10, 15, 12, 57, 18, 396)
+
+class TimestampMicrosecondsTest(_DateFixture, fixtures.TablesTest):
+    __requires__ = 'timestamp_microseconds',
+    __backend__ = True
+    datatype = TIMESTAMP
     data = datetime.datetime(2012, 10, 15, 12, 57, 18, 396)
 
 
@@ -915,5 +921,6 @@ __all__ = ('UnicodeVarcharTest', 'UnicodeTextTest', 'JSONTest',
            'DateTest', 'DateTimeTest', 'TextTest',
            'NumericTest', 'IntegerTest',
            'DateTimeHistoricTest', 'DateTimeCoercedToDateTimeTest',
-           'TimeMicrosecondsTest', 'TimeTest', 'DateTimeMicrosecondsTest',
+           'TimeMicrosecondsTest', 'TimestampMicrosecondsTest', 'TimeTest',
+           'DateTimeMicrosecondsTest',
            'DateHistoricTest', 'StringTest', 'BooleanTest')
