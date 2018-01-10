@@ -449,6 +449,7 @@ class _UnboundLoad(Load):
                 if len(key) == 2:
                     # support legacy
                     cls, propkey = key
+                    of_type = None
                 else:
                     cls, propkey, of_type = key
                 prop = getattr(cls, propkey)
