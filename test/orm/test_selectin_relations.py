@@ -5,7 +5,7 @@ from sqlalchemy import Integer, String, ForeignKey, bindparam
 from sqlalchemy.orm import selectinload, selectinload_all, \
     mapper, relationship, clear_mappers, create_session, \
     aliased, joinedload, deferred, undefer,\
-    Session, subqueryload
+    Session, subqueryload, defaultload
 from sqlalchemy.testing import assert_raises, \
     assert_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -1332,6 +1332,149 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
 
             )
         )
+
+
+class HeterogeneousSubtypesTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Company(Base):
+            __tablename__ = 'company'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            employees = relationship('Employee', order_by="Employee.id")
+
+        class Employee(Base):
+            __tablename__ = 'employee'
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50))
+            name = Column(String(50))
+            company_id = Column(ForeignKey('company.id'))
+
+            __mapper_args__ = {
+                'polymorphic_on': 'type',
+                'with_polymorphic': '*',
+            }
+
+        class Programmer(Employee):
+            __tablename__ = 'programmer'
+            id = Column(ForeignKey('employee.id'), primary_key=True)
+            languages = relationship('Language')
+
+            __mapper_args__ = {
+                'polymorphic_identity': 'programmer',
+            }
+
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            id = Column(ForeignKey('employee.id'), primary_key=True)
+            golf_swing_id = Column(ForeignKey("golf_swing.id"))
+            golf_swing = relationship("GolfSwing")
+
+            __mapper_args__ = {
+                'polymorphic_identity': 'manager',
+            }
+
+        class Language(Base):
+            __tablename__ = 'language'
+            id = Column(Integer, primary_key=True)
+            programmer_id = Column(
+                Integer,
+                ForeignKey('programmer.id'),
+                nullable=False,
+            )
+            name = Column(String(50))
+
+        class GolfSwing(Base):
+            __tablename__ = 'golf_swing'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+    @classmethod
+    def insert_data(cls):
+        Company, Programmer, Manager, GolfSwing, Language = cls.classes(
+            "Company", "Programmer", "Manager", "GolfSwing", "Language")
+        c1 = Company(
+            id=1,
+            name='Foobar Corp',
+            employees=[Programmer(
+                id=1,
+                name='p1',
+                languages=[Language(id=1, name='Python')],
+            ), Manager(
+                id=2,
+                name='m1',
+                golf_swing=GolfSwing(name="fore")
+            )],
+        )
+        c2 = Company(
+            id=2,
+            name='bat Corp',
+            employees=[
+                Manager(
+                    id=3,
+                    name='m2',
+                    golf_swing=GolfSwing(name="clubs"),
+                ), Programmer(
+                    id=4,
+                    name='p2',
+                    languages=[Language(id=2, name="Java")]
+                )],
+        )
+        sess = Session()
+        sess.add_all([c1, c2])
+        sess.commit()
+
+    def test_one_to_many(self):
+
+        Company, Programmer, Manager, GolfSwing, Language = self.classes(
+            "Company", "Programmer", "Manager", "GolfSwing", "Language")
+        sess = Session()
+        company = sess.query(Company).filter(
+            Company.id == 1,
+        ).options(
+            selectinload(Company.employees.of_type(Programmer)).
+            selectinload(Programmer.languages),
+        ).one()
+
+        def go():
+            eq_(company.employees[0].languages[0].name, "Python")
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_many_to_one(self):
+        Company, Programmer, Manager, GolfSwing, Language = self.classes(
+            "Company", "Programmer", "Manager", "GolfSwing", "Language")
+        sess = Session()
+        company = sess.query(Company).filter(
+            Company.id == 2,
+        ).options(
+            selectinload(Company.employees.of_type(Manager)).
+            selectinload(Manager.golf_swing),
+        ).one()
+
+        def go():
+            eq_(company.employees[0].golf_swing.name, "clubs")
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_both(self):
+        Company, Programmer, Manager, GolfSwing, Language = self.classes(
+            "Company", "Programmer", "Manager", "GolfSwing", "Language")
+        sess = Session()
+        rows = sess.query(Company).options(
+            selectinload(Company.employees.of_type(Manager)).
+            selectinload(Manager.golf_swing),
+            defaultload(Company.employees.of_type(Programmer)).
+            selectinload(Programmer.languages),
+        ).order_by(Company.id).all()
+
+        def go():
+            eq_(rows[0].employees[0].languages[0].name, "Python")
+            eq_(rows[1].employees[0].golf_swing.name, "clubs")
+
+        self.assert_sql_count(testing.db, go, 0)
 
 
 class ChunkingTest(fixtures.DeclarativeMappedTest):

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4156
+
+    Fixed bug in new "selectin" relationship loader where the loader could try
+    to load a non-existent relationship when loading a collection of
+    polymorphic objects, where only some of the mappers include that
+    relationship, typically when :meth:`.PropComparator.of_type` is being used.
