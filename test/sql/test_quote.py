@@ -1,6 +1,6 @@
 from sqlalchemy import MetaData, Table, Column, Integer, select, \
     ForeignKey, Index, CheckConstraint, inspect, column
-from sqlalchemy import sql, schema
+from sqlalchemy import sql, schema, types as sqltypes
 from sqlalchemy.sql import compiler
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
 from sqlalchemy import testing
@@ -462,13 +462,20 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             column('foo').collate('fr_FR'),
-            'foo COLLATE "fr_FR"'
+            'foo COLLATE "fr_FR"',
+            dialect="postgresql"
         )
 
         self.assert_compile(
             column('foo').collate('utf8_GERMAN_ci'),
             'foo COLLATE `utf8_GERMAN_ci`',
             dialect="mysql"
+        )
+
+        self.assert_compile(
+            column('foo').collate('SQL_Latin1_General_CP1_CI_AS'),
+            'foo COLLATE SQL_Latin1_General_CP1_CI_AS',
+            dialect="mssql"
         )
 
     def test_join(self):

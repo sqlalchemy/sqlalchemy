@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4154
+
+    Fixed regression in 1.2 where newly repaired quoting
+    of collation names in :ticket:`3785` breaks SQL Server,
+    which explicitly does not understand a quoted collation
+    name.   Whether or not mixed-case collation names are
+    quoted or not is now deferred down to a dialect-level
+    decision so that each dialect can prepare these identifiers
+    directly.

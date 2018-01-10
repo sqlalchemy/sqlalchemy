@@ -9,6 +9,46 @@ from sqlalchemy import literal_column
 from ..schema import Table, Column
 
 
+class CollateTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("some_table", metadata,
+              Column('id', Integer, primary_key=True),
+              Column('data', String(100))
+              )
+
+    @classmethod
+    def insert_data(cls):
+        config.db.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "data": "collate data1"},
+                {"id": 2, "data": "collate data2"},
+            ]
+        )
+
+    def _assert_result(self, select, result):
+        eq_(
+            config.db.execute(select).fetchall(),
+            result
+        )
+
+    @testing.requires.order_by_collation
+    def test_collate_order_by(self):
+        collation = testing.requires.get_order_by_collation(testing.config)
+
+        self._assert_result(
+            select([self.tables.some_table]).
+            order_by(self.tables.some_table.c.data.collate(collation).asc()),
+            [
+                (1, "collate data1"),
+                (2, "collate data2"),
+            ]
+        )
+
+
 class OrderByLabelTest(fixtures.TablesTest):
     """Test the dialect sends appropriate ORDER BY expressions when
     labels are used.

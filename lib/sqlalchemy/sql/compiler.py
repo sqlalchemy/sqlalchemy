@@ -733,6 +733,9 @@ class SQLCompiler(Compiled):
                 self.preparer.quote(tablename) + \
                 "." + name
 
+    def visit_collation(self, element, **kw):
+        return self.preparer.format_collation(element.collation)
+
     def visit_fromclause(self, fromclause, **kwargs):
         return fromclause.name
 
@@ -2961,7 +2964,8 @@ class IdentifierPreparer(object):
     schema_for_object = schema._schema_getter(None)
 
     def __init__(self, dialect, initial_quote='"',
-                 final_quote=None, escape_quote='"', omit_schema=False):
+                 final_quote=None, escape_quote='"',
+                 quote_case_sensitive_collations=True, omit_schema=False):
         """Construct a new ``IdentifierPreparer`` object.
 
         initial_quote
@@ -2982,6 +2986,7 @@ class IdentifierPreparer(object):
         self.escape_quote = escape_quote
         self.escape_to_quote = self.escape_quote * 2
         self.omit_schema = omit_schema
+        self.quote_case_sensitive_collations = quote_case_sensitive_collations
         self._strings = {}
         self._double_percents = self.dialect.paramstyle in ('format', 'pyformat')
 
@@ -3063,6 +3068,12 @@ class IdentifierPreparer(object):
             return self.quote_identifier(ident)
         else:
             return ident
+
+    def format_collation(self, collation_name):
+        if self.quote_case_sensitive_collations:
+            return self.quote(collation_name)
+        else:
+            return collation_name
 
     def format_sequence(self, sequence, use_schema=True):
         name = self.quote(sequence.name)

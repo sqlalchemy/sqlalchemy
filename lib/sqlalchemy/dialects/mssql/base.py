@@ -1713,12 +1713,12 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
     def __init__(self, dialect):
-        super(MSIdentifierPreparer, self).__init__(dialect, initial_quote='[',
-                                                   final_quote=']')
+        super(MSIdentifierPreparer, self).__init__(
+            dialect, initial_quote='[',
+            final_quote=']', quote_case_sensitive_collations=False)
 
     def _escape_identifier(self, value):
         return value
-
 
     def quote_schema(self, schema, force=None):
         """Prepare a quoted table and schema name."""
