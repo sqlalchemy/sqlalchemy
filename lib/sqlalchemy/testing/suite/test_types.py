@@ -866,22 +866,25 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
     def test_unicode_round_trip(self):
-        s = select([
-            cast(
+        with config.db.connect() as conn:
+            conn.execute(
+                self.tables.data_table.insert(),
+                {
+                    "name": "r1",
+                    "data": {
+                        util.u('réveillé'): util.u('réveillé'),
+                        "data": {"k1": util.u('drôle')}
+                    }
+                }
+            )
+
+            eq_(
+                conn.scalar(select([self.tables.data_table.c.data])),
                 {
                     util.u('réveillé'): util.u('réveillé'),
                     "data": {"k1": util.u('drôle')}
                 },
-                self.datatype
             )
-        ])
-        eq_(
-            config.db.scalar(s),
-            {
-                util.u('réveillé'): util.u('réveillé'),
-                "data": {"k1": util.u('drôle')}
-            },
-        )
 
     def test_eval_none_flag_orm(self):
         from sqlalchemy.ext.declarative import declarative_base

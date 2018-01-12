@@ -607,6 +607,7 @@ class JSONTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.provide_metadata
+    @testing.requires.reflects_json_type
     def test_reflection(self):
 
         Table(
