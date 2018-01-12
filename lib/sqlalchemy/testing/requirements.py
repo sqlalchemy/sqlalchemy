@@ -499,6 +499,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def timestamp_microseconds(self):
+        """target dialect supports representation of Python
+        datetime.datetime() with microsecond objects but only
+        if TIMESTAMP is used."""
+        return exclusions.closed()
+
+    @property
     def datetime_historic(self):
         """target dialect supports representation of Python
         datetime.datetime() objects with historic (pre 1970) values."""

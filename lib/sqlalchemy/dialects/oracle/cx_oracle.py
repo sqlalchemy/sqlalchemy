@@ -623,7 +623,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
             self._include_setinputsizes = {
                 cx_Oracle.NCLOB, cx_Oracle.CLOB, cx_Oracle.LOB,
-                cx_Oracle.BLOB, cx_Oracle.FIXED_CHAR,
+                cx_Oracle.BLOB, cx_Oracle.FIXED_CHAR, cx_Oracle.TIMESTAMP
             }
 
         self._is_cx_oracle_6 = self.cx_oracle_ver >= (6, )
