@@ -1883,7 +1883,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 return
 
         loading.PostLoad.callable_for_path(
-            context, selectin_path, self.key,
+            context, selectin_path, self.parent, self.key,
             self._load_for_path, effective_entity)
 
     @util.dependencies("sqlalchemy.ext.baked")
