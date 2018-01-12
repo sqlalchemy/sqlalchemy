@@ -839,6 +839,39 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams=checkparams,
             dialect=dialect)
 
+    def test_named_with_column_objects(self):
+        table1 = self.tables.mytable
+
+        values = [
+            {table1.c.myid: 1, table1.c.name: 'a', table1.c.description: 'b'},
+            {table1.c.myid: 2, table1.c.name: 'c', table1.c.description: 'd'},
+            {table1.c.myid: 3, table1.c.name: 'e', table1.c.description: 'f'},
+        ]
+
+        checkparams = {
+            'myid_m0': 1,
+            'myid_m1': 2,
+            'myid_m2': 3,
+            'name_m0': 'a',
+            'name_m1': 'c',
+            'name_m2': 'e',
+            'description_m0': 'b',
+            'description_m1': 'd',
+            'description_m2': 'f',
+        }
+
+        dialect = default.DefaultDialect()
+        dialect.supports_multivalues_insert = True
+
+        self.assert_compile(
+            table1.insert().values(values),
+            'INSERT INTO mytable (myid, name, description) VALUES '
+            '(:myid_m0, :name_m0, :description_m0), '
+            '(:myid_m1, :name_m1, :description_m1), '
+            '(:myid_m2, :name_m2, :description_m2)',
+            checkparams=checkparams,
+            dialect=dialect)
+
     def test_positional(self):
         table1 = self.tables.mytable
 
