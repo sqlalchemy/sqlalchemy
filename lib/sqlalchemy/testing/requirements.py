@@ -764,6 +764,20 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def order_by_collation(self):
+        def check(config):
+            try:
+                self.get_order_by_collation(config)
+                return False
+            except NotImplementedError:
+                return True
+
+        return exclusions.skip_if(check)
+
+    def get_order_by_collation(self, config):
+        raise NotImplementedError()
+
+    @property
     def unicode_connections(self):
         """Target driver must support non-ASCII characters being passed at
         all.

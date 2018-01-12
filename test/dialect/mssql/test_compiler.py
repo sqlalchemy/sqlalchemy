@@ -45,6 +45,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'SELECT test_schema.sometable.somecolumn '
             'FROM test_schema.sometable WITH (NOLOCK)')
 
+    def test_select_w_order_by_collate(self):
+        m = MetaData()
+        t = Table('sometable', m, Column('somecolumn', String))
+
+        self.assert_compile(
+            select([t]).
+            order_by(
+                t.c.somecolumn.collate("Latin1_General_CS_AS_KS_WS_CI").asc()),
+            "SELECT sometable.somecolumn FROM sometable "
+            "ORDER BY sometable.somecolumn COLLATE "
+            "Latin1_General_CS_AS_KS_WS_CI ASC"
+
+        )
+
     def test_join_with_hint(self):
         t1 = table('t1',
                    column('a', Integer),

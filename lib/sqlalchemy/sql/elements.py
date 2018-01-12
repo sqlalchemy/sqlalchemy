@@ -52,7 +52,7 @@ def collate(expression, collation):
     expr = _literal_as_binds(expression)
     return BinaryExpression(
         expr,
-        ColumnClause(collation),
+        CollationClause(collation),
         operators.collate, type_=expr.type)
 
 
@@ -3871,6 +3871,13 @@ class ColumnClause(Immutable, ColumnElement):
         if attach:
             selectable._columns[c.key] = c
         return c
+
+
+class CollationClause(ColumnElement):
+    __visit_name__ = "collation"
+
+    def __init__(self, collation):
+        self.collation = collation
 
 
 class _IdentifiedClause(Executable, ClauseElement):

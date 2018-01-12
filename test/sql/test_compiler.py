@@ -1450,6 +1450,25 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 []).compile,
             dialect=empty_in_dialect)
 
+    def test_collate(self):
+        # columns clause
+        self.assert_compile(
+            select([column('x').collate('bar')]),
+            "SELECT x COLLATE bar AS anon_1"
+        )
+
+        # WHERE clause
+        self.assert_compile(
+            select([column('x')]).where(column('x').collate('bar') == 'foo'),
+            "SELECT x WHERE (x COLLATE bar) = :param_1"
+        )
+
+        # ORDER BY clause
+        self.assert_compile(
+            select([column('x')]).order_by(column('x').collate('bar')),
+            "SELECT x ORDER BY x COLLATE bar"
+        )
+
     def test_literal(self):
 
         self.assert_compile(select([literal('foo')]),

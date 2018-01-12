@@ -971,6 +971,23 @@ class DefaultRequirements(SuiteRequirements):
             ('mssql', None, None, 'only simple labels allowed')
         ])
 
+    def get_order_by_collation(self, config):
+        lookup = {
+
+            # will raise without quoting
+            "postgresql": "POSIX",
+
+            "mysql": "latin1_general_ci",
+            "sqlite": "NOCASE",
+
+            # will raise *with* quoting
+            "mssql": "Latin1_General_CI_AS"
+        }
+        try:
+            return lookup[config.db.name]
+        except KeyError:
+            raise NotImplementedError()
+
     @property
     def skip_mysql_on_windows(self):
         """Catchall for a large variety of MySQL on Windows failures"""
