@@ -12,7 +12,88 @@
 
 .. changelog::
     :version: 1.2.1
-    :include_notes_from: unreleased_12
+    :released: January 15, 2018
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4159
+
+        Fixed regression where pickle format of a Load / _UnboundLoad object (e.g.
+        loader options) changed and ``__setstate__()`` was raising an
+        UnboundLocalError for an object received from the legacy format, even
+        though an attempt was made to do so.  tests are now added to ensure this
+        works.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 4150
+
+        Fixed regression in association proxy due to :ticket:`3769`
+        (allow for chained any() / has()) where contains() against
+        an association proxy chained in the form
+        (o2m relationship, associationproxy(m2o relationship, m2o relationship))
+        would raise an error regarding the re-application of contains()
+        on the final link of the chain.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4153
+
+        Fixed regression caused by new lazyload caching scheme in :ticket:`3954`
+        where a query that makes use of loader options with of_type would cause
+        lazy loads of unrelated paths to fail with a TypeError.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4157
+
+        Fixed regression where the removal of most setinputsizes
+        rules from cx_Oracle dialect impacted the TIMESTAMP
+        datatype's ability to retrieve fractional seconds.
+
+
+
+    .. change::
+        :tags: bug, tests
+
+        Removed an oracle-specific requirements rule from the public
+        test suite that was interfering with third party dialect
+        suites.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4154
+
+        Fixed regression in 1.2 where newly repaired quoting
+        of collation names in :ticket:`3785` breaks SQL Server,
+        which explicitly does not understand a quoted collation
+        name.   Whether or not mixed-case collation names are
+        quoted or not is now deferred down to a dialect-level
+        decision so that each dialect can prepare these identifiers
+        directly.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4156
+
+        Fixed bug in new "selectin" relationship loader where the loader could try
+        to load a non-existent relationship when loading a collection of
+        polymorphic objects, where only some of the mappers include that
+        relationship, typically when :meth:`.PropComparator.of_type` is being used.
+
+    .. change::
+        :tags: bug, tests
+
+        Added a new exclusion rule group_by_complex_expression
+        which disables tests that use "GROUP BY <expr>", which seems
+        to be not viable for at least two third party dialects.
+
+    .. change::
+        :tags: bug, oracle
+
+        Fixed regression in Oracle imports where a missing comma caused
+        an undefined symbol to be present.  Pull request courtesy
+        Miroslav Shubernetskiy.
 
 .. changelog::
     :version: 1.2.0

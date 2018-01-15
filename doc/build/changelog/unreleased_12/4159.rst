@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4159
-
-    Fixed regression where pickle format of a Load / _UnboundLoad object (e.g.
-    loader options) changed and ``__setstate__()`` was raising an
-    UnboundLocalError for an object received from the legacy format, even
-    though an attempt was made to do so.  tests are now added to ensure this
-    works.

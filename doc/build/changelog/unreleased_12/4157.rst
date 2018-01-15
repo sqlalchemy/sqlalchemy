@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 4157
-
-    Fixed regression where the removal of most setinputsizes
-    rules from cx_Oracle dialect impacted the TIMESTAMP
-    datatype's ability to retrieve fractional seconds.
-
-

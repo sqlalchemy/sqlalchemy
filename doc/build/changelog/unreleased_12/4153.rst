@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4153
-
-    Fixed regression caused by new lazyload caching scheme in :ticket:`3954`
-    where a query that makes use of loader options with of_type would cause
-    lazy loads of unrelated paths to fail with a TypeError.

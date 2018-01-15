@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, oracle
-
-    Fixed regression in Oracle imports where a missing comma caused
-    an undefined symbol to be present.  Pull request courtesy
-    Miroslav Shubernetskiy.
