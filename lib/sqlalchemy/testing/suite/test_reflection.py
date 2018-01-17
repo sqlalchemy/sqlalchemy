@@ -789,12 +789,15 @@ class ComponentReflectionTest(fixtures.TablesTest):
             key=operator.itemgetter('name')
         )
 
+        # trying to minimize effect of quoting, parenthesis, etc.
+        # may need to add more to this as new dialects get CHECK
+        # constraint reflection support
+        def normalize(sqltext):
+            return " ".join(re.findall(r"and|\d|=|a|or|<|>", sqltext.lower(), re.I))
+
         reflected = [
             {"name": item["name"],
-             # trying to minimize effect of quoting, parenthesis, etc.
-             # may need to add more to this as new dialects get CHECK
-             # constraint reflection support
-             "sqltext": re.sub(r"[`'\(\)]", '', item["sqltext"].lower())}
+             "sqltext": normalize(item["sqltext"])}
             for item in reflected
         ]
         eq_(
