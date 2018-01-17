@@ -1,4 +1,3 @@
-# oracle/cx_oracle.py
 # Copyright (C) 2005-2018 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
@@ -318,7 +317,7 @@ class _OracleChar(sqltypes.CHAR):
 
 class _OracleNVarChar(sqltypes.NVARCHAR):
     def get_dbapi_type(self, dbapi):
-        return getattr(dbapi, 'UNICODE', dbapi.STRING)
+        return dbapi.NCHAR
 
 
 class _OracleText(sqltypes.Text):
@@ -623,6 +622,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
             self._include_setinputsizes = {
                 cx_Oracle.NCLOB, cx_Oracle.CLOB, cx_Oracle.LOB,
+                cx_Oracle.NCHAR, cx_Oracle.FIXED_NCHAR,
                 cx_Oracle.BLOB, cx_Oracle.FIXED_CHAR, cx_Oracle.TIMESTAMP
             }
 
