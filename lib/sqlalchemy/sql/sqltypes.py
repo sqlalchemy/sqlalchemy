@@ -1189,6 +1189,13 @@ class Enum(Emulated, String, SchemaType):
     indicated as integers, are **not** used; the value of each enum can
     therefore be any kind of Python object whether or not it is persistable.
 
+    In order to persist the values and not the names, the
+    :paramref:`.Enum.values_callable` parameter may be used.   The value of
+    this parameter is a user-supplied callable, which  is intended to be used
+    with a PEP-435-compliant enumerated class and  returns a list of string
+    values to be persisted.   For a simple enumeration that uses string values,
+    a callable such as  ``lambda x: [e.value for e in x]`` is sufficient.
+
     .. versionadded:: 1.1 - support for PEP-435-style enumerated
        classes.
 
@@ -1277,6 +1284,14 @@ class Enum(Emulated, String, SchemaType):
 
            .. versionadded:: 1.1.0b2
 
+        :param values_callable: A callable which will be passed the PEP-435
+           compliant enumerated type, which should then return a list of string
+           values to be persisted. This allows for alternate usages such as
+           using the string value of an enum to be persisted to the database
+           instead of its name.
+
+           .. versionadded:: 1.2.3
+
         """
         self._enum_init(enums, kw)
 
@@ -1297,6 +1312,7 @@ class Enum(Emulated, String, SchemaType):
         """
         self.native_enum = kw.pop('native_enum', True)
         self.create_constraint = kw.pop('create_constraint', True)
+        self.values_callable = kw.pop('values_callable', None)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1341,8 +1357,11 @@ class Enum(Emulated, String, SchemaType):
 
         if len(enums) == 1 and hasattr(enums[0], '__members__'):
             self.enum_class = enums[0]
-            values = list(self.enum_class.__members__)
-            objects = [self.enum_class.__members__[k] for k in values]
+            if self.values_callable:
+                values = self.values_callable(self.enum_class)
+            else:
+                values = list(self.enum_class.__members__)
+            objects = [self.enum_class.__members__[k] for k in self.enum_class.__members__]
             return values, objects
         else:
             self.enum_class = None
@@ -1423,6 +1442,7 @@ class Enum(Emulated, String, SchemaType):
         kw.setdefault('metadata', self.metadata)
         kw.setdefault('_create_events', False)
         kw.setdefault('native_enum', self.native_enum)
+        kw.setdefault('values_callable', self.values_callable)
         assert '_enums' in kw
         return impltype(**kw)
 

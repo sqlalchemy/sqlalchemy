@@ -126,6 +126,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _EnumeratedValues):
 
         """
         kw.setdefault("validate_strings", impl.validate_strings)
+        kw.setdefault("values_callable", impl.values_callable)
         return cls(**kw)
 
     def _setup_for_values(self, values, objects, kw):
