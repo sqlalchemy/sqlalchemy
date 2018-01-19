@@ -768,8 +768,10 @@ RESERVED_WORDS = set(
 
      'generated', 'optimizer_costs', 'stored', 'virtual',  # 5.7
 
-     'admin', 'except', 'grouping', 'of', 'persist', 'recursive',
-        'role',  # 8.0
+     'admin', 'cume_dist', 'empty', 'except', 'first_value', 'grouping',
+     'groups', 'json_table', 'last_value', 'nth_value', 'ntile', 'of',
+     'over', 'percent_rank', 'persist', 'persist_only', 'rank', 'recursive',
+     'role', 'row', 'rows', 'row_number', 'system', 'window', # 8.0
 
      ])
 
