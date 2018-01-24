@@ -17,7 +17,7 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
     class_mapper, backref, sessionmaker, Session
 from sqlalchemy.orm import attributes, exc as orm_exc
 from sqlalchemy import testing
-from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_, is_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 
@@ -234,6 +234,63 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         sess.commit()
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
+
+    def test_collection_assignment_mutates_previous_one(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User(name='jack')
+        u2 = User(name='ed')
+        a1 = Address(email_address='a1')
+        u1.addresses.append(a1)
+
+        is_(a1.user, u1)
+
+        u2.addresses = [a1]
+
+        eq_(u1.addresses, [])
+
+        is_(a1.user, u2)
+
+    def test_collection_assignment_mutates_previous_two(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User(name='jack')
+        a1 = Address(email_address='a1')
+
+        u1.addresses.append(a1)
+
+        is_(a1.user, u1)
+
+        u1.addresses = []
+        is_(a1.user, None)
+
+    def test_del_from_collection(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User(name='jack')
+        a1 = Address(email_address='a1')
+
+        u1.addresses.append(a1)
+
+        is_(a1.user, u1)
+
+        del u1.addresses[0]
+
+        is_(a1.user, None)
+
+    def test_del_from_scalar(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User(name='jack')
+        a1 = Address(email_address='a1')
+
+        u1.addresses.append(a1)
+
+        is_(a1.user, u1)
+
+        del a1.user
+
+        assert a1 not in u1.addresses
 
 
 class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
@@ -591,6 +648,20 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
         eq_(k1.items, [i1, i1, i1, i1])
         session.commit()
         eq_(k1.items, [i1])
+
+    def test_bulk_replace(self):
+        Item, Keyword = (self.classes.Item, self.classes.Keyword)
+
+        k1 = Keyword(name='k1')
+        k2 = Keyword(name='k2')
+        k3 = Keyword(name='k3')
+        i1 = Item(description='i1', keywords=[k1, k2])
+        i2 = Item(description='i2', keywords=[k3])
+
+        i1.keywords = [k2, k3]
+        assert i1 in k3.items
+        assert i2 in k3.items
+        assert i1 not in k1.items
 
 
 class M2MScalarMoveTest(_fixtures.FixtureTest):
