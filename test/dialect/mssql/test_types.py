@@ -572,10 +572,16 @@ class TypeRoundTripTest(
             '45125E-2',
             '1234.58965E-2',
             '1.521E+15',
-            '-1E-25',
-            '1E-25',
-            '1254E-25',
-            '-1203E-25',
+
+            # previously, these were at -1E-25, which were inserted
+            # cleanly howver we only got back 20 digits of accuracy.
+            # pyodbc as of 4.0.22 now disallows the silent truncation.
+            '-1E-20',
+            '1E-20',
+            '1254E-20',
+            '-1203E-20',
+
+
             '0',
             '-0.00',
             '-0',
@@ -583,14 +589,29 @@ class TypeRoundTripTest(
             '000000000000000000012',
             '000000000000.32E12',
             '00000000000000.1E+12',
-            '000000000000.2E-32',
+
+            # these are no longer accepted by pyodbc 4.0.22 but it seems
+            # they were not actually round-tripping correctly before that
+            # in any case
+            # '-1E-25',
+            # '1E-25',
+            # '1254E-25',
+            # '-1203E-25',
+            # '000000000000.2E-32',
         )]
 
-        for value in test_items:
-            numeric_table.insert().execute(numericcol=value)
-
-        for value in select([numeric_table.c.numericcol]).execute():
-            assert value[0] in test_items, "%r not in test_items" % value[0]
+        with testing.db.connect() as conn:
+            for value in test_items:
+                result = conn.execute(
+                    numeric_table.insert(),
+                    dict(numericcol=value)
+                )
+                primary_key = result.inserted_primary_key
+                returned = conn.scalar(
+                    select([numeric_table.c.numericcol]).
+                    where(numeric_table.c.id == primary_key[0])
+                )
+                eq_(value, returned)
 
     def test_float(self):
         float_table = Table(
@@ -721,7 +742,13 @@ class TypeRoundTripTest(
         t1 = datetime.time(11, 2, 32)
         d2 = datetime.datetime(2007, 10, 30, 11, 2, 32)
         t.insert().execute(adate=d1, adatetime=d2, atime=t1)
-        t.insert().execute(adate=d2, adatetime=d2, atime=d2)
+
+        # NOTE: this previously passed 'd2' for "adate" even though
+        # "adate" is a date column; we asserted that it truncated w/o issue.
+        # As of pyodbc 4.0.22, this is no longer accepted, was accepted
+        # in 4.0.21.  See also the new pyodbc assertions regarding numeric
+        # precision.
+        t.insert().execute(adate=d1, adatetime=d2, atime=d2)
 
         x = t.select().execute().fetchall()[0]
         self.assert_(x.adate.__class__ == datetime.date)

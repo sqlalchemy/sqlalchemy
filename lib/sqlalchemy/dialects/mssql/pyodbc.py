@@ -114,7 +114,6 @@ class _ms_numeric_pyodbc(object):
         def process(value):
             if self.asdecimal and \
                     isinstance(value, decimal.Decimal):
-
                 adjusted = value.adjusted()
                 if adjusted < 0:
                     return self._small_dec_to_string(value)
