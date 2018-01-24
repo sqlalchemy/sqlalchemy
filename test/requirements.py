@@ -740,7 +740,8 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect accepts a datetime object as the target
         of a date column."""
 
-        return fails_on('mysql+mysqlconnector')
+        # does not work as of pyodbc 4.0.22
+        return fails_on('mysql+mysqlconnector') + skip_if("mssql+pyodbc")
 
     @property
     def date_historic(self):
