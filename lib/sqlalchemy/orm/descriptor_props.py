@@ -523,8 +523,19 @@ class SynonymProperty(DescriptorProperty):
         in that the attribute will mirror the value and expression behavior
         of another attribute.
 
+        e.g.::
+
+            class MyClass(Base):
+                __tablename__ = 'my_table'
+
+                id = Column(Integer, primary_key=True)
+                job_status = Column(String(50))
+
+                status = synonym("job_status")
+
+
         :param name: the name of the existing mapped property.  This
-          can refer to the string name of any :class:`.MapperProperty`
+          can refer to the string name ORM-mapped attribute
           configured on the class, including column-bound attributes
           and relationships.
 
@@ -532,26 +543,48 @@ class SynonymProperty(DescriptorProperty):
           as a getter (and potentially a setter) when this attribute is
           accessed at the instance level.
 
-        :param map_column: if ``True``, the :func:`.synonym` construct will
-          locate the existing named :class:`.MapperProperty` based on the
-          attribute name of this :func:`.synonym`, and assign it to a new
-          attribute linked to the name of this :func:`.synonym`.
-          That is, given a mapping like::
+        :param map_column: **For classical mappings and mappings against
+          an existing Table object only**.  if ``True``, the :func:`.synonym`
+          construct will locate the existing named :class:`.MapperProperty`
+          based on the attribute name of this :func:`.synonym`, and assign it
+          to a new attribute linked to the name of this :func:`.synonym`.
+          This is intended to be used with the :paramref:`.synonym.descriptor`
+          parameter::
 
-                class MyClass(Base):
-                    __tablename__ = 'my_table'
+            my_table = Table(
+                "my_table", metadata,
+                Column('id', Integer, primary_key=True),
+                Column('job_status', String(50))
+            )
 
-                    id = Column(Integer, primary_key=True)
-                    job_status = Column(String(50))
+            class MyClass(object):
+                @property
+                def _job_status_descriptor(self):
+                    return "Status: %s" % self._job_status
 
-                    job_status = synonym("_job_status", map_column=True)
 
-          The above class ``MyClass`` will now have the ``job_status``
-          :class:`.Column` object mapped to the attribute named
-          ``_job_status``, and the attribute named ``job_status`` will refer
-          to the synonym itself.  This feature is typically used in
-          conjunction with the ``descriptor`` argument in order to link a
-          user-defined descriptor as a "wrapper" for an existing column.
+            mapper(
+                MyClass, my_table, properties={
+                    "job_status": synonym(
+                        "_job_status", map_column=True,
+                        descriptor=MyClass._job_status_descriptor)
+                }
+            )
+
+          Above, the attribute named ``_job_status`` is automatically
+          mapped to the ``job_status`` column::
+
+            >>> j1 = MyClass()
+            >>> j1._job_status = "employed"
+            >>> j1.job_status
+            Status: employed
+
+          When using Declarative, in order to provide a descriptor in
+          conjunction with a synonym, use the
+          :func:`sqlalchemy.ext.declarative.synonym_for` helper.  However,
+          note that the :ref:`hybrid properties <mapper_hybrids>` feature
+          should usually be preferred, particularly when redefining attribute
+          behavior.
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.InspectionAttr.info` attribute of this object.
@@ -571,10 +604,13 @@ class SynonymProperty(DescriptorProperty):
 
         .. seealso::
 
-            :ref:`synonyms` - examples of functionality.
+            :ref:`synonyms` - Overview of synonyms
 
-            :ref:`mapper_hybrids` - Hybrids provide a better approach for
-            more complicated attribute-wrapping schemes than synonyms.
+            :func:`.synonym_for` - a helper oriented towards Declarative
+
+            :ref:`mapper_hybrids` - The Hybrid Attribute extension provides an
+            updated approach to augmenting attribute behavior more flexibly
+            than can be achieved with synonyms.
 
         """
         super(SynonymProperty, self).__init__()
