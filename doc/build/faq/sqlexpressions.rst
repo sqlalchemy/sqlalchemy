@@ -91,6 +91,10 @@ producing output like::
 Why does ``.col.in_([])`` Produce ``col != col``? Why not ``1=0``?
 -------------------------------------------------------------------
 
+.. note:: This section refers to SQLAlchemy 1.1 and earlier.  The behavior has
+   been revised in version 1.2 of SQLAlchemy to actually produce ``1=0`` in
+   the default case.
+
 A little introduction to the issue. The IN operator in SQL, given a list of
 elements to compare against a column, generally does not accept an empty list,
 that is while it is valid to say::
