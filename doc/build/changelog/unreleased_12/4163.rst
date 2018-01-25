@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 4163
-
-    The cx_Oracle dialect now calls setinputsizes() with cx_Oracle.NCHAR
-    unconditionally when the NVARCHAR2 datatype, in SQLAlchemy corresponding
-    to sqltypes.Unicode(), is in use.  Per cx_Oracle's author this allows
-    the correct conversions to occur within the Oracle client regardless
-    of the setting for NLS_NCHAR_CHARACTERSET.

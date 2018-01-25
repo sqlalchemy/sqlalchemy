@@ -12,7 +12,41 @@
 
 .. changelog::
     :version: 1.2.2
-    :include_notes_from: unreleased_12
+    :released: January 24, 2018
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4164
+
+        Added ODBC error code 10054 to the list of error
+        codes that count as a disconnect for ODBC / MSSQL server.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4171
+
+        Fixed 1.2 regression regarding new bulk_replace event
+        where a backref would fail to remove an object from the
+        previous owner when a bulk-assignment assigned the
+        object to a new owner.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4163
+
+        The cx_Oracle dialect now calls setinputsizes() with cx_Oracle.NCHAR
+        unconditionally when the NVARCHAR2 datatype, in SQLAlchemy corresponding
+        to sqltypes.Unicode(), is in use.  Per cx_Oracle's author this allows
+        the correct conversions to occur within the Oracle client regardless
+        of the setting for NLS_NCHAR_CHARACTERSET.
+
+    .. change::
+        :tags: bug, mysql
+
+        Added more MySQL 8.0 reserved words to the MySQL dialect
+        for quoting purposes.  Pull request courtesy
+        Riccardo Magliocchetti.
 
 .. changelog::
     :version: 1.2.1

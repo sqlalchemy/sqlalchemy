@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4171
-
-    Fixed 1.2 regression regarding new bulk_replace event
-    where a backref would fail to remove an object from the
-    previous owner when a bulk-assignment assigned the
-    object to a new owner.
