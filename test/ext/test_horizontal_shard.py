@@ -9,6 +9,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing import eq_
+from sqlalchemy import testing
 
 # TODO: ShardTest can be turned into a base for further subclasses
 
@@ -296,7 +297,6 @@ class ShardTest(object):
 
 
 class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
-
     def _init_dbs(self):
         db1 = testing_engine('sqlite:///shard1.db',
                              options=dict(pool_threadlocal=True))
@@ -338,3 +338,37 @@ class AttachedFileShardTest(ShardTest, fixtures.TestBase):
             return stmt, params
 
         return db1, db2, db3, db4
+
+
+class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Book(Base):
+            __tablename__ = 'book'
+            id = Column(Integer, primary_key=True)
+            pages = relationship('Page')
+
+        class Page(Base):
+            __tablename__ = 'page'
+            id = Column(Integer, primary_key=True)
+            book_id = Column(ForeignKey('book.id'))
+
+    def test_selectinload_query(self):
+        session = ShardedSession(
+            shards={"test": testing.db},
+            shard_chooser=lambda *args: 'test',
+            id_chooser=lambda *args: None,
+            query_chooser=lambda *args: ['test']
+        )
+
+        Book, Page = self.classes("Book", "Page")
+        book = Book()
+        book.pages.append(Page())
+
+        session.add(book)
+        session.commit()
+
+        result = session.query(Book).options(selectinload('pages')).all()
+        eq_(result, [book])

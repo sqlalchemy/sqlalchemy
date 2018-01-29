@@ -843,6 +843,10 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         is_(q._mapper_zero(), None)
         is_(q._entity_zero(), None)
 
+        q1 = s.query(Bundle('b1', User.id, User.name))
+        is_(q1._mapper_zero(), inspect(User))
+        is_(q1._entity_zero(), inspect(User))
+
     def test_from_statement(self):
         User = self.classes.User
 

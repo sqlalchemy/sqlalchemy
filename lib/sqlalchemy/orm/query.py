@@ -3893,6 +3893,10 @@ class _BundleEntity(_QueryEntity):
         self.supports_single_entity = self.bundle.single_entity
 
     @property
+    def mapper(self):
+        return self.entity_zero.mapper
+
+    @property
     def entities(self):
         entities = []
         for ent in self._entities:
