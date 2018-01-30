@@ -1009,6 +1009,13 @@ class DefaultRequirements(SuiteRequirements):
         return self.mssql_freetds.not_()
 
     @property
+    def python_fixed_issue_8743(self):
+        return exclusions.skip_if(
+            lambda: sys.version_info < (2, 7, 8),
+            "Python issue 8743 fixed in Python 2.7.8"
+        )
+
+    @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(["oracle", "firebird"],
