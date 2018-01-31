@@ -362,9 +362,12 @@ Keep the lifecycle of the session (and usually the transaction)
         finally:
             session.close()
 
-The advanced developer will try to keep the details of session, transaction
-and exception management as far as possible from the details of the program
-doing its work.   For example, we can further separate concerns using a `context manager <http://docs.python.org/3/library/contextlib.html#contextlib.contextmanager>`_::
+The most comprehensive approach, recommended for more substantial applications,
+will try to keep the details of session, transaction and exception management
+as far as possible from the details of the program doing its work.   For
+example, we can further separate concerns using a `context manager
+<http://docs.python.org/3/library/co
+ntextlib.html#contextlib.contextmanager>`_::
 
     ### another way (but again *not the only way*) to do it ###
 
