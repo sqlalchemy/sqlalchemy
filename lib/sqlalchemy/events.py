@@ -60,6 +60,24 @@ class DDLEvents(event.Events):
     as the names of members that are passed to listener
     functions.
 
+    For all :class:`.DDLEvent` events, the ``propagate=True`` keyword argument
+    will ensure that a given event handler is propagated to copies of the
+    object, which are made when using the :meth:`.Table.tometadata` method::
+
+        from sqlalchemy import DDL
+        event.listen(
+            some_table,
+            "after_create",
+            DDL("ALTER TABLE %(table)s SET name=foo_%(table)s"),
+            propagate=True
+        )
+
+        new_table = some_table.tometadata(new_metadata)
+
+    The above :class:`.DDL` object will also be associated with the
+    :class:`.Table` object represented by ``new_table``.
+
+
     See also:
 
         :ref:`event_toplevel`
@@ -89,6 +107,12 @@ class DDLEvents(event.Events):
          event, the checkfirst flag, and other
          elements used by internal events.
 
+        :func:`.event.listen` also accepts the ``propagate=True``
+        modifier for this event; when True, the listener function will
+        be established for any copies made of the target object,
+        i.e. those copies that are generated when
+        :meth:`.Table.tometadata` is used.
+
         """
 
     def after_create(self, target, connection, **kw):
@@ -104,6 +128,12 @@ class DDLEvents(event.Events):
          list of tables being generated for a metadata-level
          event, the checkfirst flag, and other
          elements used by internal events.
+
+        :func:`.event.listen` also accepts the ``propagate=True``
+        modifier for this event; when True, the listener function will
+        be established for any copies made of the target object,
+        i.e. those copies that are generated when
+        :meth:`.Table.tometadata` is used.
 
         """
 
@@ -121,6 +151,12 @@ class DDLEvents(event.Events):
          event, the checkfirst flag, and other
          elements used by internal events.
 
+        :func:`.event.listen` also accepts the ``propagate=True``
+        modifier for this event; when True, the listener function will
+        be established for any copies made of the target object,
+        i.e. those copies that are generated when
+        :meth:`.Table.tometadata` is used.
+
         """
 
     def after_drop(self, target, connection, **kw):
@@ -137,6 +173,12 @@ class DDLEvents(event.Events):
          event, the checkfirst flag, and other
          elements used by internal events.
 
+        :func:`.event.listen` also accepts the ``propagate=True``
+        modifier for this event; when True, the listener function will
+        be established for any copies made of the target object,
+        i.e. those copies that are generated when
+        :meth:`.Table.tometadata` is used.
+
         """
 
     def before_parent_attach(self, target, parent):
@@ -146,12 +188,11 @@ class DDLEvents(event.Events):
         :param target: the target object
         :param parent: the parent to which the target is being attached.
 
-        :func:`.event.listen` also accepts a modifier for this event:
-
-        :param propagate=False: When True, the listener function will
-         be established for any copies made of the target object,
-         i.e. those copies that are generated when
-         :meth:`.Table.tometadata` is used.
+        :func:`.event.listen` also accepts the ``propagate=True``
+        modifier for this event; when True, the listener function will
+        be established for any copies made of the target object,
+        i.e. those copies that are generated when
+        :meth:`.Table.tometadata` is used.
 
         """
 
@@ -162,12 +203,11 @@ class DDLEvents(event.Events):
         :param target: the target object
         :param parent: the parent to which the target is being attached.
 
-        :func:`.event.listen` also accepts a modifier for this event:
-
-        :param propagate=False: When True, the listener function will
-         be established for any copies made of the target object,
-         i.e. those copies that are generated when
-         :meth:`.Table.tometadata` is used.
+        :func:`.event.listen` also accepts the ``propagate=True``
+        modifier for this event; when True, the listener function will
+        be established for any copies made of the target object,
+        i.e. those copies that are generated when
+        :meth:`.Table.tometadata` is used.
 
         """
 
@@ -240,6 +280,12 @@ class DDLEvents(event.Events):
 
         This because the reflection process initiated by ``autoload=True``
         completes within the scope of the constructor for :class:`.Table`.
+
+        :func:`.event.listen` also accepts the ``propagate=True``
+        modifier for this event; when True, the listener function will
+        be established for any copies made of the target object,
+        i.e. those copies that are generated when
+        :meth:`.Table.tometadata` is used.
 
         """
 
