@@ -519,6 +519,7 @@ def __init__(%(apply_pos)s):
     exec(func_text, env)
     __init__ = env['__init__']
     __init__.__doc__ = original__init__.__doc__
+    __init__._sa_original_init = original__init__
 
     if func_defaults:
         __init__.__defaults__ = func_defaults

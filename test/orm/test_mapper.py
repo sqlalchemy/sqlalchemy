@@ -1694,6 +1694,71 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         sess.query(C).first()
         eq_(recon, ['A', 'B', 'C'])
 
+    def test_reconstructor_init(self):
+
+        users = self.tables.users
+
+        recon = []
+
+        class User(object):
+
+            @reconstructor
+            def __init__(self):
+                recon.append('go')
+
+        mapper(User, users)
+
+        User()
+        eq_(recon, ['go'])
+
+        recon[:] = []
+        create_session().query(User).first()
+        eq_(recon, ['go'])
+
+    def test_reconstructor_init_inheritance(self):
+        users = self.tables.users
+
+        recon = []
+
+        class A(object):
+
+            @reconstructor
+            def __init__(self):
+                assert isinstance(self, A)
+                recon.append('A')
+
+        class B(A):
+
+            @reconstructor
+            def __init__(self):
+                assert isinstance(self, B)
+                recon.append('B')
+
+        class C(A):
+
+            @reconstructor
+            def __init__(self):
+                assert isinstance(self, C)
+                recon.append('C')
+
+        mapper(A, users, polymorphic_on=users.c.name,
+               polymorphic_identity='jack')
+        mapper(B, inherits=A, polymorphic_identity='ed')
+        mapper(C, inherits=A, polymorphic_identity='chuck')
+
+        A()
+        B()
+        C()
+        eq_(recon, ['A', 'B', 'C'])
+
+        recon[:] = []
+        sess = create_session()
+        sess.query(A).first()
+        sess.query(B).first()
+        sess.query(C).first()
+        eq_(recon, ['A', 'B', 'C'])
+
+
     def test_unmapped_reconstructor_inheritance(self):
         users = self.tables.users
 
@@ -1853,7 +1918,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             pass
 
         mapper(B, users)
-
 
 class DocumentTest(fixtures.TestBase):
 

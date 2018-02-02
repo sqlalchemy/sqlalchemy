@@ -1243,6 +1243,10 @@ class Mapper(InspectionAttr):
         event.listen(manager, 'init', _event_on_init, raw=True)
 
         for key, method in util.iterate_attributes(self.class_):
+            if key == '__init__' and hasattr(method, '_sa_original_init'):
+                method = method._sa_original_init
+                if isinstance(method, types.MethodType):
+                    method = method.im_func
             if isinstance(method, types.FunctionType):
                 if hasattr(method, '__sa_reconstructor__'):
                     self._reconstructor = method
