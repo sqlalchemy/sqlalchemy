@@ -1543,34 +1543,37 @@ class OracleDialect(default.DefaultDialect):
 
         params = {'table_name': table_name}
 
-        text = \
-            "SELECT"\
-            "\nac.constraint_name,"\
-            "\nac.constraint_type,"\
-            "\nloc.column_name AS local_column,"\
-            "\nrem.table_name AS remote_table,"\
-            "\nrem.column_name AS remote_column,"\
-            "\nrem.owner AS remote_owner,"\
-            "\nloc.position as loc_pos,"\
-            "\nrem.position as rem_pos,"\
-            "\nac.search_condition"\
-            "\nFROM all_constraints%(dblink)s ac,"\
-            "\nall_cons_columns%(dblink)s loc,"\
-            "\nall_cons_columns%(dblink)s rem"\
-            "\nWHERE ac.table_name = :table_name"\
+        text = (
+            "SELECT"
+            "\nac.constraint_name,"  # 0
+            "\nac.constraint_type,"  # 1
+            "\nloc.column_name AS local_column,"  # 2
+            "\nrem.table_name AS remote_table,"  # 3
+            "\nrem.column_name AS remote_column,"  # 4
+            "\nrem.owner AS remote_owner,"  # 5
+            "\nloc.position as loc_pos,"  # 6
+            "\nrem.position as rem_pos,"  # 7
+            "\nac.search_condition,"  # 8
+            "\nac.delete_rule"  # 9
+            "\nFROM all_constraints%(dblink)s ac,"
+            "\nall_cons_columns%(dblink)s loc,"
+            "\nall_cons_columns%(dblink)s rem"
+            "\nWHERE ac.table_name = :table_name"
             "\nAND ac.constraint_type IN ('R','P', 'U', 'C')"
+        )
 
         if schema is not None:
             params['owner'] = schema
             text += "\nAND ac.owner = :owner"
 
-        text += \
-            "\nAND ac.owner = loc.owner"\
-            "\nAND ac.constraint_name = loc.constraint_name"\
-            "\nAND ac.r_owner = rem.owner(+)"\
-            "\nAND ac.r_constraint_name = rem.constraint_name(+)"\
-            "\nAND (rem.position IS NULL or loc.position=rem.position)"\
+        text += (
+            "\nAND ac.owner = loc.owner"
+            "\nAND ac.constraint_name = loc.constraint_name"
+            "\nAND ac.r_owner = rem.owner(+)"
+            "\nAND ac.r_constraint_name = rem.constraint_name(+)"
+            "\nAND (rem.position IS NULL or loc.position=rem.position)"
             "\nORDER BY ac.constraint_name, loc.position"
+        )
 
         text = text % {'dblink': dblink}
         rp = connection.execute(sql.text(text), **params)
@@ -1613,7 +1616,6 @@ class OracleDialect(default.DefaultDialect):
             dblink
 
         """
-
         requested_schema = schema  # to check later on
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
@@ -1634,7 +1636,8 @@ class OracleDialect(default.DefaultDialect):
                 'constrained_columns': [],
                 'referred_schema': None,
                 'referred_table': None,
-                'referred_columns': []
+                'referred_columns': [],
+                'options': {},
             }
 
         fkeys = util.defaultdict(fkey_rec)
@@ -1679,6 +1682,9 @@ class OracleDialect(default.DefaultDialect):
                     if requested_schema is not None or \
                        self.denormalize_name(remote_owner) != schema:
                         rec['referred_schema'] = remote_owner
+
+                    if row[9] != 'NO ACTION':
+                        rec['options']['ondelete'] = row[9]
 
                 local_cols.append(local_column)
                 remote_cols.append(remote_column)

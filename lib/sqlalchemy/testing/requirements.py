@@ -409,7 +409,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
-    def foreign_key_constraint_option_reflection(self):
+    def foreign_key_constraint_option_reflection_ondelete(self):
+        return exclusions.closed()
+
+    @property
+    def foreign_key_constraint_option_reflection_onupdate(self):
         return exclusions.closed()
 
     @property
