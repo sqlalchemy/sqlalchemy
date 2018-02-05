@@ -5,17 +5,16 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.dialects.sybase import base, pysybase, pyodbc
-
-# default dialect
-base.dialect = pyodbc.dialect
+from . import base, pysybase, pyodbc  # noqa
 
 from .base import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
     TEXT, DATE, DATETIME, FLOAT, NUMERIC,\
     BIGINT, INT, INTEGER, SMALLINT, BINARY,\
     VARBINARY, UNITEXT, UNICHAR, UNIVARCHAR,\
-    IMAGE, BIT, MONEY, SMALLMONEY, TINYINT,\
-    dialect
+    IMAGE, BIT, MONEY, SMALLMONEY, TINYINT
+
+# default dialect
+base.dialect = dialect = pyodbc.dialect
 
 
 __all__ = (
