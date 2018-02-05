@@ -1161,15 +1161,18 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
         __members__ = OrderedDict()
 
-        def __init__(self, name, value):
+        def __init__(self, name, value, alias=None):
             self.name = name
             self.value = value
             self.__members__[name] = self
             setattr(self.__class__, name, self)
+            if alias:
+                self.__members__[alias] = self
+                setattr(self.__class__, alias, self)
 
     one = SomeEnum('one', 1)
     two = SomeEnum('two', 2)
-    three = SomeEnum('three', 3)
+    three = SomeEnum('three', 3, 'four')
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1498,6 +1501,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             {'id': 1, 'someenum': self.SomeEnum.two},
             {'id': 2, 'someenum': self.SomeEnum.two},
             {'id': 3, 'someenum': self.SomeEnum.one},
+            {'id': 4, 'someenum': self.SomeEnum.three},
+            {'id': 5, 'someenum': self.SomeEnum.four},
+            {'id': 6, 'someenum': 'three'},
+            {'id': 7, 'someenum': 'four'},
         ])
 
         eq_(
@@ -1507,6 +1514,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 (1, self.SomeEnum.two),
                 (2, self.SomeEnum.two),
                 (3, self.SomeEnum.one),
+                (4, self.SomeEnum.three),
+                (5, self.SomeEnum.three),
+                (6, self.SomeEnum.three),
+                (7, self.SomeEnum.three),
             ]
         )
 
@@ -1533,7 +1544,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         is_(e1.adapt(Enum).metadata, e1.metadata)
         e1 = Enum(self.SomeEnum)
         eq_(e1.adapt(ENUM).name, 'someenum')
-        eq_(e1.adapt(ENUM).enums, ['one', 'two', 'three'])
+        eq_(e1.adapt(ENUM).enums, ['one', 'two', 'three', 'four'])
 
     @testing.provide_metadata
     def test_create_metadata_bound_no_crash(self):

@@ -1352,14 +1352,17 @@ class Enum(Emulated, String, SchemaType):
         self.enums = list(values)
 
         self._valid_lookup = dict(
-            zip(objects, values)
+            zip(reversed(objects), reversed(values))
         )
+
         self._object_lookup = dict(
-            (value, key) for key, value in self._valid_lookup.items()
+            zip(values, objects)
         )
-        self._valid_lookup.update(
-            [(value, value) for value in self._valid_lookup.values()]
-        )
+
+        self._valid_lookup.update([
+            (value, self._valid_lookup[self._object_lookup[value]])
+            for value in values
+        ])
 
     @property
     def native(self):
