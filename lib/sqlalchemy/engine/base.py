@@ -2189,6 +2189,8 @@ class Engine(Connectable, log.Identified):
 
 
 class OptionEngine(Engine):
+    _sa_propagate_class_events = False
+
     def __init__(self, proxied, execution_options):
         self._proxied = proxied
         self.url = proxied.url
@@ -2196,7 +2198,21 @@ class OptionEngine(Engine):
         self.logging_name = proxied.logging_name
         self.echo = proxied.echo
         log.instance_logger(self, echoflag=self.echo)
+
+        # note: this will propagate events that are assigned to the parent
+        # engine after this OptionEngine is created.   Since we share
+        # the events of the parent we also disallow class-level events
+        # to apply to the OptionEngine class directly.
+        #
+        # the other way this can work would be to transfer existing
+        # events only, using:
+        # self.dispatch._update(proxied.dispatch)
+        #
+        # that might be more appropriate however it would be a behavioral
+        # change for logic that assigns events to the parent engine and
+        # would like it to take effect for the already-created sub-engine.
         self.dispatch = self.dispatch._join(proxied.dispatch)
+
         self._execution_options = proxied._execution_options
         self.update_execution_options(**execution_options)
 
