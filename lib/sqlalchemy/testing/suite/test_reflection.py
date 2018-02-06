@@ -540,9 +540,16 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_foreign_keys_with_schema(self):
         self._test_get_foreign_keys(schema=testing.config.test_schema)
 
-    @testing.requires.foreign_key_constraint_option_reflection
+    @testing.requires.foreign_key_constraint_option_reflection_ondelete
+    def test_get_foreign_key_options_ondelete(self):
+        self._test_get_foreign_key_options(ondelete="CASCADE")
+
+    @testing.requires.foreign_key_constraint_option_reflection_onupdate
+    def test_get_foreign_key_options_onupdate(self):
+        self._test_get_foreign_key_options(onupdate="SET NULL")
+
     @testing.provide_metadata
-    def test_get_foreign_key_options(self):
+    def _test_get_foreign_key_options(self, **options):
         meta = self.metadata
 
         Table(
@@ -564,7 +571,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
               sa.ForeignKeyConstraint(
                   ['tid'], ['table.id'],
                   name='myfk',
-                  onupdate="SET NULL", ondelete="CASCADE"),
+                  **options),
               test_needs_fk=True)
 
         meta.create_all()
@@ -589,7 +596,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 (k, opts[k])
                 for k in opts if opts[k]
             ),
-            {'onupdate': 'SET NULL', 'ondelete': 'CASCADE'}
+            options
         )
 
     def _assert_insp_indexes(self, indexes, expected_indexes):

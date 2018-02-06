@@ -110,7 +110,11 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(['oracle'])
 
     @property
-    def foreign_key_constraint_option_reflection(self):
+    def foreign_key_constraint_option_reflection_ondelete(self):
+        return only_on(['postgresql', 'mysql', 'sqlite', 'oracle'])
+
+    @property
+    def foreign_key_constraint_option_reflection_onupdate(self):
         return only_on(['postgresql', 'mysql', 'sqlite'])
 
     @property
