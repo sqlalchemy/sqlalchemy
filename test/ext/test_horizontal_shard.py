@@ -321,6 +321,57 @@ class ShardTest(object):
         t = get_tokyo(sess2)
         eq_(t.city, tokyo.city)
 
+    def test_bulk_update(self):
+        sess = self._fixture_data()
+
+        eq_(
+            set(row.temperature for row in sess.query(Report.temperature)),
+            {80.0, 75.0, 85.0}
+        )
+
+        temps = sess.query(Report).all()
+        eq_(
+            set(t.temperature for t in temps),
+            {80.0, 75.0, 85.0}
+        )
+
+        sess.query(Report).filter(
+            Report.temperature >= 80).update(
+                {"temperature": Report.temperature + 6})
+
+        eq_(
+            set(row.temperature for row in sess.query(Report.temperature)),
+            {86.0, 75.0, 91.0}
+        )
+
+        # test synchronize session as well
+        eq_(
+            set(t.temperature for t in temps),
+            {86.0, 75.0, 91.0}
+        )
+
+    def test_bulk_delete(self):
+        sess = self._fixture_data()
+
+        temps = sess.query(Report).all()
+        eq_(
+            set(t.temperature for t in temps),
+            {80.0, 75.0, 85.0}
+        )
+
+        sess.query(Report).filter(
+            Report.temperature >= 80).delete()
+
+        eq_(
+            set(row.temperature for row in sess.query(Report.temperature)),
+            {75.0}
+        )
+
+        # test synchronize session as well
+        for t in temps:
+            assert inspect(t).deleted is (t.temperature >= 80)
+
+
 
 from sqlalchemy.testing import provision
 

@@ -3016,6 +3016,12 @@ class Query(object):
         result = conn.execute(querycontext.statement, self._params)
         return loading.instances(querycontext.query, result, querycontext)
 
+    def _execute_crud(self, stmt, mapper):
+        conn = self._connection_from_session(
+            mapper=mapper, clause=stmt, close_with_result=True)
+
+        return conn.execute(stmt, self._params)
+
     def _get_bind_args(self, querycontext, fn, **kw):
         return fn(
             mapper=self._bind_mapper(),
