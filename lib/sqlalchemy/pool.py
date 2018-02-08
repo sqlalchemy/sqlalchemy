@@ -541,7 +541,7 @@ class _ConnectionRecord(object):
             fairy,
             lambda ref: _finalize_fairy and
             _finalize_fairy(
-                dbapi_connection,
+                None,
                 rec, pool, ref, echo)
         )
         _refs.add(rec)
@@ -687,9 +687,11 @@ def _finalize_fairy(connection, connection_record,
     """
     _refs.discard(connection_record)
 
-    if ref is not None and \
-            connection_record.fairy_ref is not ref:
-        return
+    if ref is not None:
+        if connection_record.fairy_ref is not ref:
+            return
+        assert connection is None
+        connection = connection_record.connection
 
     if connection is not None:
         if connection_record and echo:
@@ -826,13 +828,14 @@ class _ConnectionFairy(object):
                     pool.logger.info(
                         "Disconnection detected on checkout, "
                         "invalidating all pooled connections prior to "
-                        "current timestamp: %r", e)
+                        "current timestamp (reason: %r)", e)
                     fairy._connection_record.invalidate(e)
                     pool._invalidate(fairy, e, _checkin=False)
                 else:
                     pool.logger.info(
                         "Disconnection detected on checkout, "
-                        "invalidating individual connection: %r", e)
+                        "invalidating individual connection %s (reason: %r)",
+                        fairy.connection, e)
                     fairy._connection_record.invalidate(e)
                 try:
                     fairy.connection = \

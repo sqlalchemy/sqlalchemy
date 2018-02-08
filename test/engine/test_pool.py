@@ -1758,6 +1758,40 @@ class QueuePoolTest(PoolTestBase):
 
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
+    @testing.requires.predictable_gc
+    def test_userspace_disconnectionerror_weakref_finalizer(self):
+        dbapi, pool = self._queuepool_dbapi_fixture(
+            pool_size=1,
+            max_overflow=2)
+
+        @event.listens_for(pool, "checkout")
+        def handle_checkout_event(dbapi_con, con_record, con_proxy):
+            if getattr(dbapi_con, 'boom') == 'yes':
+                raise tsa.exc.DisconnectionError()
+
+        conn = pool.connect()
+        old_dbapi_conn = conn.connection
+        conn.close()
+
+        eq_(old_dbapi_conn.mock_calls, [call.rollback()])
+
+        old_dbapi_conn.boom = 'yes'
+
+        conn = pool.connect()
+        dbapi_conn = conn.connection
+        del conn
+        gc_collect()
+
+        # new connection was reset on return appropriately
+        eq_(dbapi_conn.mock_calls, [call.rollback()])
+
+        # old connection was just closed - did not get an
+        # erroneous reset on return
+        eq_(
+            old_dbapi_conn.mock_calls,
+            [call.rollback(), call.close()]
+        )
+
     @testing.requires.timing_intensive
     def test_recycle_pool_no_race(self):
         def slow_close():
