@@ -1258,7 +1258,7 @@ class Query(object):
 
     @_generative()
     def with_entities(self, *entities):
-        """Return a new :class:`.Query` replacing the SELECT list with the
+        r"""Return a new :class:`.Query` replacing the SELECT list with the
         given entities.
 
         e.g.::
