@@ -1006,7 +1006,12 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def ad_hoc_engines(self):
-        return exclusions.open()
+        return exclusions.skip_if(
+            ["oracle"],
+            "works, but Oracle just gets tired with "
+            "this much connection activity")
+
+
 
     @property
     def no_mssql_freetds(self):
