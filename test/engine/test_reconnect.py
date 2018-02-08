@@ -12,6 +12,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import Mock, call, patch
 from sqlalchemy import event
+from sqlalchemy.testing.util import gc_collect
 
 
 class MockError(Exception):
