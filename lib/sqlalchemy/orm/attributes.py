@@ -1592,7 +1592,7 @@ def set_committed_value(instance, key, value):
     state.manager[key].impl.set_committed_value(state, dict_, value)
 
 
-def set_attribute(instance, key, value):
+def set_attribute(instance, key, value, initiator=None):
     """Set the value of an attribute, firing history events.
 
     This function may be used regardless of instrumentation
@@ -1601,9 +1601,24 @@ def set_attribute(instance, key, value):
     of this method to establish attribute state as understood
     by SQLAlchemy.
 
+    :param instance: the object that will be modified
+
+    :param key: string name of the attribute
+
+    :param value: value to assign
+
+    :param initiator: an instance of :class:`.Event` that would have
+     been propagated from a previous event listener.  This argument
+     is used when the :func:`.set_attribute` function is being used within
+     an existing event listening function where an :class:`.Event` object
+     is being supplied; the object may be used to track the origin of the
+     chain of events.
+
+     .. versionadded:: 1.2.3
+
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
-    state.manager[key].impl.set(state, dict_, value, None)
+    state.manager[key].impl.set(state, dict_, value, initiator)
 
 
 def get_attribute(instance, key):

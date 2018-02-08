@@ -1014,6 +1014,42 @@ class UtilTest(fixtures.ORMTest):
         attributes.del_attribute(f1, "coll")
         assert "coll" not in f1.__dict__
 
+    def test_initiator_arg(self):
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(
+            Foo, "a", uselist=False, useobject=False)
+        attributes.register_attribute(
+            Bar, "b", uselist=False, useobject=False)
+
+        @event.listens_for(Foo.a, "set")
+        def sync_a(target, value, oldvalue, initiator):
+            parentclass = initiator.parent_token.class_
+            if parentclass is Foo:
+                attributes.set_attribute(target.bar, "b", value, initiator)
+
+        @event.listens_for(Bar.b, "set")
+        def sync_b(target, value, oldvalue, initiator):
+            parentclass = initiator.parent_token.class_
+            if parentclass is Bar:
+                attributes.set_attribute(target.foo, "a", value, initiator)
+
+        f1 = Foo()
+        b1 = Bar()
+        f1.bar = b1
+        b1.foo = f1
+
+        f1.a = 'x'
+        eq_(b1.b, 'x')
+        b1.b = 'y'
+        eq_(f1.a, 'y')
+
 
 class BackrefTest(fixtures.ORMTest):
 
