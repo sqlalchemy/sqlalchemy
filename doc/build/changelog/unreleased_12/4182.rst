@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4182
+
+    Fixed bug in cx_Oracle disconnect detection, used by pre_ping and other
+    features, where an error could be raised as DatabaseError which includes a
+    numeric error code; previously we weren't checking in this case for a
+    disconnect code.

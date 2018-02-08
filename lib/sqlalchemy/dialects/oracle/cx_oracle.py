@@ -817,10 +817,13 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def is_disconnect(self, e, connection, cursor):
         error, = e.args
-        if isinstance(e, (
-                self.dbapi.InterfaceError, self.dbapi.DatabaseError)):
-            return "not connected" in str(e)
-        elif hasattr(error, 'code'):
+        if isinstance(
+                e,
+                (self.dbapi.InterfaceError, self.dbapi.DatabaseError)
+        ) and "not connected" in str(e):
+            return True
+
+        if hasattr(error, 'code'):
             # ORA-00028: your session has been killed
             # ORA-03114: not connected to ORACLE
             # ORA-03113: end-of-file on communication channel

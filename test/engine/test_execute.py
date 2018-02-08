@@ -1829,7 +1829,8 @@ class HandleErrorTest(fixtures.TestBase):
 
         with expect_warnings(
             r"An exception has occurred during handling of a previous "
-            r"exception.  The previous exception is.*i_dont_exist",
+            r"exception.  The previous exception "
+            r"is.*(?:i_dont_exist|does not exist)",
             py2konly=True
         ):
             with patch.object(conn.dialect, "do_rollback", boom) as patched:
