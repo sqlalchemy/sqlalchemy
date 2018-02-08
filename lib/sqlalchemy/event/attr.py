@@ -30,7 +30,7 @@ as well as support for subclass propagation (e.g. events assigned to
 """
 
 from __future__ import absolute_import, with_statement
-
+from .. import exc
 from .. import util
 from ..util import threading
 from . import registry
@@ -45,6 +45,20 @@ class RefCollection(util.MemoizedSlots):
 
     def _memoized_attr_ref(self):
         return weakref.ref(self, registry._collection_gced)
+
+
+class _empty_collection(object):
+    def append(self, element):
+        pass
+
+    def extend(self, other):
+        pass
+
+    def __iter__(self):
+        return iter([])
+
+    def clear(self):
+        pass
 
 
 class _ClsLevelDispatch(RefCollection):
@@ -91,6 +105,9 @@ class _ClsLevelDispatch(RefCollection):
         target = event_key.dispatch_target
         assert isinstance(target, type), \
             "Class-level Event targets must be classes."
+        if not getattr(target, '_sa_propagate_class_events', True):
+            raise exc.InvalidRequestError(
+                "Can't assign an event directly to the %s class" % target)
         stack = [target]
         while stack:
             cls = stack.pop(0)
@@ -99,7 +116,7 @@ class _ClsLevelDispatch(RefCollection):
                 self.update_subclass(cls)
             else:
                 if cls not in self._clslevel:
-                    self._clslevel[cls] = collections.deque()
+                    self._assign_cls_collection(cls)
                 self._clslevel[cls].appendleft(event_key._listen_fn)
         registry._stored_in_collection(event_key, self)
 
@@ -107,7 +124,9 @@ class _ClsLevelDispatch(RefCollection):
         target = event_key.dispatch_target
         assert isinstance(target, type), \
             "Class-level Event targets must be classes."
-
+        if not getattr(target, '_sa_propagate_class_events', True):
+            raise exc.InvalidRequestError(
+                "Can't assign an event directly to the %s class" % target)
         stack = [target]
         while stack:
             cls = stack.pop(0)
@@ -116,13 +135,19 @@ class _ClsLevelDispatch(RefCollection):
                 self.update_subclass(cls)
             else:
                 if cls not in self._clslevel:
-                    self._clslevel[cls] = collections.deque()
+                    self._assign_cls_collection(cls)
                 self._clslevel[cls].append(event_key._listen_fn)
         registry._stored_in_collection(event_key, self)
 
+    def _assign_cls_collection(self, target):
+        if getattr(target, '_sa_propagate_class_events', True):
+            self._clslevel[target] = collections.deque()
+        else:
+            self._clslevel[target] = _empty_collection()
+
     def update_subclass(self, target):
         if target not in self._clslevel:
-            self._clslevel[target] = collections.deque()
+            self._assign_cls_collection(target)
         clslevel = self._clslevel[target]
         for cls in target.__mro__[1:]:
             if cls in self._clslevel:
