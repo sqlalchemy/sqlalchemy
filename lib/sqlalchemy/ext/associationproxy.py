@@ -212,7 +212,12 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         return (self.local_attr, self.remote_attr)
 
     def _get_property(self):
-        return (orm.class_mapper(self.owning_class).
+        owning_class = self.owning_class
+        if owning_class is None:
+            raise exc.InvalidRequestError(
+                "This association proxy has no mapped owning class; "
+                "can't locate a mapped property")
+        return (orm.class_mapper(owning_class).
                 get_property(self.target_collection))
 
     @util.memoized_property
@@ -244,18 +249,33 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
     def _target_is_object(self):
         return getattr(self.target_class, self.value_attr).impl.uses_objects
 
+    def _calc_owner(self, obj, class_):
+        if obj is not None and class_ is None:
+            target_cls = type(obj)
+        elif class_ is not None:
+            target_cls = class_
+        else:
+            return
+
+        # we might be getting invoked for a subclass
+        # that is not mapped yet, in some declarative situations.
+        # save until we are mapped
+        try:
+            insp = inspect(target_cls)
+        except exc.NoInspectionAvailable:
+            # can't find a mapper, don't set owner. if we are a not-yet-mapped
+            # subclass, we can also scan through __mro__ to find a mapped
+            # class, but instead just wait for us to be called again against a
+            # mapped class normally.
+            return
+
+        # note we can get our real .key here too
+        owner = insp.mapper.class_manager._locate_owning_manager(self)
+        self.owning_class = owner.class_
+
     def __get__(self, obj, class_):
         if self.owning_class is None:
-            try:
-                insp = inspect(class_)
-            except exc.NoInspectionAvailable:
-                pass
-            else:
-                if hasattr(insp, 'mapper'):
-                    self.owning_class = insp.mapper.class_
-
-            if self.owning_class is None:
-                self.owning_class = type(obj)
+            self._calc_owner(obj, class_)
 
         if obj is None:
             return self
@@ -278,7 +298,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def __set__(self, obj, values):
         if self.owning_class is None:
-            self.owning_class = type(obj)
+            self._calc_owner(obj, None)
 
         if self.scalar:
             creator = self.creator and self.creator or self.target_class
@@ -295,7 +315,8 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def __delete__(self, obj):
         if self.owning_class is None:
-            self.owning_class = type(obj)
+            self._calc_owner(obj, None)
+
         delattr(obj, self.key)
 
     def _initialize_scalar_accessors(self):
@@ -496,6 +517,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def __repr__(self):
         return "AssociationProxy(%r, %r)" % (self.target_collection, self.value_attr)
+
 
 class _lazy_collection(object):
     def __init__(self, obj, target):
