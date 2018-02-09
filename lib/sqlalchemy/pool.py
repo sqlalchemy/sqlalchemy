@@ -525,7 +525,7 @@ class _ConnectionRecord(object):
             fairy,
             lambda ref: _finalize_fairy and
             _finalize_fairy(
-                dbapi_connection,
+                None,
                 rec, pool, ref, echo)
         )
         _refs.add(rec)
@@ -671,9 +671,11 @@ def _finalize_fairy(connection, connection_record,
     """
     _refs.discard(connection_record)
 
-    if ref is not None and \
-            connection_record.fairy_ref is not ref:
-        return
+    if ref is not None:
+        if connection_record.fairy_ref is not ref:
+            return
+        assert connection is None
+        connection = connection_record.connection
 
     if connection is not None:
         if connection_record and echo:

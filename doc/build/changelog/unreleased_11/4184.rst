@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, pool
+    :tickets: 4184
+
+    Fixed a fairly serious connection pool bug where a connection that is
+    acquired after being refreshed as a result of a user-defined
+    :class:`.DisconnectionError` or due to the 1.2-released "pre_ping" feature
+    would not be correctly reset if the connection were returned to the pool by
+    weakref cleanup (e.g. the front-facing object is garbage collected); the
+    weakref would still refer to the previously invalidated DBAPI connection
+    which would have the reset operation erroneously called upon it instead.
+    This would lead to stack traces in the logs and a connection being checked
+    into the pool without being reset, which can cause locking issues.
+
