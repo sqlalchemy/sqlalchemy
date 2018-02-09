@@ -15,6 +15,7 @@ from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.testing.mock import Mock, call
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declared_attr
 
 
 class DictCollection(dict):
@@ -1576,6 +1577,9 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
 
 
 class AttributeAccessTest(fixtures.TestBase):
+    def teardown(self):
+        clear_mappers()
+
     def test_resolve_aliased_class(self):
         Base = declarative_base()
 
@@ -1598,6 +1602,160 @@ class AttributeAccessTest(fixtures.TestBase):
         spec = B.a_value
 
         is_(spec.owning_class, B)
+
+    def test_resolved_w_subclass(self):
+        # test for issue #4185, as well as several below
+
+        Base = declarative_base()
+
+        class Mixin(object):
+            @declared_attr
+            def children(cls):
+                return association_proxy('_children', 'value')
+
+        # 1. build parent, Mixin.children gets invoked, we add
+        # Parent.children
+        class Parent(Mixin, Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+
+            _children = relationship("Child")
+
+        class Child(Base):
+            __tablename__ = 'child'
+            parent_id = Column(
+                Integer, ForeignKey(Parent.id), primary_key=True)
+
+        # 2. declarative builds up SubParent, scans through all attributes
+        # over all classes.  Hits Mixin, hits "children", accesses "children"
+        # in terms of the class, e.g. SubParent.children.  SubParent isn't
+        # mapped yet.  association proxy then sets up "owning_class"
+        # as NoneType.
+        class SubParent(Parent):
+            __tablename__ = 'subparent'
+            id = Column(Integer, ForeignKey(Parent.id), primary_key=True)
+
+        configure_mappers()
+
+        # 3. which would break here.
+        p1 = Parent()
+        eq_(p1.children, [])
+
+    def test_resolved_to_correct_class_one(self):
+        Base = declarative_base()
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            _children = relationship("Child")
+            children = association_proxy('_children', 'value')
+
+        class Child(Base):
+            __tablename__ = 'child'
+            parent_id = Column(
+                Integer, ForeignKey(Parent.id), primary_key=True)
+
+        class SubParent(Parent):
+            __tablename__ = 'subparent'
+            id = Column(Integer, ForeignKey(Parent.id), primary_key=True)
+
+        is_(SubParent.children.owning_class, Parent)
+
+    def test_resolved_to_correct_class_two(self):
+        Base = declarative_base()
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            _children = relationship("Child")
+
+        class Child(Base):
+            __tablename__ = 'child'
+            parent_id = Column(
+                Integer, ForeignKey(Parent.id), primary_key=True)
+
+        class SubParent(Parent):
+            __tablename__ = 'subparent'
+            id = Column(Integer, ForeignKey(Parent.id), primary_key=True)
+            children = association_proxy('_children', 'value')
+
+        is_(SubParent.children.owning_class, SubParent)
+
+    def test_resolved_to_correct_class_three(self):
+        Base = declarative_base()
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            _children = relationship("Child")
+
+        class Child(Base):
+            __tablename__ = 'child'
+            parent_id = Column(
+                Integer, ForeignKey(Parent.id), primary_key=True)
+
+        class SubParent(Parent):
+            __tablename__ = 'subparent'
+            id = Column(Integer, ForeignKey(Parent.id), primary_key=True)
+            children = association_proxy('_children', 'value')
+
+        class SubSubParent(SubParent):
+            __tablename__ = 'subsubparent'
+            id = Column(Integer, ForeignKey(SubParent.id), primary_key=True)
+
+        is_(SubSubParent.children.owning_class, SubParent)
+
+    def test_resolved_to_correct_class_four(self):
+        Base = declarative_base()
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            _children = relationship("Child")
+            children = association_proxy(
+                '_children', 'value', creator=lambda value: Child(value=value))
+
+        class Child(Base):
+            __tablename__ = 'child'
+            parent_id = Column(
+                Integer, ForeignKey(Parent.id), primary_key=True)
+            value = Column(String)
+
+        class SubParent(Parent):
+            __tablename__ = 'subparent'
+            id = Column(Integer, ForeignKey(Parent.id), primary_key=True)
+
+        sp = SubParent()
+        sp.children = 'c'
+        is_(SubParent.children.owning_class, Parent)
+
+    def test_never_assign_nonetype(self):
+        foo = association_proxy('x', 'y')
+        foo._calc_owner(None, None)
+        is_(foo.owning_class, None)
+
+        class Bat(object):
+            foo = association_proxy('x', 'y')
+
+        Bat.foo
+        is_(Bat.foo.owning_class, None)
+
+        b1 = Bat()
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This association proxy has no mapped owning class; "
+            "can't locate a mapped property",
+            getattr, b1, "foo"
+        )
+        is_(Bat.foo.owning_class, None)
+
+        # after all that, we can map it
+        mapper(
+            Bat,
+            Table('bat', MetaData(), Column('x', Integer, primary_key=True)))
+
+        # answer is correct
+        is_(Bat.foo.owning_class, Bat)
 
 
 class InfoTest(fixtures.TestBase):
