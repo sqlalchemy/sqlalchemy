@@ -639,6 +639,40 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         sess.add(p)
         sess.flush()
 
+    def test_post_update_m2o_no_cascade(self):
+        person, ball, Ball, Person = (self.tables.person,
+                                      self.tables.ball,
+                                      self.classes.Ball,
+                                      self.classes.Person)
+
+        mapper(Ball, ball)
+        mapper(Person, person, properties=dict(
+            favorite=relationship(
+                Ball, primaryjoin=person.c.favorite_ball_id == ball.c.id,
+                post_update=True)))
+        b = Ball(data='some data')
+        p = Person(data='some data')
+        p.favorite = b
+        sess = create_session()
+        sess.add(b)
+        sess.add(p)
+        sess.flush()
+
+        sess.delete(p)
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
+                        "WHERE person.id = :person_id",
+                        lambda ctx: {
+                            'favorite_ball_id': None,
+                            'person_id': p.id}
+                        ),
+            CompiledSQL("DELETE FROM person WHERE person.id = :id",
+                        lambda ctx: {'id': p.id}
+                        ),
+        )
+
     def test_post_update_m2o(self):
         """A cycle between two rows, with a post_update on the many-to-one"""
 
