@@ -607,6 +607,7 @@ class ManyToOneDP(DependencyProcessor):
                 (before_delete, parent_pre_updates),
 
                 (parent_pre_updates, child_deletes),
+                (parent_pre_updates, parent_deletes),
             ])
         else:
             uow.dependencies.update([
