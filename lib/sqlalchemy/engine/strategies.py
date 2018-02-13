@@ -52,6 +52,7 @@ class DefaultEngineStrategy(EngineStrategy):
         plugins = u._instantiate_plugins(kwargs)
 
         u.query.pop('plugin', None)
+        kwargs.pop('plugins', None)
 
         entrypoint = u._get_entrypoint()
         dialect_cls = entrypoint.get_dialect_cls(u)

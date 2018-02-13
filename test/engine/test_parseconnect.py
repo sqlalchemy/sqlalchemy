@@ -31,6 +31,7 @@ class ParseConnectTest(fixtures.TestBase):
             'dbtype:///foo/bar/im/a/file',
             'dbtype:///E:/work/src/LEM/db/hello.db',
             'dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala',
+            'dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala&hoho=bat',
             'dbtype://',
             'dbtype://username:password@/database',
             'dbtype:////usr/local/_xtest@example.com/members.db',
@@ -114,6 +115,20 @@ class ParseConnectTest(fixtures.TestBase):
 
         is_(u.password, None)
         eq_(str(u), "dbtype://x@localhost")
+
+    def test_query_string(self):
+        u = url.make_url(
+            "dialect://user:pass@host/db?arg1=param1&arg2=param2")
+        eq_(u.query, {"arg1": "param1", "arg2": "param2"})
+        eq_(str(u), "dialect://user:pass@host/db?arg1=param1&arg2=param2")
+
+        u = url.make_url(
+            "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3")
+        eq_(u.query, {"arg1": "param1", "arg2": ["param2", "param3"]})
+        eq_(
+            str(u),
+            "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3")
+
 
 
 class DialectImportTest(fixtures.TestBase):
@@ -413,14 +428,19 @@ class TestRegNewDBAPI(fixtures.TestBase):
         )
 
     @testing.requires.sqlite
-    def test_plugin_registration(self):
+    def test_plugin_url_registration(self):
         from sqlalchemy.dialects import sqlite
 
         global MyEnginePlugin
 
         def side_effect(url, kw):
+            eq_(
+                url.query,
+                {"plugin": "engineplugin", "myplugin_arg": "bat", "foo": "bar"}
+            )
             eq_(kw, {"logging_name": "foob"})
             kw['logging_name'] = 'bar'
+            url.query.pop('myplugin_arg', None)
             return MyEnginePlugin
 
         MyEnginePlugin = Mock(side_effect=side_effect)
@@ -428,23 +448,127 @@ class TestRegNewDBAPI(fixtures.TestBase):
         plugins.register("engineplugin", __name__, "MyEnginePlugin")
 
         e = create_engine(
-            "sqlite:///?plugin=engineplugin&foo=bar", logging_name='foob')
+            "sqlite:///?plugin=engineplugin&foo=bar&myplugin_arg=bat",
+            logging_name='foob')
         eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
+
+        # plugin args are removed from URL.
+        eq_(
+            e.url.query,
+            {"foo": "bar"}
+        )
         assert isinstance(e.dialect, sqlite.dialect)
 
         eq_(
             MyEnginePlugin.mock_calls,
             [
-                call(e.url, {}),
+                call(url.make_url("sqlite:///?foo=bar"), {}),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e)
             ]
         )
+
+        # url was modified in place by MyEnginePlugin
         eq_(
             str(MyEnginePlugin.mock_calls[0][1][0]),
             "sqlite:///?foo=bar"
+        )
+
+    @testing.requires.sqlite
+    def test_plugin_multiple_url_registration(self):
+        from sqlalchemy.dialects import sqlite
+
+        global MyEnginePlugin1
+        global MyEnginePlugin2
+
+        def side_effect_1(url, kw):
+            eq_(kw, {"logging_name": "foob"})
+            kw['logging_name'] = 'bar'
+            url.query.pop('myplugin1_arg', None)
+            return MyEnginePlugin1
+
+        def side_effect_2(url, kw):
+            url.query.pop('myplugin2_arg', None)
+            return MyEnginePlugin2
+
+        MyEnginePlugin1 = Mock(side_effect=side_effect_1)
+        MyEnginePlugin2 = Mock(side_effect=side_effect_2)
+
+        plugins.register("engineplugin1", __name__, "MyEnginePlugin1")
+        plugins.register("engineplugin2", __name__, "MyEnginePlugin2")
+
+        e = create_engine(
+            "sqlite:///?plugin=engineplugin1&foo=bar&myplugin1_arg=bat"
+            "&plugin=engineplugin2&myplugin2_arg=hoho",
+            logging_name='foob')
+        eq_(e.dialect.name, "sqlite")
+        eq_(e.logging_name, "bar")
+
+        # plugin args are removed from URL.
+        eq_(
+            e.url.query,
+            {"foo": "bar"}
+        )
+        assert isinstance(e.dialect, sqlite.dialect)
+
+        eq_(
+            MyEnginePlugin1.mock_calls,
+            [
+                call(url.make_url("sqlite:///?foo=bar"), {}),
+                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
+                call.engine_created(e)
+            ]
+        )
+
+        eq_(
+            MyEnginePlugin2.mock_calls,
+            [
+                call(url.make_url("sqlite:///?foo=bar"), {}),
+                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
+                call.engine_created(e)
+            ]
+        )
+
+    @testing.requires.sqlite
+    def test_plugin_arg_registration(self):
+        from sqlalchemy.dialects import sqlite
+
+        global MyEnginePlugin
+
+        def side_effect(url, kw):
+            eq_(
+                kw,
+                {"logging_name": "foob", 'plugins': ['engineplugin'],
+                 'myplugin_arg': 'bat'}
+            )
+            kw['logging_name'] = 'bar'
+            kw.pop('myplugin_arg', None)
+            return MyEnginePlugin
+
+        MyEnginePlugin = Mock(side_effect=side_effect)
+
+        plugins.register("engineplugin", __name__, "MyEnginePlugin")
+
+        e = create_engine(
+            "sqlite:///?foo=bar",
+            logging_name='foob', plugins=["engineplugin"], myplugin_arg="bat")
+        eq_(e.dialect.name, "sqlite")
+        eq_(e.logging_name, "bar")
+
+        assert isinstance(e.dialect, sqlite.dialect)
+
+        eq_(
+            MyEnginePlugin.mock_calls,
+            [
+                call(url.make_url("sqlite:///?foo=bar"), {}),
+                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
+                call.engine_created(e)
+            ]
         )
 
 

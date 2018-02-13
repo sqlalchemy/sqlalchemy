@@ -398,6 +398,11 @@ def create_engine(*args, **kwargs):
         up on getting a connection from the pool. This is only used
         with :class:`~sqlalchemy.pool.QueuePool`.
 
+    :param plugins: string list of plugin names to load.  See
+        :class:`.CreateEnginePlugin` for background.
+
+        .. versionadded:: 1.2.3
+
     :param strategy='plain': selects alternate engine implementations.
         Currently available are:
 

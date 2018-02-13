@@ -844,6 +844,16 @@ class CreateEnginePlugin(object):
         engine = create_engine(
           "mysql+pymysql://scott:tiger@localhost/test?plugin=myplugin")
 
+    Alternatively, the :paramref:`.create_engine.plugins" argument may be
+    passed as a list to :func:`.create_engine`::
+
+        engine = create_engine(
+          "mysql+pymysql://scott:tiger@localhost/test",
+          plugins=["myplugin"])
+
+    .. versionadded:: 1.2.3  plugin names can also be specified
+       to :func:`.create_engine` as a list
+
     The ``plugin`` argument supports multiple instances, so that a URL
     may specify multiple plugins; they are loaded in the order stated
     in the URL::

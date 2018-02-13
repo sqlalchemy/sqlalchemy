@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 4170
+
+    The :class:`.URL` object now allows query keys to be specified multiple
+    times where their values will be joined into a list.  This is to support
+    the plugins feature documented at :class:`.CreateEnginePlugin` which
+    documents that "plugin" can be passed multiple times. Additionally, the
+    plugin names can be passed to :func:`.create_engine` outside of the URL
+    using the new :paramref:`.create_engine.plugins` parameter.
