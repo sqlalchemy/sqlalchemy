@@ -268,7 +268,7 @@ unconditionally at the end.
 
 Some web frameworks include infrastructure to assist in the task
 of aligning the lifespan of a :class:`.Session` with that of a web request.
-This includes products such as `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy/>`_,
+This includes products such as `Flask-SQLAlchemy <http://flask-sqlalchemy.pocoo.org>`_,
 for usage in conjunction with the Flask web framework,
 and `Zope-SQLAlchemy <http://pypi.python.org/pypi/zope.sqlalchemy>`_,
 typically used with the Pyramid framework.
