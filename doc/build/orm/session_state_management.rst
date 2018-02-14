@@ -350,7 +350,7 @@ Another example of unexpected state::
 
     >>> a1 = Address(id=existing_a1.id, user_id=u1.id)
     >>> assert a1.user is None
-    >>> True
+    True
     >>> a1 = session.merge(a1)
     >>> session.commit()
     sqlalchemy.exc.IntegrityError: (IntegrityError) address.user_id
