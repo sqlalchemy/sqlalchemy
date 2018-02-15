@@ -10,6 +10,8 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.orm import attributes
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.testing import mock
 
 
 class Employee(object):
@@ -216,6 +218,73 @@ class ConcreteTest(fixtures.MappedTest):
                     "Hacker Kurt 'Badass' knows how to hack"])
         assert set([repr(x) for x in session.query(Hacker).all()]) \
             == set(["Hacker Kurt 'Badass' knows how to hack"])
+
+    def test_multi_level_no_base_w_hybrid(self):
+        pjoin = polymorphic_union(
+            {'manager': managers_table, 'engineer': engineers_table,
+             'hacker': hackers_table},
+            'type', 'pjoin')
+
+        test_calls = mock.Mock()
+
+        class ManagerWHybrid(Employee):
+
+            def __init__(self, name, manager_data):
+                self.name = name
+                self.manager_data = manager_data
+
+            @hybrid_property
+            def engineer_info(self):
+                test_calls.engineer_info_instance()
+                return self.manager_data
+
+            @engineer_info.expression
+            def engineer_info(cls):
+                test_calls.engineer_info_class()
+                return cls.manager_data
+
+        employee_mapper = mapper(Employee, pjoin,
+                                 polymorphic_on=pjoin.c.type)
+        mapper(
+            ManagerWHybrid, managers_table,
+            inherits=employee_mapper,
+            concrete=True,
+            polymorphic_identity='manager')
+        mapper(
+            Engineer,
+            engineers_table,
+            inherits=employee_mapper,
+            concrete=True,
+            polymorphic_identity='engineer')
+
+        session = create_session()
+        tom = ManagerWHybrid('Tom', 'mgrdata')
+
+        # mapping did not impact the engineer_info
+        # hybrid in any way
+        eq_(test_calls.mock_calls, [])
+
+        eq_(
+            tom.engineer_info, "mgrdata"
+        )
+        eq_(test_calls.mock_calls, [mock.call.engineer_info_instance()])
+
+        session.add(tom)
+        session.flush()
+
+        session.close()
+
+        tom = session.query(ManagerWHybrid).filter(
+            ManagerWHybrid.engineer_info == 'mgrdata').one()
+        eq_(
+            test_calls.mock_calls,
+            [
+                mock.call.engineer_info_instance(),
+                mock.call.engineer_info_class()]
+        )
+        eq_(
+            tom.engineer_info, "mgrdata"
+        )
 
     def test_multi_level_with_base(self):
         pjoin = polymorphic_union({

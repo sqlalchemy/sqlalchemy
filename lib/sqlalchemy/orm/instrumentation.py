@@ -168,6 +168,15 @@ class ClassManager(dict):
                 if isinstance(val, interfaces.InspectionAttr):
                     yield key, val
 
+    def _get_class_attr_mro(self, key, default=None):
+        """return an attribute on the class without tripping it."""
+
+        for supercls in self.class_.__mro__:
+            if key in supercls.__dict__:
+                return supercls.__dict__[key]
+        else:
+            return default
+
     def _attr_has_impl(self, key):
         """Return True if the given attribute is fully initialized.
 
