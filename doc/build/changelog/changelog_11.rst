@@ -19,7 +19,101 @@
 
 .. changelog::
     :version: 1.1.16
-    :include_notes_from: unreleased_11
+    :released: February 16, 2018
+
+    .. change::
+        :tags: bug, postgresql
+        :versions: 1.2.3
+
+        Added "SSL SYSCALL error: Operation timed out" to the list
+        of messages that trigger a "disconnect" scenario for the
+        psycopg2 driver.  Pull request courtesy André Cruz.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4187
+        :versions: 1.2.3
+
+        Fixed issue in post_update feature where an UPDATE is emitted
+        when the parent object has been deleted but the dependent object
+        is not.   This issue has existed for a long time however
+        since 1.2 now asserts rows matched for post_update, this
+        was raising an error.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4136
+        :versions: 1.2.0b4
+
+        Fixed bug where the MySQL "concat" and "match" operators failed to
+        propagate kwargs to the left and right expressions, causing compiler
+        options such as "literal_binds" to fail.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 1.2.0b4
+
+        Added :func:`.nullsfirst` and :func:`.nullslast` as top level imports
+        in the ``sqlalchemy.`` and ``sqlalchemy.sql.`` namespace.  Pull request
+        courtesy Lele Gaifax.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4185
+        :versions: 1.2.3
+
+        Fixed regression caused by fix for issue :ticket:`4116` affecting versions
+        1.2.2 as well as 1.1.15, which had the effect of mis-calculation of the
+        "owning class" of an :class:`.AssociationProxy` as the ``NoneType`` class
+        in some declarative mixin/inheritance situations as well as if the
+        association proxy were accessed off of an un-mapped class.  The "figure out
+        the owner" logic has been replaced by an in-depth routine that searches
+        through the complete mapper hierarchy assigned to the class or subclass to
+        determine the correct (we hope) match; will not assign the owner if no
+        match is found.  An exception is now raised if the proxy is used
+        against an un-mapped instance.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4162
+        :versions: 1.2.1
+
+        Fixed bug in :meth:`.Insert.values` where using the "multi-values"
+        format in combination with :class:`.Column` objects as keys rather
+        than strings would fail.   Pull request courtesy Aubrey Stark-Toller.
+
+    .. change::
+        :tags: bug, postgresql
+
+        Added "TRUNCATE" to the list of keywords accepted by the
+        Postgresql dialect as an "autocommit"-triggering keyword.
+        Pull request courtesy Jacob Hayes.
+
+    .. change::
+        :tags: bug, pool
+        :tickets: 4184
+
+        Fixed a fairly serious connection pool bug where a connection that is
+        acquired after being refreshed as a result of a user-defined
+        :class:`.DisconnectionError` or due to the 1.2-released "pre_ping" feature
+        would not be correctly reset if the connection were returned to the pool by
+        weakref cleanup (e.g. the front-facing object is garbage collected); the
+        weakref would still refer to the previously invalidated DBAPI connection
+        which would have the reset operation erroneously called upon it instead.
+        This would lead to stack traces in the logs and a connection being checked
+        into the pool without being reset, which can cause locking issues.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4151
+        :versions: 1.2.1
+
+        Fixed bug where an object that is expunged during a rollback of
+        a nested or subtransaction which also had its primary key mutated
+        would not be correctly removed from the session, causing subsequent
+        issues in using the session.
 
 .. changelog::
     :version: 1.1.15
