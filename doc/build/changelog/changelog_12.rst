@@ -11,6 +11,10 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.2.4
+    :include_notes_from: unreleased_12
+
+.. changelog::
     :version: 1.2.3
     :released: February 16, 2018
 
