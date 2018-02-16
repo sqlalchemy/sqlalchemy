@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4180
-
-    Fixed bug where the :class:`.Enum` type wouldn't handle
-    enum "aliases" correctly, when more than one key refers to the
-    same value.  Pull request courtesy Daniel Knell.
-

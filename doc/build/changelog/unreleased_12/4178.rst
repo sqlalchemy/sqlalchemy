@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4178
-
-    Fixed bug where the :func:`.orm.reconstructor` event
-    helper would not be recognized if it were applied to the
-    ``__init__()`` method of the mapped class.

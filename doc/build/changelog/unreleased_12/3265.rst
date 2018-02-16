@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, tests
-    :tickets: 3265
-
-    A test added in 1.2 thought to confirm a Python 2.7 behavior turns out to
-    be confirming the behavior only as of Python 2.7.8. Python bug #8743 still
-    impacts set comparison in Python 2.7.7 and earlier, so the test in question
-    involving AssociationSet no longer runs for these older Python 2.7
-    versions.

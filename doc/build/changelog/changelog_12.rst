@@ -12,7 +12,125 @@
 
 .. changelog::
     :version: 1.2.3
-    :include_notes_from: unreleased_12
+    :released: February 16, 2018
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4182
+
+        Fixed bug in cx_Oracle disconnect detection, used by pre_ping and other
+        features, where an error could be raised as DatabaseError which includes a
+        numeric error code; previously we weren't checking in this case for a
+        disconnect code.
+
+    .. change::
+        :tags: bug, sqlite
+
+        Fixed the import error raised when a platform
+        has neither pysqlite2 nor sqlite3 installed, such
+        that the sqlite3-related import error is raised,
+        not the pysqlite2 one which is not the actual
+        failure mode.  Pull request courtesy Robin.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4175
+
+        Fixed bug where the :class:`.Bundle` object did not
+        correctly report upon the primary :class:`.Mapper` object
+        represened by the bundle, if any.   An immediate
+        side effect of this issue was that the new selectinload
+        loader strategy wouldn't work with the horizontal sharding
+        extension.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4180
+
+        Fixed bug where the :class:`.Enum` type wouldn't handle
+        enum "aliases" correctly, when more than one key refers to the
+        same value.  Pull request courtesy Daniel Knell.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4181
+
+        Fixed bug where events associated with an :class:`Engine`
+        at the class level would be doubled when the
+        :meth:`.Engine.execution_options` method were used.  To
+        achieve this, the semi-private class :class:`.OptionEngine`
+        no longer accepts events directly at the class level
+        and will raise an error; the class only propagates class-level
+        events from its parent :class:`.Engine`.   Instance-level
+        events continue to work as before.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 3265
+
+        A test added in 1.2 thought to confirm a Python 2.7 behavior turns out to
+        be confirming the behavior only as of Python 2.7.8. Python bug #8743 still
+        impacts set comparison in Python 2.7.7 and earlier, so the test in question
+        involving AssociationSet no longer runs for these older Python 2.7
+        versions.
+
+    .. change::
+        :tags: feature, oracle
+
+        The ON DELETE options for foreign keys are now part of
+        Oracle reflection.  Oracle does not support ON UPDATE
+        cascades.  Pull request courtesy Miroslav Shubernetskiy.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4188
+
+        Fixed bug in concrete inheritance mapping where user-defined
+        attributes such as hybrid properties that mirror the names
+        of mapped attributes from sibling classes would be overwritten by
+        the mapper as non-accessible at the instance level.   Additionally
+        ensured that user-bound descriptors are not implicitly invoked at the class
+        level during the mapper configuration stage.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4178
+
+        Fixed bug where the :func:`.orm.reconstructor` event
+        helper would not be recognized if it were applied to the
+        ``__init__()`` method of the mapped class.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4170
+
+        The :class:`.URL` object now allows query keys to be specified multiple
+        times where their values will be joined into a list.  This is to support
+        the plugins feature documented at :class:`.CreateEnginePlugin` which
+        documents that "plugin" can be passed multiple times. Additionally, the
+        plugin names can be passed to :func:`.create_engine` outside of the URL
+        using the new :paramref:`.create_engine.plugins` parameter.
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3906
+
+        Added support for :class:`.Enum` to persist the values of the enumeration,
+        rather than the keys, when using a Python pep-435 style enumerated object.
+        The user supplies a callable function that will return the string values to
+        be persisted.  This allows enumerations against non-string values to be
+        value-persistable as well.  Pull request courtesy Jon Snyder.
+
+    .. change::
+        :tags: feature, orm
+
+        Added new argument :paramref:`.attributes.set_attribute.inititator`
+        to the :func:`.attributes.set_attribute` function, allowing an
+        event token received from a listener function to be propagated
+        to subsequent set events.
 
 .. changelog::
     :version: 1.2.2

@@ -1,9 +1,0 @@
-.. change::
-    :tags: feature, sql
-    :tickets: 3906
-
-    Added support for :class:`.Enum` to persist the values of the enumeration,
-    rather than the keys, when using a Python pep-435 style enumerated object.
-    The user supplies a callable function that will return the string values to
-    be persisted.  This allows enumerations against non-string values to be
-    value-persistable as well.  Pull request courtesy Jon Snyder.
