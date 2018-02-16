@@ -89,6 +89,7 @@
 
     .. change::
         :tags: bug, postgresql
+        :versions: 1.2.3
 
         Added "TRUNCATE" to the list of keywords accepted by the
         Postgresql dialect as an "autocommit"-triggering keyword.
@@ -97,6 +98,7 @@
     .. change::
         :tags: bug, pool
         :tickets: 4184
+        :versions: 1.2.3
 
         Fixed a fairly serious connection pool bug where a connection that is
         acquired after being refreshed as a result of a user-defined
