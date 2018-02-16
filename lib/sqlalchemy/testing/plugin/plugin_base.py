@@ -554,24 +554,20 @@ def _do_skips(cls):
                 )
 
     if not all_configs:
-        if getattr(cls, '__backend__', False):
-            msg = "'%s' unsupported for implementation '%s'" % (
-                cls.__name__, cls.__only_on__)
-        else:
-            msg = "'%s' unsupported on any DB implementation %s%s" % (
-                cls.__name__,
-                ", ".join(
-                    "'%s(%s)+%s'" % (
-                        config_obj.db.name,
-                        ".".join(
-                            str(dig) for dig in
-                            config_obj.db.dialect.server_version_info),
-                        config_obj.db.driver
-                    )
-                  for config_obj in config.Config.all_configs()
-                ),
-                ", ".join(reasons)
-            )
+        msg = "'%s' unsupported on any DB implementation %s%s" % (
+            cls.__name__,
+            ", ".join(
+                "'%s(%s)+%s'" % (
+                    config_obj.db.name,
+                    ".".join(
+                        str(dig) for dig in
+                        config_obj.db.dialect.server_version_info),
+                    config_obj.db.driver
+                )
+              for config_obj in config.Config.all_configs()
+            ),
+            ", ".join(reasons)
+        )
         config.skip_test(msg)
     elif hasattr(cls, '__prefer_backends__'):
         non_preferred = set()
