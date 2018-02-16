@@ -1613,10 +1613,23 @@ class Mapper(InspectionAttr):
         if not self.concrete:
             self._configure_property(key, prop, init=False, setparent=False)
         elif key not in self._props:
-            self._configure_property(
-                key,
-                properties.ConcreteInheritedProperty(),
-                init=init, setparent=True)
+            # determine if the class implements this attribute; if not,
+            # or if it is implemented by the attribute that is handling the
+            # given superclass-mapped property, then we need to report that we
+            # can't use this at the instance level since we are a concrete
+            # mapper and we don't map this.  don't trip user-defined
+            # descriptors that might have side effects when invoked.
+            implementing_attribute = self.class_manager._get_class_attr_mro(
+                key, prop)
+            if implementing_attribute is prop or (isinstance(
+                    implementing_attribute,
+                    attributes.InstrumentedAttribute) and
+                implementing_attribute._parententity is prop.parent
+            ):
+                self._configure_property(
+                    key,
+                    properties.ConcreteInheritedProperty(),
+                    init=init, setparent=True)
 
     def _configure_property(self, key, prop, init=True, setparent=True):
         self._log("_configure_property(%s, %s)", key, prop.__class__.__name__)
@@ -2413,9 +2426,8 @@ class Mapper(InspectionAttr):
                     self.class_.__dict__[assigned_name]):
                 return True
         else:
-            if getattr(self.class_, assigned_name, None) is not None \
-                    and self._is_userland_descriptor(
-                    getattr(self.class_, assigned_name)):
+            attr = self.class_manager._get_class_attr_mro(assigned_name, None)
+            if attr is not None and self._is_userland_descriptor(attr):
                 return True
 
         if self.include_properties is not None and \
