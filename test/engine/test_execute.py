@@ -1399,6 +1399,15 @@ class EngineEventsTest(fixtures.TestBase):
 
         eq_(canary, ["l1", "l2", "l3", "l4", "l1", "l2", "l3"])
 
+        canary[:] = []
+
+        event.remove(Engine, "before_execute", l1)
+        event.remove(eng1, "before_execute", l4)
+        event.remove(eng, "before_execute", l3)
+
+        eng1.execute(select([1])).close()
+        eq_(canary, ["l2"])
+
     @testing.requires.ad_hoc_engines
     def test_cant_listen_to_option_engine(self):
         from sqlalchemy.engine import base
