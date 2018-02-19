@@ -54,6 +54,9 @@ class _empty_collection(object):
     def extend(self, other):
         pass
 
+    def remove(self, element):
+        pass
+
     def __iter__(self):
         return iter([])
 

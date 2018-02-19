@@ -1033,6 +1033,64 @@ class JoinTest(fixtures.TestBase):
         )
 
 
+class DisableClsPropagateTest(fixtures.TestBase):
+
+    def setUp(self):
+        class TargetEvents(event.Events):
+            def event_one(self, target, arg):
+                pass
+
+        class BaseTarget(object):
+            dispatch = event.dispatcher(TargetEvents)
+
+        class SubTarget(BaseTarget):
+            _sa_propagate_class_events = False
+
+            def __init__(self, parent):
+                self.dispatch = self.dispatch._join(parent.dispatch)
+
+        self.BaseTarget = BaseTarget
+        self.SubTarget = SubTarget
+
+    def tearDown(self):
+        for cls in (self.SubTarget, self.BaseTarget):
+            if 'dispatch' in cls.__dict__:
+                event.base._remove_dispatcher(cls.__dict__['dispatch'].events)
+
+    def test_listen_invoke_clslevel(self):
+        canary = Mock()
+
+        event.listen(self.BaseTarget, "event_one", canary)
+
+        s1 = self.SubTarget(self.BaseTarget())
+        s1.dispatch.event_one()
+
+        eq_(canary.mock_calls, [call.event_one()])
+
+    def test_insert_invoke_clslevel(self):
+        canary = Mock()
+
+        event.listen(self.BaseTarget, "event_one", canary, insert=True)
+
+        s1 = self.SubTarget(self.BaseTarget())
+        s1.dispatch.event_one()
+
+        eq_(canary.mock_calls, [call.event_one()])
+
+    def test_remove_invoke_clslevel(self):
+        canary = Mock()
+
+        event.listen(self.BaseTarget, "event_one", canary)
+
+        s1 = self.SubTarget(self.BaseTarget())
+
+        event.remove(self.BaseTarget, "event_one", canary)
+
+        s1.dispatch.event_one()
+
+        eq_(canary.mock_calls, [])
+
+
 class RemovalTest(fixtures.TestBase):
     def _fixture(self):
         class TargetEvents(event.Events):

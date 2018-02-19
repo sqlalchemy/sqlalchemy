@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 4190
+
+    Fixed regression caused in 1.2.3 due to fix from :ticket:`4181` where
+    the changes to the event system involving :class:`.Engine` and
+    :class:`.OptionEngine` did not accommodate for event removals, which
+    would raise an ``AttributeError`` when invoked at the class
+    level.
