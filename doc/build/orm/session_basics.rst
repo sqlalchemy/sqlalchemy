@@ -561,14 +561,46 @@ into the Session's list of objects to be marked as deleted::
 
 .. _session_deleting_from_collections:
 
-Deleting from Collections
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Deleting Objects Referenced from Collections and Scalar Relationships
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A common confusion that arises regarding :meth:`~.Session.delete` is when
-objects which are members of a collection are being deleted.   While the
-collection member is marked for deletion from the database, this does not
-impact the collection itself in memory until the collection is expired.
-Below, we illustrate that even after an ``Address`` object is marked
+The ORM in general never modifies the contents of a collection or scalar
+relationship during the flush process.  This means, if your class has a
+:func:`.relationship` that refers to a collection of objects, or a reference
+to a single object such as many-to-one, the contents of this attribute will
+not be modified when the flush process occurs.  Instead, if the :class:`.Session`
+is expired afterwards, either through the expire-on-commit behavior of
+:meth:`.Session.commit` or through explicit use of :meth:`.Session.expire`,
+the referenced object or collection upon a given object associated with that
+:class:`.Session` will be cleared and will re-load itself upon next access.
+
+This behavior is not to be confused with the flush process' impact on column-
+bound attributes that refer to foreign key and primary key columns; these
+attributes are modified liberally within the flush, since these are the
+attributes that the flush process intends to manage.  Nor should it be confused
+with the behavior of backreferences, as described at
+:ref:`relationships_backref`; a backreference event will modify a collection
+or scalar attribute reference, however this behavior takes place during
+direct manipulation of related collections and object references, which is
+explicit within the calling application and is outside of the flush process.
+
+A common confusion that arises regarding this behavior involves the use of the
+:meth:`~.Session.delete` method.   When :meth:`.Session.delete` is invoked upon
+an object and the :class:`.Session` is flushed, the row is deleted from the
+database.  Rows that refer to the target row via  foreign key, assuming they
+are tracked using a :func:`.relationship` between the two mapped object types,
+will also see their foreign key attributes UPDATED to null, or if delete
+cascade is set up, the related rows will be deleted as well. However, even
+though rows related to the deleted object might be themselves modified as well,
+**no changes occur to relationship-bound collections or object references on
+the objects** involved in the operation within the scope of the flush
+itself.   This means if the object was a
+member of a related collection, it will still be present on the Python side
+until that collection is expired.  Similarly, if the object were
+referenced via many-to-one or one-to-one from another object, that reference
+will remain present on that object until the object is expired as well.
+
+Below, we illustrate that after an ``Address`` object is marked
 for deletion, it's still present in the collection associated with the
 parent ``User``, even after a flush::
 
@@ -592,15 +624,43 @@ automatically invoke the deletion as a result of removing the object from
 the parent collection.  The ``delete-orphan`` cascade accomplishes this,
 as illustrated in the example below::
 
-    mapper(User, users_table, properties={
-        'addresses':relationship(Address, cascade="all, delete, delete-orphan")
-    })
+    class User(Base):
+        __tablename__ = 'user'
+
+        # ...
+
+        addresses = relationship(
+            "Address", cascade="all, delete, delete-orphan")
+
+    # ...
+
     del user.addresses[1]
     session.flush()
 
 Where above, upon removing the ``Address`` object from the ``User.addresses``
 collection, the ``delete-orphan`` cascade has the effect of marking the ``Address``
 object for deletion in the same way as passing it to :meth:`~.Session.delete`.
+
+The ``delete-orphan`` cascade can also be applied to a many-to-one
+or one-to-one relationship, so that when an object is de-associated from its
+parent, it is also automatically marked for deletion.   Using ``delete-orphan``
+cascade on a many-to-one or one-to-one requires an additional flag
+:paramref:`.relationship.single_parent` which invokes an assertion
+that this related object is not to shared with any other parent simultaneously::
+
+    class User(Base):
+        # ...
+
+        preference = relationship(
+            "Preference", cascade="all, delete, delete-orphan",
+            single_parent=True)
+
+
+Above, if a hypothetical ``Preference`` object is removed from a ``User``,
+it will be deleted on flush::
+
+    some_user.preference = None
+    session.flush()  # will delete the Preference object
 
 See also :ref:`unitofwork_cascades` for detail on cascades.
 
