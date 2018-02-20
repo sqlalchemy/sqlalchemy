@@ -271,7 +271,12 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
         # note we can get our real .key here too
         owner = insp.mapper.class_manager._locate_owning_manager(self)
-        self.owning_class = owner.class_
+        if owner is not None:
+            self.owning_class = owner.class_
+        else:
+            # the proxy is attached to a class that is not mapped
+            # (like a mixin), we are mapped, so, it's us.
+            self.owning_class = target_cls
 
     def __get__(self, obj, class_):
         if self.owning_class is None:

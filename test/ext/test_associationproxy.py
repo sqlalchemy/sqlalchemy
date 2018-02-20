@@ -2044,6 +2044,33 @@ class AttributeAccessTest(fixtures.TestBase):
         sp.children = 'c'
         is_(SubParent.children.owning_class, Parent)
 
+    def test_resolved_to_correct_class_five(self):
+        Base = declarative_base()
+
+        class Mixin(object):
+            children = association_proxy('_children', 'value')
+
+        class Parent(Mixin, Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            _children = relationship("Child")
+
+        class Child(Base):
+            __tablename__ = 'child'
+            parent_id = Column(
+                Integer, ForeignKey(Parent.id), primary_key=True)
+            value = Column(String)
+
+        # this triggers the owning routine, doesn't fail
+        Mixin.children
+
+        p1 = Parent()
+
+        c1 = Child(value='c1')
+        p1._children.append(c1)
+        is_(Parent.children.owning_class, Parent)
+        eq_(p1.children, ["c1"])
+
     def test_never_assign_nonetype(self):
         foo = association_proxy('x', 'y')
         foo._calc_owner(None, None)
