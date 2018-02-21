@@ -1127,7 +1127,8 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
         else:
             mapper.dispatch.after_update(mapper, connection, state)
 
-        if mapper.version_id_col is not None:
+        if mapper.version_id_generator is False and \
+                mapper.version_id_col is not None:
             if state_dict[mapper._version_id_prop.key] is None:
                 raise orm_exc.FlushError(
                     "Instance does not contain a non-NULL version value")

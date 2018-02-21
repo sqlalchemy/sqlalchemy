@@ -1642,3 +1642,86 @@ class ManualInheritanceVersionTest(fixtures.MappedTest):
         sess.commit()
 
         eq_(b1.vid, 2)
+
+
+class VersioningMappedSelectTest(fixtures.MappedTest):
+    # test for #4193, see also #4194 for related notes
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('version_table', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('version_id', Integer, nullable=False),
+              Column('value', String(40), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+
+    def _implicit_version_fixture(self):
+        Foo, version_table = self.classes.Foo, self.tables.version_table
+
+        current = version_table.select().\
+            where(version_table.c.id > 0).alias('current_table')
+
+        mapper(Foo, current, version_id_col=version_table.c.version_id)
+        s1 = Session()
+        return s1
+
+    def _explicit_version_fixture(self):
+        Foo, version_table = self.classes.Foo, self.tables.version_table
+
+        current = version_table.select().\
+            where(version_table.c.id > 0).alias('current_table')
+
+        mapper(Foo, current,
+               version_id_col=version_table.c.version_id,
+               version_id_generator=False)
+        s1 = Session()
+        return s1
+
+    @testing.emits_warning(r".*versioning cannot be verified")
+    def test_implicit(self):
+        Foo = self.classes.Foo
+
+        s1 = self._implicit_version_fixture()
+        f1 = Foo(value='f1')
+        f2 = Foo(value='f2')
+        s1.add_all((f1, f2))
+        s1.commit()
+
+        f1.value = 'f1rev2'
+        f2.value = 'f2rev2'
+        s1.commit()
+
+        eq_(
+            s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
+            [(f1.id, 'f1rev2', 2), (f2.id, 'f2rev2', 2)]
+        )
+
+    @testing.emits_warning(r".*versioning cannot be verified")
+    def test_explicit(self):
+        Foo = self.classes.Foo
+
+        s1 = self._explicit_version_fixture()
+        f1 = Foo(value='f1', version_id=1)
+        f2 = Foo(value='f2', version_id=1)
+        s1.add_all((f1, f2))
+        s1.flush()
+
+        # note this requires that the Session was not expired until
+        # we fix #4195
+        f1.value = 'f1rev2'
+        f1.version_id = 2
+        f2.value = 'f2rev2'
+        f2.version_id = 2
+        s1.flush()
+
+        eq_(
+            s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
+            [(f1.id, 'f1rev2', 2), (f2.id, 'f2rev2', 2)]
+        )
