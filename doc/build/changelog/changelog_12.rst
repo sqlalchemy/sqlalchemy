@@ -12,7 +12,34 @@
 
 .. changelog::
     :version: 1.2.4
-    :include_notes_from: unreleased_12
+    :released: February 22, 2018
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4193
+
+        Fixed 1.2 regression in ORM versioning feature where a mapping against a
+        :func:`.select` or :func:`.alias` that also used a versioning column
+        against the underlying table would fail due to the check added as part of
+        :ticket:`3673`.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4190
+
+        Fixed regression caused in 1.2.3 due to fix from :ticket:`4181` where
+        the changes to the event system involving :class:`.Engine` and
+        :class:`.OptionEngine` did not accommodate for event removals, which
+        would raise an ``AttributeError`` when invoked at the class
+        level.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4197
+
+        Fixed bug where CTE expressions would not have their name or alias name
+        quoted when the given name is case sensitive or otherwise requires quoting.
+        Pull request courtesy Eric Atkin.
 
 .. changelog::
     :version: 1.2.3

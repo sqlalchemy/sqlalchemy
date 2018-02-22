@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4193
-
-    Fixed 1.2 regression in ORM versioning feature where a mapping against a
-    :func:`.select` or :func:`.alias` that also used a versioning column
-    against the underlying table would fail due to the check added as part of
-    :ticket:`3673`.
