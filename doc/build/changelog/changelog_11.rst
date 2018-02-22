@@ -19,7 +19,17 @@
 
 .. changelog::
     :version: 1.1.17
-    :include_notes_from: unreleased_11
+    :released: February 22, 2018
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 4185
+
+        Repaired regression caused in 1.2.3 and 1.1.16 regarding association proxy
+        objects, revising the approach to :ticket:`4185` when calculating the
+        "owning class" of an association proxy to default to choosing the current
+        class if the proxy object is not directly associated with a mapped class,
+        such as a mixin.
 
 .. changelog::
     :version: 1.1.16
