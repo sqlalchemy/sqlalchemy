@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4197
+
+    Fixed bug where CTE expressions would not have their name or alias name
+    quoted when the given name is case sensitive or otherwise requires quoting.
+    Pull request courtesy Eric Atkin.

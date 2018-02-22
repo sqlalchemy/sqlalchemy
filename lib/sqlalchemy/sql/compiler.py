@@ -1427,6 +1427,8 @@ class SQLCompiler(Compiled):
         if asfrom:
             if cte_alias_name:
                 text = self.preparer.format_alias(cte, cte_alias_name)
+                if self.preparer._requires_quotes(cte_name):
+                    cte_name = self.preparer.quote(cte_name)
                 text += self.get_render_as_alias_suffix(cte_name)
             else:
                 return self.preparer.format_alias(cte, cte_name)
