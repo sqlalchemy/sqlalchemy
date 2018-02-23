@@ -766,7 +766,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 compiled_params.update(to_update)
                 processors.update(
                     (key, processors[name])
-                    for key in to_update if name in processors
+                    for key, value in to_update if name in processors
                 )
                 if compiled.positional:
                     positiontup.extend(name for name, value in to_update)
