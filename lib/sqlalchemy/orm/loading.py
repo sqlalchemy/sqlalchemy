@@ -755,8 +755,8 @@ class PostLoad(object):
                 in self.states.items()
                 if state.manager.mapper.isa(limit_to_mapper)
             ]
-            loader(
-                context, path, states, self.load_keys, *arg, **kw)
+            if states:
+                loader(context, path, states, self.load_keys, *arg, **kw)
         self.states.clear()
 
     @classmethod

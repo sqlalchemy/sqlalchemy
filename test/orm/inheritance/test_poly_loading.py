@@ -468,3 +468,32 @@ class TestGeometries(GeometryFixtureBase):
                 result,
                 [d(d_data="d1"), e(e_data="e1")]
             )
+
+    def test_partial_load_no_invoke_eagers(self):
+        # test issue #4199
+
+        self._fixture_from_geometry({
+            "a": {
+                "subclasses": {
+                    "a1": {"polymorphic_load": "selectin"},
+                    "a2": {"polymorphic_load": "selectin"}
+                }
+            }
+        })
+
+        a, a1, a2 = self.classes("a", "a1", "a2")
+        sess = Session()
+
+        a1_obj = a1()
+        a2_obj = a2()
+        sess.add_all([a1_obj, a2_obj])
+
+        del a2_obj
+        sess.flush()
+        sess.expire_all()
+
+        # _with_invoke_all_eagers(False), used by the lazy loader
+        # strategy, will cause one less state to be present such that
+        # the poly loader won't locate a state limited to the "a1" mapper,
+        # needs to test that it has states
+        sess.query(a)._with_invoke_all_eagers(False).all()
