@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4128
+
+    Fixed a long-standing regression that occurred in version
+    1.0, which prevented the use of a custom :class:`.MapperOption`
+    that alters the _params of a :class:`.Query` object for a
+    lazy load, since the lazy loader itself would overwrite those
+    parameters.   This applies to the "temporal range" example
+    on the wiki.  Note however that the
+    :meth:`.Query.populate_existing` method is now required in
+    order to rewrite the mapper options associated with an object
+    already loaded in the identity map.  Also, a custom defined
+    :class:`.MapperOption` will now cause lazy loaders related to
+    the target object to use a non-baked query by default unless
+    the :meth:`.MapperOption._generate_cache_key` method is implemented.
