@@ -4,6 +4,7 @@ from sqlalchemy.testing import assert_raises
 import datetime
 from sqlalchemy.orm import attributes, exc as orm_exc, configure_mappers
 import sqlalchemy as sa
+from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy import testing, and_, bindparam
 from sqlalchemy import Integer, String, ForeignKey, SmallInteger, Boolean
 from sqlalchemy import ForeignKeyConstraint
@@ -16,7 +17,7 @@ from sqlalchemy.testing import eq_, is_true, is_false
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
-
+from sqlalchemy.testing import mock
 
 class LazyTest(_fixtures.FixtureTest):
     run_inserts = 'once'
@@ -288,6 +289,59 @@ class LazyTest(_fixtures.FixtureTest):
 
         fred = s.query(User).filter_by(name='fred').one()
         eq_(fred.addresses, [])  # fred is missing
+
+    def test_custom_bind(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User)
+
+        mapper(User, users, properties=dict(
+            addresses=relationship(
+                mapper(Address, addresses),
+                lazy='select',
+                primaryjoin=and_(
+                    users.c.id == addresses.c.user_id,
+                    users.c.name == bindparam("name")
+                )
+            )
+        ))
+
+        canary = mock.Mock()
+
+        class MyOption(MapperOption):
+            propagate_to_loaders = True
+
+            def __init__(self, crit):
+                self.crit = crit
+
+            def process_query_conditionally(self, query):
+                """process query during a lazyload"""
+                canary()
+                query._params = query._params.union(dict(name=self.crit))
+
+        s = Session()
+        ed = s.query(User).options(MyOption("ed")).filter_by(name='ed').one()
+        eq_(ed.addresses, [
+            Address(id=2, user_id=8),
+            Address(id=3, user_id=8),
+            Address(id=4, user_id=8)
+        ])
+        eq_(canary.mock_calls, [mock.call()])
+
+        fred = s.query(User).\
+            options(MyOption("ed")).filter_by(name='fred').one()
+        eq_(fred.addresses, [])  # fred is missing
+        eq_(canary.mock_calls, [mock.call(), mock.call()])
+
+        # the lazy query was not cached; the option is re-applied to the
+        # Fred object due to populate_existing()
+        fred = s.query(User).populate_existing().\
+            options(MyOption("fred")).filter_by(name='fred').one()
+        eq_(fred.addresses, [Address(id=5, user_id=9)])  # fred is there
+
+        eq_(canary.mock_calls, [mock.call(), mock.call(), mock.call()])
 
     def test_one_to_many_scalar(self):
         Address, addresses, users, User = (

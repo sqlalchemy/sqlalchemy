@@ -240,7 +240,8 @@ class BakedQuery(object):
                     baked_queries.append((k, bk._cache_key, v))
                 del context.attributes[k]
 
-    def _unbake_subquery_loaders(self, session, context, params):
+    def _unbake_subquery_loaders(
+            self, session, context, params, post_criteria):
         """Retrieve subquery eager loaders stored by _bake_subquery_loaders
         and turn them back into Result objects that will iterate just
         like a Query object.
@@ -250,7 +251,10 @@ class BakedQuery(object):
             bk = BakedQuery(self._bakery,
                             lambda sess, q=query: q.with_session(sess))
             bk._cache_key = cache_key
-            context.attributes[k] = bk.for_session(session).params(**params)
+            q = bk.for_session(session)
+            for fn in post_criteria:
+                q = fn(q)
+            context.attributes[k] = q.params(**params)
 
 
 class Result(object):
@@ -329,7 +333,8 @@ class Result(object):
         context.session = self.session
         context.attributes = context.attributes.copy()
 
-        bq._unbake_subquery_loaders(self.session, context, self._params)
+        bq._unbake_subquery_loaders(
+            self.session, context, self._params, self._post_criteria)
 
         context.statement.use_labels = True
         if context.autoflush and not context.populate_existing:
