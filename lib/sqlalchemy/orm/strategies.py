@@ -708,6 +708,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # caching, for example, since "some_alias" is user-defined and
             # is usually a throwaway object.
             effective_path = state.load_path[self.parent_property]
+
             q._add_lazyload_options(
                 state.load_options, effective_path
             )
@@ -753,7 +754,15 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             self._invoke_raise_load(state, passive, "raise_on_sql")
 
         q.add_criteria(lambda q: q.filter(lazy_clause))
-        result = q(session).params(**params).all()
+
+        # set parameters in the query such that we don't overwrite
+        # parameters that are already set within it
+        def set_default_params(q):
+            params.update(q._params)
+            q._params = params
+            return q
+
+        result = q(session).with_post_criteria(set_default_params).all()
         if self.uselist:
             return result
         else:
