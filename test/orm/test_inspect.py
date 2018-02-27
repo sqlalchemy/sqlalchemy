@@ -296,7 +296,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         )
         is_(
             insp.all_orm_descriptors.some_assoc,
-            SomeClass.some_assoc
+            SomeClass.some_assoc.parent
         )
         is_(
             inspect(SomeClass).all_orm_descriptors.upper_name,

@@ -76,6 +76,68 @@ to ``None``::
 
 :ticket:`4308`
 
+.. _change_3423:
+
+AssociationProxy stores class-specific state in a separate container
+--------------------------------------------------------------------
+
+The :class:`.AssociationProxy` object makes lots of decisions based on the
+parent mapped class it is associated with.   While the
+:class:`.AssociationProxy` historically began as a relatively simple "getter",
+it became apparent early on that it also needed to make decisions about what
+kind of attribute it is referring towards, e.g. scalar or collection, mapped
+object or simple value, and similar.  To achieve this, it needs to inspect the
+mapped attribute or other descriptor or attribute that it refers towards, as
+referenced from its parent class.   However in Python descriptor mechanics, a
+descriptor only learns about its "parent" class when it is accessed in the
+context of that class, such as calling ``MyClass.some_descriptor``, which calls
+the ``__get__()`` method which passes in the class.    The
+:class:`.AssociationProxy` object would therefore store state that is specific
+to that class, but only once this method were called; trying to inspect this
+state ahead of time without first accessing the :class:`.AssociationProxy`
+as a descriptor would raise an error.  Additionally, it would  assume that
+the first class to be seen by ``__get__()`` would be  the only parent class it
+needed to know about.  This is despite the fact that if a particular class
+has inheriting subclasses, the association proxy is really working
+on behalf of more than one parent class even though it was not explicitly
+re-used.  While even with this shortcoming, the association proxy would
+still get pretty far with its current behavior, it still leaves shortcomings
+in some cases as well as the complex problem of determining the best "owner"
+class.
+
+These problems are now solved in that :class:`.AssociationProxy` no longer
+modifies its own internal state when ``__get__()`` is called; instead, a new
+object is generated per-class known as :class:`.AssociationProxyInstance` which
+handles all the state specific to a particular mapped parent class (when the
+parent class is not mapped, no :class:`.AssociationProxyInstance` is generated).
+The concept of a single "owning class" for the association proxy, which was
+nonetheless improved in 1.1, has essentially been replaced with an approach
+where the AP now can treat any number of "owning" classes equally.
+
+To accommodate for applications that want to inspect this state for an
+:class:`.AssociationProxy` without necessarily calling ``__get__()``, a new
+method :meth:`.AssociationProxy.for_class` is added that provides direct access
+to a class-specific :class:`.AssociationProxyInstance`, demonstrated as::
+
+    class User(Base):
+        # ...
+
+        keywords = association_proxy('kws', 'keyword')
+
+
+    proxy_state = inspect(User).all_orm_descriptors["keywords"].for_class(User)
+
+Once we have the :class:`.AssociationProxyInstance` object, in the above
+example stored in the ``proxy_state`` variable, we can look at attributes
+specific to the ``User.keywords`` proxy, such as ``target_class``::
+
+
+    >>> proxy_state.target_class
+    Keyword
+
+
+:ticket:`3423`
+
 .. _change_4246:
 
 FOR UPDATE clause is rendered within the joined eager load subquery as well as outside

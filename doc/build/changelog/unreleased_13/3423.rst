@@ -1,0 +1,15 @@
+.. change::
+   :tags: bug, ext
+   :tickets: 3423
+
+   Reworked :class:`.AssociationProxy` to store state that's specific to a
+   parent class in a separate object, so that a single
+   :class:`.AssocationProxy` can serve for multiple parent classes, as is
+   intrinsic to inheritance, without any ambiguity in the state returned by it.
+   A new method :meth:`.AssociationProxy.for_class` is added to allow
+   inspection of class-specific state.
+
+   .. seealso::
+
+        :ref:`change_3423`
+
