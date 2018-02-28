@@ -87,6 +87,47 @@ and can't easily be generalized for more complex queries.
 
 :ticket:`4246`
 
+.. _change_3844
+
+passive_deletes='all' will leave FK unchanged for object removed from collection
+--------------------------------------------------------------------------------
+
+The :paramref:`.relationship.passive_deletes` option accepts the value
+``"all"`` to indicate that no foreign key attributes should be modified when
+the object is flushed, even if the relationship's collection / reference has
+been removed.   Previously, this did not take place for one-to-many, or
+one-to-one relationships, in the following situation::
+
+    class User(Base):
+        __tablename__ = 'users'
+
+        id = Column(Integer, primary_key=True)
+        addresses = relationship(
+            "Address",
+            passive_deletes="all")
+
+    class Address(Base):
+        __tablename__ = 'addresses'
+        id = Column(Integer, primary_key=True)
+        email = Column(String)
+
+        user_id = Column(Integer, ForeignKey('users.id'))
+        user = relationship("User")
+
+    u1 = session.query(User).first()
+    address = u1.addresses[0]
+    u1.addresses.remove(address)
+    session.commit()
+
+    # would fail and be set to None
+    assert address.user_id == u1.id
+
+The fix now includes that ``address.user_id`` is left unchanged as per
+``passive_deletes="all"``. This kind of thing is useful for building custom
+"version table" schemes and such where rows are archived instead of deleted.
+
+:ticket:`3844`
+
 New Features and Improvements - Core
 ====================================
 

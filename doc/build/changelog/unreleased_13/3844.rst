@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 3844
+
+    Fixed issue regarding passive_deletes="all", where the foreign key
+    attribute of an object is maintained with its value even after the object
+    is removed from its parent collection.  Previously, the unit of work would
+    set this to NULL even though passive_deletes indicated it should not be
+    modified.
+
+    .. seealso::
+
+        :ref:`change_3844`

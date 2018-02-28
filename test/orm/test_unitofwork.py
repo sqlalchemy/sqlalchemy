@@ -747,8 +747,7 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         mc.children[0].data = 'some new data'
         assert_raises(sa.exc.DBAPIError, session.flush)
 
-    def test_extra_passive_obj_removed_o2m_still_nulls_out(self):
-        # see #3844, which we decided was not a bug
+    def test_extra_passive_obj_removed_o2m(self):
         myothertable, MyClass, MyOtherClass, mytable = (
             self.tables.myothertable,
             self.classes.MyClass,
@@ -758,19 +757,24 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children': relationship(MyOtherClass,
-                                  passive_deletes='all')})
+                                     passive_deletes='all')})
 
         session = create_session()
         mc = MyClass()
-        moc = MyOtherClass()
-        mc.children.append(moc)
-        session.add_all([mc, moc])
+        moc1 = MyOtherClass()
+        moc2 = MyOtherClass()
+        mc.children.append(moc1)
+        mc.children.append(moc2)
+        session.add_all([mc, moc1, moc2])
         session.flush()
 
-        mc.children.remove(moc)
+        mc.children.remove(moc1)
+        mc.children.remove(moc2)
+        moc1.data = 'foo'
         session.flush()
 
-        eq_(moc.parent_id, None)
+        eq_(moc1.parent_id, mc.id)
+        eq_(moc2.parent_id, mc.id)
 
     def test_dont_emit(self):
         myothertable, MyClass, MyOtherClass, mytable = (
