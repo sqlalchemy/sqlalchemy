@@ -806,6 +806,35 @@ class ResultTest(BakedTest):
 
                 sess.close()
 
+    def test_subqueryload_post_context(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        assert_result = [
+            User(id=7,
+                 addresses=[Address(id=1, email_address='jack@bean.com')])
+        ]
+
+        self.bakery = baked.bakery(size=3)
+
+        bq = self.bakery(lambda s: s.query(User))
+
+        bq += lambda q: q.options(subqueryload(User.addresses))
+        bq += lambda q: q.order_by(User.id)
+        bq += lambda q: q.filter(User.name == bindparam('name'))
+        sess = Session()
+
+        def set_params(q):
+            return q.params(name='jack')
+
+        # test that the changes we make using with_post_criteria()
+        # are also applied to the subqueryload query.
+        def go():
+            result = bq(sess).with_post_criteria(set_params).all()
+            eq_(assert_result, result)
+
+        self.assert_sql_count(testing.db, go, 2)
+
 
 class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
     run_setup_mappers = 'each'
