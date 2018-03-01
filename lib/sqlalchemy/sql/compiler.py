@@ -1355,12 +1355,13 @@ class SQLCompiler(Compiled):
         else:
             cte_name = cte.name
 
+        is_new_cte = True
         if cte_name in self.ctes_by_name:
             existing_cte = self.ctes_by_name[cte_name]
             # we've generated a same-named CTE that we are enclosed in,
             # or this is the same CTE.  just return the name.
             if cte in existing_cte._restates or cte is existing_cte:
-                return self.preparer.format_alias(cte, cte_name)
+                is_new_cte = False
             elif existing_cte in cte._restates:
                 # we've generated a same-named CTE that is
                 # enclosed in us - we take precedence, so
@@ -1372,67 +1373,72 @@ class SQLCompiler(Compiled):
                     "the same name: %r" %
                     cte_name)
 
-        self.ctes_by_name[cte_name] = cte
+        if asfrom or is_new_cte:
+            if cte._cte_alias is not None:
+                pre_alias_cte = cte._cte_alias
+                cte_pre_alias_name = cte._cte_alias.name
+                if isinstance(cte_pre_alias_name, elements._truncated_label):
+                    cte_pre_alias_name = self._truncated_identifier(
+                        "alias", cte_pre_alias_name)
+            else:
+                pre_alias_cte = cte
+                cte_pre_alias_name = None
 
-        # look for embedded DML ctes and propagate autocommit
-        if 'autocommit' in cte.element._execution_options and \
-                'autocommit' not in self.execution_options:
-            self.execution_options = self.execution_options.union(
-                {"autocommit": cte.element._execution_options['autocommit']})
+        if is_new_cte:
+            self.ctes_by_name[cte_name] = cte
 
-        if cte._cte_alias is not None:
-            orig_cte = cte._cte_alias
-            if orig_cte not in self.ctes:
-                self.visit_cte(orig_cte, **kwargs)
-            cte_alias_name = cte._cte_alias.name
-            if isinstance(cte_alias_name, elements._truncated_label):
-                cte_alias_name = self._truncated_identifier(
-                    "alias", cte_alias_name)
-        else:
-            orig_cte = cte
-            cte_alias_name = None
-        if not cte_alias_name and cte not in self.ctes:
-            if cte.recursive:
-                self.ctes_recursive = True
-            text = self.preparer.format_alias(cte, cte_name)
-            if cte.recursive:
-                if isinstance(cte.original, selectable.Select):
-                    col_source = cte.original
-                elif isinstance(cte.original, selectable.CompoundSelect):
-                    col_source = cte.original.selects[0]
-                else:
-                    assert False
-                recur_cols = [c for c in
-                              util.unique_list(col_source.inner_columns)
-                              if c is not None]
+            # look for embedded DML ctes and propagate autocommit
+            if 'autocommit' in cte.element._execution_options and \
+                    'autocommit' not in self.execution_options:
+                self.execution_options = self.execution_options.union(
+                    {"autocommit":
+                     cte.element._execution_options['autocommit']})
 
-                text += "(%s)" % (", ".join(
-                    self.preparer.format_column(ident)
-                    for ident in recur_cols))
+            if pre_alias_cte not in self.ctes:
+                self.visit_cte(pre_alias_cte, **kwargs)
 
-            if self.positional:
-                kwargs['positional_names'] = self.cte_positional[cte] = []
+            if not cte_pre_alias_name and cte not in self.ctes:
+                if cte.recursive:
+                    self.ctes_recursive = True
+                text = self.preparer.format_alias(cte, cte_name)
+                if cte.recursive:
+                    if isinstance(cte.original, selectable.Select):
+                        col_source = cte.original
+                    elif isinstance(cte.original, selectable.CompoundSelect):
+                        col_source = cte.original.selects[0]
+                    else:
+                        assert False
+                    recur_cols = [c for c in
+                                  util.unique_list(col_source.inner_columns)
+                                  if c is not None]
 
-            text += " AS \n" + \
-                cte.original._compiler_dispatch(
-                    self, asfrom=True, **kwargs
-                )
+                    text += "(%s)" % (", ".join(
+                        self.preparer.format_column(ident)
+                        for ident in recur_cols))
 
-            if cte._suffixes:
-                text += " " + self._generate_prefixes(
-                    cte, cte._suffixes, **kwargs)
+                if self.positional:
+                    kwargs['positional_names'] = self.cte_positional[cte] = []
 
-            self.ctes[cte] = text
+                text += " AS \n" + \
+                    cte.original._compiler_dispatch(
+                        self, asfrom=True, **kwargs
+                    )
+
+                if cte._suffixes:
+                    text += " " + self._generate_prefixes(
+                        cte, cte._suffixes, **kwargs)
+
+                self.ctes[cte] = text
 
         if asfrom:
-            if cte_alias_name:
-                text = self.preparer.format_alias(cte, cte_alias_name)
+            if cte_pre_alias_name:
+                text = self.preparer.format_alias(cte, cte_pre_alias_name)
                 if self.preparer._requires_quotes(cte_name):
                     cte_name = self.preparer.quote(cte_name)
                 text += self.get_render_as_alias_suffix(cte_name)
+                return text
             else:
                 return self.preparer.format_alias(cte, cte_name)
-            return text
 
     def visit_alias(self, alias, asfrom=False, ashint=False,
                     iscrud=False,
