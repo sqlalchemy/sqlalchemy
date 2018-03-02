@@ -56,17 +56,6 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     def dbapi(cls):
         return __import__('cymysql')
 
-    def _get_server_version_info(self, connection):
-        dbapi_con = connection.connection
-        version = []
-        r = re.compile(r'[.\-]')
-        for n in r.split(dbapi_con.server_version):
-            try:
-                version.append(int(n))
-            except ValueError:
-                version.append(n)
-        return tuple(version)
-
     def _detect_charset(self, connection):
         return connection.connection.charset
 

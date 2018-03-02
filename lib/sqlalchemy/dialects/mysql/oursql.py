@@ -220,17 +220,6 @@ class MySQLDialect_oursql(MySQLDialect):
 
         return [[], opts]
 
-    def _get_server_version_info(self, connection):
-        dbapi_con = connection.connection
-        version = []
-        r = re.compile(r'[.\-]')
-        for n in r.split(dbapi_con.server_info):
-            try:
-                version.append(int(n))
-            except ValueError:
-                version.append(n)
-        return tuple(version)
-
     def _extract_error_code(self, exception):
         return exception.errno
 

@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4205
+    :versions: 1.2.5, 1.3.0b1
+
+    MySQL dialects now query the server version using ``SELECT @@version``
+    explicitly to the server to ensure we are getting the correct version
+    information back.   Proxy servers like MaxScale interfere with the value
+    that is passed to the DBAPI's connection.server_version value so this
+    is no longer reliable.
