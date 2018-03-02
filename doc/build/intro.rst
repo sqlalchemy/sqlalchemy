@@ -159,7 +159,7 @@ the available DBAPIs for each database, including external links.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 1.2. If you're working on a
+This documentation covers SQLAlchemy version 1.3. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this:
 
@@ -167,11 +167,11 @@ Python prompt like this:
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     1.2.0
+     1.3.0
 
 .. _migration:
 
-1.1 to 1.2 Migration
+1.2 to 1.3 Migration
 =====================
 
-Notes on what's changed from 1.1 to 1.2 is available here at :doc:`changelog/migration_12`.
+Notes on what's changed from 1.2 to 1.3 is available here at :doc:`changelog/migration_13`.
