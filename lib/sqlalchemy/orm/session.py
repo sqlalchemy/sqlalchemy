@@ -2067,9 +2067,9 @@ class Session(_SessionClassMethods):
         Accesses of attributes mapped with :func:`.relationship`
         will attempt to load a value from the database using this
         :class:`.Session` as the source of connectivity.  The values
-        will be loaded based on foreign key values present on this
-        object - it follows that this functionality
-        generally only works for many-to-one-relationships.
+        will be loaded based on foreign key and primary key values
+        present on this object - if not present, then those relationships
+        will be unavailable.
 
         The object will be attached to this session, but will
         **not** participate in any persistence operations; its state
@@ -2090,6 +2090,8 @@ class Session(_SessionClassMethods):
         To make a transient object associated with a :class:`.Session`
         via :meth:`.Session.enable_relationship_loading` pending, add
         it to the :class:`.Session` using :meth:`.Session.add` normally.
+        If the object instead represents an existing idenity in the database,
+        it should be merged using :meth:`.Session.merge`.
 
         :meth:`.Session.enable_relationship_loading` does not improve
         behavior when the ORM is used normally - object references should be
