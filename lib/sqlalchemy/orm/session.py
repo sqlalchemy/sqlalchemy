@@ -1847,6 +1847,11 @@ class Session(_SessionClassMethods):
          method.
 
 
+        .. seealso::
+
+            :func:`.make_transient_to_detached` - provides for an alternative
+            means of "merging" a single object into the :class:`.Session`
+
         """
 
         if self._warn_on_events:
@@ -2106,6 +2111,10 @@ class Session(_SessionClassMethods):
             ``load_on_pending`` at :func:`.relationship` - this flag
             allows per-relationship loading of many-to-ones on items that
             are pending.
+
+            :func:`.make_transient_to_detached` - allows for an object to
+            be added to a :class:`.Session` without SQL emitted, which then
+            will unexpire attributes on access.
 
         """
         state = attributes.instance_state(obj)
@@ -2999,6 +3008,8 @@ def make_transient_to_detached(instance):
     .. seealso::
 
         :func:`.make_transient`
+
+        :meth:`.Session.enable_relationship_loading`
 
     """
     state = attributes.instance_state(instance)
