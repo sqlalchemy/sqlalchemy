@@ -161,11 +161,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     def _mysqlconnector_double_percents(self):
         return not util.py3k and self._mysqlconnector_version_info < (2, 0)
 
-    def _get_server_version_info(self, connection):
-        dbapi_con = connection.connection
-        version = dbapi_con.get_server_version()
-        return tuple(version)
-
     def _detect_charset(self, connection):
         return connection.connection.charset
 

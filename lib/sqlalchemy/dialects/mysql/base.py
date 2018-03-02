@@ -1750,6 +1750,27 @@ class MySQLDialect(default.DefaultDialect):
             val = val.decode()
         return val.upper().replace("-", " ")
 
+    def _get_server_version_info(self, connection):
+        # get database server version info explicitly over the wire
+        # to avoid proxy servers like MaxScale getting in the
+        # way with their own values, see #4205
+        dbapi_con = connection.connection
+        cursor = dbapi_con.cursor()
+        cursor.execute("SELECT VERSION()")
+        val = cursor.fetchone()[0]
+        cursor.close()
+        if util.py3k and isinstance(val, bytes):
+            val = val.decode()
+
+        version = []
+        r = re.compile(r'[.\-]')
+        for n in r.split(val):
+            try:
+                version.append(int(n))
+            except ValueError:
+                version.append(n)
+        return tuple(version)
+
     def do_commit(self, dbapi_connection):
         """Execute a COMMIT."""
 
@@ -1921,6 +1942,9 @@ class MySQLDialect(default.DefaultDialect):
 
     @property
     def _mariadb_normalized_version_info(self):
+        # MariaDB's wire-protocol prepends the server_version with
+        # the string "5.5"; now that we use @@version we no longer see this.
+
         if self._is_mariadb:
             idx = self.server_version_info.index('MariaDB')
             return self.server_version_info[idx - 3: idx]
