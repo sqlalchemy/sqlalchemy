@@ -439,7 +439,7 @@ class _UnboundLoad(Load):
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        d['path'] = self._serialize_path(self.path)
+        d['path'] = self._serialize_path(self.path, filter_aliased_class=True)
         return d
 
     def __setstate__(self, state):
@@ -454,7 +454,7 @@ class _UnboundLoad(Load):
                     cls, propkey, of_type = key
                 prop = getattr(cls, propkey)
                 if of_type:
-                    prop = prop.of_type(prop)
+                    prop = prop.of_type(of_type)
                 ret.append(prop)
             else:
                 ret.append(key)
@@ -520,19 +520,19 @@ class _UnboundLoad(Load):
 
         return to_chop[i:]
 
-    def _serialize_path(self, path, reject_aliased_class=False):
+    def _serialize_path(self, path, filter_aliased_class=False):
         ret = []
         for token in path:
             if isinstance(token, QueryableAttribute):
-                if reject_aliased_class and (
-                    (token._of_type and
-                        inspect(token._of_type).is_aliased_class)
-                    or
-                    inspect(token.parent).is_aliased_class
-                ):
-                    return False
-                ret.append(
-                    (token._parentmapper.class_, token.key, token._of_type))
+                if filter_aliased_class and token._of_type and \
+                        inspect(token._of_type).is_aliased_class:
+                    ret.append(
+                        (token._parentmapper.class_,
+                         token.key, None))
+                else:
+                    ret.append(
+                        (token._parentmapper.class_, token.key,
+                         token._of_type))
             elif isinstance(token, PropComparator):
                 ret.append((token._parentmapper.class_, token.key, None))
             else:
