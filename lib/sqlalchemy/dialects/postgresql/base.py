@@ -1907,7 +1907,8 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
                 "[]" *
                 (type_.dimensions if type_.dimensions is not None else 1)
             )),
-            inner
+            inner,
+            count=1
         )
 
 
