@@ -10,7 +10,7 @@ What's New in SQLAlchemy 1.3?
 Introduction
 ============
 
-This guide introduces what's new in SQLAlchemy version 1.23
+This guide introduces what's new in SQLAlchemy version 1.3
 and also documents changes which affect users migrating
 their applications from the 1.2 series of SQLAlchemy to 1.3.
 
