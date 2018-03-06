@@ -497,6 +497,22 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
                             "SELECT sum(t.n) AS sum_1 FROM t"
                             )
 
+    def test_aliased_cte_w_union(self):
+        t = select([func.values(1).label("n")]).\
+            cte("t", recursive=True).alias('foo')
+        t = t.union_all(select([t.c.n + 1]).where(t.c.n < 100))
+        s = select([func.sum(t.c.n)])
+
+        from sqlalchemy.sql.visitors import cloned_traverse
+        cloned = cloned_traverse(s, {}, {})
+
+        self.assert_compile(
+            cloned,
+            "WITH RECURSIVE foo(n) AS (SELECT values(:values_1) AS n "
+            "UNION ALL SELECT foo.n + :n_1 AS anon_1 FROM t AS foo "
+            "WHERE foo.n < :n_2) SELECT sum(foo.n) AS sum_1 FROM foo"
+        )
+
     def test_text(self):
         clause = text(
             "select * from table where foo=:bar",
