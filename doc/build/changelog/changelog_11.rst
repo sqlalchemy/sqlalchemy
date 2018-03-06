@@ -18,6 +18,10 @@
 
 
 .. changelog::
+    :version: 1.1.19
+    :include_notes_from: unreleased_11
+
+.. changelog::
     :version: 1.1.18
     :released: March 6, 2018
 
