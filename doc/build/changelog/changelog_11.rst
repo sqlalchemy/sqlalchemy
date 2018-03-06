@@ -19,7 +19,27 @@
 
 .. changelog::
     :version: 1.1.18
-    :include_notes_from: unreleased_11
+    :released: March 6, 2018
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4205
+        :versions: 1.2.5, 1.3.0b1
+
+        MySQL dialects now query the server version using ``SELECT @@version``
+        explicitly to the server to ensure we are getting the correct version
+        information back.   Proxy servers like MaxScale interfere with the value
+        that is passed to the DBAPI's connection.server_version value so this
+        is no longer reliable.
+
+    .. change::
+        :tags: bug, postgresql, py3k
+        :tickets: 4208
+        :versions: 1.2.5, 1.3.0b1
+
+        Fixed bug in Postgresql COLLATE / ARRAY adjustment first introduced
+        in :ticket:`4006` where new behaviors in Python 3.7 regular expressions
+        caused the fix to fail.
 
 .. changelog::
     :version: 1.1.17

@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, postgresql, py3k
-    :tickets: 4208
-    :versions: 1.3.0b1, 1.2.5
-
-    Fixed bug in Postgresql COLLATE / ARRAY adjustment first introduced
-    in :ticket:`4006` where new behaviors in Python 3.7 regular expressions
-    caused the fix to fail.
