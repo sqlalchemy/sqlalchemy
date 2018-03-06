@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4210
+    :versions: 1.3.0b1
+
+    Fixed bug in :class:.`CTE` construct along the same lines as that of
+    :ticket:`4204` where a :class:`.CTE` that was aliased would not copy itself
+    correctly during a "clone" operation as is frequent within the ORM as well
+    as when using the :meth:`.ClauseElement.params` method.
