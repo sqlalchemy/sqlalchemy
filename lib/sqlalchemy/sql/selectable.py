@@ -1391,7 +1391,7 @@ class CTE(Generative, HasSuffixes, Alias):
     def _copy_internals(self, clone=_clone, **kw):
         super(CTE, self)._copy_internals(clone, **kw)
         if self._cte_alias is not None:
-            self._cte_alias = self
+            self._cte_alias = clone(self._cte_alias, **kw)
         self._restates = frozenset([
             clone(elem, **kw) for elem in self._restates
         ])
