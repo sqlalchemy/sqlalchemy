@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4204
-
-    Fixed bug in CTE rendering where a :class:`.CTE` that was also turned into
-    an :class:`.Alias` would not render its "ctename AS aliasname" clause
-    appropriately if there were more than one reference to the CTE in a FROM
-    clause.
