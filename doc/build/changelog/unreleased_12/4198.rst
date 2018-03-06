@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4198
-
-    Fixed bug in new "expanding IN parameter" feature where the bind parameter
-    processors for values wasn't working at all, tests failed to cover this
-    pretty basic case which includes that ENUM values weren't working.

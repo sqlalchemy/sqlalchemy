@@ -12,7 +12,64 @@
 
 .. changelog::
     :version: 1.2.5
-    :include_notes_from: unreleased_12
+    :released: March 6, 2018
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4210
+        :versions: 1.3.0b1
+
+        Fixed bug in :class:.`CTE` construct along the same lines as that of
+        :ticket:`4204` where a :class:`.CTE` that was aliased would not copy itself
+        correctly during a "clone" operation as is frequent within the ORM as well
+        as when using the :meth:`.ClauseElement.params` method.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4199
+
+        Fixed bug in new "polymorphic selectin" loading when a selection of
+        polymorphic objects were to be partially loaded from a relationship
+        lazy loader, leading to an "empty IN" condition within the load that
+        raises an error for the "inline" form of "IN".
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4204
+
+        Fixed bug in CTE rendering where a :class:`.CTE` that was also turned into
+        an :class:`.Alias` would not render its "ctename AS aliasname" clause
+        appropriately if there were more than one reference to the CTE in a FROM
+        clause.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4209
+        :versions: 1.3.0b1
+
+        Fixed 1.2 regression where a mapper option that contains an
+        :class:`.AliasedClass` object, as is typical when using the
+        :meth:`.QueryableAttribute.of_type` method, could not be pickled.   1.1's
+        behavior was to omit the aliased class objects from the path, so this
+        behavior is restored.
+
+    .. change::
+        :tags: feature, orm
+        :versions: 1.3.0b1
+
+        Added new feature :meth:`.Query.only_return_tuples`.  Causes the
+        :class:`.Query` object to return keyed tuple objects unconditionally even
+        if the query is against a single entity.   Pull request courtesy Eric
+        Atkin.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4198
+
+        Fixed bug in new "expanding IN parameter" feature where the bind parameter
+        processors for values wasn't working at all, tests failed to cover this
+        pretty basic case which includes that ENUM values weren't working.
 
 .. changelog::
     :version: 1.2.4

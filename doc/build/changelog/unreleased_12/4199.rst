@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4199
-
-    Fixed bug in new "polymorphic selectin" loading when a selection of
-    polymorphic objects were to be partially loaded from a relationship
-    lazy loader, leading to an "empty IN" condition within the load that
-    raises an error for the "inline" form of "IN".
