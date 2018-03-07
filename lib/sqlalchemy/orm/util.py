@@ -735,7 +735,10 @@ def with_polymorphic(base, classes, selectable=False,
         This can be important when using the with_polymorphic()
         to create the target of a JOIN on a backend that does not
         support parenthesized joins, such as SQLite and older
-        versions of MySQL.
+        versions of MySQL.   However if the
+        :paramref:`.with_polymorphic.selectable` parameter is in use
+        with an existing :class:`.Alias` construct, then you should not
+        set this flag.
 
     :param flat: Boolean, will be passed through to the
      :meth:`.FromClause.alias` call so that aliases of :class:`.Join`

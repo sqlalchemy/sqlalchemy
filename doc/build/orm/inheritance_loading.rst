@@ -223,6 +223,12 @@ right-nested JOIN in our statement.   Some older databases, in particular older
 versions of SQLite, may have a problem with this syntax, although virtually all
 modern database versions now support this syntax.
 
+.. note::
+
+    The :paramref:`.orm.with_polymorphic.flat` flag only applies to the use
+    of :paramref:`.with_polymorphic` with **joined table inheritance** and when
+    the :paramref:`.with_polymorphic.selectable` argument is **not** used.
+
 Referring to Specific Subclass Attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -671,11 +677,22 @@ can be loaded::
             )
         )
 
-When using :func:`.with_polymorphic` in conjunction with
-:func:`.joinedload`, the :func:`.with_polymorphic` object must include
-the ``aliased=True`` or ``flat=True`` flag, so that the polymorphic
-selectable is aliased (an informative error message is raised otherwise).
-"flat" is an alternate form of aliasing that produces fewer subqueries.
+.. note::
+
+    When using :func:`.with_polymorphic` in conjunction with
+    :func:`.joinedload`, the :func:`.with_polymorphic` object must be against
+    an "aliased" object, that is an instance of :class:`.Alias`, so that the
+    polymorphic selectable is aliased (an informative error message is raised
+    otherwise).
+
+    The typical way to do this is to include the
+    :paramref:`.with_polymorphic.aliased` or :paramref:`.flat` flag, which will
+    apply this aliasing automatically.  However, if the
+    :paramref:`.with_polymorphic.selectable` argument is being used to pass an
+    object that is already an :class:`.Alias` object then this flag should
+    **not** be set.  The "flat" option implies the "aliased" option and is an
+    alternate form of aliasing against join objects that produces fewer
+    subqueries.
 
 Once :meth:`~.PropComparator.of_type` is the target of the eager load,
 that's the entity we would use for subsequent chaining, not the original class
