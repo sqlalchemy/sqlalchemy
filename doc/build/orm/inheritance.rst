@@ -379,10 +379,23 @@ and only return instances of that class.  Polymorphic loading of concrete
 classes is enabled by configuring within the mapper
 a special SELECT that typically is produced as a UNION of all the tables.
 
+.. warning::
+
+    Concrete table inheritance is **much more complicated** than joined
+    or single table inheritance, and is **much more limited in functionality**
+    especially pertaining to using it with relationships, eager loading,
+    and polymorphic loading.  When used polymorphically it produces
+    **very large queries** with UNIONS that won't perform as well as simple
+    joins.  It is strongly advised that if flexibility in relationship loading
+    and polymorphic loading is required, that joined or single table inheritance
+    be used if at all possible.   If polymorphic loading isn't required, then
+    plain non-inheriting mappings can be used if each class refers to its
+    own table completely.
+
 Whereas joined and single table inheritance are fluent in "polymorphic"
 loading, it is a more awkward affair in concrete inheritance.  For this
-reason, concrete inheritance is more appropriate when polymorphic loading
-is not required.   Establishing relationships that involve concrete inheritance
+reason, concrete inheritance is more appropriate when **polymorphic loading
+is not required**.   Establishing relationships that involve concrete inheritance
 classes is also more awkward.
 
 To establish a class as using concrete inheritance, add the
