@@ -614,9 +614,9 @@ class OracleDialect_cx_oracle(OracleDialect):
             self.cx_oracle_ver = (0, 0, 0)
         else:
             self.cx_oracle_ver = self._parse_cx_oracle_ver(cx_Oracle.version)
-            if self.cx_oracle_ver < (5, 0) and self.cx_oracle_ver > (0, 0, 0):
+            if self.cx_oracle_ver < (5, 2) and self.cx_oracle_ver > (0, 0, 0):
                 raise exc.InvalidRequestError(
-                    "cx_Oracle version 5.0 and above are supported")
+                    "cx_Oracle version 5.2 and above are supported")
 
             self._has_native_int = hasattr(cx_Oracle, "NATIVE_INT")
 
