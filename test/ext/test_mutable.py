@@ -801,6 +801,17 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
         self._test_non_mutable()
 
 
+class MutableIncludeNonPrimaryTest(MutableWithScalarJSONTest):
+    @classmethod
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+
+        mapper(Foo, foo)
+        mapper(Foo, foo, non_primary=True, properties={
+            "foo_bar": foo.c.data
+        })
+
+
 class MutableColumnCopyJSONTest(_MutableDictTestBase, fixtures.MappedTest):
 
     @classmethod
@@ -965,6 +976,17 @@ class MutableAssociationScalarPickleTest(_MutableDictTestBase,
               Column('data', PickleType),
               Column('unrelated_data', String(50))
               )
+
+
+class MutableAssocIncludeNonPrimaryTest(MutableAssociationScalarPickleTest):
+    @classmethod
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+
+        mapper(Foo, foo)
+        mapper(Foo, foo, non_primary=True, properties={
+            "foo_bar": foo.c.data
+        })
 
 
 class MutableAssociationScalarJSONTest(_MutableDictTestBase,

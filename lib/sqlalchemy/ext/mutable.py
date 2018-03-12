@@ -566,6 +566,8 @@ class Mutable(MutableBase):
         """
 
         def listen_for_type(mapper, class_):
+            if mapper.non_primary:
+                return
             for prop in mapper.column_attrs:
                 if isinstance(prop.columns[0].type, sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
@@ -619,6 +621,8 @@ class Mutable(MutableBase):
             schema_event_check = False
 
         def listen_for_type(mapper, class_):
+            if mapper.non_primary:
+                return
             for prop in mapper.column_attrs:
                 if (
                         schema_event_check and
