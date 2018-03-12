@@ -855,6 +855,38 @@ JSON is being used for its familiarity.
 
 :ticket:`3850`
 
+.. _change_4360:
+
+Support for SQLite ON CONFLICT in constraints added
+----------------------------------------------------
+
+SQLite supports a non-standard ON CONFLICT clause that may be specified
+for standalone constraints as well as some column-inline constraints such as
+NOT NULL. Support has been added for these clauses via the ``sqlite_on_conflict``
+keyword added to objects like :class:`.UniqueConstraint`  as well
+as several :class:`.Column` -specific variants::
+
+    some_table = Table(
+        'some_table', metadata,
+        Column('id', Integer, primary_key=True, sqlite_on_conflict_primary_key='FAIL'),
+        Column('data', Integer),
+        UniqueConstraint('id', 'data', sqlite_on_conflict='IGNORE')
+    )
+
+The above table would render in a CREATE TABLE statement as::
+
+    CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        data INTEGER,
+        PRIMARY KEY (id) ON CONFLICT FAIL,
+        UNIQUE (id, data) ON CONFLICT IGNORE
+    )
+
+.. seealso::
+
+    :ref:`sqlite_on_conflict_ddl`
+
+:ticket:`4360`
 
 Dialect Improvements and Changes - Oracle
 =============================================

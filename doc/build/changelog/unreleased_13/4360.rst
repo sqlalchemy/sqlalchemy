@@ -1,0 +1,12 @@
+.. change::
+   :tags: feature, sqlite
+   :tickets: 4360
+
+   Implemented the SQLite ``ON CONFLICT`` clause as understood at the DDL
+   level, e.g. for primary key, unique, and CHECK constraints as well as
+   specified on a :class:`.Column` to satisfy inline primary key and NOT NULL.
+   Pull request courtesy Denis Kataev.
+
+   .. seealso::
+
+      :ref:`change_4360`
