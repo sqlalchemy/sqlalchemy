@@ -1346,18 +1346,23 @@ class SQLCompiler(Compiled):
             return self.bindtemplate % {'name': name}
 
     def visit_cte(self, cte, asfrom=False, ashint=False,
-                  fromhints=None,
+                  fromhints=None, visiting_cte=None,
                   **kwargs):
         self._init_cte_state()
 
+        kwargs['visiting_cte'] = cte
         if isinstance(cte.name, elements._truncated_label):
             cte_name = self._truncated_identifier("alias", cte.name)
         else:
             cte_name = cte.name
 
         is_new_cte = True
+        embedded_in_current_named_cte = False
+
         if cte_name in self.ctes_by_name:
             existing_cte = self.ctes_by_name[cte_name]
+            embedded_in_current_named_cte = visiting_cte is existing_cte
+
             # we've generated a same-named CTE that we are enclosed in,
             # or this is the same CTE.  just return the name.
             if cte in existing_cte._restates or cte is existing_cte:
@@ -1431,6 +1436,9 @@ class SQLCompiler(Compiled):
                 self.ctes[cte] = text
 
         if asfrom:
+            if not is_new_cte and embedded_in_current_named_cte:
+                return self.preparer.format_alias(cte, cte_name)
+
             if cte_pre_alias_name:
                 text = self.preparer.format_alias(cte, cte_pre_alias_name)
                 if self.preparer._requires_quotes(cte_name):

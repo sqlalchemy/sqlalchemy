@@ -122,6 +122,50 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "JOIN parts ON anon_1.part = parts.part "
             "GROUP BY anon_1.sub_part", dialect=mssql.dialect())
 
+    def test_recursive_inner_cte_unioned_to_alias(self):
+        parts = table('parts',
+                      column('part'),
+                      column('sub_part'),
+                      column('quantity'),
+                      )
+
+        included_parts = select([
+            parts.c.sub_part,
+            parts.c.part,
+            parts.c.quantity]).\
+            where(parts.c.part == 'our part').\
+            cte(recursive=True)
+
+        incl_alias = included_parts.alias('incl')
+        parts_alias = parts.alias()
+        included_parts = incl_alias.union(
+            select([
+                parts_alias.c.sub_part,
+                parts_alias.c.part,
+                parts_alias.c.quantity]).
+            where(parts_alias.c.part == incl_alias.c.sub_part)
+        )
+
+        s = select([
+            included_parts.c.sub_part,
+            func.sum(included_parts.c.quantity).label('total_quantity')]).\
+            select_from(included_parts.join(
+                parts, included_parts.c.part == parts.c.part)).\
+            group_by(included_parts.c.sub_part)
+        self.assert_compile(
+            s, "WITH RECURSIVE incl(sub_part, part, quantity) "
+            "AS (SELECT parts.sub_part AS sub_part, parts.part "
+            "AS part, parts.quantity AS quantity FROM parts "
+            "WHERE parts.part = :part_1 UNION "
+            "SELECT parts_1.sub_part AS sub_part, "
+            "parts_1.part AS part, parts_1.quantity "
+            "AS quantity FROM parts AS parts_1, incl "
+            "WHERE parts_1.part = incl.sub_part) "
+            "SELECT incl.sub_part, "
+            "sum(incl.quantity) AS total_quantity FROM incl "
+            "JOIN parts ON incl.part = parts.part "
+            "GROUP BY incl.sub_part")
+
     def test_recursive_union_no_alias_one(self):
         s1 = select([literal(0).label("x")])
         cte = s1.cte(name="cte", recursive=True)
