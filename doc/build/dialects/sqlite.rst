@@ -14,7 +14,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 
     from sqlalchemy.dialects.sqlite import \
                 BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL, FLOAT, \
-                INTEGER, NUMERIC, SMALLINT, TEXT, TIME, TIMESTAMP, \
+                INTEGER, NUMERIC, JSON, SMALLINT, TEXT, TIME, TIMESTAMP, \
                 VARCHAR
 
 .. module:: sqlalchemy.dialects.sqlite
@@ -22,6 +22,8 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 .. autoclass:: DATETIME
 
 .. autoclass:: DATE
+
+.. autoclass:: JSON
 
 .. autoclass:: TIME
 

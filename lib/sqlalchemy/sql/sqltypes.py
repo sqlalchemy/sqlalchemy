@@ -1834,8 +1834,13 @@ class JSON(Indexable, TypeEngine):
 
     .. note::  :class:`.types.JSON` is provided as a facade for vendor-specific
        JSON types.  Since it supports JSON SQL operations, it only
-       works on backends that have an actual JSON type, currently
-       PostgreSQL as well as certain versions of MySQL.
+       works on backends that have an actual JSON type, currently:
+
+       * PostgreSQL
+
+       * MySQL as of version 5.7 (MariaDB as of the 10.2 series does not)
+
+       * SQLite as of version 3.9
 
     :class:`.types.JSON` is part of the Core in support of the growing
     popularity of native JSON datatypes.

@@ -174,6 +174,27 @@ This is a much more lightweight ping than the previous method of emitting
 Dialect Improvements and Changes - SQLite
 =============================================
 
+.. _change_3850:
+
+Support for SQLite JSON Added
+-----------------------------
+
+A new datatype :class:`.sqlite.JSON` is added which implements SQLite's json
+member access functions on behalf of the :class:`.types.JSON`
+base datatype.  The SQLite ``JSON_EXTRACT`` and ``JSON_QUOTE`` functions
+are used by the implementation to provide basic JSON support.
+
+Note that the name of the datatype itself as rendered in the database is
+the name "JSON".   This will create a SQLite datatype with "numeric" affinity,
+which normally should not be an issue except in the case of a JSON value that
+consists of single integer value.  Nevertheless, following an example
+in SQLite's own documentation at https://www.sqlite.org/json1.html the name
+JSON is being used for its familiarity.
+
+
+:ticket:`3850`
+
+
 Dialect Improvements and Changes - Oracle
 =============================================
 

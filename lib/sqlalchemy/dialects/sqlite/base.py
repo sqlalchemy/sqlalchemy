@@ -478,6 +478,7 @@ from ...sql import compiler
 from ...types import (BLOB, BOOLEAN, CHAR, DECIMAL, FLOAT,
                       INTEGER, REAL, NUMERIC, SMALLINT, TEXT,
                       TIMESTAMP, VARCHAR)
+from .json import JSON, JSONIndexType, JSONPathType
 
 
 class _DateTimeMixin(object):
@@ -753,6 +754,9 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 colspecs = {
     sqltypes.Date: DATE,
     sqltypes.DateTime: DATETIME,
+    sqltypes.JSON: JSON,
+    sqltypes.JSON.JSONIndexType: JSONIndexType,
+    sqltypes.JSON.JSONPathType: JSONPathType,
     sqltypes.Time: TIME,
 }
 
@@ -771,6 +775,7 @@ ischema_names = {
     'FLOAT': sqltypes.FLOAT,
     'INT': sqltypes.INTEGER,
     'INTEGER': sqltypes.INTEGER,
+    'JSON': JSON,
     'NUMERIC': sqltypes.NUMERIC,
     'REAL': sqltypes.REAL,
     'SMALLINT': sqltypes.SMALLINT,
@@ -854,6 +859,16 @@ class SQLiteCompiler(compiler.SQLCompiler):
     def visit_isnot_distinct_from_binary(self, binary, operator, **kw):
         return "%s IS %s" % (self.process(binary.left),
                              self.process(binary.right))
+
+    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+        return "JSON_QUOTE(JSON_EXTRACT(%s, %s))" % (
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw))
+
+    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+        return "JSON_QUOTE(JSON_EXTRACT(%s, %s))" % (
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw))
 
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
@@ -973,6 +988,12 @@ class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return "TIME_CHAR"
 
+    def visit_JSON(self, type_, **kw):
+        # note this name provides NUMERIC affinity, not TEXT.
+        # should not be an issue unless the JSON value consists of a single
+        # numeric value.   JSONTEXT can be used if this case is required.
+        return "JSON"
+
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = set([
@@ -1065,9 +1086,12 @@ class SQLiteDialect(default.DefaultDialect):
     _broken_fk_pragma_quotes = False
     _broken_dotted_colnames = False
 
-    def __init__(self, isolation_level=None, native_datetime=False, **kwargs):
+    def __init__(self, isolation_level=None, native_datetime=False,
+                 _json_serializer=None, _json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.isolation_level = isolation_level
+        self._json_serializer = _json_serializer
+        self._json_deserializer = _json_deserializer
 
         # this flag used by pysqlite dialect, and perhaps others in the
         # future, to indicate the driver is handling date/timestamp
