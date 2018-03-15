@@ -780,7 +780,14 @@ dialect in conjunction with the :class:`.Table` construct:
 
     Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
 
-.. versionadded:: 1.0.0
+    .. versionadded:: 1.0.0
+
+* ``PARTITION BY``::
+
+    Table("some_table", metadata, ...,
+          postgresql_partition_by='LIST (part_column)')
+
+    .. versionadded:: 1.2.6
 
 .. seealso::
 
@@ -1829,6 +1836,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 ', '.join(self.preparer.quote(name) for name in inherits) +
                 ' )')
 
+        if pg_opts['partition_by']:
+            table_opts.append('\n PARTITION BY %s' % pg_opts['partition_by'])
+
         if pg_opts['with_oids'] is True:
             table_opts.append('\n WITH OIDS')
         elif pg_opts['with_oids'] is False:
@@ -2166,6 +2176,7 @@ class PGDialect(default.DefaultDialect):
         (schema.Table, {
             "ignore_search_path": False,
             "tablespace": None,
+            "partition_by": None,
             "with_oids": None,
             "on_commit": None,
             "inherits": None
