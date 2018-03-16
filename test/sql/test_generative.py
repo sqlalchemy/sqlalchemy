@@ -509,7 +509,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             cloned,
             "WITH RECURSIVE foo(n) AS (SELECT values(:values_1) AS n "
-            "UNION ALL SELECT foo.n + :n_1 AS anon_1 FROM t AS foo "
+            "UNION ALL SELECT foo.n + :n_1 AS anon_1 FROM foo "
             "WHERE foo.n < :n_2) SELECT sum(foo.n) AS sum_1 FROM foo"
         )
 
