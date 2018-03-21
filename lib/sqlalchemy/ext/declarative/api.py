@@ -17,6 +17,7 @@ from ...util import OrderedDict, hybridmethod, hybridproperty
 from ... import util
 from ... import exc
 import weakref
+import re
 
 from .base import _as_declarative, \
     _declarative_constructor,\
@@ -189,8 +190,8 @@ class declared_attr(interfaces._MappedAttribute, property):
     def __get__(desc, self, cls):
         reg = cls.__dict__.get('_sa_declared_attr_reg', None)
         if reg is None:
-            manager = attributes.manager_of_class(cls)
-            if manager is None:
+            if not re.match(r'^__.+__$', desc.fget.__name__) and \
+                    attributes.manager_of_class(cls) is None:
                 util.warn(
                     "Unmanaged access of declarative attribute %s from "
                     "non-mapped class %s" %
