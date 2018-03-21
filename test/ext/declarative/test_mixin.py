@@ -1540,6 +1540,19 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             getattr, Mixin, "my_prop"
         )
 
+    def test_can_we_access_the_mixin_straight_special_names(self):
+        class Mixin(object):
+            @declared_attr
+            def __table_args__(cls):
+                return (1, 2, 3)
+
+            @declared_attr
+            def __arbitrary__(cls):
+                return (4, 5, 6)
+
+        eq_(Mixin.__table_args__, (1, 2, 3))
+        eq_(Mixin.__arbitrary__, (4, 5, 6))
+
     def test_non_decl_access(self):
         counter = mock.Mock()
 
