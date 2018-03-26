@@ -618,11 +618,13 @@ desired state::
     >>> address in user.addresses
     False
 
-The usual practice of deleting items within collections is to forego the usage
-of :meth:`~.Session.delete` directly, and instead use cascade behavior to
-automatically invoke the deletion as a result of removing the object from
-the parent collection.  The ``delete-orphan`` cascade accomplishes this,
-as illustrated in the example below::
+There is a recipe for intercepting :meth:`.Session.delete` and invoking this
+expiration automatically; see `ExpireRelationshipOnFKChange <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/ExpireRelationshipOnFKChange>`_ for this.  However, the usual practice of
+deleting items within collections is to forego the usage of
+:meth:`~.Session.delete` directly, and instead use cascade behavior to
+automatically invoke the deletion as a result of removing the object from the
+parent collection.  The ``delete-orphan`` cascade accomplishes this, as
+illustrated in the example below::
 
     class User(Base):
         __tablename__ = 'user'
@@ -663,6 +665,7 @@ it will be deleted on flush::
     session.flush()  # will delete the Preference object
 
 See also :ref:`unitofwork_cascades` for detail on cascades.
+
 
 Deleting based on Filter Criterion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
