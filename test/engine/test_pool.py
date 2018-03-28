@@ -730,6 +730,35 @@ class PoolEventsTest(PoolTestBase):
         p2.connect()
         eq_(canary, ["listen_one", "listen_two", "listen_one", "listen_three"])
 
+    def test_connect_event_fails_invalidates(self):
+        fail = False
+
+        def listen_one(conn, rec):
+            if fail:
+                raise Exception("it failed")
+
+        def listen_two(conn, rec):
+            rec.info['important_flag'] = True
+
+        p1 = pool.QueuePool(
+            creator=MockDBAPI().connect, pool_size=1, max_overflow=0)
+        event.listen(p1, 'connect', listen_one)
+        event.listen(p1, 'connect', listen_two)
+
+        conn = p1.connect()
+        eq_(conn.info['important_flag'], True)
+        conn.invalidate()
+        conn.close()
+
+        fail = True
+        assert_raises(Exception, p1.connect)
+
+        fail = False
+
+        conn = p1.connect()
+        eq_(conn.info['important_flag'], True)
+        conn.close()
+
     def teardown(self):
         # TODO: need to get remove() functionality
         # going

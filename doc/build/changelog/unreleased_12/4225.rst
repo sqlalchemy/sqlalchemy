@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 4225
+    :versions: 1.3.0b1
+
+    Fixed bug in connection pool where a connection could be present in the
+    pool without all of its "connect" event handlers called, if a previous
+    "connect" handler threw an exception; note that the dialects themselves
+    have connect handlers that emit SQL, such as those which set transaction
+    isolation, which can fail if the database is in a non-available state, but
+    still allows a connection.  The connection is now invalidated first if any
+    of the connect handlers fail.

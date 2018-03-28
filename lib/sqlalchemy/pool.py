@@ -532,9 +532,9 @@ class _ConnectionRecord(object):
         rec = pool._do_get()
         try:
             dbapi_connection = rec.get_connection()
-        except:
+        except Exception as err:
             with util.safe_reraise():
-                rec.checkin()
+                rec._checkin_failed(err)
         echo = pool._should_log_debug()
         fairy = _ConnectionFairy(dbapi_connection, rec, echo)
         rec.fairy_ref = weakref.ref(
@@ -549,6 +549,10 @@ class _ConnectionRecord(object):
             pool.logger.debug("Connection %r checked out from pool",
                               dbapi_connection)
         return fairy
+
+    def _checkin_failed(self, err):
+        self.invalidate(e=err)
+        self.checkin()
 
     def checkin(self):
         self.fairy_ref = None
@@ -840,9 +844,9 @@ class _ConnectionFairy(object):
                 try:
                     fairy.connection = \
                         fairy._connection_record.get_connection()
-                except:
+                except Exception as err:
                     with util.safe_reraise():
-                        fairy._connection_record.checkin()
+                        fairy._connection_record._checkin_failed(err)
 
                 attempts -= 1
 
