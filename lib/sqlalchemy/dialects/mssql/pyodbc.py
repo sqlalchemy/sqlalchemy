@@ -276,6 +276,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
 
     def _get_server_version_info(self, connection):
         try:
+            # "Version of the instance of SQL Server, in the form
+            # of 'major.minor.build.revision'"
             raw = connection.scalar(
                 "SELECT CAST(SERVERPROPERTY('ProductVersion') AS VARCHAR)")
         except exc.DBAPIError:
@@ -283,7 +285,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             # 2008.  Before we had the VARCHAR cast above, pyodbc would also
             # fail on this query.
             return super(MSDialect_pyodbc, self).\
-                _get_server_version_info(connection)
+                _get_server_version_info(connection, allow_chars=False)
         else:
             version = []
             r = re.compile(r'[.\-]')
@@ -291,7 +293,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 try:
                     version.append(int(n))
                 except ValueError:
-                    version.append(n)
+                    pass
             return tuple(version)
 
     def is_disconnect(self, e, connection, cursor):

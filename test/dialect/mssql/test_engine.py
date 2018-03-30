@@ -271,3 +271,34 @@ class VersionDetectionTest(fixtures.TestBase):
                 dialect._get_server_version_info(conn),
                 (11, 0, 9216, 62)
             )
+
+    def test_pyodbc_version_productversion(self):
+        dialect = pyodbc.MSDialect_pyodbc()
+
+        conn = Mock(scalar=Mock(return_value="11.0.9216.62"))
+        eq_(
+            dialect._get_server_version_info(conn),
+            (11, 0, 9216, 62)
+        )
+
+    def test_pyodbc_version_fallback(self):
+        dialect = pyodbc.MSDialect_pyodbc()
+        dialect.dbapi = Mock()
+
+        for vers, expected in [
+            ("11.0.9216.62", (11, 0, 9216, 62)),
+            ("notsqlserver.11.foo.0.9216.BAR.62", (11, 0, 9216, 62)),
+            ("Not SQL Server Version 10.5", (5, ))
+        ]:
+            conn = Mock(
+                scalar=Mock(
+                    side_effect=exc.DBAPIError("stmt", "params", None)),
+                connection=Mock(
+                    getinfo=Mock(return_value=vers)
+                )
+            )
+
+            eq_(
+                dialect._get_server_version_info(conn),
+                expected
+            )

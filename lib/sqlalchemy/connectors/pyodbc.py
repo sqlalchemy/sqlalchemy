@@ -134,7 +134,7 @@ class PyODBCConnector(Connector):
             vers += (m.group(2),)
         return vers
 
-    def _get_server_version_info(self, connection):
+    def _get_server_version_info(self, connection, allow_chars=True):
         # NOTE: this function is not reliable, particularly when
         # freetds is in use.   Implement database-specific server version
         # queries.
@@ -145,7 +145,8 @@ class PyODBCConnector(Connector):
             try:
                 version.append(int(n))
             except ValueError:
-                version.append(n)
+                if allow_chars:
+                    version.append(n)
         return tuple(version)
 
     def set_isolation_level(self, connection, level):
