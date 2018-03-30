@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4204
-    :versions: 1.3.0b1
-
-    Fixed a regression that occurred from the previous fix to :ticket:`4204` in
-    version 1.2.5, where a CTE that refers to itself after the
-    :meth:`.CTE.alias` method has been called would not refer to iself
-    correctly.

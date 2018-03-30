@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mssql
-    :tickets: 4227
-    :versions: 1.3.0b1
-
-    Adjusted the SQL Server version detection for pyodbc to only allow for
-    numeric tokens, filtering out non-integers, since the dialect does tuple-
-    numeric comparisons with this value.  This is normally true for all known
-    SQL Server / pyodbc drivers in any case.

@@ -12,7 +12,81 @@
 
 .. changelog::
     :version: 1.2.6
-    :include_notes_from: unreleased_12
+    :released: March 30, 2018
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4227
+        :versions: 1.3.0b1
+
+        Adjusted the SQL Server version detection for pyodbc to only allow for
+        numeric tokens, filtering out non-integers, since the dialect does tuple-
+        numeric comparisons with this value.  This is normally true for all known
+        SQL Server / pyodbc drivers in any case.
+
+    .. change::
+        :tags: feature, postgresql
+        :versions: 1.3.0b1
+
+        Added support for "PARTITION BY" in Postgresql table definitions,
+        using "postgresql_partition_by".  Pull request courtesy
+        Vsevolod Solovyov.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4204
+        :versions: 1.3.0b1
+
+        Fixed a regression that occurred from the previous fix to :ticket:`4204` in
+        version 1.2.5, where a CTE that refers to itself after the
+        :meth:`.CTE.alias` method has been called would not refer to iself
+        correctly.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4225
+        :versions: 1.3.0b1
+
+        Fixed bug in connection pool where a connection could be present in the
+        pool without all of its "connect" event handlers called, if a previous
+        "connect" handler threw an exception; note that the dialects themselves
+        have connect handlers that emit SQL, such as those which set transaction
+        isolation, which can fail if the database is in a non-available state, but
+        still allows a connection.  The connection is now invalidated first if any
+        of the connect handlers fail.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4211
+        :versions: 1.3.0b1
+
+        The minimum cx_Oracle version supported is 5.2 (June 2015).  Previously,
+        the dialect asserted against version 5.0 but as of 1.2.2 we are using some
+        symbols that did not appear until 5.2.
+
+    .. change::
+        :tags: bug, declarative
+        :tickets: 4221
+
+        Removed a warning that would be emitted when calling upon
+        ``__table_args__``, ``__mapper_args__`` as named with a ``@declared_attr``
+        method, when called from a non-mapped declarative mixin.  Calling these
+        directly is documented as the approach to use when one is overidding one
+        of these methods on a mapped class.  The warning still emits for regular
+        attribute names.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4215
+        :versions: 1.3.0b1
+
+        Fixed bug where using :meth:`.Mutable.associate_with` or
+        :meth:`.Mutable.as_mutable` in conjunction with a class that has non-
+        primary mappers set up with alternatively-named attributes would produce an
+        attribute error.  Since non-primary mappers are not used for persistence,
+        the mutable extension now excludes non-primary mappers from its
+        instrumentation steps.
+
 
 .. changelog::
     :version: 1.2.5
