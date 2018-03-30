@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 4211
-    :versions: 1.3.0b1
-
-    The minimum cx_Oracle version supported is 5.2 (June 2015).  Previously,
-    the dialect asserted against version 5.0 but as of 1.2.2 we are using some
-    symbols that did not appear until 5.2.
