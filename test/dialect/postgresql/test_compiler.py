@@ -233,6 +233,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'CREATE TABLE atable (id INTEGER) INHERITS '
             '( "Quote Me", "quote Me Too" )')
 
+    def test_create_table_partition_by_list(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer), Column("part_column", Integer),
+            postgresql_partition_by='LIST (part_column)')
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            'CREATE TABLE atable (id INTEGER, part_column INTEGER) '
+            'PARTITION BY LIST (part_column)')
+
+    def test_create_table_partition_by_range(self):
+        m = MetaData()
+        tbl = Table(
+            'atable', m, Column("id", Integer), Column("part_column", Integer),
+            postgresql_partition_by='RANGE (part_column)')
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            'CREATE TABLE atable (id INTEGER, part_column INTEGER) '
+            'PARTITION BY RANGE (part_column)')
+
     def test_create_table_with_oids(self):
         m = MetaData()
         tbl = Table(
