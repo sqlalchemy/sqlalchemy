@@ -1000,6 +1000,16 @@ class OID(sqltypes.TypeEngine):
     __visit_name__ = "OID"
 
 
+class REGCLASS(sqltypes.TypeEngine):
+
+    """Provide the PostgreSQL REGCLASS type.
+
+    .. versionadded:: 1.2.7
+
+    """
+    __visit_name__ = "REGCLASS"
+
+
 class TIMESTAMP(sqltypes.TIMESTAMP):
 
     def __init__(self, timezone=False, precision=None):
@@ -1382,6 +1392,7 @@ ischema_names = {
     'macaddr': MACADDR,
     'money': MONEY,
     'oid': OID,
+    'regclass': REGCLASS,
     'double precision': DOUBLE_PRECISION,
     'timestamp': TIMESTAMP,
     'timestamp with time zone': TIMESTAMP,
@@ -1875,6 +1886,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_OID(self, type_, **kw):
         return "OID"
+
+    def visit_REGCLASS(self, type_, **kw):
+        return "REGCLASS"
 
     def visit_FLOAT(self, type_, **kw):
         if not type_.precision:
