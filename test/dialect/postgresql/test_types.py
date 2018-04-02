@@ -630,6 +630,46 @@ class OIDTest(fixtures.TestBase):
         assert isinstance(t2.c.y.type, postgresql.OID)
 
 
+class RegClassTest(fixtures.TestBase):
+    __only_on__ = 'postgresql'
+    __backend__ = True
+
+    @staticmethod
+    def _scalar(expression):
+        with testing.db.connect() as conn:
+            return conn.scalar(select([expression]))
+
+    def test_cast_name(self):
+        eq_(
+            self._scalar(cast('pg_class', postgresql.REGCLASS)),
+            'pg_class'
+        )
+
+    def test_cast_path(self):
+        eq_(
+            self._scalar(cast('pg_catalog.pg_class', postgresql.REGCLASS)),
+            'pg_class'
+        )
+
+    def test_cast_oid(self):
+        regclass = cast('pg_class', postgresql.REGCLASS)
+        oid = self._scalar(cast(regclass, postgresql.OID))
+        assert isinstance(oid, int)
+        eq_(self._scalar(cast(oid, postgresql.REGCLASS)), 'pg_class')
+
+    def test_cast_whereclause(self):
+        pga = Table('pg_attribute', MetaData(testing.db),
+                    Column('attrelid', postgresql.OID),
+                    Column('attname', String(64)))
+        with testing.db.connect() as conn:
+            oid = conn.scalar(
+                select([pga.c.attrelid]).where(
+                    pga.c.attrelid == cast('pg_class', postgresql.REGCLASS)
+                )
+            )
+        assert isinstance(oid, int)
+
+
 class NumericInterpretationTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
     __backend__ = True
