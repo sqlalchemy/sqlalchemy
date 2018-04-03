@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4229
+
+    Fixed bug where the special "not equals" operator for the Postgresql
+    "range" datatypes such as DATERANGE would fail to render "IS NOT NULL" when
+    compared to the Python ``None`` value.
+
+
