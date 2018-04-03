@@ -33,7 +33,11 @@ class RangeOperators(object):
 
         def __ne__(self, other):
             "Boolean expression. Returns true if two ranges are not equal"
-            return self.expr.op('<>')(other)
+            if other is None:
+                return super(
+                    RangeOperators.comparator_factory, self).__ne__(other)
+            else:
+                return self.expr.op('<>')(other)
 
         def contains(self, other, **kw):
             """Boolean expression. Returns true if the right hand operand,
