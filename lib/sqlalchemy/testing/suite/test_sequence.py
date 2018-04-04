@@ -3,7 +3,7 @@ from ..config import requirements
 from ..assertions import eq_
 from ... import testing
 
-from ... import Integer, String, Sequence, schema
+from ... import Integer, String, Sequence, schema, MetaData
 
 from ..schema import Table, Column
 
@@ -69,6 +69,28 @@ class SequenceTest(fixtures.TablesTest):
             row,
             (1, "some data")
         )
+
+
+class SequenceCompilerTest(testing.AssertsCompiledSQL, fixtures.TestBase):
+    __requires__ = ('sequences',)
+    __backend__ = True
+
+    def test_literal_binds_inline_compile(self):
+        table = Table(
+            'x', MetaData(),
+            Column('y', Integer, Sequence('y_seq')),
+            Column('q', Integer))
+
+        stmt = table.insert().values(q=5)
+
+        seq_nextval = testing.db.dialect.statement_compiler(
+            statement=None, dialect=testing.db.dialect).visit_sequence(
+            Sequence("y_seq"))
+        self.assert_compile(
+            stmt,
+            "INSERT INTO x (y, q) VALUES (%s, 5)" % (seq_nextval, ),
+            literal_binds=True,
+            dialect=testing.db.dialect)
 
 
 class HasSequenceTest(fixtures.TestBase):

@@ -19,7 +19,7 @@ from sqlalchemy import Integer, String, MetaData, Table, Column, select, \
     literal, and_, null, type_coerce, alias, or_, literal_column,\
     Float, TIMESTAMP, Numeric, Date, Text, union, except_,\
     intersect, union_all, Boolean, distinct, join, outerjoin, asc, desc,\
-    over, subquery, case, true, CheckConstraint
+    over, subquery, case, true, CheckConstraint, Sequence
 import decimal
 from sqlalchemy.util import u
 from sqlalchemy import exc, sql, util, types, schema
@@ -2954,6 +2954,19 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "INSERT INTO mytable (myid, name) VALUES (3, 'jack')",
             literal_binds=True)
+
+    def test_insert_literal_binds_sequence_notimplemented(self):
+        table = Table('x', MetaData(), Column('y', Integer, Sequence('y_seq')))
+        dialect = default.DefaultDialect()
+        dialect.supports_sequences = True
+
+        stmt = table.insert().values(myid=3, name='jack')
+
+        assert_raises(
+            NotImplementedError,
+            stmt.compile,
+            compile_kwargs=dict(literal_binds=True), dialect=dialect
+        )
 
     def test_update_literal_binds(self):
         stmt = table1.update().values(name='jack').\
