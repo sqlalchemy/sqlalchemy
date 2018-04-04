@@ -934,7 +934,7 @@ class SQLCompiler(Compiled):
     def visit_next_value_func(self, next_value, **kw):
         return self.visit_sequence(next_value.sequence)
 
-    def visit_sequence(self, sequence):
+    def visit_sequence(self, sequence, **kw):
         raise NotImplementedError(
             "Dialect '%s' does not support sequence increments." %
             self.dialect.name

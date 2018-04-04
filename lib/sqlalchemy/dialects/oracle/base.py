@@ -767,7 +767,7 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_outer_join_column(self, vc, **kw):
         return self.process(vc.column, **kw) + "(+)"
 
-    def visit_sequence(self, seq):
+    def visit_sequence(self, seq, **kw):
         return (self.dialect.identifier_preparer.format_sequence(seq) +
                 ".nextval")
 
