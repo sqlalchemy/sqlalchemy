@@ -291,7 +291,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
     def default_from(self):
         return " FROM rdb$database"
 
-    def visit_sequence(self, seq):
+    def visit_sequence(self, seq, **kw):
         return "gen_id(%s, 1)" % self.preparer.format_sequence(seq)
 
     def get_select_precolumns(self, select, **kw):
