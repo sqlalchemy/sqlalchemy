@@ -1273,8 +1273,14 @@ def _sort_states(states):
     pending = set(states)
     persistent = set(s for s in pending if s.key is not None)
     pending.difference_update(persistent)
+    try:
+        persistent_sorted = sorted(persistent, key=lambda q: q.key[1])
+    except TypeError as err:
+        raise sa_exc.InvalidRequestError(
+            "Could not sort objects by primary key; primary key "
+            "values must be sortable in Python (was: %s)" % err)
     return sorted(pending, key=operator.attrgetter("insert_order")) + \
-        sorted(persistent, key=lambda q: q.key[1])
+        persistent_sorted
 
 
 class BulkUD(object):

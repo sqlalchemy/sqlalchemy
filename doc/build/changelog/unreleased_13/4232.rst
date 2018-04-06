@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4232
+
+    An informative exception is re-raised when a primary key value is not
+    sortable in Python during an ORM flush under Python 3, such as an ``Enum``
+    that has no ``__lt__()`` method; normally Python 3 raises a ``TypeError``
+    in this case.   The flush process sorts persistent objects by primary key
+    in Python so the values must be sortable.
+

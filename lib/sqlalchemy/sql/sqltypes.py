@@ -1175,7 +1175,6 @@ class Enum(Emulated, String, SchemaType):
             two = 2
             three = 3
 
-
         t = Table(
             'data', MetaData(),
             Column('value', Enum(MyEnum))
