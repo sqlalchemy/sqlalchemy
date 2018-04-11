@@ -112,6 +112,43 @@ class ComponentReflectionTest(fixtures.TablesTest):
               schema=schema,
               comment=r"""the test % ' " \ table comment""")
 
+        if testing.requires.cross_schema_fk_reflection.enabled:
+            if schema is None:
+                Table(
+                    'local_table', metadata,
+                    Column('id', sa.Integer, primary_key=True),
+                    Column('data', sa.String(20)),
+                    Column(
+                        'remote_id',
+                        ForeignKey(
+                            '%s.remote_table_2.id' %
+                            testing.config.test_schema)
+                    ),
+                    test_needs_fk=True,
+                    schema=config.db.dialect.default_schema_name
+                )
+            else:
+                Table(
+                    'remote_table', metadata,
+                    Column('id', sa.Integer, primary_key=True),
+                    Column(
+                        'local_id',
+                        ForeignKey(
+                            '%s.local_table.id' %
+                            config.db.dialect.default_schema_name)
+                    ),
+                    Column('data', sa.String(20)),
+                    schema=schema,
+                    test_needs_fk=True,
+                )
+                Table(
+                    'remote_table_2', metadata,
+                    Column('id', sa.Integer, primary_key=True),
+                    Column('data', sa.String(20)),
+                    schema=schema,
+                    test_needs_fk=True,
+                )
+
         if testing.requires.index_reflection.enabled:
             cls.define_index(metadata, users)
 
@@ -216,7 +253,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def _test_get_table_names(self, schema=None, table_type='table',
                               order_by=None):
         _ignore_tables = [
-            'comment_test', 'noncol_idx_test_pk', 'noncol_idx_test_nopk'
+            'comment_test', 'noncol_idx_test_pk', 'noncol_idx_test_nopk',
+            'local_table', 'remote_table', 'remote_table_2'
         ]
         meta = self.metadata
         users, addresses, dingalings = self.tables.users, \
@@ -539,6 +577,41 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schemas
     def test_get_foreign_keys_with_schema(self):
         self._test_get_foreign_keys(schema=testing.config.test_schema)
+
+    @testing.requires.cross_schema_fk_reflection
+    @testing.requires.schemas
+    def test_get_inter_schema_foreign_keys(self):
+        local_table, remote_table, remote_table_2 = self.tables(
+            '%s.local_table' % testing.db.dialect.default_schema_name,
+            '%s.remote_table' % testing.config.test_schema,
+            '%s.remote_table_2' % testing.config.test_schema
+        )
+
+        insp = inspect(config.db)
+
+        local_fkeys = insp.get_foreign_keys(local_table.name)
+        eq_(len(local_fkeys), 1)
+
+        fkey1 = local_fkeys[0]
+        eq_(fkey1['referred_schema'], testing.config.test_schema)
+        eq_(fkey1['referred_table'], remote_table_2.name)
+        eq_(fkey1['referred_columns'], ['id', ])
+        eq_(fkey1['constrained_columns'], ['remote_id'])
+
+        remote_fkeys = insp.get_foreign_keys(
+            remote_table.name, schema=testing.config.test_schema)
+        eq_(len(remote_fkeys), 1)
+
+        fkey2 = remote_fkeys[0]
+
+        assert fkey2['referred_schema'] in (
+            None,
+            testing.db.dialect.default_schema_name
+        )
+        eq_(fkey2['referred_table'], local_table.name)
+        eq_(fkey2['referred_columns'], ['id', ])
+        eq_(fkey2['constrained_columns'], ['local_id'])
+
 
     @testing.requires.foreign_key_constraint_option_reflection_ondelete
     def test_get_foreign_key_options_ondelete(self):
