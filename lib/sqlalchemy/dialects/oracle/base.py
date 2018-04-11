@@ -354,7 +354,7 @@ from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy import types as sqltypes, schema as sa_schema
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, \
-    BLOB, CLOB, TIMESTAMP, FLOAT
+    BLOB, CLOB, TIMESTAMP, FLOAT, INTEGER
 from itertools import groupby
 
 RESERVED_WORDS = \
@@ -1414,7 +1414,10 @@ class OracleDialect(default.DefaultDialect):
             comment = row[7]
 
             if coltype == 'NUMBER':
-                coltype = NUMBER(precision, scale)
+                if precision is None and scale == 0:
+                    coltype = INTEGER()
+                else:
+                    coltype = NUMBER(precision, scale)
             elif coltype in ('VARCHAR2', 'NVARCHAR2', 'CHAR'):
                 coltype = self.ischema_names.get(coltype)(length)
             elif 'WITH TIME ZONE' in coltype:
