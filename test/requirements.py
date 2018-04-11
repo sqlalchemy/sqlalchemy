@@ -383,8 +383,23 @@ class DefaultRequirements(SuiteRequirements):
         """target system must support reflection of inter-schema foreign keys
         """
         return only_on([
-                    "postgresql"
+                    "postgresql",
+                    "mysql",
+                    "mssql",
                 ])
+
+    @property
+    def implicit_default_schema(self):
+        """target system has a strong concept of 'default' schema that can
+           be referred to implicitly.
+
+           basically, Postgresql.
+
+        """
+        return only_on([
+                    "postgresql",
+                ])
+
 
     @property
     def unique_constraint_reflection(self):

@@ -1397,6 +1397,10 @@ class SchemaTest(fixtures.TestBase):
     @testing.requires.schemas
     @testing.requires.cross_schema_fk_reflection
     def test_has_schema(self):
+        if not hasattr(testing.db.dialect, "has_schema"):
+            testing.config.skip_test(
+                "dialect %s doesn't have a has_schema method" %
+                testing.db.dialect.name)
         eq_(testing.db.dialect.has_schema(testing.db,
                                           testing.config.test_schema), True)
         eq_(testing.db.dialect.has_schema(testing.db,
@@ -1404,6 +1408,7 @@ class SchemaTest(fixtures.TestBase):
 
     @testing.requires.schemas
     @testing.requires.cross_schema_fk_reflection
+    @testing.requires.implicit_default_schema
     @testing.provide_metadata
     def test_blank_schema_arg(self):
         metadata = self.metadata
@@ -1411,11 +1416,13 @@ class SchemaTest(fixtures.TestBase):
         Table('some_table', metadata,
               Column('id', Integer, primary_key=True),
               Column('sid', Integer, sa.ForeignKey('some_other_table.id')),
-              schema=testing.config.test_schema
+              schema=testing.config.test_schema,
+              test_needs_fk=True
               )
         Table('some_other_table', metadata,
               Column('id', Integer, primary_key=True),
-              schema=None
+              schema=None,
+              test_needs_fk=True
               )
         metadata.create_all()
         with testing.db.connect() as conn:
@@ -1536,6 +1543,7 @@ class SchemaTest(fixtures.TestBase):
 
     @testing.requires.schemas
     @testing.requires.cross_schema_fk_reflection
+    @testing.requires.implicit_default_schema
     @testing.provide_metadata
     def test_reflect_all_schemas_default_overlap(self):
         t1 = Table('t', self.metadata,
