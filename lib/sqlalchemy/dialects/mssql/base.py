@@ -2241,7 +2241,7 @@ class MSDialect(default.DefaultDialect):
                         RR.c.delete_rule],
                        sql.and_(C.c.table_name == tablename,
                                 C.c.table_schema == owner,
-                                R.c.table_schema == C.c.table_schema,
+                                RR.c.constraint_schema == C.c.table_schema,
                                 C.c.constraint_name == RR.c.constraint_name,
                                 R.c.constraint_name ==
                                 RR.c.unique_constraint_name,
