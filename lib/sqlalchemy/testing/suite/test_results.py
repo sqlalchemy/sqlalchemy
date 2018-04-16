@@ -355,13 +355,13 @@ class ServerSideCursorsTest(fixtures.TestBase, testing.AssertsExecutionResults):
         test_table.create(checkfirst=True)
         test_table.insert().execute(data='data1')
         test_table.insert().execute(data='data2')
-        eq_(test_table.select().execute().fetchall(), [(1, 'data1'
-                                                        ), (2, 'data2')])
+        eq_(test_table.select().order_by(test_table.c.id).execute().fetchall(),
+            [(1, 'data1'), (2, 'data2')])
         test_table.update().where(
             test_table.c.id == 2).values(
             data=test_table.c.data +
             ' updated').execute()
-        eq_(test_table.select().execute().fetchall(),
+        eq_(test_table.select().order_by(test_table.c.id).execute().fetchall(),
             [(1, 'data1'), (2, 'data2 updated')])
         test_table.delete().execute()
         eq_(select([func.count('*')]).select_from(test_table).scalar(), 0)
