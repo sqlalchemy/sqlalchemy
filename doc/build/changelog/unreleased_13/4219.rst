@@ -1,0 +1,12 @@
+.. change::
+    :tags: feature, mysql
+    :tickets: 4219
+
+    Support added for the "WITH PARSER" syntax of CREATE FULLTEXT INDEX
+    in MySQL, using the ``mysql_with_parser`` keyword argument.  Reflection
+    is also supported, which accommodates MySQL's special comment format
+    for reporting on this option as well.  Additionally, the "FULLTEXT" and
+    "SPATIAL" index prefixes are now reflected back into the ``mysql_prefix``
+    index option.
+
+

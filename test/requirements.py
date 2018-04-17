@@ -1075,6 +1075,14 @@ class DefaultRequirements(SuiteRequirements):
 
         return only_if(check)
 
+    @property
+    def mysql_ngram_fulltext(self):
+        def check(config):
+            return against(config, "mysql") and \
+                not config.db.dialect._is_mariadb and \
+                config.db.dialect.server_version_info >= (5, 7)
+        return only_if(check)
+
     def _mariadb_102(self, config):
         return against(config, "mysql") and \
                 config.db.dialect._is_mariadb and \

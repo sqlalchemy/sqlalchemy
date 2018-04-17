@@ -50,6 +50,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'CREATE FULLTEXT INDEX test_idx1 '
                             'ON testtbl (data(10))')
 
+    def test_create_index_with_parser(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String(255)))
+        idx = Index('test_idx1', tbl.c.data, mysql_length=10,
+                    mysql_prefix='FULLTEXT', mysql_with_parser="ngram")
+
+        self.assert_compile(schema.CreateIndex(idx),
+                            'CREATE FULLTEXT INDEX test_idx1 '
+                            'ON testtbl (data(10)) WITH PARSER ngram')
+
     def test_create_index_with_length(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String(255)))
