@@ -525,6 +525,19 @@ http://dev.mysql.com/doc/refman/5.0/en/create-index.html
 
 http://dev.mysql.com/doc/refman/5.0/en/create-table.html
 
+Index Parsers
+~~~~~~~~~~~~~
+
+CREATE FULLTEXT INDEX in MySQL also supports a "WITH PARSER" option.  This
+is available using the keyword argument ``mysql_with_parser``::
+
+    Index(
+        'my_index', my_table.c.data,
+        mysql_prefix='FULLTEXT', mysql_with_parser="ngram")
+
+.. versionadded:: 1.3
+
+
 .. _mysql_foreign_keys:
 
 MySQL Foreign Keys
@@ -1276,6 +1289,10 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             columns = ', '.join(columns)
         text += '(%s)' % columns
 
+        parser = index.dialect_options['mysql']['with_parser']
+        if parser is not None:
+            text += " WITH PARSER %s" % (parser, )
+
         using = index.dialect_options['mysql']['using']
         if using is not None:
             text += " USING %s" % (preparer.quote(using))
@@ -1693,6 +1710,7 @@ class MySQLDialect(default.DefaultDialect):
             "using": None,
             "length": None,
             "prefix": None,
+            "with_parser": None
         })
     ]
 
@@ -2090,20 +2108,31 @@ class MySQLDialect(default.DefaultDialect):
             connection, table_name, schema, **kw)
 
         indexes = []
+
         for spec in parsed_state.keys:
+            dialect_options = {}
             unique = False
             flavor = spec['type']
             if flavor == 'PRIMARY':
                 continue
             if flavor == 'UNIQUE':
                 unique = True
-            elif flavor in (None, 'FULLTEXT', 'SPATIAL'):
+            elif flavor in ('FULLTEXT', 'SPATIAL'):
+                dialect_options["mysql_prefix"] = flavor
+            elif flavor is None:
                 pass
             else:
                 self.logger.info(
                     "Converting unknown KEY type %s to a plain KEY", flavor)
                 pass
+
+            if spec['parser']:
+                dialect_options['mysql_with_parser'] = spec['parser']
+
             index_d = {}
+            if dialect_options:
+                index_d["dialect_options"] = dialect_options
+
             index_d['name'] = spec['name']
             index_d['column_names'] = [s[0] for s in spec['columns']]
             index_d['unique'] = unique

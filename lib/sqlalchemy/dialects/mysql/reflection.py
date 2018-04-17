@@ -77,6 +77,13 @@ class MySQLTableDefinitionParser(object):
             spec = m.groupdict()
             # convert columns into name, length pairs
             spec['columns'] = self._parse_keyexprs(spec['columns'])
+            if spec['version_sql']:
+                m2 = self._re_key_version_sql.match(spec['version_sql'])
+                if m2 and m2.groupdict()['parser']:
+                    spec['parser'] = m2.groupdict()['parser']
+            if spec['parser']:
+                spec['parser'] = self.preparer.unformat_identifiers(
+                    spec['parser'])[0]
             return 'key', spec
 
         # FOREIGN KEY CONSTRAINT
@@ -364,7 +371,7 @@ class MySQLTableDefinitionParser(object):
 
         # (PRIMARY|UNIQUE|FULLTEXT|SPATIAL) INDEX `name` (USING (BTREE|HASH))?
         # (`col` (ASC|DESC)?, `col` (ASC|DESC)?)
-        # KEY_BLOCK_SIZE size | WITH PARSER name
+        # KEY_BLOCK_SIZE size | WITH PARSER name  /*!50100 WITH PARSER name */
         self._re_key = _re_compile(
             r'  '
             r'(?:(?P<type>\S+) )?KEY'
@@ -375,8 +382,16 @@ class MySQLTableDefinitionParser(object):
             r'(?: +KEY_BLOCK_SIZE *[ =]? *(?P<keyblock>\S+))?'
             r'(?: +WITH PARSER +(?P<parser>\S+))?'
             r'(?: +COMMENT +(?P<comment>(\x27\x27|\x27([^\x27])*?\x27)+))?'
+            r'(?: +/\*(?P<version_sql>.+)\*/ +)?'
             r',?$'
             % quotes
+        )
+
+        # https://forums.mysql.com/read.php?20,567102,567111#msg-567111
+        # It means if the MySQL version >= \d+, execute what's in the comment
+        self._re_key_version_sql = _re_compile(
+            r'\!\d+ '
+            r'(?: *WITH PARSER +(?P<parser>\S+) *)?'
         )
 
         # CONSTRAINT `name` FOREIGN KEY (`local_col`)

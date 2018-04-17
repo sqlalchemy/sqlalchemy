@@ -4,14 +4,15 @@ from sqlalchemy.testing import eq_, is_
 from sqlalchemy import Column, Table, DDL, MetaData, TIMESTAMP, \
     DefaultClause, String, Integer, Text, UnicodeText, SmallInteger,\
     NCHAR, LargeBinary, DateTime, select, UniqueConstraint, Unicode,\
-    BigInteger
+    BigInteger, Index
+from sqlalchemy.schema import CreateIndex
 from sqlalchemy import event
 from sqlalchemy import sql
 from sqlalchemy import exc
 from sqlalchemy import inspect
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import reflection as _reflection
-from sqlalchemy.testing import fixtures, AssertsExecutionResults
+from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises_message, expect_warnings
 import re
@@ -193,7 +194,7 @@ class TypeReflectionTest(fixtures.TestBase):
         self._run_test(specs, ['enums'])
 
 
-class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
+class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'mysql'
     __backend__ = True
@@ -573,6 +574,56 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         self.assert_(indexes['uc_a'].unique)
         self.assert_('uc_a' not in constraints)
 
+    @testing.provide_metadata
+    def test_reflect_fulltext(self):
+        mt = Table(
+            "mytable", self.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("textdata", String(50)),
+            mysql_engine='InnoDB'
+        )
+        Index("textdata_ix", mt.c.textdata, mysql_prefix="FULLTEXT")
+        self.metadata.create_all(testing.db)
+
+        mt = Table(
+            "mytable", MetaData(), autoload_with=testing.db
+        )
+        idx = list(mt.indexes)[0]
+        eq_(idx.name, "textdata_ix")
+        eq_(idx.dialect_options['mysql']['prefix'], "FULLTEXT")
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE FULLTEXT INDEX textdata_ix ON mytable (textdata)"
+        )
+
+    @testing.requires.mysql_ngram_fulltext
+    @testing.provide_metadata
+    def test_reflect_fulltext_comment(self):
+        mt = Table(
+            "mytable", self.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("textdata", String(50)),
+            mysql_engine='InnoDB'
+        )
+        Index(
+            "textdata_ix", mt.c.textdata,
+            mysql_prefix="FULLTEXT", mysql_with_parser="ngram")
+
+        self.metadata.create_all(testing.db)
+
+        mt = Table(
+            "mytable", MetaData(), autoload_with=testing.db
+        )
+        idx = list(mt.indexes)[0]
+        eq_(idx.name, "textdata_ix")
+        eq_(idx.dialect_options['mysql']['prefix'], "FULLTEXT")
+        eq_(idx.dialect_options['mysql']['with_parser'], "ngram")
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE FULLTEXT INDEX textdata_ix ON mytable "
+            "(textdata) WITH PARSER ngram"
+        )
+
 
 class RawReflectionTest(fixtures.TestBase):
     __backend__ = True
@@ -611,6 +662,12 @@ class RawReflectionTest(fixtures.TestBase):
             "  KEY (`id`) USING BTREE COMMENT 'prefix''suffix'")
         assert regex.match(
             "  KEY (`id`) USING BTREE COMMENT 'prefix''text''suffix'")
+        # https://forums.mysql.com/read.php?20,567102,567111#msg-567111
+        # "It means if the MySQL version >= 501, execute what's in the comment"
+        assert regex.match(
+            "  FULLTEXT KEY `ix_fulltext_oi_g_name` (`oi_g_name`) "
+            "/*!50100 WITH PARSER `ngram` */ "
+        )
 
     def test_fk_reflection(self):
         regex = self.parser._re_fk_constraint
