@@ -2126,3 +2126,62 @@ class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
         a1 = q.all()[0]
         is_true('c1_m2o' in a1.b.__dict__)
         is_true('c2_m2o' in a1.b.__dict__)
+
+
+class SingleInhSubclassTest(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsExecutionResults):
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = 'user'
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10))
+
+            __mapper_args__ = {'polymorphic_on': type}
+
+        class EmployerUser(User):
+            roles = relationship('Role', lazy='selectin')
+            __mapper_args__ = {'polymorphic_identity': 'employer'}
+
+        class Role(Base):
+            __tablename__ = 'role'
+
+            id = Column(Integer, primary_key=True)
+            user_id = Column(Integer, ForeignKey('user.id'))
+
+    @classmethod
+    def insert_data(cls):
+        EmployerUser, Role = cls.classes("EmployerUser", "Role")
+
+        s = Session()
+        s.add(EmployerUser(roles=[Role(), Role(), Role()]))
+        s.commit()
+
+    def test_load(self):
+        EmployerUser, = self.classes("EmployerUser")
+        s = Session()
+
+        q = s.query(EmployerUser)
+
+        self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                'SELECT "user".id AS user_id, "user".type AS user_type '
+                'FROM "user" WHERE "user".type IN (:type_1)',
+                {'type_1': 'employer'}
+            ),
+            CompiledSQL(
+                'SELECT user_1.id AS user_1_id, role.id AS role_id, '
+                'role.user_id AS role_user_id FROM "user" AS user_1 '
+                'JOIN role ON user_1.id = role.user_id WHERE user_1.id IN '
+                '([EXPANDING_primary_keys]) '
+                'AND user_1.type IN (:type_1) ORDER BY user_1.id',
+                {'primary_keys': [1], 'type_1': 'employer'}
+            ),
+        )

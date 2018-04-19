@@ -247,6 +247,25 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
                             'anon_1',
                             use_default_dialect=True)
 
+    def test_select_from_aliased_w_subclass(self):
+        Engineer = self.classes.Engineer
+
+        sess = create_session()
+
+        a1 = aliased(Engineer)
+        self.assert_compile(
+            sess.query(a1.employee_id).select_from(a1),
+            "SELECT employees_1.employee_id AS employees_1_employee_id "
+            "FROM employees AS employees_1 WHERE employees_1.type "
+            "IN (:type_1, :type_2)",
+        )
+
+        self.assert_compile(
+            sess.query(literal('1')).select_from(a1),
+            "SELECT :param_1 AS param_1 FROM employees AS employees_1 "
+            "WHERE employees_1.type IN (:type_1, :type_2)"
+        )
+
     def test_union_modifiers(self):
         Engineer, Manager = self.classes("Engineer", "Manager")
 

@@ -3542,12 +3542,14 @@ class Query(object):
         """
 
         search = set(self._mapper_adapter_map.values())
-        if self._select_from_entity:
-            # based on the behavior in _set_select_from,
-            # when we have self._select_from_entity, we don't
-            # have  _from_obj_alias.
-            # assert self._from_obj_alias is None
-            search = search.union([(self._select_from_entity, None)])
+        if self._select_from_entity and \
+                self._select_from_entity not in self._mapper_adapter_map:
+            insp = inspect(self._select_from_entity)
+            if insp.is_aliased_class:
+                adapter = insp._adapter
+            else:
+                adapter = None
+            search = search.union([(self._select_from_entity, adapter)])
 
         for (ext_info, adapter) in search:
             if ext_info in self._join_entities:
