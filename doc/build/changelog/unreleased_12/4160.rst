@@ -1,7 +1,0 @@
-.. change::
-    :tags: feature, postgresql
-    :tickets: 4160
-    :versions: 1.3.0b1
-
-    Added new PG type :class:`.postgresql.REGCLASS` which assists in casting
-    table names to OID values.  Pull request courtesy Sebastian Bank.
