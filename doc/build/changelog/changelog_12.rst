@@ -12,7 +12,79 @@
 
 .. changelog::
     :version: 1.2.7
-    :include_notes_from: unreleased_12
+    :released: April 20, 2018
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4228
+
+        Fixed regression in 1.2 within sharded query feature where the
+        new "identity_token" element was not being correctly considered within
+        the scope of a lazy load operation, when searching the identity map
+        for a related many-to-one element.   The new behavior will allow for
+        making use of the "id_chooser" in order to determine the best identity
+        key to retrieve from the identity map.  In order to achieve this, some
+        refactoring of 1.2's "identity_token" approach has made some slight changes
+        to the implementation of ``ShardedQuery`` which should be noted for other
+        derivations of this class.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4229
+
+        Fixed bug where the special "not equals" operator for the Postgresql
+        "range" datatypes such as DATERANGE would fail to render "IS NOT NULL" when
+        compared to the Python ``None`` value.
+
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4234
+        :versions: 1.3.0b1
+
+        Fixed 1.2 regression caused by :ticket:`4060` where the query used to
+        reflect SQL Server cross-schema foreign keys was limiting the criteria
+        incorrectly.
+
+
+
+    .. change::
+        :tags: bug, oracle
+        :versions: 1.3.0b1
+
+        The Oracle NUMBER datatype is reflected as INTEGER if the precision is NULL
+        and the scale is zero, as this is how INTEGER values come back when
+        reflected from Oracle's tables.  Pull request courtesy Kent Bower.
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 4160
+        :versions: 1.3.0b1
+
+        Added new PG type :class:`.postgresql.REGCLASS` which assists in casting
+        table names to OID values.  Pull request courtesy Sebastian Bank.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4231
+        :versions: 1.3.0b1
+
+        Fixed issue where the compilation of an INSERT statement with the
+        "literal_binds" option that also uses an explicit sequence and "inline"
+        generation, as on Postgresql and Oracle, would fail to accommodate the
+        extra keyword argument within the sequence processing routine.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4241
+
+        Fixed issue in single-inheritance loading where the use of an aliased
+        entity against a single-inheritance subclass in conjunction with the
+        :meth:`.Query.select_from` method would cause the SQL to be rendered with
+        the unaliased table mixed in to the query, causing a cartesian product.  In
+        particular this was affecting the new "selectin" loader when used against a
+        single-inheritance subclass.
 
 .. changelog::
     :version: 1.2.6

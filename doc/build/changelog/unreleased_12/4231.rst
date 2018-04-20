@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4231
-    :versions: 1.3.0b1
-
-    Fixed issue where the compilation of an INSERT statement with the
-    "literal_binds" option that also uses an explicit sequence and "inline"
-    generation, as on Postgresql and Oracle, would fail to accommodate the
-    extra keyword argument within the sequence processing routine.
