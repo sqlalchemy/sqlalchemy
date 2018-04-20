@@ -39,6 +39,12 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         # warm up type caches
         t.select().execute().fetchall()
         t2.select().execute().fetchall()
+        testing.db.execute('SELECT %s FROM table1' % (
+            ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
+        )).fetchall()
+        testing.db.execute("SELECT %s FROM table2" % (
+            ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
+        )).fetchall()
 
     def teardown(self):
         metadata.drop_all()
