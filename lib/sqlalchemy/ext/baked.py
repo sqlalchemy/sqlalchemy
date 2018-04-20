@@ -441,12 +441,10 @@ class Result(object):
         """
 
         query = self.bq.steps[0](self.session)
-        return query._get_impl(ident, self._load_on_ident)
+        return query._get_impl(ident, self._load_on_pk_identity)
 
-    def _load_on_ident(self, query, key):
-        """Load the given identity key from the database."""
-
-        ident = key[1]
+    def _load_on_pk_identity(self, query, primary_key_identity):
+        """Load the given primary key identity from the database."""
 
         mapper = query._mapper_zero()
 
@@ -460,10 +458,11 @@ class Result(object):
 
             # None present in ident - turn those comparisons
             # into "IS NULL"
-            if None in ident:
+            if None in primary_key_identity:
                 nones = set([
                     _get_params[col].key for col, value in
-                    zip(mapper.primary_key, ident) if value is None
+                    zip(mapper.primary_key, primary_key_identity)
+                    if value is None
                 ])
                 _lcl_get_clause = sql_util.adapt_criterion_to_null(
                     _lcl_get_clause, nones)
@@ -485,11 +484,13 @@ class Result(object):
         bq = bq._clone()
         bq._cache_key += (_get_clause, )
 
-        bq = bq.with_criteria(setup, tuple(elem is None for elem in ident))
+        bq = bq.with_criteria(
+            setup, tuple(elem is None for elem in primary_key_identity))
 
         params = dict([
             (_get_params[primary_key].key, id_val)
-            for id_val, primary_key in zip(ident, mapper.primary_key)
+            for id_val, primary_key
+            in zip(primary_key_identity, mapper.primary_key)
         ])
 
         result = list(bq.for_session(self.session).params(**params))

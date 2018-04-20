@@ -576,7 +576,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             return attributes.ATTR_EMPTY
 
         pending = not state.key
-        ident_key = None
+        primary_key_identity = None
 
         if (
             (not passive & attributes.SQL_OK and not self.use_get)
@@ -599,28 +599,36 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         # if we have a simple primary key load, check the
         # identity map without generating a Query at all
         if self.use_get:
-            ident = self._get_ident_for_use_get(
+            primary_key_identity = self._get_ident_for_use_get(
                 session,
                 state,
                 passive
             )
-            if attributes.PASSIVE_NO_RESULT in ident:
+            if attributes.PASSIVE_NO_RESULT in primary_key_identity:
                 return attributes.PASSIVE_NO_RESULT
-            elif attributes.NEVER_SET in ident:
+            elif attributes.NEVER_SET in primary_key_identity:
                 return attributes.NEVER_SET
 
-            if _none_set.issuperset(ident):
+            if _none_set.issuperset(primary_key_identity):
                 return None
 
-            ident_key = self.mapper.identity_key_from_primary_key(ident)
-            instance = loading.get_from_identity(session, ident_key, passive)
+            # look for this identity in the identity map.  Delegate to the
+            # Query class in use, as it may have special rules for how it
+            # does this, including how it decides what the correct
+            # identity_token would be for this identity
+            instance = session._query_cls._identity_lookup(
+                session, self.mapper, primary_key_identity,
+                passive=passive
+            )
+
             if instance is not None:
                 return instance
             elif not passive & attributes.SQL_OK or \
                     not passive & attributes.RELATED_OBJECT_OK:
                 return attributes.PASSIVE_NO_RESULT
 
-        return self._emit_lazyload(session, state, ident_key, passive)
+        return self._emit_lazyload(
+            session, state, primary_key_identity, passive)
 
     def _get_ident_for_use_get(self, session, state, passive):
         instance_mapper = state.manager.mapper
@@ -648,7 +656,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     @util.dependencies(
         "sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
-            self, strategy_options, session, state, ident_key, passive):
+            self, strategy_options, session, state,
+            primary_key_identity, passive):
         # emit lazy load now using BakedQuery, to cut way down on the overhead
         # of generating queries.
         # there are two big things we are trying to guard against here:
@@ -706,8 +715,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if self.use_get:
             if self._raise_on_sql:
                 self._invoke_raise_load(state, passive, "raise_on_sql")
-            return q(session)._load_on_ident(
-                session.query(self.mapper), ident_key)
+            return q(session)._load_on_pk_identity(
+                session.query(self.mapper), primary_key_identity)
 
         if self.parent_property.order_by:
             q.add_criteria(

@@ -62,30 +62,65 @@ class ShardedQuery(Query):
             # were done, this is where it would happen
             return iter(partial)
 
-    def _get_impl(self, ident, fallback_fn):
-        # TODO: the "ident" here should be getting the identity token
-        # which indicates that this area can likely be simplified, as the
-        # token will fall through into _execute_and_instances
-        def _fallback(query, ident):
+    @classmethod
+    def _identity_lookup(
+            cls, session, mapper, primary_key_identity, identity_token=None,
+            **kw):
+        """override the default Query._identity_lookup method so that we
+        search for a given non-token primary key identity across all
+        possible identity tokens (e.g. shard ids).
+
+        """
+
+        if identity_token is not None:
+            return super(ShardedQuery, cls)._identity_lookup(
+                session, mapper, primary_key_identity,
+                identity_token=identity_token,
+                **kw
+            )
+        else:
+            q = cls([mapper], session)
+            for shard_id in q.id_chooser(q, primary_key_identity):
+                obj = super(ShardedQuery, cls)._identity_lookup(
+                    session, mapper, primary_key_identity,
+                    identity_token=shard_id,
+                    **kw
+                )
+                if obj is not None:
+                    return obj
+
+            return None
+
+    def _get_impl(
+            self, primary_key_identity, db_load_fn, identity_token=None):
+        """Override the default Query._get_impl() method so that we emit
+        a query to the DB for each possible identity token, if we don't
+        have one already.
+
+        """
+        def _db_load_fn(query, primary_key_identity):
+            # load from the database.  The original db_load_fn will
+            # use the given Query object to load from the DB, so our
+            # shard_id is what will indicate the DB that we query from.
             if self._shard_id is not None:
-                return fallback_fn(self, ident)
+                return db_load_fn(self, primary_key_identity)
             else:
-                ident = util.to_list(ident)
+                ident = util.to_list(primary_key_identity)
+                # build a ShardedQuery for each shard identifier and
+                # try to load from the DB
                 for shard_id in self.id_chooser(self, ident):
                     q = self.set_shard(shard_id)
-                    o = fallback_fn(q, ident)
+                    o = db_load_fn(q, ident)
                     if o is not None:
                         return o
                 else:
                     return None
 
-        if self._shard_id is not None:
+        if identity_token is None and self._shard_id is not None:
             identity_token = self._shard_id
-        else:
-            identity_token = None
 
         return super(ShardedQuery, self)._get_impl(
-            ident, _fallback, identity_token=identity_token)
+            primary_key_identity, _db_load_fn, identity_token=identity_token)
 
 
 class ShardedSession(Session):

@@ -372,3 +372,46 @@ class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
 
         result = session.query(Book).options(selectinload('pages')).all()
         eq_(result, [book])
+
+
+class LazyLoadFromIdentityMapTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Book(Base):
+            __tablename__ = 'book'
+            id = Column(Integer, primary_key=True)
+            pages = relationship('Page', backref='book')
+
+        class Page(Base):
+            __tablename__ = 'page'
+            id = Column(Integer, primary_key=True)
+            book_id = Column(ForeignKey('book.id'))
+
+    def test_lazy_load_from_identity_map(self):
+        session = ShardedSession(
+            shards={"test": testing.db},
+            shard_chooser=lambda *args: 'test',
+            id_chooser=lambda *args: ['test'],
+            query_chooser=lambda *args: ['test']
+        )
+
+        Book, Page = self.classes("Book", "Page")
+        book = Book()
+        book.pages.append(Page())
+
+        session.add(book)
+        session.commit()
+
+        book = session.query(Book).first()
+        page = session.query(Page).first()
+
+        def go():
+            eq_(page.book, book)
+
+        # doesn't emit SQL
+        self.assert_sql_count(
+            testing.db,
+            go,
+            0)

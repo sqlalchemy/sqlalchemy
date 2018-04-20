@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4228
+
+    Fixed regression in 1.2 within sharded query feature where the
+    new "identity_token" element was not being correctly considered within
+    the scope of a lazy load operation, when searching the identity map
+    for a related many-to-one element.   The new behavior will allow for
+    making use of the "id_chooser" in order to determine the best identity
+    key to retrieve from the identity map.  In order to achieve this, some
+    refactoring of 1.2's "identity_token" approach has made some slight changes
+    to the implementation of ``ShardedQuery`` which should be noted for other
+    derivations of this class.
