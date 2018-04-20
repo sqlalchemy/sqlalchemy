@@ -51,14 +51,14 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
-    @profiling.function_call_count()
+    @profiling.function_call_count(variance=0.10)
     def test_raw_string(self):
         stmt = 'SELECT %s FROM table1' % (
             ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
         )
         [tuple(row) for row in testing.db.execute(stmt).fetchall()]
 
-    @profiling.function_call_count()
+    @profiling.function_call_count(variance=0.10)
     def test_raw_unicode(self):
         stmt = "SELECT %s FROM table2" % (
             ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
