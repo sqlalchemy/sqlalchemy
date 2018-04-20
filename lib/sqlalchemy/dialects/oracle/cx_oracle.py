@@ -93,6 +93,37 @@ Python 2:
   The above approach will add significant latency to result-set fetches
   of plain string values.
 
+Sending String Values as Unicode or Non-Unicode
+------------------------------------------------
+
+As of SQLAlchemy 1.2.2, the cx_Oracle dialect unconditionally calls
+``setinputsizes()`` for bound values that are passed as Python unicode objects.
+In Python 3, all string values are Unicode; for cx_Oracle, this corresponds to
+``cx_Oracle.NCHAR`` being passed to ``setinputsizes()`` for that parameter.
+In some edge cases, such as passing format specifiers for
+the ``trunc()`` function, Oracle does not accept these as NCHAR::
+
+    from sqlalchemy import func
+
+    conn.execute(
+        func.trunc(func.sysdate(), 'dd')
+    )
+
+In these cases, an error as follows may be raised::
+
+    ORA-01899: bad precision specifier
+
+When this error is encountered, it may be necessary to pass the string value
+with an explicit non-unicode type::
+
+    from sqlalchemy import func
+    from sqlalchemy import literal
+    from sqlalchemy import String
+
+    conn.execute(
+        func.trunc(func.sysdate(), literal('dd', String))
+    )
+
 
 .. _cx_oracle_returning:
 
