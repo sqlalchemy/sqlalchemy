@@ -1023,9 +1023,9 @@ class Connection(Connectable):
 
         distilled_params = _distill_params(multiparams, params)
         if distilled_params:
-            # note this is usually dict but we support RowProxy
-            # as well; but dict.keys() as an iterable is OK
-            keys = distilled_params[0].keys()
+            # ensure we don't retain a link to the view object for keys()
+            # which links to the values, which we don't want to cache
+            keys = list(distilled_params[0].keys())
         else:
             keys = []
 
