@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :versions: 1.3.0b1
+
+    Fixed a reference leak issue where the values of the parameter dictionary
+    used in a statement execution would remain referenced by the "compiled
+    cache", as a result of storing the key view used by Python 3 dictionary
+    keys().  Pull request courtesy Olivier Grisel.
