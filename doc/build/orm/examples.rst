@@ -76,6 +76,13 @@ Relationship Join Conditions
 
 .. automodule:: examples.join_conditions
 
+.. _examples_spaceinvaders:
+
+Space Invaders
+--------------
+
+.. automodule:: examples.space_invaders
+
 .. _examples_xmlpersistence:
 
 XML Persistence
