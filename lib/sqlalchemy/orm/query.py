@@ -3493,6 +3493,9 @@ class Query(object):
             order_by=context.order_by,
             **self._select_args
         )
+        # put FOR UPDATE on the inner query, where MySQL will honor it,
+        # as well as if it has an OF so Postgresql can use it.
+        inner._for_update_arg = context._for_update_arg
 
         for hint in self._with_hints:
             inner = inner.with_hint(*hint)
@@ -3510,7 +3513,13 @@ class Query(object):
             [inner] + context.secondary_columns,
             use_labels=context.labels)
 
-        statement._for_update_arg = context._for_update_arg
+        # Oracle however does not allow FOR UPDATE on the subquery,
+        # and the Oracle dialect ignores it, plus for Postgresql, MySQL
+        # we expect that all elements of the row are locked, so also put it
+        # on the outside (except in the case of PG when OF is used)
+        if context._for_update_arg is not None and \
+                context._for_update_arg.of is None:
+            statement._for_update_arg = context._for_update_arg
 
         from_clause = inner
         for eager_join in context.eager_joins.values():

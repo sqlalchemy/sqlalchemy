@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, orm, mysql, postgresql
+    :tickets: 4246
+
+    The ORM now doubles the "FOR UPDATE" clause within the subquery that
+    renders in conjunction with joined eager loading in some cases, as it has
+    been observed that MySQL does not lock the rows from a subquery.   This
+    means the query renders with two FOR UPDATE clauses; note that on some
+    backends such as Oracle, FOR UPDATE clauses on subqueries are silently
+    ignored since they are unnecessary.  Additionally, in the case of the "OF"
+    clause used primarily with Postgresql, the FOR UPDATE is rendered only on
+    the inner subquery when this is used so that the selectable can be targeted
+    to the table within the SELECT statement.
+
+    .. seealso::
+
+        :ref:`change_4246`
