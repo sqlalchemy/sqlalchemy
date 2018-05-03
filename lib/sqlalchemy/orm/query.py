@@ -93,6 +93,7 @@ class Query(object):
     _autoflush = True
     _only_load_props = None
     _refresh_state = None
+    _refresh_identity_token = None
     _from_obj = ()
     _join_entities = ()
     _select_from_entity = None
@@ -439,7 +440,8 @@ class Query(object):
     def _get_options(self, populate_existing=None,
                      version_check=None,
                      only_load_props=None,
-                     refresh_state=None):
+                     refresh_state=None,
+                     identity_token=None):
         if populate_existing:
             self._populate_existing = populate_existing
         if version_check:
@@ -448,6 +450,8 @@ class Query(object):
             self._refresh_state = refresh_state
         if only_load_props:
             self._only_load_props = set(only_load_props)
+        if identity_token:
+            self._refresh_identity_token = identity_token
         return self
 
     def _clone(self):
@@ -4219,7 +4223,10 @@ class QueryContext(object):
         self.propagate_options = set(o for o in query._with_options if
                                      o.propagate_to_loaders)
         self.attributes = query._attributes.copy()
-        self.identity_token = None
+        if self.refresh_state is not None:
+            self.identity_token = query._refresh_identity_token
+        else:
+            self.identity_token = None
 
 
 class AliasOption(interfaces.MapperOption):
