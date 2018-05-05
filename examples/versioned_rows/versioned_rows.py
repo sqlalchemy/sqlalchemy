@@ -3,18 +3,16 @@ an UPDATE statement on a single row into an INSERT statement, so that a new
 row is inserted with the new data, keeping the old row intact.
 
 """
-from sqlalchemy.orm import *
-from sqlalchemy import *
-from sqlalchemy.orm.interfaces import SessionExtension
+from sqlalchemy.orm import sessionmaker, relationship, make_transient, \
+    backref, Session
+from sqlalchemy import Column, ForeignKey, create_engine, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
+from sqlalchemy import event
+
 
 class Versioned(object):
     def new_version(self, session):
-        # if on SQLA 0.6.1 or earlier,
-        # make sure 'id' isn't expired.
-        # self.id
-
         # make us transient (removes persistent
         # identity).
         make_transient(self)
@@ -23,29 +21,31 @@ class Versioned(object):
         # a new PK will be generated on INSERT.
         self.id = None
 
-class VersionExtension(SessionExtension):
-    def before_flush(self, session, flush_context, instances):
-        for instance in session.dirty:
-            if not isinstance(instance, Versioned):
-                continue
-            if not session.is_modified(instance, passive=True):
-                continue
 
-            if not attributes.instance_state(instance).has_identity:
-                continue
+@event.listens_for(Session, "before_flush")
+def before_flush(session, flush_context, instances):
+    for instance in session.dirty:
+        if not isinstance(instance, Versioned):
+            continue
+        if not session.is_modified(instance, passive=True):
+            continue
 
-            # make it transient
-            instance.new_version(session)
-            # re-add
-            session.add(instance)
+        if not attributes.instance_state(instance).has_identity:
+            continue
+
+        # make it transient
+        instance.new_version(session)
+        # re-add
+        session.add(instance)
 
 Base = declarative_base()
 
 engine = create_engine('sqlite://', echo=True)
 
-Session = sessionmaker(engine, extension=[VersionExtension()])
+Session = sessionmaker(engine)
 
 # example 1, simple versioning
+
 
 class Example(Versioned, Base):
     __tablename__ = 'example'
@@ -62,16 +62,19 @@ session.commit()
 e1.data = 'e2'
 session.commit()
 
-assert session.query(Example.id, Example.data).order_by(Example.id).all() == \
-        [(1, 'e1'), (2, 'e2')]
+assert session.query(Example.id, Example.data).order_by(Example.id).all() == (
+    [(1, 'e1'), (2, 'e2')]
+)
 
 # example 2, versioning with a parent
+
 
 class Parent(Base):
     __tablename__ = 'parent'
     id = Column(Integer, primary_key=True)
     child_id = Column(Integer, ForeignKey('child.id'))
     child = relationship("Child", backref=backref('parent', uselist=False))
+
 
 class Child(Versioned, Base):
     __tablename__ = 'child'
@@ -101,5 +104,6 @@ p1.child.data = 'c2'
 session.commit()
 
 assert p1.child_id == 2
-assert session.query(Child.id, Child.data).order_by(Child.id).all() == \
+assert session.query(Child.id, Child.data).order_by(Child.id).all() == (
     [(1, 'c1'), (2, 'c2')]
+)
