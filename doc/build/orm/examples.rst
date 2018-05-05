@@ -100,6 +100,8 @@ Versioning using Temporal Rows
 
 .. automodule:: examples.versioned_rows
 
+.. _examples_vertical_tables:
+
 Vertical Attribute Mapping
 --------------------------
 

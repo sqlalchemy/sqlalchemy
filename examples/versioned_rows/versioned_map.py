@@ -1,5 +1,8 @@
-"""A variant of the versioned_rows example. Here
-we store a dictionary of key/value pairs, storing the k/v's in a
+"""A variant of the versioned_rows example built around the
+concept of a "vertical table" structure, like those illustrated in
+:ref:`examples_vertical_tables` examples.
+
+Here we store a dictionary of key/value pairs, storing the k/v's in a
 "vertical" fashion where each key gets a row. The value is split out
 into two separate datatypes, string and int - the range of datatype
 storage can be adjusted for individual needs.
@@ -27,32 +30,32 @@ those additional values.
 
 from sqlalchemy import Column, String, Integer, ForeignKey, \
     create_engine
-from sqlalchemy.orm.interfaces import SessionExtension
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes, relationship, backref, \
-    sessionmaker, make_transient, validates
+    sessionmaker, make_transient, validates, Session
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy import event
 
-class VersionExtension(SessionExtension):
+
+@event.listens_for(Session, "before_flush")
+def before_flush(session, flush_context, instances):
     """Apply the new_version() method of objects which are
     marked as dirty during a flush.
 
-    See http://www.sqlalchemy.org/trac/wiki/UsageRecipes/VersionedRows
-
     """
-    def before_flush(self, session, flush_context, instances):
-        for instance in session.dirty:
-            if hasattr(instance, 'new_version') and \
+    for instance in session.dirty:
+        if hasattr(instance, 'new_version') and \
                 session.is_modified(instance, passive=True):
 
-                # make it transient
-                instance.new_version(session)
+            # make it transient
+            instance.new_version(session)
 
-                # re-add
-                session.add(instance)
+            # re-add
+            session.add(instance)
 
 Base = declarative_base()
+
 
 class ConfigData(Base):
     """Represent a series of key/value pairs.
@@ -69,11 +72,12 @@ class ConfigData(Base):
     id = Column(Integer, primary_key=True)
     """Primary key column of this ConfigData."""
 
-    elements = relationship("ConfigValueAssociation",
-                    collection_class=attribute_mapped_collection("name"),
-                    backref=backref("config_data"),
-                    lazy="subquery"
-                )
+    elements = relationship(
+        "ConfigValueAssociation",
+        collection_class=attribute_mapped_collection("name"),
+        backref=backref("config_data"),
+        lazy="subquery"
+    )
     """Dictionary-backed collection of ConfigValueAssociation objects,
     keyed to the name of the associated ConfigValue.
 
@@ -128,7 +132,8 @@ class ConfigData(Base):
         # the new ones associate with the new ConfigData,
         # the old ones stay associated with the old ConfigData
         for elem in hist.unchanged:
-            self.elements[elem.name] = ConfigValueAssociation(elem.config_value)
+            self.elements[elem.name] = ConfigValueAssociation(
+                elem.config_value)
 
         # we also need to expire changes on each ConfigValueAssociation
         # that is to remain associated with the old ConfigData.
@@ -143,7 +148,6 @@ class ConfigValueAssociation(Base):
 
     config_id = Column(ForeignKey('config.id'), primary_key=True)
     """Reference the primary key of the ConfigData object."""
-
 
     config_value_id = Column(ForeignKey('config_value.id'), primary_key=True)
     """Reference the primary key of the ConfigValue object."""
@@ -179,9 +183,10 @@ class ConfigValueAssociation(Base):
         """
         if value != self.config_value.value:
             self.config_data.elements[self.name] = \
-                    ConfigValueAssociation(
-                        ConfigValue(self.config_value.name, value)
-                    )
+                ConfigValueAssociation(
+                ConfigValue(self.config_value.name, value)
+            )
+
 
 class ConfigValue(Base):
     """Represent an individual key/value pair at a given point in time.
@@ -193,8 +198,9 @@ class ConfigValue(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
-    originating_config_id = Column(Integer, ForeignKey('config.id'),
-                            nullable=False)
+    originating_config_id = Column(
+        Integer, ForeignKey('config.id'),
+        nullable=False)
     int_value = Column(Integer)
     string_value = Column(String(255))
 
@@ -234,16 +240,16 @@ class ConfigValue(Base):
 if __name__ == '__main__':
     engine = create_engine('sqlite://', echo=True)
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine, extension=VersionExtension())
+    Session = sessionmaker(engine)
 
     sess = Session()
 
     config = ConfigData({
-        'user_name':'twitter',
-        'hash_id':'4fedffca37eaf',
-        'x':27,
-        'y':450
-        })
+        'user_name': 'twitter',
+        'hash_id': '4fedffca37eaf',
+        'x': 27,
+        'y': 450
+    })
 
     sess.add(config)
     sess.commit()
@@ -259,26 +265,27 @@ if __name__ == '__main__':
     # two versions have been created.
 
     assert config.data == {
-        'user_name':'yahoo',
-        'hash_id':'4fedffca37eaf',
-        'x':27,
-        'y':450
+        'user_name': 'yahoo',
+        'hash_id': '4fedffca37eaf',
+        'x': 27,
+        'y': 450
     }
 
     old_config = sess.query(ConfigData).get(version_one)
     assert old_config.data == {
-        'user_name':'twitter',
-        'hash_id':'4fedffca37eaf',
-        'x':27,
-        'y':450
+        'user_name': 'twitter',
+        'hash_id': '4fedffca37eaf',
+        'x': 27,
+        'y': 450
     }
 
     # the history of any key can be acquired using
     # the originating_config_id attribute
     history = sess.query(ConfigValue).\
-            filter(ConfigValue.name=='user_name').\
-            order_by(ConfigValue.originating_config_id).\
-            all()
+        filter(ConfigValue.name == 'user_name').\
+        order_by(ConfigValue.originating_config_id).\
+        all()
 
-    assert [(h.value, h.originating_config_id) for h in history] == \
-            [('twitter', version_one), ('yahoo', version_two)]
+    assert [(h.value, h.originating_config_id) for h in history] == (
+        [('twitter', version_one), ('yahoo', version_two)]
+    )
