@@ -125,6 +125,9 @@ Valid values for ``isolation_level`` include:
 Remote-Schema Table Introspection and PostgreSQL search_path
 ------------------------------------------------------------
 
+**TL;DR;**: keep the ``search_path`` variable set to its default of ``public``,
+name schemas **other** than ``public`` explicitly within ``Table`` defintitions.
+
 The PostgreSQL dialect can reflect tables from any schema.  The
 :paramref:`.Table.schema` argument, or alternatively the
 :paramref:`.MetaData.reflect.schema` argument determines which schema will
