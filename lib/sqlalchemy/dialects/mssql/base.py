@@ -1820,7 +1820,8 @@ class MSDialect(default.DefaultDialect):
 
     ischema_names = ischema_names
 
-    supports_native_boolean = True
+    supports_native_boolean = False
+    non_native_boolean_check_constraint = False
     supports_unicode_binds = True
     postfetch_lastrowid = True
 

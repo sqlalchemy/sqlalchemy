@@ -1644,7 +1644,8 @@ class Boolean(Emulated, TypeEngine, SchemaType):
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):
             return False
-        return not compiler.dialect.supports_native_boolean
+        return not compiler.dialect.supports_native_boolean and \
+            compiler.dialect.non_native_boolean_check_constraint
 
     @util.dependencies("sqlalchemy.sql.schema")
     def _set_table(self, schema, column, table):
