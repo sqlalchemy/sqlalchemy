@@ -612,6 +612,48 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             (None, None)
         )
 
+    def test_whereclause(self):
+        # testing "WHERE <column>" renders a compatible expression
+        boolean_table = self.tables.boolean_table
+
+        with config.db.connect() as conn:
+            conn.execute(
+                boolean_table.insert(),
+                [
+                    {'id': 1, 'value': True, 'unconstrained_value': True},
+                    {'id': 2, 'value': False, 'unconstrained_value': False}
+                ]
+            )
+
+            eq_(
+                conn.scalar(
+                    select([boolean_table.c.id]).where(boolean_table.c.value)
+                ),
+                1
+            )
+            eq_(
+                conn.scalar(
+                    select([boolean_table.c.id]).where(
+                        boolean_table.c.unconstrained_value)
+                ),
+                1
+            )
+            eq_(
+                conn.scalar(
+                    select([boolean_table.c.id]).where(~boolean_table.c.value)
+                ),
+                2
+            )
+            eq_(
+                conn.scalar(
+                    select([boolean_table.c.id]).where(
+                        ~boolean_table.c.unconstrained_value)
+                ),
+                2
+            )
+
+
+
 
 class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __requires__ = 'json_type',
