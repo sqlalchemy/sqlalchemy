@@ -1,0 +1,8 @@
+.. change::
+	:tags: bug, tests
+	:tickets: 4249
+	:versions: 1.3.0b1
+
+	Fixed a bug in the test suite where if an external dialect returned
+	``None`` for ``server_version_info``, the exclusion logic would raise an
+	``AttributeError``.
