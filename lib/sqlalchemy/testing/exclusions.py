@@ -381,7 +381,9 @@ def _server_version(engine):
 
     # force metadata to be retrieved
     conn = engine.connect()
-    version = getattr(engine.dialect, 'server_version_info', ())
+    version = getattr(engine.dialect, 'server_version_info', None)
+    if version is None:
+        version = ()
     conn.close()
     return version
 
