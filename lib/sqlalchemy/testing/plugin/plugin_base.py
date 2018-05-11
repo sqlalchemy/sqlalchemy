@@ -561,7 +561,7 @@ def _do_skips(cls):
                     config_obj.db.name,
                     ".".join(
                         str(dig) for dig in
-                        config_obj.db.dialect.server_version_info),
+                        exclusions._server_version(config_obj.db)),
                     config_obj.db.driver
                 )
               for config_obj in config.Config.all_configs()
