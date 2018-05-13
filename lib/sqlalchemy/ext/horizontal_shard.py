@@ -51,7 +51,9 @@ class ShardedQuery(Query):
                 self._params)
             return self.instances(result, context)
 
-        if self._shard_id is not None:
+        if context.identity_token is not None:
+            return iter_for_shard(context.identity_token)
+        elif self._shard_id is not None:
             return iter_for_shard(self._shard_id)
         else:
             partial = []
