@@ -177,19 +177,21 @@ def load_on_ident(query, key,
 
     if key is not None:
         ident = key[1]
+        identity_token = key[2]
     else:
-        ident = None
+        ident = identity_token = None
 
     return load_on_pk_identity(
         query, ident, refresh_state=refresh_state,
         with_for_update=with_for_update,
-        only_load_props=only_load_props
+        only_load_props=only_load_props,
+        identity_token=identity_token
     )
 
 
 def load_on_pk_identity(query, primary_key_identity,
                         refresh_state=None, with_for_update=None,
-                        only_load_props=None):
+                        only_load_props=None, identity_token=None):
 
     """Load the given primary key identity from the database."""
 
@@ -240,7 +242,8 @@ def load_on_pk_identity(query, primary_key_identity,
         populate_existing=bool(refresh_state),
         version_check=version_check,
         only_load_props=only_load_props,
-        refresh_state=refresh_state)
+        refresh_state=refresh_state,
+        identity_token=identity_token)
     q._order_by = None
 
     try:
