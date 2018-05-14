@@ -4283,7 +4283,7 @@ def _no_literals(element):
         raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' "
                                 "function to indicate a SQL expression "
                                 "literal, or 'literal()' to indicate a "
-                                "bound value." % element)
+                                "bound value." % (element, ))
     else:
         return element
 
