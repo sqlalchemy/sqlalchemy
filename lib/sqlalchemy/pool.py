@@ -552,9 +552,12 @@ class _ConnectionRecord(object):
 
     def _checkin_failed(self, err):
         self.invalidate(e=err)
-        self.checkin()
+        self.checkin(_no_fairy_ref=True)
 
-    def checkin(self):
+    def checkin(self, _no_fairy_ref=False):
+        if self.fairy_ref is None and not _no_fairy_ref:
+            util.warn("Double checkin attempted on %s" % self)
+            return
         self.fairy_ref = None
         connection = self.connection
         pool = self.__pool
@@ -721,7 +724,7 @@ def _finalize_fairy(connection, connection_record,
             if not isinstance(e, Exception):
                 raise
 
-    if connection_record:
+    if connection_record and connection_record.fairy_ref is not None:
         connection_record.checkin()
 
 

@@ -7,6 +7,7 @@ from sqlalchemy.testing.util import gc_collect, lazy_gc
 from sqlalchemy.testing import eq_, assert_raises, is_not_, is_
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import assert_raises_message
 import random
 from sqlalchemy.testing.mock import Mock, call, patch, ANY
 import weakref
@@ -1970,6 +1971,18 @@ class QueuePoolTest(PoolTestBase):
         c2 = p.connect()
         assert c2.connection is not None
 
+    def test_no_double_checkin(self):
+        p = self._queuepool_fixture(pool_size=1)
+
+        c1 = p.connect()
+        rec = c1._connection_record
+        c1.close()
+        assert_raises_message(
+            Warning,
+            "Double checkin attempted on %s" % rec,
+            rec.checkin
+        )
+
 
 class ResetOnReturnTest(PoolTestBase):
     def _fixture(self, **kw):
@@ -2062,6 +2075,27 @@ class ResetOnReturnTest(PoolTestBase):
         eq_(dbapi.connect().special_commit.call_count, 1)
         assert not dbapi.connect().rollback.called
         assert dbapi.connect().commit.called
+
+    def test_reset_agent_disconnect(self):
+        dbapi, p = self._fixture(reset_on_return='rollback')
+
+        class Agent(object):
+            def __init__(self, conn):
+                self.conn = conn
+
+            def rollback(self):
+                p._invalidate(self.conn)
+                raise Exception("hi")
+
+            def commit(self):
+                self.conn.commit()
+
+        c1 = p.connect()
+        c1._reset_agent = Agent(c1)
+        c1.close()
+
+        # no warning raised.  We know it would warn due to
+        # QueuePoolTest.test_no_double_checkin
 
 
 class SingletonThreadPoolTest(PoolTestBase):

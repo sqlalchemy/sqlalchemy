@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 4252
+    :versions: 1.3.0b1
+
+    Fixed connection pool issue whereby if a disconnection error were raised
+    during the connection pool's "reset on return" sequence in conjunction with
+    an explicit transaction opened against the enclosing :class:`.Connection`
+    object (such as from calling :meth:`.Session.close` without a rollback or
+    commit, or calling :meth:`.Connection.close` without first closing a
+    transaction declared with :meth:`.Connection.begin`), a double-checkin would
+    result, which could then lead towards concurrent checkouts of the same
+    connection. The double-checkin condition is now prevented overall by an
+    assertion, as well as the specific double-checkin scenario has been
+    fixed.
