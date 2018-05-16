@@ -623,7 +623,7 @@ class MapperOption(object):
         an unlimited number of :class:`.Query` objects for an unlimited
         number of :class:`.MapperOption` objects.
 
-        .. versionchanged:: 1.2.5 the default return value of
+        .. versionchanged:: 1.2.8 the default return value of
            :meth:`.MapperOption._generate_cache_key` is False; previously it
            was ``None`` indicating "safe to cache, don't include as part of
            the cache key"
