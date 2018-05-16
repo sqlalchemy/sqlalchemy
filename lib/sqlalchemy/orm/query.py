@@ -147,10 +147,11 @@ class Query(object):
         self._entities = []
         self._primary_entity = None
         self._has_mapper_entities = False
-        for ent in util.to_list(entities):
-            entity_wrapper(self, ent)
+        if entities:
+            for ent in util.to_list(entities):
+                entity_wrapper(self, ent)
 
-        self._set_entity_selectables(self._entities)
+            self._set_entity_selectables(self._entities)
 
     def _set_entity_selectables(self, entities):
         self._mapper_adapter_map = d = self._mapper_adapter_map.copy()
@@ -885,10 +886,9 @@ class Query(object):
         return self._get_impl(
             ident, loading.load_on_pk_identity)
 
-    @classmethod
-    def _identity_lookup(
-            cls, session, mapper, primary_key_identity, identity_token=None,
-            passive=attributes.PASSIVE_OFF):
+    def _identity_lookup(self, mapper, primary_key_identity,
+                         identity_token=None,
+                         passive=attributes.PASSIVE_OFF):
         """Locate an object in the identity map.
 
         Given a primary key identity, constructs an identity key and then
@@ -896,8 +896,13 @@ class Query(object):
         be run through unexpiration rules (e.g. load unloaded attributes,
         check if was deleted).
 
-        :param session: Session in use
-        :param mapper: target mapper
+        For performance reasons, while the :class:`.Query` must be
+        instantiated, it may be instantiated with no entities, and the
+        mapper is passed::
+
+            obj = session.query()._identity_lookup(inspect(SomeClass), (1, ))
+
+        :param mapper: mapper in use
         :param primary_key_identity: the primary key we are searching for, as
          a tuple.
         :param identity_token: identity token that should be used to create
@@ -916,10 +921,11 @@ class Query(object):
         .. versionadded:: 1.2.7
 
         """
+
         key = mapper.identity_key_from_primary_key(
             primary_key_identity, identity_token=identity_token)
         return loading.get_from_identity(
-            session, key, passive)
+            self.session, key, passive)
 
     def _get_impl(
             self, primary_key_identity, db_load_fn, identity_token=None):
@@ -942,7 +948,7 @@ class Query(object):
                 self._for_update_arg is None:
 
             instance = self._identity_lookup(
-                self.session, mapper, primary_key_identity,
+                mapper, primary_key_identity,
                 identity_token=identity_token)
 
             if instance is not None:

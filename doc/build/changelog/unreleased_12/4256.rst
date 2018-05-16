@@ -1,0 +1,10 @@
+.. change::
+	:tags: bug, orm
+	:tickets: 4256
+
+	Fixed regression in 1.2.7 caused by :ticket:`4228`, which itself was fixing
+	a 1.2-level regression, where the ``query_cls`` callable passed to a
+	:class:`.Session` was assumed to be a subclass of :class:`.Query`  with
+	class method availability, as opposed to an arbitrary callable.    In
+	particular, the dogpile caching example illustrates ``query_cls`` as a
+	function and not a :class:`.Query` subclass.

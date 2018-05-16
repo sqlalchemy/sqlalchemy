@@ -4523,3 +4523,76 @@ class SessionBindTest(QueryTest):
 
         with self._assert_bind_args(session):
             session.query(func.max(User.score)).scalar()
+
+
+class QueryClsTest(QueryTest):
+    def _fn_fixture(self):
+        def query(*arg, **kw):
+            return Query(*arg, **kw)
+        return query
+
+    def _subclass_fixture(self):
+        class MyQuery(Query):
+            pass
+
+        return MyQuery
+
+    def _callable_fixture(self):
+        class MyQueryFactory(object):
+            def __call__(self, *arg, **kw):
+                return Query(*arg, **kw)
+
+        return MyQueryFactory()
+
+    def _test_get(self, fixture):
+        User = self.classes.User
+
+        s = Session(query_cls=fixture())
+
+        assert s.query(User).get(19) is None
+        u = s.query(User).get(7)
+        u2 = s.query(User).get(7)
+        assert u is u2
+
+    def _test_o2m_lazyload(self, fixture):
+        User, Address = self.classes('User', 'Address')
+
+        s = Session(query_cls=fixture())
+
+        u1 = s.query(User).filter(User.id == 7).first()
+        eq_(u1.addresses, [Address(id=1)])
+
+    def _test_m2o_lazyload(self, fixture):
+        User, Address = self.classes('User', 'Address')
+
+        s = Session(query_cls=fixture())
+
+        a1 = s.query(Address).filter(Address.id == 1).first()
+        eq_(a1.user, User(id=7))
+
+    def test_callable_get(self):
+        self._test_get(self._callable_fixture)
+
+    def test_subclass_get(self):
+        self._test_get(self._subclass_fixture)
+
+    def test_fn_get(self):
+        self._test_get(self._fn_fixture)
+
+    def test_callable_o2m_lazyload(self):
+        self._test_o2m_lazyload(self._callable_fixture)
+
+    def test_subclass_o2m_lazyload(self):
+        self._test_o2m_lazyload(self._subclass_fixture)
+
+    def test_fn_o2m_lazyload(self):
+        self._test_o2m_lazyload(self._fn_fixture)
+
+    def test_callable_m2o_lazyload(self):
+        self._test_m2o_lazyload(self._callable_fixture)
+
+    def test_subclass_m2o_lazyload(self):
+        self._test_m2o_lazyload(self._subclass_fixture)
+
+    def test_fn_m2o_lazyload(self):
+        self._test_m2o_lazyload(self._fn_fixture)

@@ -64,10 +64,8 @@ class ShardedQuery(Query):
             # were done, this is where it would happen
             return iter(partial)
 
-    @classmethod
     def _identity_lookup(
-            cls, session, mapper, primary_key_identity, identity_token=None,
-            **kw):
+            self, mapper, primary_key_identity, identity_token=None, **kw):
         """override the default Query._identity_lookup method so that we
         search for a given non-token primary key identity across all
         possible identity tokens (e.g. shard ids).
@@ -75,18 +73,15 @@ class ShardedQuery(Query):
         """
 
         if identity_token is not None:
-            return super(ShardedQuery, cls)._identity_lookup(
-                session, mapper, primary_key_identity,
-                identity_token=identity_token,
-                **kw
+            return super(ShardedQuery, self)._identity_lookup(
+                mapper, primary_key_identity,
+                identity_token=identity_token, **kw
             )
         else:
-            q = cls([mapper], session)
-            for shard_id in q.id_chooser(q, primary_key_identity):
-                obj = super(ShardedQuery, cls)._identity_lookup(
-                    session, mapper, primary_key_identity,
-                    identity_token=shard_id,
-                    **kw
+            q = self.session.query(mapper)
+            for shard_id in self.id_chooser(q, primary_key_identity):
+                obj = super(ShardedQuery, self)._identity_lookup(
+                    mapper, primary_key_identity, identity_token=shard_id, **kw
                 )
                 if obj is not None:
                     return obj
