@@ -59,10 +59,37 @@ class CachingQuery(Query):
            in the cache are not the same ones in the current Session.
 
         """
+        super_ = super(CachingQuery, self)
+
         if hasattr(self, '_cache_region'):
-            return self.get_value(createfunc=lambda: list(Query.__iter__(self)))
+            return self.get_value(createfunc=lambda: list(super_.__iter__()))
         else:
-            return Query.__iter__(self)
+            return super_.__iter__()
+
+    def _execute_and_instances(self, context):
+        """override _execute_and_instances to pull results from dogpile
+            if the query is invoked directly from an external context.
+
+           This method is necessary in order to maintain compatibility
+           with the "baked query" system now used by default in some
+           relationship loader scenarios.   Note also the
+           RelationshipCache._generate_cache_key method which enables
+           the baked query to be used within lazy loads.
+
+           .. versionadded:: 1.2.7
+        """
+        super_ = super(CachingQuery, self)
+
+        if context.query is not self and hasattr(self, '_cache_region'):
+            # special logic called when the Query._execute_and_instances()
+            # method is called directly from the baked query
+            return self.get_value(
+                createfunc=lambda: list(
+                    super_._execute_and_instances(context)
+                )
+            )
+        else:
+            return super_._execute_and_instances(context)
 
     def _get_cache_plus_key(self):
         """Return a cache region plus key."""
@@ -227,4 +254,16 @@ class RelationshipCache(MapperOption):
         self._relationship_options.update(option._relationship_options)
         return self
 
+    def _generate_cache_key(self, path):
+        """Indicate to the lazy-loader strategy that a "baked" query
+        may be used by returning ``None``.
+
+        If this method is omitted, the default implementation of
+        :class:`.MapperOption._generate_cache_key` takes place, which
+        returns ``False`` to disable the "baked" query from being used.
+
+        .. versionadded:: 1.2.7
+
+        """
+        return None
 
