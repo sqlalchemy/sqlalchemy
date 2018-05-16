@@ -10,7 +10,17 @@
     on the wiki.  Note however that the
     :meth:`.Query.populate_existing` method is now required in
     order to rewrite the mapper options associated with an object
-    already loaded in the identity map.  Also, a custom defined
+    already loaded in the identity map.
+
+    As part of this change, a custom defined
     :class:`.MapperOption` will now cause lazy loaders related to
     the target object to use a non-baked query by default unless
     the :meth:`.MapperOption._generate_cache_key` method is implemented.
+    In particular, this repairs one regression which occured when
+    using the dogpile.cache "advanced" example, which was not
+    returning cached results and instead emitting SQL due to an
+    incompatibility with the baked query loader; with the change,
+    the ``RelationshipCache`` option included for many releases
+    in the dogpile example will disable the "baked" query altogether.
+    Note that the dogpile example is also modernized to avoid both
+    of these issues as part of issue :ticket:`4258`.
