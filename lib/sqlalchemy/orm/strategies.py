@@ -615,10 +615,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # look for this identity in the identity map.  Delegate to the
             # Query class in use, as it may have special rules for how it
             # does this, including how it decides what the correct
-            # identity_token would be for this identity
-            instance = session._query_cls._identity_lookup(
-                session, self.mapper, primary_key_identity,
-                passive=passive
+            # identity_token would be for this identity.
+            instance = session.query()._identity_lookup(
+                self.mapper, primary_key_identity, passive=passive
             )
 
             if instance is not None:
