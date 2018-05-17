@@ -141,6 +141,22 @@ class DefaultRequirements(SuiteRequirements):
         ])
 
     @property
+    def non_native_boolean_unconstrained(self):
+        """target database is not native boolean and allows arbitrary integers
+        in it's "bool" column"""
+
+        return skip_if([
+            LambdaPredicate(
+                lambda config: against(config, "mssql"),
+                "SQL Server drivers / odbc seem to change their mind on this"
+            ),
+            LambdaPredicate(
+                lambda config: config.db.dialect.supports_native_boolean,
+                "native boolean dialect"
+            )
+        ])
+
+    @property
     def standalone_binds(self):
         """target database/driver supports bound parameters as column expressions
         without being in the context of a typed column.

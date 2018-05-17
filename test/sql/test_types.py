@@ -2754,7 +2754,7 @@ class BooleanTest(
             )
 
 
-    @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
+    @testing.requires.non_native_boolean_unconstrained
     def test_nonnative_processor_coerces_integer_to_boolean(self):
         boolean_table = self.tables.boolean_table
         with testing.db.connect() as conn:
