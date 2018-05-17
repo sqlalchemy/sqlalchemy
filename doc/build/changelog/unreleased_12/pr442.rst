@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :versions: 1.3.0b1
+
+    Fixed issue where the "ambiguous literal" error message used when
+    interpreting literal values as SQL expression values would encounter a
+    tuple value, and fail to format the message properly. Pull request courtesy
+    Miguel Ventura.

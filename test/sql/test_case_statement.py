@@ -1,4 +1,4 @@
-from sqlalchemy.testing import assert_raises, eq_
+from sqlalchemy.testing import assert_raises, eq_, assert_raises_message
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import (
     testing, exc, case, select, literal_column, text, and_, Integer, cast,
@@ -102,10 +102,22 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             (0, 6, 'pk_6_data')
         ]
 
+    def test_literal_interpretation_ambiguous(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Ambiguous literal: 'x'.  Use the 'text\(\)' function",
+            case, [("x", "y")]
+        )
+
+    def test_literal_interpretation_ambiguous_tuple(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Ambiguous literal: \('x', 'y'\).  Use the 'text\(\)' function",
+            case, [(("x", "y"), "z")]
+        )
+
     def test_literal_interpretation(self):
         t = table('test', column('col1'))
-
-        assert_raises(exc.ArgumentError, case, [("x", "y")])
 
         self.assert_compile(
             case([("x", "y")], value=t.c.col1),
