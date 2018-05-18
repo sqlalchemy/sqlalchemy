@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4259
+    :versions: 1.3.0b1
+
+    Altered the Oracle dialect such that when an :class:`.Integer` type is in
+    use, the cx_Oracle.NUMERIC type is set up for setinputsizes().  In
+    SQLAlchemy 1.1 and earlier, cx_Oracle.NUMERIC was passed for all numeric
+    types unconditionally, and in 1.2 this was removed to allow for better
+    numeric precision.  However, for integers, some database/client setups
+    will fail to coerce boolean values True/False into integers which introduces
+    regressive behavior when using SQLAlchemy 1.2.  Overall, the setinputsizes
+    logic seems like it will need a lot more flexibility going forward so this
+    is a start for that.
