@@ -240,6 +240,7 @@ class _OracleInteger(sqltypes.Integer):
         return handler
 
 
+
 class _OracleNumeric(sqltypes.Numeric):
     is_number = False
 
@@ -324,8 +325,6 @@ class _OracleNumeric(sqltypes.Numeric):
 
 class _OracleNUMBER(_OracleNumeric):
     is_number = True
-
-
 
 
 class _OracleDate(sqltypes.Date):
@@ -595,7 +594,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     driver = "cx_oracle"
 
-    colspecs = colspecs = {
+    colspecs = {
         sqltypes.Numeric: _OracleNumeric,
         sqltypes.Float: _OracleNumeric,
         sqltypes.Integer: _OracleInteger,
@@ -654,7 +653,8 @@ class OracleDialect_cx_oracle(OracleDialect):
             self._include_setinputsizes = {
                 cx_Oracle.NCLOB, cx_Oracle.CLOB, cx_Oracle.LOB,
                 cx_Oracle.NCHAR, cx_Oracle.FIXED_NCHAR,
-                cx_Oracle.BLOB, cx_Oracle.FIXED_CHAR, cx_Oracle.TIMESTAMP
+                cx_Oracle.BLOB, cx_Oracle.FIXED_CHAR, cx_Oracle.TIMESTAMP,
+                _OracleInteger
             }
 
         self._is_cx_oracle_6 = self.cx_oracle_ver >= (6, )

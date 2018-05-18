@@ -1126,19 +1126,26 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if not hasattr(self.compiled, 'bind_names'):
             return
 
-        types = dict(
-            (self.compiled.bind_names[bindparam], bindparam.type)
-            for bindparam in self.compiled.bind_names)
+        key_to_dbapi_type = {}
+        for bindparam in self.compiled.bind_names:
+            key = self.compiled.bind_names[bindparam]
+            dialect_impl = bindparam.type.dialect_impl(self.dialect)
+            dialect_impl_cls = type(dialect_impl)
+            dbtype = dialect_impl.get_dbapi_type(self.dialect.dbapi)
+            if dbtype is not None and (
+                not exclude_types or dbtype not in exclude_types and
+                dialect_impl_cls not in exclude_types
+            ) and (
+                not include_types or dbtype in include_types or
+                dialect_impl_cls in include_types
+            ):
+                key_to_dbapi_type[key] = dbtype
 
         if self.dialect.positional:
             inputsizes = []
             for key in self.compiled.positiontup:
-                typeengine = types[key]
-                dbtype = typeengine.dialect_impl(self.dialect).\
-                    get_dbapi_type(self.dialect.dbapi)
-                if dbtype is not None and \
-                        (not exclude_types or dbtype not in exclude_types) and \
-                        (not include_types or dbtype in include_types):
+                if key in key_to_dbapi_type:
+                    dbtype = key_to_dbapi_type[key]
                     if key in self._expanded_parameters:
                         inputsizes.extend(
                             [dbtype] * len(self._expanded_parameters[key]))
@@ -1152,12 +1159,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         else:
             inputsizes = {}
             for key in self.compiled.bind_names.values():
-                typeengine = types[key]
-                dbtype = typeengine.dialect_impl(self.dialect).\
-                    get_dbapi_type(self.dialect.dbapi)
-                if dbtype is not None and \
-                        (not exclude_types or dbtype not in exclude_types) and \
-                        (not include_types or dbtype in include_types):
+                if key in key_to_dbapi_type:
+                    dbtype = key_to_dbapi_type[key]
                     if translate:
                         # TODO: this part won't work w/ the
                         # expanded_parameters feature, e.g. for cx_oracle

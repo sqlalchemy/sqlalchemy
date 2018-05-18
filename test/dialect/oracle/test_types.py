@@ -10,7 +10,7 @@ from sqlalchemy.testing import (fixtures,
 from sqlalchemy import testing
 from sqlalchemy import Integer, Text, LargeBinary, Unicode, UniqueConstraint,\
     Index, MetaData, select, inspect, ForeignKey, String, func, \
-    TypeDecorator, bindparam, Numeric, TIMESTAMP, CHAR, text, \
+    TypeDecorator, bindparam, Numeric, TIMESTAMP, CHAR, text, SmallInteger, \
     literal_column, VARCHAR, create_engine, Date, NVARCHAR, \
     ForeignKeyConstraint, Sequence, Float, DateTime, cast, UnicodeText, \
     union, except_, type_coerce, or_, outerjoin, DATE, NCHAR, outparam, \
@@ -28,6 +28,7 @@ import datetime
 import os
 from sqlalchemy import sql
 from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing import mock
 
 
 class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -824,3 +825,83 @@ class EuroNumericTest(fixtures.TestBase):
                 assert type(test_exp) is type(exp)
 
 
+class SetInputSizesTest(fixtures.TestBase):
+    __only_on__ = 'oracle+cx_oracle'
+    __backend__ = True
+
+    @testing.provide_metadata
+    def _test_setinputsizes(self, datatype, value, sis_value):
+        m = self.metadata
+        t1 = Table('t1', m, Column('foo', datatype))
+        t1.create()
+
+        class CursorWrapper(object):
+            # cx_oracle cursor can't be modified so we have to
+            # invent a whole wrapping scheme
+
+            def __init__(self, connection_fairy):
+                self.cursor = connection_fairy.connection.cursor()
+                self.mock = mock.Mock()
+                connection_fairy.info['mock'] = self.mock
+
+            def setinputsizes(self, *arg, **kw):
+                self.mock.setinputsizes(*arg, **kw)
+                self.cursor.setinputsizes(*arg, **kw)
+
+            def __getattr__(self, key):
+                return getattr(self.cursor, key)
+
+        with testing.db.connect() as conn:
+            connection_fairy = conn.connection
+            with mock.patch.object(
+                    connection_fairy, "cursor",
+                    lambda: CursorWrapper(connection_fairy)
+            ):
+                conn.execute(
+                    t1.insert(), {"foo": value}
+                )
+
+            if sis_value:
+                eq_(
+                    conn.info['mock'].mock_calls,
+                    [mock.call.setinputsizes(foo=sis_value)]
+                )
+            else:
+                eq_(
+                    conn.info['mock'].mock_calls,
+                    [mock.call.setinputsizes()]
+                )
+
+    def test_smallint_setinputsizes(self):
+        self._test_setinputsizes(
+            SmallInteger, 25, testing.db.dialect.dbapi.NUMBER)
+
+    def test_int_setinputsizes(self):
+        self._test_setinputsizes(
+            Integer, 25, testing.db.dialect.dbapi.NUMBER)
+
+    def test_numeric_setinputsizes(self):
+        self._test_setinputsizes(
+            Numeric(10, 8), decimal.Decimal("25.34534"), None)
+
+    def test_float_setinputsizes(self):
+        self._test_setinputsizes(Float(15), 25.34534, None)
+
+    def test_unicode(self):
+        self._test_setinputsizes(
+            Unicode(30), u("test"), testing.db.dialect.dbapi.NCHAR)
+
+    def test_string(self):
+        self._test_setinputsizes(String(30), "test", None)
+
+    def test_char(self):
+        self._test_setinputsizes(
+            CHAR(30), "test", testing.db.dialect.dbapi.FIXED_CHAR)
+
+    def test_nchar(self):
+        self._test_setinputsizes(
+            NCHAR(30), u("test"), testing.db.dialect.dbapi.NCHAR)
+
+    def test_long(self):
+        self._test_setinputsizes(
+            oracle.LONG(), "test", None)
