@@ -15,6 +15,7 @@ from sqlalchemy import Integer, Text, LargeBinary, Unicode, UniqueConstraint,\
     ForeignKeyConstraint, Sequence, Float, DateTime, cast, UnicodeText, \
     union, except_, type_coerce, or_, outerjoin, DATE, NCHAR, outparam, \
     PrimaryKeyConstraint, FLOAT
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.util import u, b
 from sqlalchemy import util
 from sqlalchemy.testing import assert_raises, assert_raises_message
@@ -334,6 +335,75 @@ class TypesTest(fixtures.TestBase):
             testing.db.execute(
                 "select numericcol from t1 order by intcol").fetchall(),
             [(decimal.Decimal("Infinity"), ), (decimal.Decimal("-Infinity"), )]
+        )
+
+    @testing.provide_metadata
+    def test_numeric_nan_float(self):
+        m = self.metadata
+        t1 = Table('t1', m,
+                   Column("intcol", Integer),
+                   Column("numericcol", oracle.BINARY_DOUBLE(asdecimal=False)))
+        t1.create()
+        t1.insert().execute([
+            dict(
+                intcol=1,
+                numericcol=float("nan")
+            ),
+            dict(
+                intcol=2,
+                numericcol=float("-nan")
+            ),
+        ])
+
+        eq_(
+            [
+                tuple(str(col) for col in row)
+                for row in select([t1.c.numericcol]).
+                order_by(t1.c.intcol).execute()
+            ],
+            [('nan', ), ('nan', )]
+        )
+
+        eq_(
+            [
+                tuple(str(col) for col in row)
+                for row in testing.db.execute(
+                    "select numericcol from t1 order by intcol"
+                )
+            ],
+            [('nan', ), ('nan', )]
+
+        )
+
+    # needs https://github.com/oracle/python-cx_Oracle/issues/184#issuecomment-391399292
+    @testing.provide_metadata
+    def _dont_test_numeric_nan_decimal(self):
+        m = self.metadata
+        t1 = Table('t1', m,
+                   Column("intcol", Integer),
+                   Column("numericcol", oracle.BINARY_DOUBLE(asdecimal=True)))
+        t1.create()
+        t1.insert().execute([
+            dict(
+                intcol=1,
+                numericcol=decimal.Decimal("NaN")
+            ),
+            dict(
+                intcol=2,
+                numericcol=decimal.Decimal("-NaN")
+            ),
+        ])
+
+        eq_(
+            select([t1.c.numericcol]).
+            order_by(t1.c.intcol).execute().fetchall(),
+            [(decimal.Decimal("NaN"), ), (decimal.Decimal("NaN"), )]
+        )
+
+        eq_(
+            testing.db.execute(
+                "select numericcol from t1 order by intcol").fetchall(),
+            [(decimal.Decimal("NaN"), ), (decimal.Decimal("NaN"), )]
         )
 
     @testing.provide_metadata
@@ -831,9 +901,31 @@ class SetInputSizesTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def _test_setinputsizes(self, datatype, value, sis_value):
+        class TestTypeDec(TypeDecorator):
+            impl = NullType()
+
+            def load_dialect_impl(self, dialect):
+                if dialect.name == 'oracle':
+                    return dialect.type_descriptor(datatype)
+                else:
+                    return self.impl
+
         m = self.metadata
-        t1 = Table('t1', m, Column('foo', datatype))
-        t1.create()
+        # Oracle can have only one column of type LONG so we make three
+        # tables rather than one table w/ three columns
+        t1 = Table(
+            't1', m,
+            Column('foo', datatype),
+        )
+        t2 = Table(
+            't2', m,
+            Column('foo', NullType().with_variant(datatype, "oracle")),
+        )
+        t3 = Table(
+            't3', m,
+            Column('foo', TestTypeDec())
+        )
+        m.create_all()
 
         class CursorWrapper(object):
             # cx_oracle cursor can't be modified so we have to
@@ -853,24 +945,26 @@ class SetInputSizesTest(fixtures.TestBase):
 
         with testing.db.connect() as conn:
             connection_fairy = conn.connection
-            with mock.patch.object(
-                    connection_fairy, "cursor",
-                    lambda: CursorWrapper(connection_fairy)
-            ):
-                conn.execute(
-                    t1.insert(), {"foo": value}
-                )
+            for tab in [t1, t2, t3]:
+                with mock.patch.object(
+                        connection_fairy, "cursor",
+                        lambda: CursorWrapper(connection_fairy)
+                ):
+                    conn.execute(
+                        tab.insert(),
+                        {"foo": value}
+                    )
 
-            if sis_value:
-                eq_(
-                    conn.info['mock'].mock_calls,
-                    [mock.call.setinputsizes(foo=sis_value)]
-                )
-            else:
-                eq_(
-                    conn.info['mock'].mock_calls,
-                    [mock.call.setinputsizes()]
-                )
+                if sis_value:
+                    eq_(
+                        conn.info['mock'].mock_calls,
+                        [mock.call.setinputsizes(foo=sis_value)]
+                    )
+                else:
+                    eq_(
+                        conn.info['mock'].mock_calls,
+                        [mock.call.setinputsizes()]
+                    )
 
     def test_smallint_setinputsizes(self):
         self._test_setinputsizes(
@@ -886,6 +980,21 @@ class SetInputSizesTest(fixtures.TestBase):
 
     def test_float_setinputsizes(self):
         self._test_setinputsizes(Float(15), 25.34534, None)
+
+    def test_binary_double_setinputsizes(self):
+        self._test_setinputsizes(
+            oracle.BINARY_DOUBLE, 25.34534,
+            testing.db.dialect.dbapi.NATIVE_FLOAT)
+
+    def test_binary_float_setinputsizes(self):
+        self._test_setinputsizes(
+            oracle.BINARY_FLOAT, 25.34534,
+            testing.db.dialect.dbapi.NATIVE_FLOAT)
+
+    def test_double_precision_setinputsizes(self):
+        self._test_setinputsizes(
+            oracle.DOUBLE_PRECISION, 25.34534,
+            None)
 
     def test_unicode(self):
         self._test_setinputsizes(

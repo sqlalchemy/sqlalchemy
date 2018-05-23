@@ -411,37 +411,16 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
             return sqltypes.Integer
 
 
-class DOUBLE_PRECISION(sqltypes.Numeric):
+class DOUBLE_PRECISION(sqltypes.Float):
     __visit_name__ = 'DOUBLE_PRECISION'
 
-    def __init__(self, precision=None, scale=None, asdecimal=None):
-        if asdecimal is None:
-            asdecimal = False
 
-        super(DOUBLE_PRECISION, self).__init__(
-            precision=precision, scale=scale, asdecimal=asdecimal)
-
-
-class BINARY_DOUBLE(sqltypes.Numeric):
+class BINARY_DOUBLE(sqltypes.Float):
     __visit_name__ = 'BINARY_DOUBLE'
 
-    def __init__(self, precision=None, scale=None, asdecimal=None):
-        if asdecimal is None:
-            asdecimal = False
 
-        super(BINARY_DOUBLE, self).__init__(
-            precision=precision, scale=scale, asdecimal=asdecimal)
-
-
-class BINARY_FLOAT(sqltypes.Numeric):
+class BINARY_FLOAT(sqltypes.Float):
     __visit_name__ = 'BINARY_FLOAT'
-
-    def __init__(self, precision=None, scale=None, asdecimal=None):
-        if asdecimal is None:
-            asdecimal = False
-
-        super(BINARY_FLOAT, self).__init__(
-            precision=precision, scale=scale, asdecimal=asdecimal)
 
 
 class BFILE(sqltypes.LargeBinary):
@@ -536,6 +515,8 @@ ischema_names = {
     'FLOAT': FLOAT,
     'DOUBLE PRECISION': DOUBLE_PRECISION,
     'LONG': LONG,
+    'BINARY_DOUBLE': BINARY_DOUBLE,
+    'BINARY_FLOAT': BINARY_FLOAT
 }
 
 
@@ -585,17 +566,25 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BINARY_FLOAT(self, type_, **kw):
         return self._generate_numeric(type_, "BINARY_FLOAT", **kw)
 
+    def visit_FLOAT(self, type_, **kw):
+        # don't support conversion between decimal/binary
+        # precision yet
+        kw['no_precision'] = True
+        return self._generate_numeric(type_, "FLOAT", **kw)
+
     def visit_NUMBER(self, type_, **kw):
         return self._generate_numeric(type_, "NUMBER", **kw)
 
-    def _generate_numeric(self, type_, name, precision=None, scale=None, **kw):
+    def _generate_numeric(
+            self, type_, name, precision=None,
+            scale=None, no_precision=False, **kw):
         if precision is None:
             precision = type_.precision
 
         if scale is None:
             scale = getattr(type_, 'scale', None)
 
-        if precision is None:
+        if no_precision or precision is None:
             return name
         elif scale is None:
             n = "%(name)s(%(precision)s)"
@@ -1418,6 +1407,9 @@ class OracleDialect(default.DefaultDialect):
                     coltype = INTEGER()
                 else:
                     coltype = NUMBER(precision, scale)
+            elif coltype == 'FLOAT':
+                # TODO: support "precision" here as "binary_precision"
+                coltype = FLOAT()
             elif coltype in ('VARCHAR2', 'NVARCHAR2', 'CHAR'):
                 coltype = self.ischema_names.get(coltype)(length)
             elif 'WITH TIME ZONE' in coltype:

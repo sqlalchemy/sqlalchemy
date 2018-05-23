@@ -240,7 +240,6 @@ class _OracleInteger(sqltypes.Integer):
         return handler
 
 
-
 class _OracleNumeric(sqltypes.Numeric):
     is_number = False
 
@@ -321,6 +320,19 @@ class _OracleNumeric(sqltypes.Numeric):
             )
 
         return handler
+
+
+class _OracleBinaryFloat(_OracleNumeric):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NATIVE_FLOAT
+
+
+class _OracleBINARY_FLOAT(_OracleBinaryFloat, oracle.BINARY_FLOAT):
+    pass
+
+
+class _OracleBINARY_DOUBLE(_OracleBinaryFloat, oracle.BINARY_DOUBLE):
+    pass
 
 
 class _OracleNUMBER(_OracleNumeric):
@@ -597,6 +609,8 @@ class OracleDialect_cx_oracle(OracleDialect):
     colspecs = {
         sqltypes.Numeric: _OracleNumeric,
         sqltypes.Float: _OracleNumeric,
+        oracle.BINARY_FLOAT: _OracleBINARY_FLOAT,
+        oracle.BINARY_DOUBLE: _OracleBINARY_DOUBLE,
         sqltypes.Integer: _OracleInteger,
         oracle.NUMBER: _OracleNUMBER,
 
@@ -654,7 +668,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.NCLOB, cx_Oracle.CLOB, cx_Oracle.LOB,
                 cx_Oracle.NCHAR, cx_Oracle.FIXED_NCHAR,
                 cx_Oracle.BLOB, cx_Oracle.FIXED_CHAR, cx_Oracle.TIMESTAMP,
-                _OracleInteger
+                _OracleInteger, _OracleBINARY_FLOAT, _OracleBINARY_DOUBLE
             }
 
         self._is_cx_oracle_6 = self.cx_oracle_ver >= (6, )
