@@ -1129,7 +1129,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         key_to_dbapi_type = {}
         for bindparam in self.compiled.bind_names:
             key = self.compiled.bind_names[bindparam]
-            dialect_impl = bindparam.type.dialect_impl(self.dialect)
+            dialect_impl = bindparam.type._unwrapped_dialect_impl(self.dialect)
             dialect_impl_cls = type(dialect_impl)
             dbtype = dialect_impl.get_dbapi_type(self.dialect.dbapi)
             if dbtype is not None and (

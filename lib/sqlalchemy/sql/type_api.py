@@ -445,6 +445,17 @@ class TypeEngine(Visitable):
         except KeyError:
             return self._dialect_info(dialect)['impl']
 
+    def _unwrapped_dialect_impl(self, dialect):
+        """Return the 'unwrapped' dialect impl for this type.
+
+        For a type that applies wrapping logic (e.g. TypeDecorator), give
+        us the real, actual dialect-level type that is used.
+
+        This is used for class-based lookups by dialects.
+
+        """
+        return self.dialect_impl(dialect)
+
     def _cached_literal_processor(self, dialect):
         """Return a dialect-specific literal processor for this type."""
         try:
@@ -922,7 +933,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         # otherwise adapt the impl type, link
         # to a copy of this TypeDecorator and return
         # that.
-        typedesc = self.load_dialect_impl(dialect).dialect_impl(dialect)
+        typedesc = self._unwrapped_dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
             raise AssertionError('Type object %s does not properly '
@@ -988,6 +999,17 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         """
         return self.impl
+
+    def _unwrapped_dialect_impl(self, dialect):
+        """Return the 'unwrapped' dialect impl for this type.
+
+        For a type that applies wrapping logic (e.g. TypeDecorator), give
+        us the real, actual dialect-level type that is used.
+
+        This is used for class-based lookups by dialects.
+
+        """
+        return self.load_dialect_impl(dialect).dialect_impl(dialect)
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying

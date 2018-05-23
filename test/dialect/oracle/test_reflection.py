@@ -13,7 +13,8 @@ from sqlalchemy import Integer, Text, LargeBinary, Unicode, UniqueConstraint,\
     ForeignKeyConstraint, Sequence, Float, DateTime, cast, UnicodeText, \
     union, except_, type_coerce, or_, outerjoin, DATE, NCHAR, outparam, \
     PrimaryKeyConstraint, FLOAT, INTEGER
-from sqlalchemy.dialects.oracle.base import NUMBER
+from sqlalchemy.dialects.oracle.base import NUMBER, BINARY_DOUBLE, \
+    BINARY_FLOAT, DOUBLE_PRECISION
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Table, Column
@@ -578,3 +579,19 @@ class TypeReflectionTest(fixtures.TestBase):
             (NUMBER, NUMBER(),),
         ]
         self._run_test(specs, ['precision', 'scale'])
+
+    def test_float_types(self):
+        specs = [
+            (DOUBLE_PRECISION(), FLOAT()),
+            # when binary_precision is supported
+            # (DOUBLE_PRECISION(), oracle.FLOAT(binary_precision=126)),
+            (BINARY_DOUBLE(), BINARY_DOUBLE()),
+            (BINARY_FLOAT(), BINARY_FLOAT()),
+            (FLOAT(5), FLOAT(),),
+            # when binary_precision is supported
+            # (FLOAT(5), oracle.FLOAT(binary_precision=5),),
+            (FLOAT(), FLOAT()),
+            # when binary_precision is supported
+            # (FLOAT(5), oracle.FLOAT(binary_precision=126),),
+        ]
+        self._run_test(specs, ['precision'])
