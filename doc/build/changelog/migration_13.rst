@@ -243,6 +243,30 @@ the ON clause of the SQL join is expressed in terms of a SQL function.
 
 :ticket:`3831`
 
+.. _change_4271:
+
+Expanding IN feature now supports empty lists
+---------------------------------------------
+
+The "expanding IN" feature introduced in version 1.2 at :ref:`change_3953` now
+supports empty lists passed to the :meth:`.ColumnOperators.in_` operator.   The implementation
+for an empty list will produce an "empty set" expression that is specific to a target
+backend, such as "SELECT CAST(NULL AS INTEGER) WHERE 1!=1" for Postgresql,
+"SELECT 1 FROM (SELECT 1) as _empty_set WHERE 1!=1" for MySQL::
+
+    >>> from sqlalchemy import create_engine
+    >>> from sqlalchemy import select, literal_column, bindparam
+    >>> e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    >>> with e.connect() as conn:
+    ...      conn.execute(
+    ...          select([literal_column('1')]).
+    ...          where(literal_column('1').in_(bindparam('q', expanding=True))),
+    ...          q=[]
+    ...      )
+    ...
+    SELECT 1 WHERE 1 IN (SELECT CAST(NULL AS INTEGER) WHERE 1!=1)
+
+:ticket:`4271`
 
 Key Behavioral Changes - Core
 =============================

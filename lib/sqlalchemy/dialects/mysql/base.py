@@ -1114,6 +1114,9 @@ class MySQLCompiler(compiler.SQLCompiler):
                                  fromhints=from_hints, **kw)
             for t in [from_table] + extra_froms)
 
+    def visit_empty_set_expr(self, type_):
+        return 'SELECT 1 FROM (SELECT 1) as _empty_set WHERE 1!=1'
+
 
 class MySQLDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kw):

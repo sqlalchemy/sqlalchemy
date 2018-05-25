@@ -1485,6 +1485,15 @@ class PGCompiler(compiler.SQLCompiler):
                 if escape else ''
             )
 
+    def visit_empty_set_expr(self, type_, **kw):
+        # cast the empty set to the type we are comparing against.  if
+        # we are comparing against the null type, pick an arbitrary
+        # datatype for the empty set
+        if type_._isnull:
+            type_ = INTEGER()
+        return 'SELECT CAST(NULL AS %s) WHERE 1!=1' % \
+               self.dialect.type_compiler.process(type_, **kw)
+
     def render_literal_value(self, value, type_):
         value = super(PGCompiler, self).render_literal_value(value, type_)
 

@@ -909,6 +909,9 @@ class OracleCompiler(compiler.SQLCompiler):
     def limit_clause(self, select, **kw):
         return ""
 
+    def visit_empty_set_expr(self, type_):
+        return 'SELECT 1 FROM DUAL WHERE 1!=1'
+
     def for_update_clause(self, select, **kw):
         if self.is_subquery():
             return ""

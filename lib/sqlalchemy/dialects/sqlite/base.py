@@ -870,6 +870,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.left, **kw),
             self.process(binary.right, **kw))
 
+    def visit_empty_set_expr(self, type_):
+        return 'SELECT 1 FROM (SELECT 1) WHERE 1!=1'
+
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
 

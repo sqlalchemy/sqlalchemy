@@ -1532,6 +1532,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                  fromhints=from_hints, **kw)
             for t in [from_table] + extra_froms)
 
+    def visit_empty_set_expr(self, type_):
+        return 'SELECT 1 WHERE 1!=1'
+
 
 class MSSQLStrictCompiler(MSSQLCompiler):
 

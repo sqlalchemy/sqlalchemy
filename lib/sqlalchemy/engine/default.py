@@ -734,10 +734,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             if parameter.expanding:
                 values = compiled_params.pop(name)
                 if not values:
-                    raise exc.InvalidRequestError(
-                        "'expanding' parameters can't be used with an "
-                        "empty list"
+                    to_update = []
+                    replacement_expressions[name] = (
+                        self.compiled.visit_empty_set_expr(
+                            type_=parameter.type)
                     )
+
                 elif isinstance(values[0], (tuple, list)):
                     to_update = [
                         ("%s_%s_%s" % (name, i, j), value)

@@ -455,11 +455,9 @@ class QueryTest(fixtures.TestBase):
                 [(7, 'jack'), (8, 'fred')]
             )
 
-            assert_raises_message(
-                exc.StatementError,
-                "'expanding' parameters can't be used with an empty list",
-                conn.execute,
-                stmt, {"uname": []}
+            eq_(
+                conn.execute(stmt, {"uname": []}).fetchall(),
+                []
             )
 
             assert_raises_message(

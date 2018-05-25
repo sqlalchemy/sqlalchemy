@@ -1,7 +1,9 @@
+from sqlalchemy.dialects.mssql.base import MSDialect
+from sqlalchemy.dialects.oracle.base import OracleDialect
 from .. import fixtures, config
-from ..assertions import eq_
+from ..assertions import eq_, in_
 
-from sqlalchemy import util
+from sqlalchemy import util, case, null, true, false, or_
 from sqlalchemy import Integer, String, select, func, bindparam, union, tuple_
 from sqlalchemy import testing
 from sqlalchemy import literal_column
@@ -363,17 +365,18 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         Table("some_table", metadata,
               Column('id', Integer, primary_key=True),
               Column('x', Integer),
-              Column('y', Integer))
+              Column('y', Integer),
+              Column('z', String(50)))
 
     @classmethod
     def insert_data(cls):
         config.db.execute(
             cls.tables.some_table.insert(),
             [
-                {"id": 1, "x": 1, "y": 2},
-                {"id": 2, "x": 2, "y": 3},
-                {"id": 3, "x": 3, "y": 4},
-                {"id": 4, "x": 4, "y": 5},
+                {"id": 1, "x": 1, "y": 2, "z": "z1"},
+                {"id": 2, "x": 2, "y": 3, "z": "z2"},
+                {"id": 3, "x": 3, "y": 4, "z": "z3"},
+                {"id": 4, "x": 4, "y": 5, "z": "z4"},
             ]
         )
 
@@ -381,6 +384,22 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         eq_(
             config.db.execute(select, params).fetchall(),
             result
+        )
+
+    def test_multiple_empty_sets(self):
+        # test that any anonymous aliasing used by the dialect
+        # is fine with duplicates
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x.in_(bindparam('q', expanding=True))).where(
+            table.c.y.in_(bindparam('p', expanding=True))
+        ).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [],
+            params={"q": [], "p": []},
         )
 
     def test_bound_in_scalar(self):
@@ -400,12 +419,80 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         table = self.tables.some_table
 
         stmt = select([table.c.id]).where(
-            tuple_(table.c.x, table.c.y).in_(bindparam('q', expanding=True))).order_by(table.c.id)
+            tuple_(table.c.x, table.c.y).in_(
+                bindparam('q', expanding=True))).order_by(table.c.id)
 
         self._assert_result(
             stmt,
             [(2, ), (3, ), (4, )],
             params={"q": [(2, 3), (3, 4), (4, 5)]},
+        )
+
+    def test_empty_set_against_integer(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x.in_(bindparam('q', expanding=True))).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [],
+            params={"q": []},
+        )
+
+    def test_empty_set_against_integer_negation(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x.notin_(bindparam('q', expanding=True))
+        ).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [(1, ), (2, ), (3, ), (4, )],
+            params={"q": []},
+        )
+
+    def test_empty_set_against_string(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.z.in_(bindparam('q', expanding=True))).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [],
+            params={"q": []},
+        )
+
+    def test_empty_set_against_string_negation(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.z.notin_(bindparam('q', expanding=True))
+        ).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [(1, ), (2, ), (3, ), (4, )],
+            params={"q": []},
+        )
+
+    def test_null_in_empty_set_is_false(self):
+        stmt = select([
+            case(
+                [
+                    (
+                        null().in_(bindparam('foo', value=(), expanding=True)),
+                        true()
+                    )
+                ],
+                else_=false()
+            )
+        ])
+        in_(
+            config.db.execute(stmt).fetchone()[0],
+            (False, 0)
         )
 
 
