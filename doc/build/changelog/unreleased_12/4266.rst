@@ -1,0 +1,11 @@
+.. change::
+	:tags: bug, ext
+	:tickets: 4266
+	:versions: 1.3.0b1
+
+	Fixed a race condition which could occur if automap
+	:meth:`.AutomapBase.prepare` were used within a multi-threaded context
+	against other threads which  may call :func:`.configure_mappers` as a
+	result of use of other mappers.  The unfinished mapping work of automap
+	is particularly sensitive to being pulled in by a
+	:func:`.configure_mappers` step leading to errors.

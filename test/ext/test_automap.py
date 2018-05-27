@@ -4,9 +4,14 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import relationship, interfaces, configure_mappers
 from sqlalchemy.ext.automap import generate_relationship
 from sqlalchemy.testing.mock import Mock, patch
-from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy import String, Integer, ForeignKey, MetaData
 from sqlalchemy import testing
 from sqlalchemy.testing.schema import Table, Column
+
+from sqlalchemy import create_engine
+import threading
+import time
+import random
 
 
 class AutomapTest(fixtures.MappedTest):
@@ -339,3 +344,56 @@ class AutomapInhTest(fixtures.MappedTest):
         Base.prepare(
             engine=testing.db, reflect=True,
             generate_relationship=_gen_relationship)
+
+
+class ConcurrentAutomapTest(fixtures.TestBase):
+    __only_on__ = 'sqlite'
+
+    def _make_tables(self, e):
+        m = MetaData()
+        for i in range(15):
+            Table(
+                'table_%d' % i,
+                m,
+                Column('id', Integer, primary_key=True),
+                Column('data', String(50)),
+                Column(
+                    't_%d_id' % (i - 1),
+                    ForeignKey('table_%d.id' % (i - 1))
+                ) if i > 4 else None
+            )
+        m.drop_all(e)
+        m.create_all(e)
+
+    def _automap(self, e):
+        Base = automap_base()
+
+        Base.prepare(e, reflect=True)
+
+        time.sleep(.01)
+        configure_mappers()
+
+    def _chaos(self):
+        e = create_engine("sqlite://")
+        try:
+            self._make_tables(e)
+            for i in range(2):
+                try:
+                    self._automap(e)
+                except:
+                    self._success = False
+                    raise
+                time.sleep(random.random())
+        finally:
+            e.dispose()
+
+    def test_concurrent_automaps_w_configure(self):
+        self._success = True
+        threads = [threading.Thread(target=self._chaos) for i in range(30)]
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        assert self._success, "One or more threads failed"
