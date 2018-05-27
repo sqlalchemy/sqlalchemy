@@ -518,6 +518,7 @@ from .declarative.base import _DeferredMapperConfig
 from ..sql import and_
 from ..schema import ForeignKeyConstraint
 from ..orm import relationship, backref, interfaces
+from ..orm.mapper import _CONFIGURE_MUTEX
 from .. import util
 
 
@@ -754,49 +755,54 @@ class AutomapBase(object):
                 autoload_replace=False
             )
 
-        table_to_map_config = dict(
-            (m.local_table, m)
-            for m in _DeferredMapperConfig.
-            classes_for_base(cls, sort=False)
-        )
+        _CONFIGURE_MUTEX.acquire()
+        try:
+            table_to_map_config = dict(
+                (m.local_table, m)
+                for m in _DeferredMapperConfig.
+                classes_for_base(cls, sort=False)
+            )
 
-        many_to_many = []
+            many_to_many = []
 
-        for table in cls.metadata.tables.values():
-            lcl_m2m, rem_m2m, m2m_const = _is_many_to_many(cls, table)
-            if lcl_m2m is not None:
-                many_to_many.append((lcl_m2m, rem_m2m, m2m_const, table))
-            elif not table.primary_key:
-                continue
-            elif table not in table_to_map_config:
-                mapped_cls = type(
-                    classname_for_table(cls, table.name, table),
-                    (cls, ),
-                    {"__table__": table}
-                )
-                map_config = _DeferredMapperConfig.config_for_cls(mapped_cls)
-                cls.classes[map_config.cls.__name__] = mapped_cls
-                table_to_map_config[table] = map_config
+            for table in cls.metadata.tables.values():
+                lcl_m2m, rem_m2m, m2m_const = _is_many_to_many(cls, table)
+                if lcl_m2m is not None:
+                    many_to_many.append((lcl_m2m, rem_m2m, m2m_const, table))
+                elif not table.primary_key:
+                    continue
+                elif table not in table_to_map_config:
+                    mapped_cls = type(
+                        classname_for_table(cls, table.name, table),
+                        (cls, ),
+                        {"__table__": table}
+                    )
+                    map_config = _DeferredMapperConfig.config_for_cls(
+                        mapped_cls)
+                    cls.classes[map_config.cls.__name__] = mapped_cls
+                    table_to_map_config[table] = map_config
 
-        for map_config in table_to_map_config.values():
-            _relationships_for_fks(cls,
-                                   map_config,
-                                   table_to_map_config,
-                                   collection_class,
-                                   name_for_scalar_relationship,
-                                   name_for_collection_relationship,
-                                   generate_relationship)
+            for map_config in table_to_map_config.values():
+                _relationships_for_fks(cls,
+                                       map_config,
+                                       table_to_map_config,
+                                       collection_class,
+                                       name_for_scalar_relationship,
+                                       name_for_collection_relationship,
+                                       generate_relationship)
 
-        for lcl_m2m, rem_m2m, m2m_const, table in many_to_many:
-            _m2m_relationship(cls, lcl_m2m, rem_m2m, m2m_const, table,
-                              table_to_map_config,
-                              collection_class,
-                              name_for_scalar_relationship,
-                              name_for_collection_relationship,
-                              generate_relationship)
+            for lcl_m2m, rem_m2m, m2m_const, table in many_to_many:
+                _m2m_relationship(cls, lcl_m2m, rem_m2m, m2m_const, table,
+                                  table_to_map_config,
+                                  collection_class,
+                                  name_for_scalar_relationship,
+                                  name_for_collection_relationship,
+                                  generate_relationship)
 
-        for map_config in _DeferredMapperConfig.classes_for_base(cls):
-            map_config.map()
+            for map_config in _DeferredMapperConfig.classes_for_base(cls):
+                map_config.map()
+        finally:
+            _CONFIGURE_MUTEX.release()
 
     _sa_decl_prepare = True
     """Indicate that the mapping of classes should be deferred.
