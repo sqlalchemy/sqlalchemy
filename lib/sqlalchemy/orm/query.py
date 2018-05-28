@@ -112,6 +112,18 @@ class Query(object):
     _current_path = _path_registry
     _has_mapper_entities = False
 
+    lazy_loaded_from = None
+    """An :class:`.InstanceState` that is using this :class:`.Query` for a
+    lazy load operation.
+
+    This can be used for extensions like the horizontal sharding extension
+    as well as event handlers and custom mapper options to determine
+    when a query is being used to lazy load a relationship on an object.
+
+    .. versionadded:: 1.2.9
+
+    """
+
     def __init__(self, entities, session=None):
         """Construct a :class:`.Query` directly.
 
@@ -259,6 +271,10 @@ class Query(object):
                 True, True)
             for o in cols
         ]
+
+    @_generative()
+    def _set_lazyload_from(self, state):
+        self.lazy_loaded_from = state
 
     @_generative()
     def _adapt_all_clauses(self):
@@ -887,8 +903,8 @@ class Query(object):
             ident, loading.load_on_pk_identity)
 
     def _identity_lookup(self, mapper, primary_key_identity,
-                         identity_token=None,
-                         passive=attributes.PASSIVE_OFF):
+                         identity_token=None, passive=attributes.PASSIVE_OFF,
+                         lazy_loaded_from=None):
         """Locate an object in the identity map.
 
         Given a primary key identity, constructs an identity key and then
@@ -913,6 +929,14 @@ class Query(object):
          :func:`.loading.get_from_identity`, which impacts the behavior if
          the object is found; the object may be validated and/or unexpired
          if the flag allows for SQL to be emitted.
+        :param lazy_loaded_from: an :class:`.InstanceState` that is
+         specifically asking for this identity as a related identity.  Used
+         for sharding schemes where there is a correspondence between an object
+         and a related object being lazy-loaded (or otherwise
+         relationship-loaded).
+
+         .. versionadded:: 1.2.9
+
         :return: None if the object is not found in the identity map, *or*
          if the object was unexpired and found to have been deleted.
          if passive flags disallow SQL and the object is expired, returns

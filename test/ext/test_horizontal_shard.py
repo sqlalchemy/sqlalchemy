@@ -304,12 +304,13 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
         db3 = testing_engine('sqlite:///shard3.db')
         db4 = testing_engine('sqlite:///shard4.db')
 
-        return db1, db2, db3, db4
+        self.dbs = [db1, db2, db3, db4]
+        return self.dbs
 
-    def tearDown(self):
+    def teardown(self):
         clear_mappers()
 
-        for db in (db1, db2, db3, db4):
+        for db in self.dbs:
             db.connect().invalidate()
         for i in range(1, 5):
             os.remove("shard%d.db" % i)
@@ -425,7 +426,25 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
         eq_(a1.data, "d1")
 
 
-class LazyLoadFromIdentityMapTest(fixtures.DeclarativeMappedTest):
+class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
+    def _init_dbs(self):
+        self.db1 = db1 = testing_engine('sqlite:///shard1.db',
+                             options=dict(pool_threadlocal=True))
+        self.db2 = db2 = testing_engine('sqlite:///shard2.db')
+
+        for db in (db1, db2):
+            self.metadata.create_all(db)
+
+        self.dbs = [db1, db2]
+
+        return self.dbs
+
+    def teardown(self):
+        for db in self.dbs:
+            db.connect().invalidate()
+        for i in range(1, 3):
+            os.remove("shard%d.db" % i)
+
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
@@ -433,36 +452,127 @@ class LazyLoadFromIdentityMapTest(fixtures.DeclarativeMappedTest):
         class Book(Base):
             __tablename__ = 'book'
             id = Column(Integer, primary_key=True)
+            title = Column(String(50), nullable=False)
             pages = relationship('Page', backref='book')
 
         class Page(Base):
             __tablename__ = 'page'
             id = Column(Integer, primary_key=True)
             book_id = Column(ForeignKey('book.id'))
+            title = Column(String(50))
 
-    def test_lazy_load_from_identity_map(self):
+    def _fixture(self, lazy_load_book=False, lazy_load_pages=False):
+        Book, Page = self.classes("Book", "Page")
+
+        def shard_for_book(book):
+            if book.title == "title 1":
+                return "test"
+            elif book.title == "title 2":
+                return "test2"
+            else:
+                assert False
+
+        def id_chooser(query, ident):
+            assert query.lazy_loaded_from
+            if isinstance(query.lazy_loaded_from.obj(), Book):
+                token = shard_for_book(query.lazy_loaded_from.obj())
+                assert query.lazy_loaded_from.identity_token == token
+
+            return [query.lazy_loaded_from.identity_token]
+
+        def no_query_chooser(query):
+            if query.column_descriptions[0]['type'] is Book and lazy_load_book:
+                assert isinstance(query.lazy_loaded_from.obj(), Page)
+            elif query.column_descriptions[0]['type'] is Page and lazy_load_pages:
+                assert isinstance(query.lazy_loaded_from.obj(), Book)
+
+            if query.lazy_loaded_from is None:
+                return ['test', 'test2']
+            else:
+                return [query.lazy_loaded_from.identity_token]
+
+        def shard_chooser(mapper, instance, **kw):
+            if isinstance(instance, Page):
+                return shard_for_book(instance.book)
+            else:
+                return shard_for_book(instance)
+
+        db1, db2 = self._init_dbs()
         session = ShardedSession(
-            shards={"test": testing.db},
-            shard_chooser=lambda *args: 'test',
-            id_chooser=lambda *args: ['test'],
-            query_chooser=lambda *args: ['test']
+            shards={"test": db1, "test2": db2},
+            shard_chooser=shard_chooser,
+            id_chooser=id_chooser,
+            query_chooser=no_query_chooser
         )
 
+        return session
+
+    def test_lazy_load_from_identity_map(self):
+        session = self._fixture()
+
         Book, Page = self.classes("Book", "Page")
-        book = Book()
+        book = Book(title="title 1")
         book.pages.append(Page())
 
         session.add(book)
-        session.commit()
+        session.flush()
 
-        book = session.query(Book).first()
         page = session.query(Page).first()
+
+        session.expire(page, ['book'])
 
         def go():
             eq_(page.book, book)
 
         # doesn't emit SQL
-        self.assert_sql_count(
-            testing.db,
+        self.assert_multiple_sql_count(
+            self.dbs,
             go,
-            0)
+            [0, 0])
+
+    def test_lazy_load_from_db(self):
+        session = self._fixture(lazy_load_book=True)
+
+        Book, Page = self.classes("Book", "Page")
+        book1 = Book(title="title 1")
+        book1.pages.append(Page(title="book 1 page 1"))
+
+        session.add(book1)
+        session.flush()
+
+        book1_id = inspect(book1).identity_key
+        session.expunge(book1)
+
+        book1_page = session.query(Page).first()
+        session.expire(book1_page, ['book'])
+
+        def go():
+            eq_(inspect(book1_page.book).identity_key, book1_id)
+
+        # emits one query
+        self.assert_multiple_sql_count(
+            self.dbs,
+            go,
+            [1, 0])
+
+    def test_lazy_load_no_baked_conflict(self):
+        session = self._fixture(lazy_load_pages=True)
+
+        Book, Page = self.classes("Book", "Page")
+        book1 = Book(title="title 1")
+        book1.pages.append(Page(title="book 1 page 1"))
+
+        book2 = Book(title="title 2")
+        book2.pages.append(Page(title="book 2 page 1"))
+
+        session.add(book1)
+        session.add(book2)
+        session.flush()
+
+        session.expire(book1, ['pages'])
+        session.expire(book2, ['pages'])
+
+        eq_(book1.pages[0].title, "book 1 page 1")
+
+        # second lazy load uses correct state
+        eq_(book2.pages[0].title, "book 2 page 1")

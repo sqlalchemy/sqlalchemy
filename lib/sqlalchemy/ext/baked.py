@@ -253,7 +253,7 @@ class BakedQuery(object):
             bk._cache_key = cache_key
             q = bk.for_session(session)
             for fn in post_criteria:
-                q = fn(q)
+                q = q.with_post_criteria(fn)
             context.attributes[k] = q.params(**params)
 
 

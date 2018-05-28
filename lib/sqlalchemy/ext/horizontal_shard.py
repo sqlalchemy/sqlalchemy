@@ -65,7 +65,8 @@ class ShardedQuery(Query):
             return iter(partial)
 
     def _identity_lookup(
-            self, mapper, primary_key_identity, identity_token=None, **kw):
+            self, mapper, primary_key_identity, identity_token=None,
+            lazy_loaded_from=None, **kw):
         """override the default Query._identity_lookup method so that we
         search for a given non-token primary key identity across all
         possible identity tokens (e.g. shard ids).
@@ -79,6 +80,8 @@ class ShardedQuery(Query):
             )
         else:
             q = self.session.query(mapper)
+            if lazy_loaded_from:
+                q = q._set_lazyload_from(lazy_loaded_from)
             for shard_id in self.id_chooser(q, primary_key_identity):
                 obj = super(ShardedQuery, self)._identity_lookup(
                     mapper, primary_key_identity, identity_token=shard_id, **kw
