@@ -617,7 +617,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # does this, including how it decides what the correct
             # identity_token would be for this identity.
             instance = session.query()._identity_lookup(
-                self.mapper, primary_key_identity, passive=passive
+                self.mapper, primary_key_identity, passive=passive,
+                lazy_loaded_from=state
             )
 
             if instance is not None:
@@ -715,8 +716,12 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if self.use_get:
             if self._raise_on_sql:
                 self._invoke_raise_load(state, passive, "raise_on_sql")
-            return q(session)._load_on_pk_identity(
-                session.query(self.mapper), primary_key_identity)
+
+            return q(session).\
+                with_post_criteria(lambda q: q._set_lazyload_from(state)).\
+                _load_on_pk_identity(
+                    session.query(self.mapper),
+                    primary_key_identity)
 
         if self.parent_property.order_by:
             q.add_criteria(
@@ -761,7 +766,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             q._params = params
             return q
 
-        result = q(session).with_post_criteria(set_default_params).all()
+        result = q(session).\
+            with_post_criteria(lambda q: q._set_lazyload_from(state)).\
+            with_post_criteria(set_default_params).all()
         if self.uselist:
             return result
         else:

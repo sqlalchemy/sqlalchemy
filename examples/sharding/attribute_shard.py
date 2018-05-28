@@ -133,7 +133,13 @@ def id_chooser(query, ident):
     distributed among DBs.
 
     """
-    return ['north_america', 'asia', 'europe', 'south_america']
+    if query.lazy_loaded_from:
+        # if we are in a lazy load, we can look at the parent object
+        # and limit our search to that same shard, assuming that's how we've
+        # set things up.
+        return [query.lazy_loaded_from.identity_token]
+    else:
+        return ['north_america', 'asia', 'europe', 'south_america']
 
 
 def query_chooser(query):
