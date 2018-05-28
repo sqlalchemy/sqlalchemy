@@ -12,7 +12,181 @@
 
 .. changelog::
     :version: 1.2.8
-    :include_notes_from: unreleased_12
+    :released: May 28, 2018
+
+    .. change::
+    	:tags: bug, orm
+    	:tickets: 4256
+
+    	Fixed regression in 1.2.7 caused by :ticket:`4228`, which itself was fixing
+    	a 1.2-level regression, where the ``query_cls`` callable passed to a
+    	:class:`.Session` was assumed to be a subclass of :class:`.Query`  with
+    	class method availability, as opposed to an arbitrary callable.    In
+    	particular, the dogpile caching example illustrates ``query_cls`` as a
+    	function and not a :class:`.Query` subclass.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4252
+        :versions: 1.3.0b1
+
+        Fixed connection pool issue whereby if a disconnection error were raised
+        during the connection pool's "reset on return" sequence in conjunction with
+        an explicit transaction opened against the enclosing :class:`.Connection`
+        object (such as from calling :meth:`.Session.close` without a rollback or
+        commit, or calling :meth:`.Connection.close` without first closing a
+        transaction declared with :meth:`.Connection.begin`), a double-checkin would
+        result, which could then lead towards concurrent checkouts of the same
+        connection. The double-checkin condition is now prevented overall by an
+        assertion, as well as the specific double-checkin scenario has been
+        fixed.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4264
+        :versions: 1.3.0b1
+
+        The Oracle BINARY_FLOAT and BINARY_DOUBLE datatypes now participate within
+        cx_Oracle.setinputsizes(), passing along NATIVE_FLOAT, so as to support the
+        NaN value.  Additionally, :class:`.oracle.BINARY_FLOAT`,
+        :class:`.oracle.BINARY_DOUBLE` and :class:`.oracle.DOUBLE_PRECISION` now
+        subclass :class:`.Float`, since these are floating point datatypes, not
+        decimal.  These datatypes were already defaulting the
+        :paramref:`.Float.asdecimal` flag to False in line with what
+        :class:`.Float` already does.
+
+    .. change::
+        :tags: bug, oracle
+        :versions: 1.3.0b1
+
+        Added reflection capabilities for the :class:`.oracle.BINARY_FLOAT`,
+        :class:`.oracle.BINARY_DOUBLE` datatypes.
+
+
+    .. change::
+    	:tags: bug, ext
+    	:tickets: 4247
+
+    	The horizontal sharding extension now makes use of the identity token
+    	added to ORM identity keys as part of :ticket:`4137`, when an object
+    	refresh or column-based deferred load or unexpiration operation occurs.
+    	Since we know the "shard" that the object originated from, we make
+    	use of this value when refreshing, thereby avoiding queries against
+    	other shards that don't match this object's identity in any case.
+
+    .. change::
+        :tags: bug, sql
+        :versions: 1.3.0b1
+
+        Fixed issue where the "ambiguous literal" error message used when
+        interpreting literal values as SQL expression values would encounter a
+        tuple value, and fail to format the message properly. Pull request courtesy
+        Miguel Ventura.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4250
+
+        Fixed a 1.2 regression caused by :ticket:`4061` where the SQL Server
+        "BIT" type would be considered to be "native boolean".  The goal here
+        was to avoid creating a CHECK constraint on the column, however the bigger
+        issue is that the BIT value does not behave like a true/false constant
+        and cannot be interpreted as a standalone expression, e.g.
+        "WHERE <column>".   The SQL Server dialect now goes back to being
+        non-native boolean, but with an extra flag that still avoids creating
+        the CHECK constraint.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4259
+        :versions: 1.3.0b1
+
+        Altered the Oracle dialect such that when an :class:`.Integer` type is in
+        use, the cx_Oracle.NUMERIC type is set up for setinputsizes().  In
+        SQLAlchemy 1.1 and earlier, cx_Oracle.NUMERIC was passed for all numeric
+        types unconditionally, and in 1.2 this was removed to allow for better
+        numeric precision.  However, for integers, some database/client setups
+        will fail to coerce boolean values True/False into integers which introduces
+        regressive behavior when using SQLAlchemy 1.2.  Overall, the setinputsizes
+        logic seems like it will need a lot more flexibility going forward so this
+        is a start for that.
+
+    .. change::
+        :tags: bug, engine
+        :versions: 1.3.0b1
+
+        Fixed a reference leak issue where the values of the parameter dictionary
+        used in a statement execution would remain referenced by the "compiled
+        cache", as a result of storing the key view used by Python 3 dictionary
+        keys().  Pull request courtesy Olivier Grisel.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4128
+
+        Fixed a long-standing regression that occurred in version
+        1.0, which prevented the use of a custom :class:`.MapperOption`
+        that alters the _params of a :class:`.Query` object for a
+        lazy load, since the lazy loader itself would overwrite those
+        parameters.   This applies to the "temporal range" example
+        on the wiki.  Note however that the
+        :meth:`.Query.populate_existing` method is now required in
+        order to rewrite the mapper options associated with an object
+        already loaded in the identity map.
+
+        As part of this change, a custom defined
+        :class:`.MapperOption` will now cause lazy loaders related to
+        the target object to use a non-baked query by default unless
+        the :meth:`.MapperOption._generate_cache_key` method is implemented.
+        In particular, this repairs one regression which occured when
+        using the dogpile.cache "advanced" example, which was not
+        returning cached results and instead emitting SQL due to an
+        incompatibility with the baked query loader; with the change,
+        the ``RelationshipCache`` option included for many releases
+        in the dogpile example will disable the "baked" query altogether.
+        Note that the dogpile example is also modernized to avoid both
+        of these issues as part of issue :ticket:`4258`.
+
+    .. change::
+    	:tags: bug, ext
+    	:tickets: 4266
+    	:versions: 1.3.0b1
+
+    	Fixed a race condition which could occur if automap
+    	:meth:`.AutomapBase.prepare` were used within a multi-threaded context
+    	against other threads which  may call :func:`.configure_mappers` as a
+    	result of use of other mappers.  The unfinished mapping work of automap
+    	is particularly sensitive to being pulled in by a
+    	:func:`.configure_mappers` step leading to errors.
+
+    .. change::
+        :tags: bug, orm
+
+        Fixed bug where the new :meth:`.baked.Result.with_post_criteria`
+        method would not interact with a subquery-eager loader correctly,
+        in that the "post criteria" would not be applied to embedded
+        subquery eager loaders.   This is related to :ticket:`4128` in that
+        the post criteria feature is now used by the lazy loader.
+
+    .. change::
+    	:tags: bug, tests
+    	:tickets: 4249
+    	:versions: 1.3.0b1
+
+    	Fixed a bug in the test suite where if an external dialect returned
+    	``None`` for ``server_version_info``, the exclusion logic would raise an
+    	``AttributeError``.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4258
+
+        Updated the dogpile.caching example to include new structures that
+        accommodate for the "baked" query system, which is used by default within
+        lazy loaders and some eager relationship loaders. The dogpile.caching
+        "relationship_caching" and "advanced" examples were also broken due to
+        :ticket:`4256`.  The issue here is also worked-around by the fix in
+        :ticket:`4128`.
 
 .. changelog::
     :version: 1.2.7
