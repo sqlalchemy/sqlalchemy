@@ -147,7 +147,27 @@ class Query(object):
         self._entities = []
         self._primary_entity = None
         self._has_mapper_entities = False
-        if entities:
+
+        # 1. don't run util.to_list() or _set_entity_selectables
+        #    if no entities were passed - major performance bottleneck
+        #    from lazy loader implementation when it seeks to use Query
+        #    class for an identity lookup, causes test_orm.py to fail
+        #    with thousands of extra function calls, see issue #4228
+        #    for why this use had to be added
+        # 2. can't use classmethod on Query because session.query_cls
+        #    is an arbitrary callable in some user recipes, not
+        #    necessarily a class, so we don't have the class available.
+        #    see issue #4256
+        # 3. can't do "if entities is not None" because we usually get here
+        #    from session.query() which takes in *entities.
+        # 4. can't do "if entities" because users make use of undocumented
+        #    to_list() behavior here and they pass clause expressions that
+        #    can't be evaluated as boolean.  See issue #4269.
+        # 5. the empty tuple is a singleton in cPython, take advantage of this
+        #    so that we can skip for the empty "*entities" case without using
+        #    any Python overloadable operators.
+        #
+        if entities is not ():
             for ent in util.to_list(entities):
                 entity_wrapper(self, ent)
 

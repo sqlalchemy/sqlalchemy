@@ -4544,6 +4544,9 @@ class QueryClsTest(QueryTest):
 
         return MyQueryFactory()
 
+    def _plain_fixture(self):
+        return Query
+
     def _test_get(self, fixture):
         User = self.classes.User
 
@@ -4570,6 +4573,26 @@ class QueryClsTest(QueryTest):
         a1 = s.query(Address).filter(Address.id == 1).first()
         eq_(a1.user, User(id=7))
 
+    def _test_expr(self, fixture):
+        User, Address = self.classes('User', 'Address')
+
+        s = Session(query_cls=fixture())
+
+        q = s.query(func.max(User.id).label('max'))
+        eq_(q.scalar(), 10)
+
+    def _test_expr_undocumented_query_constructor(self, fixture):
+        # see #4269.  not documented but already out there.
+        User, Address = self.classes('User', 'Address')
+
+        s = Session(query_cls=fixture())
+
+        q = Query(func.max(User.id).label('max')).with_session(s)
+        eq_(q.scalar(), 10)
+
+    def test_plain_get(self):
+        self._test_get(self._plain_fixture)
+
     def test_callable_get(self):
         self._test_get(self._callable_fixture)
 
@@ -4578,6 +4601,32 @@ class QueryClsTest(QueryTest):
 
     def test_fn_get(self):
         self._test_get(self._fn_fixture)
+
+    def test_plain_expr(self):
+        self._test_expr(self._plain_fixture)
+
+    def test_callable_expr(self):
+        self._test_expr(self._callable_fixture)
+
+    def test_subclass_expr(self):
+        self._test_expr(self._subclass_fixture)
+
+    def test_fn_expr(self):
+        self._test_expr(self._fn_fixture)
+
+    def test_plain_expr_undocumented_query_constructor(self):
+        self._test_expr_undocumented_query_constructor(self._plain_fixture)
+
+    def test_callable_expr_undocumented_query_constructor(self):
+        self._test_expr_undocumented_query_constructor(
+                self._callable_fixture)
+
+    def test_subclass_expr_undocumented_query_constructor(self):
+        self._test_expr_undocumented_query_constructor(
+            self._subclass_fixture)
+
+    def test_fn_expr_undocumented_query_constructor(self):
+        self._test_expr_undocumented_query_constructor(self._fn_fixture)
 
     def test_callable_o2m_lazyload(self):
         self._test_o2m_lazyload(self._callable_fixture)
