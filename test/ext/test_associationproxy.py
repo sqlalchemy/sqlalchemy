@@ -2362,6 +2362,7 @@ class InfoTest(fixtures.TestBase):
 
         eq_(Foob.assoc.info, {'foo': 'bar'})
 
+
 class MultiOwnerTest(fixtures.DeclarativeMappedTest,
                                      testing.AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -2430,4 +2431,166 @@ class MultiOwnerTest(fixtures.DeclarativeMappedTest,
             "EXISTS (SELECT 1 FROM d, c WHERE d.c_id = c.id "
             "AND d.value = :value_1)"
         )
+
+class ScopeBehaviorTest(fixtures.DeclarativeMappedTest):
+    # test some GC scenarios, including issue #4268
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'a'
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String(50))
+            bs = relationship("B")
+
+            b_dyn = relationship("B", lazy="dynamic")
+
+            b_data = association_proxy("bs", "data")
+
+            b_dynamic_data = association_proxy("bs", "data")
+
+        class B(Base):
+            __tablename__ = 'b'
+
+            id = Column(Integer, primary_key=True)
+            aid = Column(ForeignKey('a.id'))
+            data = Column(String(50))
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes("A", "B")
+
+        s = Session(testing.db)
+        s.add_all([
+            A(id=1, bs=[B(data='b1'), B(data='b2')]),
+            A(id=2, bs=[B(data='b3'), B(data='b4')])])
+        s.commit()
+        s.close()
+
+    def test_plain_collection_gc(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.bs  # noqa
+
+        del a1
+
+        gc_collect()
+
+        assert (A, (1, ), None) not in s.identity_map
+
+    @testing.fails("dynamic relationship strong references parent")
+    def test_dynamic_collection_gc(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.b_dyn  # noqa
+
+        del a1
+
+        gc_collect()
+
+        # also fails, AppenderQuery holds onto parent
+        assert (A, (1, ), None) not in s.identity_map
+
+    @testing.fails("association proxy strong references parent")
+    def test_associated_collection_gc(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.b_data # noqa
+
+        del a1
+
+        gc_collect()
+
+        assert (A, (1, ), None) not in s.identity_map
+
+    @testing.fails("association proxy strong references parent")
+    def test_associated_dynamic_gc(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.b_dynamic_data # noqa
+
+        del a1
+
+        gc_collect()
+
+        assert (A, (1, ), None) not in s.identity_map
+
+    def test_plain_collection_iterate(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.bs
+
+        del a1
+
+        gc_collect()
+
+        assert len(a1bs) == 2
+
+    def test_dynamic_collection_iterate(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.b_dyn  # noqa
+
+        del a1
+
+        gc_collect()
+
+        assert len(list(a1bs)) == 2
+
+    def test_associated_collection_iterate(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.b_data
+
+        del a1
+
+        gc_collect()
+
+        assert len(a1bs) == 2
+
+    def test_associated_dynamic_iterate(self):
+        A, B = self.classes("A", "B")
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).filter_by(id=1).one()
+
+        a1bs = a1.b_dynamic_data
+
+        del a1
+
+        gc_collect()
+
+        assert len(a1bs) == 2
+
 

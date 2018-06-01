@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 4268
+
+    The long-standing behavior of the association proxy collection maintaining
+    only a weak reference to the parent object is reverted; the proxy will now
+    maintain a strong reference to the parent for as long as the proxy
+    collection itself is also in memory, eliminating the "stale association
+    proxy" error. This change is being made on an experimental basis to see if
+    any use cases arise where it causes side effects.
+
+    .. seealso::
+
+        :ref:`change_4268`
+
