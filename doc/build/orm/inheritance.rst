@@ -30,14 +30,15 @@ Joined Table Inheritance
 In joined table inheritance, each class along a hierarchy of classes
 is represented by a distinct table.  Querying for a particular subclass
 in the hierarchy will render as a SQL JOIN along all tables in its
-inheritance path - if the class is the base class, the default behavior
-is to include only the base table in the SELECT.   In all cases, the
+inheritance path. If the queried class is the base class, the **default behavior
+is to include only the base table** in a SELECT statement.   In all cases, the
 ultimate class to instantiate for a given row is determined by a discriminator
-column or expression that works against the base table.    A subclass
-loaded against the base table only will have only base attributes
-populated at first; the additional attributes will :term:`lazy load` when
-they are accessed.  Options also exist to query for all
-columns across multiple tables/subclasses up front.
+column or an expression that works against the base table.    When a subclass
+is loaded **only** against a base table, resulting objects will have base attributes
+populated at first; attributes that are local to the subclass will :term:`lazy load`
+when they are accessed.    Alternatively, there are options which can change
+the default behavior, allowing the query to include columns corresponding to
+multiple tables/subclasses up front.
 
 The base class in a joined inheritance hierarchy is configured with
 additional arguments that will refer to the polymorphic discriminator
