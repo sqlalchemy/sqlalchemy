@@ -324,7 +324,7 @@ cursor directly::
                   return None
           return process
 
-      def adapt(self, impltype):
+      def adapt(self, impltype, **kw):
           return MySpecialTime(self.special_argument)
 
 .. _types_sql_value_processing:
