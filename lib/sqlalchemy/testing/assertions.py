@@ -518,6 +518,21 @@ class AssertsExecutionResults(object):
         self.assert_sql_execution(
             db, callable_, assertsql.CountStatements(count))
 
+    def assert_multiple_sql_count(self, dbs, callable_, counts):
+        recs = [
+            (self.sql_execution_asserter(db), db, count)
+            for (db, count) in zip(dbs, counts)
+        ]
+        asserters = []
+        for ctx, db, count in recs:
+            asserters.append(ctx.__enter__())
+        try:
+            return callable_()
+        finally:
+            for asserter, (ctx, db, count) in zip(asserters, recs):
+                ctx.__exit__(None, None, None)
+                asserter.assert_(assertsql.CountStatements(count))
+
     @contextlib.contextmanager
     def assert_execution(self, db, *rules):
         with self.sql_execution_asserter(db) as asserter:
