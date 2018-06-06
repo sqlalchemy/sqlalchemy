@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, ext
+    :tickets: 4243
+    :versions: 1.3.0b1
+
+    Added new attribute :attr:`.Query.lazy_loaded_from` which is populated
+    with an :class:`.InstanceState` that is using this :class:`.Query` in
+    order to lazy load a relationship.  The rationale for this is that
+    it serves as a hint for the horizontal sharding feature to use, such that
+    the identity token of the state can be used as the default identity token
+    to use for the query within id_chooser().
