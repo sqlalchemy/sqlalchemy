@@ -1111,6 +1111,54 @@ class CacheKeyTest(PathTest, QueryTest):
             )
         )
 
+    def test_unbound_cache_key_included_safe_multipath(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        base = joinedload(User.orders)
+        opt1 = base.joinedload(Order.items)
+        opt2 = base.joinedload(Order.address)
+
+        eq_(
+            opt1._generate_cache_key(query_path),
+            (
+                ((Order, 'items', Item, ('lazy', 'joined')),)
+            )
+        )
+
+        eq_(
+            opt2._generate_cache_key(query_path),
+            (
+                ((Order, 'address', Address, ('lazy', 'joined')),)
+            )
+        )
+
+    def test_bound_cache_key_included_safe_multipath(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        base = Load(User).joinedload(User.orders)
+        opt1 = base.joinedload(Order.items)
+        opt2 = base.joinedload(Order.address)
+
+        eq_(
+            opt1._generate_cache_key(query_path),
+            (
+                ((Order, 'items', Item, ('lazy', 'joined')),)
+            )
+        )
+
+        eq_(
+            opt2._generate_cache_key(query_path),
+            (
+                ((Order, 'address', Address, ('lazy', 'joined')),)
+            )
+        )
+
     def test_bound_cache_key_included_safe(self):
         User, Address, Order, Item, SubItem = self.classes(
             'User', 'Address', 'Order', 'Item', 'SubItem')
@@ -1372,6 +1420,35 @@ class CacheKeyTest(PathTest, QueryTest):
             )
         )
 
+    def test_unbound_cache_key_included_safe_w_deferred_multipath(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        base = joinedload(User.orders)
+        opt1 = base.joinedload(Order.items)
+        opt2 = base.joinedload(Order.address).defer(Address.email_address).\
+            defer(Address.user_id)
+
+        eq_(
+            opt1._generate_cache_key(query_path),
+            (
+                (Order, 'items', Item, ('lazy', 'joined')),
+            )
+        )
+
+        eq_(
+            opt2._generate_cache_key(query_path),
+            (
+                (Order, 'address', Address, ('lazy', 'joined')),
+                (Order, 'address', Address, 'email_address',
+                 ('deferred', True), ('instrument', True)),
+                (Order, 'address', Address, 'user_id',
+                 ('deferred', True), ('instrument', True))
+            )
+        )
+
     def test_bound_cache_key_included_safe_w_deferred(self):
         User, Address, Order, Item, SubItem = self.classes(
             'User', 'Address', 'Order', 'Item', 'SubItem')
@@ -1393,6 +1470,35 @@ class CacheKeyTest(PathTest, QueryTest):
                     ('deferred', True),
                     ('instrument', True)
                 ),
+            )
+        )
+
+    def test_bound_cache_key_included_safe_w_deferred_multipath(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem')
+
+        query_path = self._make_path_registry([User, "orders"])
+
+        base = Load(User).joinedload(User.orders)
+        opt1 = base.joinedload(Order.items)
+        opt2 = base.joinedload(Order.address).defer(Address.email_address).\
+            defer(Address.user_id)
+
+        eq_(
+            opt1._generate_cache_key(query_path),
+            (
+                (Order, 'items', Item, ('lazy', 'joined')),
+            )
+        )
+
+        eq_(
+            opt2._generate_cache_key(query_path),
+            (
+                (Order, 'address', Address, ('lazy', 'joined')),
+                (Order, 'address', Address, 'email_address',
+                 ('deferred', True), ('instrument', True)),
+                (Order, 'address', Address, 'user_id',
+                 ('deferred', True), ('instrument', True))
             )
         )
 
