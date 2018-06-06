@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4269
+
+    Fixed regression caused by :ticket:`4256` (itself a regression fix for
+    :ticket:`4228`) which breaks an undocumented behavior which converted for a
+    non-sequence of entities passed directly to the :class:`.Query` constructor
+    into a single-element sequence.  While this behavior was never supported or
+    documented, it's already in use so has been added as a behavioral contract
+    to :class:`.Query`.
