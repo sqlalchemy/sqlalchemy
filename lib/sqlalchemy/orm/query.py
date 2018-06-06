@@ -1411,6 +1411,8 @@ class Query(object):
         # most MapperOptions write to the '_attributes' dictionary,
         # so copy that as well
         self._attributes = self._attributes.copy()
+        if '_unbound_load_dedupes' not in self._attributes:
+            self._attributes['_unbound_load_dedupes'] = set()
         opts = tuple(util.flatten_iterator(args))
         self._with_options = self._with_options + opts
         if conditional:
