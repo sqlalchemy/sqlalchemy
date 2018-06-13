@@ -481,6 +481,23 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
             dialect='mysql'
         )
 
+    def test_update_from_join_mysql(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        j = users.join(addresses)
+        self.assert_compile(
+            update(j).
+            values(name='newname').
+            where(addresses.c.email_address == 'e1'),
+            ""
+            'UPDATE users '
+            'INNER JOIN addresses ON users.id = addresses.user_id '
+            'SET users.name=%s '
+            'WHERE '
+            'addresses.email_address = %s',
+            checkparams={'email_address_1': 'e1', 'name': 'newname'},
+            dialect=mysql.dialect())
+
     def test_render_table(self):
         users, addresses = self.tables.users, self.tables.addresses
 
@@ -652,6 +669,35 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             addresses.update().
             values(values).
             where(users.c.id == addresses.c.user_id).
+            where(users.c.name == 'ed'))
+
+        expected = [
+            (1, 7, 'x', 'jack@bean.com'),
+            (2, 8, 'x', 'updated'),
+            (3, 8, 'x', 'updated'),
+            (4, 8, 'x', 'updated'),
+            (5, 9, 'x', 'fred@fred.com')]
+        self._assert_addresses(addresses, expected)
+
+        expected = [
+            (7, 'jack'),
+            (8, 'ed2'),
+            (9, 'fred'),
+            (10, 'chuck')]
+        self._assert_users(users, expected)
+
+    @testing.only_on('mysql', 'Multi table update')
+    def test_exec_join_multitable(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        values = {
+            addresses.c.email_address: 'updated',
+            users.c.name: 'ed2'
+        }
+
+        testing.db.execute(
+            update(users.join(addresses)).
+            values(values).
             where(users.c.name == 'ed'))
 
         expected = [
