@@ -187,6 +187,8 @@ static PyMethodDef module_methods[] = {
 
 #if PY_MAJOR_VERSION >= 3
 
+#define INITERROR return NULL
+
 static struct PyModuleDef module_def = {
     PyModuleDef_HEAD_INIT,
     MODULE_NAME,
@@ -194,16 +196,19 @@ static struct PyModuleDef module_def = {
     -1,
     module_methods
  };
-#endif
 
-
-#if PY_MAJOR_VERSION >= 3
 PyMODINIT_FUNC
 PyInit_cutils(void)
+
 #else
+
+#define INITERROR return
+
 PyMODINIT_FUNC
 initcutils(void)
+
 #endif
+
 {
     PyObject *m;
 
@@ -212,14 +217,11 @@ initcutils(void)
 #else
     m = Py_InitModule3(MODULE_NAME, module_methods, MODULE_DOC);
 #endif
+    if (m == NULL)
+        INITERROR;
 
 #if PY_MAJOR_VERSION >= 3
-    if (m == NULL)
-        return NULL;
     return m;
-#else
-    if (m == NULL)
-    	return;
 #endif
 }
 
