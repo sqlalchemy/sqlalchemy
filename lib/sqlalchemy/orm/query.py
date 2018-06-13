@@ -2244,6 +2244,13 @@ class Query(object):
 
                 left_entity = onclause._parententity
 
+                alias = self._polymorphic_adapters.get(left_entity, None)
+                # could be None or could be ColumnAdapter also
+                if isinstance(alias, ORMAdapter) and \
+                        alias.mapper.isa(left_entity):
+                    left_entity = alias.aliased_class
+                    onclause = getattr(left_entity, onclause.key)
+
                 prop = onclause.property
                 if not isinstance(onclause, attributes.QueryableAttribute):
                     onclause = prop

@@ -2677,3 +2677,108 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
         eq_(sess.query(Node).select_from(join(Node, n1, 'children'))
             .filter(n1.data.in_(['n3', 'n7'])).order_by(Node.id).all(),
             [Node(data='n1'), Node(data='n2')])
+
+
+class AliasFromCorrectLeftTest(
+        fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
+    run_create_tables = None
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Object(Base):
+            __tablename__ = 'object'
+
+            type = Column(String(30))
+            __mapper_args__ = {
+                'polymorphic_identity': 'object',
+                'polymorphic_on': type
+            }
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(256))
+
+        class A(Object):
+            __tablename__ = 'a'
+
+            __mapper_args__ = {'polymorphic_identity': 'a'}
+
+            id = Column(Integer, ForeignKey('object.id'), primary_key=True)
+
+            b_list = relationship(
+                'B',
+                secondary='a_b_association',
+                backref='a_list'
+            )
+
+        class B(Object):
+            __tablename__ = 'b'
+
+            __mapper_args__ = {'polymorphic_identity': 'b'}
+
+            id = Column(Integer, ForeignKey('object.id'), primary_key=True)
+
+        class ABAssociation(Base):
+            __tablename__ = 'a_b_association'
+
+            a_id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+            b_id = Column(Integer, ForeignKey('b.id'), primary_key=True)
+
+        class X(Base):
+            __tablename__ = 'x'
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(30))
+
+            obj_id = Column(Integer, ForeignKey('object.id'))
+            obj = relationship('Object', backref='x_list')
+
+    def test_join_prop_to_string(self):
+        A, B, X = self.classes("A", "B", "X")
+
+        s = Session()
+
+        q = s.query(B).\
+            join(B.a_list, 'x_list').filter(X.name == 'x1')
+
+        self.assert_compile(
+            q,
+            "SELECT object.type AS object_type, b.id AS b_id, "
+            "object.id AS object_id, object.name AS object_name "
+            "FROM object JOIN b ON object.id = b.id "
+            "JOIN a_b_association AS a_b_association_1 "
+            "ON b.id = a_b_association_1.b_id "
+            "JOIN ("
+            "object AS object_1 "
+            "JOIN a AS a_1 ON object_1.id = a_1.id"
+            ") ON a_1.id = a_b_association_1.a_id "
+            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1"
+        )
+
+    def test_join_prop_to_prop(self):
+        A, B, X = self.classes("A", "B", "X")
+
+        s = Session()
+
+        # B -> A, but both are Object.  So when we say A.x_list, make sure
+        # we pick the correct right side
+        q = s.query(B).\
+            join(B.a_list, A.x_list).filter(X.name == 'x1')
+
+        self.assert_compile(
+            q,
+            "SELECT object.type AS object_type, b.id AS b_id, "
+            "object.id AS object_id, object.name AS object_name "
+            "FROM object JOIN b ON object.id = b.id "
+            "JOIN a_b_association AS a_b_association_1 "
+            "ON b.id = a_b_association_1.b_id "
+            "JOIN ("
+            "object AS object_1 "
+            "JOIN a AS a_1 ON object_1.id = a_1.id"
+            ") ON a_1.id = a_b_association_1.a_id "
+            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1"
+        )
+
+
