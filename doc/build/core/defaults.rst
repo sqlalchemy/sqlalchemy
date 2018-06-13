@@ -123,11 +123,12 @@ parameters, the user-defined function is called for each set of parameters,
 and ``current_parameters`` will be provided with each individual parameter set
 for each execution.
 
-SQL Expressions
----------------
+Client-Invoked SQL Expressions
+------------------------------
 
-The "default" and "onupdate" keywords may also be passed SQL expressions,
-including select statements or direct function calls::
+The :paramref:`.Column.default` and :paramref:`.Column.onupdate` keywords may
+also be passed SQL expressions, which are in most cases rendered inline within the
+INSERT or UPDATE statement::
 
     t = Table("mytable", meta,
         Column('id', Integer, primary_key=True),
@@ -136,7 +137,7 @@ including select statements or direct function calls::
         Column('create_date', DateTime, default=func.now()),
 
         # define 'key' to pull its default from the 'keyvalues' table
-        Column('key', String(20), default=keyvalues.select(keyvalues.c.type='type1', limit=1)),
+        Column('key', String(20), default=select([keyvalues.c.key]).where(keyvalues.c.type='type1')),
 
         # define 'last_modified' to use the current_timestamp SQL function on update
         Column('last_modified', DateTime, onupdate=func.utc_timestamp())
@@ -147,58 +148,55 @@ Above, the ``create_date`` column will be populated with the result of the
 or ``CURRENT_TIMESTAMP`` in most cases) during an INSERT statement, and the
 ``key`` column with the result of a SELECT subquery from another table. The
 ``last_modified`` column will be populated with the value of
-``UTC_TIMESTAMP()``, a function specific to MySQL, when an UPDATE statement is
+the SQL ``UTC_TIMESTAMP()`` MySQL function when an UPDATE statement is
 emitted for this table.
 
-Note that when using ``func`` functions, unlike when using Python `datetime`
-functions we *do* call the function, i.e. with parenthesis "()" - this is
-because what we want in this case is the return value of the function, which
-is the SQL expression construct that will be rendered into the INSERT or
-UPDATE statement.
+.. note::
 
-The above SQL functions are usually executed "inline" with the INSERT or
-UPDATE statement being executed, meaning, a single statement is executed which
-embeds the given expressions or subqueries within the VALUES or SET clause of
-the statement. Although in some cases, the function is "pre-executed" in a
-SELECT statement of its own beforehand. This happens when all of the following
-is true:
+    When using SQL functions with the :attr:`.func` construct, we "call" the
+    named function, e.g. with parenthesis as in ``func.now()``.   This differs
+    from when we specify a Python callable as a default such as
+    ``datetime.datetime``, where we pass the function itself, but we don't
+    invoke it ourselves.   In the case of a SQL function, invoking
+    ``func.now()`` returns the SQL expression object that will render the
+    "NOW" function into the SQL being emitted.
 
-* the column is a primary key column
-* the database dialect does not support a usable ``cursor.lastrowid`` accessor
-  (or equivalent); this currently includes PostgreSQL, Oracle, and Firebird, as
-  well as some MySQL dialects.
-* the dialect does not support the "RETURNING" clause or similar, or the
-  ``implicit_returning`` flag is set to ``False`` for the dialect. Dialects
-  which support RETURNING currently include PostgreSQL, Oracle, Firebird, and
-  MS-SQL.
-* the statement is a single execution, i.e. only supplies one set of
-  parameters and doesn't use "executemany" behavior
-* the ``inline=True`` flag is not set on the
-  :class:`~sqlalchemy.sql.expression.Insert()` or
-  :class:`~sqlalchemy.sql.expression.Update()` construct, and the statement has
-  not defined an explicit `returning()` clause.
+Default and update SQL expressions specified by :paramref:`.Column.default` and
+:paramref:`.Column.onupdate` are invoked explicitly by SQLAlchemy when an
+INSERT or UPDATE statement occurs, typically rendered inline within the DML
+statement except in certain cases listed below.   This is different than a
+"server side" default, which is part of the table's DDL definition, e.g. as
+part of the "CREATE TABLE" statement, which are likely more common.   For
+server side defaults, see the next section :ref:`server_defaults`.
 
-Whether or not the default generation clause "pre-executes" is not something
-that normally needs to be considered, unless it is being addressed for
-performance reasons.
+When a SQL expression indicated by :paramref:`.Column.default` is used with
+primary key columns, there are some cases where SQLAlchemy must "pre-execute"
+the default generation SQL function, meaning it is invoked in a separate SELECT
+statement, and the resulting value is passed as a parameter to the INSERT.
+This only occurs for primary key columns for an INSERT statement that is being
+asked to return this primary key value, where RETURNING or ``cursor.lastrowid``
+may not be used.   An :class:`.Insert` construct that specifies the
+:paramref:`~.expression.insert.inline` flag will always render default expressions
+inline.
 
 When the statement is executed with a single set of parameters (that is, it is
 not an "executemany" style execution), the returned
-:class:`~sqlalchemy.engine.ResultProxy` will contain a collection
-accessible via :meth:`.ResultProxy.postfetch_cols` which contains a list of all
+:class:`~sqlalchemy.engine.ResultProxy` will contain a collection accessible
+via :meth:`.ResultProxy.postfetch_cols` which contains a list of all
 :class:`~sqlalchemy.schema.Column` objects which had an inline-executed
-default. Similarly, all parameters which were bound to the statement,
-including all Python and SQL expressions which were pre-executed, are present
-in the :meth:`.ResultProxy.last_inserted_params` or :meth:`.ResultProxy.last_updated_params` collections on
-:class:`~sqlalchemy.engine.ResultProxy`. The :attr:`.ResultProxy.inserted_primary_key`
-collection contains a list of primary key values for the row inserted (a list
-so that single-column and composite-column primary keys are represented in the
-same format).
+default. Similarly, all parameters which were bound to the statement, including
+all Python and SQL expressions which were pre-executed, are present in the
+:meth:`.ResultProxy.last_inserted_params` or
+:meth:`.ResultProxy.last_updated_params` collections on
+:class:`~sqlalchemy.engine.ResultProxy`. The
+:attr:`.ResultProxy.inserted_primary_key` collection contains a list of primary
+key values for the row inserted (a list so that single-column and composite-
+column primary keys are represented in the same format).
 
 .. _server_defaults:
 
-Server Side Defaults
---------------------
+Server-invoked default expressions
+----------------------------------
 
 A variant on the SQL expression default is the :paramref:`.Column.server_default`, which gets
 placed in the CREATE TABLE statement during a :meth:`.Table.create` operation:
@@ -207,21 +205,28 @@ placed in the CREATE TABLE statement during a :meth:`.Table.create` operation:
 
     t = Table('test', meta,
         Column('abc', String(20), server_default='abc'),
-        Column('created_at', DateTime, server_default=text("sysdate"))
+        Column('created_at', DateTime, server_default=func.sysdate()),
+        Column('index_value', Integer, server_default=text("0"))
     )
 
 A create call for the above table will produce::
 
     CREATE TABLE test (
         abc varchar(20) default 'abc',
-        created_at datetime default sysdate
+        created_at datetime default sysdate,
+        index_value integer default 0
     )
 
-The behavior of :paramref:`.Column.server_default` is similar to that of a regular SQL
-default; if it's placed on a primary key column for a database which doesn't
-have a way to "postfetch" the ID, and the statement is not "inlined", the SQL
-expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on
-the database side normally.
+The above example illustrates the two typical use cases for :paramref:`.Column.server_default`,
+that of the SQL function (SYSDATE in the above example) as well as a server-side constant
+value (the integer "0" in the above example).  It is advisable to use the
+:func:`.text` construct for any literal SQL values as opposed to passing the
+raw value, as SQLAlchemy does not typically perform any quoting or escaping on
+these values.
+
+Like client-generated expressions, :paramref:`.Column.server_default` can accommodate
+SQL expressions in general, however it is expected that these will usually be simple
+functions and expressions, and not the more complex cases like an embedded SELECT.
 
 
 .. _triggered_columns:
