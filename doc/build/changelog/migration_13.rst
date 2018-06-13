@@ -413,6 +413,45 @@ JSON is being used for its familiarity.
 Dialect Improvements and Changes - Oracle
 =============================================
 
+.. _change_4242:
+
+National char datatypes de-emphasized for generic unicode, re-enabled with option
+---------------------------------------------------------------------------------
+
+The :class:`.Unicode` and :class:`.UnicodeText` datatypes by default now
+correspond to the ``VARCHAR2`` and ``CLOB`` datatypes on Oracle, rather than
+``NVARCHAR2`` and ``NCLOB`` (otherwise known as "national" character set
+types).  This will be seen in behaviors such  as that of how they render in
+``CREATE TABLE`` statements, as well as that no type object will be passed to
+``setinputsizes()`` when bound parameters using :class:`.Unicode` or
+:class:`.UnicodeText` are used; cx_Oracle handles the string value natively.
+This change is based on advice from cx_Oracle's maintainer that the "national"
+datatypes in Oracle are largely obsolete and are not performant.   They also
+interfere in some situations such as when applied to the format specifier for
+functions like ``trunc()``.
+
+The one case where ``NVARCHAR2`` and related types may be needed is for a
+database that is not using a Unicode-compliant character set.  In this case,
+the flag ``use_nchar_for_unicode`` can be passed to :func:`.create_engine` to
+re-enable the old behavior.
+
+As always, using the :class:`.oracle.NVARCHAR2` and :class:`.oracle.NCLOB`
+datatypes explicitly will continue to make use of ``NVARCHAR2`` and ``NCLOB``,
+including within DDL as well as when handling bound parameters with cx_Oracle's
+``setinputsizes()``.
+
+On the read side, automatic Unicode conversion under Python 2 has been added to
+CHAR/VARCHAR/CLOB result rows, to match the behavior of cx_Oracle under Python
+3.  In order to mitigate the performance hit that the cx_Oracle dialect  had
+previously with this behavior under Python 2, SQLAlchemy's very performant
+(when C extensions are built) native Unicode handlers are used under Python 2.
+The automatic unicode coercion can be disabled by setting the
+``coerce_to_unicode`` flag to False. This flag now defaults to True and applies
+to all string data returned in a result set that isn't explicitly under
+:class:`.Unicode` or Oracle's NVARCHAR2/NCHAR/NCLOB datatypes.
+
+:ticket:`4242`
+
 Dialect Improvements and Changes - SQL Server
 =============================================
 

@@ -75,14 +75,33 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             (DATE(), cx_oracle._OracleDate),
             (oracle.DATE(), oracle.DATE),
             (String(50), cx_oracle._OracleString),
-            (Unicode(), cx_oracle._OracleNVarChar),
+            (Unicode(), cx_oracle._OracleUnicodeStringCHAR),
             (Text(), cx_oracle._OracleText),
-            (UnicodeText(), cx_oracle._OracleUnicodeText),
-            (NCHAR(), cx_oracle._OracleNVarChar),
+            (UnicodeText(), cx_oracle._OracleUnicodeTextCLOB),
+            (NCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+            (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
             (oracle.RAW(50), cx_oracle._OracleRaw),
         ]:
-            assert isinstance(start.dialect_impl(dialect), test), \
-                    "wanted %r got %r" % (test, start.dialect_impl(dialect))
+            assert isinstance(
+                start.dialect_impl(dialect), test), \
+                "wanted %r got %r" % (test, start.dialect_impl(dialect))
+
+    def test_type_adapt_nchar(self):
+        dialect = cx_oracle.dialect(use_nchar_for_unicode=True)
+
+        for start, test in [
+            (String(), String),
+            (VARCHAR(), cx_oracle._OracleString),
+            (String(50), cx_oracle._OracleString),
+            (Unicode(), cx_oracle._OracleUnicodeStringNCHAR),
+            (Text(), cx_oracle._OracleText),
+            (UnicodeText(), cx_oracle._OracleUnicodeTextNCLOB),
+            (NCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+            (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+        ]:
+            assert isinstance(
+                start.dialect_impl(dialect), test), \
+                "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
     def test_raw_compile(self):
         self.assert_compile(oracle.RAW(), "RAW")
@@ -100,6 +119,24 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_varchar_types(self):
         dialect = oracle.dialect()
+        for typ, exp in [
+            (String(50), "VARCHAR2(50 CHAR)"),
+            (Unicode(50), "VARCHAR2(50 CHAR)"),
+            (NVARCHAR(50), "NVARCHAR2(50)"),
+            (VARCHAR(50), "VARCHAR(50 CHAR)"),
+            (oracle.NVARCHAR2(50), "NVARCHAR2(50)"),
+            (oracle.VARCHAR2(50), "VARCHAR2(50 CHAR)"),
+            (String(), "VARCHAR2"),
+            (Unicode(), "VARCHAR2"),
+            (NVARCHAR(), "NVARCHAR2"),
+            (VARCHAR(), "VARCHAR"),
+            (oracle.NVARCHAR2(), "NVARCHAR2"),
+            (oracle.VARCHAR2(), "VARCHAR2"),
+        ]:
+            self.assert_compile(typ, exp, dialect=dialect)
+
+    def test_varchar_use_nchar_types(self):
+        dialect = oracle.dialect(use_nchar_for_unicode=True)
         for typ, exp in [
             (String(50), "VARCHAR2(50 CHAR)"),
             (Unicode(50), "NVARCHAR2(50)"),
@@ -587,12 +624,12 @@ class TypesTest(fixtures.TestBase):
         testing.requires.python3,
         "cx_oracle always returns unicode on py3k")
     def test_coerce_to_unicode(self):
-        engine = testing_engine(options=dict(coerce_to_unicode=True))
+        engine = testing_engine(options=dict(coerce_to_unicode=False))
         value = engine.scalar("SELECT 'hello' FROM DUAL")
-        assert isinstance(value, util.text_type)
+        assert isinstance(value, util.binary_type)
 
         value = testing.db.scalar("SELECT 'hello' FROM DUAL")
-        assert isinstance(value, util.binary_type)
+        assert isinstance(value, util.text_type)
 
     @testing.provide_metadata
     def test_reflect_dates(self):
@@ -651,11 +688,29 @@ class TypesTest(fixtures.TestBase):
         assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
 
         if testing.against('oracle+cx_oracle'):
-            # nvarchar returns unicode natively.  cx_oracle
-            # _OracleNVarChar type should be at play here.
             assert isinstance(
                 t2.c.data.type.dialect_impl(testing.db.dialect),
-                cx_oracle._OracleNVarChar)
+                cx_oracle._OracleUnicodeStringNCHAR)
+
+        data = u('m’a réveillé.')
+        t2.insert().execute(data=data)
+        res = t2.select().execute().first()['data']
+        eq_(res, data)
+        assert isinstance(res, util.text_type)
+
+    @testing.provide_metadata
+    def test_reflect_unicode_no_nvarchar(self):
+        metadata = self.metadata
+        Table('tnv', metadata, Column('data', sqltypes.Unicode(255)))
+        metadata.create_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('tnv', m2, autoload=True)
+        assert isinstance(t2.c.data.type, sqltypes.VARCHAR)
+
+        if testing.against('oracle+cx_oracle'):
+            assert isinstance(
+                t2.c.data.type.dialect_impl(testing.db.dialect),
+                cx_oracle._OracleString)
 
         data = u('m’a réveillé.')
         t2.insert().execute(data=data)
@@ -901,7 +956,8 @@ class SetInputSizesTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.provide_metadata
-    def _test_setinputsizes(self, datatype, value, sis_value):
+    def _test_setinputsizes(
+            self, datatype, value, sis_value, set_nchar_flag=False):
         class TestTypeDec(TypeDecorator):
             impl = NullType()
 
@@ -944,7 +1000,12 @@ class SetInputSizesTest(fixtures.TestBase):
             def __getattr__(self, key):
                 return getattr(self.cursor, key)
 
-        with testing.db.connect() as conn:
+        if set_nchar_flag:
+            engine = testing_engine(options={"use_nchar_for_unicode": True})
+        else:
+            engine = testing.db
+
+        with engine.connect() as conn:
             connection_fairy = conn.connection
             for tab in [t1, t2, t3]:
                 with mock.patch.object(
@@ -995,9 +1056,23 @@ class SetInputSizesTest(fixtures.TestBase):
             oracle.DOUBLE_PRECISION, 25.34534,
             None)
 
+    def test_unicode_nchar_mode(self):
+        self._test_setinputsizes(
+            Unicode(30), u("test"), testing.db.dialect.dbapi.NCHAR,
+            set_nchar_flag=True)
+
+    def test_unicodetext_nchar_mode(self):
+        self._test_setinputsizes(
+            UnicodeText(), u("test"), testing.db.dialect.dbapi.NCLOB,
+            set_nchar_flag=True)
+
     def test_unicode(self):
         self._test_setinputsizes(
-            Unicode(30), u("test"), testing.db.dialect.dbapi.NCHAR)
+            Unicode(30), u("test"), None)
+
+    def test_unicodetext(self):
+        self._test_setinputsizes(
+            UnicodeText(), u("test"), testing.db.dialect.dbapi.CLOB)
 
     def test_string(self):
         self._test_setinputsizes(String(30), "test", None)

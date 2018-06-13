@@ -533,7 +533,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_FLOAT(type_, **kw)
 
     def visit_unicode(self, type_, **kw):
-        if self.dialect._supports_nchar:
+        if self.dialect._use_nchar_for_unicode:
             return self.visit_NVARCHAR2(type_, **kw)
         else:
             return self.visit_VARCHAR2(type_, **kw)
@@ -620,7 +620,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_CLOB(type_, **kw)
 
     def visit_unicode_text(self, type_, **kw):
-        if self.dialect._supports_nchar:
+        if self.dialect._use_nchar_for_unicode:
             return self.visit_NCLOB(type_, **kw)
         else:
             return self.visit_CLOB(type_, **kw)
@@ -1056,6 +1056,8 @@ class OracleDialect(default.DefaultDialect):
 
     reflection_options = ('oracle_resolve_synonyms', )
 
+    _use_nchar_for_unicode = False
+
     construct_arguments = [
         (sa_schema.Table, {
             "resolve_synonyms": False,
@@ -1072,9 +1074,11 @@ class OracleDialect(default.DefaultDialect):
                  use_ansi=True,
                  optimize_limits=False,
                  use_binds_for_limits=True,
+                 use_nchar_for_unicode=False,
                  exclude_tablespaces=('SYSTEM', 'SYSAUX', ),
                  **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
+        self._use_nchar_for_unicode = use_nchar_for_unicode
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
         self.use_binds_for_limits = use_binds_for_limits
@@ -1111,13 +1115,19 @@ class OracleDialect(default.DefaultDialect):
     def _supports_char_length(self):
         return not self._is_oracle_8
 
-    @property
-    def _supports_nchar(self):
-        return not self._is_oracle_8
-
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
         pass
+
+    def _check_unicode_returns(self, connection):
+        additional_tests = [
+            expression.cast(
+                expression.literal_column("'test nvarchar2 returns'"),
+                sqltypes.NVARCHAR(60)
+            ),
+        ]
+        return super(OracleDialect, self)._check_unicode_returns(
+            connection, additional_tests)
 
     def has_table(self, connection, table_name, schema=None):
         if not schema:

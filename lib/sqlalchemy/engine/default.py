@@ -1135,6 +1135,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             dialect_impl = bindparam.type._unwrapped_dialect_impl(self.dialect)
             dialect_impl_cls = type(dialect_impl)
             dbtype = dialect_impl.get_dbapi_type(self.dialect.dbapi)
+
             if dbtype is not None and (
                 not exclude_types or dbtype not in exclude_types and
                 dialect_impl_cls not in exclude_types

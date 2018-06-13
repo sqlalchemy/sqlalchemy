@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4242
+
+    The Oracle dialect will no longer use the NCHAR/NCLOB datatypes
+    represent generic unicode strings or clob fields in conjunction with
+    :class:`.Unicode` and :class:`.UnicodeText` unless the flag
+    ``use_nchar_for_unicode=True`` is passed to :func:`.create_engine` -
+    this includes CREATE TABLE behavior as well as ``setinputsizes()`` for
+    bound parameters.   On the read side, automatic Unicode conversion under
+    Python 2 has been added to CHAR/VARCHAR/CLOB result rows, to match the
+    behavior of cx_Oracle under Python 3.  In order to mitigate the performance
+    hit under Python 2, SQLAlchemy's very performant (when C extensions
+    are built) native Unicode handlers are used under Python 2.
+
+    .. seealso::
+
+        :ref:`change_4242`

@@ -179,13 +179,12 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # before connect, assume modern DB
         assert dialect._supports_char_length
-        assert dialect._supports_nchar
         assert dialect.use_ansi
+        assert not dialect._use_nchar_for_unicode
 
         dialect.initialize(Mock())
         assert not dialect.implicit_returning
         assert not dialect._supports_char_length
-        assert not dialect._supports_nchar
         assert not dialect.use_ansi
         self.assert_compile(String(50), "VARCHAR2(50)", dialect=dialect)
         self.assert_compile(Unicode(50), "VARCHAR2(50)", dialect=dialect)
@@ -201,19 +200,29 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = self._dialect(None)
 
         assert dialect._supports_char_length
-        assert dialect._supports_nchar
+        assert not dialect._use_nchar_for_unicode
         assert dialect.use_ansi
         self.assert_compile(String(50), "VARCHAR2(50 CHAR)", dialect=dialect)
-        self.assert_compile(Unicode(50), "NVARCHAR2(50)", dialect=dialect)
-        self.assert_compile(UnicodeText(), "NCLOB", dialect=dialect)
+        self.assert_compile(Unicode(50), "VARCHAR2(50 CHAR)", dialect=dialect)
+        self.assert_compile(UnicodeText(), "CLOB", dialect=dialect)
 
     def test_ora10_flags(self):
         dialect = self._dialect((10, 2, 5))
 
         dialect.initialize(Mock())
         assert dialect._supports_char_length
-        assert dialect._supports_nchar
+        assert not dialect._use_nchar_for_unicode
         assert dialect.use_ansi
+        self.assert_compile(String(50), "VARCHAR2(50 CHAR)", dialect=dialect)
+        self.assert_compile(Unicode(50), "VARCHAR2(50 CHAR)", dialect=dialect)
+        self.assert_compile(UnicodeText(), "CLOB", dialect=dialect)
+
+    def test_use_nchar(self):
+        dialect = self._dialect((10, 2, 5), use_nchar_for_unicode=True)
+
+        dialect.initialize(Mock())
+        assert dialect._use_nchar_for_unicode
+
         self.assert_compile(String(50), "VARCHAR2(50 CHAR)", dialect=dialect)
         self.assert_compile(Unicode(50), "NVARCHAR2(50)", dialect=dialect)
         self.assert_compile(UnicodeText(), "NCLOB", dialect=dialect)
