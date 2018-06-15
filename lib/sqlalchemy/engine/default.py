@@ -60,6 +60,7 @@ class DefaultDialect(interfaces.Dialect):
     implicit_returning = False
 
     supports_right_nested_joins = True
+    cte_follows_insert = False
 
     supports_native_enum = False
     supports_native_boolean = False
