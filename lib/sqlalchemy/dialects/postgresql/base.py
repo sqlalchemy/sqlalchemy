@@ -257,9 +257,9 @@ which is in the ``public`` (i.e. default) schema will always have the
 
 .. seealso::
 
-        `The Schema Search Path
-        <http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
-        - on the PostgreSQL website.
+    `The Schema Search Path
+    <http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
+    - on the PostgreSQL website.
 
 INSERT/UPDATE...RETURNING
 -------------------------
@@ -357,7 +357,6 @@ named constraint or by column inference:
         set_=dict(data=stmt.excluded.data)
         )
     conn.execute(stmt)
-
 
 * The :paramref:`.Insert.on_conflict_do_update.constraint` argument is
   used to specify an index directly rather than inferring it.  This can be
@@ -474,7 +473,9 @@ constraint violation which occurs::
 
 .. seealso::
 
-    `INSERT .. ON CONFLICT <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_ - in the PostgreSQL documentation.
+    `INSERT .. ON CONFLICT
+    <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_
+    - in the PostgreSQL documentation.
 
 .. _postgresql_match:
 
@@ -586,7 +587,7 @@ to the PostgreSQL dialect.
 .. _postgresql_partial_indexes:
 
 Partial Indexes
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 Partial indexes add criterion to the index definition so that the index is
 applied to a subset of rows.   These can be specified on :class:`.Index`
@@ -595,7 +596,7 @@ using the ``postgresql_where`` keyword argument::
   Index('my_index', my_table.c.id, postgresql_where=my_table.c.value > 10)
 
 Operator Classes
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 PostgreSQL allows the specification of an *operator class* for each column of
 an index (see
@@ -629,7 +630,7 @@ that is identified in the dictionary by name, e.g.::
 
 
 Index Types
-^^^^^^^^^^^^
+^^^^^^^^^^^
 
 PostgreSQL provides several index types: B-Tree, Hash, GiST, and GIN, as well
 as the ability for users to create their own (see
@@ -754,7 +755,7 @@ of :class:`.PGInspector`, which offers additional methods::
 .. _postgresql_table_options:
 
 PostgreSQL Table Options
--------------------------
+------------------------
 
 Several options for CREATE TABLE are supported directly by the PostgreSQL
 dialect in conjunction with the :class:`.Table` construct:
