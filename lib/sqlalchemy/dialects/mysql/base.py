@@ -1667,6 +1667,8 @@ class MySQLDialect(default.DefaultDialect):
     default_paramstyle = 'format'
     colspecs = colspecs
 
+    cte_follows_insert = True
+
     statement_compiler = MySQLCompiler
     ddl_compiler = MySQLDDLCompiler
     type_compiler = MySQLTypeCompiler

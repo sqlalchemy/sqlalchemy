@@ -2105,7 +2105,12 @@ class SQLCompiler(Compiled):
             returning_clause = None
 
         if insert_stmt.select is not None:
-            text += " %s" % self.process(self._insert_from_select, **kw)
+            select_text = self.process(self._insert_from_select, **kw)
+
+            if self.ctes and toplevel and self.dialect.cte_follows_insert:
+                text += " %s%s" % (self._render_cte_clause(), select_text)
+            else:
+                text += " %s" % select_text
         elif not crud_params and supports_default_values:
             text += " DEFAULT VALUES"
         elif insert_stmt._has_multi_parameters:
@@ -2130,7 +2135,7 @@ class SQLCompiler(Compiled):
         if returning_clause and not self.returning_precedes_values:
             text += " " + returning_clause
 
-        if self.ctes and toplevel:
+        if self.ctes and toplevel and not self.dialect.cte_follows_insert:
             text = self._render_cte_clause() + text
 
         self.stack.pop(-1)

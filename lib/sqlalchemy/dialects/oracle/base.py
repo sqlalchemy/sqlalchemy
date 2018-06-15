@@ -1030,6 +1030,7 @@ class OracleDialect(default.DefaultDialect):
     max_identifier_length = 30
 
     supports_simple_order_by_label = False
+    cte_follows_insert = True
 
     supports_sequences = True
     sequences_optional = False
