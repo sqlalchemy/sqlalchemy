@@ -43,10 +43,10 @@ case.
 To force the usage of RETURNING by default off, specify the flag
 ``implicit_returning=False`` to :func:`.create_engine`.
 
-Postgresql 10 IDENTITY columns
+PostgreSQL 10 IDENTITY columns
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Postgresql 10 has a new IDENTITY feature that supersedes the use of SERIAL.
+PostgreSQL 10 has a new IDENTITY feature that supersedes the use of SERIAL.
 Built-in support for rendering of IDENTITY is not available yet, however the
 following compilation hook may be used to replace occurrences of SERIAL with
 IDENTITY::
@@ -514,13 +514,13 @@ produces a statement equivalent to::
     SELECT CAST('some text' AS TSVECTOR) AS anon_1
 
 Full Text Searches in PostgreSQL are influenced by a combination of: the
-PostgresSQL setting of ``default_text_search_config``, the ``regconfig`` used
+PostgreSQL setting of ``default_text_search_config``, the ``regconfig`` used
 to build the GIN/GiST indexes, and the ``regconfig`` optionally passed in
 during a query.
 
 When performing a Full Text Search against a column that has a GIN or
 GiST index that is already pre-computed (which is common on full text
-searches) one may need to explicitly pass in a particular PostgresSQL
+searches) one may need to explicitly pass in a particular PostgreSQL
 ``regconfig`` value to ensure the query-planner utilizes the index and does
 not re-compute the column on demand.
 
@@ -552,7 +552,7 @@ produces a statement equivalent to::
         to_tsquery('english', 'somestring')
 
 It is recommended that you use the ``EXPLAIN ANALYZE...`` tool from
-PostgresSQL to ensure that you are generating queries with SQLAlchemy that
+PostgreSQL to ensure that you are generating queries with SQLAlchemy that
 take full advantage of any indexes you may have created for full text search.
 
 FROM ONLY ...
@@ -693,7 +693,7 @@ a connection-less dialect, it will emit::
    of PostgreSQL is detected on the connection (or for a connection-less
    dialect).
 
-When using CONCURRENTLY, the Postgresql database requires that the statement
+When using CONCURRENTLY, the PostgreSQL database requires that the statement
 be invoked outside of a transaction block.   The Python DBAPI enforces that
 even for a single statement, a transaction is present, so to use this
 construct, the DBAPI's "autocommit" mode must be used::
@@ -1267,7 +1267,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
     @classmethod
     def adapt_emulated_to_native(cls, impl, **kw):
-        """Produce a Postgresql native :class:`.postgresql.ENUM` from plain
+        """Produce a PostgreSQL native :class:`.postgresql.ENUM` from plain
         :class:`.Enum`.
 
         """
@@ -1680,7 +1680,7 @@ class PGCompiler(compiler.SQLCompiler):
 
     def delete_extra_from_clause(self, delete_stmt, from_table,
                            extra_froms, from_hints, **kw):
-        """Render the DELETE .. USING clause specific to PostgresSQL."""
+        """Render the DELETE .. USING clause specific to PostgreSQL."""
         return "USING " + ', '.join(
             t._compiler_dispatch(self, asfrom=True,
                                  fromhints=from_hints, **kw)
