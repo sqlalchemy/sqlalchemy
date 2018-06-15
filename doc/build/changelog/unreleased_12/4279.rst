@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4279
+
+    Fixed regression in 1.2 due to :ticket:`4147` where a :class:`.Table` that
+    has had some of its indexed columns redefined with new ones, as would occur
+    when overriding columns during reflection or when using
+    :paramref:`.Table.extend_existing`, such that the :meth:`.Table.tometadata`
+    method would fail when attempting to copy those indexes as they still
+    referred to the replaced column.   The copy logic now accommodates for this
+    condition.
+

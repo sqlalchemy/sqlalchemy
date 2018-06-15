@@ -1066,6 +1066,38 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             sorted([_get_key(i) for i in table_c.indexes])
         )
 
+    def test_indexes_with_col_redefine(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+                      Column('id', Integer, primary_key=True),
+                      Column('data1', Integer),
+                      Column('data2', Integer),
+                      Index('text', text('data1 + 1')),
+                      )
+        Index('multi', table.c.data1, table.c.data2)
+        Index('func', func.abs(table.c.data1))
+        Index('multi-func', table.c.data1, func.abs(table.c.data2))
+
+        table = Table('mytable', meta,
+                      Column('data1', Integer),
+                      Column('data2', Integer),
+                      extend_existing=True
+                      )
+
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2)
+
+        def _get_key(i):
+            return [i.name, i.unique] + \
+                sorted(i.kwargs.items()) + \
+                [str(col) for col in i.expressions]
+
+        eq_(
+            sorted([_get_key(i) for i in table.indexes]),
+            sorted([_get_key(i) for i in table_c.indexes])
+        )
+
     @emits_warning("Table '.+' already exists within the given MetaData")
     def test_already_exists(self):
 

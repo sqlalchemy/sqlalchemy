@@ -69,7 +69,8 @@ def _get_table_key(name, schema):
 # break an import cycle
 def _copy_expression(expression, source_table, target_table):
     def replace(col):
-        if source_table.c.contains_column(col):
+        if isinstance(col, Column) and \
+                col.table is source_table and col.key in source_table.c:
             return target_table.c[col.key]
         else:
             return None
