@@ -161,7 +161,8 @@ def run_setup(with_cext):
             'postgresql_psycopg2cffi': ['psycopg2cffi'],
             'oracle': ['cx_oracle'],
             'mssql_pyodbc': ['pyodbc'],
-            'mssql_pymssql': ['pymssql']
+            'mssql_pymssql': ['pymssql'],
+            'mssql': ['pyodbc'],
         },
         **kwargs
     )
