@@ -300,9 +300,8 @@ arguments. The value is any string which will be output after the appropriate
         )
     )
 
-Note that these clauses are not supported on SQLite, and require ``InnoDB``
-tables when used with MySQL. They may also not be supported on other
-databases.
+Note that these clauses require ``InnoDB`` tables when used with MySQL.
+They may also not be supported on other databases.
 
 
 UNIQUE Constraint
