@@ -511,3 +511,5 @@ class LikeFunctionsTest(fixtures.TablesTest):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cd", autoescape=True, escape="#"), {3})
         self._test(col.contains("b#cd", autoescape=True, escape="#"), {7})
+
+

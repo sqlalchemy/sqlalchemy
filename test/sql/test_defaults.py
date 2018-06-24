@@ -568,7 +568,7 @@ class DefaultTest(fixtures.TestBase):
 
 
 class CTEDefaultTest(fixtures.TablesTest):
-    __requires__ = ('ctes',)
+    __requires__ = ('ctes', 'returning', 'ctes_on_dml')
     __backend__ = True
 
     @classmethod

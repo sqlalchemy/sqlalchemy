@@ -348,7 +348,7 @@ class DefaultRequirements(SuiteRequirements):
     def delete_from(self):
         """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
         return only_on(['postgresql', 'mssql', 'mysql', 'sybase'],
-                       "Backend does not support UPDATE..FROM")
+                       "Backend does not support DELETE..FROM")
 
     @property
     def update_where_target_in_subquery(self):
@@ -466,14 +466,34 @@ class DefaultRequirements(SuiteRequirements):
     def ctes(self):
         """Target database supports CTEs"""
 
-        return only_if(
-            ['postgresql', 'mssql']
-        )
+        return only_on([
+            lambda config: against(config, "mysql") and (
+                config.db.dialect._is_mariadb and
+                config.db.dialect._mariadb_normalized_version_info >=
+                (10, 2)
+            ),
+            "postgresql",
+            "mssql",
+            "oracle"
+        ])
+
+    @property
+    def ctes_with_update_delete(self):
+        """target database supports CTES that ride on top of a normal UPDATE
+        or DELETE statement which refers to the CTE in a correlated subquery.
+
+        """
+        return only_on([
+            "postgresql",
+            "mssql",
+            # "oracle" - oracle can do this but SQLAlchemy doesn't support
+            # their syntax yet
+        ])
 
     @property
     def ctes_on_dml(self):
         """target database supports CTES which consist of INSERT, UPDATE
-        or DELETE"""
+        or DELETE *within* the CTE, e.g. WITH x AS (UPDATE....)"""
 
         return only_if(
             ['postgresql']
