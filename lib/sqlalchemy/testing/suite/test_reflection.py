@@ -153,14 +153,18 @@ class ComponentReflectionTest(fixtures.TablesTest):
             cls.define_index(metadata, users)
 
             if not schema:
+                # test_needs_fk is at the moment to force MySQL InnoDB
                 noncol_idx_test_nopk = Table(
                     'noncol_idx_test_nopk', metadata,
                     Column('q', sa.String(5)),
+                    test_needs_fk=True,
                 )
+
                 noncol_idx_test_pk = Table(
                     'noncol_idx_test_pk', metadata,
                     Column('id', sa.Integer, primary_key=True),
                     Column('q', sa.String(5)),
+                    test_needs_fk=True,
                 )
                 Index('noncol_idx_nopk', noncol_idx_test_nopk.c.q.desc())
                 Index('noncol_idx_pk', noncol_idx_test_pk.c.q.desc())

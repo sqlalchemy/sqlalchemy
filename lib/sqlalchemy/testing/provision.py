@@ -194,9 +194,15 @@ def _mysql_create_db(cfg, eng, ident):
             _mysql_drop_db(cfg, conn, ident)
         except Exception:
             pass
-        conn.execute("CREATE DATABASE %s" % ident)
-        conn.execute("CREATE DATABASE %s_test_schema" % ident)
-        conn.execute("CREATE DATABASE %s_test_schema_2" % ident)
+
+        # using utf8mb4 we are getting collation errors on UNIONS:
+        # test/orm/inheritance/test_polymorphic_rel.py"
+        # 1271, u"Illegal mix of collations for operation 'UNION'"
+        conn.execute("CREATE DATABASE %s CHARACTER SET utf8mb3" % ident)
+        conn.execute(
+            "CREATE DATABASE %s_test_schema CHARACTER SET utf8mb3" % ident)
+        conn.execute(
+            "CREATE DATABASE %s_test_schema_2 CHARACTER SET utf8mb3" % ident)
 
 
 @_configure_follower.for_db("mysql")

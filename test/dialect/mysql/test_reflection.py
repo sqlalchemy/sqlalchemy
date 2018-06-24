@@ -483,6 +483,11 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         # this is ideally one table, but older MySQL versions choke
         # on the multiple TIMESTAMP columns
 
+        row = testing.db.execute(
+            "show variables like '%%explicit_defaults_for_timestamp%%'"
+        ).first()
+        explicit_defaults_for_timestamp = row[1].lower() in ('on', '1', 'true')
+
         reflected = []
         for idx, cols in enumerate([
             [
@@ -528,16 +533,20 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 {'name': 'p', 'nullable': True,
                  'default': current_timestamp},
                 {'name': 'r', 'nullable': False,
-                 'default':
+                 'default': None if explicit_defaults_for_timestamp else
                  "%(current_timestamp)s ON UPDATE %(current_timestamp)s" %
                  {"current_timestamp": current_timestamp}},
                 {'name': 's', 'nullable': False,
                  'default': current_timestamp},
-                {'name': 't', 'nullable': False,
-                 'default':
+                {'name': 't',
+                 'nullable': True if explicit_defaults_for_timestamp else
+                 False,
+                 'default': None if explicit_defaults_for_timestamp else
                  "%(current_timestamp)s ON UPDATE %(current_timestamp)s" %
                  {"current_timestamp": current_timestamp}},
-                {'name': 'u', 'nullable': False,
+                {'name': 'u',
+                 'nullable': True if explicit_defaults_for_timestamp else
+                 False,
                  'default': current_timestamp},
             ]
         )

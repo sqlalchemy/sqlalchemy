@@ -131,18 +131,19 @@ class DialectTest(fixtures.TestBase):
         assert not c.execute('SELECT @@autocommit;').scalar()
 
     def test_isolation_level(self):
-        values = {
-            # sqlalchemy -> mysql
-            'READ UNCOMMITTED': 'READ-UNCOMMITTED',
-            'READ COMMITTED': 'READ-COMMITTED',
-            'REPEATABLE READ': 'REPEATABLE-READ',
-            'SERIALIZABLE': 'SERIALIZABLE'
-        }
-        for sa_value, mysql_value in values.items():
+        values = [
+            'READ UNCOMMITTED',
+            'READ COMMITTED',
+            'REPEATABLE READ',
+            'SERIALIZABLE'
+        ]
+        for value in values:
             c = testing.db.connect().execution_options(
-                isolation_level=sa_value
+                isolation_level=value
             )
-            assert c.execute('SELECT @@tx_isolation;').scalar() == mysql_value
+            eq_(
+                testing.db.dialect.get_isolation_level(c.connection),
+                value)
 
 
 class ParseVersionTest(fixtures.TestBase):
