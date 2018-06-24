@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4283
+
+    Fixed bug in MySQLdb dialect and variants such as PyMySQL where an
+    additional "unicode returns" check upon connection makes explicit use of
+    the "utf8" character set, which in MySQL 8.0 emits a warning that utf8mb4
+    should be used.  This is now replaced with a utf8mb4 equivalent.
+    Documentation is also updated for the MySQL dialect to specify utf8mb4 in
+    all examples.  Additional changes have been made to the test suite to use
+    utf8mb3 charsets and databases (there seem to be collation issues in some
+    edge cases with utf8mb4), and to support configuration default changes made
+    in MySQL 8.0 such as explicit_defaults_for_timestamp as well as new errors
+    raised for invalid MyISAM indexes.
+
+

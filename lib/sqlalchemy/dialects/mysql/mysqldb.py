@@ -109,21 +109,21 @@ class MySQLDialect_mysqldb(MySQLDialect):
     def _check_unicode_returns(self, connection):
         # work around issue fixed in
         # https://github.com/farcepest/MySQLdb1/commit/cd44524fef63bd3fcb71947392326e9742d520e8
-        # specific issue w/ the utf8_bin collation and unicode returns
+        # specific issue w/ the utf8mb4_bin collation and unicode returns
 
-        has_utf8_bin = self.server_version_info > (5, ) and \
+        has_utf8mb4_bin = self.server_version_info > (5, ) and \
             connection.scalar(
-                "show collation where %s = 'utf8' and %s = 'utf8_bin'"
+                "show collation where %s = 'utf8mb4' and %s = 'utf8mb4_bin'"
                 % (
                     self.identifier_preparer.quote("Charset"),
                     self.identifier_preparer.quote("Collation")
                 ))
-        if has_utf8_bin:
+        if has_utf8mb4_bin:
             additional_tests = [
                 sql.collate(sql.cast(
                     sql.literal_column(
                             "'test collated returns'"),
-                    TEXT(charset='utf8')), "utf8_bin")
+                    TEXT(charset='utf8mb4')), "utf8mb4_bin")
             ]
         else:
             additional_tests = []

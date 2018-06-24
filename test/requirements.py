@@ -1033,7 +1033,9 @@ class DefaultRequirements(SuiteRequirements):
             # will raise without quoting
             "postgresql": "POSIX",
 
-            "mysql": "latin1_general_ci",
+            # note MySQL databases need to be created w/ utf8mb3 charset
+            # for the test suite
+            "mysql": "utf8mb3_bin",
             "sqlite": "NOCASE",
 
             # will raise *with* quoting

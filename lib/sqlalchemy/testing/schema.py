@@ -22,7 +22,8 @@ def Table(*args, **kw):
     kw.update(table_options)
 
     if exclusions.against(config._current, 'mysql'):
-        if 'mysql_engine' not in kw and 'mysql_type' not in kw:
+        if 'mysql_engine' not in kw and 'mysql_type' not in kw and \
+                "autoload_with" not in kw:
             if 'test_needs_fk' in test_opts or 'test_needs_acid' in test_opts:
                 kw['mysql_engine'] = 'InnoDB'
             else:

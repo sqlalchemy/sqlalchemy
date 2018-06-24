@@ -447,7 +447,7 @@ class DefaultTest(fixtures.TestBase):
         t.insert().execute({}, {}, {})
 
         ctexec = currenttime.scalar()
-        result = t.select().execute()
+        result = t.select().order_by(t.c.col1).execute()
         today = datetime.date.today()
         eq_(result.fetchall(),
             [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
@@ -463,7 +463,7 @@ class DefaultTest(fixtures.TestBase):
         t.insert().values([{}, {}, {}]).execute()
 
         ctexec = currenttime.scalar()
-        result = t.select().execute()
+        result = t.select().order_by(t.c.col1).execute()
         today = datetime.date.today()
         eq_(result.fetchall(),
             [(51, 'imthedefault', f, ts, ts, ctexec, True, False,
