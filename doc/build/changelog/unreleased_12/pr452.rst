@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sqlite
+    :versions: 1.3.0b1
+
+    Fixed issue in test suite where SQLite 3.24 added a new reserved word that
+    conflicted with a usage in TypeReflectionTest.  Pull request courtesy Nils
+    Philippsen.
