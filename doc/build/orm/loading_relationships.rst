@@ -54,7 +54,7 @@ The primary forms of relationship loading are:
   so that all members of related collections / scalar references are loaded at once
   by primary key.  Select IN loading is detailed at :ref:`selectin_eager_loading`.
 
-* **raise loading** - available via ``lazy='raise'``, ``lazy='raise_sql'``,
+* **raise loading** - available via ``lazy='raise'``, ``lazy='raise_on_sql'``,
   or the :func:`.raiseload` option, this form of loading is triggered at the
   same time a lazy load would normally occur, except it raises an ORM exception
   in order to guard against the application making unwanted lazy loads.
