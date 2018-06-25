@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 3645
+
+    The :class:`.Update` construct now accommodates a :class:`.Join` object
+    as supported by MySQL for UPDATE..FROM.  As the construct already
+    accepted an alias object for a similar purpose, the feature of UPDATE
+    against a non-table was already implied so this has been added.
