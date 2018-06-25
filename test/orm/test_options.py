@@ -25,7 +25,14 @@ class QueryTest(_fixtures.FixtureTest):
         class SubItem(cls.classes.Item):
             pass
 
-        mapper(SubItem, None, inherits=cls.classes.Item)
+        mapper(
+            SubItem, None, inherits=cls.classes.Item,
+            properties={
+                "extra_keywords": relationship(
+                    cls.classes.Keyword, viewonly=True,
+                    secondary=cls.tables.item_keywords)
+            }
+        )
 
 
 class PathTest(object):
@@ -1219,6 +1226,40 @@ class CacheKeyTest(PathTest, QueryTest):
         eq_(
             opt._generate_cache_key(query_path),
             None
+        )
+
+    def test_unbound_cache_key_of_type_subclass_relationship(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem', "Keyword")
+
+        query_path = self._make_path_registry([Order, "items", Item])
+
+        opt = subqueryload(
+            Order.items.of_type(SubItem)).subqueryload(SubItem.extra_keywords)
+
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (SubItem, ('lazy', 'subquery')),
+                ('extra_keywords', Keyword, ('lazy', 'subquery'))
+            )
+        )
+
+    def test_bound_cache_key_of_type_subclass_relationship(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem', "Keyword")
+
+        query_path = self._make_path_registry([Order, "items", Item])
+
+        opt = Load(Order).subqueryload(
+            Order.items.of_type(SubItem)).subqueryload(SubItem.extra_keywords)
+
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (SubItem, ('lazy', 'subquery')),
+                ('extra_keywords', Keyword, ('lazy', 'subquery'))
+            )
         )
 
     def test_unbound_cache_key_excluded_of_type_safe(self):

@@ -385,6 +385,9 @@ class Load(Generative, MapperOption):
 
             if c_token is p_token:
                 continue
+            elif c_token.is_mapper and p_token.is_mapper and \
+                    c_token.isa(p_token):
+                continue
             else:
                 return None
         return to_chop[i + 1:]
