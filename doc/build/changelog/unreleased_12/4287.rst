@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4287
+
+    Fixed bug in cache key generation for baked queries which could cause a
+    too-short cache key to be generated for the case of eager loads across
+    subclasses.  This could in turn cause the eagerload query to be cached in
+    place of a non-eagerload query, or vice versa, for a polymorhic "selectin"
+    load, or possibly for lazy loads or selectin loads as well.
