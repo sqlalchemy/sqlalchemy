@@ -580,17 +580,17 @@ def _load_subclass_via_in(context, path, entity):
     def do_load(context, path, states, load_only, effective_entity):
         orig_query = context.query
 
-        q._add_lazyload_options(
+        q2 = q._with_lazyload_options(
             (enable_opt, ) + orig_query._with_options + (disable_opt, ),
             path.parent, cache_path=path
         )
 
         if orig_query._populate_existing:
-            q.add_criteria(
+            q2.add_criteria(
                 lambda q: q.populate_existing()
             )
 
-        q(context.session).params(
+        q2(context.session).params(
             primary_keys=[
                 state.key[1][0] if zero_idx else state.key[1]
                 for state, load_attrs in states
