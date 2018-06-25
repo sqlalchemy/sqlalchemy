@@ -2183,6 +2183,16 @@ class SQLCompiler(Compiled):
              "selectable": update_stmt})
 
         extra_froms = update_stmt._extra_froms
+        is_multitable = bool(extra_froms)
+
+        if is_multitable:
+            # main table might be a JOIN
+            main_froms = set(selectable._from_objects(update_stmt.table))
+            render_extra_froms = [
+                f for f in extra_froms if f not in main_froms
+            ]
+        else:
+            render_extra_froms = []
 
         text = "UPDATE "
 
@@ -2191,8 +2201,7 @@ class SQLCompiler(Compiled):
                                             update_stmt._prefixes, **kw)
 
         table_text = self.update_tables_clause(update_stmt, update_stmt.table,
-                                               extra_froms, **kw)
-
+                                               render_extra_froms, **kw)
         crud_params = crud._setup_crud_params(
             self, update_stmt, crud.ISUPDATE, **kw)
 
@@ -2205,7 +2214,7 @@ class SQLCompiler(Compiled):
         text += table_text
 
         text += ' SET '
-        include_table = extra_froms and \
+        include_table = is_multitable and \
             self.render_table_with_column_in_update_from
         text += ', '.join(
             c[0]._compiler_dispatch(self,
@@ -2222,7 +2231,7 @@ class SQLCompiler(Compiled):
             extra_from_text = self.update_from_clause(
                 update_stmt,
                 update_stmt.table,
-                extra_froms,
+                render_extra_froms,
                 dialect_hints, **kw)
             if extra_from_text:
                 text += " " + extra_from_text
