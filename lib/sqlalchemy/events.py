@@ -1234,3 +1234,41 @@ class DialectEvents(event.Events):
         place within the event handler.
 
         """
+
+    def do_setinputsizes(self,
+                         inputsizes, cursor, statement, parameters, context):
+        """Receive the setinputsizes dictionary for possible modification.
+
+        This event is emitted in the case where the dialect makes use of the
+        DBAPI ``cursor.setinputsizes()`` method which passes information about
+        parameter binding for a particular statement.   The given
+        ``inputsizes`` dictionary will contain :class:`.BindParameter` objects
+        as keys, linked to DBAPI-specific type objects as values; for
+        parameters that are not bound, they are added to the dictionary with
+        ``None`` as the value, which means the parameter will not be included
+        in the ultimate setinputsizes call.   The event may be used to inspect
+        and/or log the datatypes that are being bound, as well as to modify the
+        dictionary in place.  Parameters can be added, modified, or removed
+        from this dictionary.   Callers will typically want to inspect the
+        :attr:`.BindParameter.type` attribute of the given bind objects in
+        order to make decisions about the DBAPI object.
+
+        After the event, the ``inputsizes`` dictionary is converted into
+        an appropriate datastructure to be passed to ``cursor.setinputsizes``;
+        either a list for a positional bound parameter execution style,
+        or a dictionary of string parameter keys to DBAPI type objects for
+        a named bound parameter execution style.
+
+        Most dialects **do not use** this method at all; the only built-in
+        dialect which uses this hook is the cx_Oracle dialect.   The hook here
+        is made available so as to allow customization of how datatypes are set
+        up with the  cx_Oracle DBAPI.
+
+        .. versionadded:: 1.2.9
+
+        .. seealso::
+
+            :ref:`cx_oracle_setinputsizes`
+
+        """
+        pass

@@ -30,6 +30,7 @@ import os
 from sqlalchemy import sql
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing import mock
+from sqlalchemy import event
 
 
 class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1014,3 +1015,17 @@ class SetInputSizesTest(fixtures.TestBase):
     def test_long(self):
         self._test_setinputsizes(
             oracle.LONG(), "test", None)
+
+    def test_event_no_native_float(self):
+        def _remove_type(inputsizes, cursor, statement, parameters, context):
+            for param, dbapitype in list(inputsizes.items()):
+                if dbapitype is testing.db.dialect.dbapi.NATIVE_FLOAT:
+                    del inputsizes[param]
+
+        event.listen(testing.db, "do_setinputsizes", _remove_type)
+        try:
+            self._test_setinputsizes(
+                oracle.BINARY_FLOAT, 25.34534,
+                None)
+        finally:
+            event.remove(testing.db, "do_setinputsizes", _remove_type)
