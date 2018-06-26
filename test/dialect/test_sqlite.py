@@ -1637,7 +1637,7 @@ class TypeReflectionTest(fixtures.TestBase):
             ("BLOBBER", sqltypes.NullType()),
             ("DOUBLE PRECISION", sqltypes.REAL()),
             ("FLOATY", sqltypes.REAL()),
-            ("NOTHING WE KNOW", sqltypes.NUMERIC()),
+            ("SOMETHING UNKNOWN", sqltypes.NUMERIC()),
         ]
 
     def _fixture_as_string(self, fixture):
