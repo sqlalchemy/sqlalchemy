@@ -1897,6 +1897,8 @@ class MSDialect(default.DefaultDialect):
             raise NotImplementedError(
                 "Can't fetch isolation level prior to SQL Server 2005")
 
+        last_error = None
+
         views = ("sys.dm_exec_sessions", "sys.dm_pdw_nodes_exec_sessions")
         for view in views:
             cursor = connection.cursor()
@@ -1914,19 +1916,22 @@ class MSDialect(default.DefaultDialect):
                   """ % view)
                 val = cursor.fetchone()[0]
             except self.dbapi.Error as err:
+                # Python3 scoping rules
+                last_error = err
                 continue
             else:
                 return val.upper()
             finally:
                 cursor.close()
+        else:
+            util.warn(
+                "Could not fetch transaction isolation level, "
+                "tried views: %s; final error was: %s" % (views, last_error))
 
-        util.warn(
-            "Could not fetch transaction isolation level, "
-            "tried views: %s; final error was: %s" % (views, err))
-        raise NotImplementedError(
-            "Can't fetch isolation level on this particular "
-            "SQL Server version"
-        )
+            raise NotImplementedError(
+                "Can't fetch isolation level on this particular "
+                "SQL Server version"
+            )
 
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)

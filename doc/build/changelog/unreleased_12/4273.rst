@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mssql, py3k
+    :tickets: 4273
+
+    Fixed issue within the SQL Server dialect under Python 3 where when running
+    against a non-standard SQL server database that does not contain either the
+    "sys.dm_exec_sessions" or "sys.dm_pdw_nodes_exec_sessions" views, leading
+    to a failure to fetch the isolation level, the error raise would fail due
+    to an UnboundLocalError.
+
+
