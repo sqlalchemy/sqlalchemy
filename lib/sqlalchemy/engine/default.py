@@ -1127,9 +1127,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if not hasattr(self.compiled, 'bind_names'):
             return
 
-        key_to_dbapi_type = {}
+        inputsizes = {}
         for bindparam in self.compiled.bind_names:
-            key = self.compiled.bind_names[bindparam]
+
             dialect_impl = bindparam.type._unwrapped_dialect_impl(self.dialect)
             dialect_impl_cls = type(dialect_impl)
             dbtype = dialect_impl.get_dbapi_type(self.dialect.dbapi)
@@ -1140,28 +1140,36 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 not include_types or dbtype in include_types or
                 dialect_impl_cls in include_types
             ):
-                key_to_dbapi_type[key] = dbtype
+                inputsizes[bindparam] = dbtype
+            else:
+                inputsizes[bindparam] = None
+
+        if self.dialect._has_events:
+            self.dialect.dispatch.do_setinputsizes(
+                inputsizes, self.cursor, self.statement, self.parameters, self
+            )
 
         if self.dialect.positional:
-            inputsizes = []
+            positional_inputsizes = []
             for key in self.compiled.positiontup:
-                if key in key_to_dbapi_type:
-                    dbtype = key_to_dbapi_type[key]
+                bindparam = self.compiled.binds[key]
+                dbtype = inputsizes.get(bindparam, None)
+                if dbtype is not None:
                     if key in self._expanded_parameters:
-                        inputsizes.extend(
+                        positional_inputsizes.extend(
                             [dbtype] * len(self._expanded_parameters[key]))
                     else:
-                        inputsizes.append(dbtype)
+                        positional_inputsizes.append(dbtype)
             try:
-                self.cursor.setinputsizes(*inputsizes)
+                self.cursor.setinputsizes(*positional_inputsizes)
             except BaseException as e:
                 self.root_connection._handle_dbapi_exception(
                     e, None, None, None, self)
         else:
-            inputsizes = {}
-            for key in self.compiled.bind_names.values():
-                if key in key_to_dbapi_type:
-                    dbtype = key_to_dbapi_type[key]
+            keyword_inputsizes = {}
+            for bindparam, key in self.compiled.bind_names.items():
+                dbtype = inputsizes.get(bindparam, None)
+                if dbtype is not None:
                     if translate:
                         # TODO: this part won't work w/ the
                         # expanded_parameters feature, e.g. for cx_oracle
@@ -1170,14 +1178,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     if not self.dialect.supports_unicode_binds:
                         key = self.dialect._encoder(key)[0]
                     if key in self._expanded_parameters:
-                        inputsizes.update(
+                        keyword_inputsizes.update(
                             (expand_key, dbtype) for expand_key
                             in self._expanded_parameters[key]
                         )
                     else:
-                        inputsizes[key] = dbtype
+                        keyword_inputsizes[key] = dbtype
             try:
-                self.cursor.setinputsizes(**inputsizes)
+                self.cursor.setinputsizes(**keyword_inputsizes)
             except BaseException as e:
                 self.root_connection._handle_dbapi_exception(
                     e, None, None, None, self)
