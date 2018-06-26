@@ -154,6 +154,13 @@ class BakedQuery(object):
         self._spoiled = True
         return self
 
+    def _with_lazyload_options(self, options, effective_path, cache_path=None):
+        """Cloning version of _add_lazyload_options.
+        """
+        q = self._clone()
+        q._add_lazyload_options(options, effective_path, cache_path=cache_path)
+        return q
+
     def _add_lazyload_options(self, options, effective_path, cache_path=None):
         """Used by per-state lazy loaders to add options to the
         "lazy load" query from a parent query.
