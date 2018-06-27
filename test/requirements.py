@@ -1084,6 +1084,13 @@ class DefaultRequirements(SuiteRequirements):
                        "non-standard SELECT scalar syntax")
 
     @property
+    def mysql_for_update(self):
+        return skip_if(
+            "mysql+mysqlconnector",
+           "lock-sensitive operations crash on mysqlconnector"
+        )
+
+    @property
     def mysql_fsp(self):
         return only_if('mysql >= 5.6.4')
 

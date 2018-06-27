@@ -16,6 +16,7 @@ from sqlalchemy import testing
 class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
     __backend__ = True
     __only_on__ = 'mysql'
+    __requires__ = 'mysql_for_update',
 
     @classmethod
     def setup_classes(cls):
