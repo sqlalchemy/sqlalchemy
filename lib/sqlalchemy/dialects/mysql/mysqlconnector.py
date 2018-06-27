@@ -14,11 +14,33 @@
     :url: http://dev.mysql.com/downloads/connector/python/
 
 
-Unicode
--------
+Current Issues
+--------------
 
-Please see :ref:`mysql_unicode` for current recommendations on unicode
-handling.
+The mysqlconnector driver has many issues that have gone unresolved
+for many years and it recommended that mysqlclient or pymysql be used
+if possible; as of June 27, 2018:
+
+* the values in cursor.description are randomly sent as either bytes
+  or text with no discernible pattern, so the dialect must test these
+  individually and attempt to decode
+
+* Under Python 2, the driver does not support SQL statements that contain
+  non-ascii characters within the SQL text, making it impossible to support
+  schema objects with non-ascii names; an ascii encoding error is raised.
+
+* additional random bytes-returned issues occur when running under MySQL 8.0
+  only
+
+* The driver does not accept the "utf8mb4" or "utf8mb3" charset parameters,
+  only "utf8", even though MySQL itself has deprecated this symbol
+
+* The driver produces deadlocks when trying to make use of SELECT..FOR UPDATE,
+  the reason is unknown.
+
+This list should be updated as these issues are resolved either in the
+upstream mysql-connector-python driver or if appropriate usage patterns
+are contributed to SQLAlchemy.
 
 """
 
@@ -28,6 +50,7 @@ from .base import (MySQLDialect, MySQLExecutionContext,
 
 from ... import util
 import re
+from ... import processors
 
 
 class MySQLExecutionContext_mysqlconnector(MySQLExecutionContext):
@@ -59,6 +82,13 @@ class MySQLCompiler_mysqlconnector(MySQLCompiler):
 
 
 class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
+    @property
+    def _double_percents(self):
+        return self.dialect._mysqlconnector_double_percents
+
+    @_double_percents.setter
+    def _double_percents(self, value):
+        pass
 
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
@@ -97,6 +127,26 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
             BIT: _myconnpyBIT,
         }
     )
+
+    def __init__(self, *arg, **kw):
+        super(MySQLDialect_mysqlconnector, self).__init__(*arg, **kw)
+
+        # hack description encoding since mysqlconnector randomly
+        # returns bytes or not
+        self._description_decoder = \
+            processors.to_conditional_unicode_processor_factory(
+                self.description_encoding
+            )
+
+    def _check_unicode_description(self, connection):
+        # hack description encoding since mysqlconnector randomly
+        # returns bytes or not
+        return False
+
+    @property
+    def description_encoding(self):
+        # total guess
+        return "latin-1"
 
     @util.memoized_property
     def supports_unicode_statements(self):
