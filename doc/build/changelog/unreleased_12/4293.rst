@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4293
+
+    Fixed bug in index reflection where on MySQL 8.0 an index that includes
+    ASC or DESC in an indexed column specfication would not be correctly
+    reflected, as MySQL 8.0 introduces support for returning this information
+    in a table definition string.
