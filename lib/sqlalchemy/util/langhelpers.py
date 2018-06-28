@@ -9,8 +9,8 @@
 modules, classes, hierarchies, attributes, functions, and methods.
 
 """
-import itertools
 import inspect
+import itertools
 import operator
 import re
 import sys
@@ -280,7 +280,7 @@ try:
 
 except ImportError:
     def inspect_func_args(fn):
-        names, _, has_kw, _ = inspect.getargspec(fn)
+        names, _, has_kw, _ = compat.inspect_getargspec(fn)
         return names, bool(has_kw)
 
 
@@ -371,7 +371,7 @@ def format_argspec_plus(fn, grouped=True):
     else:
         # we accept an existing argspec...
         spec = fn
-    args = inspect.formatargspec(*spec)
+    args = compat.inspect_formatargspec(*spec)
     if spec[0]:
         self_arg = spec[0][0]
     elif spec[1]:
@@ -380,8 +380,8 @@ def format_argspec_plus(fn, grouped=True):
         self_arg = None
 
     if compat.py3k:
-        apply_pos = inspect.formatargspec(spec[0], spec[1],
-                                          spec[2], None, spec[4])
+        apply_pos = compat.inspect_formatargspec(
+            spec[0], spec[1], spec[2], None, spec[4])
         num_defaults = 0
         if spec[3]:
             num_defaults += len(spec[3])
@@ -389,7 +389,7 @@ def format_argspec_plus(fn, grouped=True):
             num_defaults += len(spec[4])
         name_args = spec[0] + spec[4]
     else:
-        apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
+        apply_pos = compat.inspect_formatargspec(spec[0], spec[1], spec[2])
         num_defaults = 0
         if spec[3]:
             num_defaults += len(spec[3])
@@ -400,9 +400,9 @@ def format_argspec_plus(fn, grouped=True):
     else:
         defaulted_vals = ()
 
-    apply_kw = inspect.formatargspec(name_args, spec[1], spec[2],
-                                     defaulted_vals,
-                                     formatvalue=lambda x: '=' + x)
+    apply_kw = compat.inspect_formatargspec(
+        name_args, spec[1], spec[2], defaulted_vals,
+        formatvalue=lambda x: '=' + x)
     if grouped:
         return dict(args=args, self_arg=self_arg,
                     apply_pos=apply_pos, apply_kw=apply_kw)
@@ -646,8 +646,8 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
             continue
         try:
             spec = compat.inspect_getargspec(fn)
-            fn_args = inspect.formatargspec(spec[0])
-            d_args = inspect.formatargspec(spec[0][1:])
+            fn_args = compat.inspect_formatargspec(spec[0])
+            d_args = compat.inspect_formatargspec(spec[0][1:])
         except TypeError:
             fn_args = '(self, *args, **kw)'
             d_args = '(*args, **kw)'
