@@ -1,0 +1,16 @@
+.. change::
+    :tags: feature, oracle
+    :tickets: 4290
+    :versions: 1.3.0b1
+
+    Added a new event currently used only by the cx_Oracle dialect,
+    :meth:`.DialectEvents.setiputsizes`.  The event passes a dictionary of
+    :class:`.BindParameter` objects to DBAPI-specific type objects that will be
+    passed, after conversion to parameter names, to the cx_Oracle
+    ``cursor.setinputsizes()`` method.  This allows both visibility into the
+    setinputsizes process as well as the ability to alter the behavior of what
+    datatypes are passed to this method.
+
+    .. seealso::
+
+        :ref:`cx_oracle_setinputsizes`
