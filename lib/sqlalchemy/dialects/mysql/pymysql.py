@@ -12,7 +12,7 @@
     :dbapi: pymysql
     :connectstring: mysql+pymysql://<username>:<password>@<host>/<dbname>\
 [?<options>]
-    :url: http://www.pymysql.org/
+    :url: https://pymysql.readthedocs.io/
 
 Unicode
 -------
