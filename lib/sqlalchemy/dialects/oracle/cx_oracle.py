@@ -94,7 +94,7 @@ Python 2:
   of plain string values.
 
 Sending String Values as Unicode or Non-Unicode
-------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 As of SQLAlchemy 1.2.2, the cx_Oracle dialect unconditionally calls
 ``setinputsizes()`` for bound values that are passed as Python unicode objects.
@@ -123,6 +123,75 @@ with an explicit non-unicode type::
     conn.execute(
         func.trunc(func.sysdate(), literal('dd', String))
     )
+
+For full control over this ``setinputsizes()`` behavior, see the section
+:ref:`cx_oracle_setinputsizes`
+
+.. _cx_oracle_setinputsizes:
+
+Fine grained control over cx_Oracle data binding and performance with setinputsizes
+-----------------------------------------------------------------------------------
+
+The cx_Oracle DBAPI has a deep and fundamental reliance upon the usage of the
+DBAPI ``setinputsizes()`` call.   The purpose of this call is to establish the
+datatypes that are bound to a SQL statement for Python values being passed as
+parameters.  While virtually no other DBAPI assigns any use to the
+``setinputsizes()`` call, the cx_Oracle DBAPI relies upon it heavily in its
+interactions with the Oracle client interface, and in some scenarios it is  not
+possible for SQLAlchemy to know exactly how data should be bound, as some
+settings can cause profoundly different performance characteristics, while
+altering the type coercion behavior at the same time.
+
+Users of the cx_Oracle dialect are **strongly encouraged** to read through
+cx_Oracle's list of built-in datatype symbols at http://cx-oracle.readthedocs.io/en/latest/module.html#types.
+Note that in some cases, signficant performance degradation can occur when using
+these types vs. not, in particular when specifying ``cx_Oracle.CLOB``.
+
+On the SQLAlchemy side, the :meth:`.DialectEvents.do_setinputsizes` event
+can be used both for runtime visibliity (e.g. logging) of the setinputsizes
+step as well as to fully control how ``setinputsizes()`` is used on a per-statement
+basis.
+
+.. versionadded:: 1.2.9 Added :meth:`.DialectEvents.setinputsizes`
+
+
+Example 1 - logging all setinputsizes calls
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following example illustrates how to log the intermediary values from
+a SQLAlchemy perspective before they are converted to the raw ``setinputsizes()``
+parameter dictionary.  The keys of the dictionary are :class:`.BindParameter`
+objects which have a ``.key`` and a ``.type`` attribute::
+
+    from sqlalchemy import create_engine, event
+
+    engine = create_engine("oracle+cx_oracle://scott:tiger@host/xe")
+
+    @event.listens_for(engine, "do_setinputsizes")
+    def _log_setinputsizes(inputsizes, cursor, statement, parameters, context):
+        for bindparam, dbapitype in inputsizes.items():
+                log.info(
+                    "Bound parameter name: %s  SQLAlchemy type: %r  "
+                    "DBAPI object: %s",
+                    bindparam.key, bindparam.type, dbapitype)
+
+Example 2 - remove all bindings to CLOB
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``CLOB`` datatype in cx_Oracle incurs a significant performance overhead,
+however is set by default for the ``Text`` type within the SQLAlchemy 1.2
+series.   This setting can be modified as follows::
+
+    from sqlalchemy import create_engine, event
+    from cx_Oracle import CLOB
+
+    engine = create_engine("oracle+cx_oracle://scott:tiger@host/xe")
+
+    @event.listens_for(engine, "do_setinputsizes")
+    def _remove_clob(inputsizes, cursor, statement, parameters, context):
+        for bindparam, dbapitype in list(inputsizes.items()):
+            if dbapitype is CLOB:
+                del inputsizes[bindparam]
 
 
 .. _cx_oracle_returning:
