@@ -76,6 +76,8 @@ class MySQLTableDefinitionParser(object):
         if m:
             spec = m.groupdict()
             # convert columns into name, length pairs
+            # NOTE: we may want to consider SHOW INDEX as the
+            # format of indexes in MySQL becomes more complex
             spec['columns'] = self._parse_keyexprs(spec['columns'])
             return 'key', spec
 
@@ -310,11 +312,10 @@ class MySQLTableDefinitionParser(object):
 
         # `col`,`col2`(32),`col3`(15) DESC
         #
-        # Note: ASC and DESC aren't reflected, so we'll punt...
         self._re_keyexprs = _re_compile(
             r'(?:'
             r'(?:%(iq)s((?:%(esc_fq)s|[^%(fq)s])+)%(fq)s)'
-            r'(?:\((\d+)\))?(?=\,|$))+' % quotes)
+            r'(?:\((\d+)\))?(?: +(ASC|DESC))?(?=\,|$))+' % quotes)
 
         # 'foo' or 'foo','bar' or 'fo,o','ba''a''r'
         self._re_csv_str = _re_compile(r'\x27(?:\x27\x27|[^\x27])*\x27')
