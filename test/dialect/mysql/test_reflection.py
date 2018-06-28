@@ -633,6 +633,20 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             "(textdata) WITH PARSER ngram"
         )
 
+    @testing.provide_metadata
+    def test_non_column_index(self):
+        m1 = self.metadata
+        t1 = Table(
+            'add_ix', m1, Column('x', String(50)), mysql_engine='InnoDB')
+        Index('foo_idx', t1.c.x.desc())
+        m1.create_all()
+
+        insp = inspect(testing.db)
+        eq_(
+            insp.get_indexes("add_ix"),
+            [{'name': 'foo_idx', 'column_names': ['x'], 'unique': False}]
+        )
+
 
 class RawReflectionTest(fixtures.TestBase):
     __backend__ = True
@@ -677,6 +691,55 @@ class RawReflectionTest(fixtures.TestBase):
             "  FULLTEXT KEY `ix_fulltext_oi_g_name` (`oi_g_name`) "
             "/*!50100 WITH PARSER `ngram` */ "
         )
+
+    def test_key_reflection_columns(self):
+        regex = self.parser._re_key
+        exprs = self.parser._re_keyexprs
+        m = regex.match(
+            "  KEY (`id`) USING BTREE COMMENT '''comment'")
+        eq_(m.group("columns"), '`id`')
+
+        m = regex.match(
+            "  KEY (`x`, `y`) USING BTREE")
+        eq_(m.group("columns"), '`x`, `y`')
+
+        eq_(
+            exprs.findall(m.group("columns")),
+            [("x", "", ""), ("y", "", "")]
+        )
+
+        m = regex.match(
+            "  KEY (`x`(25), `y`(15)) USING BTREE")
+        eq_(m.group("columns"), '`x`(25), `y`(15)')
+        eq_(
+            exprs.findall(m.group("columns")),
+            [("x", "25", ""), ("y", "15", "")]
+        )
+
+        m = regex.match(
+            "  KEY (`x`(25) DESC, `y`(15) ASC) USING BTREE")
+        eq_(m.group("columns"), '`x`(25) DESC, `y`(15) ASC')
+        eq_(
+            exprs.findall(m.group("columns")),
+            [("x", "25", "DESC"), ("y", "15", "ASC")]
+        )
+
+        m = regex.match(
+            "  KEY `foo_idx` (`x` DESC)")
+        eq_(m.group("columns"), '`x` DESC')
+        eq_(
+            exprs.findall(m.group("columns")),
+            [("x", "", "DESC")]
+        )
+
+        eq_(
+            exprs.findall(m.group("columns")),
+            [("x", "", "DESC")]
+        )
+
+        m = regex.match(
+            "  KEY `foo_idx` (`x` DESC, `y` ASC)")
+        eq_(m.group("columns"), '`x` DESC, `y` ASC')
 
     def test_fk_reflection(self):
         regex = self.parser._re_fk_constraint
