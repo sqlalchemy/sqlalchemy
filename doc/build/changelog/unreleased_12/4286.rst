@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4286
-
-    Fixed bug in new polymorphic selectin loading where the BakedQuery used
-    internally would be mutated by the given loader options, which would both
-    inappropriately mutate the subclass query as well as carry over the effect
-    to subsequent queries.

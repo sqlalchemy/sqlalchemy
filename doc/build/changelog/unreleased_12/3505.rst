@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 3505
-
-    Fixed issue where chaining multiple join elements inside of
-    :meth:`.Query.join` might not correctly adapt to the previous left-hand
-    side, when chaining joined inheritance classes that share the same base
-    class.

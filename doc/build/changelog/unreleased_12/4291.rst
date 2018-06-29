@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, py3k
-    :tickets: 4291
-
-    Replaced the usage of inspect.formatargspec() with a vendored version
-    copied from the Python standard library, as inspect.formatargspec()
-    is deprecated and as of Python 3.7.0 is emitting a warning.
