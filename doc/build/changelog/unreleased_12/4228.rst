@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4228
+
+    Fixed bug in MSSQL reflection where when two same-named tables in different
+    schemas had same-named primary key constraints, foreign key constraints
+    referring to one of the tables would have their columns doubled, causing
+    errors.   Pull request courtesy Sean Dunn.
