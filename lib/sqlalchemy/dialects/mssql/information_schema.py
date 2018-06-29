@@ -103,6 +103,8 @@ key_constraints = Table("KEY_COLUMN_USAGE", ischema,
                                key="column_name"),
                         Column("CONSTRAINT_NAME", CoerceUnicode,
                                key="constraint_name"),
+                        Column("CONSTRAINT_SCHEMA", CoerceUnicode,
+                               key="constraint_schema"),
                         Column("ORDINAL_POSITION", Integer,
                                key="ordinal_position"),
                         schema="INFORMATION_SCHEMA")

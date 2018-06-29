@@ -369,6 +369,7 @@ def _mssql_create_db(cfg, eng, ident):
             "ALTER DATABASE %s SET READ_COMMITTED_SNAPSHOT ON" % ident)
         conn.execute("use %s" % ident)
         conn.execute("create schema test_schema")
+        conn.execute("create schema test_schema_2")
 
 
 @_drop_db.for_db("mssql")
