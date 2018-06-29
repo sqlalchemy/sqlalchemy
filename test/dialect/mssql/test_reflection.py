@@ -119,6 +119,50 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         assert isinstance(t1.c.data.type, types.NullType)
 
     @testing.provide_metadata
+    def test_cross_schema_fk_pk_name_overlaps(self):
+        # test for issue #4228
+        metadata = self.metadata
+
+        Table(
+            "subject", metadata,
+            Column("id", Integer),
+            PrimaryKeyConstraint("id", name="subj_pk"),
+            schema=testing.config.test_schema,
+        )
+
+        Table(
+            "referrer", metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                'sid',
+                ForeignKey(
+                    "%s.subject.id" % testing.config.test_schema,
+                    name='fk_subject')
+            ),
+            schema=testing.config.test_schema
+        )
+
+        Table(
+            "subject", metadata,
+            Column("id", Integer),
+            PrimaryKeyConstraint("id", name="subj_pk"),
+            schema=testing.config.test_schema_2
+        )
+
+        metadata.create_all()
+
+        insp = inspect(testing.db)
+        eq_(
+            insp.get_foreign_keys("referrer", testing.config.test_schema),
+            [{
+                'name': 'fk_subject',
+                'constrained_columns': ['sid'],
+                'referred_schema': 'test_schema',
+                'referred_table': 'subject',
+                'referred_columns': ['id']}]
+        )
+
+    @testing.provide_metadata
     def test_db_qualified_items(self):
         metadata = self.metadata
         Table('foo', metadata, Column('id', Integer, primary_key=True))
