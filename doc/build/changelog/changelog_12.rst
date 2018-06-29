@@ -12,7 +12,202 @@
 
 .. changelog::
     :version: 1.2.9
-    :include_notes_from: unreleased_12
+    :released: June 29, 2018
+
+    .. change::
+        :tags: bug, mysql
+
+        Fixed percent-sign doubling in mysql-connector-python dialect, which does
+        not require de-doubling of percent signs.   Additionally, the  mysql-
+        connector-python driver is inconsistent in how it passes the column names
+        in cursor.description, so a workaround decoder has been added to
+        conditionally decode these randomly-sometimes-bytes values to unicode only
+        if needed.  Also improved test support for mysql-connector-python, however
+        it should be noted that this driver still has issues with unicode that
+        continue to be unresolved as of yet.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4228
+
+        Fixed bug in MSSQL reflection where when two same-named tables in different
+        schemas had same-named primary key constraints, foreign key constraints
+        referring to one of the tables would have their columns doubled, causing
+        errors.   Pull request courtesy Sean Dunn.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4279
+
+        Fixed regression in 1.2 due to :ticket:`4147` where a :class:`.Table` that
+        has had some of its indexed columns redefined with new ones, as would occur
+        when overriding columns during reflection or when using
+        :paramref:`.Table.extend_existing`, such that the :meth:`.Table.tometadata`
+        method would fail when attempting to copy those indexes as they still
+        referred to the replaced column.   The copy logic now accommodates for this
+        condition.
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4293
+
+        Fixed bug in index reflection where on MySQL 8.0 an index that includes
+        ASC or DESC in an indexed column specfication would not be correctly
+        reflected, as MySQL 8.0 introduces support for returning this information
+        in a table definition string.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 3505
+
+        Fixed issue where chaining multiple join elements inside of
+        :meth:`.Query.join` might not correctly adapt to the previous left-hand
+        side, when chaining joined inheritance classes that share the same base
+        class.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4287
+
+        Fixed bug in cache key generation for baked queries which could cause a
+        too-short cache key to be generated for the case of eager loads across
+        subclasses.  This could in turn cause the eagerload query to be cached in
+        place of a non-eagerload query, or vice versa, for a polymorhic "selectin"
+        load, or possibly for lazy loads or selectin loads as well.
+
+    .. change::
+        :tags: bug, sqlite
+        :versions: 1.3.0b1
+
+        Fixed issue in test suite where SQLite 3.24 added a new reserved word that
+        conflicted with a usage in TypeReflectionTest.  Pull request courtesy Nils
+        Philippsen.
+
+    .. change::
+        :tags: feature, oracle
+        :tickets: 4290
+        :versions: 1.3.0b1
+
+        Added a new event currently used only by the cx_Oracle dialect,
+        :meth:`.DialectEvents.setiputsizes`.  The event passes a dictionary of
+        :class:`.BindParameter` objects to DBAPI-specific type objects that will be
+        passed, after conversion to parameter names, to the cx_Oracle
+        ``cursor.setinputsizes()`` method.  This allows both visibility into the
+        setinputsizes process as well as the ability to alter the behavior of what
+        datatypes are passed to this method.
+
+        .. seealso::
+
+            :ref:`cx_oracle_setinputsizes`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4286
+
+        Fixed bug in new polymorphic selectin loading where the BakedQuery used
+        internally would be mutated by the given loader options, which would both
+        inappropriately mutate the subclass query as well as carry over the effect
+        to subsequent queries.
+
+    .. change::
+        :tags: bug, py3k
+        :tickets: 4291
+
+        Replaced the usage of inspect.formatargspec() with a vendored version
+        copied from the Python standard library, as inspect.formatargspec()
+        is deprecated and as of Python 3.7.0 is emitting a warning.
+
+    .. change::
+        :tags: feature, ext
+        :tickets: 4243
+        :versions: 1.3.0b1
+
+        Added new attribute :attr:`.Query.lazy_loaded_from` which is populated
+        with an :class:`.InstanceState` that is using this :class:`.Query` in
+        order to lazy load a relationship.  The rationale for this is that
+        it serves as a hint for the horizontal sharding feature to use, such that
+        the identity token of the state can be used as the default identity token
+        to use for the query within id_chooser().
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4283
+
+        Fixed bug in MySQLdb dialect and variants such as PyMySQL where an
+        additional "unicode returns" check upon connection makes explicit use of
+        the "utf8" character set, which in MySQL 8.0 emits a warning that utf8mb4
+        should be used.  This is now replaced with a utf8mb4 equivalent.
+        Documentation is also updated for the MySQL dialect to specify utf8mb4 in
+        all examples.  Additional changes have been made to the test suite to use
+        utf8mb3 charsets and databases (there seem to be collation issues in some
+        edge cases with utf8mb4), and to support configuration default changes made
+        in MySQL 8.0 such as explicit_defaults_for_timestamp as well as new errors
+        raised for invalid MyISAM indexes.
+
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 3645
+
+        The :class:`.Update` construct now accommodates a :class:`.Join` object
+        as supported by MySQL for UPDATE..FROM.  As the construct already
+        accepted an alias object for a similar purpose, the feature of UPDATE
+        against a non-table was already implied so this has been added.
+
+    .. change::
+        :tags: bug, mssql, py3k
+        :tickets: 4273
+
+        Fixed issue within the SQL Server dialect under Python 3 where when running
+        against a non-standard SQL server database that does not contain either the
+        "sys.dm_exec_sessions" or "sys.dm_pdw_nodes_exec_sessions" views, leading
+        to a failure to fetch the isolation level, the error raise would fail due
+        to an UnboundLocalError.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4269
+
+        Fixed regression caused by :ticket:`4256` (itself a regression fix for
+        :ticket:`4228`) which breaks an undocumented behavior which converted for a
+        non-sequence of entities passed directly to the :class:`.Query` constructor
+        into a single-element sequence.  While this behavior was never supported or
+        documented, it's already in use so has been added as a behavioral contract
+        to :class:`.Query`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4270
+
+        Fixed an issue that was both a performance regression in 1.2 as well as an
+        incorrect result regarding the "baked" lazy loader, involving the
+        generation of cache keys from the original :class:`.Query` object's loader
+        options.  If the loader options were built up in a "branched" style using
+        common base elements for multiple options, the same options would be
+        rendered into the cache key repeatedly, causing both a performance issue as
+        well as generating the wrong cache key.  This is fixed, along with a
+        performance improvement when such "branched" options are applied via
+        :meth:`.Query.options` to prevent the same option objects from being
+        applied repeatedly.
+
+    .. change::
+        :tags: bug, oracle, mysql
+        :tickets: 4275
+        :versions: 1.3.0b1
+
+        Fixed INSERT FROM SELECT with CTEs for the Oracle and MySQL dialects, where
+        the CTE was being placed above the entire statement as is typical with
+        other databases, however Oracle and MariaDB 10.2 wants the CTE underneath
+        the "INSERT" segment. Note that the Oracle and MySQL dialects don't yet
+        work when a CTE is applied to a subquery inside of an UPDATE or DELETE
+        statement, as the CTE is still applied to the top rather than inside the
+        subquery.
+
 
 .. changelog::
     :version: 1.2.8
