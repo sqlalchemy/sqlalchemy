@@ -25,6 +25,9 @@ if possible; as of June 27, 2018:
   or text with no discernible pattern, so the dialect must test these
   individually and attempt to decode
 
+* has been observed to leak interpreter memory (likely at the C code level)
+  under scenarios that do not leak memory when using mysqlclient
+
 * Under Python 2, the driver does not support SQL statements that contain
   non-ascii characters within the SQL text, making it impossible to support
   schema objects with non-ascii names; an ascii encoding error is raised.
