@@ -99,6 +99,18 @@ Dialect Improvements and Changes - PostgreSQL
 Dialect Improvements and Changes - MySQL
 =============================================
 
+.. _change_mysql_ping:
+
+Protocol-level ping now used for pre-ping
+------------------------------------------
+
+The MySQL dialects including mysqlclient, python-mysql, PyMySQL and
+mysql-connector-python now use the ``connection.ping()`` method for the
+pool pre-ping feature, described at :ref:`pool_disconnects_pessimistic`.
+This is a much more lightweight ping than the previous method of emitting
+"SELECT 1" on the connection.
+
+
 Dialect Improvements and Changes - SQLite
 =============================================
 
