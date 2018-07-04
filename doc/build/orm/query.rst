@@ -1,11 +1,16 @@
-.. _query_api_toplevel:
 .. module:: sqlalchemy.orm
 
+.. _query_api_toplevel:
+
+=========
 Query API
 =========
 
+This section presents the API reference for the ORM :class:`.Query` object.  For a walkthrough
+of how to use this object, see :ref:`ormtutorial_toplevel`.
+
 The Query Object
-----------------
+================
 
 :class:`~.Query` is produced in terms of a given :class:`~.Session`, using the :meth:`~.Session.query` method::
 
@@ -17,7 +22,7 @@ Following is the full interface for the :class:`.Query` object.
    :members:
 
 ORM-Specific Query Constructs
------------------------------
+=============================
 
 .. autofunction:: sqlalchemy.orm.aliased
 
