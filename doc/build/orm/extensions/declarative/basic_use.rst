@@ -2,6 +2,13 @@
 Basic Use
 =========
 
+.. seealso::
+
+    This section describes specifics about how the Declarative system
+    interacts with the SQLAlchemy ORM.  For a general introduction
+    to class mapping, see :ref:`ormtutorial_toplevel` as well as
+    :ref:`mapper_config_toplevel`.
+
 SQLAlchemy object-relational configuration involves the
 combination of :class:`.Table`, :func:`.mapper`, and class
 objects to define a mapped class.

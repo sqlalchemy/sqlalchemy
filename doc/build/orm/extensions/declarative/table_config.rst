@@ -4,6 +4,13 @@
 Table Configuration
 ===================
 
+.. seealso::
+
+    This section describes specifics about how the Declarative system
+    defines :class:`.Table` objects that are to be mapped with the
+    SQLAlchemy ORM.  For general information on :class:`.Table` objects
+    see :ref:`metadata_describing_toplevel`.
+
 Table arguments other than the name, metadata, and mapped Column
 arguments are specified using the ``__table_args__`` class attribute.
 This attribute accommodates both positional as well as keyword
