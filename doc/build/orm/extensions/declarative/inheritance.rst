@@ -10,8 +10,10 @@ as declarative will determine this from the class itself.   The various
 
 .. seealso::
 
-    :ref:`inheritance_toplevel` - general introduction to inheritance
-    mapping with Declarative.
+    This section describes some specific details on how the Declarative system
+    interacts with SQLAlchemy ORM inheritance configuration.  See
+    :ref:`inheritance_toplevel` for a general introduction to inheritance
+    mapping.
 
 Joined Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~
