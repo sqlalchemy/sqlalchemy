@@ -4,6 +4,13 @@
 Configuring Relationships
 =========================
 
+.. seealso::
+
+    This section describes specifics about how the Declarative system
+    interacts with SQLAlchemy ORM relationship constructs.  For general
+    information about setting up relationships between mappings,
+    see :ref:`ormtutorial_toplevel` and :ref:`relationship_patterns`.
+
 Relationships to other classes are done in the usual way, with the added
 feature that the class specified to :func:`~sqlalchemy.orm.relationship`
 may be a string name.  The "class registry" associated with ``Base``
