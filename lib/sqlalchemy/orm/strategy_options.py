@@ -13,7 +13,8 @@ from .attributes import QueryableAttribute
 from .. import util
 from ..sql.base import _generative, Generative
 from .. import exc as sa_exc, inspect
-from .base import _is_aliased_class, _class_to_mapper, _is_mapped_class
+from .base import _is_aliased_class, _class_to_mapper, _is_mapped_class, \
+    InspectionAttr
 from . import util as orm_util
 from .path_registry import PathRegistry, TokenRegistry, \
     _WILDCARD_TOKEN, _DEFAULT_TOKEN
@@ -385,7 +386,8 @@ class Load(Generative, MapperOption):
 
             if c_token is p_token:
                 continue
-            elif c_token.is_mapper and p_token.is_mapper and \
+            elif isinstance(c_token, InspectionAttr) and \
+                c_token.is_mapper and p_token.is_mapper and \
                     c_token.isa(p_token):
                 continue
             else:
