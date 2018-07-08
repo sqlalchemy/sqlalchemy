@@ -2,7 +2,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import attributes, mapper, relationship, backref, \
     configure_mappers, create_session, synonym, Session, class_mapper, \
     aliased, column_property, joinedload_all, joinedload, Query,\
-    util as orm_util, Load, defer, defaultload
+    util as orm_util, Load, defer, defaultload, lazyload
 from sqlalchemy.orm.query import QueryContext
 from sqlalchemy.orm import strategy_options
 import sqlalchemy as sa
@@ -1226,6 +1226,56 @@ class CacheKeyTest(PathTest, QueryTest):
         eq_(
             opt._generate_cache_key(query_path),
             None
+        )
+
+    def test_bound_cache_key_wildcard_one(self):
+        # do not change this test, it is testing
+        # a specific condition in Load._chop_path().
+        User, Address = self.classes('User', 'Address')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = Load(User).lazyload("*")
+        eq_(
+            opt._generate_cache_key(query_path),
+            None
+        )
+
+    def test_unbound_cache_key_wildcard_one(self):
+        User, Address = self.classes('User', 'Address')
+
+        query_path = self._make_path_registry([User, "addresses"])
+
+        opt = lazyload("*")
+        eq_(
+            opt._generate_cache_key(query_path),
+            (('relationship:_sa_default', ('lazy', 'select')),)
+        )
+
+    def test_bound_cache_key_wildcard_two(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem', "Keyword")
+
+        query_path = self._make_path_registry([User])
+
+        opt = Load(User).lazyload("orders").lazyload("*")
+        eq_(
+            opt._generate_cache_key(query_path),
+            (('orders', Order, ('lazy', 'select')),
+             ('orders', Order, 'relationship:*', ('lazy', 'select')))
+        )
+
+    def test_unbound_cache_key_wildcard_two(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem', "Keyword")
+
+        query_path = self._make_path_registry([User])
+
+        opt = lazyload("orders").lazyload("*")
+        eq_(
+            opt._generate_cache_key(query_path),
+            (('orders', Order, ('lazy', 'select')),
+             ('orders', Order, 'relationship:*', ('lazy', 'select')))
         )
 
     def test_unbound_cache_key_of_type_subclass_relationship(self):
