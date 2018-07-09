@@ -303,7 +303,7 @@ class LoggingNameTest(fixtures.TestBase):
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
                 'sqlalchemy.engine.base.Engine.%s' % eng_name,
-                'sqlalchemy.pool.%s.%s' %
+                'sqlalchemy.pool.impl.%s.%s' %
                 (eng.pool.__class__.__name__, pool_name)
             )
 
@@ -313,7 +313,7 @@ class LoggingNameTest(fixtures.TestBase):
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
                 'sqlalchemy.engine.base.Engine',
-                'sqlalchemy.pool.%s' % eng.pool.__class__.__name__
+                'sqlalchemy.pool.impl.%s' % eng.pool.__class__.__name__
             )
 
     def _named_engine(self, **kw):
