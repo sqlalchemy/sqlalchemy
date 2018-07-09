@@ -38,8 +38,6 @@ construction arguments, are as follows:
 .. autofunction:: All
 
 .. autoclass:: BIT
-    :members: __init__
-
 
 .. autoclass:: BYTEA
     :members: __init__
@@ -64,8 +62,6 @@ construction arguments, are as follows:
 
 
 .. autoclass:: INET
-    :members: __init__
-
 
 .. autoclass:: INTERVAL
     :members: __init__
@@ -77,19 +73,17 @@ construction arguments, are as follows:
     :members:
 
 .. autoclass:: MACADDR
-    :members: __init__
 
 .. autoclass:: MONEY
-    :members: __init__
 
 .. autoclass:: OID
-    :members: __init__
 
 .. autoclass:: REAL
     :members: __init__
 
+.. autoclass:: REGCLASS
+
 .. autoclass:: TSVECTOR
-    :members: __init__
 
 .. autoclass:: UUID
     :members: __init__
