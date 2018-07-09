@@ -3,7 +3,8 @@ import sys
 
 from sqlalchemy import util, sql, exc, testing
 from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
-from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock, expect_warnings
+from sqlalchemy.testing import eq_, in_, is_, ne_, fails_if, mock
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing.util import picklers, gc_collect
 from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
 from sqlalchemy.sql import column
@@ -2344,6 +2345,11 @@ class TestProperties(fixtures.TestBase):
 
             eq_(props._data, p._data)
             eq_(props.keys(), p.keys())
+
+    def test_keys_in_dir(self):
+        data = {'hello': 'bla'}
+        props = util.Properties(data)
+        in_('hello', dir(props))
 
     def test_pickle_immuatbleprops(self):
         data = {'hello': 'bla'}
