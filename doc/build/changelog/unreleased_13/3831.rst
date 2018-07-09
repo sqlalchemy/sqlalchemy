@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 3831
+
+    Added new feature :meth:`.FunctionElement.as_comparison` which allows a SQL
+    function to act as a binary comparison operation that can work within the
+    ORM.
+
+    .. seealso::
+
+        :ref:`change_3831`

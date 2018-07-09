@@ -2,7 +2,7 @@ from sqlalchemy.testing import eq_, is_
 import datetime
 from sqlalchemy import func, select, Integer, literal, DateTime, Table, \
     Column, Sequence, MetaData, extract, Date, String, bindparam, \
-    literal_column, ARRAY, Numeric
+    literal_column, ARRAY, Numeric, Boolean
 from sqlalchemy.sql import table, column
 from sqlalchemy import sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
@@ -587,6 +587,70 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "Object None associated with '.type' attribute is "
             "not a TypeEngine class or object",
             MissingType().compile
+        )
+
+    def test_as_comparison(self):
+
+        fn = func.substring("foo", "foobar").as_comparison(1, 2)
+        is_(fn.type._type_affinity, Boolean)
+
+        self.assert_compile(
+            fn.left, ":substring_1",
+            checkparams={'substring_1': 'foo'})
+        self.assert_compile(
+            fn.right, ":substring_1",
+            checkparams={'substring_1': 'foobar'})
+
+        self.assert_compile(
+            fn, "substring(:substring_1, :substring_2)",
+            checkparams={"substring_1": "foo", "substring_2": "foobar"})
+
+    def test_as_comparison_annotate(self):
+
+        fn = func.foobar("x", "y", "q", "p", "r").as_comparison(2, 5)
+
+        from sqlalchemy.sql import annotation
+        fn_annotated = annotation._deep_annotate(fn, {"token": "yes"})
+
+        eq_(fn.left._annotations, {})
+        eq_(fn_annotated.left._annotations, {"token": "yes"})
+
+    def test_as_comparison_many_argument(self):
+
+        fn = func.some_comparison("x", "y", "z", "p", "q", "r").as_comparison(2, 5)
+        is_(fn.type._type_affinity, Boolean)
+
+        self.assert_compile(
+            fn.left, ":some_comparison_1",
+            checkparams={"some_comparison_1": "y"})
+        self.assert_compile(
+            fn.right, ":some_comparison_1",
+            checkparams={"some_comparison_1": "q"})
+
+        from sqlalchemy.sql import visitors
+
+        fn_2 = visitors.cloned_traverse(fn, {}, {})
+        fn_2.right = literal_column("ABC")
+
+        self.assert_compile(
+            fn,
+            "some_comparison(:some_comparison_1, :some_comparison_2, "
+            ":some_comparison_3, "
+            ":some_comparison_4, :some_comparison_5, :some_comparison_6)",
+            checkparams={
+                'some_comparison_1': 'x', 'some_comparison_2': 'y',
+                'some_comparison_3': 'z', 'some_comparison_4': 'p',
+                'some_comparison_5': 'q', 'some_comparison_6': 'r'})
+
+        self.assert_compile(
+            fn_2,
+            "some_comparison(:some_comparison_1, :some_comparison_2, "
+            ":some_comparison_3, "
+            ":some_comparison_4, ABC, :some_comparison_5)",
+            checkparams={
+                'some_comparison_1': 'x', 'some_comparison_2': 'y',
+                'some_comparison_3': 'z', 'some_comparison_4': 'p',
+                'some_comparison_5': 'r'}
         )
 
 

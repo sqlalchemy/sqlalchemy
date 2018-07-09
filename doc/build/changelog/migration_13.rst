@@ -90,6 +90,66 @@ and can't easily be generalized for more complex queries.
 New Features and Improvements - Core
 ====================================
 
+.. _change_3831:
+
+Binary comparison interpretation for SQL functions
+--------------------------------------------------
+
+This enhancement is implemented at the Core level, however is applicable
+primarily to the ORM.
+
+A SQL function that compares two elements can now be used as a "comparison"
+object, suitable for usage in an ORM :func:`.relationship`, by first
+creating the function as usual using the :data:`.func` factory, then
+when the function is complete calling upon the :meth:`.FunctionElement.as_comparison`
+modifier to produce a :class:`.BinaryExpression` that has a "left" and a "right"
+side::
+
+    class Venue(Base):
+        __tablename__ = 'venue'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+        descendants = relationship(
+            "Venue",
+            primaryjoin=func.instr(
+                remote(foreign(name)), name + "/"
+            ).as_comparison(1, 2) == 1,
+            viewonly=True,
+            order_by=name
+        )
+
+Above, the :paramref:`.relationship.primaryjoin` of the "descendants" relationship
+will produce a "left" and a "right" expression based on the first and second
+arguments passed to ``instr()``.   This allows features like the ORM
+lazyload to produce SQL like::
+
+    SELECT venue.id AS venue_id, venue.name AS venue_name
+    FROM venue
+    WHERE instr(venue.name, (? || ?)) = ? ORDER BY venue.name
+    ('parent1', '/', 1)
+
+and a joinedload, such as::
+
+    v1 = s.query(Venue).filter_by(name="parent1").options(
+        joinedload(Venue.descendants)).one()
+
+to work as::
+
+    SELECT venue.id AS venue_id, venue.name AS venue_name,
+      venue_1.id AS venue_1_id, venue_1.name AS venue_1_name
+    FROM venue LEFT OUTER JOIN venue AS venue_1
+      ON instr(venue_1.name, (venue.name || ?)) = ?
+    WHERE venue.name = ? ORDER BY venue_1.name
+    ('/', 1, 'parent1')
+
+This feature is expected to help with situations such as making use of
+geometric functions in relationship join conditions, or any case where
+the ON clause of the SQL join is expressed in terms of a SQL function.
+
+:ticket:`3831`
+
+
 Key Behavioral Changes - Core
 =============================
 

@@ -1079,6 +1079,9 @@ class SQLCompiler(Compiled):
             else:
                 return self._generate_generic_binary(binary, opstring, **kw)
 
+    def visit_function_as_comparison_op_binary(self, element, operator, **kw):
+        return self.process(element.sql_function, **kw)
+
     def visit_mod_binary(self, binary, operator, **kw):
         if self.preparer._double_percents:
             return self.process(binary.left, **kw) + " %% " + \

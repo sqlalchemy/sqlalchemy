@@ -1079,6 +1079,10 @@ def from_():
     raise NotImplementedError()
 
 
+def function_as_comparison_op():
+    raise NotImplementedError()
+
+
 def as_():
     raise NotImplementedError()
 
@@ -1260,7 +1264,8 @@ def json_path_getitem_op(a, b):
 _commutative = {eq, ne, add, mul}
 
 _comparison = {eq, ne, lt, gt, ge, le, between_op, like_op, is_,
-               isnot, is_distinct_from, isnot_distinct_from}
+               isnot, is_distinct_from, isnot_distinct_from,
+               function_as_comparison_op}
 
 
 def is_comparison(op):
@@ -1314,6 +1319,7 @@ _largest = util.symbol('_largest', canonical=100)
 
 _PRECEDENCE = {
     from_: 15,
+    function_as_comparison_op: 15,
     any_op: 15,
     all_op: 15,
     getitem: 15,

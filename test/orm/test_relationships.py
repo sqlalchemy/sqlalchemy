@@ -2838,6 +2838,66 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
         self._assert_raises_no_local_remote(configure_mappers, "T1.t3s")
 
 
+class FunctionAsPrimaryJoinTest(fixtures.DeclarativeMappedTest):
+    """test :ticket:`3831`
+
+    """
+
+    __only_on__= 'sqlite'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Venue(Base):
+            __tablename__ = 'venue'
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+
+            descendants = relationship(
+                "Venue",
+                primaryjoin=func.instr(
+                    remote(foreign(name)), name + "/").as_comparison(1, 2) == 1,
+                viewonly=True,
+                order_by=name
+            )
+
+    @classmethod
+    def insert_data(cls):
+        Venue = cls.classes.Venue
+        s = Session()
+        s.add_all([
+            Venue(name="parent1"),
+            Venue(name="parent2"),
+            Venue(name="parent1/child1"),
+            Venue(name="parent1/child2"),
+            Venue(name="parent2/child1"),
+        ])
+        s.commit()
+
+    def test_lazyload(self):
+        Venue = self.classes.Venue
+        s = Session()
+        v1 = s.query(Venue).filter_by(name="parent1").one()
+        eq_(
+            [d.name for d in v1.descendants],
+            ['parent1/child1', 'parent1/child2'])
+
+    def test_joinedload(self):
+        Venue = self.classes.Venue
+        s = Session()
+
+        def go():
+            v1 = s.query(Venue).filter_by(name="parent1").\
+                options(joinedload(Venue.descendants)).one()
+
+            eq_(
+                [d.name for d in v1.descendants],
+                ['parent1/child1', 'parent1/child2'])
+
+        self.assert_sql_count(testing.db, go, 1)
+
+
 class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
 
     """test a complex annotation using between().
