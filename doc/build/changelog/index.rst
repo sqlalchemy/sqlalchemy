@@ -12,7 +12,7 @@ Current Migration Guide
 .. toctree::
    :titlesonly:
 
-   migration_12
+   migration_13
 
 Change logs
 -----------
@@ -20,6 +20,7 @@ Change logs
 .. toctree::
    :titlesonly:
 
+   changelog_13
    changelog_12
    changelog_11
    changelog_10
@@ -40,6 +41,7 @@ Older Migration Guides
 .. toctree::
    :titlesonly:
 
+   migration_12
    migration_11
    migration_10
    migration_09
