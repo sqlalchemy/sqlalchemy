@@ -677,8 +677,27 @@ def _add_attribute(cls, key, value):
             )
         else:
             type.__setattr__(cls, key, value)
+            cls.__mapper__._expire_memoizations()
     else:
         type.__setattr__(cls, key, value)
+
+
+def _del_attribute(cls, key):
+
+    if '__mapper__' in cls.__dict__ and \
+            key in cls.__dict__ and not cls.__mapper__._dispose_called:
+        value = cls.__dict__[key]
+        if isinstance(
+                value,
+                (Column, ColumnProperty, MapperProperty, QueryableAttribute)
+        ):
+            raise NotImplementedError(
+                "Can't un-map individual mapped attributes on a mapped class.")
+        else:
+            type.__delattr__(cls, key)
+            cls.__mapper__._expire_memoizations()
+    else:
+        type.__delattr__(cls, key)
 
 
 def _declarative_constructor(self, **kwargs):

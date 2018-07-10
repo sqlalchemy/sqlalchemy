@@ -2,6 +2,7 @@
 from sqlalchemy.testing import eq_, assert_raises, \
     assert_raises_message, expect_warnings, is_
 from sqlalchemy.ext import declarative as decl
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy import testing, util
@@ -1768,7 +1769,7 @@ class DeclarativeTest(DeclarativeTestBase):
         class Test(Base):
             __tablename__ = 'test'
             id = Column(Integer, primary_key=True)
-        # MARKMARK
+
         eq_(
             canary.mock_calls,
             [
@@ -1785,6 +1786,68 @@ class DeclarativeTest(DeclarativeTestBase):
         Base = decl.declarative_base(cls=MyBase)
 
         eq_(Base.__doc__, MyBase.__doc__)
+
+    def test_delattr_mapped_raises(self):
+        Base = decl.declarative_base()
+
+        class Foo(Base):
+            __tablename__ = 'foo'
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+        def go():
+            del Foo.data
+
+        assert_raises_message(
+            NotImplementedError,
+            "Can't un-map individual mapped attributes on a mapped class.",
+            go
+        )
+
+    def test_delattr_hybrid_fine(self):
+        Base = decl.declarative_base()
+
+        class Foo(Base):
+            __tablename__ = 'foo'
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            @hybrid_property
+            def data_hybrid(self):
+                return self.data
+
+        assert "data_hybrid" in Foo.__mapper__.all_orm_descriptors.keys()
+
+        del Foo.data_hybrid
+
+        assert "data_hybrid" not in Foo.__mapper__.all_orm_descriptors.keys()
+
+        assert not hasattr(Foo, "data_hybrid")
+
+    def test_setattr_hybrid_updates_descriptors(self):
+        Base = decl.declarative_base()
+
+        class Foo(Base):
+            __tablename__ = 'foo'
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+        assert "data_hybrid" not in Foo.__mapper__.all_orm_descriptors.keys()
+
+        @hybrid_property
+        def data_hybrid(self):
+            return self.data
+        Foo.data_hybrid = data_hybrid
+        assert "data_hybrid" in Foo.__mapper__.all_orm_descriptors.keys()
+
+        del Foo.data_hybrid
+
+        assert "data_hybrid" not in Foo.__mapper__.all_orm_descriptors.keys()
+
+        assert not hasattr(Foo, "data_hybrid")
 
 
 def _produce_test(inline, stringbased):

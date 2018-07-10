@@ -21,7 +21,7 @@ import re
 
 from .base import _as_declarative, \
     _declarative_constructor,\
-    _DeferredMapperConfig, _add_attribute
+    _DeferredMapperConfig, _add_attribute, _del_attribute
 from .clsregistry import _class_resolver
 
 
@@ -68,6 +68,8 @@ class DeclarativeMeta(type):
     def __setattr__(cls, key, value):
         _add_attribute(cls, key, value)
 
+    def __delattr__(cls, key):
+        _del_attribute(cls, key)
 
 def synonym_for(name, map_column=False):
     """Decorator that produces an :func:`.orm.synonym` attribute in conjunction

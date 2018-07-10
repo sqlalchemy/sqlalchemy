@@ -86,6 +86,7 @@ class Mapper(InspectionAttr):
     """
 
     _new_mappers = False
+    _dispose_called = False
 
     def __init__(self,
                  class_,
@@ -1274,6 +1275,7 @@ class Mapper(InspectionAttr):
     def dispose(self):
         # Disable any attribute-based compilation.
         self.configured = True
+        self._dispose_called = True
 
         if hasattr(self, '_configure_failed'):
             del self._configure_failed
