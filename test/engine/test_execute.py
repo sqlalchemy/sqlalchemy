@@ -917,7 +917,7 @@ class MockStrategyTest(fixtures.TestBase):
 
         eq_(
             re.findall(r'DROP (\w+)', buf.getvalue()),
-            ["SEQUENCE", "TABLE"]
+            ["TABLE", "SEQUENCE"]
         )
 
 

@@ -948,17 +948,22 @@ class SchemaDropper(DDLBase):
             _ddl_runner=self,
             _is_metadata_operation=_is_metadata_operation)
 
+        self.connection.execute(DropTable(table))
+
+        # traverse client side defaults which may refer to server-side
+        # sequences. noting that some of these client side defaults may also be
+        # set up as server side defaults (see http://docs.sqlalchemy.org/en/
+        # latest/core/defaults.html#associating-a-sequence-as-the-server-side-
+        # default), so have to be dropped after the table is dropped.
         for column in table.columns:
             if column.default is not None:
                 self.traverse_single(column.default)
 
-        self.connection.execute(DropTable(table))
-
         table.dispatch.after_drop(
             table, self.connection,
-           checkfirst=self.checkfirst,
-           _ddl_runner=self,
-           _is_metadata_operation=_is_metadata_operation)
+            checkfirst=self.checkfirst,
+            _ddl_runner=self,
+            _is_metadata_operation=_is_metadata_operation)
 
     def visit_foreign_key_constraint(self, constraint):
         if not self.dialect.supports_alter:
@@ -966,6 +971,7 @@ class SchemaDropper(DDLBase):
         self.connection.execute(DropConstraint(constraint))
 
     def visit_sequence(self, sequence, drop_ok=False):
+
         if not drop_ok and not self._can_drop_sequence(sequence):
             return
         self.connection.execute(DropSequence(sequence))
