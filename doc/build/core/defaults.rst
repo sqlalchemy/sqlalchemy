@@ -440,6 +440,9 @@ and that options like default schema are propagated, setting the
 Associating a Sequence as the Server Side Default
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note:: The following technique is known to work only with the Postgresql
+   database.  It does not work with Oracle.
+
 The preceding sections illustrate how to associate a :class:`.Sequence` with a
 :class:`.Column` as the **Python side default generator**::
 

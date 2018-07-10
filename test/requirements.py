@@ -330,6 +330,14 @@ class DefaultRequirements(SuiteRequirements):
         ])
 
     @property
+    def sequences_as_server_defaults(self):
+        """Target database must support SEQUENCE as a server side default."""
+
+        return only_on(
+            'postgresql',
+            "doesn't support sequences as a server side default.")
+
+    @property
     def correlated_outer_joins(self):
         """Target must support an outer join to a subquery which
         correlates to the parent."""
