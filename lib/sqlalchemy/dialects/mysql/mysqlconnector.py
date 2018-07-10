@@ -160,6 +160,17 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         from mysql import connector
         return connector
 
+    def do_ping(self, dbapi_connection):
+        try:
+            dbapi_connection.ping(False)
+        except self.dbapi.Error as err:
+            if self.is_disconnect(err, dbapi_connection, None):
+                return False
+            else:
+                raise
+        else:
+            return True
+
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
 
@@ -225,7 +236,8 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         exceptions = (self.dbapi.OperationalError, self.dbapi.InterfaceError)
         if isinstance(e, exceptions):
             return e.errno in errnos or \
-                "MySQL Connection not available." in str(e)
+                "MySQL Connection not available." in str(e) or \
+                "Connection to MySQL is not available" in str(e)
         else:
             return False
 

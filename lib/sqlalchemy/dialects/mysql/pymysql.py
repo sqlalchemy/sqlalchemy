@@ -61,6 +61,14 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     def dbapi(cls):
         return __import__('pymysql')
 
+    def is_disconnect(self, e, connection, cursor):
+        if super(MySQLDialect_pymysql, self).is_disconnect(e, connection, cursor):
+            return True
+        elif isinstance(e, self.dbapi.Error):
+            return "Already closed" in str(e)
+        else:
+            return False
+
     if py3k:
         def _extract_error_code(self, exception):
             if isinstance(exception.args[0], Exception):
