@@ -1066,11 +1066,22 @@ class DefaultRequirements(SuiteRequirements):
             "works, but Oracle just gets tired with "
             "this much connection activity")
 
-
-
     @property
     def no_mssql_freetds(self):
         return self.mssql_freetds.not_()
+
+    @property
+    def pyodbc_fast_executemany(self):
+        def has_fastexecutemany(config):
+            if not against(config, "mssql+pyodbc"):
+                return False
+            with config.db.connect() as conn:
+                drivername = conn.connection.connection.getinfo(
+                    config.db.dialect.dbapi.SQL_DRIVER_NAME)
+                # on linux this is 'libmsodbcsql-13.1.so.9.2'.
+                # don't know what it is on windows
+                return "msodbc" in drivername
+        return only_if(has_fastexecutemany)
 
     @property
     def python_fixed_issue_8743(self):

@@ -85,6 +85,33 @@ Pyodbc only has partial support for rowcount.  See the notes at
 :ref:`mssql_rowcount_versioning` for important notes when using ORM
 versioning.
 
+.. _mssql_pyodbc_fastexecutemany:
+
+Fast Executemany Mode
+---------------------
+
+The Pyodbc driver has added support for a "fast executemany" mode of execution
+which greatly reduces round trips for a DBAPI ``executemany()`` call when using
+Microsoft ODBC drivers.  The feature is enabled by setting the flag
+``.fast_executemany`` on the DBAPI cursor when an executemany call is to be
+used.   The SQLAlchemy pyodbc SQL Server dialect supports setting this flag
+automatically when the ``.fast_executemany`` flag is passed to
+:func:`.create_engine`; note that the ODBC driver must be the Microsoft driver
+in order to use this flag::
+
+    engine = create_engine(
+        "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server",
+        fast_executemany=True)
+
+.. versionadded:: 1.3
+
+.. seealso::
+
+    `fast executemany
+    <https://github.com/mkleehammer/pyodbc/wiki/Features-beyond-the-DB-API#fast_executemany>`_
+    - on github
+
+
 """
 
 from .base import MSExecutionContext, MSDialect, BINARY, VARBINARY
@@ -264,7 +291,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         }
     )
 
-    def __init__(self, description_encoding=None, **params):
+    def __init__(self, description_encoding=None, fast_executemany=False,
+                 **params):
         if 'description_encoding' in params:
             self.description_encoding = params.pop('description_encoding')
         super(MSDialect_pyodbc, self).__init__(**params)
@@ -273,6 +301,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             hasattr(self.dbapi.Cursor, 'nextset')
         self._need_decimal_fix = self.dbapi and \
             self._dbapi_version() < (2, 1, 8)
+        self.fast_executemany = fast_executemany
 
     def _get_server_version_info(self, connection):
         try:
@@ -295,6 +324,12 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 except ValueError:
                     pass
             return tuple(version)
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        if self.fast_executemany:
+            cursor.fast_executemany = True
+        super(MSDialect_pyodbc, self).do_executemany(
+            cursor, statement, parameters, context=context)
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):

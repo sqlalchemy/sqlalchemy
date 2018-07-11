@@ -200,3 +200,23 @@ Dialect Improvements and Changes - Oracle
 
 Dialect Improvements and Changes - SQL Server
 =============================================
+
+.. _change_4158:
+
+Support for pyodbc fast_executemany
+-----------------------------------
+
+Pyodbc's recently added "fast_executemany" mode, available when using the
+Microsoft ODBC driver, is now an option for the pyodbc / mssql dialect.
+Pass it via :func:`.create_engine`::
+
+    engine = create_engine(
+        "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server",
+        fast_executemany=True)
+
+.. seealso::
+
+    :ref:`mssql_pyodbc_fastexecutemany`
+
+
+:ticket:`4158`

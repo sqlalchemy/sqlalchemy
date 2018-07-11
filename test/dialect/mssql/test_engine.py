@@ -10,6 +10,8 @@ from sqlalchemy.testing import assert_raises_message, \
     assert_warnings, expect_warnings
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.dialects.mssql import base
+from sqlalchemy import Integer, String, Table, Column
+from sqlalchemy import event
 
 
 class ParseConnectTest(fixtures.TestBase):
@@ -255,6 +257,40 @@ class EngineFromConfigTest(fixtures.TestBase):
         e = engine_from_config(
             cfg, module=Mock(version="MS SQL Server 11.0.92"))
         eq_(e.dialect.legacy_schema_aliasing, False)
+
+
+class FastExecutemanyTest(fixtures.TestBase):
+    __only_on__ = 'mssql'
+    __backend__ = True
+    __requires__ = ('pyodbc_fast_executemany', )
+
+    @testing.provide_metadata
+    def test_flag_on(self):
+        t = Table(
+            't', self.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+        )
+        t.create()
+
+        eng = engines.testing_engine(options={"fast_executemany": True})
+
+        @event.listens_for(eng, "after_cursor_execute")
+        def after_cursor_execute(
+                conn, cursor, statement, parameters, context, executemany):
+            if executemany:
+                assert cursor.fast_executemany
+
+        with eng.connect() as conn:
+            conn.execute(
+                t.insert(),
+                [{"id": i, "data": "data_%d" % i} for i in range(100)]
+            )
+
+            conn.execute(
+                t.insert(),
+                {"id": 200, "data": "data_200"}
+            )
 
 
 class VersionDetectionTest(fixtures.TestBase):

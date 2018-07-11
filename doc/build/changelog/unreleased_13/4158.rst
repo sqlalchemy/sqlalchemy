@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, mssql
+    :tickets: 4158
+
+    Added ``fast_executemany=True`` parameter to the SQL Server pyodbc dialect,
+    which enables use of pyodbc's new performance feature of the same name
+    when using Microsoft ODBC drivers.
+
+    .. seealso::
+
+        :ref:`change_4158`
