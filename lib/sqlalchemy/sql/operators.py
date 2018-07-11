@@ -1074,11 +1074,25 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(truediv, other)
 
+_commutative = {eq, ne, add, mul}
+_comparison = {eq, ne, lt, gt, ge, le}
+
+
+def commutative_op(fn):
+    _commutative.add(fn)
+    return fn
+
+
+def comparison_op(fn):
+    _comparison.add(fn)
+    return fn
+
 
 def from_():
     raise NotImplementedError()
 
 
+@comparison_op
 def function_as_comparison_op():
     raise NotImplementedError()
 
@@ -1099,18 +1113,22 @@ def isfalse(a):
     raise NotImplementedError()
 
 
+@comparison_op
 def is_distinct_from(a, b):
     return a.is_distinct_from(b)
 
 
+@comparison_op
 def isnot_distinct_from(a, b):
     return a.isnot_distinct_from(b)
 
 
+@comparison_op
 def is_(a, b):
     return a.is_(b)
 
 
+@comparison_op
 def isnot(a, b):
     return a.isnot(b)
 
@@ -1123,34 +1141,42 @@ def op(a, opstring, b):
     return a.op(opstring)(b)
 
 
+@comparison_op
 def like_op(a, b, escape=None):
     return a.like(b, escape=escape)
 
 
+@comparison_op
 def notlike_op(a, b, escape=None):
     return a.notlike(b, escape=escape)
 
 
+@comparison_op
 def ilike_op(a, b, escape=None):
     return a.ilike(b, escape=escape)
 
 
+@comparison_op
 def notilike_op(a, b, escape=None):
     return a.notilike(b, escape=escape)
 
 
+@comparison_op
 def between_op(a, b, c, symmetric=False):
     return a.between(b, c, symmetric=symmetric)
 
 
+@comparison_op
 def notbetween_op(a, b, c, symmetric=False):
     return a.notbetween(b, c, symmetric=symmetric)
 
 
+@comparison_op
 def in_op(a, b):
     return a.in_(b)
 
 
+@comparison_op
 def notin_op(a, b):
     return a.notin_(b)
 
@@ -1189,34 +1215,42 @@ def _escaped_like_impl(fn, other, escape, autoescape):
     return fn(other, escape=escape)
 
 
+@comparison_op
 def startswith_op(a, b, escape=None, autoescape=False):
     return _escaped_like_impl(a.startswith, b, escape, autoescape)
 
 
+@comparison_op
 def notstartswith_op(a, b, escape=None, autoescape=False):
     return ~_escaped_like_impl(a.startswith, b, escape, autoescape)
 
 
+@comparison_op
 def endswith_op(a, b, escape=None, autoescape=False):
     return _escaped_like_impl(a.endswith, b, escape, autoescape)
 
 
+@comparison_op
 def notendswith_op(a, b, escape=None, autoescape=False):
     return ~_escaped_like_impl(a.endswith, b, escape, autoescape)
 
 
+@comparison_op
 def contains_op(a, b, escape=None, autoescape=False):
     return _escaped_like_impl(a.contains, b, escape, autoescape)
 
 
+@comparison_op
 def notcontains_op(a, b, escape=None, autoescape=False):
     return ~_escaped_like_impl(a.contains, b, escape, autoescape)
 
 
+@comparison_op
 def match_op(a, b, **kw):
     return a.match(b, **kw)
 
 
+@comparison_op
 def notmatch_op(a, b, **kw):
     return a.notmatch(b, **kw)
 
@@ -1225,10 +1259,12 @@ def comma_op(a, b):
     raise NotImplementedError()
 
 
+@comparison_op
 def empty_in_op(a, b):
     raise NotImplementedError()
 
 
+@comparison_op
 def empty_notin_op(a, b):
     raise NotImplementedError()
 
@@ -1259,13 +1295,6 @@ def json_getitem_op(a, b):
 
 def json_path_getitem_op(a, b):
     raise NotImplementedError()
-
-
-_commutative = {eq, ne, add, mul}
-
-_comparison = {eq, ne, lt, gt, ge, le, between_op, like_op, is_,
-               isnot, is_distinct_from, isnot_distinct_from,
-               function_as_comparison_op}
 
 
 def is_comparison(op):
