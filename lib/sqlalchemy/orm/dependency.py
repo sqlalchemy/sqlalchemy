@@ -434,6 +434,9 @@ class OneToManyDP(DependencyProcessor):
     def presort_saves(self, uowcommit, states):
         children_added = uowcommit.memo(('children_added', self), set)
 
+        should_null_fks = not self.cascade.delete_orphan and \
+            not self.passive_deletes == 'all'
+
         for state in states:
             pks_changed = self._pks_changed(uowcommit, state)
 
@@ -457,9 +460,10 @@ class OneToManyDP(DependencyProcessor):
 
                 for child in history.deleted:
                     if not self.cascade.delete_orphan:
-                        uowcommit.register_object(child, isdelete=False,
-                                                  operation='delete',
-                                                  prop=self.prop)
+                        if should_null_fks:
+                            uowcommit.register_object(child, isdelete=False,
+                                                      operation='delete',
+                                                      prop=self.prop)
                     elif self.hasparent(child) is False:
                         uowcommit.register_object(
                             child, isdelete=True,
@@ -528,6 +532,9 @@ class OneToManyDP(DependencyProcessor):
                     # if the old parent wasn't deleted but child was moved.
 
     def process_saves(self, uowcommit, states):
+        should_null_fks = not self.cascade.delete_orphan and \
+            not self.passive_deletes == 'all'
+
         for state in states:
             history = uowcommit.get_attribute_history(
                 state,
@@ -541,7 +548,7 @@ class OneToManyDP(DependencyProcessor):
                         self._post_update(child, uowcommit, [state])
 
                 for child in history.deleted:
-                    if not self.cascade.delete_orphan and \
+                    if should_null_fks and not self.cascade.delete_orphan and \
                             not self.hasparent(child):
                         self._synchronize(state, child, None, True,
                                           uowcommit, False)
