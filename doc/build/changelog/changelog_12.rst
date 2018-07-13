@@ -12,7 +12,35 @@
 
 .. changelog::
     :version: 1.2.10
-    :include_notes_from: unreleased_12
+    :released: July 13, 2018
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4300
+
+        Fixed bug where a :class:`.Sequence` would be dropped explicitly before any
+        :class:`.Table` that refers to it, which breaks in the case when the
+        sequence is also involved in a server-side default for that table, when
+        using :meth:`.MetaData.drop_all`.   The step which processes sequences
+        to be dropped via non server-side column default functions is now invoked
+        after the table itself is dropped.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4295
+
+        Fixed bug in :class:`.Bundle` construct where placing two columns of the
+        same name would be de-duplicated, when the :class:`.Bundle` were used as
+        part of the rendered SQL, such as in the ORDER BY or GROUP BY of the statement.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4298
+
+        Fixed regression in 1.2.9 due to :ticket:`4287` where using a
+        :class:`.Load` option in conjunction with a string wildcard would result
+        in a TypeError.
 
 .. changelog::
     :version: 1.2.9

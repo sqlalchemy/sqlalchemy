@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4295
-
-    Fixed bug in :class:`.Bundle` construct where placing two columns of the
-    same name would be de-duplicated, when the :class:`.Bundle` were used as
-    part of the rendered SQL, such as in the ORDER BY or GROUP BY of the statement.
-
