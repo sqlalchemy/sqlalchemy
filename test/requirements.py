@@ -1083,13 +1083,17 @@ class DefaultRequirements(SuiteRequirements):
         def has_fastexecutemany(config):
             if not against(config, "mssql+pyodbc"):
                 return False
+            if config.db.dialect._dbapi_version() < (4, 0, 19):
+                return False
             with config.db.connect() as conn:
                 drivername = conn.connection.connection.getinfo(
                     config.db.dialect.dbapi.SQL_DRIVER_NAME)
                 # on linux this is 'libmsodbcsql-13.1.so.9.2'.
                 # don't know what it is on windows
                 return "msodbc" in drivername
-        return only_if(has_fastexecutemany)
+        return only_if(
+            has_fastexecutemany,
+            "only on pyodbc > 4.0.19 w/ msodbc driver")
 
     @property
     def python_fixed_issue_8743(self):
