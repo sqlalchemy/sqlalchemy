@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4298
-
-    Fixed regression in 1.2.9 due to :ticket:`4287` where using a
-    :class:`.Load` option in conjunction with a string wildcard would result
-    in a TypeError.
