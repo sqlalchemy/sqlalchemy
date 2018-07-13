@@ -33,7 +33,7 @@
 
     .. change::
         :tags: bug, mssql
-        :tickets: 4228
+        :tickets: 4288
 
         Fixed bug in MSSQL reflection where when two same-named tables in different
         schemas had same-named primary key constraints, foreign key constraints
