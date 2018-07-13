@@ -3955,7 +3955,7 @@ class Bundle(InspectionAttr):
         return cloned
 
     def __clause_element__(self):
-        return expression.ClauseList(group=False, *self.c)
+        return expression.ClauseList(group=False, *self.exprs)
 
     @property
     def clauses(self):

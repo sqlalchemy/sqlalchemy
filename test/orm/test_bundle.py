@@ -4,6 +4,7 @@ from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy import Integer, select, ForeignKey, String, func
 from sqlalchemy.orm import mapper, relationship, aliased
+from sqlalchemy.sql.elements import ClauseList
 
 
 class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
@@ -53,6 +54,44 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             for i in range(10)
         ])
         sess.commit()
+
+    def test_same_named_col_clauselist(self):
+        Data, Other = self.classes("Data", "Other")
+        bundle = Bundle("pk", Data.id, Other.id)
+
+        self.assert_compile(
+            ClauseList(Data.id, Other.id),
+            "data.id, other.id"
+        )
+        self.assert_compile(
+            bundle.__clause_element__(),
+            "data.id, other.id"
+        )
+
+    def test_same_named_col_in_orderby(self):
+        Data, Other = self.classes("Data", "Other")
+        bundle = Bundle("pk", Data.id, Other.id)
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(Data, Other).order_by(bundle),
+            "SELECT data.id AS data_id, data.d1 AS data_d1, "
+            "data.d2 AS data_d2, data.d3 AS data_d3, "
+            "other.id AS other_id, other.data_id AS other_data_id, "
+            "other.o1 AS other_o1 "
+            "FROM data, other ORDER BY data.id, other.id"
+        )
+
+    def test_same_named_col_in_fetch(self):
+        Data, Other = self.classes("Data", "Other")
+        bundle = Bundle("pk", Data.id, Other.id)
+        sess = Session()
+
+        eq_(
+            sess.query(bundle).filter(
+                Data.id == Other.id).filter(Data.id < 3).all(),
+            [((1, 1),), ((2, 2),)]
+        )
 
     def test_c_attr(self):
         Data = self.classes.Data
