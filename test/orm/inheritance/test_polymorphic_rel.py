@@ -1286,10 +1286,10 @@ class _PolymorphicTestBase(object):
     def test_correlation_one(self):
         sess = create_session()
 
-        # unfortunately this pattern can't yet work for PolymorphicAliased
-        # and PolymorphicUnions, because the subquery does not compile
-        # out including the polymorphic selectable; only if Person is in
-        # the query() list does that happen.
+        # this for a long time did not work with PolymorphicAliased and
+        # PolymorphicUnions, which was due to the no_replacement_traverse
+        # annotation added to query.statement which then went into as_scalar().
+        # this is removed as of :ticket:`4304` so now works.
         eq_(sess.query(Person.name)
                 .filter(
                     sess.query(Company.name).
@@ -1472,17 +1472,12 @@ class PolymorphicPolymorphicTest(
 
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
-
-    @testing.fails()
-    def test_correlation_one(self):
-        super(PolymorphicUnionsTest, self).test_correlation_one()
+    pass
 
 
 class PolymorphicAliasedJoinsTest(
         _PolymorphicTestBase, _PolymorphicAliasedJoins):
-    @testing.fails()
-    def test_correlation_one(self):
-        super(PolymorphicAliasedJoinsTest, self).test_correlation_one()
+    pass
 
 
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):

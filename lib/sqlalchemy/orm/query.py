@@ -512,9 +512,7 @@ class Query(object):
         if self._params:
             stmt = stmt.params(self._params)
 
-        # TODO: there's no tests covering effects of
-        # the annotation not being there
-        return stmt._annotate({'no_replacement_traverse': True})
+        return stmt
 
     def subquery(self, name=None, with_labels=False, reduce_columns=False):
         """return the full SELECT statement represented by

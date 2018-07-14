@@ -76,6 +76,7 @@ class QueryTest(_fixtures.FixtureTest):
 
 
 class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
 
     query_correlated = "SELECT users.name AS users_name, " \
         "(SELECT count(addresses.id) AS count_1 FROM addresses " \
@@ -140,6 +141,41 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
         query = sess.query(User.name, query)
         self.assert_compile(
             query, self.query_not_correlated, dialect=default.DefaultDialect())
+
+    def test_correlate_to_union(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User)
+        q = sess.query(User).union(q)
+        u_alias = aliased(User)
+        raw_subq = exists().where(u_alias.id > User.id)
+        orm_subq = sess.query(u_alias).filter(u_alias.id > User.id).exists()
+
+        self.assert_compile(
+            q.add_column(raw_subq),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "EXISTS (SELECT * FROM users AS users_1 "
+            "WHERE users_1.id > anon_1.users_id) AS anon_2 "
+            "FROM ("
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
+            "UNION SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users) AS anon_1"
+        )
+
+        # only difference is "1" vs. "*" (not sure why that is)
+        self.assert_compile(
+            q.add_column(orm_subq),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "EXISTS (SELECT 1 FROM users AS users_1 "
+            "WHERE users_1.id > anon_1.users_id) AS anon_2 "
+            "FROM ("
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
+            "UNION SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users) AS anon_1"
+        )
 
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
