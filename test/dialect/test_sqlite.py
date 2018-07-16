@@ -1127,6 +1127,31 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
         assert b.c.id.references(a.c.id)
 
 
+class KeywordInDatabaseNameTest(fixtures.TestBase):
+    __only_on__ = 'sqlite'
+
+    @classmethod
+    def setup_class(cls):
+        with testing.db.begin() as conn:
+            conn.execute("ATTACH %r AS \"default\"" % conn.engine.url.database)
+            conn.execute('CREATE TABLE "default".a (id INTEGER PRIMARY KEY)')
+
+    @classmethod
+    def teardown_class(cls):
+        with testing.db.begin() as conn:
+            try:
+                conn.execute('drop table "default".a')
+            except Exception:
+                pass
+            conn.execute('DETACH DATABASE "default"')
+
+    def test_reflect(self):
+        with testing.db.begin() as conn:
+            meta = MetaData(bind=conn, schema='default')
+            meta.reflect()
+            assert 'default.a' in meta.tables
+
+
 class ConstraintReflectionTest(fixtures.TestBase):
     __only_on__ = 'sqlite'
 
