@@ -1543,20 +1543,25 @@ class SQLiteDialect(default.DefaultDialect):
 
     @reflection.cache
     def _get_table_sql(self, connection, table_name, schema=None, **kw):
+        if schema:
+            schema_expr = "%s." % (
+                self.identifier_preparer.quote_identifier(schema))
+        else:
+            schema_expr = ""
         try:
             s = ("SELECT sql FROM "
                  " (SELECT * FROM %(schema)ssqlite_master UNION ALL "
                  "  SELECT * FROM %(schema)ssqlite_temp_master) "
                  "WHERE name = '%(table)s' "
                  "AND type = 'table'" % {
-                     "schema": ("%s." % schema) if schema else "",
+                     "schema": schema_expr,
                      "table": table_name})
             rs = connection.execute(s)
         except exc.DBAPIError:
             s = ("SELECT sql FROM %(schema)ssqlite_master "
                  "WHERE name = '%(table)s' "
                  "AND type = 'table'" % {
-                     "schema": ("%s." % schema) if schema else "",
+                     "schema": schema_expr,
                      "table": table_name})
             rs = connection.execute(s)
         return rs.scalar()
