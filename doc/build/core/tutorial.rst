@@ -2108,6 +2108,11 @@ except it is ordered.  Using the above form, we are assured that the
    parameters using the :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order` flag.
 
 
+.. seealso::
+
+    :ref:`mysql_insert_on_duplicate_key_update` - background on the MySQL
+    ``ON DUPLICATE KEY UPDATE`` clause and how to support parameter ordering.
+
 .. _deletes:
 
 Deletes

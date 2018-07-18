@@ -333,6 +333,30 @@ pool pre-ping feature, described at :ref:`pool_disconnects_pessimistic`.
 This is a much more lightweight ping than the previous method of emitting
 "SELECT 1" on the connection.
 
+.. _change_mysql_ondupordering:
+
+Control of parameter ordering within ON DUPLICATE KEY UPDATE
+------------------------------------------------------------
+
+The order of UPDATE parameters in the ``ON DUPLICATE KEY UPDATE`` clause
+can now be explcitly ordered by passing a list of 2-tuples::
+
+    from sqlalchemy.dialects.mysql import insert
+
+    insert_stmt = insert(my_table).values(
+        id='some_existing_id',
+        data='inserted value')
+
+    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+        [
+            ("data", "some data"),
+            ("updated_at", func.current_timestamp()),
+        ],
+    )
+
+.. seealso::
+
+    :ref:`mysql_insert_on_duplicate_key_update`
 
 Dialect Improvements and Changes - SQLite
 =============================================
