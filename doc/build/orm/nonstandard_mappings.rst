@@ -135,7 +135,7 @@ to be associated with a class in equal measure, since only one mapper can
 actually instrument the class.
 
 However, there is a class of mapper known as the **non primary** mapper
-with allows additional mappers to be associated with a class, but with
+which allows additional mappers to be associated with a class, but with
 a limited scope of use.   This scope typically applies to
 being able to load rows from an alternate table or selectable unit, but
 still producing classes which are ultimately persisted using the primary
