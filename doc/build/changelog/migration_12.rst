@@ -461,7 +461,7 @@ The :paramref:`.Session.refresh.with_for_update` argument accepts a dictionary
 of options that will be passed as the same arguments which are sent to
 :meth:`.Query.with_for_update`::
 
-    session.refresh(some_objects with_for_update={"read": True})
+    session.refresh(some_objects, with_for_update={"read": True})
 
 The new parameter supersedes the :paramref:`.Session.refresh.lockmode`
 parameter.
