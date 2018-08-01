@@ -296,13 +296,20 @@ class ShardTest(object):
         )
 
 
+from sqlalchemy.testing import provision
+
+
 class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
     def _init_dbs(self):
-        db1 = testing_engine('sqlite:///shard1.db',
-                             options=dict(pool_threadlocal=True))
-        db2 = testing_engine('sqlite:///shard2.db')
-        db3 = testing_engine('sqlite:///shard3.db')
-        db4 = testing_engine('sqlite:///shard4.db')
+        db1 = testing_engine(
+            'sqlite:///shard1_%s.db' % provision.FOLLOWER_IDENT,
+            options=dict(pool_threadlocal=True))
+        db2 = testing_engine(
+            'sqlite:///shard2_%s.db' % provision.FOLLOWER_IDENT)
+        db3 = testing_engine(
+            'sqlite:///shard3_%s.db' % provision.FOLLOWER_IDENT)
+        db4 = testing_engine(
+            'sqlite:///shard4_%s.db' % provision.FOLLOWER_IDENT)
 
         self.dbs = [db1, db2, db3, db4]
         return self.dbs
@@ -313,7 +320,7 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
         for db in self.dbs:
             db.connect().invalidate()
         for i in range(1, 5):
-            os.remove("shard%d.db" % i)
+            os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
 
 class AttachedFileShardTest(ShardTest, fixtures.TestBase):
@@ -428,9 +435,11 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
 
 class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
     def _init_dbs(self):
-        self.db1 = db1 = testing_engine('sqlite:///shard1.db',
-                             options=dict(pool_threadlocal=True))
-        self.db2 = db2 = testing_engine('sqlite:///shard2.db')
+        self.db1 = db1 = testing_engine(
+            'sqlite:///shard1_%s.db' % provision.FOLLOWER_IDENT,
+            options=dict(pool_threadlocal=True))
+        self.db2 = db2 = testing_engine(
+            'sqlite:///shard2_%s.db' % provision.FOLLOWER_IDENT)
 
         for db in (db1, db2):
             self.metadata.create_all(db)
@@ -443,7 +452,7 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
         for db in self.dbs:
             db.connect().invalidate()
         for i in range(1, 3):
-            os.remove("shard%d.db" % i)
+            os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
     @classmethod
     def setup_classes(cls):
