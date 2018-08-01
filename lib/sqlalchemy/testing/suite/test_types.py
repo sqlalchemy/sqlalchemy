@@ -5,7 +5,8 @@ from ..assertions import eq_
 from ..config import requirements
 from sqlalchemy import Integer, Unicode, UnicodeText, select, TIMESTAMP
 from sqlalchemy import Date, DateTime, Time, MetaData, String, \
-    Text, Numeric, Float, literal, Boolean, cast, null, JSON, and_, type_coerce
+    Text, Numeric, Float, literal, Boolean, cast, null, JSON, and_, \
+    type_coerce, BigInteger
 from ..schema import Table, Column
 from ... import testing
 import decimal
@@ -336,6 +337,39 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     def test_literal(self):
         self._literal_round_trip(Integer, [5], [5])
+
+    def test_huge_int(self):
+        self._round_trip(BigInteger, 1376537018368127)
+
+    @testing.provide_metadata
+    def _round_trip(self, datatype, data):
+        metadata = self.metadata
+        int_table = Table(
+            'integer_table', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('integer_data', datatype),
+        )
+
+        metadata.create_all(config.db)
+
+        config.db.execute(
+            int_table.insert(),
+            {'integer_data': data}
+        )
+
+        row = config.db.execute(
+            select([
+                int_table.c.integer_data,
+            ])
+        ).first()
+
+        eq_(row, (data, ))
+
+        if util.py3k:
+            assert isinstance(row[0], int)
+        else:
+            assert isinstance(row[0], (long, int))
 
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
