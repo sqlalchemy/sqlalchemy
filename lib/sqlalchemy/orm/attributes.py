@@ -673,7 +673,6 @@ class ScalarAttributeImpl(AttributeImpl):
 
     def delete(self, state, dict_):
 
-        # TODO: catch key errors, convert to attributeerror?
         if self.dispatch._active_history:
             old = self.get(state, dict_, PASSIVE_RETURN_NEVER_SET)
         else:
@@ -682,7 +681,10 @@ class ScalarAttributeImpl(AttributeImpl):
         if self.dispatch.remove:
             self.fire_remove_event(state, dict_, old, self._remove_token)
         state._modified_event(dict_, self, old)
-        del dict_[self.key]
+        try:
+            del dict_[self.key]
+        except KeyError:
+            raise AttributeError("%s object does not have a value" % self)
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         if self.key in dict_:
@@ -742,7 +744,10 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     def delete(self, state, dict_):
         old = self.get(state, dict_)
         self.fire_remove_event(state, dict_, old, self._remove_token)
-        del dict_[self.key]
+        try:
+            del dict_[self.key]
+        except:
+            raise AttributeError("%s object does not have a value" % self)
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         if self.key in dict_:
@@ -969,7 +974,9 @@ class CollectionAttributeImpl(AttributeImpl):
 
         collection = self.get_collection(state, state.dict)
         collection.clear_with_event()
-        # TODO: catch key errors, convert to attributeerror?
+
+        # key is always present because we checked above.  e.g.
+        # del is a no-op if collection not present.
         del dict_[self.key]
 
     def initialize(self, state, dict_):

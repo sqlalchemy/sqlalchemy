@@ -94,7 +94,8 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def __init__(self, target_collection, attr, creator=None,
                  getset_factory=None, proxy_factory=None,
-                 proxy_bulk_set=None, info=None):
+                 proxy_bulk_set=None, info=None,
+                 cascade_scalar_deletes=False):
         """Construct a new :class:`.AssociationProxy`.
 
         The :func:`.association_proxy` function is provided as the usual
@@ -118,6 +119,15 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
           If you want to construct instances differently, supply a 'creator'
           function that takes arguments as above and returns instances.
+
+        :param cascade_scalar_deletes: when True, indicates that setting
+         the proxied value to ``None``, or deleting it via ``del``, should
+         also remove the source object.  Only applies to scalar attributes.
+         Normally, removing the proxied target will not remove the proxy
+         source, as this object may have other state that is still to be
+         kept.
+
+         .. versionadded:: 1.3
 
         :param getset_factory: Optional.  Proxied attribute access is
           automatically handled by routines that get and set values based on
@@ -150,6 +160,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         self.getset_factory = getset_factory
         self.proxy_factory = proxy_factory
         self.proxy_bulk_set = proxy_bulk_set
+        self.cascade_scalar_deletes = cascade_scalar_deletes
 
         self.owning_class = None
         self.key = '_%s_%s_%s' % (
@@ -308,9 +319,13 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
             creator = self.creator and self.creator or self.target_class
             target = getattr(obj, self.target_collection)
             if target is None:
+                if values is None:
+                    return
                 setattr(obj, self.target_collection, creator(values))
             else:
                 self._scalar_set(target, values)
+                if values is None and self.cascade_scalar_deletes:
+                    setattr(obj, self.target_collection, None)
         else:
             proxy = self.__get__(obj, None)
             if proxy is not values:
@@ -321,7 +336,11 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         if self.owning_class is None:
             self._calc_owner(obj, None)
 
-        delattr(obj, self.key)
+        if self.scalar:
+            target = getattr(obj, self.target_collection)
+            if target is not None:
+                delattr(target, self.value_attr)
+        delattr(obj, self.target_collection)
 
     def _initialize_scalar_accessors(self):
         if self.getset_factory:

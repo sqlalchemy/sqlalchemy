@@ -4,7 +4,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.testing import eq_, ne_, assert_raises, \
-    assert_raises_message, is_true, is_false
+    assert_raises_message, is_true, is_false, is_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import jython
@@ -302,6 +302,83 @@ class AttributesTest(fixtures.ORMTest):
             "has been garbage collected.",
             lambda: Foo().bars.append(Bar())
         )
+
+    def test_del_scalar_nonobject(self):
+        class Foo(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
+
+        f1 = Foo()
+
+        is_(f1.b, None)
+
+        f1.b = 5
+
+        del f1.b
+        is_(f1.b, None)
+
+        def go():
+            del f1.b
+
+        assert_raises_message(
+            AttributeError,
+            "Foo.b object does not have a value",
+            go
+        )
+
+    def test_del_scalar_object(self):
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(Foo, 'b', uselist=False, useobject=True)
+
+        f1 = Foo()
+
+        is_(f1.b, None)
+
+        f1.b = Bar()
+
+        del f1.b
+        is_(f1.b, None)
+
+        def go():
+            del f1.b
+
+        assert_raises_message(
+            AttributeError,
+            "Foo.b object does not have a value",
+            go
+        )
+
+    def test_del_collection_object(self):
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(Foo, 'b', uselist=True, useobject=True)
+
+        f1 = Foo()
+
+        eq_(f1.b, [])
+
+        f1.b = [Bar()]
+
+        del f1.b
+        eq_(f1.b, [])
+
+        del f1.b
+        eq_(f1.b, [])
 
     def test_deferred(self):
         class Foo(object):

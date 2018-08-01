@@ -2107,6 +2107,239 @@ class AttributeAccessTest(fixtures.TestBase):
         is_(Bat.foo.owning_class, Bat)
 
 
+class ScalarRemoveTest(object):
+    useobject = None
+    cascade_scalar_deletes = None
+    uselist = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = 'test_a'
+            id = Column(Integer, primary_key=True)
+            ab = relationship(
+                'AB', backref='a',
+                uselist=cls.uselist)
+            b = association_proxy(
+                'ab', 'b', creator=lambda b: AB(b=b),
+                cascade_scalar_deletes=cls.cascade_scalar_deletes)
+
+        if cls.useobject:
+            class B(Base):
+                __tablename__ = 'test_b'
+                id = Column(Integer, primary_key=True)
+                ab = relationship('AB', backref="b")
+
+            class AB(Base):
+                __tablename__ = 'test_ab'
+                a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
+                b_id = Column(Integer, ForeignKey(B.id), primary_key=True)
+
+        else:
+            class AB(Base):
+                __tablename__ = 'test_ab'
+                b = Column(Integer)
+                a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
+
+    def test_set_nonnone_to_none(self):
+        if self.useobject:
+            A, AB, B = self.classes("A", "AB", "B")
+        else:
+            A, AB = self.classes("A", "AB")
+
+        a1 = A()
+
+        b1 = B() if self.useobject else 5
+
+        if self.uselist:
+            a1.b.append(b1)
+        else:
+            a1.b = b1
+
+        if self.uselist:
+            assert isinstance(a1.ab[0], AB)
+        else:
+            assert isinstance(a1.ab, AB)
+
+        if self.uselist:
+            a1.b.remove(b1)
+        else:
+            a1.b = None
+
+        if self.uselist:
+            eq_(a1.ab, [])
+        else:
+            if self.cascade_scalar_deletes:
+                assert a1.ab is None
+            else:
+                assert isinstance(a1.ab, AB)
+                assert a1.ab.b is None
+
+    def test_set_none_to_none(self):
+        if self.uselist:
+            return
+
+        if self.useobject:
+            A, AB, B = self.classes("A", "AB", "B")
+        else:
+            A, AB = self.classes("A", "AB")
+
+        a1 = A()
+
+        a1.b = None
+
+        assert a1.ab is None
+
+    def test_del_already_nonpresent(self):
+        if self.useobject:
+            A, AB, B = self.classes("A", "AB", "B")
+        else:
+            A, AB = self.classes("A", "AB")
+
+        a1 = A()
+
+        if self.uselist:
+            del a1.b
+
+            eq_(a1.ab, [])
+
+        else:
+            def go():
+                del a1.b
+
+            assert_raises_message(
+                AttributeError,
+                "A.ab object does not have a value",
+                go
+            )
+
+    def test_del(self):
+        if self.useobject:
+            A, AB, B = self.classes("A", "AB", "B")
+        else:
+            A, AB = self.classes("A", "AB")
+
+        b1 = B() if self.useobject else 5
+
+        a1 = A()
+        if self.uselist:
+            a1.b.append(b1)
+        else:
+            a1.b = b1
+
+        if self.uselist:
+            assert isinstance(a1.ab[0], AB)
+        else:
+            assert isinstance(a1.ab, AB)
+
+        del a1.b
+
+        if self.uselist:
+            eq_(a1.ab, [])
+        else:
+            assert a1.ab is None
+
+    def test_del_no_proxy(self):
+        if not self.uselist:
+            return
+
+        if self.useobject:
+            A, AB, B = self.classes("A", "AB", "B")
+        else:
+            A, AB = self.classes("A", "AB")
+
+        b1 = B() if self.useobject else 5
+        a1 = A()
+        a1.b.append(b1)
+
+        del a1.ab
+
+        # this is what it does for now, so maintain that w/ assoc proxy
+        eq_(a1.ab, [])
+
+    def test_del_already_nonpresent_no_proxy(self):
+        if not self.uselist:
+            return
+
+        if self.useobject:
+            A, AB, B = self.classes("A", "AB", "B")
+        else:
+            A, AB = self.classes("A", "AB")
+
+        a1 = A()
+
+        del a1.ab
+
+        # this is what it does for now, so maintain that w/ assoc proxy
+        eq_(a1.ab, [])
+
+
+class ScalarRemoveListObjectCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = True
+    cascade_scalar_deletes = True
+    uselist = True
+
+
+class ScalarRemoveScalarObjectCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = True
+    cascade_scalar_deletes = True
+    uselist = False
+
+
+class ScalarRemoveListScalarCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = False
+    cascade_scalar_deletes = True
+    uselist = True
+
+
+class ScalarRemoveScalarScalarCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = False
+    cascade_scalar_deletes = True
+    uselist = False
+
+
+class ScalarRemoveListObjectNoCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = True
+    cascade_scalar_deletes = False
+    uselist = True
+
+
+class ScalarRemoveScalarObjectNoCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = True
+    cascade_scalar_deletes = False
+    uselist = False
+
+
+class ScalarRemoveListScalarNoCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = False
+    cascade_scalar_deletes = False
+    uselist = True
+
+
+class ScalarRemoveScalarScalarNoCascade(
+        ScalarRemoveTest, fixtures.DeclarativeMappedTest):
+
+    useobject = False
+    cascade_scalar_deletes = False
+    uselist = False
+
+
 class InfoTest(fixtures.TestBase):
     def test_constructor(self):
         assoc = association_proxy('a', 'b', info={'some_assoc': 'some_value'})
