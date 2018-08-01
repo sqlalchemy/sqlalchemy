@@ -13,12 +13,11 @@ transparent proxied access to the endpoint of an association object.
 See the example ``examples/association/proxied_association.py``.
 
 """
-import itertools
 import operator
 import weakref
 from .. import exc, orm, util
 from ..orm import collections, interfaces
-from ..sql import not_, or_
+from ..sql import or_
 from .. import inspect
 
 
@@ -334,11 +333,16 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
     def _default_getset(self, collection_class):
         attr = self.value_attr
         _getter = operator.attrgetter(attr)
-        getter = lambda target: _getter(target) if target is not None else None
+
+        def getter(target):
+            return _getter(target) if target is not None else None
+
         if collection_class is dict:
-            setter = lambda o, k, v: setattr(o, attr, v)
+            def setter(o, k, v):
+                setattr(o, attr, v)
         else:
-            setter = lambda o, v: setattr(o, attr, v)
+            def setter(o, v):
+                setattr(o, attr, v)
         return getter, setter
 
     def _new(self, lazy_collection):
@@ -521,7 +525,8 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
             getattr(self.target_class, self.value_attr) != obj)
 
     def __repr__(self):
-        return "AssociationProxy(%r, %r)" % (self.target_collection, self.value_attr)
+        return "AssociationProxy(%r, %r)" % (
+            self.target_collection, self.value_attr)
 
 
 class _lazy_collection(object):
@@ -734,7 +739,7 @@ class _AssociationList(_AssociationCollection):
         return list(self) >= other
 
     def __cmp__(self, other):
-        return cmp(list(self), other)
+        return util.cmp(list(self), other)
 
     def __add__(self, iterable):
         try:
@@ -849,7 +854,7 @@ class _AssociationDict(_AssociationCollection):
         return dict(self) >= other
 
     def __cmp__(self, other):
-        return cmp(dict(self), other)
+        return util.cmp(dict(self), other)
 
     def __repr__(self):
         return repr(dict(self.items()))
@@ -948,9 +953,6 @@ class _AssociationSet(_AssociationCollection):
 
     def _get(self, object):
         return self.getter(object)
-
-    def _set(self, object, value):
-        return self.setter(object, value)
 
     def __len__(self):
         return len(self.col)
