@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, py3k
+
+    Started importing "collections" from "collections.abc" under Python 3.3 and
+    greater for Python 3.8 compatibility.  Pull request courtesy Nathaniel
+    Knight.
