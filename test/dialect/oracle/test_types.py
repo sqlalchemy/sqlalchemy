@@ -968,12 +968,10 @@ class SetInputSizesTest(fixtures.TestBase):
                     )
 
     def test_smallint_setinputsizes(self):
-        self._test_setinputsizes(
-            SmallInteger, 25, testing.db.dialect.dbapi.NUMBER)
+        self._test_setinputsizes(SmallInteger, 25, int)
 
     def test_int_setinputsizes(self):
-        self._test_setinputsizes(
-            Integer, 25, testing.db.dialect.dbapi.NUMBER)
+        self._test_setinputsizes(Integer, 25, int)
 
     def test_numeric_setinputsizes(self):
         self._test_setinputsizes(
