@@ -327,3 +327,12 @@ def nested(*managers):
                 exc = sys.exc_info()
         if exc != (None, None, None):
             reraise(exc[0], exc[1], exc[2])
+
+
+# Fix deprecation of accessing ABCs straight from collections module
+# (which will stop working in 3.8).
+if py33:
+    import collections.abc as collections_abc
+else:
+    import collections as collections_abc
+

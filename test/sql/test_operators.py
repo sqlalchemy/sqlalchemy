@@ -636,7 +636,7 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     return self.op("->")(index)
 
         col = Column('x', MyType())
-        assert not isinstance(col, collections.Iterable)
+        assert not isinstance(col, util.collections_abc.Iterable)
 
     def test_lshift(self):
         class MyType(UserDefinedType):

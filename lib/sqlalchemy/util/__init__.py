@@ -21,7 +21,7 @@ from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     UniqueAppender, PopulateDict, EMPTY_SET, to_list, to_set, \
     to_column_set, update_copy, flatten_iterator, has_intersection, \
     LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence, \
-    coerce_generator_arg, lightweight_named_tuple
+    coerce_generator_arg, lightweight_named_tuple, collections_abc
 
 from .langhelpers import iterate_attributes, class_hierarchy, \
     portable_instancemethod, unbound_method_to_callable, \
