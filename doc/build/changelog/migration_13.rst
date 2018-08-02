@@ -23,6 +23,59 @@ New Features and Improvements - ORM
 Key Behavioral Changes - ORM
 =============================
 
+.. _change_4308:
+
+Association proxy has new cascade_scalar_deletes flag
+-----------------------------------------------------
+
+Given a mapping as::
+
+    class A(Base):
+        __tablename__ = 'test_a'
+        id = Column(Integer, primary_key=True)
+        ab = relationship(
+            'AB', backref='a', uselist=False)
+        b = association_proxy(
+            'ab', 'b', creator=lambda b: AB(b=b),
+            cascade_scalar_deletes=True)
+
+
+    class B(Base):
+        __tablename__ = 'test_b'
+        id = Column(Integer, primary_key=True)
+        ab = relationship('AB', backref='b', cascade='all, delete-orphan')
+
+
+    class AB(Base):
+        __tablename__ = 'test_ab'
+        a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
+        b_id = Column(Integer, ForeignKey(B.id), primary_key=True)
+
+An assigment to ``A.b`` will generate an ``AB`` object::
+
+    a.b = B()
+
+The ``A.b`` association is scalar, and includes a new flag
+:paramref:`.AssociationProxy.cascade_scalar_deletes`.  When set, setting ``A.b``
+to ``None`` will remove ``A.ab`` as well.   The default behavior remains
+that it leaves ``a.ab`` in place::
+
+    a.b = None
+    assert a.ab is None
+
+While it at first seemed intuitive that this logic should just look at the
+"cascade" attribute of the existing relationship, it's not clear from that
+alone if the proxied object should be removed, hence the behavior is
+made available as an explicit option.
+
+Additionally, ``del`` now works for scalars in a similar manner as setting
+to ``None``::
+
+    del a.b
+    assert a.ab is None
+
+:ticket:`4308`
+
 .. _change_4246:
 
 FOR UPDATE clause is rendered within the joined eager load subquery as well as outside
