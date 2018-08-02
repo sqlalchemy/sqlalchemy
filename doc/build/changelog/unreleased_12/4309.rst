@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4309
+
+    For cx_Oracle, Integer datatypes will now be bound to "int", per advice
+    from the cx_Oracle developers.  Previously, using cx_Oracle.NUMBER caused a
+    loss in precision within the cx_Oracle 6.x series.
+

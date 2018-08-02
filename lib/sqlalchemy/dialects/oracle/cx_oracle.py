@@ -293,6 +293,10 @@ import time
 
 
 class _OracleInteger(sqltypes.Integer):
+    def get_dbapi_type(self, dbapi):
+        # see https://github.com/oracle/python-cx_Oracle/issues/208#issuecomment-409715955
+        return int
+
     def _cx_oracle_var(self, dialect, cursor):
         cx_Oracle = dialect.dbapi
         return cursor.var(
