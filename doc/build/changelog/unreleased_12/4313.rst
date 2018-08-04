@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4313
+
+    Fixed bug where the multi-table support for UPDATE and DELETE statements
+    did not consider the additional FROM elements as targets for correlation,
+    when a correlated SELECT were also combined with the statement.  This
+    change now includes that a SELECT statement in the WHERE clause for such a
+    statement will try to auto-correlate back to these additional tables in the
+    parent UPDATE/DELETE or unconditionally correlate if
+    :meth:`.Select.correlate` is used.  Note that auto-correlation raises an
+    error if the SELECT statement would have no FROM clauses as a result, which
+    can now occur if the parent UPDATE/DELETE specifies the same tables in its
+    additional set of tables; specify :meth:`.Select.correlate` explicitly to
+    resolve.
