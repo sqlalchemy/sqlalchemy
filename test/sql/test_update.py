@@ -1,5 +1,5 @@
 from sqlalchemy import Integer, String, ForeignKey, and_, or_, func, \
-    literal, update, table, bindparam, column, select, exc
+    literal, update, table, bindparam, column, select, exc, exists
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import default
@@ -590,6 +590,62 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest,
             'WHERE users.id = anon_1.user_id '
             'AND anon_1.email_address = :email_address_1',
             checkparams=checkparams)
+
+    def test_correlation_to_extra(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        stmt = users.update().values(name="newname").where(
+            users.c.id == addresses.c.user_id
+        ).where(
+            ~exists().where(
+                addresses.c.user_id == users.c.id
+            ).where(addresses.c.email_address == 'foo').correlate(addresses)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE users SET name=:name FROM addresses WHERE "
+            "users.id = addresses.user_id AND NOT "
+            "(EXISTS (SELECT * FROM users WHERE addresses.user_id = users.id "
+            "AND addresses.email_address = :email_address_1))"
+        )
+
+    def test_dont_correlate_to_extra(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        stmt = users.update().values(name="newname").where(
+            users.c.id == addresses.c.user_id
+        ).where(
+            ~exists().where(
+                addresses.c.user_id == users.c.id
+            ).where(addresses.c.email_address == 'foo').correlate()
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE users SET name=:name FROM addresses WHERE "
+            "users.id = addresses.user_id AND NOT "
+            "(EXISTS (SELECT * FROM addresses, users "
+            "WHERE addresses.user_id = users.id "
+            "AND addresses.email_address = :email_address_1))"
+        )
+
+    def test_autocorrelate_error(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        stmt = users.update().values(name="newname").where(
+            users.c.id == addresses.c.user_id
+        ).where(
+            ~exists().where(
+                addresses.c.user_id == users.c.id
+            ).where(addresses.c.email_address == 'foo')
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            ".*returned no FROM clauses due to auto-correlation.*",
+            stmt.compile, dialect=default.StrCompileDialect()
+        )
 
 
 class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):

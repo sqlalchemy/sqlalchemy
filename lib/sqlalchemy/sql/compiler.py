@@ -2180,11 +2180,6 @@ class SQLCompiler(Compiled):
     def visit_update(self, update_stmt, asfrom=False, **kw):
         toplevel = not self.stack
 
-        self.stack.append(
-            {'correlate_froms': {update_stmt.table},
-             "asfrom_froms": {update_stmt.table},
-             "selectable": update_stmt})
-
         extra_froms = update_stmt._extra_froms
         is_multitable = bool(extra_froms)
 
@@ -2194,8 +2189,15 @@ class SQLCompiler(Compiled):
             render_extra_froms = [
                 f for f in extra_froms if f not in main_froms
             ]
+            correlate_froms = main_froms.union(extra_froms)
         else:
             render_extra_froms = []
+            correlate_froms = {update_stmt.table}
+
+        self.stack.append(
+            {'correlate_froms': correlate_froms,
+             "asfrom_froms": correlate_froms,
+             "selectable": update_stmt})
 
         text = "UPDATE "
 
@@ -2289,13 +2291,14 @@ class SQLCompiler(Compiled):
     def visit_delete(self, delete_stmt, asfrom=False, **kw):
         toplevel = not self.stack
 
-        self.stack.append({'correlate_froms': {delete_stmt.table},
-                           "asfrom_froms": {delete_stmt.table},
-                           "selectable": delete_stmt})
-
         crud._setup_crud_params(self, delete_stmt, crud.ISDELETE, **kw)
 
         extra_froms = delete_stmt._extra_froms
+
+        correlate_froms = {delete_stmt.table}.union(extra_froms)
+        self.stack.append({'correlate_froms': correlate_froms,
+                           "asfrom_froms": correlate_froms,
+                           "selectable": delete_stmt})
 
         text = "DELETE "
 
@@ -2401,9 +2404,9 @@ class StrSQLCompiler(SQLCompiler):
             for t in extra_froms)
 
     def delete_extra_from_clause(self, update_stmt,
-                           from_table, extra_froms,
-                           from_hints,
-                           **kw):
+                                 from_table, extra_froms,
+                                 from_hints,
+                                 **kw):
         return ', ' + ', '.join(
             t._compiler_dispatch(self, asfrom=True,
                                  fromhints=from_hints, **kw)

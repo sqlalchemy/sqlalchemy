@@ -1,10 +1,13 @@
 #! coding:utf-8
 
 from sqlalchemy import Integer, String, ForeignKey, delete, select, and_, \
-    or_
+    or_, exists
 from sqlalchemy.dialects import mysql
+from sqlalchemy.engine import default
 from sqlalchemy import testing
-from sqlalchemy.testing import AssertsCompiledSQL, fixtures, eq_
+from sqlalchemy import exc
+from sqlalchemy.testing import AssertsCompiledSQL, fixtures, eq_, \
+    assert_raises_message
 from sqlalchemy.testing.schema import Table, Column
 
 
@@ -101,6 +104,75 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                             'FROM myothertable '
                             'WHERE myothertable.otherid = mytable.myid'
                             ')')
+
+
+class DeleteFromCompileTest(
+        _DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
+    # DELETE FROM is also tested by individual dialects since there is no
+    # consistent syntax.  here we use the StrSQLcompiler which has a fake
+    # syntax.
+
+    __dialect__ = 'default_enhanced'
+
+    def test_delete_extra_froms(self):
+        table1, table2 = self.tables.mytable, self.tables.myothertable
+
+        stmt = table1.delete().where(table1.c.myid == table2.c.otherid)
+        self.assert_compile(
+            stmt,
+            "DELETE FROM mytable , myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        )
+
+    def test_correlation_to_extra(self):
+        table1, table2 = self.tables.mytable, self.tables.myothertable
+
+        stmt = table1.delete().where(
+            table1.c.myid == table2.c.otherid).where(
+                ~exists().where(table2.c.otherid == table1.c.myid).
+                where(table2.c.othername == 'x').correlate(table2)
+        )
+
+        self.assert_compile(
+            stmt,
+            "DELETE FROM mytable , myothertable WHERE mytable.myid = "
+            "myothertable.otherid AND NOT (EXISTS "
+            "(SELECT * FROM mytable WHERE myothertable.otherid = "
+            "mytable.myid AND myothertable.othername = :othername_1))",
+        )
+
+    def test_dont_correlate_to_extra(self):
+        table1, table2 = self.tables.mytable, self.tables.myothertable
+
+        stmt = table1.delete().where(
+            table1.c.myid == table2.c.otherid).where(
+                ~exists().where(table2.c.otherid == table1.c.myid).
+                where(table2.c.othername == 'x').correlate()
+        )
+
+        self.assert_compile(
+            stmt,
+            "DELETE FROM mytable , myothertable WHERE mytable.myid = "
+            "myothertable.otherid AND NOT (EXISTS "
+            "(SELECT * FROM myothertable, mytable "
+            "WHERE myothertable.otherid = "
+            "mytable.myid AND myothertable.othername = :othername_1))",
+        )
+
+    def test_autocorrelate_error(self):
+        table1, table2 = self.tables.mytable, self.tables.myothertable
+
+        stmt = table1.delete().where(
+            table1.c.myid == table2.c.otherid).where(
+                ~exists().where(table2.c.otherid == table1.c.myid).
+                where(table2.c.othername == 'x')
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            ".*returned no FROM clauses due to auto-correlation.*",
+            stmt.compile, dialect=default.StrCompileDialect()
+        )
 
 
 class DeleteFromRoundTripTest(fixtures.TablesTest):
