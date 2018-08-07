@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 3981
+
+    Fixed issue with :meth:`.TypeEngine.bind_expression` and
+    :meth:`.TypeEngine.column_expression` methods where these methods would not
+    work if the target type were part of a :class:`.Variant`, or other target
+    type of a :class:`.TypeDecorator`.  Additionally, the SQL compiler now
+    calls upon the dialect-level implementation when it renders these methods
+    so that dialects can now provide for SQL-level processing for built-in
+    types.
+
+    .. seealso::
+
+        :ref:`3981`
+

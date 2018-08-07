@@ -13,20 +13,97 @@ from sqlalchemy.testing import eq_
 
 class _ExprFixture(object):
 
+    def _test_table(self, type_):
+        test_table = Table(
+            'test_table',
+            MetaData(), Column('x', String), Column('y', type_)
+        )
+        return test_table
+
     def _fixture(self):
         class MyString(String):
 
+            # supercedes any processing that might be on
+            # String
             def bind_expression(self, bindvalue):
                 return func.lower(bindvalue)
 
             def column_expression(self, col):
                 return func.lower(col)
 
-        test_table = Table(
-            'test_table',
-            MetaData(), Column('x', String), Column('y', MyString)
-        )
-        return test_table
+        return self._test_table(MyString)
+
+    def _type_decorator_outside_fixture(self):
+        class MyString(TypeDecorator):
+            impl = String
+
+            def bind_expression(self, bindvalue):
+                return func.outside_bind(bindvalue)
+
+            def column_expression(self, col):
+                return func.outside_colexpr(col)
+
+        return self._test_table(MyString)
+
+    def _type_decorator_inside_fixture(self):
+        class MyInsideString(String):
+            def bind_expression(self, bindvalue):
+                return func.inside_bind(bindvalue)
+
+            def column_expression(self, col):
+                return func.inside_colexpr(col)
+
+        class MyString(TypeDecorator):
+            impl = MyInsideString
+
+        return self._test_table(MyString)
+
+    def _type_decorator_both_fixture(self):
+        class MyDialectString(String):
+            def bind_expression(self, bindvalue):
+                return func.inside_bind(bindvalue)
+
+            def column_expression(self, col):
+                return func.inside_colexpr(col)
+
+        class MyString(TypeDecorator):
+            impl = String
+
+            # this works because when the compiler calls dialect_impl(),
+            # a copy of MyString is created which has just this impl
+            # as self.impl
+            def load_dialect_impl(self, dialect):
+                return MyDialectString()
+
+            # user-defined methods need to invoke explicitly on the impl
+            # for now...
+            def bind_expression(self, bindvalue):
+                return func.outside_bind(self.impl.bind_expression(bindvalue))
+
+            def column_expression(self, col):
+                return func.outside_colexpr(self.impl.column_expression(col))
+
+        return self._test_table(MyString)
+
+    def _variant_fixture(self, inner_fixture):
+        type_ = inner_fixture.c.y.type
+
+        variant = String().with_variant(type_, "default")
+        return self._test_table(variant)
+
+    def _dialect_level_fixture(self):
+
+        class ImplString(String):
+            def bind_expression(self, bindvalue):
+                return func.dialect_bind(bindvalue)
+
+            def column_expression(self, col):
+                return func.dialect_colexpr(col)
+
+        from sqlalchemy.engine import default
+        dialect = default.DefaultDialect()
+        dialect.colspecs = {String: ImplString}
+        return dialect
 
 
 class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
@@ -96,6 +173,105 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
             select([table]).where(table.c.y == "hi"),
             "SELECT test_table.x, lower(test_table.y) AS y FROM "
             "test_table WHERE test_table.y = lower(:y_1)"
+        )
+
+    def test_dialect(self):
+        table = self._fixture()
+        dialect = self._dialect_level_fixture()
+
+        # 'x' is straight String
+        self.assert_compile(
+            select([table.c.x]).where(table.c.x == "hi"),
+            "SELECT dialect_colexpr(test_table.x) AS x "
+            "FROM test_table WHERE test_table.x = dialect_bind(:x_1)",
+            dialect=dialect
+        )
+
+    def test_type_decorator_inner(self):
+        table = self._type_decorator_inside_fixture()
+
+        self.assert_compile(
+            select([table]).where(table.c.y == "hi"),
+            "SELECT test_table.x, inside_colexpr(test_table.y) AS y "
+            "FROM test_table WHERE test_table.y = inside_bind(:y_1)"
+        )
+
+    def test_type_decorator_inner_plus_dialect(self):
+        table = self._type_decorator_inside_fixture()
+        dialect = self._dialect_level_fixture()
+
+        # for "inner", the MyStringImpl is a subclass of String, #
+        # so a dialect-level
+        # implementation supersedes that, which is the same as with other
+        # processor functions
+        self.assert_compile(
+            select([table]).where(table.c.y == "hi"),
+            "SELECT dialect_colexpr(test_table.x) AS x, "
+            "dialect_colexpr(test_table.y) AS y FROM test_table "
+            "WHERE test_table.y = dialect_bind(:y_1)",
+            dialect=dialect
+        )
+
+    def test_type_decorator_outer(self):
+        table = self._type_decorator_outside_fixture()
+
+        self.assert_compile(
+            select([table]).where(table.c.y == "hi"),
+            "SELECT test_table.x, outside_colexpr(test_table.y) AS y "
+            "FROM test_table WHERE test_table.y = outside_bind(:y_1)"
+        )
+
+    def test_type_decorator_outer_plus_dialect(self):
+        table = self._type_decorator_outside_fixture()
+        dialect = self._dialect_level_fixture()
+
+        # for "outer", the MyString isn't calling the "impl" functions,
+        # so we don't get the "impl"
+        self.assert_compile(
+            select([table]).where(table.c.y == "hi"),
+            "SELECT dialect_colexpr(test_table.x) AS x, "
+            "outside_colexpr(test_table.y) AS y "
+            "FROM test_table WHERE test_table.y = outside_bind(:y_1)",
+            dialect=dialect
+        )
+
+    def test_type_decorator_both(self):
+        table = self._type_decorator_both_fixture()
+
+        self.assert_compile(
+            select([table]).where(table.c.y == "hi"),
+            "SELECT test_table.x, "
+            "outside_colexpr(inside_colexpr(test_table.y)) AS y "
+            "FROM test_table WHERE "
+            "test_table.y = outside_bind(inside_bind(:y_1))"
+        )
+
+    def test_type_decorator_both_plus_dialect(self):
+        table = self._type_decorator_both_fixture()
+        dialect = self._dialect_level_fixture()
+
+        # for "inner", the MyStringImpl is a subclass of String,
+        # so a dialect-level
+        # implementation supersedes that, which is the same as with other
+        # processor functions
+        self.assert_compile(
+            select([table]).where(table.c.y == "hi"),
+            "SELECT dialect_colexpr(test_table.x) AS x, "
+            "outside_colexpr(dialect_colexpr(test_table.y)) AS y "
+            "FROM test_table WHERE "
+            "test_table.y = outside_bind(dialect_bind(:y_1))",
+            dialect=dialect
+        )
+
+    def test_type_decorator_both_w_variant(self):
+        table = self._variant_fixture(self._type_decorator_both_fixture())
+
+        self.assert_compile(
+            select([table]).where(table.c.y == "hi"),
+            "SELECT test_table.x, "
+            "outside_colexpr(inside_colexpr(test_table.y)) AS y "
+            "FROM test_table WHERE "
+            "test_table.y = outside_bind(inside_bind(:y_1))"
         )
 
 
@@ -215,6 +391,7 @@ class RoundTripTestBase(object):
             row[self.tables.test_table.c.y],
             "Y1"
         )
+
 
 
 class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):

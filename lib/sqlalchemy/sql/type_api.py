@@ -1239,6 +1239,33 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         else:
             return self.impl.result_processor(dialect, coltype)
 
+    @util.memoized_property
+    def _has_bind_expression(self):
+        return (
+            self.__class__.bind_expression.__code__
+            is not TypeDecorator.bind_expression.__code__
+        ) or self.impl._has_bind_expression
+
+    def bind_expression(self, bindparam):
+        return self.impl.bind_expression(bindparam)
+
+    @util.memoized_property
+    def _has_column_expression(self):
+        """memoized boolean, check if column_expression is implemented.
+
+        Allows the method to be skipped for the vast majority of expression
+        types that don't use this feature.
+
+        """
+
+        return (
+            self.__class__.column_expression.__code__
+            is not TypeDecorator.column_expression.__code__
+        ) or self.impl._has_column_expression
+
+    def column_expression(self, column):
+        return self.impl.column_expression(column)
+
     def coerce_compared_value(self, op, value):
         """Suggest a type for a 'coerced' Python value in an expression.
 
@@ -1297,8 +1324,6 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
     def __repr__(self):
         return util.generic_repr(self, to_inspect=self.impl)
-
-
 
 
 class Variant(TypeDecorator):

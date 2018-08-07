@@ -268,6 +268,51 @@ backend, such as "SELECT CAST(NULL AS INTEGER) WHERE 1!=1" for Postgresql,
 
 :ticket:`4271`
 
+.. _change_3981:
+
+TypeEngine methods bind_expression, column_expression work with Variant, type-specific types
+--------------------------------------------------------------------------------------------
+
+The :meth:`.TypeEngine.bind_expression` and :meth:`.TypeEngine.column_expression` methods
+now work when they are present on the "impl" of a particular datatype, allowing these methods
+to be used by dialects as well as for :class:`.TypeDecorator` and :class:`.Variant` use cases.
+
+The following example illustrates a :class:`.TypeDecorator` that applies SQL-time conversion
+functions to a :class:`.LargeBinary`.   In order for this type to work in the
+context of a :class:`.Variant`, the compiler needs to drill into the "impl" of the
+variant expression in order to locate these methods::
+
+    from sqlalchemy import TypeDecorator, LargeBinary, func
+
+    class CompressedLargeBinary(TypeDecorator):
+        impl = LargeBinary
+
+        def bind_expression(self, bindvalue):
+            return func.compress(bindvalue, type_=self)
+
+        def column_expression(self, col):
+            return func.uncompress(col, type_=self)
+
+    MyLargeBinary = LargeBinary().with_variant(CompressedLargeBinary(), "sqlite")
+
+The above expression will render a function within SQL when used on SQlite only::
+
+    from sqlalchemy import select, column
+    from sqlalchemy.dialects import sqlite
+    print(select([column('x', CompressedLargeBinary)]).compile(dialect=sqlite.dialect()))
+
+will render::
+
+    SELECT uncompress(x) AS x
+
+The change also includes that dialects can implement
+:meth:`.TypeEngine.bind_expression` and :meth:`.TypeEngine.column_expression`
+on dialect-level implementation types where they will now be used; in
+particular this will be used for MySQL's new "binary prefix" requirement as
+well as for casting decimal bind values for MySQL.
+
+:ticket:`3981`
+
 Key Behavioral Changes - Core
 =============================
 

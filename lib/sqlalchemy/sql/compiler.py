@@ -1237,10 +1237,17 @@ class SQLCompiler(Compiled):
                         literal_binds=False,
                         skip_bind_expression=False,
                         **kwargs):
-        if not skip_bind_expression and bindparam.type._has_bind_expression:
-            bind_expression = bindparam.type.bind_expression(bindparam)
-            return self.process(bind_expression,
-                                skip_bind_expression=True)
+
+        if not skip_bind_expression:
+            impl = bindparam.type.dialect_impl(self.dialect)
+            if impl._has_bind_expression:
+                bind_expression = impl.bind_expression(bindparam)
+                return self.process(
+                    bind_expression, skip_bind_expression=True,
+                    within_columns_clause=within_columns_clause,
+                    literal_binds=literal_binds,
+                    **kwargs
+                )
 
         if literal_binds or \
             (within_columns_clause and
@@ -1510,10 +1517,12 @@ class SQLCompiler(Compiled):
                              within_columns_clause=True):
         """produce labeled columns present in a select()."""
 
-        if column.type._has_column_expression and \
+        impl = column.type.dialect_impl(self.dialect)
+        if impl._has_column_expression and \
                 populate_result_map:
-            col_expr = column.type.column_expression(column)
-            add_to_result_map = lambda keyname, name, objects, type_: \
+            col_expr = impl.column_expression(column)
+
+            def add_to_result_map(keyname, name, objects, type_):
                 self._add_to_result_map(
                     keyname, name,
                     (column,) + objects, type_)

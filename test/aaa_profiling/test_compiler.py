@@ -22,9 +22,12 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
                    Column('c1', Integer, primary_key=True),
                    Column('c2', String(30)))
 
+        cls.dialect = default.DefaultDialect()
+
         # do a "compile" ahead of time to load
-        # deferred imports
-        t1.insert().compile()
+        # deferred imports, use the dialect to pre-load
+        # dialect-level types
+        t1.insert().compile(dialect=cls.dialect)
 
         # go through all the TypeEngine
         # objects in use and pre-load their _type_affinity
@@ -35,8 +38,6 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
         from sqlalchemy.sql import sqltypes
         for t in list(sqltypes._type_map.values()):
             t._type_affinity
-
-        cls.dialect = default.DefaultDialect()
 
     @profiling.function_call_count()
     def test_insert(self):
