@@ -239,10 +239,11 @@ columns should be fetched immediately upon INSERT and sometimes UPDATE::
 
         __mapper_args__ = {"eager_defaults": True}
 
-Above, an INSERT statement will render "NOW()" as the value of "timestamp",
-and the statement will also include the "timestamp" and "special_identifier"
-columns within the RETURNING clause so they are available immediately.
-On the PostgreSQL database, an INSERT for the above table will look like:
+Above, an INSERT statement that does not specify explicit values for
+"timestamp" or "special_identifier" from the client side will include the
+"timestamp" and "special_identifier" columns within the RETURNING clause so
+they are available immediately. On the PostgreSQL database, an INSERT for the
+above table will look like:
 
 .. sourcecode:: sql
 
@@ -272,7 +273,7 @@ they are marked as "expired".
 If the :paramref:`.orm.mapper.eager_defaults` is still used, and the backend
 database does not support RETURNING or an equivalent, the ORM will emit this
 SELECT statement immediately following the INSERT statement.   This is often
-undesireable as it adds additional SELECT statements to the flush process that
+undesirable as it adds additional SELECT statements to the flush process that
 may not be needed.  Using the above mapping with the
 :paramref:`.orm.mapper.eager_defaults` flag set to True against MySQL results
 in SQL like this upon flush (minus the comment, which is for clarification only):
