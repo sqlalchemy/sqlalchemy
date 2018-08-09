@@ -238,6 +238,10 @@ class Mapper(InspectionAttr):
           greatly enhance performance for an application that needs frequent
           access to just-generated server defaults.
 
+          .. seealso::
+
+                :ref:`orm_server_defaults`
+
           .. versionchanged:: 0.9.0 The ``eager_defaults`` option can now
              make use of :term:`RETURNING` for backends which support it.
 
