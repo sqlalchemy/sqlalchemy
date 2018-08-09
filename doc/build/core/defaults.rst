@@ -195,8 +195,8 @@ column primary keys are represented in the same format).
 
 .. _server_defaults:
 
-Server-invoked default expressions
-----------------------------------
+Server-invoked DDL-Explicit Default Expressions
+-----------------------------------------------
 
 A variant on the SQL expression default is the :paramref:`.Column.server_default`, which gets
 placed in the CREATE TABLE statement during a :meth:`.Table.create` operation:
@@ -231,50 +231,38 @@ functions and expressions, and not the more complex cases like an embedded SELEC
 
 .. _triggered_columns:
 
-Triggered Columns
------------------
+Marking Implicitly Generated Values, timestamps, and Triggered Columns
+----------------------------------------------------------------------
 
-Columns with values set by a database trigger or other external process may be
-called out using :class:`.FetchedValue` as a marker::
+Columns which generate a new value on INSERT or UPDATE based on other
+server-side database mechanisms, such as database-specific auto-generating
+behaviors such as seen with TIMESTAMP columns on some platforms, as well as
+custom triggers that invoke upon INSERT or UPDATE to generate a new value,
+may be called out using :class:`.FetchedValue` as a marker::
 
     t = Table('test', meta,
-        Column('abc', String(20), server_default=FetchedValue()),
+        Column('id', Integer, primary_key=True),
+        Column('abc', TIMESTAMP, server_default=FetchedValue()),
         Column('def', String(20), server_onupdate=FetchedValue())
     )
 
-These markers do not emit a "default" clause when the table is created,
-however they do set the same internal flags as a static ``server_default``
-clause, providing hints to higher-level tools that a "post-fetch" of these
-rows should be performed after an insert or update.
+The :class:`.FetchedValue` indicator does not affect the rendered DDL for the
+CREATE TABLE.  Instead, it marks the column as one that will have a new value
+populated by the database during the process of an INSERT or UPDATE statement,
+and for supporting  databases may be used to indicate that the column should be
+part of a RETURNING or OUTPUT clause for the statement.    Tools such as the
+SQLAlchemy ORM then make use of this marker in order to know how to get at the
+value of the column after such an operation.   In particular, the
+:meth:`.ValuesBase.return_defaults` method can be used with an :class:`.Insert`
+or :class:`.Update` construct to indicate that these values should be
+returned.
 
-.. note::
+For details on using :class:`.FetchedValue` with the ORM, see
+:ref:`orm_server_defaults`.
 
-    It's generally not appropriate to use :class:`.FetchedValue` in
-    conjunction with a primary key column, particularly when using the
-    ORM or any other scenario where the :attr:`.ResultProxy.inserted_primary_key`
-    attribute is required.  This is becaue the "post-fetch" operation requires
-    that the primary key value already be available, so that the
-    row can be selected on its primary key.
+.. seealso::
 
-    For a server-generated primary key value, all databases provide special
-    accessors or other techniques in order to acquire the "last inserted
-    primary key" column of a table.  These mechanisms aren't affected by the presence
-    of :class:`.FetchedValue`.  For special situations where triggers are
-    used to generate primary key values, and the database in use does not
-    support the ``RETURNING`` clause, it may be necessary to forego the usage
-    of the trigger and instead apply the SQL expression or function as a
-    "pre execute" expression::
-
-        t = Table('test', meta,
-                Column('abc', MyType, default=func.generate_new_value(), primary_key=True)
-        )
-
-    Where above, when :meth:`.Table.insert` is used,
-    the ``func.generate_new_value()`` expression will be pre-executed
-    in the context of a scalar ``SELECT`` statement, and the new value will
-    be applied to the subsequent ``INSERT``, while at the same time being
-    made available to the :attr:`.ResultProxy.inserted_primary_key`
-    attribute.
+    :ref:`orm_server_defaults`
 
 
 Defining Sequences
