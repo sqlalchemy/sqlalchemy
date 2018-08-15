@@ -3576,6 +3576,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 class ScalarSelect(Generative, Grouping):
     _from_objects = []
     _is_from_container = True
+    _is_implicitly_boolean = False
 
     def __init__(self, element):
         self.element = element

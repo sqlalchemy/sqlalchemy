@@ -1281,6 +1281,12 @@ def is_natural_self_precedent(op):
     return op in _natural_self_precedent or \
         isinstance(op, custom_op) and op.natural_self_precedent
 
+_booleans = (inv, istrue, isfalse, and_, or_)
+
+
+def is_boolean(op):
+    return is_comparison(op) or op in _booleans
+
 _mirror = {
     gt: lt,
     ge: le,

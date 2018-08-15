@@ -1019,13 +1019,15 @@ class SQLCompiler(Compiled):
                 "Unary expression has no operator or modifier")
 
     def visit_istrue_unary_operator(self, element, operator, **kw):
-        if self.dialect.supports_native_boolean:
+        if element._is_implicitly_boolean or \
+                self.dialect.supports_native_boolean:
             return self.process(element.element, **kw)
         else:
             return "%s = 1" % self.process(element.element, **kw)
 
     def visit_isfalse_unary_operator(self, element, operator, **kw):
-        if self.dialect.supports_native_boolean:
+        if element._is_implicitly_boolean or \
+                self.dialect.supports_native_boolean:
             return "NOT %s" % self.process(element.element, **kw)
         else:
             return "%s = 0" % self.process(element.element, **kw)

@@ -2105,8 +2105,40 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             expr,
-            "NOT (mytable.myid = :myid_1 OR mytable.myid = :myid_2)"
+            "NOT (mytable.myid = :myid_1 OR mytable.myid = :myid_2)",
+            dialect=default.DefaultDialect(supports_native_boolean=False)
         )
+
+    def test_negate_operator_self_group(self):
+        orig_expr = or_(
+            self.table1.c.myid == 1, self.table1.c.myid == 2).self_group()
+        expr = not_(orig_expr)
+        is_not_(expr, orig_expr)
+
+        self.assert_compile(
+            expr,
+            "NOT (mytable.myid = :myid_1 OR mytable.myid = :myid_2)",
+            dialect=default.DefaultDialect(supports_native_boolean=False)
+        )
+
+    def test_implicitly_boolean(self):
+        # test for expressions that the database always considers as boolean
+        # even if there is no boolean datatype.
+        assert not self.table1.c.myid._is_implicitly_boolean
+        assert (self.table1.c.myid == 5)._is_implicitly_boolean
+        assert (self.table1.c.myid == 5).self_group()._is_implicitly_boolean
+        assert (self.table1.c.myid == 5).label('x')._is_implicitly_boolean
+        assert not_(self.table1.c.myid == 5)._is_implicitly_boolean
+        assert or_(
+            self.table1.c.myid == 5, self.table1.c.myid == 7
+        )._is_implicitly_boolean
+        assert not column('x', Boolean)._is_implicitly_boolean
+        assert not (self.table1.c.myid + 5)._is_implicitly_boolean
+        assert not not_(column('x', Boolean))._is_implicitly_boolean
+        assert not select([self.table1.c.myid]).\
+            as_scalar()._is_implicitly_boolean
+        assert not text("x = y")._is_implicitly_boolean
+        assert not literal_column("x = y")._is_implicitly_boolean
 
 
 class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
