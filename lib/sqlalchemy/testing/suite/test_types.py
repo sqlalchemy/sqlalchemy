@@ -483,14 +483,27 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         )
         eq_(val, expr)
 
-    # TODO: this one still breaks on MySQL
-    # def test_decimal_coerce_round_trip(self):
-    #    expr = decimal.Decimal("15.7563")
-    #
-    #    val = testing.db.scalar(
-    #        select([literal(expr)])
-    #    )
-    #    eq_(val, expr)
+    # this does not work in MySQL, see #4036, however we choose not
+    # to render CAST unconditionally since this is kind of an edge case.
+
+    @testing.requires.implicit_decimal_binds
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
+    def test_decimal_coerce_round_trip(self):
+        expr = decimal.Decimal("15.7563")
+
+        val = testing.db.scalar(
+            select([literal(expr)])
+        )
+        eq_(val, expr)
+
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
+    def test_decimal_coerce_round_trip_w_cast(self):
+        expr = decimal.Decimal("15.7563")
+
+        val = testing.db.scalar(
+            select([cast(expr, Numeric(10, 4))])
+        )
+        eq_(val, expr)
 
     @testing.requires.precision_numerics_general
     def test_precision_decimal(self):

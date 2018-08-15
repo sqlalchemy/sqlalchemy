@@ -924,6 +924,27 @@ class DefaultRequirements(SuiteRequirements):
              'only four decimal places ')])
 
     @property
+    def implicit_decimal_binds(self):
+        """target backend will return a selected Decimal as a Decimal, not
+        a string.
+
+        e.g.::
+
+            expr = decimal.Decimal("15.7563")
+
+            value = e.scalar(
+                select([literal(expr)])
+            )
+
+            assert value == expr
+
+        See :ticket:`4036`
+
+        """
+
+        return exclusions.fails_on("mysql+mysqldb", "driver specific")
+
+    @property
     def fetch_null_from_numeric(self):
         return skip_if(
                     ("mssql+pyodbc", None, None, "crashes due to bug #351"),

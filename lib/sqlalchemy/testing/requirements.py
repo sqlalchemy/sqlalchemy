@@ -629,6 +629,27 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def implicit_decimal_binds(self):
+        """target backend will return a selected Decimal as a Decimal, not
+        a string.
+
+        e.g.::
+
+            expr = decimal.Decimal("15.7563")
+
+            value = e.scalar(
+                select([literal(expr)])
+            )
+
+            assert value == expr
+
+        See :ticket:`4036`
+
+        """
+
+        return exclusions.open()
+
+    @property
     def nested_aggregates(self):
         """target database can select an aggregate from a subquery that's
         also using an aggregate
