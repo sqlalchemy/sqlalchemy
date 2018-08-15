@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4320
+
+    Fixed issue that is closely related to :ticket:`3639` where an expression
+    rendered in a boolean context on a non-native boolean backend would
+    be compared to 1/0 even though it is already an implcitly boolean
+    expression, when :meth:`.ColumnElement.self_group` were used.  While this
+    does not affect the user-friendly backends (MySQL, SQLite) it was not
+    handled by Oracle (and possibly SQL Server).   Whether or not the
+    expression is implicitly boolean on any database is now determined
+    up front as an additional check to not generate the integer comparison
+    within the compliation of the statement.
