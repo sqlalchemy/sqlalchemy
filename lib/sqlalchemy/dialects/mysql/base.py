@@ -247,43 +247,48 @@ the MySQL schema and/or server configuration may be required.
     <http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_ - \
     in the MySQL documentation
 
-Unicode Encoding / Decoding
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _mysql_binary_introducer:
 
-All modern MySQL DBAPIs all offer the service of handling the encoding and
-decoding of unicode data between the Python application space and the database.
-As this was not always the case, SQLAlchemy also includes a comprehensive system
-of performing the encode/decode task as well.   As only one of these systems
-should be in use at at time, SQLAlchemy has long included functionality
-to automatically detect upon first connection whether or not the DBAPI is
-automatically handling unicode.
+Dealing with Binary Data Warnings and Unicode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Whether or not the MySQL DBAPI will handle encoding can usually be configured
-using a DBAPI flag ``use_unicode``, which is known to be supported at least
-by MySQLdb, PyMySQL, and MySQL-Connector.   Setting this value to ``0``
-in the "connect args" or query string will have the effect of disabling the
-DBAPI's handling of unicode, such that it instead will return data of the
-``str`` type or ``bytes`` type, with data in the configured charset::
+MySQL versions 5.6, 5.7 and later (not MariaDB at the time of this writing) now
+emit a warning when attempting to pass binary data to the database, while a
+character set encoding is also in place, when the binary data itself is not
+valid for that encoding::
 
-    # connect while disabling the DBAPI's unicode encoding/decoding
-    e = create_engine(
-        "mysql+mysqldb://scott:tiger@localhost/test?charset=utf8&use_unicode=0")
+    default.py:509: Warning: (1300, "Invalid utf8mb4 character string: 'F9876A'")
+      cursor.execute(statement, parameters)
 
-Current recommendations for modern DBAPIs are as follows:
+This warning is due to the fact that the MySQL client library is attempting to
+interpret the binary string as a unicode object even if a datatype such as
+:class:`.LargeBinary` is in use.   To resolve this, the SQL statement requires
+a binary "character set introducer" be present before any non-NULL value
+that renders like this::
 
-* It is generally always safe to leave the ``use_unicode`` flag set at
-  its default; that is, don't use it at all.
-* Under Python 3, the ``use_unicode=0`` flag should **never be used**.
-  SQLAlchemy under Python 3 generally assumes the DBAPI receives and returns
-  string values as Python 3 strings, which are inherently unicode objects.
-* Under Python 2 with MySQLdb, the ``use_unicode=0`` flag will **offer
-  superior performance**, as MySQLdb's unicode converters under Python 2 only
-  have been observed to have unusually slow performance compared to SQLAlchemy's
-  fast C-based encoders/decoders.
+    INSERT INTO table (data) VALUES (_binary %s)
 
-In short:  don't specify ``use_unicode`` *at all*, with the possible
-exception of ``use_unicode=0`` on MySQLdb with Python 2 **only** for a
-potential performance gain.
+These character set introducers are provided by the DBAPI driver, assuming
+the use of mysqlclient or PyMySQL (both of which are recommended).  Add the
+query string parameter ``binary_prefix=true`` to the URL to repair this warning::
+
+    # mysqlclient
+    engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+
+    # PyMySQL
+    engine = create_engine("mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+
+The ``binary_prefix`` flag may or may not be supported by other MySQL drivers.
+
+SQLAlchemy itself cannot render this ``_binary`` prefix reliably, as it does not
+work with the NULL value, which is valid to be sent as a bound parameter.
+As the MySQL driver renders parameters directly into the SQL string, it's the
+most efficient place for this additional keyword to be passed.
+
+.. seealso::
+
+    `Character set introducers <https://dev.mysql.com/doc/refman/5.7/en/charset-introducer.html>`_ - on the MySQL website
+
 
 Ansi Quoting Style
 ------------------
