@@ -35,26 +35,50 @@ def _declared_mapping_info(cls):
         return None
 
 
-def _resolve_for_abstract(cls):
+def _resolve_for_abstract_or_classical(cls):
     if cls is object:
         return None
 
     if _get_immediate_cls_attr(cls, '__abstract__', strict=True):
         for sup in cls.__bases__:
-            sup = _resolve_for_abstract(sup)
+            sup = _resolve_for_abstract_or_classical(sup)
             if sup is not None:
                 return sup
         else:
             return None
     else:
+        classical = _dive_for_classically_mapped_class(cls)
+        if classical is not None:
+            return classical
+        else:
+            return cls
+
+
+def _dive_for_classically_mapped_class(cls):
+    # support issue #4321
+
+    # if we are within a base hierarchy, don't
+    # search at all for classical mappings
+    if hasattr(cls, '_decl_class_registry'):
+        return None
+
+    manager = instrumentation.manager_of_class(cls)
+    if manager is not None:
         return cls
+    else:
+        for sup in cls.__bases__:
+            mapper = _dive_for_classically_mapped_class(sup)
+            if mapper is not None:
+                return sup
+        else:
+            return None
 
 
 def _get_immediate_cls_attr(cls, attrname, strict=False):
     """return an attribute of the class that is either present directly
     on the class, e.g. not on a superclass, or is from a superclass but
-    this superclass is a mixin, that is, not a descendant of
-    the declarative base.
+    this superclass is a non-mapped mixin, that is, not a descendant of
+    the declarative base and is also not classically mapped.
 
     This is used to detect attributes that indicate something about
     a mapped class independently from any mapped classes that it may
@@ -66,10 +90,14 @@ def _get_immediate_cls_attr(cls, attrname, strict=False):
 
     for base in cls.__mro__:
         _is_declarative_inherits = hasattr(base, '_decl_class_registry')
+        _is_classicial_inherits = not _is_declarative_inherits and \
+            _dive_for_classically_mapped_class(base) is not None
+
         if attrname in base.__dict__ and (
             base is cls or
             ((base in cls.__bases__ if strict else True)
-                and not _is_declarative_inherits)
+                and not _is_declarative_inherits
+                and not _is_classicial_inherits)
         ):
             return getattr(base, attrname)
     else:
@@ -451,15 +479,24 @@ class _MapperConfig(object):
         cls = self.cls
         table_args = self.table_args
         declared_columns = self.declared_columns
+
+        # since we search for classical mappings now, search for
+        # multiple mapped bases as well and raise an error.
+        inherits = []
         for c in cls.__bases__:
-            c = _resolve_for_abstract(c)
+            c = _resolve_for_abstract_or_classical(c)
             if c is None:
                 continue
             if _declared_mapping_info(c) is not None and \
                     not _get_immediate_cls_attr(
                         c, '_sa_decl_prepare_nocascade', strict=True):
-                self.inherits = c
-                break
+                inherits.append(c)
+
+        if inherits:
+            if len(inherits) > 1:
+                raise exc.InvalidRequestError(
+                    "Class %s has multiple mapped bases: %r" % (cls, inherits))
+            self.inherits = inherits[0]
         else:
             self.inherits = None
 

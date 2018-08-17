@@ -1,5 +1,5 @@
 
-from sqlalchemy.testing import eq_, assert_raises, \
+from sqlalchemy.testing import eq_, le_, assert_raises, \
     assert_raises_message, is_, is_true, is_false
 from sqlalchemy.ext import declarative as decl
 import sqlalchemy as sa
@@ -8,7 +8,7 @@ from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     configure_mappers, clear_mappers, \
-    polymorphic_union, deferred, Session
+    polymorphic_union, deferred, Session, mapper
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, \
     ConcreteBase, has_inherited_table
 from sqlalchemy.testing import fixtures, mock
@@ -289,6 +289,95 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             primary_language = Column('primary_language', String(50))
 
         assert class_mapper(Engineer).inherits is class_mapper(Person)
+
+    def test_intermediate_abstract_class_on_classical(self):
+        class Person(object):
+            pass
+
+        person_table = Table('people', Base.metadata,
+                             Column('id', Integer, primary_key=True),
+                             Column('kind', String(50)))
+
+        mapper(Person, person_table,
+               polymorphic_on='kind', polymorphic_identity='person')
+
+        class SpecialPerson(Person):
+            __abstract__ = True
+
+        class Manager(SpecialPerson, Base):
+            __tablename__ = 'managers'
+            id = Column(Integer, ForeignKey(Person.id), primary_key=True)
+            __mapper_args__ = {
+                'polymorphic_identity': 'manager'
+            }
+
+        from sqlalchemy import inspect
+        assert inspect(Manager).inherits is inspect(Person)
+
+        eq_(set(class_mapper(Person).class_manager), {'id', 'kind'})
+        eq_(set(class_mapper(Manager).class_manager), {'id', 'kind'})
+
+    def test_intermediate_unmapped_class_on_classical(self):
+        class Person(object):
+            pass
+
+        person_table = Table('people', Base.metadata,
+                             Column('id', Integer, primary_key=True),
+                             Column('kind', String(50)))
+
+        mapper(Person, person_table,
+               polymorphic_on='kind', polymorphic_identity='person')
+
+        class SpecialPerson(Person):
+            pass
+
+        class Manager(SpecialPerson, Base):
+            __tablename__ = 'managers'
+            id = Column(Integer, ForeignKey(Person.id), primary_key=True)
+            __mapper_args__ = {
+                'polymorphic_identity': 'manager'
+            }
+
+        from sqlalchemy import inspect
+        assert inspect(Manager).inherits is inspect(Person)
+
+        eq_(set(class_mapper(Person).class_manager), {'id', 'kind'})
+        eq_(set(class_mapper(Manager).class_manager), {'id', 'kind'})
+
+    def test_class_w_invalid_multiple_bases(self):
+        class Person(object):
+            pass
+
+        person_table = Table('people', Base.metadata,
+                             Column('id', Integer, primary_key=True),
+                             Column('kind', String(50)))
+
+        mapper(Person, person_table,
+               polymorphic_on='kind', polymorphic_identity='person')
+
+        class DeclPerson(Base):
+            __tablename__ = 'decl_people'
+            id = Column(Integer, primary_key=True)
+            kind = Column(String(50))
+
+        class SpecialPerson(Person):
+            pass
+
+        def go():
+            class Manager(SpecialPerson, DeclPerson):
+                __tablename__ = 'managers'
+                id = Column(Integer,
+                            ForeignKey(DeclPerson.id), primary_key=True)
+                __mapper_args__ = {
+                    'polymorphic_identity': 'manager'
+                }
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Class .*Manager.* has multiple mapped "
+            r"bases: \[.*Person.*DeclPerson.*\]",
+            go
+        )
 
     def test_with_undefined_foreignkey(self):
 
