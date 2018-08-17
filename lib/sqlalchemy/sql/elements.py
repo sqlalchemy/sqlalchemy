@@ -641,6 +641,8 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     """A flag that can be flipped to prevent a column from being resolvable
     by string label name."""
 
+    _is_implicitly_boolean = False
+
     _alt_names = ()
 
     def self_group(self, against=None):
@@ -1229,6 +1231,7 @@ class TextClause(Executable, ClauseElement):
     _execution_options = \
         Executable._execution_options.union(
             {'autocommit': PARSE_AUTOCOMMIT})
+    _is_implicitly_boolean = False
 
     @property
     def _select_iterable(self):
@@ -1813,6 +1816,7 @@ class ClauseList(ClauseElement):
             self.clauses = [
                 text_converter(clause)
                 for clause in clauses]
+        self._is_implicitly_boolean = operators.is_boolean(self.operator)
 
     def __iter__(self):
         return iter(self.clauses)
@@ -1915,6 +1919,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
         self.operator = operator
         self.group_contents = True
         self.type = type_api.BOOLEANTYPE
+        self._is_implicitly_boolean = True
         return self
 
     @classmethod
@@ -2923,6 +2928,7 @@ class AsBoolean(UnaryExpression):
         self.negate = negate
         self.modifier = None
         self.wraps_column_expression = True
+        self._is_implicitly_boolean = element._is_implicitly_boolean
 
     def self_group(self, against=None):
         return self
@@ -2950,6 +2956,12 @@ class BinaryExpression(ColumnElement):
 
     __visit_name__ = 'binary'
 
+    _is_implicitly_boolean = True
+    """Indicates that any database will know this is a boolean expression
+    even if the database does not have an explicit boolean datatype.
+
+    """
+
     def __init__(self, left, right, operator, type_=None,
                  negate=None, modifiers=None):
         # allow compatibility with libraries that
@@ -2962,6 +2974,7 @@ class BinaryExpression(ColumnElement):
         self.operator = operator
         self.type = type_api.to_instance(type_)
         self.negate = negate
+        self._is_implicitly_boolean = operators.is_boolean(operator)
 
         if modifiers is None:
             self.modifiers = {}
@@ -3065,6 +3078,10 @@ class Grouping(ColumnElement):
 
     def self_group(self, against=None):
         return self
+
+    @util.memoized_property
+    def _is_implicitly_boolean(self):
+        return self.element._is_implicitly_boolean
 
     @property
     def _key_label(self):
@@ -3549,6 +3566,10 @@ class Label(ColumnElement):
 
     def __reduce__(self):
         return self.__class__, (self.name, self._element, self._type)
+
+    @util.memoized_property
+    def _is_implicitly_boolean(self):
+        return self.element._is_implicitly_boolean
 
     @util.memoized_property
     def _allow_label_resolve(self):
