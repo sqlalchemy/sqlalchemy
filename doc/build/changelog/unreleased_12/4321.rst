@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm, declarative
+    :tickets: 4321
+
+    Fixed issue in previously untested use case, allowing a declarative mapped
+    class to inherit from a classically-mapped class outside of the declarative
+    base, including that it accommodates for unmapped intermediate classes. An
+    unmapped intermediate class may specify ``__abstract__``, which is now
+    interpreted correctly, or the intermediate class can remain unmarked, and
+    the classically mapped base class will be detected within the hierarchy
+    regardless. In order to anticipate existing scenarios which may be mixing
+    in classical mappings into existing declarative hierarchies, an error is
+    now raised if multiple mapped bases are detected for a given class.
