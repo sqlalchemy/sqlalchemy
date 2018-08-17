@@ -248,21 +248,48 @@ required.
     <http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_ - \
     in the MySQL documentation
 
-Unicode Encoding / Decoding
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _mysql_binary_introducer:
 
-All modern MySQL DBAPIs all offer the service of handling the encoding and
-decoding of unicode data between the Python application space and the database.
-As this was not always the case, SQLAlchemy also includes a comprehensive
-system of performing the encode/decode task as well, which for MySQL dialects
-can be enabled by passing the flag ``use_unicode=0`` onto the query string, as
-in::
+Dealing with Binary Data Warnings and Unicode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    e = create_engine(
-        "mysql+mysqldb://scott:tiger@localhost/test?charset=utf8mb4&use_unicode=0")
+MySQL versions 5.6, 5.7 and later (not MariaDB at the time of this writing) now
+emit a warning when attempting to pass binary data to the database, while a
+character set encoding is also in place, when the binary data itself is not
+valid for that encoding::
 
-Current recommendations are to **not** use this flag.  All modern MySQL DBAPIs
-handle unicode natively as is required on Python 3 in any case.
+    default.py:509: Warning: (1300, "Invalid utf8mb4 character string: 'F9876A'")
+      cursor.execute(statement, parameters)
+
+This warning is due to the fact that the MySQL client library is attempting to
+interpret the binary string as a unicode object even if a datatype such as
+:class:`.LargeBinary` is in use.   To resolve this, the SQL statement requires
+a binary "character set introducer" be present before any non-NULL value
+that renders like this::
+
+    INSERT INTO table (data) VALUES (_binary %s)
+
+These character set introducers are provided by the DBAPI driver, assuming
+the use of mysqlclient or PyMySQL (both of which are recommended).  Add the
+query string parameter ``binary_prefix=true`` to the URL to repair this warning::
+
+    # mysqlclient
+    engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+
+    # PyMySQL
+    engine = create_engine("mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+
+The ``binary_prefix`` flag may or may not be supported by other MySQL drivers.
+
+SQLAlchemy itself cannot render this ``_binary`` prefix reliably, as it does not
+work with the NULL value, which is valid to be sent as a bound parameter.
+As the MySQL driver renders parameters directly into the SQL string, it's the
+most efficient place for this additional keyword to be passed.
+
+.. seealso::
+
+    `Character set introducers <https://dev.mysql.com/doc/refman/5.7/en/charset-introducer.html>`_ - on the MySQL website
+
 
 Ansi Quoting Style
 ------------------
