@@ -12,7 +12,85 @@
 
 .. changelog::
     :version: 1.2.11
-    :include_notes_from: unreleased_12
+    :released: August 20, 2018
+
+    .. change::
+        :tags: bug, py3k
+
+        Started importing "collections" from "collections.abc" under Python 3.3 and
+        greater for Python 3.8 compatibility.  Pull request courtesy Nathaniel
+        Knight.
+
+    .. change::
+        :tag: bug, sqlite
+
+        Fixed issue where the "schema" name used for a SQLite database within table
+        reflection would not quote the schema name correctly.  Pull request
+        courtesy Phillip Cloud.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4320
+
+        Fixed issue that is closely related to :ticket:`3639` where an expression
+        rendered in a boolean context on a non-native boolean backend would
+        be compared to 1/0 even though it is already an implcitly boolean
+        expression, when :meth:`.ColumnElement.self_group` were used.  While this
+        does not affect the user-friendly backends (MySQL, SQLite) it was not
+        handled by Oracle (and possibly SQL Server).   Whether or not the
+        expression is implicitly boolean on any database is now determined
+        up front as an additional check to not generate the integer comparison
+        within the compliation of the statement.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4309
+
+        For cx_Oracle, Integer datatypes will now be bound to "int", per advice
+        from the cx_Oracle developers.  Previously, using cx_Oracle.NUMBER caused a
+        loss in precision within the cx_Oracle 6.x series.
+
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 4321
+
+        Fixed issue in previously untested use case, allowing a declarative mapped
+        class to inherit from a classically-mapped class outside of the declarative
+        base, including that it accommodates for unmapped intermediate classes. An
+        unmapped intermediate class may specify ``__abstract__``, which is now
+        interpreted correctly, or the intermediate class can remain unmarked, and
+        the classically mapped base class will be detected within the hierarchy
+        regardless. In order to anticipate existing scenarios which may be mixing
+        in classical mappings into existing declarative hierarchies, an error is
+        now raised if multiple mapped bases are detected for a given class.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4322
+
+        Added missing window function parameters
+        :paramref:`.WithinGroup.over.range_` and :paramref:`.WithinGroup.over.rows`
+        parameters to the :meth:`.WithinGroup.over` and
+        :meth:`.FunctionFilter.over` methods, to correspond to the range/rows
+        feature added to the "over" method of SQL functions as part of
+        :ticket:`3049` in version 1.1.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4313
+
+        Fixed bug where the multi-table support for UPDATE and DELETE statements
+        did not consider the additional FROM elements as targets for correlation,
+        when a correlated SELECT were also combined with the statement.  This
+        change now includes that a SELECT statement in the WHERE clause for such a
+        statement will try to auto-correlate back to these additional tables in the
+        parent UPDATE/DELETE or unconditionally correlate if
+        :meth:`.Select.correlate` is used.  Note that auto-correlation raises an
+        error if the SELECT statement would have no FROM clauses as a result, which
+        can now occur if the parent UPDATE/DELETE specifies the same tables in its
+        additional set of tables; specify :meth:`.Select.correlate` explicitly to
+        resolve.
 
 .. changelog::
     :version: 1.2.10

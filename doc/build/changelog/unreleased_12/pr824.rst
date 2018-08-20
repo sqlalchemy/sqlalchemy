@@ -1,6 +1,0 @@
-.. change::
-    :tag: bug, sqlite
-
-    Fixed issue where the "schema" name used for a SQLite database within table
-    reflection would not quote the schema name correctly.  Pull request
-    courtesy Phillip Cloud.
