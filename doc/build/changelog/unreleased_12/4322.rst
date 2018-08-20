@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4322
+
+    Added missing window function parameters
+    :paramref:`.WithinGroup.over.range_` and :paramref:`.WithinGroup.over.rows`
+    parameters to the :meth:`.WithinGroup.over` and
+    :meth:`.FunctionFilter.over` methods, to correspond to the range/rows
+    feature added to the "over" method of SQL functions as part of
+    :ticket:`3049` in version 1.1.

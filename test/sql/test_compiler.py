@@ -2485,6 +2485,50 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             func.row_number().over, range_=(-5, 8), rows=(-2, 5)
         )
 
+    def test_over_within_group(self):
+        from sqlalchemy import within_group
+        stmt = select([
+            table1.c.myid,
+            within_group(
+                func.percentile_cont(0.5),
+                table1.c.name.desc()
+            ).over(
+                range_=(1, 2),
+                partition_by=table1.c.name,
+                order_by=table1.c.myid
+            )
+        ])
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name DESC) "
+            "OVER (PARTITION BY mytable.name ORDER BY mytable.myid "
+            "RANGE BETWEEN :param_1 FOLLOWING AND :param_2 FOLLOWING) "
+            "AS anon_1 FROM mytable"
+        )
+
+        stmt = select([
+            table1.c.myid,
+            within_group(
+                func.percentile_cont(0.5),
+                table1.c.name.desc()
+            ).over(
+                rows=(1, 2),
+                partition_by=table1.c.name,
+                order_by=table1.c.myid
+            )
+        ])
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name DESC) "
+            "OVER (PARTITION BY mytable.name ORDER BY mytable.myid "
+            "ROWS BETWEEN :param_1 FOLLOWING AND :param_2 FOLLOWING) "
+            "AS anon_1 FROM mytable"
+        )
+
+
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,

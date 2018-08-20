@@ -3368,7 +3368,7 @@ class WithinGroup(ColumnElement):
                 *util.to_list(order_by),
                 _literal_as_text=_literal_as_label_reference)
 
-    def over(self, partition_by=None, order_by=None):
+    def over(self, partition_by=None, order_by=None, range_=None, rows=None):
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
 
@@ -3376,7 +3376,9 @@ class WithinGroup(ColumnElement):
         :meth:`.FunctionElement.over`.
 
         """
-        return Over(self, partition_by=partition_by, order_by=order_by)
+        return Over(
+            self, partition_by=partition_by, order_by=order_by,
+            range_=range_, rows=rows)
 
     @util.memoized_property
     def type(self):
@@ -3477,7 +3479,7 @@ class FunctionFilter(ColumnElement):
 
         return self
 
-    def over(self, partition_by=None, order_by=None):
+    def over(self, partition_by=None, order_by=None, range_=None, rows=None):
         """Produce an OVER clause against this filtered function.
 
         Used against aggregate or so-called "window" functions,
@@ -3495,7 +3497,9 @@ class FunctionFilter(ColumnElement):
         See :func:`~.expression.over` for a full description.
 
         """
-        return Over(self, partition_by=partition_by, order_by=order_by)
+        return Over(
+            self, partition_by=partition_by, order_by=order_by,
+            range_=range_, rows=rows)
 
     @util.memoized_property
     def type(self):

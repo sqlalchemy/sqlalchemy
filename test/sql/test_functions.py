@@ -513,6 +513,38 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM mytable"
         )
 
+    def test_funcfilter_windowing_range(self):
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    range_=(1, 5),
+                    partition_by=['description']
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (PARTITION BY mytable.description RANGE BETWEEN :param_1 "
+            "FOLLOWING AND :param_2 FOLLOWING) "
+            "AS anon_1 FROM mytable"
+        )
+
+    def test_funcfilter_windowing_rows(self):
+        self.assert_compile(
+            select([
+                func.rank().filter(
+                    table1.c.name > 'foo'
+                ).over(
+                    rows=(1, 5),
+                    partition_by=['description']
+                )
+            ]),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (PARTITION BY mytable.description ROWS BETWEEN :param_1 "
+            "FOLLOWING AND :param_2 FOLLOWING) "
+            "AS anon_1 FROM mytable"
+        )
+
     def test_funcfilter_within_group(self):
         stmt = select([
             table1.c.myid,
