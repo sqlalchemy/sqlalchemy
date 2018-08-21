@@ -39,10 +39,12 @@ class Full(Exception):
 
 
 class Queue:
-    def __init__(self, maxsize=0):
+    def __init__(self, maxsize=0, use_lifo=False):
         """Initialize a queue object with a given maximum size.
 
         If `maxsize` is <= 0, the queue size is infinite.
+
+        If `use_lifo` is True, this Queue acts like a Stack (LIFO).
         """
 
         self._init(maxsize)
@@ -57,6 +59,8 @@ class Queue:
         # Notify not_full whenever an item is removed from the queue;
         # a thread waiting to put is notified then.
         self.not_full = threading.Condition(self.mutex)
+        # If this queue uses LIFO or FIFO
+        self.use_lifo = use_lifo
 
     def qsize(self):
         """Return the approximate size of the queue (not reliable!)."""
@@ -196,4 +200,9 @@ class Queue:
 
     # Get an item from the queue
     def _get(self):
-        return self.queue.popleft()
+        if self.use_lifo:
+            # LIFO
+            return self.queue.pop()
+        else:
+            # FIFO
+            return self.queue.popleft()

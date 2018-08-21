@@ -313,6 +313,34 @@ well as for casting decimal bind values for MySQL.
 
 :ticket:`3981`
 
+.. _change_pr467:
+
+New last-in-first-out strategy for QueuePool
+---------------------------------------------
+
+The connection pool usually used by :func:`.create_engine` is known
+as :class:`.QueuePool`.  This pool uses an object equivalent to Python's
+built-in ``Queue`` class in order to store database connections waiting
+to be used.   The ``Queue`` features first-in-first-out behavior, which is
+intended to provide a round-robin use of the database connections that are
+persistently in the pool.   However, a potential downside of this is that
+when the utilization of the pool is low, the re-use of each connection in series
+means that a server-side timeout strategy that attempts to reduce unused
+connections is prevented from shutting down these connections.   To suit
+this use case, a new flag :paramref:`.create_engine.pool_use_lifo` is added
+which reverses the ``.get()`` method of the ``Queue`` to pull the connection
+from the beginning of the queue instead of the end, essentially turning the
+"queue" into a "stack" (adding a whole new pool called ``StackPool`` was
+considered, however this was too much verbosity).
+
+.. seealso::
+
+    :ref:`pool_use_lifo`
+
+
+
+
+
 Key Behavioral Changes - Core
 =============================
 
