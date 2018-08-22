@@ -909,6 +909,41 @@ class ReflectionTest(fixtures.TestBase):
             }])
 
     @testing.provide_metadata
+    def test_inspect_enums_case_sensitive(self):
+        enum_type = postgresql.ENUM(
+            'CapsOne', 'CapsTwo', name='UpperCase', metadata=self.metadata)
+        enum_type.create(testing.db)
+        inspector = reflection.Inspector.from_engine(testing.db)
+        eq_(inspector.get_enums(), [
+            {
+                'visible': True,
+                'labels': ['CapsOne', 'CapsTwo'],
+                'name': 'UpperCase',
+                'schema': 'public'
+            }])
+
+    @testing.provide_metadata
+    def test_inspect_enums_case_sensitive_from_table(self):
+        enum_type = postgresql.ENUM(
+            'CapsOne', 'CapsTwo', name='UpperCase', metadata=self.metadata)
+
+        t = Table('t', self.metadata, Column('q', enum_type))
+
+        enum_type.create(testing.db)
+        t.create(testing.db)
+
+        inspector = reflection.Inspector.from_engine(testing.db)
+        cols = inspector.get_columns("t")
+        cols[0]['type'] = (cols[0]['type'].name, cols[0]['type'].enums)
+        eq_(cols, [
+            {
+                'name': 'q',
+                'type': ('UpperCase', ['CapsOne', 'CapsTwo']),
+                'nullable': True, 'default': None,
+                'autoincrement': False, 'comment': None}
+        ])
+
+    @testing.provide_metadata
     def test_inspect_enums_star(self):
         enum_type = postgresql.ENUM(
             'cat', 'dog', 'rat', name='pet', metadata=self.metadata)

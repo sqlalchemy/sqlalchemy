@@ -2599,6 +2599,9 @@ class PGDialect(default.DefaultDialect):
         # with time zone, geometry(POLYGON), etc.
         attype = re.sub(r'\(.*\)', '', format_type)
 
+        # strip quotes from case sensitive enum names
+        attype = re.sub(r'^"|"$', '', attype)
+
         # strip '[]' from integer[], etc.
         attype = attype.replace('[]', '')
 
@@ -3128,7 +3131,6 @@ class PGDialect(default.DefaultDialect):
                     'labels': [enum['label']],
                 }
                 enums.append(enum_rec)
-
         return enums
 
     def _load_domains(self, connection):
