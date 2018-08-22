@@ -1571,6 +1571,13 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t"
         )
 
+    def test_literal_binds(self):
+        self.assert_compile(
+            select([self.table]).distinct(self.table.c.a == 10),
+            "SELECT DISTINCT ON (t.a = 10) t.id, t.a, t.b FROM t",
+            literal_binds=True
+        )
+
     def test_query_plain(self):
         sess = Session()
         self.assert_compile(
