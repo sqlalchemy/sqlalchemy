@@ -1525,7 +1525,7 @@ class PGCompiler(compiler.SQLCompiler):
                 return "DISTINCT "
             elif isinstance(select._distinct, (list, tuple)):
                 return "DISTINCT ON (" + ', '.join(
-                    [self.process(col) for col in select._distinct]
+                    [self.process(col, **kw) for col in select._distinct]
                 ) + ") "
             else:
                 return "DISTINCT ON (" + \
