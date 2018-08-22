@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4324
+
+    Fixed the :func:`.postgresql.array_agg` function, which is a slightly
+    altered version of the usual :func:`.functions.array_agg` function, to also
+    accept an incoming "type" argument without forcing an ARRAY around it,
+    essentially the same thing that was fixed for the generic function in 1.1
+    in :ticket:`4107`.
