@@ -7,6 +7,7 @@ from sqlalchemy import testing
 from sqlalchemy import Sequence, Table, Column, Integer, update, String,\
     func, MetaData, Enum, Index, and_, delete, select, cast, text, \
     Text, null
+from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
 from sqlalchemy import exc, schema
 from sqlalchemy.dialects import postgresql
@@ -16,6 +17,8 @@ from sqlalchemy.sql import table, column, operators, literal_column
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.util import u, OrderedDict
 from sqlalchemy.dialects.postgresql import aggregate_order_by, insert
+from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
+from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1096,6 +1099,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT string_agg(table1.a, ',' ORDER BY table1.a) "
             "AS string_agg_1 FROM table1"
         )
+
+    def test_pg_array_agg_implicit_pg_array(self):
+
+        expr = pg_array_agg(column('data', Integer))
+        assert isinstance(expr.type, PG_ARRAY)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_pg_array_agg_uses_base_array(self):
+
+        expr = pg_array_agg(column('data', sqltypes.ARRAY(Integer)))
+        assert isinstance(expr.type, sqltypes.ARRAY)
+        assert not isinstance(expr.type, PG_ARRAY)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_pg_array_agg_uses_pg_array(self):
+
+        expr = pg_array_agg(column('data', PG_ARRAY(Integer)))
+        assert isinstance(expr.type, PG_ARRAY)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_pg_array_agg_explicit_base_array(self):
+
+        expr = pg_array_agg(column(
+            'data', sqltypes.ARRAY(Integer)), type_=sqltypes.ARRAY(Integer))
+        assert isinstance(expr.type, sqltypes.ARRAY)
+        assert not isinstance(expr.type, PG_ARRAY)
+        is_(expr.type.item_type._type_affinity, Integer)
+
+    def test_pg_array_agg_explicit_pg_array(self):
+
+        expr = pg_array_agg(column(
+            'data', sqltypes.ARRAY(Integer)), type_=PG_ARRAY(Integer))
+        assert isinstance(expr.type, PG_ARRAY)
+        is_(expr.type.item_type._type_affinity, Integer)
 
     def test_aggregate_order_by_adapt(self):
         m = MetaData()

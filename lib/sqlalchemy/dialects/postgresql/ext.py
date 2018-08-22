@@ -209,10 +209,11 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
 def array_agg(*arg, **kw):
     """PostgreSQL-specific form of :class:`.array_agg`, ensures
     return type is :class:`.postgresql.ARRAY` and not
-    the plain :class:`.types.ARRAY`.
+    the plain :class:`.types.ARRAY`, unless an explicit ``type_``
+    is passed.
 
     .. versionadded:: 1.1
 
     """
-    kw['type_'] = ARRAY(functions._type_from_args(arg))
+    kw['_default_array_type'] = ARRAY
     return functions.func.array_agg(*arg, **kw)
