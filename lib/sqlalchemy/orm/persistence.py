@@ -1136,6 +1136,9 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
 def _postfetch_post_update(mapper, uowtransaction, table,
                            state, dict_, result, params):
+    if uowtransaction.is_deleted(state):
+        return
+
     prefetch_cols = result.context.compiled.prefetch
     postfetch_cols = result.context.compiled.postfetch
 
