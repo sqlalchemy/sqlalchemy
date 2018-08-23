@@ -500,6 +500,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
                                  (self.parent, self.key, self.parent))
 
         class NoninheritedConcreteProp(object):
+
             def __set__(s, obj, value):
                 warn()
 
