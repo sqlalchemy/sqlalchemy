@@ -271,6 +271,8 @@ def create_proxied_attribute(descriptor):
             self._adapt_to_entity = adapt_to_entity
             self.__doc__ = doc
 
+        _is_internal_proxy = True
+
         @property
         def property(self):
             return self.comparator.property

@@ -1325,6 +1325,52 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
         eq_(MyModel.type_.__doc__, """this is a document.""")
         eq_(MyModel.t2.__doc__, """this is another document.""")
 
+    def test_correct_for_proxies(self):
+        from sqlalchemy.ext.hybrid import hybrid_property
+        from sqlalchemy.ext import hybrid
+        from sqlalchemy import inspect
+
+        class Mixin(object):
+            @hybrid_property
+            def hp1(cls):
+                return 42
+
+            @declared_attr
+            def hp2(cls):
+                @hybrid_property
+                def hp2(self):
+                    return 42
+
+                return hp2
+
+        class Base(declarative_base(), Mixin):
+            __tablename__ = 'test'
+            id = Column(String, primary_key=True)
+
+        class Derived(Base):
+            pass
+
+        # in all cases we get a proxy when we use class-bound access
+        # for the hybrid
+        assert Base.hp1._is_internal_proxy
+        assert Base.hp2._is_internal_proxy
+        assert Derived.hp1._is_internal_proxy
+        assert Derived.hp2._is_internal_proxy
+
+        # however when declarative sets it up, it checks for this proxy
+        # and adjusts
+        b1 = inspect(Base)
+        d1 = inspect(Derived)
+        is_(
+            b1.all_orm_descriptors['hp1'],
+            d1.all_orm_descriptors['hp1'],
+        )
+
+        is_(
+            b1.all_orm_descriptors['hp2'],
+            d1.all_orm_descriptors['hp2'],
+        )
+
     def test_column_in_mapper_args(self):
 
         class MyMixin(object):

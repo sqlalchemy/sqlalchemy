@@ -11,7 +11,7 @@ from ...orm import mapper, class_mapper, synonym
 from ...orm.interfaces import MapperProperty
 from ...orm.properties import ColumnProperty, CompositeProperty
 from ...orm.attributes import QueryableAttribute
-from ...orm.base import _is_mapped_class
+from ...orm.base import _is_mapped_class, InspectionAttr
 from ... import util, exc
 from ...util import topological
 from ...sql import expression
@@ -287,8 +287,18 @@ class _MapperConfig(object):
                                 util.warn_deprecated(
                                     "Use of sqlalchemy.util.classproperty on "
                                     "declarative classes is deprecated.")
-                            dict_[name] = column_copies[obj] = \
-                                ret = getattr(cls, name)
+                            # access attribute using normal class access
+                            ret = getattr(cls, name)
+
+                            # correct for proxies created from hybrid_property
+                            # or similar.  note there is no known case that
+                            # produces nested proxies, so we are only
+                            # looking one level deep right now.
+                            if isinstance(ret, InspectionAttr) and \
+                                    ret._is_internal_proxy:
+                                ret = ret.descriptor
+
+                            dict_[name] = column_copies[obj] = ret
                         if isinstance(ret, (Column, MapperProperty)) and \
                                 ret.doc is None:
                             ret.doc = obj.__doc__
