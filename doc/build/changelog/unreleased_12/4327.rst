@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4327
+
+    Fixed 1.2 regression caused by :ticket:`3472` where the handling of an
+    "updated_at" style column within the context of a post-update operation
+    would also occur for a row that is to be deleted following the update,
+    meaning both that a column with a Python-side value generator would show
+    the now-deleted value that was emitted for the UPDATE before the DELETE
+    (which was not the previous behavor), as well as that a SQL- emitted value
+    generator would have the attribute expired, meaning the previous value
+    would be unreachable due to the row having been deleted and the object
+    detached from the session.The "postfetch" logic that was added as part of
+    :ticket:`3472` is now skipped entirely for an object that ultimately is to
+    be deleted.

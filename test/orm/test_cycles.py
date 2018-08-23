@@ -16,6 +16,7 @@ from sqlalchemy.testing import eq_, is_
 from sqlalchemy.testing.assertsql import RegexSQL, CompiledSQL, AllOf
 from sqlalchemy.testing import fixtures
 from itertools import count
+from sqlalchemy import select
 
 
 class SelfReferentialTest(fixtures.MappedTest):
@@ -1330,9 +1331,9 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
         )
 
 
-class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
+from sqlalchemy import bindparam
 
-    counter = count()
+class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
 
     @classmethod
     def setup_classes(cls):
@@ -1341,11 +1342,19 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         class A(Base):
             __tablename__ = 'a'
             id = Column(Integer, primary_key=True)
+            data = Column(Integer)
             favorite_b_id = Column(ForeignKey('b.id', name="favorite_b_fk"))
             bs = relationship("B", primaryjoin="A.id == B.a_id")
             favorite_b = relationship(
                 "B", primaryjoin="A.favorite_b_id == B.id", post_update=True)
             updated = Column(Integer, onupdate=lambda: next(cls.counter))
+            updated_db = Column(
+                Integer,
+                onupdate=bindparam(
+                    key='foo',
+                    callable_=lambda: next(cls.db_counter)
+                )
+            )
 
         class B(Base):
             __tablename__ = 'b'
@@ -1355,6 +1364,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
     def setup(self):
         super(PostUpdateOnUpdateTest, self).setup()
         PostUpdateOnUpdateTest.counter = count()
+        PostUpdateOnUpdateTest.db_counter = count()
 
     def test_update_defaults(self):
         A, B = self.classes("A", "B")
@@ -1369,12 +1379,14 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         s.flush()
 
         eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
 
     def test_update_defaults_refresh_flush_event(self):
         A, B = self.classes("A", "B")
 
         canary = mock.Mock()
-        event.listen(A, "refresh_flush", canary)
+        event.listen(A, "refresh_flush", canary.refresh_flush)
+        event.listen(A, "expire", canary.expire)
 
         s = Session()
         a1 = A()
@@ -1386,10 +1398,157 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         s.flush()
 
         eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
         eq_(
             canary.mock_calls,
             [
-                mock.call(a1, mock.ANY, ['updated'])
+                mock.call.refresh_flush(a1, mock.ANY, ['updated']),
+                mock.call.expire(a1, ['updated_db']),
+            ]
+        )
+
+    def test_update_defaults_refresh_flush_event_no_postupdate(self):
+        # run the same test as test_update_defaults_refresh_flush_event
+        # but don't actually use any postupdate functionality
+        A, = self.classes("A")
+
+        canary = mock.Mock()
+        event.listen(A, "refresh_flush", canary.refresh_flush)
+        event.listen(A, "expire", canary.expire)
+
+        s = Session()
+        a1 = A()
+
+        s.add(a1)
+        s.flush()
+
+        eq_(a1.updated, None)
+        eq_(a1.updated_db, None)
+
+        # now run a normal UPDATE
+        a1.data = 5
+        s.flush()
+
+        # now they are updated
+        eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.refresh_flush(a1, mock.ANY, ['updated']),
+                mock.call.expire(a1, ['updated_db']),
+            ]
+        )
+
+    def test_update_defaults_dont_expire_on_delete(self):
+        A, B = self.classes("A", "B")
+
+        canary = mock.Mock()
+        event.listen(A, "refresh_flush", canary.refresh_flush)
+        event.listen(A, "expire", canary.expire)
+
+        s = Session()
+        a1 = A()
+        b1 = B()
+
+        a1.bs.append(b1)
+        a1.favorite_b = b1
+        s.add(a1)
+        s.flush()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.refresh_flush(a1, mock.ANY, ['updated']),
+                mock.call.expire(a1, ['updated_db']),
+            ]
+        )
+
+        # ensure that we load this value here, we want to see that it
+        # stays the same and isn't expired below.
+        eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
+
+        s.delete(a1)
+        s.flush()
+
+        assert a1 not in s
+
+        # both the python-side default and the server side default
+        # *did* get bumped for the UPDATE, however the row was then
+        # deleted, show what the values were *before* the UPDATE.
+        eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
+        eq_(
+            canary.mock_calls,
+            [
+                # previous flush
+                mock.call.refresh_flush(a1, mock.ANY, ['updated']),
+                mock.call.expire(a1, ['updated_db']),
+
+                # nothing happened
+            ]
+        )
+
+        eq_(next(self.counter), 2)
+
+    def test_update_defaults_dont_expire_on_delete_no_postupdate(self):
+        # run the same test as
+        # test_update_defaults_dont_expire_on_delete_no_postupdate
+        # but don't actually use any postupdate functionality
+        A, = self.classes("A")
+
+        canary = mock.Mock()
+        event.listen(A, "refresh_flush", canary.refresh_flush)
+        event.listen(A, "expire", canary.expire)
+
+        s = Session()
+        a1 = A()
+
+        s.add(a1)
+        s.flush()
+
+        eq_(a1.updated, None)
+        eq_(a1.updated_db, None)
+
+        a1.data = 5
+        s.flush()
+
+        eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.refresh_flush(a1, mock.ANY, ['updated']),
+                mock.call.expire(a1, ['updated_db']),
+            ]
+        )
+
+        # ensure that we load this value here, we want to see that it
+        # stays the same and isn't expired below.
+        eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
+
+        s.delete(a1)
+        s.flush()
+
+        assert a1 not in s
+
+        # no UPDATE was emitted here, so they stay at zero.  but the
+        # server-side default wasn't expired either even though the row
+        # was deleted.
+        eq_(a1.updated, 0)
+        eq_(a1.updated_db, 0)
+        eq_(
+            canary.mock_calls,
+            [
+                # previous flush
+                mock.call.refresh_flush(a1, mock.ANY, ['updated']),
+                mock.call.expire(a1, ['updated_db']),
+
+
+                # nothing called for this flush
             ]
         )
 
@@ -1403,8 +1562,13 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         a1.bs.append(b1)
         a1.favorite_b = b1
         a1.updated = 5
+        a1.updated_db = 7
         s.add(a1)
         s.flush()
 
+        # doesn't require DB access
+        s.expunge(a1)
+
         eq_(a1.updated, 5)
+        eq_(a1.updated_db, 7)
 
