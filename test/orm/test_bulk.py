@@ -1,6 +1,7 @@
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import mock
 from sqlalchemy.testing import fixtures
 from sqlalchemy import Integer, String, ForeignKey, FetchedValue
 from sqlalchemy.orm import mapper, Session
@@ -106,6 +107,56 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
             ),
         )
         eq_(objects[0].__dict__['id'], 1)
+
+    def test_bulk_save_mappings_preserve_order(self):
+        User, = self.classes("User", )
+
+        s = Session()
+
+        # commit some object into db
+        user1 = User(name="i1")
+        user2 = User(name="i2")
+        s.add(user1)
+        s.add(user2)
+        s.commit()
+
+        # make some changes
+        user1.name = "u1"
+        user3 = User(name="i3")
+        s.add(user3)
+        user2.name = "u2"
+
+        objects = [user1, user3, user2]
+
+        from sqlalchemy import inspect
+
+        def _bulk_save_mappings(
+                mapper, mappings, isupdate, isstates,
+                return_defaults, update_changed_only, render_nulls):
+            mock_method(list(mappings), isupdate)
+
+        mock_method = mock.Mock()
+        with mock.patch.object(s, '_bulk_save_mappings', _bulk_save_mappings):
+            s.bulk_save_objects(objects)
+            eq_(
+                mock_method.mock_calls,
+                [
+                    mock.call([inspect(user1)], True),
+                    mock.call([inspect(user3)], False),
+                    mock.call([inspect(user2)], True),
+                ]
+            )
+
+        mock_method = mock.Mock()
+        with mock.patch.object(s, '_bulk_save_mappings', _bulk_save_mappings):
+            s.bulk_save_objects(objects, preserve_order=False)
+            eq_(
+                mock_method.mock_calls,
+                [
+                    mock.call([inspect(user3)], False),
+                    mock.call([inspect(user1), inspect(user2)], True),
+                ]
+            )
 
     def test_bulk_save_no_defaults(self):
         User, = self.classes("User",)
