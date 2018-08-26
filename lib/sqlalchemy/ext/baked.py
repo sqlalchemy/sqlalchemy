@@ -154,6 +154,19 @@ class BakedQuery(object):
         self._spoiled = True
         return self
 
+    def _effective_key(self, session):
+        """Return the key that actually goes into the cache dictionary for
+        this :class:`.BakedQuery`, taking into account the given
+        :class:`.Session`.
+
+        This basically means we also will include the session's query_class,
+        as the actual :class:`.Query` object is part of what's cached
+        and needs to match the type of :class:`.Query` that a later
+        session will want to use.
+
+        """
+        return self._cache_key + (session._query_cls, )
+
     def _with_lazyload_options(self, options, effective_path, cache_path=None):
         """Cloning version of _add_lazyload_options.
         """
@@ -195,10 +208,10 @@ class BakedQuery(object):
         )
 
     def _retrieve_baked_query(self, session):
-        query = self._bakery.get(self._cache_key, None)
+        query = self._bakery.get(self._effective_key(session), None)
         if query is None:
             query = self._as_query(session)
-            self._bakery[self._cache_key] = query.with_session(None)
+            self._bakery[self._effective_key(session)] = query.with_session(None)
         return query.with_session(session)
 
     def _bake(self, session):
@@ -218,7 +231,7 @@ class BakedQuery(object):
                 '_correlate', '_from_obj', '_mapper_adapter_map',
                 '_joinpath', '_joinpoint'):
             query.__dict__.pop(attr, None)
-        self._bakery[self._cache_key] = context
+        self._bakery[self._effective_key(session)] = context
         return context
 
     def _as_query(self, session):
@@ -332,7 +345,7 @@ class Result(object):
         if not self.session.enable_baked_queries or bq._spoiled:
             return iter(self._as_query())
 
-        baked_context = bq._bakery.get(bq._cache_key, None)
+        baked_context = bq._bakery.get(bq._effective_key(self.session), None)
         if baked_context is None:
             baked_context = bq._bake(self.session)
 

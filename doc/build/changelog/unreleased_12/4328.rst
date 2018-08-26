@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 4328
+
+    Fixed issue where :class:`.BakedQuery` did not include the specific query
+    class used by the :class:`.Session` as part of the cache key, leading to
+    incompatibilities when using custom query classes, in particular the
+    :class:`.ShardedQuery` which has some different argument signatures.
