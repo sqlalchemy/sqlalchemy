@@ -295,6 +295,32 @@ class ShardTest(object):
              'south_america']
         )
 
+    def test_baked_mix(self):
+        sess = self._fixture_data()
+
+        tokyo = sess.query(WeatherLocation).filter_by(city="Tokyo").one()
+        tokyo.city
+        sess.expunge_all()
+
+        from sqlalchemy.ext.baked import BakedQuery
+
+        bakery = BakedQuery.bakery()
+
+        def get_tokyo(sess):
+            bq = bakery(lambda session: session.query(WeatherLocation))
+            t = bq(sess).get(tokyo.id)
+            return t
+
+        Sess = sessionmaker(class_=Session, bind=db2,
+                                      autoflush=True, autocommit=False)
+        sess2 = Sess()
+
+        t = get_tokyo(sess)
+        eq_(t.city, tokyo.city)
+
+        t = get_tokyo(sess2)
+        eq_(t.city, tokyo.city)
+
 
 from sqlalchemy.testing import provision
 
