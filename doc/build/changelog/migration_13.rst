@@ -140,7 +140,7 @@ and can't easily be generalized for more complex queries.
 
 :ticket:`4246`
 
-.. _change_3844
+.. _change_3844:
 
 passive_deletes='all' will leave FK unchanged for object removed from collection
 --------------------------------------------------------------------------------
