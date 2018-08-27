@@ -1,0 +1,9 @@
+.. change::
+    :tags: feature, ext
+    :tickets: 4318
+
+    Added new feature :meth:`.BakedQuery.to_query`, which allows for a
+    clean way of using one :class:`.BakedQuery` as a subquery inside of another
+    :class:`.BakedQuery` without needing to refer explicitly to a
+    :class:`.Session`.
+

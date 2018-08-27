@@ -7,10 +7,12 @@ from test.orm import _fixtures
 from sqlalchemy.ext import baked
 from sqlalchemy import bindparam, func
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm.query import Query
 import itertools
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 import contextlib
+from sqlalchemy import exc as sa_exc
 
 
 class BakedTest(_fixtures.FixtureTest):
@@ -740,6 +742,64 @@ class ResultTest(BakedTest):
                     eq_(result, [(7, 'jack')])
 
                 sess.close()
+
+    def test_to_query_query(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sub_bq = self.bakery(
+            lambda s: s.query(User.name)
+        )
+        sub_bq += lambda q: q.filter(
+            User.id == Address.user_id).filter(User.name == 'ed').\
+            correlate(Address)
+
+        main_bq = self.bakery(lambda s: s.query(Address.id))
+        main_bq += lambda q: q.filter(
+            sub_bq.to_query(q).exists())
+        main_bq += lambda q: q.order_by(Address.id)
+
+        sess = Session()
+        result = main_bq(sess).all()
+        eq_(result, [(2,), (3,), (4,)])
+
+    def test_to_query_session(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sub_bq = self.bakery(
+            lambda s: s.query(User.name)
+        )
+        sub_bq += lambda q: q.filter(
+            User.id == Address.user_id).correlate(Address)
+
+        main_bq = self.bakery(
+            lambda s: s.query(Address.id, sub_bq.to_query(s).as_scalar()))
+        main_bq += lambda q: q.filter(sub_bq.to_query(q).as_scalar() == 'ed')
+        main_bq += lambda q: q.order_by(Address.id)
+
+        sess = Session()
+        result = main_bq(sess).all()
+        eq_(result, [(2, 'ed'), (3, 'ed'), (4, 'ed')])
+
+    def test_to_query_args(self):
+        User = self.classes.User
+        sub_bq = self.bakery(
+            lambda s: s.query(User.name)
+        )
+
+        q = Query([], None)
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Given Query needs to be associated with a Session",
+            sub_bq.to_query, q
+        )
+
+        assert_raises_message(
+            TypeError,
+            "Query or Session object expected, got .*'int'.*",
+            sub_bq.to_query, 5
+        )
 
     def test_subquery_eagerloading(self):
         User = self.classes.User

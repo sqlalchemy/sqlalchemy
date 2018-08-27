@@ -372,24 +372,27 @@ Using Subqueries
 When using :class:`.Query` objects, it is often needed that one :class:`.Query`
 object is used to generate a subquery within another.   In the case where the
 :class:`.Query` is currently in baked form, an interim method may be used to
-retrieve the :class:`.Query` object, using the semi-private ``_as_query()``
-method.  This method requires that a :class:`.Session` is passed, which should
-be relative to the :class:`.Session` that is in the lambda callable, e.g.
-``q.session`` or ``s``::
+retrieve the :class:`.Query` object, using the :meth:`.BakedQuery.to_query`
+method.  This method is passed the :class:`.Session` or :class:`.Query` that is
+the argument to the lambda callable used to generate a particular step
+of the baked query::
 
     bakery = baked.bakery()
 
+    # a baked query that will end up being used as a subquery
     my_subq = bakery(lambda s: s.query(User.id))
     my_subq += lambda q: q.filter(User.id == Address.user_id)
 
-    # select a correlated subquery in the top columns list
+    # select a correlated subquery in the top columns list,
+    # we have the "session" argument, pass that
     my_q = bakery(
-      lambda s: s.query(Address.id, my_subq._as_query(s).as_scalar()))
+      lambda s: s.query(Address.id, my_subq.to_query(s).as_scalar()))
 
-    # use a correlated subquery in some of the criteria
-    my_q += lambda q: q.filter(my_subq._as_query(q.session).exists())
+    # use a correlated subquery in some of the criteria, we have
+    # the "query" argument, pass that.
+    my_q += lambda q: q.filter(my_subq.to_query(q).exists())
 
-A future feature will provide a public method for the above use case.
+.. versionadded:: 1.3
 
 
 Disabling Baked Queries Session-wide
