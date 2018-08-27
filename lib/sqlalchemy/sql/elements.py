@@ -1065,10 +1065,9 @@ class BindParameter(ColumnElement):
           an IN clause.
 
           .. note:: The "expanding" feature does not support "executemany"-
-             style parameter sets, nor does it support empty IN expressions.
-
-          .. note:: The "expanding" feature should be considered as
-             **experimental** within the 1.2 series.
+             style parameter sets.  In the 1.2 series it does not support
+             empty IN expressions, however it does support these in
+             version 1.3.
 
           .. versionadded:: 1.2
 
