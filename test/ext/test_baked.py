@@ -1,14 +1,11 @@
 from sqlalchemy.orm import Session, subqueryload, \
-    mapper, relationship, lazyload, clear_mappers, backref, aliased, \
-    Load, defaultload
+    mapper, relationship, lazyload, backref, aliased, Load, defaultload
 from sqlalchemy.testing import eq_, is_, is_not_
-from sqlalchemy.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy import testing
-from sqlalchemy import inspect
 from test.orm import _fixtures
-from sqlalchemy.ext.baked import BakedQuery
 from sqlalchemy.ext import baked
-from sqlalchemy import bindparam, func, literal_column
+from sqlalchemy import bindparam, func
 from sqlalchemy.orm import exc as orm_exc
 import itertools
 from sqlalchemy.testing import mock
@@ -42,7 +39,9 @@ class StateChangeTest(BakedTest):
         User = self.classes.User
         session = Session()
 
-        def l1(): return session.query(User)
+        def l1():
+            return session.query(User)
+
         q1 = self.bakery(l1)
         self._assert_cache_key(
             q1._cache_key,
@@ -54,9 +53,12 @@ class StateChangeTest(BakedTest):
         User = self.classes.User
         session = Session()
 
-        def l1(): return session.query(User)
+        def l1():
+            return session.query(User)
 
-        def l2(q): return q.filter(User.name == bindparam('name'))
+        def l2(q):
+            return q.filter(User.name == bindparam('name'))
+
         q1 = self.bakery(l1)
         self._assert_cache_key(
             q1._cache_key,
@@ -77,9 +79,12 @@ class StateChangeTest(BakedTest):
         User = self.classes.User
         session = Session()
 
-        def l1(): return session.query(User)
+        def l1():
+            return session.query(User)
 
-        def l2(q): return q.filter(User.name == bindparam('name'))
+        def l2(q):
+            return q.filter(User.name == bindparam('name'))
+
         q1 = self.bakery(l1)
         self._assert_cache_key(
             q1._cache_key,
@@ -97,9 +102,12 @@ class StateChangeTest(BakedTest):
         User = self.classes.User
         session = Session()
 
-        def l1(): return session.query(User)
+        def l1():
+            return session.query(User)
 
-        def l2(q): return q.filter(User.name == bindparam('name'))
+        def l2(q):
+            return q.filter(User.name == bindparam('name'))
+
         q1 = self.bakery(l1)
 
         q2 = q1.with_criteria(l2)
@@ -464,7 +472,9 @@ class ResultTest(BakedTest):
 
         queue = [7, 8]
 
-        def fn(s): return s.query(User.id).filter_by(id=queue.pop(0))
+        def fn(s):
+            return s.query(User.id).filter_by(id=queue.pop(0))
+
         bq1 = self.bakery(fn, 7)
         bq2 = self.bakery(fn, 8)
 
@@ -1125,7 +1135,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
                 "addresses_email_address FROM addresses WHERE :param_1 = "
                 "addresses.user_id",
                 {'param_1': 8})
-            )
+        )
 
     def test_useget_cancels_eager_propagated_present(self):
         """test that a one to many lazyload cancels the unnecessary
@@ -1162,13 +1172,14 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
                 "addresses_email_address FROM addresses WHERE :param_1 = "
                 "addresses.user_id",
                 {'param_1': 8})
-            )
+        )
 
     # additional tests:
     # 1. m2m w lazyload
     # 2. o2m lazyload where m2o backrefs have an eager load, test
     # that eager load is canceled out
     # 3. uselist = False, uselist=False assertion
+
 
 # assert that the integration style illustrated in the dogpile.cache
 # example works w/ baked
