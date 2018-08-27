@@ -1064,6 +1064,12 @@ class BindParameter(ColumnElement):
           This is to allow statement caching to be used in conjunction with
           an IN clause.
 
+          .. seealso::
+
+            :meth:`.ColumnOperators.in_`
+
+            :ref:`baked_in` - with baked queries
+
           .. note:: The "expanding" feature does not support "executemany"-
              style parameter sets.  In the 1.2 series it does not support
              empty IN expressions, however it does support these in

@@ -494,20 +494,79 @@ class ColumnOperators(Operators):
     def in_(self, other):
         """Implement the ``in`` operator.
 
-        In a column context, produces the clause ``a IN other``.
-        "other" may be a tuple/list of column expressions,
-        or a :func:`~.expression.select` construct.
+        In a column context, produces the clause ``column IN <other>``.
 
-        In the case that ``other`` is an empty sequence, the compiler
-        produces an "empty in" expression.   This defaults to the
-        expression "1 != 1" to produce false in all cases.  The
-        :paramref:`.create_engine.empty_in_strategy` may be used to
-        alter this behavior.
+        The given parameter ``other`` may be:
 
-        .. versionchanged:: 1.2  The :meth:`.ColumnOperators.in_` and
-           :meth:`.ColumnOperators.notin_` operators
-           now produce a "static" expression for an empty IN sequence
-           by default.
+        * A list of literal values, e.g.::
+
+            stmt.where(column.in_([1, 2, 3]))
+
+          In this calling form, the list of items is converted to a set of
+          bound parameters the same length as the list given::
+
+            WHERE COL IN (?, ?, ?)
+
+        * An empty list, e.g.::
+
+            stmt.where(column.in_([]))
+
+          In this calling form, the expression renders a "false" expression,
+          e.g.::
+
+            WHERE 1 != 1
+
+          This "false" expression has historically had different behaviors
+          in older SQLAlchemy versions, see
+          :paramref:`.create_engine.empty_in_strategy` for behavioral options.
+
+          .. versionchanged:: 1.2 simplified the behavior of "empty in"
+             expressions
+
+        * A bound parameter, e.g. :func:`.bindparam`, may be used if it
+          includes the :paramref:`.bindparam.expanding` flag::
+
+            stmt.where(column.in_(bindparam('value', expanding=True)))
+
+          In this calling form, the expression renders a special non-SQL
+          placeholder expression that looks like::
+
+            WHERE COL IN ([EXPANDING_value])
+
+          This placeholder expression is intercepted at statement execution
+          time to be converted into the variable number of bound parameter
+          form illustrated earlier.   If the statement were executed as::
+
+            connection.execute(stmt, {"value": [1, 2, 3]})
+
+          The database would be passed a bound parameter for each value::
+
+            WHERE COL IN (?, ?, ?)
+
+          .. versionadded:: 1.2 added "expanding" bound parameters
+
+          The "expanding" feature in version 1.2 of SQLAlchemy does not
+          support passing an empty list as a parameter value; however,
+          version 1.3 does support this.
+
+        * a :func:`.select` construct, which is usually a correlated
+          scalar select::
+
+            stmt.where(
+                column.in_(
+                    select([othertable.c.y]).
+                    where(table.c.x == othertable.c.x)
+                )
+            )
+
+          In this calling form, :meth:`.ColumnOperators.in_` renders as given::
+
+            WHERE COL IN (SELECT othertable.y
+            FROM othertable WHERE othertable.x = table.x)
+
+        :param other: a list of literals, a :func:`.select` construct,
+         or a :func:`.bindparam` construct that includes the
+         :paramref:`.bindparam.expanding` flag set to True.
 
         """
         return self.operate(in_op, other)
