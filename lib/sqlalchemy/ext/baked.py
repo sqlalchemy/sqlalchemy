@@ -14,9 +14,7 @@ compiled result to be fully cached.
 """
 
 from ..orm.query import Query
-from ..orm import strategies, attributes, properties, \
-    strategy_options, util as orm_util, interfaces
-from .. import log as sqla_log
+from ..orm import strategy_options
 from ..sql import util as sql_util, func, literal_column
 from ..orm import exc as orm_exc
 from .. import exc as sa_exc
