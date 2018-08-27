@@ -332,6 +332,66 @@ to arrive at the current "baked" approach.   Starting from the
 management,  removal of all redundant Python execution, and queries built up
 with conditionals needed to be addressed, leading to the final approach.
 
+Special Query Techniques
+------------------------
+
+This section will describe some techniques for specific query situations.
+
+.. _baked_in:
+
+Using IN expressions
+^^^^^^^^^^^^^^^^^^^^
+
+The :meth:`.ColumnOperators.in_` method in SQLAlchemy historically renders
+a variable set of bound parameters based on the list of items that's passed
+to the method.   This doesn't work for baked queries as the length of that
+list can change on different calls.  To solve this problem, the
+:paramref:`.bindparam.expanding` parameter supports a late-rendered IN
+expression that is safe to be cached inside of baked query.  The actual list
+of elements is rendered at statement execution time, rather than at
+statement compilation time::
+
+    bakery = baked.bakery()
+
+    baked_query = bakery(lambda session: session.query(User))
+    baked_query += lambda q: q.filter(
+      User.name.in_(bindparam('username', expanding=True)))
+
+    result = baked_query.with_session(session).params(
+      username=['ed', 'fred']).all()
+
+.. seealso::
+
+  :paramref:`.bindparam.expanding`
+
+  :meth:`.ColumnOperators.in_`
+
+Using Subqueries
+^^^^^^^^^^^^^^^^
+
+When using :class:`.Query` objects, it is often needed that one :class:`.Query`
+object is used to generate a subquery within another.   In the case where the
+:class:`.Query` is currently in baked form, an interim method may be used to
+retrieve the :class:`.Query` object, using the semi-private ``_as_query()``
+method.  This method requires that a :class:`.Session` is passed, which should
+be relative to the :class:`.Session` that is in the lambda callable, e.g.
+``q.session`` or ``s``::
+
+    bakery = baked.bakery()
+
+    my_subq = bakery(lambda s: s.query(User.id))
+    my_subq += lambda q: q.filter(User.id == Address.user_id)
+
+    # select a correlated subquery in the top columns list
+    my_q = bakery(
+      lambda s: s.query(Address.id, my_subq._as_query(s).as_scalar()))
+
+    # use a correlated subquery in some of the criteria
+    my_q += lambda q: q.filter(my_subq._as_query(q.session).exists())
+
+A future feature will provide a public method for the above use case.
+
+
 Disabling Baked Queries Session-wide
 ------------------------------------
 
