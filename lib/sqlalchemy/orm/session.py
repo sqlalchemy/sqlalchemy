@@ -2380,7 +2380,8 @@ class Session(_SessionClassMethods):
                 transaction.rollback(_capture_exception=True)
 
     def bulk_save_objects(
-            self, objects, return_defaults=False, update_changed_only=True):
+            self, objects, return_defaults=False, update_changed_only=True,
+            preserve_order=True):
         """Perform a bulk save of the given list of objects.
 
         The bulk save feature allows mapped objects to be used as the
@@ -2443,6 +2444,13 @@ class Session(_SessionClassMethods):
          When False, all attributes present are rendered into the SET clause
          with the exception of primary key attributes.
 
+        :param preserve_order: when True, the order of inserts and updates
+         matches exactly the order in which the objects are given.   When
+         False, common types of objects are grouped into inserts
+         and updates, to allow for more batching opportunities.
+
+         .. versionadded:: 1.3
+
         .. seealso::
 
             :ref:`bulk_operations`
@@ -2452,9 +2460,15 @@ class Session(_SessionClassMethods):
             :meth:`.Session.bulk_update_mappings`
 
         """
+        def key(state):
+            return (state.mapper, state.key is not None)
+
+        obj_states = tuple(attributes.instance_state(obj) for obj in objects)
+        if not preserve_order:
+            obj_states = sorted(obj_states, key=key)
+
         for (mapper, isupdate), states in itertools.groupby(
-            (attributes.instance_state(obj) for obj in objects),
-            lambda state: (state.mapper, state.key is not None)
+            obj_states, key
         ):
             self._bulk_save_mappings(
                 mapper, states, isupdate, True,
