@@ -386,13 +386,14 @@ def create_engine(*args, **kwargs):
 
             :ref:`pool_setting_recycle`
 
-    :param pool_reset_on_return='rollback': set the "reset on return"
-        behavior of the pool, which is whether ``rollback()``,
-        ``commit()``, or nothing is called upon connections
-        being returned to the pool.  See the docstring for
-        ``reset_on_return`` at :class:`.Pool`.
+    :param pool_reset_on_return='rollback': set the
+        :paramref:`.Pool.reset_on_return` parameter of the underlying
+        :class:`.Pool` object, which can be set to the values
+        ``"rollback"``, ``"commit"``, or ``None``.
 
-        .. versionadded:: 0.7.6
+        .. seealso::
+
+            :paramref:`.Pool.reset_on_return`
 
     :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used
