@@ -360,8 +360,8 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def update_where_target_in_subquery(self):
-        """Target must support UPDATE where the same table is present in a
-        subquery in the WHERE clause.
+        """Target must support UPDATE (or DELETE) where the same table is
+        present in a subquery in the WHERE clause.
 
         This is an ANSI-standard syntax that apparently MySQL can't handle,
         such as:
@@ -371,9 +371,10 @@ class DefaultRequirements(SuiteRequirements):
                 FROM documents GROUP BY documents.user_id
             )
         """
-        return fails_if('mysql',
-                        'MySQL error 1093 "Cant specify target table '
-                        'for update in FROM clause"')
+        return fails_if(
+            self._mysql_not_mariadb_103,
+            'MySQL error 1093 "Cant specify target table '
+            'for update in FROM clause", resolved by MariaDB 10.3')
 
     @property
     def savepoints(self):
@@ -521,15 +522,17 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support INTERSECT or equivalent."""
 
         return fails_if([
-                "firebird", "mysql", "sybase",
-            ], 'no support for INTERSECT')
+            "firebird", self._mysql_not_mariadb_103,
+            "sybase",
+        ], 'no support for INTERSECT')
 
     @property
     def except_(self):
         """Target database must support EXCEPT or equivalent (i.e. MINUS)."""
         return fails_if([
-                "firebird", "mysql", "sybase",
-            ], 'no support for EXCEPT')
+            "firebird", self._mysql_not_mariadb_103,
+            "sybase",
+        ], 'no support for EXCEPT')
 
     @property
     def order_by_col_from_union(self):
@@ -1183,6 +1186,12 @@ class DefaultRequirements(SuiteRequirements):
         return against(config, "mysql") and (
             not config.db.dialect._is_mariadb or
             config.db.dialect._mariadb_normalized_version_info < (10, 2)
+        )
+
+    def _mysql_not_mariadb_103(self, config):
+        return against(config, "mysql") and (
+            not config.db.dialect._is_mariadb or
+            config.db.dialect._mariadb_normalized_version_info < (10, 3)
         )
 
     def _has_mysql_on_windows(self, config):
