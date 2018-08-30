@@ -730,8 +730,8 @@ class SuiteRequirements(Requirements):
 
     @property
     def update_where_target_in_subquery(self):
-        """Target must support UPDATE where the same table is present in a
-        subquery in the WHERE clause.
+        """Target must support UPDATE (or DELETE) where the same table is
+        present in a subquery in the WHERE clause.
 
         This is an ANSI-standard syntax that apparently MySQL can't handle,
         such as:

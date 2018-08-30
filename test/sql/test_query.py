@@ -1010,7 +1010,8 @@ class CompoundTest(fixtures.TestBase):
         found2 = self._fetchall_sorted(e.alias().select().execute())
         eq_(found2, wanted)
 
-    @testing.fails_on('sqlite', "Can't handle this style of nesting")
+    @testing.fails_on(
+        ['sqlite', 'mysql'], "Can't handle this style of nesting")
     @testing.requires.except_
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
@@ -1042,7 +1043,8 @@ class CompoundTest(fixtures.TestBase):
         )
 
     @testing.requires.intersect
-    @testing.fails_on('sqlite', "sqlite can't handle leading parenthesis")
+    @testing.fails_on(['sqlite', 'mysql'],
+                      "sqlite can't handle leading parenthesis")
     def test_intersect_unions(self):
         u = intersect(
             union(

@@ -275,7 +275,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         eq_(sess.query(User).order_by(User.id).all(), [jack, jane])
 
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.requires.update_where_target_in_subquery
     def test_delete_invalid_evaluation(self):
         User = self.classes.User
 
