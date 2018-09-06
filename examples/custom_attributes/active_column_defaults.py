@@ -90,6 +90,11 @@ if __name__ == '__main__':
     # not persisted at all, default values are present the moment
     # we access them
     assert w1.radius == 30
+
+    # this line will invoke the datetime.now() function, and establish
+    # its return value upon the w1 instance, such that the
+    # Column-level default for the "timestamp" column will no longer fire
+    # off.
     current_time = w1.timestamp
     assert (
         current_time > datetime.datetime.now() - datetime.timedelta(seconds=5)

@@ -2036,18 +2036,38 @@ class AttributeEvents(event.Events):
         """Receive a scalar "init" event.
 
         This event is invoked when an uninitialized, unpersisted scalar
-        attribute is accessed.  A value of ``None`` is typically returned
-        in this case; no changes are made to the object's state.
+        attribute is accessed, e.g. read::
 
-        The event handler can alter this behavior in two ways.
-        One is that a value other than ``None`` may be returned.  The other
-        is that the value may be established as part of the object's state,
-        which will also have the effect that it is persisted.
 
-        Typical use is to establish a specific default value of an attribute
-        upon access::
+            x = my_object.some_attribute
+
+        The ORM's default behavior when this occurs for an un-initialized
+        attribute is to return the value ``None``; note this differs from
+        Python's usual behavior of raising ``AttributeError``.    The
+        event here can be used to customize what value is actually returned,
+        with the assumption that the event listener would be mirroring
+        a default generator that is configured on the Core :class:`.Column`
+        object as well.
+
+        Since a default generator on a :class:`.Column` might also produce
+        a changing value such as a timestamp, the
+        :meth:`.AttributeEvents.init_scalar`
+        event handler can also be used to **set** the newly returned value, so
+        that a Core-level default generation function effecively fires off
+        only once, but at the moment the attribute is accessed on the
+        non-persisted object.   Normally, no change to the object's state
+        is made when an uninitialized attribute is accessed (much older
+        SQLAlchemy versions did in fact change the object's state).
+
+        If a default generator on a column returned a particular constant,
+        a handler might be used as follows::
 
             SOME_CONSTANT = 3.1415926
+
+            class MyClass(Base):
+                # ...
+
+                some_attribute = Column(Numeric, default=SOME_CONSTANT)
 
             @event.listens_for(
                 MyClass.some_attribute, "init_scalar",
@@ -2061,11 +2081,14 @@ class AttributeEvents(event.Events):
         features:
 
         * By setting the value ``SOME_CONSTANT`` in the given ``dict_``,
-          we indicate that the value is to be persisted to the database.
-          **The given value is only persisted to the database if we
-          explicitly associate it with the object**.  The ``dict_`` given
-          is the ``__dict__`` element of the mapped object, assuming the
-          default attribute instrumentation system is in place.
+          we indicate that this value is to be persisted to the database.
+          This supersedes the use of ``SOME_CONSTANT`` in the default generator
+          for the :class:`.Column`.  The ``active_column_defaults.py``
+          example given at :ref:`examples_instrumentation` illustrates using
+          the same approach for a changing default, e.g. a timestamp
+          generator.    In this particular example, it is not strictly
+          necessary to do this since ``SOME_CONSTANT`` would be part of the
+          INSERT statement in either case.
 
         * By establishing the ``retval=True`` flag, the value we return
           from the function will be returned by the attribute getter.
@@ -2077,24 +2100,12 @@ class AttributeEvents(event.Events):
           event listener.  Without this flag, an inheriting subclass will
           not use our event handler.
 
-        When we establish the value in the given dictionary, the value will
-        be used in the INSERT statement established by the unit of work.
-        Normally, the default returned value of ``None`` is not established as
-        part of the object, to avoid the issue of mutations occurring to the
-        object in response to a normally passive "get" operation, and also
-        sidesteps the issue of whether or not the :meth:`.AttributeEvents.set`
-        event should be awkwardly fired off during an attribute access
-        operation.  This does not impact the INSERT operation since the
-        ``None`` value matches the value of ``NULL`` that goes into the
-        database in any case; note that ``None`` is skipped during the INSERT
-        to ensure that column and SQL-level default functions can fire off.
-
-        The attribute set event :meth:`.AttributeEvents.set` as well as the
-        related validation feature provided by :obj:`.orm.validates` is
-        **not** invoked when we apply our value to the given ``dict_``.  To
-        have these events to invoke in response to our newly generated
-        value, apply the value to the given object as a normal attribute
-        set operation::
+        In the above example, the attribute set event
+        :meth:`.AttributeEvents.set` as well as the related validation feature
+        provided by :obj:`.orm.validates` is **not** invoked when we apply our
+        value to the given ``dict_``.  To have these events to invoke in
+        response to our newly generated value, apply the value to the given
+        object as a normal attribute set operation::
 
             SOME_CONSTANT = 3.1415926
 
@@ -2110,11 +2121,6 @@ class AttributeEvents(event.Events):
         is "chained" from one listener to the next by passing the value
         returned by the previous listener that specifies ``retval=True``
         as the ``value`` argument of the next listener.
-
-        The :meth:`.AttributeEvents.init_scalar` event may be used to
-        extract values from the default values and/or callables established on
-        mapped :class:`.Column` objects.  See the "active column defaults"
-        example in :ref:`examples_instrumentation` for an example of this.
 
         .. versionadded:: 1.1
 
