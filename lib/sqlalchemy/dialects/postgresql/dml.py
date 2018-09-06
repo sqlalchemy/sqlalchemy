@@ -32,7 +32,7 @@ class Insert(StandardInsert):
 
         PG's ON CONFLICT clause allows reference to the row that would
         be inserted, known as ``excluded``.  This attribute provides
-        all columns in this row to be referenaceable.
+        all columns in this row to be referenceable.
 
         .. seealso::
 
