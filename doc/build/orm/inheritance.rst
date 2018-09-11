@@ -203,7 +203,7 @@ Loading Joined Inheritance Mappings
 +++++++++++++++++++++++++++++++++++
 
 See the sections :ref:`inheritance_loading_toplevel` and
-:ref:`loading_joined_inheritance` for background on inheritnce
+:ref:`loading_joined_inheritance` for background on inheritance
 loading techniques, including configuration of tables
 to be queried both at mapper configuration time as well as query time.
 
