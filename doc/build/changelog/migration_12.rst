@@ -374,6 +374,33 @@ hybrid in-place, interfering with the definition on the superclass.
    :attr:`.hybrid_property.overrides` may be necessary to avoid name
    conflicts with :class:`.QueryableAttribute` in some cases.
 
+.. note:: This change in ``@hybrid_property`` implies that when adding setters and
+   other state to a ``@hybrid_property``, the **methods must retain the name
+   of the original hybrid**, else the new hybrid with the additional state will
+   be present on the class as the non-matching name.  This is the same behavior
+   as that of the ``@property`` construct that is part of standard Python::
+
+        class FirstNameOnly(Base):
+            @hybrid_property
+            def name(self):
+                return self.first_name
+
+            # WRONG - will raise AttributeError: can't set attribute when
+            # assigning to .name
+            @name.setter
+            def _set_name(self, value):
+                self.first_name = value
+
+        class FirstNameOnly(Base):
+            @hybrid_property
+            def name(self):
+                return self.first_name
+
+            # CORRECT - note regular Python @property works the same way
+            @name.setter
+            def name(self, value):
+                self.first_name = value
+
 :ticket:`3911`
 
 :ticket:`3912`
