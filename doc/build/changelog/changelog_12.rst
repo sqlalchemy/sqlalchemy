@@ -197,7 +197,6 @@
 
     .. change::
         :tags: bug, sqlite
-        :versions: 1.3.0b1
 
         Fixed issue in test suite where SQLite 3.24 added a new reserved word that
         conflicted with a usage in TypeReflectionTest.  Pull request courtesy Nils
@@ -316,7 +315,6 @@
     .. change::
         :tags: bug, oracle, mysql
         :tickets: 4275
-        :versions: 1.3.0b1
 
         Fixed INSERT FROM SELECT with CTEs for the Oracle and MySQL dialects, where
         the CTE was being placed above the entire statement as is typical with
@@ -345,7 +343,6 @@
     .. change::
         :tags: bug, engine
         :tickets: 4252
-        :versions: 1.3.0b1
 
         Fixed connection pool issue whereby if a disconnection error were raised
         during the connection pool's "reset on return" sequence in conjunction with
@@ -361,7 +358,6 @@
     .. change::
         :tags: bug, oracle
         :tickets: 4264
-        :versions: 1.3.0b1
 
         The Oracle BINARY_FLOAT and BINARY_DOUBLE datatypes now participate within
         cx_Oracle.setinputsizes(), passing along NATIVE_FLOAT, so as to support the
@@ -374,7 +370,6 @@
 
     .. change::
         :tags: bug, oracle
-        :versions: 1.3.0b1
 
         Added reflection capabilities for the :class:`.oracle.BINARY_FLOAT`,
         :class:`.oracle.BINARY_DOUBLE` datatypes.
@@ -393,7 +388,6 @@
 
     .. change::
         :tags: bug, sql
-        :versions: 1.3.0b1
 
         Fixed issue where the "ambiguous literal" error message used when
         interpreting literal values as SQL expression values would encounter a
@@ -416,7 +410,6 @@
     .. change::
         :tags: bug, oracle
         :tickets: 4259
-        :versions: 1.3.0b1
 
         Altered the Oracle dialect such that when an :class:`.Integer` type is in
         use, the cx_Oracle.NUMERIC type is set up for setinputsizes().  In
@@ -430,7 +423,6 @@
 
     .. change::
         :tags: bug, engine
-        :versions: 1.3.0b1
 
         Fixed a reference leak issue where the values of the parameter dictionary
         used in a statement execution would remain referenced by the "compiled
@@ -467,7 +459,6 @@
     .. change::
     	:tags: bug, ext
     	:tickets: 4266
-    	:versions: 1.3.0b1
 
     	Fixed a race condition which could occur if automap
     	:meth:`.AutomapBase.prepare` were used within a multi-threaded context
@@ -488,7 +479,6 @@
     .. change::
     	:tags: bug, tests
     	:tickets: 4249
-    	:versions: 1.3.0b1
 
     	Fixed a bug in the test suite where if an external dialect returned
     	``None`` for ``server_version_info``, the exclusion logic would raise an
@@ -536,7 +526,6 @@
     .. change::
         :tags: bug, mssql
         :tickets: 4234
-        :versions: 1.3.0b1
 
         Fixed 1.2 regression caused by :ticket:`4060` where the query used to
         reflect SQL Server cross-schema foreign keys was limiting the criteria
@@ -546,7 +535,6 @@
 
     .. change::
         :tags: bug, oracle
-        :versions: 1.3.0b1
 
         The Oracle NUMBER datatype is reflected as INTEGER if the precision is NULL
         and the scale is zero, as this is how INTEGER values come back when
@@ -563,7 +551,6 @@
     .. change::
         :tags: bug, sql
         :tickets: 4231
-        :versions: 1.3.0b1
 
         Fixed issue where the compilation of an INSERT statement with the
         "literal_binds" option that also uses an explicit sequence and "inline"
@@ -588,7 +575,6 @@
     .. change::
         :tags: bug, mssql
         :tickets: 4227
-        :versions: 1.3.0b1
 
         Adjusted the SQL Server version detection for pyodbc to only allow for
         numeric tokens, filtering out non-integers, since the dialect does tuple-
@@ -597,7 +583,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :versions: 1.3.0b1
 
         Added support for "PARTITION BY" in Postgresql table definitions,
         using "postgresql_partition_by".  Pull request courtesy
@@ -606,7 +591,6 @@
     .. change::
         :tags: bug, sql
         :tickets: 4204
-        :versions: 1.3.0b1
 
         Fixed a regression that occurred from the previous fix to :ticket:`4204` in
         version 1.2.5, where a CTE that refers to itself after the
@@ -616,7 +600,6 @@
     .. change::
         :tags: bug, engine
         :tickets: 4225
-        :versions: 1.3.0b1
 
         Fixed bug in connection pool where a connection could be present in the
         pool without all of its "connect" event handlers called, if a previous
@@ -629,7 +612,6 @@
     .. change::
         :tags: bug, oracle
         :tickets: 4211
-        :versions: 1.3.0b1
 
         The minimum cx_Oracle version supported is 5.2 (June 2015).  Previously,
         the dialect asserted against version 5.0 but as of 1.2.2 we are using some
@@ -649,7 +631,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 4215
-        :versions: 1.3.0b1
 
         Fixed bug where using :meth:`.Mutable.associate_with` or
         :meth:`.Mutable.as_mutable` in conjunction with a class that has non-
@@ -666,7 +647,6 @@
     .. change::
         :tags: bug, sql
         :tickets: 4210
-        :versions: 1.3.0b1
 
         Fixed bug in :class:.`CTE` construct along the same lines as that of
         :ticket:`4204` where a :class:`.CTE` that was aliased would not copy itself
@@ -694,7 +674,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 4209
-        :versions: 1.3.0b1
 
         Fixed 1.2 regression where a mapper option that contains an
         :class:`.AliasedClass` object, as is typical when using the

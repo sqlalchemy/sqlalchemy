@@ -28,7 +28,7 @@
     .. change::
         :tags: bug, mysql
         :tickets: 4205
-        :versions: 1.2.5, 1.3.0b1
+        :versions: 1.2.5
 
         MySQL dialects now query the server version using ``SELECT @@version``
         explicitly to the server to ensure we are getting the correct version
@@ -39,7 +39,7 @@
     .. change::
         :tags: bug, postgresql, py3k
         :tickets: 4208
-        :versions: 1.2.5, 1.3.0b1
+        :versions: 1.2.5
 
         Fixed bug in Postgresql COLLATE / ARRAY adjustment first introduced
         in :ticket:`4006` where new behaviors in Python 3.7 regular expressions
