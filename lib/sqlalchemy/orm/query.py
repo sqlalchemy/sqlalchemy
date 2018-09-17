@@ -544,6 +544,7 @@ class Query(object):
         if with_labels:
             q = q.with_labels()
         q = q.statement
+
         if reduce_columns:
             q = q.reduce_columns()
         return q.alias(name=name)
@@ -2382,6 +2383,12 @@ class Query(object):
             right_mapper = prop.mapper
 
         need_adapter = False
+
+        if r_info.is_clause_element and right_selectable._is_lateral:
+            # orm_only is disabled to suit the case where we have to
+            # adapt an explicit correlate(Entity) - the select() loses
+            # the ORM-ness in this case right now, ideally it would not
+            right = self._adapt_clause(right, True, False)
 
         if right_mapper and right is right_selectable:
             if not right_selectable.is_derived_from(
