@@ -609,7 +609,9 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
     def get_result_proxy(self):
         if self.out_parameters and self.compiled.returning:
             returning_params = [
-                self.out_parameters["ret_%d" % i].getvalue()
+                self.dialect._returningval(
+                    self.out_parameters["ret_%d" % i]
+                )
                 for i in range(len(self.out_parameters))
             ]
             return ReturningResultProxy(self, returning_params)
@@ -633,13 +635,15 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                         if result_processor is not None:
                             out_parameters[name] = \
                                 result_processor(
-                                    self.out_parameters[name].getvalue())
+                                    self.dialect._paramval(
+                                        self.out_parameters[name]
+                                    ))
                         else:
-                            out_parameters[name] = self.out_parameters[
-                                name].getvalue()
+                            out_parameters[name] = self.dialect._paramval(
+                                self.out_parameters[name])
             else:
                 result.out_parameters = dict(
-                                            (k, v.getvalue())
+                                            (k, self._dialect._paramval(v))
                     for k, v in self.out_parameters.items()
                 )
 
@@ -743,6 +747,24 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.BLOB, cx_Oracle.FIXED_CHAR, cx_Oracle.TIMESTAMP,
                 _OracleInteger, _OracleBINARY_FLOAT, _OracleBINARY_DOUBLE
             }
+
+            self._paramval = lambda value: value.getvalue()
+
+            # https://github.com/oracle/python-cx_Oracle/issues/176#issuecomment-386821291
+            # https://github.com/oracle/python-cx_Oracle/issues/224
+            self._values_are_lists = self.cx_oracle_ver >= (6, 3)
+            if self._values_are_lists:
+                cx_Oracle.__future__.dml_ret_array_val = True
+
+                def _returningval(value):
+                    try:
+                        return value.values[0][0]
+                    except IndexError:
+                        return None
+
+                self._returningval = _returningval
+            else:
+                self._returningval = self._paramval
 
         self._is_cx_oracle_6 = self.cx_oracle_ver >= (6, )
 
