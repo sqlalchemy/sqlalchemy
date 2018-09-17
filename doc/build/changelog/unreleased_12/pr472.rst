@@ -1,0 +1,7 @@
+.. change::
+   :tags: bug, orm
+
+   Added a check within the weakref cleanup for the :class:`.InstanceState`
+   object to check for the presence of the ``dict`` builtin, in an effort to
+   reduce error messages generated when these cleanups occur during interpreter
+   shutdown.  Pull request courtesy Romuald Brunet.
