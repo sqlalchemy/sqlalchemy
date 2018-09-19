@@ -28,6 +28,7 @@ from sqlalchemy.sql.expression import ClauseList, _literal_as_text, HasPrefixes
 from sqlalchemy.engine import default
 from sqlalchemy.dialects import mysql, mssql, postgresql, oracle, \
     sqlite, sybase
+from sqlalchemy.dialects.postgresql.base import PGCompiler, PGDialect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import compiler
 
@@ -1295,6 +1296,42 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "count(myothertable.otherid) AS count_1 "
             "FROM myothertable "
             "GROUP BY myothertable.othername ORDER BY myothertable.othername"
+        )
+
+    def test_custom_order_by_clause(self):
+        class CustomCompiler(PGCompiler):
+            def order_by_clause(self, select, **kw):
+                return super(CustomCompiler, self).\
+                    order_by_clause(select, **kw) + " CUSTOMIZED"
+
+        class CustomDialect(PGDialect):
+            name = 'custom'
+            statement_compiler = CustomCompiler
+
+        stmt = select([table1.c.myid]).order_by(table1.c.myid)
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable ORDER BY "
+            "mytable.myid CUSTOMIZED",
+            dialect=CustomDialect()
+        )
+
+    def test_custom_group_by_clause(self):
+        class CustomCompiler(PGCompiler):
+            def group_by_clause(self, select, **kw):
+                return super(CustomCompiler, self).\
+                    group_by_clause(select, **kw) + " CUSTOMIZED"
+
+        class CustomDialect(PGDialect):
+            name = 'custom'
+            statement_compiler = CustomCompiler
+
+        stmt = select([table1.c.myid]).group_by(table1.c.myid)
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable GROUP BY "
+            "mytable.myid CUSTOMIZED",
+            dialect=CustomDialect()
         )
 
     def test_for_update(self):
