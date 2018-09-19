@@ -2781,4 +2781,232 @@ class AliasFromCorrectLeftTest(
             "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1"
         )
 
+class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = default.DefaultDialect(supports_native_boolean=True)
+
+    run_setup_bind = None
+    run_setup_mappers = 'once'
+
+    run_create_tables = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('people', metadata,
+              Column('people_id', Integer, primary_key=True),
+              Column('age', Integer),
+              Column('name', String(30)))
+        Table('bookcases', metadata,
+              Column('bookcase_id', Integer, primary_key=True),
+              Column(
+                  'bookcase_owner_id',
+                  Integer, ForeignKey('people.people_id')),
+              Column('bookcase_shelves', Integer),
+              Column('bookcase_width', Integer))
+        Table('books', metadata,
+              Column('book_id', Integer, primary_key=True),
+              Column(
+                  'bookcase_id', Integer, ForeignKey('bookcases.bookcase_id')),
+              Column('book_owner_id', Integer, ForeignKey('people.people_id')),
+              Column('book_weight', Integer))
+
+    @classmethod
+    def setup_classes(cls):
+        people, bookcases, books = cls.tables('people', 'bookcases', 'books')
+
+        class Person(cls.Comparable):
+            pass
+
+        class Bookcase(cls.Comparable):
+            pass
+
+        class Book(cls.Comparable):
+            pass
+
+        mapper(Person, people)
+        mapper(Bookcase, bookcases, properties={
+            'owner': relationship(Person),
+            'books': relationship(Book)
+        })
+        mapper(Book, books)
+
+    def test_select_subquery(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = Session()
+
+        subq = s.query(Book.book_id).correlate(Person).filter(
+            Person.people_id == Book.book_owner_id
+        ).subquery().lateral()
+
+        stmt = s.query(Person, subq.c.book_id).join(
+            subq, true()
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT people.people_id AS people_people_id, "
+            "people.age AS people_age, people.name AS people_name, "
+            "anon_1.book_id AS anon_1_book_id "
+            "FROM people JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE people.people_id = books.book_owner_id) AS anon_1 ON true"
+        )
+
+    # sef == select_entity_from
+    @testing.fails("needs #4304 to work")
+    def test_select_subquery_sef_implicit_correlate(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = Session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = s.query(Book.book_id).filter(
+            Person.people_id == Book.book_owner_id
+        ).subquery().lateral()
+
+        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
+            subq, true()
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+        )
+
+    def test_select_subquery_sef_implicit_correlate_coreonly(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = Session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = select([Book.book_id]).where(
+            Person.people_id == Book.book_owner_id
+        ).lateral()
+
+        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
+            subq, true()
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+        )
+
+    def test_select_subquery_sef_explicit_correlate_coreonly(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = Session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = select([Book.book_id]).correlate(Person).where(
+            Person.people_id == Book.book_owner_id
+        ).lateral()
+
+        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
+            subq, true()
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+        )
+
+    @testing.fails("needs #4304 to work")
+    def test_select_subquery_sef_explicit_correlate(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = Session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = s.query(Book.book_id).correlate(Person).filter(
+            Person.people_id == Book.book_owner_id
+        ).subquery().lateral()
+
+        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
+            subq, true()
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+        )
+
+    def test_from_function(self):
+        Bookcase = self.classes.Bookcase
+
+        s = Session()
+
+        srf = lateral(func.generate_series(1, Bookcase.bookcase_shelves))
+
+        self.assert_compile(
+            s.query(Bookcase).join(srf, true()),
+            "SELECT bookcases.bookcase_id AS bookcases_bookcase_id, "
+            "bookcases.bookcase_owner_id AS bookcases_bookcase_owner_id, "
+            "bookcases.bookcase_shelves AS bookcases_bookcase_shelves, "
+            "bookcases.bookcase_width AS bookcases_bookcase_width "
+            "FROM bookcases JOIN "
+            "LATERAL generate_series(:generate_series_1, "
+            "bookcases.bookcase_shelves) AS anon_1 ON true"
+        )
+
+    def test_from_function_select_entity_from(self):
+        Bookcase = self.classes.Bookcase
+
+        s = Session()
+
+        subq = s.query(Bookcase).subquery()
+
+        srf = lateral(func.generate_series(1, Bookcase.bookcase_shelves))
+
+        self.assert_compile(
+            s.query(Bookcase).select_entity_from(subq).join(srf, true()),
+            "SELECT anon_1.bookcase_id AS anon_1_bookcase_id, "
+            "anon_1.bookcase_owner_id AS anon_1_bookcase_owner_id, "
+            "anon_1.bookcase_shelves AS anon_1_bookcase_shelves, "
+            "anon_1.bookcase_width AS anon_1_bookcase_width "
+            "FROM (SELECT bookcases.bookcase_id AS bookcase_id, "
+            "bookcases.bookcase_owner_id AS bookcase_owner_id, "
+            "bookcases.bookcase_shelves AS bookcase_shelves, "
+            "bookcases.bookcase_width AS bookcase_width FROM bookcases) "
+            "AS anon_1 "
+            "JOIN LATERAL "
+            "generate_series(:generate_series_1, anon_1.bookcase_shelves) "
+            "AS anon_2 ON true"
+        )
 

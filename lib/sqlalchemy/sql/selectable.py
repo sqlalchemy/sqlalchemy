@@ -338,6 +338,8 @@ class FromClause(Selectable):
     _is_select = False
     _is_from_container = False
 
+    _is_lateral = False
+
     _textual = False
     """a marker that allows us to easily distinguish a :class:`.TextAsFrom`
     or similar object from other kinds of :class:`.FromClause` objects."""
@@ -1329,6 +1331,7 @@ class Lateral(Alias):
     """
 
     __visit_name__ = 'lateral'
+    _is_lateral = True
 
 
 class TableSample(Alias):
@@ -3008,7 +3011,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         # contents, as this set is used for matching, not rendering.
         self._correlate = set(clone(f) for f in
                               self._correlate).union(self._correlate)
-
         # 4. clone other things.   The difficulty here is that Column
         # objects are not actually cloned, and refer to their original
         # .table, resulting in the wrong "from" parent after a clone
