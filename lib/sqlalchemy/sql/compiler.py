@@ -968,11 +968,7 @@ class SQLCompiler(Compiled):
              for i, c in enumerate(cs.selects))
         )
 
-        group_by = cs._group_by_clause._compiler_dispatch(
-            self, asfrom=asfrom, **kwargs)
-        if group_by:
-            text += " GROUP BY " + group_by
-
+        text += self.group_by_clause(cs, **dict(asfrom=asfrom, **kwargs))
         text += self.order_by_clause(cs, **kwargs)
         text += (cs._limit_clause is not None
                  or cs._offset_clause is not None) and \
@@ -1911,10 +1907,7 @@ class SQLCompiler(Compiled):
                 text += " \nWHERE " + t
 
         if select._group_by_clause.clauses:
-            group_by = select._group_by_clause._compiler_dispatch(
-                self, **kwargs)
-            if group_by:
-                text += " GROUP BY " + group_by
+            text += self.group_by_clause(select, **kwargs)
 
         if select._having is not None:
             t = select._having._compiler_dispatch(self, **kwargs)
@@ -1970,7 +1963,18 @@ class SQLCompiler(Compiled):
         """
         return select._distinct and "DISTINCT " or ""
 
+    def group_by_clause(self, select, **kw):
+        """allow dialects to customize how GROUP BY is rendered."""
+
+        group_by = select._group_by_clause._compiler_dispatch(self, **kw)
+        if group_by:
+            return " GROUP BY " + group_by
+        else:
+            return ""
+
     def order_by_clause(self, select, **kw):
+        """allow dialects to customize how ORDER BY is rendered."""
+
         order_by = select._order_by_clause._compiler_dispatch(self, **kw)
         if order_by:
             return " ORDER BY " + order_by
