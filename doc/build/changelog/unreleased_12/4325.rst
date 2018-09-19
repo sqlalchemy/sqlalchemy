@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 4325
-
-    Fixed bug in PostgreSQL dialect where compiler keyword arguments such as
-    ``literal_binds=True`` were not being propagated to a DISTINCT ON
-    expression.
