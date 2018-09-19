@@ -30,7 +30,7 @@ class QueuePool(Pool):
 
     """
 
-    def __init__(self, creator, pool_size=5, max_overflow=10, timeout=30,
+    def __init__(self, creator, pool_size=5, max_overflow=10, timeout=30, use_lifo=False,
                  **kw):
         r"""
         Construct a QueuePool.
@@ -63,6 +63,21 @@ class QueuePool(Pool):
         :param timeout: The number of seconds to wait before giving up
           on returning a connection. Defaults to 30.
 
+        :param use_lifo: use LIFO (last-in-first-out) when retrieving
+          connections instead of FIFO (first-in-first-out). Using LIFO, a
+          server-side timeout scheme can reduce the number of connections used
+          during non-peak periods of use.   When planning for server-side
+          timeouts, ensure that a recycle or pre-ping strategy is in use to
+          gracefully handle stale connections.
+
+          .. versionadded:: 1.3
+
+          .. seealso::
+
+            :ref:`pool_use_lifo`
+
+            :ref:`pool_disconnects`
+
         :param \**kw: Other keyword arguments including
           :paramref:`.Pool.recycle`, :paramref:`.Pool.echo`,
           :paramref:`.Pool.reset_on_return` and others are passed to the
@@ -70,7 +85,7 @@ class QueuePool(Pool):
 
         """
         Pool.__init__(self, creator, **kw)
-        self._pool = sqla_queue.Queue(pool_size)
+        self._pool = sqla_queue.Queue(pool_size, use_lifo=use_lifo)
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
         self._timeout = timeout

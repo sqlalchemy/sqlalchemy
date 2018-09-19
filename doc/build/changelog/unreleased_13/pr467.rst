@@ -1,0 +1,13 @@
+.. change::
+   :tags: feature, engine
+
+   Added new "lifo" mode to :class:`.QueuePool`, typically enabled by setting
+   the flag :paramref:`.create_engine.pool_use_lifo` to True.   "lifo" mode
+   means the same connection just checked in will be the first to be checked
+   out again, allowing excess connections to be cleaned up from the server
+   side during periods of the pool being only partially utilized.  Pull request
+   courtesy Taem Park.
+
+   .. seealso::
+
+      :ref:`change_pr467`

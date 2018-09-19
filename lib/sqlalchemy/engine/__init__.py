@@ -399,6 +399,21 @@ def create_engine(*args, **kwargs):
         up on getting a connection from the pool. This is only used
         with :class:`~sqlalchemy.pool.QueuePool`.
 
+    :param pool_use_lifo=False: use LIFO (last-in-first-out) when retrieving
+        connections from :class:`.QueuePool` instead of FIFO
+        (first-in-first-out). Using LIFO, a server-side timeout scheme can
+        reduce the number of connections used during non- peak   periods of
+        use.   When planning for server-side timeouts, ensure that a recycle or
+        pre-ping strategy is in use to gracefully   handle stale connections.
+
+          .. versionadded:: 1.3
+
+          .. seealso::
+
+            :ref:`pool_use_lifo`
+
+            :ref:`pool_disconnects`
+
     :param plugins: string list of plugin names to load.  See
         :class:`.CreateEnginePlugin` for background.
 
