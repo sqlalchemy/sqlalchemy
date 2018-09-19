@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 4323
-
-    Fixed bug in PostgreSQL ENUM reflection where a case-sensitive, quoted name
-    would be reported by the query including quotes, which would not match a
-    target column during table reflection as the quotes needed to be stripped
-    off.
-

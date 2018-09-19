@@ -12,7 +12,106 @@
 
 .. changelog::
     :version: 1.2.12
-    :include_notes_from: unreleased_12
+    :released: September 19, 2018
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4325
+
+        Fixed bug in PostgreSQL dialect where compiler keyword arguments such as
+        ``literal_binds=True`` were not being propagated to a DISTINCT ON
+        expression.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 4328
+
+        Fixed issue where :class:`.BakedQuery` did not include the specific query
+        class used by the :class:`.Session` as part of the cache key, leading to
+        incompatibilities when using custom query classes, in particular the
+        :class:`.ShardedQuery` which has some different argument signatures.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4324
+
+        Fixed the :func:`.postgresql.array_agg` function, which is a slightly
+        altered version of the usual :func:`.functions.array_agg` function, to also
+        accept an incoming "type" argument without forcing an ARRAY around it,
+        essentially the same thing that was fixed for the generic function in 1.1
+        in :ticket:`4107`.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4323
+
+        Fixed bug in PostgreSQL ENUM reflection where a case-sensitive, quoted name
+        would be reported by the query including quotes, which would not match a
+        target column during table reflection as the quotes needed to be stripped
+        off.
+
+
+    .. change::
+       :tags: bug, orm
+
+       Added a check within the weakref cleanup for the :class:`.InstanceState`
+       object to check for the presence of the ``dict`` builtin, in an effort to
+       reduce error messages generated when these cleanups occur during interpreter
+       shutdown.  Pull request courtesy Romuald Brunet.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 4326
+
+        Fixed bug where the declarative scan for attributes would receive the
+        expression proxy delivered by a hybrid attribute at the class level, and
+        not the hybrid attribute itself, when receiving the descriptor via the
+        ``@declared_attr`` callable on a subclass of an already-mapped class. This
+        would lead to an attribute that did not report itself as a hybrid when
+        viewed within :attr:`.Mapper.all_orm_descriptors`.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4334
+        :versions: 1.3.0b1
+
+        Fixed bug where use of :class:`.Lateral` construct in conjunction with
+        :meth:`.Query.join` as well as :meth:`.Query.select_entity_from` would not
+        apply clause adaption to the right side of the join.   "lateral" introduces
+        the use case of the right side of a join being correlatable.  Previously,
+        adaptation of this clause wasn't considered.   Note that in 1.2 only,
+        a selectable introduced by :meth:`.Query.subquery` is still not adapted
+        due to :ticket:`4304`; the selectable needs to be produced by the
+        :func:`.select` function to be the right side of the "lateral" join.
+
+    .. change::
+       :tags: bug, oracle
+       :tickets: 4335
+
+       Fixed issue for cx_Oracle 7.0 where the behavior of Oracle param.getvalue()
+       now returns a list, rather than a single scalar value, breaking
+       autoincrement logic throughout the Core and ORM. The dml_ret_array_val
+       compatibility flag is used for cx_Oracle 6.3 and 6.4 to establish compatible
+       behavior with 7.0 and forward, for cx_Oracle 6.2.1 and prior a version
+       number check falls back to the old logic.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4327
+
+        Fixed 1.2 regression caused by :ticket:`3472` where the handling of an
+        "updated_at" style column within the context of a post-update operation
+        would also occur for a row that is to be deleted following the update,
+        meaning both that a column with a Python-side value generator would show
+        the now-deleted value that was emitted for the UPDATE before the DELETE
+        (which was not the previous behavor), as well as that a SQL- emitted value
+        generator would have the attribute expired, meaning the previous value
+        would be unreachable due to the row having been deleted and the object
+        detached from the session.The "postfetch" logic that was added as part of
+        :ticket:`3472` is now skipped entirely for an object that ultimately is to
+        be deleted.
 
 .. changelog::
     :version: 1.2.11
