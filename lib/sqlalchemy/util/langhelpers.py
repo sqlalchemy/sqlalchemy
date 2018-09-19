@@ -859,7 +859,7 @@ def dependency_for(modulename):
         # unfortunately importlib doesn't work that great either
         tokens = modulename.split(".")
         mod = compat.import_(
-            ".".join(tokens[0:-1]), globals(), locals(), tokens[-1])
+            ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]])
         mod = getattr(mod, tokens[-1])
         setattr(mod, obj.__name__, obj)
         return obj
