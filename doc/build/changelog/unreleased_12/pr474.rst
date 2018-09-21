@@ -1,0 +1,9 @@
+.. change::
+    :tags: feature, sql
+    :versions: 1.3.0b1
+
+    Refactored :class:`.SQLCompiler` to expose a
+    :meth:`.SQLCompiler.group_by_clause` method similar to the
+    :meth:`.SQLCompiler.order_by_clause` and :meth:`.SQLCompiler.limit_clause`
+    methods, which can be overridden by dialects to customize how GROUP BY
+    renders.  Pull request courtesy Samuel Chou.
