@@ -42,15 +42,15 @@ class MxODBCConnector(Connector):
         cls._load_mx_exceptions()
         platform = sys.platform
         if platform == 'win32':
-            from mx.ODBC import Windows as module
+            from mx.ODBC import Windows as Module
         # this can be the string "linux2", and possibly others
         elif 'linux' in platform:
-            from mx.ODBC import unixODBC as module
+            from mx.ODBC import unixODBC as Module
         elif platform == 'darwin':
-            from mx.ODBC import iODBC as module
+            from mx.ODBC import iODBC as Module
         else:
             raise ImportError("Unrecognized platform for mxODBC import")
-        return module
+        return Module
 
     @classmethod
     def _load_mx_exceptions(cls):
@@ -147,4 +147,5 @@ class MxODBCConnector(Connector):
             statement, parameters, direct=self._get_direct(context))
 
     def do_execute(self, cursor, statement, parameters, context=None):
-        cursor.execute(statement, parameters, direct=self._get_direct(context))
+        cursor.execute(statement, parameters,
+                       direct=self._get_direct(context))
