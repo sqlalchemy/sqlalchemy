@@ -1062,13 +1062,13 @@ class ResultProxyTest(fixtures.TablesTest):
             eq_(len(mock_rowcount.__get__.mock_calls), 2)
 
     def test_rowproxy_is_sequence(self):
-        import collections
+        from sqlalchemy.util import collections_abc
         from sqlalchemy.engine import RowProxy
 
         row = RowProxy(
             object(), ['value'], [None],
             {'key': (None, None, 0), 0: (None, None, 0)})
-        assert isinstance(row, collections.Sequence)
+        assert isinstance(row, collections_abc.Sequence)
 
     @testing.provide_metadata
     def test_rowproxy_getitem_indexes_compiled(self):
