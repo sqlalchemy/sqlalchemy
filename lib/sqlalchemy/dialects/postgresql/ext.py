@@ -39,6 +39,8 @@ class aggregate_order_by(expression.ColumnElement):
 
     .. versionadded:: 1.1
 
+    .. versionchanged:: 1.2.13 - the ORDER BY argument may be multiple terms
+
     .. seealso::
 
         :class:`.array_agg`
@@ -47,9 +49,18 @@ class aggregate_order_by(expression.ColumnElement):
 
     __visit_name__ = 'aggregate_order_by'
 
-    def __init__(self, target, order_by):
+    def __init__(self, target, *order_by):
         self.target = elements._literal_as_binds(target)
-        self.order_by = elements._literal_as_binds(order_by)
+
+        _lob = len(order_by)
+        if _lob == 0:
+            raise TypeError("at least one ORDER BY element is required")
+        elif _lob == 1:
+            self.order_by = elements._literal_as_binds(order_by[0])
+        else:
+            self.order_by = elements.ClauseList(
+                *order_by,
+                _literal_as_text=elements._literal_as_binds)
 
     def self_group(self, against=None):
         return self
