@@ -1100,6 +1100,31 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS string_agg_1 FROM table1"
         )
 
+    def test_aggregate_order_by_multi_col(self):
+        m = MetaData()
+        table = Table('table1', m, Column('a', Integer), Column('b', Integer))
+        expr = func.string_agg(
+            table.c.a,
+            aggregate_order_by(
+                literal_column("','"),
+                table.c.a, table.c.b.desc())
+        )
+        stmt = select([expr])
+
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(table1.a, "
+            "',' ORDER BY table1.a, table1.b DESC) "
+            "AS string_agg_1 FROM table1"
+        )
+
+    def test_aggregate_orcer_by_no_arg(self):
+        assert_raises_message(
+            TypeError,
+            "at least one ORDER BY element is required",
+            aggregate_order_by, literal_column("','")
+        )
+
     def test_pg_array_agg_implicit_pg_array(self):
 
         expr = pg_array_agg(column('data', Integer))
