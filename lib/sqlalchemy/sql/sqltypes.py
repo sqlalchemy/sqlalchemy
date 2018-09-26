@@ -1057,7 +1057,6 @@ class SchemaType(SchemaEventTarget):
         schema = kw.pop('schema', self.schema)
         metadata = kw.pop('metadata', self.metadata)
         _create_events = kw.pop('_create_events', False)
-
         return impltype(name=self.name,
                         schema=schema,
                         inherit_schema=self.inherit_schema,
@@ -1443,6 +1442,7 @@ class Enum(Emulated, String, SchemaType):
         kw.setdefault('_create_events', False)
         kw.setdefault('native_enum', self.native_enum)
         kw.setdefault('values_callable', self.values_callable)
+        kw.setdefault('create_constraint', self.create_constraint)
         assert '_enums' in kw
         return impltype(**kw)
 
