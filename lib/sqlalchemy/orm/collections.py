@@ -442,6 +442,7 @@ class collection(object):
     """deprecated; synonym for :meth:`.collection.linker`."""
 
     @staticmethod
+    @util.deprecated("1.3", "Use the bulk_replace event handler")
     def converter(fn):
         """Tag the method as the collection converter.
 
@@ -1516,30 +1517,6 @@ class MappedCollection(dict):
                 "values after flush?" %
                 (value, self[key], key))
         self.__delitem__(key, _sa_initiator)
-
-    @collection.converter
-    def _convert(self, dictlike):
-        """Validate and convert a dict-like object into values for set()ing.
-
-        This is called behind the scenes when a MappedCollection is replaced
-        entirely by another collection, as in::
-
-          myobj.mappedcollection = {'a':obj1, 'b': obj2} # ...
-
-        Raises a TypeError if the key in any (key, value) pair in the dictlike
-        object does not match the key that this collection's keyfunc would
-        have assigned for that value.
-
-        """
-        for incoming_key, value in util.dictlike_iteritems(dictlike):
-            new_key = self.keyfunc(value)
-            if incoming_key != new_key:
-                raise TypeError(
-                    "Found incompatible key %r for value %r; this "
-                    "collection's "
-                    "keying function requires a key of %r for this value." % (
-                        incoming_key, value, new_key))
-            yield value
 
 # ensure instrumentation is associated with
 # these built-in classes; if a user-defined class

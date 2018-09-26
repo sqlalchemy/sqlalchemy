@@ -2,6 +2,7 @@ from test.orm import _fixtures
 from sqlalchemy.testing import fixtures, assert_raises, eq_, ne_, \
     assert_raises_message
 from sqlalchemy.orm import mapper, Session, validates, relationship
+from sqlalchemy.orm import collections
 from sqlalchemy.testing.mock import Mock, call
 from sqlalchemy import exc
 
@@ -182,6 +183,50 @@ class ValidatorTest(_fixtures.FixtureTest):
         eq_(
             u1.addresses,
             [Address(email_address="e3"), Address(email_address="e4")]
+        )
+
+    def test_validator_bulk_dict_set(self):
+        users, addresses, Address = (self.tables.users,
+                                     self.tables.addresses,
+                                     self.classes.Address)
+
+        class User(fixtures.ComparableEntity):
+
+            @validates('addresses', include_removes=True)
+            def validate_address(self, key, item, remove):
+                if not remove:
+                    assert isinstance(item, str)
+                else:
+                    assert isinstance(item, Address)
+                item = Address(email_address=item)
+                return item
+
+        mapper(User, users, properties={
+            'addresses': relationship(
+                Address,
+                collection_class=collections.attribute_mapped_collection(
+                    "email_address")
+            )
+        })
+        mapper(Address, addresses)
+
+        u1 = User()
+        u1.addresses["e1"] = "e1"
+        u1.addresses["e2"] = "e2"
+        eq_(
+            u1.addresses,
+            {
+                "e1": Address(email_address="e1"),
+                "e2": Address(email_address="e2")
+            }
+        )
+        u1.addresses = {"e3": "e3", "e4": "e4"}
+        eq_(
+            u1.addresses,
+            {
+                "e3": Address(email_address="e3"),
+                "e4": Address(email_address="e4")
+            }
         )
 
     def test_validator_multi_warning(self):

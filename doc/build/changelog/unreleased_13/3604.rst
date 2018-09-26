@@ -1,0 +1,17 @@
+.. change::
+   :tags: orm, bug
+   :tickets: 3604
+
+   Removed the collection converter used by the :class:`.MappedCollection`
+   class. This converter was used only to assert that the incoming dictionary
+   keys matched that of their corresponding objects, and only during a bulk set
+   operation.  The converter can interfere with a custom validator or
+   :meth:`.AttributeEvents.bulk_replace` listener that wants to convert
+   incoming values further.  The ``TypeError`` which would be raised by this
+   converter when an incoming key didn't match the value is removed; incoming
+   values during a bulk assignment will be keyed to their value-generated key,
+   and not the key that's explicitly present in the dictionary.
+
+   Overall, @converter is superseded by the
+   :meth:`.AttributeEvents.bulk_replace` event handler added as part of
+   :ticket:`3896`.
