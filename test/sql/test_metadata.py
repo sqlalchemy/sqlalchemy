@@ -15,7 +15,7 @@ import sqlalchemy as tsa
 from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
 from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
-from sqlalchemy.testing import eq_, is_, mock, is_true
+from sqlalchemy.testing import eq_, is_, mock, is_true, is_false
 from contextlib import contextmanager
 from sqlalchemy import util
 from sqlalchemy.testing import engines
@@ -1879,6 +1879,18 @@ class SchemaTypeTest(fixtures.TestBase):
         m.dispatch.before_create(t1, testing.db)
         eq_(t1.c.y.type.evt_targets, (t1, ))
 
+    def test_enum_nonnative_column_copy_transfers_constraintpref(self):
+        m = MetaData()
+
+        type_ = self.WrapEnum(
+            'a', 'b', 'c', name='foo',
+            native_enum=False, create_constraint=False)
+        y = Column('y', type_)
+        y_copy = y.copy()
+        Table('x', m, y_copy)
+
+        is_false(y_copy.type.create_constraint)
+
     def test_boolean_column_copy_transfers_events(self):
         m = MetaData()
 
@@ -1888,6 +1900,16 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table('x', m, y_copy)
 
         is_true(y_copy.type._create_events)
+
+    def test_boolean_nonnative_column_copy_transfers_constraintpref(self):
+        m = MetaData()
+
+        type_ = self.WrapBoolean(create_constraint=False)
+        y = Column('y', type_)
+        y_copy = y.copy()
+        Table('x', m, y_copy)
+
+        is_false(y_copy.type.create_constraint)
 
     def test_metadata_dispatch_no_new_impl(self):
         m1 = MetaData()
