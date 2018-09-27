@@ -1,5 +1,4 @@
 from sqlalchemy.testing import eq_, ne_
-import sys
 from operator import and_
 
 import sqlalchemy.orm.collections as collections
@@ -13,6 +12,7 @@ from sqlalchemy.orm import create_session, mapper, relationship, \
     attributes, instrumentation
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import assert_raises, assert_raises_message
+from sqlalchemy import testing
 
 
 class Canary(sa.orm.interfaces.AttributeExtension):
@@ -1093,27 +1093,14 @@ class CollectionsTest(fixtures.ORMTest):
         # MappedCollection but is not present in basic, @converter-less
         # dict collections.
         e3 = creator()
-        if isinstance(obj.attr, collections.MappedCollection):
-            real_dict = dict(badkey=e3)
-            try:
-                obj.attr = real_dict
-                self.assert_(False)
-            except TypeError:
-                pass
-            self.assert_(obj.attr is not real_dict)
-            self.assert_('badkey' not in obj.attr)
-            eq_(set(collections.collection_adapter(obj.attr)),
-                set([e2]))
-            self.assert_(e3 not in canary.added)
-        else:
-            real_dict = dict(keyignored1=e3)
-            obj.attr = real_dict
-            self.assert_(obj.attr is not real_dict)
-            self.assert_('keyignored1' not in obj.attr)
-            eq_(set(collections.collection_adapter(obj.attr)),
-                set([e3]))
-            self.assert_(e2 in canary.removed)
-            self.assert_(e3 in canary.added)
+        real_dict = dict(keyignored1=e3)
+        obj.attr = real_dict
+        self.assert_(obj.attr is not real_dict)
+        self.assert_('keyignored1' not in obj.attr)
+        eq_(set(collections.collection_adapter(obj.attr)),
+            set([e3]))
+        self.assert_(e2 in canary.removed)
+        self.assert_(e3 in canary.added)
 
         obj.attr = typecallable()
         eq_(list(collections.collection_adapter(obj.attr)), [])
@@ -1182,6 +1169,7 @@ class CollectionsTest(fixtures.ORMTest):
         self._test_dict_bulk(MyOrdered)
         self.assert_(getattr(MyOrdered, '_sa_instrumented') == id(MyOrdered))
 
+    @testing.uses_deprecated(r".*Use the bulk_replace event handler")
     def test_dict_subclass4(self):
         # tests #2654
         class MyDict(collections.MappedCollection):
@@ -2248,6 +2236,7 @@ class InstrumentationTest(fixtures.ORMTest):
 
         collections._instrument_class(Touchy)
 
+    @testing.uses_deprecated(r".*Use the bulk_replace event handler")
     def test_name_setup(self):
 
         class Base(object):
