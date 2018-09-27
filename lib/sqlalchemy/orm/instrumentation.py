@@ -115,41 +115,6 @@ class ClassManager(dict):
         # raises unless self.mapper has been assigned
         raise exc.UnmappedClassError(self.class_)
 
-    def _locate_owning_manager(self, attribute):
-        """Scan through all instrumented classes in our hierarchy
-        searching for the given object as an attribute, and return
-        the bottommost owner.
-
-        E.g.::
-
-            foo = foobar()
-
-            class Parent:
-                attr = foo
-
-            class Child(Parent):
-                pass
-
-        Child.manager._locate_owning_manager(foo) would
-        give us Parent.
-
-        Needed by association proxy to correctly figure out the
-        owning class when the attribute is accessed.
-
-        """
-
-        stack = [None]
-        for supercls in self.class_.__mro__:
-            mgr = manager_of_class(supercls)
-            if not mgr:
-                continue
-            for key in set(supercls.__dict__):
-                val = supercls.__dict__[key]
-                if val is attribute:
-                    stack.append(mgr)
-                    continue
-        return stack[-1]
-
     def _all_sqla_attributes(self, exclude=None):
         """return an iterator of all classbound attributes that are
         implement :class:`.InspectionAttr`.
