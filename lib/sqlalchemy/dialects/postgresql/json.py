@@ -7,7 +7,6 @@
 from __future__ import absolute_import
 
 import json
-import collections
 
 from .base import ischema_names, colspecs
 from ... import types as sqltypes
@@ -61,7 +60,7 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
         super_proc = self.string_bind_processor(dialect)
 
         def process(value):
-            assert isinstance(value, collections.Sequence)
+            assert isinstance(value, util.collections_abc.Sequence)
             tokens = [util.text_type(elem)for elem in value]
             value = "{%s}" % (", ".join(tokens))
             if super_proc:
@@ -74,7 +73,7 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
         super_proc = self.string_literal_processor(dialect)
 
         def process(value):
-            assert isinstance(value, collections.Sequence)
+            assert isinstance(value, util.collections_abc.Sequence)
             tokens = [util.text_type(elem)for elem in value]
             value = "{%s}" % (", ".join(tokens))
             if super_proc:

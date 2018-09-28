@@ -2098,7 +2098,7 @@ class JSON(Indexable, TypeEngine):
         @util.dependencies('sqlalchemy.sql.default_comparator')
         def _setup_getitem(self, default_comparator, index):
             if not isinstance(index, util.string_types) and \
-                    isinstance(index, collections.Sequence):
+                    isinstance(index, compat.collections_abc.Sequence):
                 index = default_comparator._check_literal(
                     self.expr, operators.json_path_getitem_op,
                     index, bindparam_type=JSON.JSONPathType

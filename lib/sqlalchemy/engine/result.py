@@ -179,8 +179,7 @@ class RowProxy(BaseRowProxy):
 try:
     # Register RowProxy with Sequence,
     # so sequence protocol is implemented
-    from collections import Sequence
-    Sequence.register(RowProxy)
+    util.collections_abc.Sequence.register(RowProxy)
 except ImportError:
     pass
 

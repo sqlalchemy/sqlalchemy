@@ -14,7 +14,6 @@ from .. import util, exc
 import itertools
 from .visitors import ClauseVisitor
 import re
-import collections
 
 PARSE_AUTOCOMMIT = util.symbol('PARSE_AUTOCOMMIT')
 NO_ARG = util.symbol('NO_ARG')
@@ -46,7 +45,7 @@ def _generative(fn, *args, **kw):
     return self
 
 
-class _DialectArgView(collections.MutableMapping):
+class _DialectArgView(util.collections_abc.MutableMapping):
     """A dictionary view of dialect-level arguments in the form
     <dialectname>_<argument_name>.
 
@@ -99,7 +98,7 @@ class _DialectArgView(collections.MutableMapping):
         )
 
 
-class _DialectArgDict(collections.MutableMapping):
+class _DialectArgDict(util.collections_abc.MutableMapping):
     """A dictionary view of dialect-level arguments for a specific
     dialect.
 
