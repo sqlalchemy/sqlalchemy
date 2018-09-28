@@ -716,6 +716,71 @@ additional columns when we query; these can be ignored:
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
 
+Row-Limited Relationships with Window Functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Another interesting use case for non-primary mappers are situations where
+the relationship needs to join to a specialized SELECT of any form.   One
+scenario is when the use of a window function is desired, such as to limit
+how many rows should be returned for a relationship.  The example below
+illustrates a non-primary mapper relationship that will load the first
+ten items for each collection::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey("a.id"))
+
+    partition = select([
+        B,
+        func.row_number().over(
+            order_by=B.id, partition_by=B.a_id
+        ).label('index')
+    ]).alias()
+
+    partitioned_b = mapper(B, partition, non_primary=True)
+
+    A.partitioned_bs = relationship(
+        partitioned_b,
+        primaryjoin=and_(partitioned_b.c.a_id == A.id, partitioned_b.c.index < 10)
+    )
+
+We can use the above ``partitioned_bs`` relationship with most of the loader
+strategies, such as :func:`.selectinload`::
+
+    for a1 in s.query(A).options(selectinload(A.partitioned_bs)):
+        print(a1.partitioned_bs)   # <-- will be no more than ten objects
+
+Where above, the "selectinload" query looks like:
+
+.. sourcecode:: sql
+
+    SELECT
+        a_1.id AS a_1_id, anon_1.id AS anon_1_id, anon_1.a_id AS anon_1_a_id,
+        anon_1.data AS anon_1_data, anon_1.index AS anon_1_index
+    FROM a AS a_1
+    JOIN (
+        SELECT b.id AS id, b.a_id AS a_id, b.data AS data,
+        row_number() OVER (PARTITION BY b.a_id ORDER BY b.id) AS index
+        FROM b) AS anon_1
+    ON anon_1.a_id = a_1.id AND anon_1.index < %(index_1)s
+    WHERE a_1.id IN ( ... primary key collection ...)
+    ORDER BY a_1.id
+
+Above, for each matching primary key in "a", we will get the first ten
+"bs" as ordered by "b.id".   By partitioning on "a_id" we ensure that each
+"row number" is local to the parent "a_id".
+
+Such a mapping would ordinarily also include a "plain" relationship
+from "A" to "B", for persistence operations as well as when the full
+set of "B" objects per "A" is desired.
+
 
 Building Query-Enabled Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
