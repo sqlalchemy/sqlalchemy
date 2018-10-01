@@ -309,6 +309,13 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(u1)
         is_(insp, instance_state(u1))
 
+    def test_instance_state_info(self):
+        User = self.classes.User
+        u1 = User()
+        insp = inspect(u1)
+        insp.info['some_key'] = 'value'
+        eq_(inspect(u1).info['some_key'], 'value')
+
     def test_instance_state_attr(self):
         User = self.classes.User
         u1 = User(name='ed')
