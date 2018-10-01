@@ -2460,7 +2460,8 @@ class PGDialect(default.DefaultDialect):
             FROM pg_catalog.pg_class c
             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             WHERE (%s)
-            AND c.relname = :table_name AND c.relkind in ('r', 'v', 'm', 'f')
+            AND c.relname = :table_name AND c.relkind in
+            ('r', 'v', 'm', 'f', 'p')
         """ % schema_where_clause
         # Since we're binding to unicode, table_name and schema_name must be
         # unicode.
@@ -2491,7 +2492,7 @@ class PGDialect(default.DefaultDialect):
         result = connection.execute(
             sql.text("SELECT c.relname FROM pg_class c "
                      "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                     "WHERE n.nspname = :schema AND c.relkind = 'r'"
+                     "WHERE n.nspname = :schema AND c.relkind in ('r', 'p')"
                      ).columns(relname=sqltypes.Unicode),
             schema=schema if schema is not None else self.default_schema_name)
         return [name for name, in result]
