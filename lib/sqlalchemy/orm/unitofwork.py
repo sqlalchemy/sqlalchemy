@@ -69,6 +69,10 @@ def track_cascade_events(descriptor, prop):
             if sess and item_state in sess._new:
                 sess.expunge(item)
             else:
+                # the related item may or may not itself be in a
+                # Session, however the parent for which we are catching
+                # the event is not in a session, so memoize this on the
+                # item
                 item_state._orphaned_outside_of_session = True
 
     def set_(state, newvalue, oldvalue, initiator):
