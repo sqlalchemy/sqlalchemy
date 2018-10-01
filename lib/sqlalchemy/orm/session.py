@@ -2316,7 +2316,8 @@ class Session(_SessionClassMethods):
 
             is_persistent_orphan = is_orphan and state.has_identity
 
-            if is_orphan and not is_persistent_orphan and state._orphaned_outside_of_session:
+            if is_orphan and not is_persistent_orphan and \
+                    state._orphaned_outside_of_session:
                 self._expunge_states([state])
             else:
                 _reg = flush_context.register_object(

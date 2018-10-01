@@ -272,6 +272,30 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         u.orders.remove(o1)
         assert o1 not in sess
 
+    def test_remove_pending_from_pending_parent(self):
+        # test issue #4040
+
+        User, Order = self.classes.User, self.classes.Order
+
+        sess = Session()
+
+        u = User(name='jack')
+
+        o1 = Order()
+        sess.add(o1)
+
+        # object becomes an orphan, but parent is not in session
+        u.orders.append(o1)
+        u.orders.remove(o1)
+
+        sess.add(u)
+
+        assert o1 in sess
+
+        sess.flush()
+
+        assert o1 not in sess
+
     def test_delete(self):
         User, users, orders, Order = (self.classes.User,
                                       self.tables.users,

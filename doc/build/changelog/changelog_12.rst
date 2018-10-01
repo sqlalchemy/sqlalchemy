@@ -1471,6 +1471,20 @@
 
     .. change::
         :tags: bug, orm
+        :tickets: 4040
+
+        Fixed bug involving delete-orphan cascade where a related item
+        that becomes an orphan before the parent object is part of a
+        session is still tracked as moving into orphan status, which results
+        in it being expunged from the session rather than being flushed.
+
+        .. note::  This fix was inadvertently merged during the 1.2.0b3
+           release and was **not added to the changelog** at that time.
+           This changelog note was added to the release retroactively as of
+           version 1.2.13.
+
+    .. change::
+        :tags: bug, orm
         :tickets: 4026
 
         Fixed bug in :ref:`change_3948` which prevented "selectin" and
