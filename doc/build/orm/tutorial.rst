@@ -1643,23 +1643,22 @@ which involves custom criterion.   All three are usually invoked via functions k
 as :term:`query options` which give additional instructions to the :class:`.Query` on how
 we would like various attributes to be loaded, via the :meth:`.Query.options` method.
 
-Subquery Load
+Selectin Load
 -------------
 
 In this case we'd like to indicate that ``User.addresses`` should load eagerly.
 A good choice for loading a set of objects as well as their related collections
-is the :func:`.orm.subqueryload` option, which emits a second SELECT statement
+is the :func:`.orm.selectinload` option, which emits a second SELECT statement
 that fully loads the collections associated with the results just loaded.
-The name "subquery" originates from the fact that the SELECT statement
-constructed directly via the :class:`.Query` is re-used, embedded as a subquery
-into a SELECT against the related table.   This is a little elaborate but
-very easy to use:
+The name "selectin" originates from the fact that the SELECT statement
+uses an IN clause in order to locate related rows for multiple objects
+at once:
 
 .. sourcecode:: python+sql
 
-    >>> from sqlalchemy.orm import subqueryload
+    >>> from sqlalchemy.orm import selectinload
     {sql}>>> jack = session.query(User).\
-    ...                 options(subqueryload(User.addresses)).\
+    ...                 options(selectinload(User.addresses)).\
     ...                 filter_by(name='jack').one()
     SELECT users.id AS users_id,
             users.name AS users_name,
@@ -1668,27 +1667,19 @@ very easy to use:
     FROM users
     WHERE users.name = ?
     ('jack',)
-    SELECT addresses.id AS addresses_id,
-            addresses.email_address AS addresses_email_address,
-            addresses.user_id AS addresses_user_id,
-            anon_1.users_id AS anon_1_users_id
-    FROM (SELECT users.id AS users_id
-        FROM users WHERE users.name = ?) AS anon_1
-    JOIN addresses ON anon_1.users_id = addresses.user_id
-    ORDER BY anon_1.users_id, addresses.id
-    ('jack',)
+    SELECT addresses.user_id AS addresses_user_id,
+            addresses.id AS addresses_id,
+            addresses.email_address AS addresses_email_address
+    FROM addresses
+    WHERE addresses.user_id IN (?)
+    ORDER BY addresses.user_id, addresses.id
+    (5,)
     {stop}>>> jack
     <User(name='jack', fullname='Jack Bean', password='gjffdd')>
 
     >>> jack.addresses
     [<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
 
-.. note::
-
-   :func:`.subqueryload` when used in conjunction with limiting such as
-   :meth:`.Query.first`, :meth:`.Query.limit` or :meth:`.Query.offset`
-   should also include :meth:`.Query.order_by` on a unique column in order to
-   ensure correct results.  See :ref:`subqueryload_ordering`.
 
 Joined Load
 -----------
@@ -1731,11 +1722,14 @@ one instance of ``User`` back.  This is because :class:`.Query` applies a "uniqu
 strategy, based on object identity, to the returned entities.  This is specifically
 so that joined eager loading can be applied without affecting the query results.
 
-While :func:`.joinedload` has been around for a long time, :func:`.subqueryload`
-is a newer form of eager loading.   :func:`.subqueryload` tends to be more appropriate
+While :func:`.joinedload` has been around for a long time, :func:`.selectinload`
+is a newer form of eager loading.   :func:`.selectinload` tends to be more appropriate
 for loading related collections while :func:`.joinedload` tends to be better suited
 for many-to-one relationships, due to the fact that only one row is loaded
-for both the lead and the related object.
+for both the lead and the related object.   Another form of loading,
+:func:`.subqueryload`, also exists, which can be used in place of
+:func:`.selectinload` when making use of composite primary keys on certain
+backends.
 
 .. topic:: ``joinedload()`` is not a replacement for ``join()``
 

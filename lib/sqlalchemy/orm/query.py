@@ -4020,13 +4020,17 @@ class _BundleEntity(_QueryEntity):
                 if isinstance(expr, Bundle):
                     _BundleEntity(self, expr)
                 else:
-                    _ColumnEntity(self, expr, namespace=self)
+                    _ColumnEntity(self, expr)
 
         self.supports_single_entity = self.bundle.single_entity
 
     @property
     def mapper(self):
-        return self.entity_zero.mapper
+        ezero = self.entity_zero
+        if ezero is not None:
+            return ezero.mapper
+        else:
+            return None
 
     @property
     def entities(self):

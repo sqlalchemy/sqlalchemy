@@ -45,7 +45,7 @@ class ShardedQuery(Query):
         def iter_for_shard(shard_id):
             context.attributes['shard_id'] = context.identity_token = shard_id
             result = self._connection_from_session(
-                mapper=self._mapper_zero(),
+                mapper=self._bind_mapper(),
                 shard_id=shard_id).execute(
                 context.statement,
                 self._params)

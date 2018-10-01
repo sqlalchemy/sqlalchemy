@@ -91,21 +91,22 @@ class BaseAndSubFixture(object):
                         {"primary_keys": [2]}
                     ),
                     CompiledSQL(
-                        "SELECT anon_1.a_id AS anon_1_a_id, c.id AS c_id, "
-                        "c.a_sub_id AS c_a_sub_id FROM (SELECT a.id AS a_id, a.adata "
-                        "AS a_adata, a.type AS a_type, asub.id AS asub_id, "
-                        "asub.asubdata AS asub_asubdata FROM a JOIN asub "
-                        "ON a.id = asub.id) AS anon_1 JOIN c "
-                        "ON anon_1.asub_id = c.a_sub_id "
-                        "WHERE anon_1.a_id IN ([EXPANDING_primary_keys]) "
-                        "ORDER BY anon_1.a_id",
+                        # note this links c.a_sub_id to a.id, even though
+                        # primaryjoin is to asub.id.  this is because the
+                        # cols a.id / asub.id are listed in the mapper's
+                        # equivalent_columns so they are guaranteed to store
+                        # the same value.
+                        "SELECT c.a_sub_id AS c_a_sub_id, "
+                        "c.id AS c_id "
+                        "FROM c WHERE c.a_sub_id "
+                        "IN ([EXPANDING_primary_keys]) ORDER BY c.a_sub_id",
                         {"primary_keys": [2]}
                     ),
                 ),
                 CompiledSQL(
-                    "SELECT a_1.id AS a_1_id, b.id AS b_id, b.a_id AS b_a_id "
-                    "FROM a AS a_1 JOIN b ON a_1.id = b.a_id "
-                    "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                    "SELECT b.a_id AS b_a_id, b.id AS b_id FROM b "
+                    "WHERE b.a_id IN ([EXPANDING_primary_keys]) "
+                    "ORDER BY b.a_id",
                     {"primary_keys": [1, 2]}
                 )
             )
@@ -216,14 +217,12 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                 {}
             ),
             CompiledSQL(
-                "SELECT companies_1.company_id AS companies_1_company_id, "
+                "SELECT people.company_id AS people_company_id, "
                 "people.person_id AS people_person_id, "
-                "people.company_id AS people_company_id, "
                 "people.name AS people_name, people.type AS people_type "
-                "FROM companies AS companies_1 JOIN people "
-                "ON companies_1.company_id = people.company_id "
-                "WHERE companies_1.company_id IN ([EXPANDING_primary_keys]) "
-                "ORDER BY companies_1.company_id, people.person_id",
+                "FROM people WHERE people.company_id "
+                "IN ([EXPANDING_primary_keys]) "
+                "ORDER BY people.company_id, people.person_id",
                 {"primary_keys": [1, 2]}
             ),
             AllOf(

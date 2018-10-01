@@ -426,6 +426,8 @@ class AttachedFileShardTest(ShardTest, fixtures.TestBase):
 
 
 class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
+    """test #4175
+    """
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic

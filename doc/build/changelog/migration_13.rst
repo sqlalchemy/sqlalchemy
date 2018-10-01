@@ -20,6 +20,70 @@ potentially backwards-incompatible changes in behavior.
 New Features and Improvements - ORM
 ===================================
 
+.. _change_4340:
+
+selectin loading no longer uses JOIN for simple one-to-many
+------------------------------------------------------------
+
+The "selectin" loading feature added in 1.2 introduced an extremely
+performant new way to eagerly load collections, in many cases much faster
+than that of "subquery" eager loading, as it does not rely upon restating
+the original SELECT query and instead uses a simple IN clause.  However,
+the "selectin" load still relied upon rendering a JOIN between the
+parent and related tables, since it needs the parent primary key values
+in the row in order to match rows up.     In 1.3, a new optimization
+is added which will omit this JOIN in the most common case of a simple
+one-to-many load, where the related row already contains the primary key
+of the parent row expressed in its foreign key columns.   This again provides
+for a dramatic performance improvement as the ORM now can load large numbers
+of collections all in one query without using JOIN or subqueries at all.
+
+Given a mapping::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B", lazy="selectin")
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey("a.id"))
+
+In the 1.2 version of "selectin" loading, a load of A to B looks like:
+
+.. sourcecode:: sql
+
+    SELECT a.id AS a_id FROM a
+    SELECT a_1.id AS a_1_id, b.id AS b_id, b.a_id AS b_a_id
+    FROM a AS a_1 JOIN b ON a_1.id = b.a_id
+    WHERE a_1.id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ORDER BY a_1.id
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+With the new behavior, the load looks like:
+
+.. sourcecode:: sql
+
+
+    SELECT a.id AS a_id FROM a
+    SELECT b.a_id AS b_a_id, b.id AS b_id FROM b
+    WHERE b.a_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ORDER BY b.a_id
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+The behavior is being released as automatic, using a similar heuristic that
+lazy loading uses in order to determine if related entities can be fetched
+directly from the identity map.   However, as with most querying features,
+the feature's implementation became more complex as a result of advanced
+scenarios regarding polymorphic loading.   If problems are encountered,
+users should report a bug, however the change also incldues a flag
+:paramref:`.relationship.omit_join` which can be set to False on the
+:func:`.relationship` to disable the optimization.
+
+
+:ticket:`4340`
+
 .. _change_4257:
 
 info dictionary added to InstanceState

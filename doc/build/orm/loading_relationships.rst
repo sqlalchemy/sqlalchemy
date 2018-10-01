@@ -692,6 +692,13 @@ eager loading, is compatible with batching of results using
 :meth:`.Query.yield_per`, provided the database driver supports simultaneous
 cursors.
 
+Overall, especially as of the 1.3 series of SQLAlchemy, selectin loading
+is the most simple and efficient way to eagerly load collections of objects
+in most cases.  The only scenario in which selectin eager loading is not feasible
+is when the model is using composite primary keys, and the backend database
+does not support tuples with IN, which includes SQLite, Oracle and
+SQL Server.
+
 .. versionadded:: 1.2
 
 "Select IN" eager loading is provided using the ``"selectin"`` argument
@@ -714,20 +721,49 @@ in order to load related associations:
     WHERE users.name = ? OR users.name = ?
     ('jack', 'ed')
     SELECT
-        users_1.id AS users_1_id,
         addresses.id AS addresses_id,
         addresses.email_address AS addresses_email_address,
         addresses.user_id AS addresses_user_id
-    FROM users AS users_1
-    JOIN addresses ON users_1.id = addresses.user_id
-    WHERE users_1.id IN (?, ?)
-    ORDER BY users_1.id, addresses.id
+    FROM addresses
+    WHERE addresses.user_id IN (?, ?)
+    ORDER BY addresses.user_id, addresses.id
     (5, 7)
 
-Above, the second SELECT refers to ``users_1.id IN (5, 7)``, where the
+Above, the second SELECT refers to ``addresses.user_id IN (5, 7)``, where the
 "5" and "7" are the primary key values for the previous two ``User``
 objects loaded; after a batch of objects are completely loaded, their primary
 key values are injected into the ``IN`` clause for the second SELECT.
+Because the relatonship between ``User`` and ``Address`` provides that the
+primary key values for ``User`` can be derived from ``Address.user_id``, the
+statement has no joins or subqueries at all.
+
+.. versionchanged:: 1.3 selectin loading can omit the JOIN for a simple
+   one-to-many collection.
+
+In the case where the primary key of the parent object isn't present in
+the related row, "selectin" loading will also JOIN to the parent table so that
+the parent primary key values are present:
+
+.. sourcecode:: python+sql
+
+    >>> session.query(Address).\
+    ... options(selectinload('user')).all()
+    {opensql}SELECT
+        addresses.id AS addresses_id,
+        addresses.email_address AS addresses_email_address,
+        addresses.user_id AS addresses_user_id
+        FROM addresses
+    SELECT
+        addresses_1.id AS addresses_1_id,
+        users.id AS users_id,
+        users.name AS users_name,
+        users.fullname AS users_fullname,
+        users.password AS users_password
+    FROM addresses AS addresses_1
+    JOIN users ON users.id = addresses_1.user_id
+    WHERE addresses_1.id IN (?, ?)
+    ORDER BY addresses_1.id
+    (1, 2)
 
 "Select IN" loading is the newest form of eager loading added to SQLAlchemy
 as of the 1.2 series.   Things to know about this kind of loading include:
@@ -746,7 +782,8 @@ as of the 1.2 series.   Things to know about this kind of loading include:
 * "selectin" loading, unlike joined or subquery eager loading, always emits
   its SELECT in terms of the immediate parent objects just loaded, and
   not the original type of object at the top of the chain.  So if eager loading
-  many levels deep, "selectin" loading still uses exactly one JOIN in the statement.
+  many levels deep, "selectin" loading still uses no more than one JOIN,
+  and usually no JOINs, in the statement.   In comparison,
   joined and subquery eager loading always refer to multiple JOINs up to
   the original parent.
 

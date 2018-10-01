@@ -116,7 +116,8 @@ class RelationshipProperty(StrategizedProperty):
                  bake_queries=True,
                  _local_remote_pairs=None,
                  query_class=None,
-                 info=None):
+                 info=None,
+                 omit_join=None):
         """Provide a relationship between two mapped classes.
 
         This corresponds to a parent-child or associative table relationship.
@@ -816,6 +817,13 @@ class RelationshipProperty(StrategizedProperty):
           the full set of related objects, to prevent modifications of the
           collection from resulting in persistence operations.
 
+        :param omit_join:
+          Allows manual control over the "selectin" automatic join
+          optimization.  Set to ``False`` to disable the "omit join" feature
+          added in SQLAlchemy 1.3.
+
+          .. versionadded:: 1.3
+
 
         """
         super(RelationshipProperty, self).__init__()
@@ -843,6 +851,7 @@ class RelationshipProperty(StrategizedProperty):
         self.doc = doc
         self.active_history = active_history
         self.join_depth = join_depth
+        self.omit_join = omit_join
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
         self.bake_queries = bake_queries
