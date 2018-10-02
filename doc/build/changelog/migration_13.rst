@@ -243,6 +243,72 @@ The fix now includes that ``address.user_id`` is left unchanged as per
 
 :ticket:`3844`
 
+.. _change_4268:
+
+Association Proxy now Strong References the Parent Object
+=========================================================
+
+The long-standing behavior of the association proxy collection maintaining
+only a weak reference to the parent object is reverted; the proxy will now
+maintain a strong reference to the parent for as long as the proxy
+collection itself is also in memory, eliminating the "stale association
+proxy" error. This change is being made on an experimental basis to see if
+any use cases arise where it causes side effects.
+
+As an example, given a mapping with association proxy::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B")
+        b_data = association_proxy('bs', 'data')
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey("a.id"))
+        data = Column(String)
+
+
+    a1 = A(bs=[B(data='b1'), B(data='b2')])
+
+    b_data = a1.b_data
+
+Previously, if ``a1`` were deleted out of scope::
+
+    del a1
+
+Trying to iterate the ``b_data`` collection after ``a1`` is deleted from scope
+would raise the error ``"stale association proxy, parent object has gone out of
+scope"``.  This is because the association proxy needs to access the actual
+``a1.bs`` collection in order to produce a view, and prior to this change it
+maintained only a weak reference to ``a1``.   In particular, users would
+frequently encounter this error when performing an inline operation
+such as::
+
+    collection = session.query(A).filter_by(id=1).first().b_data
+
+Above, because the ``A`` object would be garbage collected before the
+``b_data`` collection were actually used.
+
+The change is that the ``b_data`` collection is now maintaining a strong
+reference to the ``a1`` object, so that it remains present::
+
+    assert b_data == ['b1', 'b2']
+
+This change introduces the side effect that if an application is passing around
+the collection as above, **the parent object won't be garbage collected** until
+the collection is also discarded.   As always, if ``a1`` is persistent inside a
+particular :class:`.Session`, it will remain part of that session's  state
+until it is garbage collected.
+
+Note that this change may be revised if it leads to problems.
+
+
+:ticket:`4268`
+
 New Features and Improvements - Core
 ====================================
 

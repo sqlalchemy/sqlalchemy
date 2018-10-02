@@ -14,7 +14,6 @@ See the example ``examples/association/proxied_association.py``.
 
 """
 import operator
-import weakref
 from .. import exc, orm, util
 from ..orm import collections, interfaces
 from ..sql import or_
@@ -637,22 +636,17 @@ class AssociationProxyInstance(object):
 
 class _lazy_collection(object):
     def __init__(self, obj, target):
-        self.ref = weakref.ref(obj)
+        self.parent = obj
         self.target = target
 
     def __call__(self):
-        obj = self.ref()
-        if obj is None:
-            raise exc.InvalidRequestError(
-                "stale association proxy, parent object has gone out of "
-                "scope")
-        return getattr(obj, self.target)
+        return getattr(self.parent, self.target)
 
     def __getstate__(self):
-        return {'obj': self.ref(), 'target': self.target}
+        return {'obj': self.parent, 'target': self.target}
 
     def __setstate__(self, state):
-        self.ref = weakref.ref(state['obj'])
+        self.parent = state['obj']
         self.target = state['target']
 
 
