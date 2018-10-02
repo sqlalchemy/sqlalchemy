@@ -733,6 +733,7 @@ output::
 
 """
 
+from collections import defaultdict
 import re
 import sys
 import json
@@ -1979,6 +1980,10 @@ class MySQLDialect(default.DefaultDialect):
 
         default.DefaultDialect.initialize(self, connection)
 
+        self._needs_correct_for_88718 = (
+            not self._is_mariadb and self.server_version_info >= (8, )
+        )
+
         self._warn_for_known_db_issues()
 
     def _warn_for_known_db_issues(self):
@@ -2130,7 +2135,55 @@ class MySQLDialect(default.DefaultDialect):
                 'options': con_kw
             }
             fkeys.append(fkey_d)
+
+        if self._needs_correct_for_88718:
+            self._correct_for_mysql_bug_88718(fkeys, connection)
+
         return fkeys
+
+    def _correct_for_mysql_bug_88718(self, fkeys, connection):
+        # Foreign key is always in lower case (MySQL 8.0)
+        # https://bugs.mysql.com/bug.php?id=88718
+        # issue #4344 for SQLAlchemy
+
+        default_schema_name = connection.dialect.default_schema_name
+        col_tuples = [
+            (
+                rec['referred_schema'] or default_schema_name,
+                rec['referred_table'],
+                col_name
+            )
+            for rec in fkeys
+            for col_name in rec['referred_columns']
+        ]
+
+        if col_tuples:
+
+            correct_for_wrong_fk_case = connection.execute(
+                sql.text("""
+                    select table_schema, table_name, column_name
+                    from information_schema.columns
+                    where (table_schema, table_name, lower(column_name)) in
+                    :table_data;
+                """).bindparams(
+                    sql.bindparam("table_data", expanding=True)
+                ), table_data=col_tuples
+            )
+
+            d = defaultdict(dict)
+            for schema, tname, cname in correct_for_wrong_fk_case:
+                d[(schema, tname)][cname.lower()] = cname
+
+            for fkey in fkeys:
+                fkey['referred_columns'] = [
+                    d[
+                        (
+                            fkey['referred_schema'] or default_schema_name,
+                            fkey['referred_table']
+                        )
+                    ][col.lower()]
+                    for col in fkey['referred_columns']
+                ]
 
     @reflection.cache
     def get_check_constraints(
