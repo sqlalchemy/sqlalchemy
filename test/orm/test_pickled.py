@@ -333,6 +333,22 @@ class PickleTest(fixtures.MappedTest):
         eq_(state.identity_token, None)
         eq_(state.identity_key, (User, (1,), None))
 
+    def test_state_info_pickle(self):
+        users = self.tables.users
+        mapper(User, users)
+
+        u1 = User(id=1, name='ed')
+
+        sa.inspect(u1).info['some_key'] = 'value'
+
+        state_dict = sa.inspect(u1).__getstate__()
+
+        state = sa_state.InstanceState.__new__(sa_state.InstanceState)
+        state.__setstate__(state_dict)
+
+        u2 = state.obj()
+        eq_(sa.inspect(u2).info['some_key'], 'value')
+
     @testing.requires.non_broken_pickle
     def test_options_with_descriptors(self):
         users, addresses, dingalings = (self.tables.users,

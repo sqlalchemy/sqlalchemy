@@ -20,6 +20,25 @@ potentially backwards-incompatible changes in behavior.
 New Features and Improvements - ORM
 ===================================
 
+.. _change_4257:
+
+info dictionary added to InstanceState
+--------------------------------------
+
+Added the ``.info`` dictionary to the :class:`.InstanceState` class, the object
+that comes from calling :func:`.inspect` on a mapped object.  This allows custom
+recipes to add additional information about an object that will be carried
+along with that object's full lifecycle in memory::
+
+    from sqlalchemy import inspect
+
+    u1 = User(id=7, name='ed')
+
+    inspect(u1).info['user_info'] = '7|ed'
+
+
+:ticket:`4257`
+
 Key Behavioral Changes - ORM
 =============================
 

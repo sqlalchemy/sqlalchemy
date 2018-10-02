@@ -24,7 +24,7 @@ from . import base
 
 
 @inspection._self_inspects
-class InstanceState(interfaces.InspectionAttr):
+class InstanceState(interfaces.InspectionAttrInfo):
     """tracks state information at the instance level.
 
     The :class:`.InstanceState` is a key object used by the
@@ -440,7 +440,7 @@ class InstanceState(interfaces.InspectionAttr):
             (k, self.__dict__[k]) for k in (
                 'committed_state', '_pending_mutations', 'modified',
                 'expired', 'callables', 'key', 'parents', 'load_options',
-                'class_', 'expired_attributes'
+                'class_', 'expired_attributes', 'info'
             ) if k in self.__dict__
         )
         if self.load_path:
@@ -467,6 +467,8 @@ class InstanceState(interfaces.InspectionAttr):
         self.parents = state_dict.get('parents', {})
         self.modified = state_dict.get('modified', False)
         self.expired = state_dict.get('expired', False)
+        if 'info' in state_dict:
+            self.info.update(state_dict['info'])
         if 'callables' in state_dict:
             self.callables = state_dict['callables']
 
