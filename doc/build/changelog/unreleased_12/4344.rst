@@ -1,0 +1,10 @@
+.. change::
+   :tags: bug, mysql
+   :tickets: 4344
+
+   Added a workaround for a MySQL bug #88718 introduced in the 8.0 series,
+   where the reflection of a foreign key constraint is not reporting the
+   correct case sensitivity for the referred column, leading to errors during
+   use of the reflected constraint such as when using the automap extension.
+   The workaround emits an additional query to the information_schema tables in
+   order to retrieve the correct case sensitive name.

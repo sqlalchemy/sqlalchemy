@@ -4,7 +4,7 @@ from sqlalchemy.testing import eq_, is_
 from sqlalchemy import Column, Table, DDL, MetaData, TIMESTAMP, \
     DefaultClause, String, Integer, Text, UnicodeText, SmallInteger,\
     NCHAR, LargeBinary, DateTime, select, UniqueConstraint, Unicode,\
-    BigInteger, Index
+    BigInteger, Index, ForeignKey
 from sqlalchemy import event
 from sqlalchemy import sql
 from sqlalchemy import exc
@@ -594,6 +594,50 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(
             insp.get_indexes("add_ix"),
             [{'name': 'foo_idx', 'column_names': ['x'], 'unique': False}]
+        )
+
+    @testing.provide_metadata
+    def test_case_sensitive_column_constraint_reflection(self):
+        # test for issue #4344 which works around
+        # MySQL 8.0 bug https://bugs.mysql.com/bug.php?id=88718
+
+        m1 = self.metadata
+
+        Table(
+            'Track', m1, Column('TrackID', Integer, primary_key=True)
+        )
+        Table(
+            'Track', m1, Column('TrackID', Integer, primary_key=True),
+            schema=testing.config.test_schema
+        )
+        Table(
+            'PlaylistTrack', m1, Column('id', Integer, primary_key=True),
+            Column('TrackID',
+                   ForeignKey('Track.TrackID', name='FK_PlaylistTrackId')),
+            Column(
+                'TTrackID',
+                ForeignKey(
+                    '%s.Track.TrackID' % (testing.config.test_schema,),
+                    name='FK_PlaylistTTrackId'
+                )
+            )
+        )
+        m1.create_all()
+
+        eq_(
+            inspect(testing.db).get_foreign_keys('PlaylistTrack'),
+            [
+                {'name': 'FK_PlaylistTTrackId',
+                 'constrained_columns': ['TTrackID'],
+                 'referred_schema': testing.config.test_schema,
+                 'referred_table': 'Track',
+                 'referred_columns': ['TrackID'], 'options': {}},
+                {'name': 'FK_PlaylistTrackId',
+                 'constrained_columns': ['TrackID'],
+                 'referred_schema': None,
+                 'referred_table': 'Track',
+                 'referred_columns': ['TrackID'], 'options': {}}
+            ]
         )
 
 
