@@ -475,6 +475,42 @@ Key Behavioral Changes - Core
 Dialect Improvements and Changes - PostgreSQL
 =============================================
 
+.. _change_4237:
+
+Added basic reflection support for Postgresql paritioned tables
+---------------------------------------------------------------
+
+SQLAlchemy can render the "PARTITION BY" sequnce within a Postgresql
+CREATE TABLE statement using the flag ``postgresql_partition_by``, added in
+version 1.2.6.    However, the ``'p'`` type was not part of the reflection
+queries used until now.
+
+Given a schema such as::
+
+    dv = Table(
+        'data_values', metadata,
+        Column('modulus', Integer, nullable=False),
+        Column('data', String(30)),
+        postgresql_partition_by='range(modulus)')
+
+    sa.event.listen(
+        dv,
+        "after_create",
+        sa.DDL(
+            "CREATE TABLE data_values_4_10 PARTITION OF data_values "
+            "FOR VALUES FROM (4) TO (10)")
+    )
+
+The two table names ``'data_values'`` and ``'data_values_4_10'`` will come
+back from :meth:`.Inspector.get_table_names` and additionally the columns
+will come back from ``Inspector.get_columns('data_values')`` as well
+as ``Inspector.get_columns('data_values_4_10')``.   This also extends to the
+use of ``Table(..., autoload=True)`` with these tables.
+
+
+:ticket:`4237`
+
+
 Dialect Improvements and Changes - MySQL
 =============================================
 

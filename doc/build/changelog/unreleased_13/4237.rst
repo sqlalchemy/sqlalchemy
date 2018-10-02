@@ -1,0 +1,11 @@
+.. change::
+   :tags: feature, postgresql
+   :tickets: 4237
+
+   Added rudimental support for reflection of Postgresql
+   partitioned tables, e.g. that relkind='p' is added to reflection
+   queries that return table information.
+
+   .. seealso::
+
+        :ref:`change_4237`
