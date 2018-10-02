@@ -1,0 +1,9 @@
+.. change::
+   :tags: bug, misc
+
+   Fixed issue where part of the utility language helper internals was passing
+   the wrong kind of argument to the Python ``__import__`` builtin as the list
+   of modules to be imported.  The issue produced no symptoms within the core
+   library but could cause issues with external applications that redefine the
+   ``__import__`` builtin or otherwise instrument it. Pull request courtesy Joe
+   Urciuoli.
