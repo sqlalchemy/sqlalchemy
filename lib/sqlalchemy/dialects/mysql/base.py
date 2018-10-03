@@ -1179,8 +1179,18 @@ class MySQLCompiler(compiler.SQLCompiler):
                                  fromhints=from_hints, **kw)
             for t in [from_table] + extra_froms)
 
-    def visit_empty_set_expr(self, type_):
-        return 'SELECT 1 FROM (SELECT 1) as _empty_set WHERE 1!=1'
+    def visit_empty_set_expr(self, element_types):
+        return (
+            "SELECT %(outer)s FROM (SELECT %(inner)s) "
+            "as _empty_set WHERE 1!=1" % {
+                "inner": ", ".join(
+                    "1 AS _in_%s" % idx
+                    for idx, type_ in enumerate(element_types)),
+                "outer": ", ".join(
+                    "_in_%s" % idx
+                    for idx, type_ in enumerate(element_types))
+            }
+        )
 
 
 class MySQLDDLCompiler(compiler.DDLCompiler):

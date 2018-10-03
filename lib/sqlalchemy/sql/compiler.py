@@ -1056,7 +1056,7 @@ class SQLCompiler(Compiled):
                 self._emit_empty_in_warning()
             return self.process(binary.left == binary.left)
 
-    def visit_empty_set_expr(self, type_):
+    def visit_empty_set_expr(self, element_types):
         raise NotImplementedError(
             "Dialect '%s' does not support empty set expression." %
             self.dialect.name

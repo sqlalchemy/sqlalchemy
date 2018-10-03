@@ -402,6 +402,34 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             params={"q": [], "p": []},
         )
 
+    @testing.requires.tuple_in
+    def test_empty_heterogeneous_tuples(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            tuple_(table.c.x, table.c.z).in_(
+                bindparam('q', expanding=True))).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [],
+            params={"q": []},
+        )
+
+    @testing.requires.tuple_in
+    def test_empty_homogeneous_tuples(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            tuple_(table.c.x, table.c.y).in_(
+                bindparam('q', expanding=True))).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [],
+            params={"q": []},
+        )
+
     def test_bound_in_scalar(self):
         table = self.tables.some_table
 
@@ -426,6 +454,20 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             stmt,
             [(2, ), (3, ), (4, )],
             params={"q": [(2, 3), (3, 4), (4, 5)]},
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            tuple_(table.c.x, table.c.z).in_(
+                bindparam('q', expanding=True))).order_by(table.c.id)
+
+        self._assert_result(
+            stmt,
+            [(2, ), (3, ), (4, )],
+            params={"q": [(2, "z2"), (3, "z3"), (4, "z4")]},
         )
 
     def test_empty_set_against_integer(self):

@@ -413,6 +413,24 @@ backend, such as "SELECT CAST(NULL AS INTEGER) WHERE 1!=1" for Postgresql,
     ...
     SELECT 1 WHERE 1 IN (SELECT CAST(NULL AS INTEGER) WHERE 1!=1)
 
+The feature also works for tuple-oriented IN statements, where the "empty IN"
+expression will be expanded to support the elements given inside the tuple,
+such as on Postgresql::
+
+    >>> from sqlalchemy import create_engine
+    >>> from sqlalchemy import select, literal_column, tuple_, bindparam
+    >>> e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    >>> with e.connect() as conn:
+    ...      conn.execute(
+    ...          select([literal_column('1')]).
+    ...          where(tuple_(50, "somestring").in_(bindparam('q', expanding=True))),
+    ...          q=[]
+    ...      )
+    ...
+    SELECT 1 WHERE (%(param_1)s, %(param_2)s)
+    IN (SELECT CAST(NULL AS INTEGER), CAST(NULL AS VARCHAR) WHERE 1!=1)
+
+
 :ticket:`4271`
 
 .. _change_3981:

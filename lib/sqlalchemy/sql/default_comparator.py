@@ -15,7 +15,8 @@ from .elements import BindParameter, True_, False_, BinaryExpression, \
     Null, _const_expr, _clause_element_as_expr, \
     ClauseList, ColumnElement, TextClause, UnaryExpression, \
     collate, _is_literal, _literal_as_text, ClauseElement, and_, or_, \
-    Slice, Visitable, _literal_as_binds, CollectionAggregate
+    Slice, Visitable, _literal_as_binds, CollectionAggregate, \
+    Tuple
 from .selectable import SelectBase, Alias, Selectable, ScalarSelect
 
 
@@ -145,6 +146,14 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
     elif isinstance(seq_or_selectable, ClauseElement):
         if isinstance(seq_or_selectable, BindParameter) and \
                 seq_or_selectable.expanding:
+
+            if isinstance(expr, Tuple):
+                seq_or_selectable = (
+                    seq_or_selectable._with_expanding_in_types(
+                        [elem.type for elem in expr]
+                    )
+                )
+
             return _boolean_compare(
                 expr, op,
                 seq_or_selectable,
